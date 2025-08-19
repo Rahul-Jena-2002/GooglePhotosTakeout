@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <!-- =================================================================== -->
+    <!-- 1. Project Identification                                           -->
+    <!-- Defines the unique name and version for your project.               -->
+    <!-- =================================================================== -->
+    <groupId>com.rahul</groupId>
+    <artifactId>GoogleTakeoutMetadataRestorer</artifactId>
+    <version>1.0.0</version>
+
+    <!-- =================================================================== -->
+    <!-- 2. Project Configuration                                            -->
+    <!-- Sets the Java version and file encoding.                            -->
+    <!-- =================================================================== -->
+    <properties>
+        <maven.compiler.source>21</maven.compiler.source>
+        <maven.compiler.target>21</maven.compiler.target>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    </properties>
+
+    <!-- =================================================================== -->
+    <!-- 3. Project Dependencies                                             -->
+    <!-- Lists the external libraries your project needs. Maven handles      -->
+    <!-- downloading them automatically.                                     -->
+    <!-- =================================================================== -->
+    <dependencies>
+        <dependency>
+            <groupId>org.json</groupId>
+            <artifactId>json</artifactId>
+            <version>20231013</version>
+        </dependency>
+    </dependencies>
+
+    <!-- =================================================================== -->
+    <!-- 4. Build Instructions                                               -->
+    <!-- Tells Maven how to compile and package your project.                -->
+    <!-- =================================================================== -->
+    <build>
+        <plugins>
+            <!-- This plugin creates a single executable "fat JAR" that       -->
+            <!-- includes all your code AND the org.json dependency.          -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-shade-plugin</artifactId>
+                <version>3.5.1</version>
+                <executions>
+                    <execution>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>shade</goal>
+                        </goals>
+                        <configuration>
+                            <transformers>
+                                <transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
+                                    <!-- CRITICAL: This line tells Java which class has the main() -->
+                                    <!-- method to start the application. It MUST match your      -->
+                                    <!-- package structure.                                       -->
+                                    <mainClass>com.rahul.GoogleTakeoutMetadataRestorer</mainClass>
+                                </transformer>
+                            </transformers>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
+    </build>
+</project>
