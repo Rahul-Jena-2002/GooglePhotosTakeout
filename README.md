@@ -84,8 +84,11 @@ Please open an issue for bugs or feature requests before doing large work so we 
 
 If you want to run or build from source, add a short BUILD.md in the repo describing the steps and runtime requirements — this README intentionally omits build commands because releases ship as a bundled Windows binary.
 
+Screenshot:
+
+![app-screenshot](https://github.com/Rahul-Jena-2002/GooglePhotosTakeout/raw/main/Resources/Ui.jpg)
+
 ## Security & Privacy
 
 - This tool processes files locally — it does not upload your photos to any external service.
 - Still, test with non-sensitive samples first and keep a backup of original exports.
-
