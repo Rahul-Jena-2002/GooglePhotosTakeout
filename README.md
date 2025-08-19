@@ -1,8 +1,8 @@
 ## GoogleTakeout Metadata Restorer
 
-[![Release](https://img.shields.io/github/v/release/YOUR-USERNAME/GoogleTakeoutMetadataRestorer?label=release)](./releases)
+[![Release](https://img.shields.io/github/v/release/Rahul-Jena-2002/GooglePhotosTakeout?label=release)](https://github.com/Rahul-Jena-2002/GooglePhotosTakeout/releases)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](./LICENSE)
-[![Issues](https://img.shields.io/github/issues/YOUR-USERNAME/GoogleTakeoutMetadataRestorer)](./issues)
+[![Issues](https://img.shields.io/github/issues/Rahul-Jena-2002/GooglePhotosTakeout)](https://github.com/Rahul-Jena-2002/GooglePhotosTakeout/issues)
 
 Restore original photo and video timestamps (EXIF/metadata) from Google Takeout exports with a small, portable GUI tool.
 
@@ -22,17 +22,26 @@ Restore original photo and video timestamps (EXIF/metadata) from Google Takeout 
 - GUI: pick one or more folders exported from Google Takeout
 - Restores EXIF metadata and file timestamps using the JSON metadata provided by Google Takeout (JSON + JPG/MP4 pairs)
 
-## 📥 Quickstart
+## 📥 Quickstart (cross-platform)
 
-1. Open this repository's Releases page: `./releases` (or https://github.com/YOUR-USERNAME/GoogleTakeoutMetadataRestorer/releases)
-2. Download `GoogleTakeoutMetadataRestorer.zip` for Windows
-3. Unzip to any folder (Desktop, Downloads, external drive)
-4. Double-click `GoogleTakeoutMetadataRestorer.exe` to run the GUI
+Releases include a Windows installer/executable and a runnable JAR so the project can be used on Windows, macOS, and Linux.
+
+1. Open this repository's Releases page: `./releases` (or https://github.com/Rahul-Jena-2002/GooglePhotosTakeout/releases)
+2. Choose the artifact for your platform:
+
+- Windows: `GoogleTakeoutPhotos-Fixer-1.0.0-x64-latest.exe` (bundled runtime)
+- Any platform: `GoogleTakeoutMetadataRestorer-1.0.0.jar` (runnable JAR)
+
+3. Run the chosen artifact (platform-specific instructions below).
 
 Minimal requirements:
 
-- Windows 10/11
-- ~80 MB free disk space for the app and runtime
+- Java 11+ if you plan to run the runnable JAR.
+- ~80 MB free disk space for the app and bundled runtime (Windows bundle).
+
+External tools required:
+
+- ExifTool: used to write EXIF metadata to files when possible. See `USAGE.md` for platform-specific install instructions and how the app calls ExifTool.
 
 ## ▶️ Usage
 
@@ -57,8 +66,6 @@ Minimal requirements:
 
 ## ⚠️ Troubleshooting
 
-MIT License 1f2 see `./LICENSE` for details.
-
 - If the app doesn't start: confirm you downloaded the Windows release (the bundle includes a runtime). Try running the `.exe` as administrator.
 - If timestamps are not applied: verify the JSON metadata files exist next to media files and are not renamed.
 - If EXIF isn't updated for some files: some file types or existing metadata layouts may prevent writing — check the app log (if available) for details.
@@ -82,10 +89,3 @@ If you want to run or build from source, add a short BUILD.md in the repo descri
 - This tool processes files locally — it does not upload your photos to any external service.
 - Still, test with non-sensitive samples first and keep a backup of original exports.
 
-## License
-
-MIT License — see `./LICENSE` for details.
-
----
-
-If you'd like, I can also add a screenshot, CI badge, or a small `USAGE.md` with annotated screenshots and a short changelog. Replace `YOUR-USERNAME` in badge links with your GitHub username to enable live badges.
