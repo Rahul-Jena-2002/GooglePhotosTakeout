@@ -1,56 +1,68 @@
-# 📸 Google Takeout Metadata Restorer
+<p align="center">
+  <img src="icons/icon.png" alt="GT Metadata Merger Logo" width="200"/>
+</p>
 
-A modern, minimalistic web application to restore "Date Taken" timestamps to Google Photos exports. It parses Google's JSON metadata and applies the correct timestamps directly to the files on your filesystem.
+# 📸 GT Metadata Merger
 
-## 🚀 Architecture
-- **Backend**: Spring Boot 3.2 (Java 21)
-- **Frontend**: React + TypeScript + Tailwind CSS
-- **Real-time**: WebSockets (STOMP/SockJS) for live log streaming and progress tracking.
-- **Pattern**: Modular Monolith (Separated Domain, Service, and API layers).
+A privacy-first, completely offline desktop application that restores original "Date Taken" timestamps to your Google Photos Takeout exports. 
 
-## 🛠️ Prerequisites
-- **Java 21 JDK**
-- **Maven 3.8+**
-- **Node.js 18+ & npm**
+When you export your photos from Google Takeout, Google strips the original creation dates from your files and places them inside separate `.json` files. This tool acts as an automated engine that reads those JSON files, perfectly matches them to your photos and videos (handling all of Google's weird naming conventions and character limits), and securely embeds the correct original timestamp back into your media.
 
-## 🏁 Getting Started
+### ✨ Features
+- **100% Local & Private**: No cloud uploads. Your photos never leave your device.
+- **Dynamic Suffix Matching**: Automatically detects dynamically truncated Google Takeout JSON files (e.g., `IMG_2023.jpg.supplem.json`).
+- **Native OS File Picker**: Easily browse your local file system using native dialogs.
+- **Real-Time Streaming Logs**: Watch the restoration process live in the beautiful React UI.
+- **Power Management**: Automatically keeps your computer awake during massive multi-hour extraction processes, and optionally shuts down the PC when finished.
 
-### 1. Backend Setup (Spring Boot)
-```bash
-# Navigate to project root
-mvn clean install
+---
 
-# Run the application
-mvn spring-boot:run
-```
-The backend will start on `http://localhost:8080`.
+## 📥 Download (No Installation Required)
 
-### 2. Frontend Setup (React)
-```bash
-# Navigate to the frontend directory
-cd frontend
+You do not need to install Java or Node.js to run this. Simply download the standalone executable for your operating system:
 
-# Install dependencies
-npm install
+1. Go to the [Releases Page](../../releases/latest).
+2. Download the `.zip` or `.tar.gz` for your operating system (Windows, macOS, or Linux).
+3. Extract the folder and run the `GTMetadataMerger` executable inside!
 
-# Start the development server
-npm run dev
-```
-The UI will be available at `http://localhost:5173`.
+---
 
 ## ⚙️ How to Use
-1. **Input Folder**: Provide the absolute path to your Google Takeout media folder.
-2. **Output Folder**: Provide the path where you want the processed files to be saved.
-3. **Takeout Date**: (Optional) Provide the date you requested the takeout. This helps the app ignore timestamps created by Google during the export process.
-4. **Post-Action**: Choose whether to just keep the screen awake or shut down the computer automatically upon completion.
 
-## ⚠️ System Permissions
-Because this application interacts with the filesystem and system power controls:
-- **Filesystem**: The user running the backend must have read/write permissions for both input and output folders.
-- **Power Management**: To use the "Keep Awake" and "Shutdown" features, the application must be run with **Administrative/Sudo privileges**, as it executes system-level shell commands (`shutdown` on Windows/Linux, `osascript` on macOS).
+1. **Input Folder**: Click "Browse" and select your unzipped Google Takeout folder containing the images and JSON files.
+2. **Output Folder**: Select an empty folder where you want the restored photos to be copied.
+3. **Takeout Date (Optional)**: If you provide the date you exported the Takeout, the engine will use it to ignore incorrect timestamps injected by Google during the zipping process.
+4. **Post-Action**: Choose whether to prevent your computer from sleeping, or auto-shutdown when the 50GB+ process completes.
+5. Click **Start Extraction** and watch the logs fly by!
 
-## 📂 Project Structure
-- `src/main/java/com/rahul/config`: WebSocket and security configurations.
-- `src/main/java/com/rahul/controller`: REST API endpoints.
-- `src/main/java/com/rahul/service`: Core domain logic (MediaScanner, MetadataMatcher, etc.).
-- `frontend/`: React source code and Tailwind CSS configuration.
+---
+
+## 🛠️ For Developers
+
+Want to contribute or build from source? GT Metadata Merger is a Modular Monolith built with **Spring Boot 3.2 (Java 21)** and **React + Tailwind CSS**.
+
+### Prerequisites
+- Java 21 JDK
+- Node.js 20+ & npm
+- Maven 3.8+
+
+### Running Locally
+Because the application is bundled to serve the React frontend natively through Spring Boot, you can build and run the entire stack with one command:
+
+```bash
+# Build the React app and package the Spring Boot JAR
+mvn clean install -DskipTests
+
+# Run the backend
+java -jar target/GTakeout-1.0.0.jar
+```
+The application will start on `http://localhost:8081` and you can open it in your browser.
+
+### Project Architecture
+- `src/main/java/com/rahul/controller`: REST and Native System APIs.
+- `src/main/java/com/rahul/service`: Core domain logic (MediaScanner, MetadataMatcher, Dynamic RegEx).
+- `frontend/`: React source code, Tailwind configuration, and Vite bundler.
+- `.github/workflows/release.yml`: Automated CI/CD pipeline using `jpackage` to generate native binaries.
+
+## ⚠️ Note on Permissions
+To use the "Keep Awake" and "Shutdown" features, the application executes system-level shell commands. Ensure you are running the application with the appropriate privileges if those features are blocked by your OS.
