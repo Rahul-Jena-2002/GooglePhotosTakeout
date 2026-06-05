@@ -36,3 +36,13 @@ build/
 
 ### Mac OS ###
 .DS_Store
+
+### Frontend Generated Files ###
+frontend/node_modules/
+frontend/dist/
+frontend/node/
+node/
+
+### Metadata App Output ###
+metadata_not_found/
+dist/

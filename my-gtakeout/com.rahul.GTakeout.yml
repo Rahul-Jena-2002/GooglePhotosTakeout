@@ -1,0 +1,33 @@
+id: com.rahul.GTakeout
+runtime: org.freedesktop.Platform
+runtime-version: '25.08'
+sdk: org.freedesktop.Sdk
+sdk-extensions:
+  - org.freedesktop.Sdk.Extension.openjdk21
+command: gtakeout.sh
+finish-args:
+  # Basic access to the display server for Swing
+  - --socket=x11
+  # Optional: For audio feedback
+  - --socket=pulseaudio
+  # Optional: If you need to access files outside the sandbox, add a file system permission
+  # - --filesystem=home
+
+modules:
+  - name: gtakeout
+    buildsystem: simple
+    build-commands:
+      # Use the included OpenJDK 21 installation script
+      - /usr/lib/sdk/openjdk21/install.sh
+      # Create a directory for your app's files within the sandbox
+      - install -d /app/share/gtakeout
+      # Install your fat JAR into the app's directory
+      - install GTakeout-1.0.0.jar /app/share/gtakeout/GTakeout-1.0.0.jar
+      # Install your launcher script into the executable bin directory
+      - install -Dm755 gtakeout.sh /app/bin/gtakeout.sh
+    sources:
+      # Specify the files to include in the build
+      - type: file
+        path: GTakeout-1.0.0.jar
+      - type: file
+        path: gtakeout.sh

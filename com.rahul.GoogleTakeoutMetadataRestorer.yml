@@ -1,0 +1,32 @@
+app-id: com.rahul.GoogleTakeoutMetadataRestorer
+runtime: org.freedesktop.Platform
+runtime-version: '23.08'
+sdk: org.freedesktop.Sdk
+command: java -jar GoogleTakeoutMetadataRestorer.jar
+
+finish-args:
+  # Essential for GUI applications
+  - --socket=x11
+  - --share=ipc
+  # Allows access to user's home directory for file dialogs
+  - --filesystem=home
+  # Allows access to the network for future updates/features
+  - --socket=network
+  # Required to run the JRE
+  - --allow=development
+
+modules:
+  # Main application module
+  - name: google-takeout-metadata-restorer
+    buildsystem: maven
+    sources:
+      # The source code is in the current directory
+      - type: git
+        url: .
+        branch: main # Or the branch you are on
+    build-commands:
+      - mvn clean package
+    install-commands:
+      # Copy the final "fat JAR" to the Flatpak's application directory
+      - install -Dm644 target/TakeoutRestorer-1.0.0.jar /app/
+      - install -Dm644 pom.xml /app/pom.xml
