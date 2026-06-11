@@ -1,0 +1,256 @@
+---
+import Layout from "../layouts/Layout.astro";
+import AdUnit from "../components/AdUnit";
+import { ShieldCheck, ArrowRight, CheckCircle2, AlertTriangle, Cpu, HardDrive, Eye } from "lucide-react";
+
+export const prerender = false;
+
+const { seoSlug } = Astro.params;
+const slug = (seoSlug || "").toLowerCase();
+
+const actionMap = {
+  "restore": "Restore",
+  "recover": "Recover",
+  "fix": "Fix",
+  "repair": "Repair",
+  "merge": "Merge",
+  "sync": "Sync",
+  "rebuild": "Rebuild",
+  "reconstruct": "Reconstruct",
+  "retrieve": "Retrieve",
+  "preserve": "Preserve",
+  "extract": "Extract",
+  "convert": "Convert",
+  "transfer": "Transfer"
+};
+
+const targetMap = {
+  "metadata": "EXIF Metadata",
+  "exif": "EXIF Header Tags",
+  "gps": "GPS Coordinates",
+  "location": "GPS Locations",
+  "timestamp": "Original Timestamps",
+  "date-taken": "Date Taken Tags",
+  "creation-date": "Creation Dates",
+  "albums": "Photo Albums",
+  "people-tags": "People Tags",
+  "camera-data": "Camera and Lens Data",
+  "photo-information": "Photo Metadata",
+  "video-information": "Video Metadata"
+};
+
+const sourceMap = {
+  "takeout": "Google Takeout",
+  "photos": "Google Photos",
+  "export": "Google Photos Export"
+};
+
+let matchedAction = "Restore";
+let matchedTarget = "EXIF Metadata";
+let matchedSource = "Google Takeout";
+let isValidSeo = false;
+
+for (const [key, val] of Object.entries(actionMap)) {
+  if (slug.includes(key)) {
+    matchedAction = val;
+    isValidSeo = true;
+    break;
+  }
+}
+
+for (const [key, val] of Object.entries(targetMap)) {
+  if (slug.includes(key)) {
+    matchedTarget = val;
+    isValidSeo = true;
+    break;
+  }
+}
+
+for (const [key, val] of Object.entries(sourceMap)) {
+  if (slug.includes(key)) {
+    matchedSource = val;
+    isValidSeo = true;
+    break;
+  }
+}
+
+if (slug.startsWith("google-") || slug.includes("takeout") || slug.includes("metadata") || slug.includes("exif")) {
+  isValidSeo = true;
+}
+
+if (!isValidSeo) {
+  return Astro.redirect("/", 302);
+}
+
+const pageTitle = `How to ${matchedAction} ${matchedTarget} from ${matchedSource} | TakeoutFix`;
+const pageDescription = `Learn how to ${matchedAction.toLowerCase()} your ${matchedTarget.toLowerCase()} from your ${matchedSource} export easily. TakeoutFix matches sidecar JSON data and injects EXIF metadata 100% locally in your browser.`;
+---
+
+<Layout title={pageTitle} description={pageDescription}>
+  <div class="bg-black text-zinc-100 min-h-screen py-24 px-4 sm:px-6 lg:px-8 relative overflow-hidden font-sans">
+    
+    <!-- Background neon glows -->
+    <div class="absolute top-0 left-1/4 w-[500px] h-[500px] bg-indigo-900/10 blur-[150px] rounded-full pointer-events-none"></div>
+    <div class="absolute bottom-20 right-1/4 w-[600px] h-[600px] bg-purple-900/10 blur-[150px] rounded-full pointer-events-none"></div>
+
+    <!-- Hero Section -->
+    <div class="max-w-4xl mx-auto text-center mb-20 relative z-10">
+      <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-zinc-900 border border-zinc-800 text-xs font-semibold text-indigo-400 mb-6 font-mono">
+        <ShieldCheck className="w-4 h-4 text-indigo-400" />
+        100% Local Browser Engine · HIPAA Compliant
+      </div>
+      
+      <h1 class="text-4xl md:text-6xl font-extrabold tracking-tight text-white mb-6 leading-tight animate-fade-in">
+        {matchedAction} <span class="text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 via-purple-400 to-pink-500">{matchedTarget}</span> from {matchedSource}
+      </h1>
+      
+      <p class="text-lg md:text-xl text-zinc-400 max-w-3xl mx-auto font-normal leading-relaxed mb-8">
+        Did your {matchedSource} export strip out original dates, camera info, or GPS coordinates? TakeoutFix automatically merges the separate JSON metadata sidecar files back into your photos and videos offline on your device.
+      </p>
+
+      <div class="flex justify-center">
+        <a href="/tool">
+          <button class="glass-capsule interactive px-10 h-14 font-semibold text-white flex items-center gap-2">
+            Start Free {matchedAction} <ArrowRight className="w-5 h-5" />
+          </button>
+        </a>
+      </div>
+    </div>
+
+    <!-- Grid Content Sections -->
+    <div class="max-w-6xl mx-auto relative z-10 space-y-16">
+      
+      <!-- Comparison Showcase (Before / After) -->
+      <div class="bg-zinc-950/40 border border-white/5 backdrop-blur-md rounded-2xl overflow-hidden shadow-2xl">
+        <div class="border-b border-white/5 py-4 px-6">
+          <h2 class="text-sm font-mono tracking-wider text-zinc-400 uppercase flex items-center gap-2">
+            <Eye className="w-4 h-4 text-indigo-400" />
+            Dynamic EXIF Header Verification Matrix
+          </h2>
+        </div>
+        <div class="grid md:grid-cols-2 gap-8 p-8">
+          <div class="space-y-4">
+            <h3 class="text-sm font-bold uppercase tracking-wider text-red-400 flex items-center gap-2">
+              <AlertTriangle className="w-4 h-4" /> Before TakeoutFix Processing
+            </h3>
+            <div class="bg-zinc-950 border border-zinc-900 rounded-lg p-5 font-mono text-xs text-zinc-500 space-y-2">
+              <p class="text-white font-semibold">File: IMG_3012.JPG</p>
+              <p>Date Taken: <span class="text-red-400/80 font-bold">Missing (Shows Today's Upload Date)</span></p>
+              <p>GPS Coordinates: <span class="text-red-400/80 font-bold">None (Latitude: 0.0, Longitude: 0.0)</span></p>
+              <p>Camera Make/Model: <span class="text-red-400/80 font-bold">Stripped (No Exif Header Blocks)</span></p>
+              <p class="text-[10px] text-zinc-655 mt-2 font-bold italic">* Operating systems default to filesystem creation date</p>
+            </div>
+          </div>
+          
+          <div class="space-y-4">
+            <h3 class="text-sm font-bold uppercase tracking-wider text-emerald-400 flex items-center gap-2">
+              <CheckCircle2 className="w-4 h-4" /> After TakeoutFix Recovery
+            </h3>
+            <div class="bg-zinc-950 border border-zinc-900 rounded-lg p-5 font-mono text-xs text-zinc-400 space-y-2 shadow-[0_0_15px_rgba(16,185,129,0.05)]">
+              <p class="text-white font-semibold">File: IMG_3012.JPG</p>
+              <p>Date Taken: <span class="text-emerald-400 font-bold">2018:04:12 18:32:04 (DateTimeOriginal)</span></p>
+              <p>GPS Coordinates: <span class="text-emerald-400 font-bold">40.7128° N, 74.0060° W</span></p>
+              <p>Camera Make/Model: <span class="text-emerald-400 font-bold">Apple iPhone X (Injected Exif tags)</span></p>
+              <p class="text-[10px] text-emerald-400/75 mt-2 font-bold">✓ Successfully merged from sidecar JSON</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Detailed Explanation Grid -->
+      <div class="grid md:grid-cols-2 gap-8">
+        <div class="bg-zinc-950/40 border border-white/5 backdrop-blur-md p-6 rounded-2xl flex flex-col justify-between">
+          <div>
+            <div class="w-10 h-10 rounded-lg bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center mb-3">
+              <Cpu className="w-5 h-5 text-indigo-400" />
+            </div>
+            <h3 class="text-lg text-white font-bold mb-4">Why {matchedSource} Stripped Your {matchedTarget}</h3>
+            <p class="text-sm text-zinc-450 leading-relaxed space-y-4 font-normal">
+              When exporting your photo library via {matchedSource}, the platform separates your media binary files from their descriptive headers. Instead of writing metadata directly inside the photo headers, it creates individual sidecar files ending in <code>.json</code>.
+            </p>
+            <p class="text-sm text-zinc-450 leading-relaxed mt-4 font-normal">
+              As a result, importing these files into new systems (like Apple Photos, Windows Gallery, or Synology) displays them with wrong dates (often showing the date of your takeout export itself) and strips out GPS location tracking maps.
+            </p>
+          </div>
+        </div>
+
+        <div class="bg-zinc-950/40 border border-white/5 backdrop-blur-md p-6 rounded-2xl flex flex-col justify-between">
+          <div>
+            <div class="w-10 h-10 rounded-lg bg-purple-500/10 border border-purple-500/20 flex items-center justify-center mb-3">
+              <HardDrive className="w-5 h-5 text-purple-400" />
+            </div>
+            <h3 class="text-lg text-white font-bold mb-4">How TakeoutFix Resolves the Bug Locally</h3>
+            <p class="text-sm text-zinc-450 leading-relaxed mb-4 font-normal">
+              TakeoutFix's client-side compilation engine bypasses network servers. By keeping file matching 100% on your device:
+            </p>
+            <ul class="space-y-2.5">
+              <li class="flex items-center gap-2 text-zinc-300 text-sm font-normal">
+                <CheckCircle2 className="w-4 h-4 text-purple-400 flex-shrink-0" />
+                <span>Recursively traverses directories to locate sidecar JSONs.</span>
+              </li>
+              <li class="flex items-center gap-2 text-zinc-300 text-sm font-normal">
+                <CheckCircle2 className="w-4 h-4 text-purple-400 flex-shrink-0" />
+                <span>Executes name-hash matching to link edited and copy versions.</span>
+              </li>
+              <li class="flex items-center gap-2 text-zinc-300 text-sm font-normal">
+                <CheckCircle2 className="w-4 h-4 text-purple-400 flex-shrink-0" />
+                <span>Writes binary headers directly without quality loss or recompression.</span>
+              </li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <!-- Step-by-Step Recovery Guide -->
+      <div class="text-center py-10">
+        <h2 class="text-2xl font-bold mb-10 text-white">3 Steps to {matchedAction} {matchedTarget}</h2>
+        <div class="grid md:grid-cols-3 gap-6">
+          <div class="bg-zinc-950/20 border border-zinc-900 rounded-xl p-5 text-left relative overflow-hidden">
+            <span class="absolute right-4 top-2 text-5xl font-extrabold text-white/5 font-mono select-none">1</span>
+            <h4 class="font-bold text-white mb-2">Select Folders</h4>
+            <p class="text-xs text-zinc-450 leading-relaxed font-normal">
+              Provide your {matchedSource} directory. TakeoutFix scans files recursively entirely within your local browser sandbox.
+            </p>
+          </div>
+          
+          <div class="bg-zinc-950/20 border border-zinc-900 rounded-xl p-5 text-left relative overflow-hidden">
+            <span class="absolute right-4 top-2 text-5xl font-extrabold text-white/5 font-mono select-none">2</span>
+            <h4 class="font-bold text-white mb-2">Run Matcher</h4>
+            <p class="text-xs text-zinc-450 leading-relaxed font-normal">
+              Our dynamic heuristic resolver maps modified, truncated, and multi-copy suffix filenames back to their parent JSON descriptors.
+            </p>
+          </div>
+          
+          <div class="bg-zinc-950/20 border border-zinc-900 rounded-xl p-5 text-left relative overflow-hidden">
+            <span class="absolute right-4 top-2 text-5xl font-extrabold text-white/5 font-mono select-none">3</span>
+            <h4 class="font-bold text-white mb-2">Inject Headers</h4>
+            <p class="text-xs text-zinc-450 leading-relaxed font-normal">
+              Timestamps, GPS coordinates, and camera info are written directly into binary headers, exporting clean folders for immediate import.
+            </p>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Call to Action Footer -->
+    <div class="max-w-4xl mx-auto text-center mt-32 py-16 border-t border-zinc-900 relative z-10">
+      <h2 class="text-3xl font-bold tracking-tight mb-4 text-white">Rebuild Your {matchedSource} Photos Today</h2>
+      <p class="text-zinc-500 mb-8 max-w-md mx-auto">
+        Start recovering your {matchedTarget.toLowerCase()} in seconds. Absolutely no sign-ups or software installation required.
+      </p>
+      <div class="flex flex-col sm:flex-row gap-4 justify-center items-center">
+        <a href="/tool">
+          <button class="glass-capsule interactive px-10 h-14 font-semibold text-white flex items-center gap-2">
+            Launch Recovery Center <ArrowRight className="w-5 h-5" />
+          </button>
+        </a>
+        <a href="/pricing">
+          <button class="glass-capsule interactive px-8 h-14 font-semibold text-zinc-300 hover:text-white">
+            Compare Plans
+          </button>
+        </a>
+      </div>
+    </div>
+  </div>
+</Layout>

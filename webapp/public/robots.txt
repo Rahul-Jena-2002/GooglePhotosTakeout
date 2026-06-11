@@ -1,0 +1,7 @@
+User-agent: *
+Allow: /
+Disallow: /admin/
+Disallow: /dashboard
+Disallow: /profile
+
+Sitemap: https://gt-metadata-merger.web.app/sitemap.xml

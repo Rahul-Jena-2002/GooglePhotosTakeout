@@ -1,0 +1,13 @@
+---
+import Layout from "../layouts/Layout.astro";
+import { AuthProvider } from "../contexts/AuthContext";
+import SupportPage from "../react-pages/SupportPage";
+import { ToastContainer } from "../components/ui/toast";
+---
+
+<Layout title="TakeoutFix | Help & Support Center" description="Access TakeoutFix FAQs, submit support tickets, trace processing reports, or contact team engineers.">
+  <AuthProvider client:only="react">
+    <SupportPage client:only="react" />
+    <ToastContainer client:only="react" />
+  </AuthProvider>
+</Layout>

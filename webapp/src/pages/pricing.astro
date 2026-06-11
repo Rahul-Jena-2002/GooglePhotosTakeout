@@ -1,0 +1,218 @@
+---
+import Layout from "../layouts/Layout.astro";
+import AdUnit from "../components/AdUnit";
+import { PLAN_PRICES } from "../contexts/AuthContext";
+
+export const prerender = false;
+
+const COUNTRY_TO_REGION = {
+  IN: "in", PK: "t1", BD: "t1", NP: "t1", LK: "t1", ID: "t1", VN: "t1", PH: "t1", NG: "t1", KE: "t1", EG: "t1",
+  MY: "t2", TH: "t2", MX: "t2", BR: "t2", TR: "t2", ZA: "t2", AR: "t2", CL: "t2", PL: "t2", RO: "t2",
+  US: "us", GB: "eu", DE: "eu", FR: "eu", NL: "eu", BE: "eu", AT: "eu", SE: "t3", NO: "t3", DK: "t3", FI: "t3", IE: "eu", NZ: "t3", AU: "t3", CA: "t3",
+  JP: "jp", CH: "t4", LU: "eu", IS: "t4", SG: "t4", KR: "t4", HK: "t4",
+  CN: "cn",
+};
+
+const countryCode = Astro.request.headers.get("cf-ipcountry") || "US";
+const region = COUNTRY_TO_REGION[countryCode.toUpperCase()] || "us";
+const prices = PLAN_PRICES[region] || PLAN_PRICES.us;
+---
+
+<Layout title="TakeoutFix | Pricing Plans" description="Choose the perfect metadata restoration plan for your Google Takeout archive. Free, single-use, and lifetime options available.">
+  <div class="w-full max-w-7xl mx-auto px-4 py-24">
+    <div class="text-center mb-12 flex flex-col items-center">
+      <h1 class="text-4xl md:text-5xl font-bold mb-4 animate-fade-in">
+        Pricing Plans
+      </h1>
+      <p class="text-xl text-white/60 max-w-2xl mx-auto">
+        Every plan uses the same recovery engine. Every plan receives the same metadata restoration quality.
+      </p>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-16 items-stretch">
+      
+      <!-- FREE PLAN -->
+      <div class="flex flex-col">
+        <div class="bg-black/40 border border-white/10 rounded-2xl p-6 backdrop-blur-md flex flex-col h-full hover:border-white/20 transition-all">
+          <div class="mb-6">
+            <h2 class="text-2xl font-bold text-white">Free</h2>
+            <p class="text-white/50 text-xs mt-1">Good for trying TakeoutFix</p>
+          </div>
+          <div class="flex-1">
+            <div class="text-4xl font-bold mb-6 text-white">Free</div>
+            <ul class="space-y-3 text-sm text-white/70">
+              <li class="flex items-center gap-2"><span class="text-green-400 font-bold">✓</span> Up to 1000 files (1GB)</li>
+              <li class="flex items-center gap-2"><span class="text-green-400 font-bold">✓</span> Metadata Recovery</li>
+              <li class="flex items-center gap-2"><span class="text-green-400 font-bold">✓</span> Deep EXIF Injection</li>
+              <li class="flex items-center gap-2 text-white/40"><span class="text-white/40 font-bold">✗</span> Ads Required</li>
+              <li class="flex items-center gap-2 text-white/40"><span class="text-white/40 font-bold">✗</span> No Support Tickets</li>
+            </ul>
+          </div>
+          <div class="mt-6">
+            <a href="/tool" class="w-full">
+              <button class="glass-capsule interactive w-full py-3 font-bold text-sm text-white">Get Started</button>
+            </a>
+          </div>
+        </div>
+      </div>
+
+      <!-- RECOVERY PASS -->
+      <div class="flex flex-col">
+        <div class="bg-black/40 border border-white/10 rounded-2xl p-6 backdrop-blur-md flex flex-col h-full hover:border-white/20 transition-all relative">
+          <div class="absolute top-0 right-6 bg-zinc-800 text-white text-[10px] px-3 py-1 rounded-full font-bold -translate-y-1/2 uppercase tracking-wider">20 GB LIMIT</div>
+          <div class="mb-6">
+            <h2 class="text-2xl font-bold text-white">Recovery Pass</h2>
+            <p class="text-white/50 text-xs mt-1">Best for one-time recovery</p>
+          </div>
+          <div class="flex-1">
+            <div class="text-4xl font-bold mb-2 text-white">{prices.recovery_pass}</div>
+            <div class="text-[10px] text-white/40 mb-6 uppercase tracking-wider font-bold">Single Batch</div>
+            <ul class="space-y-3 text-sm text-white/70">
+              <li class="flex items-center gap-2"><span class="text-green-400 font-bold">✓</span> 10,000 Files / 20GB limit</li>
+              <li class="flex items-center gap-2"><span class="text-green-400 font-bold">✓</span> Folder Organization</li>
+              <li class="flex items-center gap-2"><span class="text-green-400 font-bold">✓</span> Standard Support</li>
+              <li class="flex items-center gap-2 text-white/40"><span class="text-white/40 font-bold">✗</span> Ads Required</li>
+            </ul>
+          </div>
+          <div class="mt-6">
+            <a href={`/checkout?plan=recovery_pass&region=${region}`} class="w-full">
+              <button class="glass-capsule interactive w-full py-3 font-bold text-sm text-white">Buy Pass</button>
+            </a>
+          </div>
+        </div>
+      </div>
+
+      <!-- PRO LIFETIME -->
+      <div class="flex flex-col scale-105 z-10">
+        <div class="bg-black/60 border border-indigo-500/55 rounded-2xl p-6 backdrop-blur-md flex flex-col relative h-full shadow-2xl shadow-indigo-500/10 hover:border-indigo-400 transition-all">
+          <div class="absolute -top-3 left-1/2 -translate-x-1/2 bg-indigo-500 text-white text-xs px-3 py-1 rounded-full font-bold border-none shadow-[0_0_15px_rgba(99,102,241,0.4)]">
+            Most Popular
+          </div>
+          <div class="mb-6">
+            <h2 class="text-2xl font-bold text-indigo-400">Pro Lifetime</h2>
+            <p class="text-white/50 text-xs mt-1">Perfect for large libraries</p>
+          </div>
+          <div class="flex-1">
+            <div class="text-4xl font-bold mb-2 text-white">{prices.pro}</div>
+            <div class="text-[10px] text-indigo-400/80 mb-6 uppercase tracking-wider font-bold">Lifetime · 2 Devices</div>
+            <ul class="space-y-3 text-sm text-white/70">
+              <li class="flex items-center gap-2"><span class="text-indigo-400 font-bold">✓</span> Unlimited Processing</li>
+              <li class="flex items-center gap-2"><span class="text-indigo-400 font-bold">✓</span> Recovery History logs</li>
+              <li class="flex items-center gap-2"><span class="text-indigo-400 font-bold">✓</span> Priority support queue</li>
+              <li class="flex items-center gap-2 text-white/40"><span class="text-white/40 font-bold">✗</span> Ads Required</li>
+            </ul>
+          </div>
+          <div class="mt-6">
+            <a href={`/checkout?plan=pro&region=${region}`} class="w-full">
+              <button class="glass-capsule interactive w-full py-3 font-bold text-sm text-white !bg-indigo-500/20 !border-indigo-400/50 hover:!bg-indigo-500/40">Upgrade to Pro</button>
+            </a>
+          </div>
+        </div>
+      </div>
+
+      <!-- SUPER LIFETIME -->
+      <div class="flex flex-col">
+        <div class="bg-black/40 border border-white/10 rounded-2xl p-6 backdrop-blur-md flex flex-col h-full hover:border-white/20 transition-all">
+          <div class="mb-6">
+            <h2 class="text-2xl font-bold text-amber-400">Super Lifetime</h2>
+            <p class="text-white/50 text-xs mt-1">Inspector + Duplicate tools</p>
+          </div>
+          <div class="flex-1">
+            <div class="text-4xl font-bold mb-2 text-white">{prices.super}</div>
+            <div class="text-[10px] text-amber-400/80 mb-6 uppercase tracking-wider font-bold">Lifetime · 3 Devices</div>
+            <ul class="space-y-3 text-sm text-white/70">
+              <li class="flex items-center gap-2"><span class="text-amber-400 font-bold">✓</span> Ad-Free Experience</li>
+              <li class="flex items-center gap-2"><span class="text-amber-400 font-bold">✓</span> Visual EXIF Viewer</li>
+              <li class="flex items-center gap-2"><span class="text-amber-400 font-bold">✓</span> Duplicate Space Analyzer</li>
+              <li class="flex items-center gap-2"><span class="text-amber-400 font-bold">✓</span> Highest Priority Support</li>
+            </ul>
+          </div>
+          <div class="mt-6">
+            <a href={`/checkout?plan=super&region=${region}`} class="w-full">
+              <button class="glass-capsule interactive w-full py-3 font-bold text-sm text-white">Get Super</button>
+            </a>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <div class="w-full max-w-4xl mx-auto px-4 my-12">
+      <AdUnit client:load type="horizontal" />
+    </div>
+
+    <!-- DETAILED COMPARISON TABLE -->
+    <div class="mt-32">
+      <h2 class="text-3xl font-bold text-center mb-12">Compare Plans in Detail</h2>
+      <div class="overflow-x-auto">
+        <table class="w-full text-left border-collapse min-w-[800px]">
+          <thead>
+            <tr class="border-b border-white/10 bg-zinc-950/20">
+              <th class="py-4 px-6 font-medium text-white/50 w-1/3">Feature</th>
+              <th class="py-4 px-6 font-bold text-center">Free</th>
+              <th class="py-4 px-6 font-bold text-center">Recovery Pass</th>
+              <th class="py-4 px-6 font-bold text-center text-indigo-400">Pro Lifetime</th>
+              <th class="py-4 px-6 font-bold text-center text-amber-400">Super Lifetime</th>
+            </tr>
+          </thead>
+          <tbody class="text-sm">
+            <tr class="border-b border-white/5 hover:bg-white/[0.02]">
+              <td class="py-4 px-6 font-medium">Device Limit</td>
+              <td className="py-4 px-6 text-center text-white/70">1 Device</td>
+              <td className="py-4 px-6 text-center text-white/70">1 Device</td>
+              <td className="py-4 px-6 text-center text-white/70">2 Devices</td>
+              <td className="py-4 px-6 text-center text-white/70">3 Devices</td>
+            </tr>
+            <tr class="border-b border-white/5 hover:bg-white/[0.02]">
+              <td class="py-4 px-6 font-medium">Processing Limit</td>
+              <td class="py-4 px-6 text-center text-white/70 font-mono">1 GB (1,000 files)</td>
+              <td class="py-4 px-6 text-center text-white/70 font-mono">20 GB (10,000 files)</td>
+              <td class="py-4 px-6 text-center text-green-400 font-bold">Unlimited</td>
+              <td class="py-4 px-6 text-center text-green-400 font-bold">Unlimited</td>
+            </tr>
+            <tr class="border-b border-white/5 hover:bg-white/[0.02]">
+              <td class="py-4 px-6 font-medium">EXIF Metadata Quality</td>
+              <td class="py-4 px-6 text-center text-white/70">100%</td>
+              <td class="py-4 px-6 text-center text-white/70">100%</td>
+              <td class="py-4 px-6 text-center text-white/70">100%</td>
+              <td class="py-4 px-6 text-center text-white/70">100%</td>
+            </tr>
+            <tr class="border-b border-white/5 hover:bg-white/[0.02]">
+              <td class="py-4 px-6 font-medium">Access Duration</td>
+              <td class="py-4 px-6 text-center text-white/70">Forever</td>
+              <td class="py-4 px-6 text-center text-white/70">24 Hours</td>
+              <td class="py-4 px-6 text-center text-indigo-400 font-bold">Lifetime</td>
+              <td class="py-4 px-6 text-center text-amber-400 font-bold">Lifetime</td>
+            </tr>
+            <tr class="border-b border-white/5 hover:bg-white/[0.02]">
+              <td class="py-4 px-6 font-medium">Recovery History Log</td>
+              <td class="py-4 px-6 text-center text-white/20">—</td>
+              <td class="py-4 px-6 text-center text-white/20">—</td>
+              <td class="py-4 px-6 text-center text-green-400">✓</td>
+              <td class="py-4 px-6 text-center text-green-400">✓</td>
+            </tr>
+            <tr class="border-b border-white/5 hover:bg-white/[0.02]">
+              <td class="py-4 px-6 font-medium">Ad-Free Experience</td>
+              <td class="py-4 px-6 text-center text-white/20">—</td>
+              <td class="py-4 px-6 text-center text-white/20">—</td>
+              <td class="py-4 px-6 text-center text-white/20">—</td>
+              <td class="py-4 px-6 text-center text-green-400">✓</td>
+            </tr>
+            <tr class="border-b border-white/5 hover:bg-white/[0.02]">
+              <td class="py-4 px-6 font-medium">Support Priority</td>
+              <td class="py-4 px-6 text-center text-white/20">None</td>
+              <td class="py-4 px-6 text-center text-white/70">Standard</td>
+              <td class="py-4 px-6 text-center text-indigo-400">Priority Queue</td>
+              <td class="py-4 px-6 text-center text-amber-400 font-bold">Highest Priority</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="mt-16 text-center text-white/40 text-sm max-w-3xl mx-auto p-6 bg-white/5 border border-white/10 rounded-xl">
+      <p class="font-bold text-white/80 text-base mb-2">Recovery Quality Guarantee</p>
+      <p>Paid plans unlock Higher Limits, History logs, Support Access, and Ad-Free Experience. Limits on Free and Recovery Pass are enforced on a "whichever comes first" basis (either storage capacity or file count). <strong class="text-white">Recovery quality never changes between plans.</strong> Our core local extraction engine is identical across all tiers.</p>
+    </div>
+  </div>
+</Layout>

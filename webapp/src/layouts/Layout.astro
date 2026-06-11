@@ -1,0 +1,534 @@
+---
+import "../index.css";
+
+interface Props {
+  title?: string;
+  description?: string;
+  isToolPage?: boolean;
+}
+
+const { 
+  title = "TakeoutFix | Google Takeout EXIF Metadata Merger & Photo Restorer",
+  description = "Merge stripped sidecar JSON metadata back into your Google Takeout photos & videos. Restore original dates, GPS coordinates, and camera EXIF headers 100% offline in your browser.",
+  isToolPage = false 
+} = Astro.props;
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    
+    <!-- Google AdSense Account Setup -->
+    <meta name="google-adsense-account" content="ca-pub-7628736172233995">
+    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-7628736172233995" crossorigin="anonymous"></script>
+
+    <title>{title}</title>
+    <meta name="description" content={description} />
+    <meta name="keywords" content="Google Takeout, metadata merger, EXIF recovery, photo restore, GPS coordinates Google Photos, JSON sidecar fixer, restore photo date taken" />
+    <meta name="robots" content="index, follow" />
+    
+    <!-- Open Graph / Facebook -->
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content={title} />
+    <meta property="og:description" content={description} />
+    
+    <!-- Twitter -->
+    <meta property="twitter:card" content="summary_large_image" />
+    <meta property="twitter:title" content={title} />
+    <meta property="twitter:description" content={description} />
+
+    <!-- Google Web Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+  </head>
+  <body class="bg-black text-white selection:bg-indigo-500/30">
+    <div class="flex flex-col min-h-screen bg-black">
+      
+      <!-- NAV CAPSULE -->
+      <nav 
+        id="navbar"
+        class="fixed top-4 left-0 right-0 mx-auto w-[calc(100%-2rem)] z-50 px-6 md:px-8 py-2.5 backdrop-saturate-150 transition-all duration-300 rounded-full bg-white/[0.08] border-white/10"
+        style="backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); box-shadow: 0 8px 32px rgba(0,0,0,.35), inset 0 1px 0 rgba(255,255,255,.12);"
+      >
+        <div class="flex items-center justify-between w-full relative z-10">
+          <div class="flex items-center gap-2 md:gap-8">
+            <!-- Hamburger Menu Button -->
+            <button 
+              id="hamburger-btn"
+              class="lg:hidden p-1 text-white/80 hover:text-white focus:outline-none transition-colors mr-1"
+            >
+              <svg id="hamburger-icon" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16M4 18h16" />
+              </svg>
+              <svg id="close-icon" class="w-5 h-5 hidden" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+
+            <!-- Brand Logo -->
+            <a href="/" class="text-xl font-bold tracking-tighter text-white flex items-center gap-2">
+              <span class="w-5 h-5 md:w-6 md:h-6 rounded-md bg-gradient-to-br from-indigo-500 to-purple-600 shadow-[0_0_15px_rgba(99,102,241,0.5)] flex-shrink-0"></span>
+              <span class="text-base md:text-xl">TakeoutFix</span>
+            </a>
+
+            <!-- Desktop Links -->
+            <div class="hidden lg:flex gap-8 text-sm font-medium text-white/70 ml-4">
+              <a href="/" class="nav-link text-white/70 hover:text-white transition-all pb-1.5 border-b-2 border-transparent">Home</a>
+              <a href="/how-it-works" class="nav-link text-white/70 hover:text-white transition-all pb-1.5 border-b-2 border-transparent">How It Works</a>
+              <a href="/pricing" class="nav-link text-white/70 hover:text-white transition-all pb-1.5 border-b-2 border-transparent">Pricing</a>
+              <a href="/reviews" class="nav-link text-white/70 hover:text-white transition-all pb-1.5 border-b-2 border-transparent">Reviews</a>
+              <a href="/support" class="nav-link text-white/70 hover:text-white transition-all pb-1.5 border-b-2 border-transparent">Support</a>
+            </div>
+          </div>
+          
+          <div class="flex items-center gap-2.5 md:gap-6">
+            <!-- Theme Toggle Button -->
+            <button 
+              id="theme-toggle-btn"
+              class="hidden lg:flex p-2 rounded-full bg-white/[0.04] border border-white/10 hover:bg-white/[0.08] hover:scale-[1.02] focus:outline-none transition-all items-center justify-center text-white/80 hover:text-white"
+              title="Toggle Theme"
+            >
+              <!-- Sun Icon -->
+              <svg id="theme-sun-icon" class="w-4 h-4 hidden" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364-6.364l-.707.707M6.343 17.657l-.707.707m0-12.728l.707.707m12.728 12.728l.707-.707M12 8a4 4 0 100 8 4 4 0 000-8z" />
+              </svg>
+              <!-- Moon Icon -->
+              <svg id="theme-moon-icon" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+              </svg>
+            </button>
+
+            <!-- Notifications Drawer -->
+            <div id="notification-container" class="relative hidden">
+              <button 
+                id="notification-btn"
+                class="relative p-2 rounded-full bg-white/[0.04] border border-white/10 hover:bg-white/[0.08] hover:scale-[1.02] focus:outline-none transition-all flex items-center justify-center"
+              >
+                <svg class="w-4 h-4 text-white/80" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+                </svg>
+                <span id="notification-badge" class="absolute -top-1 -right-1 w-4 h-4 bg-red-500 rounded-full flex items-center justify-center text-[9px] font-bold text-white animate-pulse hidden">0</span>
+              </button>
+              
+              <!-- Dropdown -->
+              <div 
+                id="notification-dropdown"
+                class="absolute right-0 top-full mt-2 w-72 bg-zinc-950/95 border border-white/10 rounded-xl py-2.5 shadow-2xl backdrop-blur-xl z-[100] hidden"
+                style="box-shadow: 0 10px 40px rgba(0,0,0,0.6);"
+              >
+                <div class="px-4 py-2 border-b border-white/5 mb-1.5 text-left flex justify-between items-center">
+                  <p class="text-xs text-white/40 font-bold uppercase tracking-wider">Notifications</p>
+                  <span id="notification-count-label" class="text-[10px] text-indigo-400 font-bold font-mono">0 Alerts</span>
+                </div>
+                <div id="notification-list" class="max-h-60 overflow-y-auto">
+                  <div class="px-4 py-6 text-center text-xs text-white/50">No new notifications</div>
+                </div>
+                <div class="border-t border-white/5 mt-1.5 pt-2 px-3">
+                  <a href="/support?tab=tickets" class="block text-center text-[10px] font-bold text-indigo-400 hover:text-indigo-300 uppercase tracking-wider py-1.5 bg-white/5 rounded-md hover:bg-white/10 transition-all">View Support Center</a>
+                </div>
+              </div>
+            </div>
+
+            <!-- Auth Trigger Button / Dropdown -->
+            <div id="auth-section">
+              <!-- Loading spinner or loading indicator by default -->
+              <div id="auth-loading" class="w-7 h-7 border-2 border-white/10 border-t-white/80 rounded-full animate-spin"></div>
+              
+              <!-- Get Started (logged out) -->
+              <button 
+                id="login-btn" 
+                class="hidden rounded-full bg-gradient-to-r from-indigo-500 to-purple-600 hover:opacity-90 text-white border-0 shadow-[0_0_20px_rgba(99,102,241,0.4)] px-4 py-1.5 md:px-6 md:py-2 font-semibold text-xs md:text-sm transition-all"
+              >
+                Get Started
+              </button>
+
+              <!-- Profile Dropdown Container (logged in) -->
+              <div id="profile-container" class="relative hidden">
+                <button 
+                  id="profile-trigger-btn"
+                  class="flex items-center gap-2 p-1 lg:px-3 lg:py-1.5 rounded-full bg-white/[0.04] border border-white/10 hover:bg-white/[0.08] hover:border-white/20 hover:scale-[1.02] focus:outline-none transition-all shadow-[0_4px_12px_rgba(0,0,0,0.1)]"
+                >
+                  <span id="profile-name-span" class="text-xs font-semibold text-white/80 select-none hidden lg:inline-block">Hi, User</span>
+                  <div id="profile-avatar-circle" class="w-7 h-7 rounded-full bg-gradient-to-tr from-indigo-500 to-purple-600 flex items-center justify-center font-bold text-xs text-white shadow-[0_0_10px_rgba(99,102,241,0.4)] border border-white/10 flex-shrink-0">U</div>
+                </button>
+                
+                <!-- Desktop Dropdown -->
+                <div 
+                  id="profile-dropdown"
+                  class="absolute right-0 top-full mt-2 w-56 bg-zinc-950/95 border border-white/10 rounded-xl py-2 shadow-2xl backdrop-blur-xl z-[100] hidden"
+                  style="box-shadow: 0 10px 40px rgba(0,0,0,0.6);"
+                >
+                  <div class="px-4 py-2 border-b border-white/5 mb-1.5 text-left">
+                    <p class="text-xs text-white/40 font-bold uppercase tracking-wider">Account</p>
+                    <p id="dropdown-fullname" class="text-sm font-semibold text-white truncate max-w-full">User</p>
+                    <p id="dropdown-username" class="text-xs text-indigo-400 font-semibold font-mono truncate max-w-full hidden">@username</p>
+                    <p id="dropdown-plan" class="text-[11px] text-indigo-400/80 font-bold uppercase tracking-wider mt-0.5">Free Tier</p>
+                  </div>
+                  <a href="/profile" class="flex items-center px-4 py-2 text-sm text-white/70 hover:text-white hover:bg-white/5 transition-colors text-left w-full">Profile</a>
+                  <div class="border-t border-white/5 mt-1.5 pt-1.5">
+                    <button id="logout-btn" class="flex items-center px-4 py-2 text-sm text-red-400 hover:text-red-300 hover:bg-red-500/5 transition-colors text-left w-full font-medium">Sign Out</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Mobile menu overlay */}
+        <div id="mobile-menu" class="hidden lg:hidden mt-4 pt-4 border-t border-white/5 flex flex-col gap-3 text-left px-2 animate-in fade-in slide-in-from-top-2 duration-200">
+          <p class="text-xs font-bold text-white/30 uppercase tracking-wider px-2 mt-1 mb-1">Navigation</p>
+          <a href="/" class="mobile-nav-link py-2 px-2 text-white/70 hover:text-white hover:bg-white/5 rounded-md text-sm font-medium transition-all">Home</a>
+          <a href="/how-it-works" class="mobile-nav-link py-2 px-2 text-white/70 hover:text-white hover:bg-white/5 rounded-md text-sm font-medium transition-all">How It Works</a>
+          <a href="/pricing" class="mobile-nav-link py-2 px-2 text-white/70 hover:text-white hover:bg-white/5 rounded-md text-sm font-medium transition-all">Pricing</a>
+          <a href="/reviews" class="mobile-nav-link py-2 px-2 text-white/70 hover:text-white hover:bg-white/5 rounded-md text-sm font-medium transition-all">Reviews</a>
+          <a href="/support" class="mobile-nav-link py-2 px-2 text-white/70 hover:text-white hover:bg-white/5 rounded-md text-sm font-medium transition-all">Support</a>
+
+          <div id="mobile-auth-section" class="border-t border-white/5 pt-3 flex flex-col gap-3 hidden">
+            <p class="text-xs font-bold text-white/30 uppercase tracking-wider px-2 mb-1">App Tools</p>
+            <a href="/dashboard" class="py-2 px-2 text-white/70 hover:text-white hover:bg-white/5 rounded-md text-sm font-medium transition-all">Dashboard</a>
+            <a id="mobile-tool-link" href="/tool" class="py-2 px-2 text-white/70 hover:text-white hover:bg-white/5 rounded-md text-sm font-medium transition-all">Restore My Data</a>
+          </div>
+          
+          <!-- Mobile Theme Toggle -->
+          <div class="flex items-center justify-between py-2 px-2 border-t border-white/5 mt-2 pt-3">
+            <span class="text-xs font-bold text-white/30 uppercase tracking-wider">Appearance</span>
+            <button 
+              id="mobile-theme-toggle-btn"
+              class="flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/[0.04] border border-white/10 hover:bg-white/[0.08] text-xs font-semibold text-white/80 transition-all"
+            >
+              <svg class="theme-moon-svg w-3.5 h-3.5 text-zinc-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+              </svg>
+              <svg class="theme-sun-svg w-3.5 h-3.5 text-amber-400 hidden" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364-6.364l-.707.707M6.343 17.657l-.707.707m0-12.728l.707.707m12.728 12.728l.707-.707M12 8a4 4 0 100 8 4 4 0 000-8z" />
+              </svg>
+              <span id="mobile-theme-text">Dark Mode</span>
+            </button>
+          </div>
+        </div>
+      </nav>
+
+      <!-- MAIN CONTENT OUTLET -->
+      <main class="flex-1 pt-16">
+        <div class="animate-page h-full">
+          <slot />
+        </div>
+      </main>
+
+      <!-- FOOTER -->
+      {!isToolPage && (
+        <footer class="w-full border-t border-white/5 py-12 bg-black/40 backdrop-blur-md mt-auto">
+          <div class="max-w-7xl mx-auto px-6 flex flex-col md:flex-row items-center justify-between gap-4">
+            <div class="flex items-center gap-2 text-white/50 text-sm">
+              <span class="w-4 h-4 rounded-sm bg-gradient-to-br from-indigo-500 to-purple-600"></span>
+              &copy; 2026 TakeoutFix System Core. All rights reserved.
+            </div>
+            <div class="flex gap-6 text-sm text-white/40">
+              <a href="/privacy" class="hover:text-white transition-colors">Privacy Policy</a>
+              <a href="/terms" class="hover:text-white transition-colors">Terms of Service</a>
+              <a href="/support" class="hover:text-white transition-colors">Support Center</a>
+              <a href="/support?tab=feedback" class="hover:text-white transition-colors">Give Feedback</a>
+            </div>
+          </div>
+        </footer>
+      )}
+    </div>
+
+    <!-- CLIENT SIDE EVENT HANDLERS AND AUTH LISTENER -->
+    <script>
+      import { auth, db, googleProvider, signInWithPopup, signOut } from "../firebase";
+      import { doc, onSnapshot, collection, query, where } from "firebase/firestore";
+
+      // 1. Theme Toggle System
+      const initTheme = () => {
+        const root = document.documentElement;
+        const savedTheme = localStorage.getItem("takeoutfix_theme") || "light";
+        
+        const updateThemeUI = (theme: string) => {
+          const sunIcon = document.getElementById("theme-sun-icon");
+          const moonIcon = document.getElementById("theme-moon-icon");
+          const mobileSunSvg = document.querySelector(".theme-sun-svg");
+          const mobileMoonSvg = document.querySelector(".theme-moon-svg");
+          const mobileThemeText = document.getElementById("mobile-theme-text");
+
+          if (theme === "light") {
+            root.classList.add("light");
+            root.classList.remove("dark");
+            sunIcon?.classList.add("hidden");
+            moonIcon?.classList.remove("hidden");
+            mobileSunSvg?.classList.add("hidden");
+            mobileMoonSvg?.classList.remove("hidden");
+            if (mobileThemeText) mobileThemeText.innerText = "Dark Mode";
+          } else {
+            root.classList.add("dark");
+            root.classList.remove("light");
+            sunIcon?.classList.remove("hidden");
+            moonIcon?.classList.add("hidden");
+            mobileSunSvg?.classList.remove("hidden");
+            mobileMoonSvg?.classList.add("hidden");
+            if (mobileThemeText) mobileThemeText.innerText = "Light Mode";
+          }
+        };
+
+        updateThemeUI(savedTheme);
+
+        const toggleTheme = () => {
+          const current = root.classList.contains("light") ? "light" : "dark";
+          const next = current === "light" ? "dark" : "light";
+          localStorage.setItem("takeoutfix_theme", next);
+          updateThemeUI(next);
+        };
+
+        document.getElementById("theme-toggle-btn")?.addEventListener("click", toggleTheme);
+        document.getElementById("mobile-theme-toggle-btn")?.addEventListener("click", toggleTheme);
+      };
+
+      initTheme();
+
+      // 2. Mobile Menu System
+      const initMobileMenu = () => {
+        const hamburgerBtn = document.getElementById("hamburger-btn");
+        const hamburgerIcon = document.getElementById("hamburger-icon");
+        const closeIcon = document.getElementById("close-icon");
+        const mobileMenu = document.getElementById("mobile-menu");
+        const navbar = document.getElementById("navbar");
+
+        hamburgerBtn?.addEventListener("click", () => {
+          const isOpen = !mobileMenu?.classList.contains("hidden");
+          if (isOpen) {
+            mobileMenu?.classList.add("hidden");
+            hamburgerIcon?.classList.remove("hidden");
+            closeIcon?.classList.add("hidden");
+            navbar?.classList.remove("rounded-[24px]", "py-4", "bg-black/95", "border-white/20");
+            navbar?.classList.add("rounded-full", "bg-white/[0.08]", "border-white/10");
+          } else {
+            mobileMenu?.classList.remove("hidden");
+            hamburgerIcon?.classList.add("hidden");
+            closeIcon?.classList.remove("hidden");
+            navbar?.classList.add("rounded-[24px]", "py-4", "bg-black/95", "border-white/20");
+            navbar?.classList.remove("rounded-full", "bg-white/[0.08]", "border-white/10");
+          }
+        });
+      };
+
+      initMobileMenu();
+
+      // 3. User Authentication State & UI Sync
+      const initAuthSync = () => {
+        const authLoading = document.getElementById("auth-loading");
+        const loginBtn = document.getElementById("login-btn");
+        const profileContainer = document.getElementById("profile-container");
+        const profileDropdown = document.getElementById("profile-dropdown");
+        const profileTriggerBtn = document.getElementById("profile-trigger-btn");
+        
+        const profileNameSpan = document.getElementById("profile-name-span");
+        const profileAvatarCircle = document.getElementById("profile-avatar-circle");
+        const dropdownFullName = document.getElementById("dropdown-fullname");
+        const dropdownUsername = document.getElementById("dropdown-username");
+        const dropdownPlan = document.getElementById("dropdown-plan");
+        
+        const mobileAuthSection = document.getElementById("mobile-auth-section");
+        const mobileToolLink = document.getElementById("mobile-tool-link") as HTMLAnchorElement;
+        
+        const notificationContainer = document.getElementById("notification-container");
+        const notificationBtn = document.getElementById("notification-btn");
+        const notificationBadge = document.getElementById("notification-badge");
+        const notificationDropdown = document.getElementById("notification-dropdown");
+        const notificationList = document.getElementById("notification-list");
+        const notificationCountLabel = document.getElementById("notification-count-label");
+
+        // Action Events
+        loginBtn?.addEventListener("click", async () => {
+          try {
+            await signInWithPopup(auth, googleProvider);
+          } catch (err) {
+            console.error("Login failed:", err);
+          }
+        });
+
+        document.getElementById("logout-btn")?.addEventListener("click", async () => {
+          try {
+            await signOut(auth);
+            window.location.href = "/";
+          } catch (err) {
+            console.error("Sign out failed:", err);
+          }
+        });
+
+        // Toggle dropdowns
+        profileTriggerBtn?.addEventListener("click", (e) => {
+          e.stopPropagation();
+          profileDropdown?.classList.toggle("hidden");
+          notificationDropdown?.classList.add("hidden");
+        });
+
+        notificationBtn?.addEventListener("click", (e) => {
+          e.stopPropagation();
+          notificationDropdown?.classList.toggle("hidden");
+          profileDropdown?.classList.add("hidden");
+        });
+
+        document.addEventListener("click", () => {
+          profileDropdown?.classList.add("hidden");
+          notificationDropdown?.classList.add("hidden");
+        });
+
+        profileDropdown?.addEventListener("click", (e) => e.stopPropagation());
+        notificationDropdown?.addEventListener("click", (e) => e.stopPropagation());
+
+        let unsubUserDoc: any = null;
+        let unsubNotifications: any = null;
+
+        auth.onAuthStateChanged((user) => {
+          authLoading?.classList.add("hidden");
+          
+          if (user) {
+            // Show logged in elements
+            loginBtn?.classList.add("hidden");
+            profileContainer?.classList.remove("hidden");
+            mobileAuthSection?.classList.remove("hidden");
+            notificationContainer?.classList.remove("hidden");
+
+            // Setup profile content fallback
+            if (profileNameSpan) profileNameSpan.innerText = `Hi, ${user.displayName?.split(" ")[0] || "User"}`;
+            if (profileAvatarCircle) profileAvatarCircle.innerText = user.displayName?.charAt(0).toUpperCase() || "U";
+            if (dropdownFullName) dropdownFullName.innerText = user.displayName || "User";
+
+            // Listen to dynamic user fields in Firestore
+            const userDocRef = doc(db, "users", user.uid);
+            unsubUserDoc = onSnapshot(userDocRef, (snap) => {
+              if (snap.exists()) {
+                const data = snap.data();
+                
+                // Sync name
+                const firstName = data.firstName || user.displayName?.split(" ")[0] || "User";
+                const fullName = (data.firstName || data.lastName) 
+                  ? `${data.firstName || ''} ${data.lastName || ''}`.trim() 
+                  : (data.displayName || user.displayName || 'User');
+                
+                if (profileNameSpan) profileNameSpan.innerText = `Hi, ${firstName}`;
+                if (profileAvatarCircle) profileAvatarCircle.innerText = firstName.charAt(0).toUpperCase();
+                if (dropdownFullName) dropdownFullName.innerText = fullName;
+                
+                // Sync username
+                if (data.username) {
+                  if (dropdownUsername) {
+                    dropdownUsername.innerText = `@${data.username}`;
+                    dropdownUsername.classList.remove("hidden");
+                  }
+                } else {
+                  dropdownUsername?.classList.add("hidden");
+                }
+
+                // Sync plan
+                let planLabel = "Free Tier";
+                if (data.plan === "pro") planLabel = "Pro Tier";
+                else if (data.plan === "super") planLabel = "Super Tier";
+                else if (data.plan === "recovery_pass") planLabel = "Single Pass";
+                else if (data.plan === "family") planLabel = "Family Tier";
+                
+                if (dropdownPlan) dropdownPlan.innerText = planLabel;
+
+                // Sync links (Admin check)
+                const isAdmin = data.isAdmin === true;
+                if (mobileToolLink) {
+                  if (isAdmin) {
+                    mobileToolLink.href = "/admin";
+                    mobileToolLink.innerText = "Admin Center";
+                  } else {
+                    mobileToolLink.href = "/tool";
+                    mobileToolLink.innerText = "Restore My Data";
+                  }
+                }
+              }
+            });
+
+            // Listen to support ticket notifications in real-time
+            const q = query(
+              collection(db, "tickets"),
+              where("uid", "==", user.uid),
+              where("status", "==", "RESOLVED")
+            );
+            unsubNotifications = onSnapshot(q, (snap) => {
+              const list = snap.docs.map(doc => ({ id: doc.id, ...doc.data() as any }));
+              
+              // Update badge
+              if (list.length > 0) {
+                if (notificationBadge) {
+                  notificationBadge.innerText = String(list.length);
+                  notificationBadge.classList.remove("hidden");
+                }
+                if (notificationCountLabel) notificationCountLabel.innerText = `${list.length} Alert${list.length > 1 ? 's' : ''}`;
+              } else {
+                notificationBadge?.classList.add("hidden");
+                if (notificationCountLabel) notificationCountLabel.innerText = "0 Alerts";
+              }
+
+              // Build HTML
+              if (notificationList) {
+                if (list.length === 0) {
+                  notificationList.innerHTML = `<div class="px-4 py-6 text-center text-xs text-white/50">No new notifications</div>`;
+                } else {
+                  notificationList.innerHTML = list.map(n => `
+                    <a 
+                      href="/support?tab=tickets" 
+                      class="block px-4 py-2.5 hover:bg-white/5 text-left border-b border-white/5 last:border-0 transition-colors"
+                    >
+                      <div class="text-[11px] font-bold text-white truncate flex items-center gap-1.5">
+                        <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                        Ticket Resolved: ${n.ticketId || n.id.slice(0, 8)}
+                      </div>
+                      <p class="text-xs text-white/60 truncate mt-0.5">${n.subject || 'resolved support ticket'}</p>
+                      <span class="text-[9px] text-white/30 block mt-1">Click to view resolution</span>
+                    </a>
+                  `).join("");
+                }
+              }
+            });
+
+          } else {
+            // Clean up listeners
+            if (unsubUserDoc) unsubUserDoc();
+            if (unsubNotifications) unsubNotifications();
+            
+            // Show logged out elements
+            loginBtn?.classList.remove("hidden");
+            profileContainer?.classList.add("hidden");
+            mobileAuthSection?.classList.add("hidden");
+            notificationContainer?.classList.add("hidden");
+          }
+        });
+      };
+
+      initAuthSync();
+
+      // Highlight active nav links based on pathname
+      const highlightActiveLinks = () => {
+        const path = window.location.pathname;
+        const navLinks = document.querySelectorAll(".nav-link");
+        const mobileLinks = document.querySelectorAll(".mobile-nav-link");
+
+        navLinks.forEach((link: any) => {
+          const href = link.getAttribute("href");
+          if (href === path || (href !== "/" && path.startsWith(href))) {
+            link.classList.remove("text-white/70", "border-transparent");
+            link.classList.add("text-indigo-400", "border-indigo-500");
+          }
+        });
+
+        mobileLinks.forEach((link: any) => {
+          const href = link.getAttribute("href");
+          if (href === path || (href !== "/" && path.startsWith(href))) {
+            link.classList.add("text-indigo-400", "bg-white/5");
+          }
+        });
+      };
+
+      highlightActiveLinks();
+    </script>
+  </body>
+</html>

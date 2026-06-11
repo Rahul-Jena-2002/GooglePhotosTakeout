@@ -1,0 +1,122 @@
+---
+import Layout from "../layouts/Layout.astro";
+import AdUnit from "../components/AdUnit";
+import WriteReviewButton from "../components/WriteReviewButton";
+import { MessageSquareQuote, Star, CornerDownRight } from "lucide-react";
+
+export const prerender = false;
+
+// Fetch reviews from Firestore REST API at render-time on the Cloudflare Edge
+let reviews: any[] = [];
+try {
+  const firestoreUrl = "https://firestore.googleapis.com/v1/projects/gt-metadata-merger/databases/(default)/documents/reviews";
+  const res = await fetch(firestoreUrl);
+  if (res.ok) {
+    const data = await res.json();
+    const docs = data.documents || [];
+    reviews = docs.map((doc: any) => {
+      const fields = doc.fields || {};
+      const status = fields.status?.stringValue || "";
+      if (status !== "APPROVED") return null;
+
+      const name = doc.name.split("/").pop();
+      return {
+        id: name,
+        displayName: fields.displayName?.stringValue || "Anonymous User",
+        photoURL: fields.photoURL?.stringValue || null,
+        rating: parseInt(fields.rating?.integerValue || "5"),
+        message: fields.message?.stringValue || "",
+        adminReply: fields.adminReply?.stringValue || null,
+        createdAt: doc.createTime ? new Date(doc.createTime) : new Date(),
+      };
+    }).filter(Boolean);
+
+    // Sort newest first
+    reviews.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+  }
+} catch (err) {
+  console.error("Failed to render reviews page statically from REST API:", err);
+}
+---
+
+<Layout title="TakeoutFix | User Reviews" description="Real reviews from people who successfully merged their Google Takeout photo metadata, timestamps, and GPS coordinates offline.">
+  <div class="max-w-6xl mx-auto px-4 py-16 mt-16 relative min-h-[80vh]">
+    
+    <div class="text-center mb-12 relative z-10">
+      <div class="inline-block animate-bounce mb-6">
+        <MessageSquareQuote className="w-16 h-16 text-indigo-400 mx-auto" />
+      </div>
+      <h1 class="text-4xl md:text-6xl font-bold tracking-tighter mb-6">
+        User Reviews
+      </h1>
+      <p class="text-xl text-white/60 max-w-2xl mx-auto mb-8">
+        See what our community thinks about TakeoutFix. Real reviews from users who successfully restored their Google Takeout metadata.
+      </p>
+
+      <!-- Mount the client-only React Island for Write Review Form -->
+      <WriteReviewButton client:only="react" />
+    </div>
+
+    <!-- REVIEWS GRID -->
+    {reviews.length === 0 ? (
+      <div class="text-center py-20 bg-white/5 rounded-2xl border border-white/10 relative z-10">
+        <Star className="w-12 h-12 text-white/20 mx-auto mb-4" />
+        <p class="text-white/50">No reviews have been published yet.</p>
+      </div>
+    ) : (
+      <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-6 relative z-10 items-stretch">
+        {reviews.map((review) => (
+          <div class="h-full">
+            <div class="bg-black/60 backdrop-blur-xl border border-white/10 hover:border-indigo-500/30 rounded-xl p-6 transition-all duration-300 h-full flex flex-col justify-between group">
+              <div class="flex-1 flex flex-col justify-between">
+                <div>
+                  <div class="flex text-amber-400 mb-4">
+                    {Array.from({ length: review.rating }).map((_, i) => (
+                      <Star key={i} className="w-4 h-4 fill-amber-400 text-amber-400" />
+                    ))}
+                  </div>
+                  <p class="text-white/80 text-sm leading-relaxed mb-6 italic">"{review.message}"</p>
+                </div>
+                
+                <div>
+                  <div class="flex items-center gap-3">
+                    {review.photoURL ? (
+                      <img src={review.photoURL} alt="" class="w-8 h-8 rounded-full border border-white/10" referrer-policy="no-referrer" />
+                    ) : (
+                      <div class="w-8 h-8 rounded-full bg-gradient-to-tr from-indigo-500 to-purple-500 flex items-center justify-center text-xs font-bold uppercase text-white">
+                        {review.displayName.charAt(0)}
+                      </div>
+                    )}
+                    <div>
+                      <div class="text-sm font-medium text-white group-hover:text-indigo-400 transition-colors">{review.displayName}</div>
+                      <div class="text-xs text-white/40">
+                        {review.createdAt.toLocaleDateString()}
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- ADMIN REPLY SECTION -->
+                  {review.adminReply && (
+                    <div class="mt-4 pt-4 border-t border-zinc-800 bg-zinc-900/50 rounded-b-lg -mx-6 -mb-6 px-6 pb-6 text-left">
+                      <div class="flex items-start gap-2">
+                        <CornerDownRight className="w-4 h-4 text-indigo-500 mt-1 flex-shrink-0" />
+                        <div>
+                          <div class="text-xs font-bold text-indigo-400 uppercase tracking-wider mb-1">Developer Reply</div>
+                          <p class="text-sm text-zinc-400 leading-relaxed">{review.adminReply}</p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+    )}
+
+    <div class="w-full max-w-4xl mx-auto px-4 mt-12">
+      <AdUnit client:load type="horizontal" />
+    </div>
+  </div>
+</Layout>

@@ -1,0 +1,13 @@
+---
+import Layout from "../layouts/Layout.astro";
+import { AuthProvider } from "../contexts/AuthContext";
+import CheckoutPage from "../react-pages/CheckoutPage";
+import { ToastContainer } from "../components/ui/toast";
+---
+
+<Layout title="TakeoutFix | Checkout & Billing" description="Purchase the Recovery Pass or upgrade to Pro/Super Lifetime access to fix metadata for large archives.">
+  <AuthProvider client:only="react">
+    <CheckoutPage client:only="react" />
+    <ToastContainer client:only="react" />
+  </AuthProvider>
+</Layout>
