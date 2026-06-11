@@ -151,7 +151,7 @@ function ToolWorkspaceContent() {
     const cores = navigator.hardwareConcurrency || 4
     if (cores <= 2) return 1
     if (cores <= 4) return cores - 1
-    return cores - 2 // leave 2 cores for OS/UI
+    return Math.min(3, cores - 2) // Cap at maximum 3 workers to prevent OOM/tab crashes on heavy parallel disk I/O!
   }
 
   useEffect(() => {
@@ -994,22 +994,40 @@ function ToolWorkspaceContent() {
             {logs.length === 0 ? (
               <div className="h-full flex items-center justify-center text-white/20 italic">Awaiting telemetry...</div>
             ) : (
-              <div className="space-y-1">
+              <div className="space-y-0.5">
                 {logs.map((log, i) => {
                   if (log.msg) {
                     return <div key={i} className="text-indigo-300/70 border-l-2 border-indigo-500/30 pl-2 my-2">{log.msg}</div>
                   }
                   
-                  const color = log.level === 'success' ? 'text-green-400' : log.level === 'warn' ? 'text-yellow-400' : 'text-red-400'
                   const pathStr = log.path ? `/${log.path.join('/')}/` : ''
+                  const fullFilename = `${pathStr}${log.filename}`
                   
-                  return (
-                    <div key={i} className="pl-2 border-l border-white/5 py-0.5">
-                      {pathStr && <span className="text-white/30 mr-2">{pathStr}</span>}
-                      <span className="text-white/60 mr-2">{log.filename}</span>
-                      <span className={`${color} font-bold`}>→ {log.action}</span>
-                    </div>
-                  )
+                  if (log.level === 'success') {
+                    return (
+                      <div key={i} className="text-green-400/90 pl-2 border-l border-green-500/20 py-0.5 whitespace-pre-wrap">
+                        <span className="font-bold mr-2">[RESTORED] </span>
+                        <span>{fullFilename}</span>
+                      </div>
+                    )
+                  } else if (log.level === 'warn') {
+                    return (
+                      <div key={i} className="text-yellow-400/80 pl-2 border-l border-yellow-500/20 py-0.5 whitespace-pre-wrap">
+                        <span className="font-bold mr-2">[UNMATCHED]</span>
+                        <span>{fullFilename}</span>
+                      </div>
+                    )
+                  } else if (log.level === 'error') {
+                    const errorMsg = log.action ? log.action.replace(/^Error:\s*/i, '') : 'Unknown error';
+                    return (
+                      <div key={i} className="text-red-400 pl-2 border-l border-red-500/20 py-0.5 whitespace-pre-wrap">
+                        <span className="font-bold mr-2">[ERROR]    </span>
+                        <span>{fullFilename}  ➜  {errorMsg}</span>
+                      </div>
+                    )
+                  }
+                  
+                  return null;
                 })}
               </div>
             )}
