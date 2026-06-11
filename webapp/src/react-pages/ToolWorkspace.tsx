@@ -1,6 +1,7 @@
 import { useRef, useEffect, useState } from "react"
 import { useAuth } from "../contexts/AuthContext"
 import { useToolStore } from "../store/useToolStore"
+import { isAllowedMediaFile, sanitizeFilename } from "../services/MetadataMatcher"
 import { db } from "../firebase"
 import { doc, setDoc, increment, addDoc, collection, onSnapshot } from "firebase/firestore"
 import AdBlockGate from "../components/AdBlockGate"
@@ -499,6 +500,40 @@ function ToolWorkspaceContent() {
     }
   }
 
+  const scanDirectory = async (dirHandle: FileSystemDirectoryHandle): Promise<any[]> => {
+    const results: any[] = [];
+    let fileCount = 0;
+
+    async function walk(handle: FileSystemDirectoryHandle, path: string[]) {
+      const currentFiles: FileSystemFileHandle[] = [];
+
+      // @ts-ignore
+      for await (const [name, entry] of handle) {
+        if (!isProcessingRef.current || isPausedRef.current) return;
+        const safeName = sanitizeFilename(name);
+        if (!safeName) continue;
+        
+        if (entry.kind === 'file' && isAllowedMediaFile(safeName)) {
+          currentFiles.push(entry as FileSystemFileHandle);
+        } else if (entry.kind === 'directory') {
+          await walk(entry as FileSystemDirectoryHandle, [...path, safeName]);
+        }
+      }
+
+      for (const f of currentFiles) {
+        if (!isProcessingRef.current || isPausedRef.current) return;
+        results.push({ fileHandle: f, dirHandle: handle, relativePath: path });
+        fileCount++;
+        if (fileCount % 50 === 0) {
+          fileBuffer.current = `Scanning folders... Found ${fileCount} media files`;
+        }
+      }
+    }
+
+    await walk(dirHandle, []);
+    return results;
+  }
+
   const startProcessing = async () => {
     if (!takeoutFolder || !outputFolder) return
 
@@ -578,123 +613,104 @@ function ToolWorkspaceContent() {
       }
     }, 100)
 
-    // Spawn scanner worker
-    const scanner = new ProcessWorker()
-    scannerRef.current = scanner
-    setActiveWorkersCount(1)
-
-    scanner.onmessage = (e: MessageEvent) => {
-      const data = e.data
-      if (data.type === 'scan_progress') {
-        fileBuffer.current = `Scanning folders... Found ${data.count} media files`
-      } else if (data.type === 'scan_error') {
-        logsBuffer.current.push({ level: 'error', msg: `Scanning Error: ${data.msg}` })
+    try {
+      const files = await scanDirectory(takeoutFolder)
+      if (!isProcessingRef.current) return // User cancelled during scanning
+      
+      logsBuffer.current.push({ level: 'info', msg: `Scanning complete. Found ${files.length} media files.` })
+      
+      if (files.length === 0) {
         setIsProcessing(false)
         isProcessingRef.current = false
-        setActiveWorkersCount(0)
+        setCurrentFile("Finished: No files found")
         if (flushInterval.current) window.clearInterval(flushInterval.current)
-        scanner.terminate()
-        scannerRef.current = null
-      } else if (data.type === 'scan_done') {
-        scanner.terminate()
-        scannerRef.current = null
-        setActiveWorkersCount(0)
-
-        const files = data.files || []
-        logsBuffer.current.push({ level: 'info', msg: `Scanning complete. Found ${files.length} media files.` })
-        
-        if (files.length === 0) {
-          setIsProcessing(false)
-          isProcessingRef.current = false
-          setCurrentFile("Finished: No files found")
-          if (flushInterval.current) window.clearInterval(flushInterval.current)
-          return
-        }
-
-        statsBuffer.current.total = files.length
-        queueRef.current = files
-
-        updateActiveSession('processing', {
-          totalFiles: files.length,
-          currentFile: 'Starting worker pool...'
-        })
-
-        // Instantiate Processing Pool
-        const poolSize = maxWorkers
-        const newWorkers: Worker[] = []
-        for (let i = 0; i < poolSize; i++) {
-          const w = new ProcessWorker()
-          w.onmessage = (event) => {
-            const res = event.data
-            if (res.type === 'file_processed') {
-              workerStatusRef.current[i] = 'idle'
-              
-              const logEntry = {
-                level: res.level,
-                path: res.path,
-                filename: res.filename,
-                action: res.action
-              }
-              logsBuffer.current.push(logEntry)
-              if (res.filename) fileBuffer.current = res.filename
-
-              if (res.level === 'success') {
-                statsBuffer.current.matched += 1
-              } else if (res.level === 'warn') {
-                statsBuffer.current.unmatched += 1
-              } else if (res.level === 'error') {
-                statsBuffer.current.errors += 1
-              }
-              statsBuffer.current.scanned += 1
-
-              const fileBytes = res.bytes || 0
-              sessionBytesRef.current += fileBytes
-              sessionFilesRef.current += 1
-
-              // Backup pending usage to IndexedDB to prevent quota bypass loopholes on tab close/refresh
-              if (user) {
-                indexedDbService.set('telemetry', 'takeoutfix_pending_usage', {
-                  uid: user.uid,
-                  bytes: sessionBytesRef.current,
-                  files: sessionFilesRef.current,
-                  sessionId: sessionIdRef.current,
-                  takeoutName: takeoutFolder?.name || 'Google Takeout Archive'
-                }).catch(err => console.error("Failed to backup usage telemetry:", err))
-              }
-
-              // Limit check on every file completion
-              if (currentUsedBytes + sessionBytesRef.current > limitBytes || currentUsedFiles + sessionFilesRef.current > limitFiles) {
-                haltDueToQuota()
-                return
-              }
-
-              progressBuffer.current = Math.floor((statsBuffer.current.scanned / statsBuffer.current.total) * 100)
-
-              updateActiveSession('processing', {
-                scanned: statsBuffer.current.scanned,
-                bytesProcessed: sessionBytesRef.current,
-                currentFile: fileBuffer.current
-              })
-
-              // Dispatch next task
-              dispatchTasks()
-            }
-          }
-          newWorkers.push(w)
-        }
-
-        workersRef.current = newWorkers
-        workerStatusRef.current = new Array(poolSize).fill('idle')
-
-        // Dispatch initial batch
-        dispatchTasks()
+        return
       }
-    }
 
-    scanner.postMessage({
-      type: 'scan',
-      inputHandle: takeoutFolder
-    })
+      statsBuffer.current.total = files.length
+      queueRef.current = files
+
+      updateActiveSession('processing', {
+        totalFiles: files.length,
+        currentFile: 'Starting worker pool...'
+      })
+
+      // Instantiate Processing Pool
+      const poolSize = maxWorkers
+      const newWorkers: Worker[] = []
+      for (let i = 0; i < poolSize; i++) {
+        const w = new ProcessWorker()
+        w.onmessage = (event: MessageEvent) => {
+          const res = event.data
+          if (res.type === 'file_processed') {
+            workerStatusRef.current[i] = 'idle'
+            
+            const logEntry = {
+              level: res.level,
+              path: res.path,
+              filename: res.filename,
+              action: res.action
+            }
+            logsBuffer.current.push(logEntry)
+            if (res.filename) fileBuffer.current = res.filename
+
+            if (res.level === 'success') {
+              statsBuffer.current.matched += 1
+            } else if (res.level === 'warn') {
+              statsBuffer.current.unmatched += 1
+            } else if (res.level === 'error') {
+              statsBuffer.current.errors += 1
+            }
+            statsBuffer.current.scanned += 1
+
+            const fileBytes = res.bytes || 0
+            sessionBytesRef.current += fileBytes
+            sessionFilesRef.current += 1
+
+            // Backup pending usage to IndexedDB to prevent quota bypass loopholes on tab close/refresh
+            if (user) {
+              indexedDbService.set('telemetry', 'takeoutfix_pending_usage', {
+                uid: user.uid,
+                bytes: sessionBytesRef.current,
+                files: sessionFilesRef.current,
+                sessionId: sessionIdRef.current,
+                takeoutName: takeoutFolder?.name || 'Google Takeout Archive'
+              }).catch(err => console.error("Failed to backup usage telemetry:", err))
+            }
+
+            // Limit check on every file completion
+            if (currentUsedBytes + sessionBytesRef.current > limitBytes || currentUsedFiles + sessionFilesRef.current > limitFiles) {
+              haltDueToQuota()
+              return
+            }
+
+            progressBuffer.current = Math.floor((statsBuffer.current.scanned / statsBuffer.current.total) * 100)
+
+            updateActiveSession('processing', {
+              scanned: statsBuffer.current.scanned,
+              bytesProcessed: sessionBytesRef.current,
+              currentFile: fileBuffer.current
+            })
+
+            // Dispatch next task
+            dispatchTasks()
+          }
+        }
+        newWorkers.push(w)
+      }
+
+      workersRef.current = newWorkers
+      workerStatusRef.current = new Array(poolSize).fill('idle')
+
+      // Dispatch initial batch
+      dispatchTasks()
+
+    } catch (err: any) {
+      logsBuffer.current.push({ level: 'error', msg: `Scanning Error: ${err.message || err}` })
+      setIsProcessing(false)
+      isProcessingRef.current = false
+      if (flushInterval.current) window.clearInterval(flushInterval.current)
+    }
   }
 
   const cancelProcessing = async () => {
