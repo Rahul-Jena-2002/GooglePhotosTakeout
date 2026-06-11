@@ -337,7 +337,6 @@ function ToolWorkspaceContent() {
           type: 'process_file',
           fileHandle: item.fileHandle,
           dirHandle: item.dirHandle,
-          allNames: item.allNames,
           relativePath: item.relativePath,
           outputHandle: outputFolder,
           injectExif: true

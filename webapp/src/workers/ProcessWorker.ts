@@ -1,6 +1,9 @@
 import { findMatchingJsonName, safeParseJson, extractTimestamp, sanitizeFilename, isAllowedMediaFile } from '../services/MetadataMatcher';
 import { injectExifDate, isJpeg } from '../services/ExifRestorer';
 
+// Internal memory-efficient cache for directory contents
+const dirNamesCache = new Map<string, Set<string>>();
+
 // Note: FileSystemDirectoryHandle can be passed via postMessage in Chrome.
 self.onmessage = async (e: MessageEvent) => {
   const data = e.data;
@@ -9,17 +12,16 @@ self.onmessage = async (e: MessageEvent) => {
   if (data.type === 'scan') {
     const { inputHandle } = data;
     try {
-      const allFiles: { fileHandle: FileSystemFileHandle, dirHandle: FileSystemDirectoryHandle, allNames: string[], relativePath: string[] }[] = [];
+      dirNamesCache.clear();
+      const allFiles: { fileHandle: FileSystemFileHandle, dirHandle: FileSystemDirectoryHandle, relativePath: string[] }[] = [];
       
       async function walk(handle: FileSystemDirectoryHandle, path: string[]) {
-        const allNames = new Set<string>();
         const currentFiles: FileSystemFileHandle[] = [];
 
         // @ts-ignore - TS doesn't have async iterators for FileSystemDirectoryHandle by default
         for await (const [name, entry] of handle) {
           const safeName = sanitizeFilename(name);
           if (!safeName) continue;
-          allNames.add(safeName);
           if (entry.kind === 'file' && isAllowedMediaFile(safeName)) {
             currentFiles.push(entry as FileSystemFileHandle);
           } else if (entry.kind === 'directory') {
@@ -27,9 +29,8 @@ self.onmessage = async (e: MessageEvent) => {
           }
         }
         
-        const allNamesArr = Array.from(allNames);
         for (const f of currentFiles) {
-          allFiles.push({ fileHandle: f, dirHandle: handle, allNames: allNamesArr, relativePath: path });
+          allFiles.push({ fileHandle: f, dirHandle: handle, relativePath: path });
           
           if (allFiles.length % 50 === 0) {
             self.postMessage({ type: 'scan_progress', count: allFiles.length });
@@ -46,7 +47,7 @@ self.onmessage = async (e: MessageEvent) => {
   }
 
   else if (data.type === 'process_file') {
-    const { fileHandle, dirHandle, allNames, relativePath, outputHandle, injectExif } = data;
+    const { fileHandle, dirHandle, relativePath, outputHandle, injectExif } = data;
     const safeName = sanitizeFilename(fileHandle.name);
     let fileSize = 0;
     
@@ -62,7 +63,20 @@ self.onmessage = async (e: MessageEvent) => {
       }
 
       fileSize = file.size;
-      const allNamesSet = new Set<string>(allNames);
+
+      // Efficiently fetch parent directory entries from local cache, populating on demand
+      const cacheKey = relativePath.join('/');
+      let allNamesSet = dirNamesCache.get(cacheKey);
+      if (!allNamesSet) {
+        allNamesSet = new Set<string>();
+        // @ts-ignore
+        for await (const [name] of dirHandle) {
+          const safe = sanitizeFilename(name);
+          if (safe) allNamesSet.add(safe);
+        }
+        dirNamesCache.set(cacheKey, allNamesSet);
+      }
+
       const jsonName = findMatchingJsonName(safeName, allNamesSet);
       
       let epochSec: number | null = null;
