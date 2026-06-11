@@ -68,6 +68,14 @@ self.onmessage = async (e: MessageEvent) => {
       const cacheKey = relativePath.join('/');
       let allNamesSet = dirNamesCache.get(cacheKey);
       if (!allNamesSet) {
+        // Enforce cache size limit (max 5 directories per worker to prevent memory leak)
+        if (dirNamesCache.size >= 5) {
+          const firstKey = dirNamesCache.keys().next().value;
+          if (firstKey !== undefined) {
+            dirNamesCache.delete(firstKey);
+          }
+        }
+
         allNamesSet = new Set<string>();
         // @ts-ignore
         for await (const [name] of dirHandle) {

@@ -146,12 +146,25 @@ function ToolWorkspaceContent() {
   const lastActiveSessionUpdateRef = useRef<number>(0)
   const lastCommitTimeRef = useRef<number>(0)
 
-  // Calculate optimal threads based on hardwareConcurrency and headroom
+  // Calculate optimal threads based on hardwareConcurrency, device memory, and headroom (matching the Svelte/Firebase config)
   const getOptimalThreadCount = () => {
+    const isMobile = /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent)
     const cores = navigator.hardwareConcurrency || 4
-    if (cores <= 2) return 1
-    if (cores <= 4) return cores - 1
-    return Math.min(3, cores - 2) // Cap at maximum 3 workers to prevent OOM/tab crashes on heavy parallel disk I/O!
+    let maxC = cores
+    if (isMobile) {
+      maxC = Math.max(2, Math.floor(cores * 0.5))
+    } else {
+      maxC = Math.max(4, Math.floor(cores * 0.8))
+    }
+    
+    // Check device memory to prevent OOM on lower-end systems
+    if ('deviceMemory' in navigator) {
+      const mem = (navigator as any).deviceMemory
+      if (mem < 4) {
+        maxC = Math.max(1, Math.min(maxC, Math.floor(mem)))
+      }
+    }
+    return maxC
   }
 
   useEffect(() => {
