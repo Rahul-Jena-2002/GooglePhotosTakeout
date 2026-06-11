@@ -13,7 +13,9 @@ import AdminToolMonitor from "../react-pages/AdminToolMonitor"
 import AdminAudit from "../react-pages/AdminAudit"
 import { ToastContainer } from "./ui/toast"
 
-export default function AdminRouter() {
+import { AuthProvider } from "../contexts/AuthContext"
+
+function AdminRouterContent() {
   return (
     <BrowserRouter basename="/admin">
       <Routes>
@@ -33,5 +35,13 @@ export default function AdminRouter() {
       </Routes>
       <ToastContainer />
     </BrowserRouter>
+  )
+}
+
+export default function AdminRouter() {
+  return (
+    <AuthProvider>
+      <AdminRouterContent />
+    </AuthProvider>
   )
 }

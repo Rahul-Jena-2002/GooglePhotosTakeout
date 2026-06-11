@@ -25,7 +25,10 @@ const formatBytes = (bytes: number) => {
   return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i]
 }
 
-export default function DashboardPage() {
+import { AuthProvider } from "../contexts/AuthContext"
+import { ToastContainer } from "../components/ui/toast"
+
+function DashboardPageContent() {
   const { user, userData, loading, logout } = useAuth()
   const navigate = useNavigate()
   const [activeTab, setActiveTab] = useState<"history" | "billing">("history")
@@ -482,5 +485,14 @@ Your EXIF metadata recovery tools are active.
         </div>
       </motion.div>
     </div>
+  )
+}
+
+export default function DashboardPage() {
+  return (
+    <AuthProvider>
+      <DashboardPageContent />
+      <ToastContainer />
+    </AuthProvider>
   )
 }

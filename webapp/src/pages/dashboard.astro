@@ -1,14 +1,9 @@
 ---
 export const prerender = true;
 import Layout from "../layouts/Layout.astro";
-import { AuthProvider } from "../contexts/AuthContext";
 import DashboardPage from "../react-pages/DashboardPage";
-import { ToastContainer } from "../components/ui/toast";
 ---
 
 <Layout title="TakeoutFix | User Dashboard" description="Access your TakeoutFix restoration history, manage account credentials, check volume metrics, and active session slots.">
-  <AuthProvider client:only="react">
-    <DashboardPage client:only="react" />
-    <ToastContainer client:only="react" />
-  </AuthProvider>
+  <DashboardPage client:only="react" />
 </Layout>

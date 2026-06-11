@@ -1,14 +1,9 @@
 ---
 export const prerender = true;
 import Layout from "../layouts/Layout.astro";
-import { AuthProvider } from "../contexts/AuthContext";
 import ProfilePage from "../react-pages/ProfilePage";
-import { ToastContainer } from "../components/ui/toast";
 ---
 
 <Layout title="TakeoutFix | Profile Settings" description="Update your TakeoutFix username, first name, last name, and account details.">
-  <AuthProvider client:only="react">
-    <ProfilePage client:only="react" />
-    <ToastContainer client:only="react" />
-  </AuthProvider>
+  <ProfilePage client:only="react" />
 </Layout>

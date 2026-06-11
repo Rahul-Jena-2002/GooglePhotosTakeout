@@ -11,7 +11,10 @@ import { db } from "../firebase"
 import { motion, AnimatePresence } from "framer-motion"
 import AdUnit from "../components/AdUnit"
 
-export default function SupportPage() {
+import { AuthProvider } from "../contexts/AuthContext"
+import { ToastContainer } from "../components/ui/toast"
+
+function SupportPageContent() {
   const { user, userData } = useAuth()
   const [searchParams, setSearchParams] = useSearchParams()
   const [activeTab, setActiveTab] = useState(searchParams.get("tab") || "faq")
@@ -600,5 +603,14 @@ export default function SupportPage() {
         </div>
       </div>
     </div>
+  )
+}
+
+export default function SupportPage() {
+  return (
+    <AuthProvider>
+      <SupportPageContent />
+      <ToastContainer />
+    </AuthProvider>
   )
 }

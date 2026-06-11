@@ -31,7 +31,10 @@ const PLAN_LABELS: Record<string, string> = {
   family: "Family",
 }
 
-export default function ToolWorkspace() {
+import { AuthProvider } from "../contexts/AuthContext"
+import { ToastContainer } from "../components/ui/toast"
+
+function ToolWorkspaceContent() {
   const { user, userData, refreshUserData } = useAuth()
 
   const plan = userData?.plan || 'free'
@@ -1044,5 +1047,14 @@ export default function ToolWorkspace() {
         </div>
       )}
     </AdBlockGate>
+  )
+}
+
+export default function ToolWorkspace() {
+  return (
+    <AuthProvider>
+      <ToolWorkspaceContent />
+      <ToastContainer />
+    </AuthProvider>
   )
 }

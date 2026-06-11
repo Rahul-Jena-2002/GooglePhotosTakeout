@@ -98,7 +98,10 @@ const getPlanDetails = (planKey: string, region: string): PlanDetails | null => 
   }
 }
 
-export default function CheckoutPage() {
+import { AuthProvider } from "../contexts/AuthContext"
+import { ToastContainer } from "../components/ui/toast"
+
+function CheckoutPageContent() {
   const { user, userData, refreshUserData, region } = useAuth()
   const [searchParams] = useSearchParams()
   const navigate = useNavigate()
@@ -426,5 +429,14 @@ export default function CheckoutPage() {
 
       </Card>
     </div>
+  )
+}
+
+export default function CheckoutPage() {
+  return (
+    <AuthProvider>
+      <CheckoutPageContent />
+      <ToastContainer />
+    </AuthProvider>
   )
 }

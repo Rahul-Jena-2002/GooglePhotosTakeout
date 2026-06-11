@@ -16,7 +16,10 @@ const PLAN_LABELS: Record<string, string> = {
   family: "Family Tier",
 }
 
-export default function ProfilePage() {
+import { AuthProvider } from "../contexts/AuthContext"
+import { ToastContainer } from "../components/ui/toast"
+
+function ProfilePageContent() {
   const { user, userData, loading, logout, refreshUserData } = useAuth()
   const navigate = useNavigate()
 
@@ -352,5 +355,14 @@ export default function ProfilePage() {
         </motion.div>
       </div>
     </div>
+  )
+}
+
+export default function ProfilePage() {
+  return (
+    <AuthProvider>
+      <ProfilePageContent />
+      <ToastContainer />
+    </AuthProvider>
   )
 }

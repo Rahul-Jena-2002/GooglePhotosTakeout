@@ -1,14 +1,9 @@
 ---
 export const prerender = true;
 import Layout from "../layouts/Layout.astro";
-import { AuthProvider } from "../contexts/AuthContext";
 import ToolWorkspace from "../react-pages/ToolWorkspace";
-import { ToastContainer } from "../components/ui/toast";
 ---
 
 <Layout title="TakeoutFix | Google Takeout Photos Metadata Merger & Rebuilder" isToolPage={true}>
-  <AuthProvider client:only="react">
-    <ToolWorkspace client:only="react" />
-    <ToastContainer client:only="react" />
-  </AuthProvider>
+  <ToolWorkspace client:only="react" />
 </Layout>
