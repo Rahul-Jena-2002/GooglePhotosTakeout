@@ -3,7 +3,7 @@ import { useAuth } from "../contexts/AuthContext"
 import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card"
 import { Progress } from "../components/ui/progress"
 import { Button } from "../components/ui/button"
-import { Link, useNavigate } from "react-router-dom"
+// No react-router-dom imports
 import { collection, query, where, orderBy, onSnapshot } from "firebase/firestore"
 import { db } from "../firebase"
 import { ShieldAlert, Key, HardDrive, History, LifeBuoy, FileText, ArrowRight, ShieldCheck, Download, CreditCard, CheckCircle2 } from "lucide-react"
@@ -30,7 +30,7 @@ import { ToastContainer } from "../components/ui/toast"
 
 function DashboardPageContent() {
   const { user, userData, loading, logout } = useAuth()
-  const navigate = useNavigate()
+  // No react-router-dom hooks
   const [activeTab, setActiveTab] = useState<"history" | "billing">("history")
   const [transactions, setTransactions] = useState<any[]>([])
   const [txLoading, setTxLoading] = useState(true)
@@ -78,16 +78,18 @@ function DashboardPageContent() {
         <ShieldAlert className="w-12 h-12 text-red-400 mx-auto mb-4" />
         <h2 className="text-xl font-bold mb-2">Authentication Required</h2>
         <p className="text-white/60 mb-6">You must be signed in to view your dashboard.</p>
-        <Link to="/">
+        <a href="/">
           <Button className="w-full bg-white text-black hover:bg-white/90">Return Home</Button>
-        </Link>
+        </a>
       </div>
     )
   }
 
   const handleSignOut = async () => {
     await logout()
-    navigate("/")
+    if (typeof window !== 'undefined') {
+      window.location.href = "/"
+    }
   }
 
   if (userData?.suspended) {
@@ -101,9 +103,9 @@ function DashboardPageContent() {
           Your account has been suspended for violating our terms of service or due to an administrative hold. If you believe this is a mistake, please contact our support team.
         </p>
         <div className="flex gap-4">
-          <Link to="/support" className="px-5 py-2 rounded-full bg-zinc-900 border border-zinc-800 text-sm text-zinc-300 hover:text-white transition-all">
+          <a href="/support" className="px-5 py-2 rounded-full bg-zinc-900 border border-zinc-800 text-sm text-zinc-300 hover:text-white transition-all">
             Contact Support
-          </Link>
+          </a>
           <button onClick={handleSignOut} className="px-5 py-2 rounded-full bg-red-600 hover:bg-red-700 text-sm font-semibold text-white transition-all">
             Sign Out
           </button>
@@ -198,11 +200,11 @@ Your EXIF metadata recovery tools are active.
             <h1 className="text-3xl font-bold tracking-tighter">Account Dashboard</h1>
             <p className="text-sm text-white/50 mt-1">Monitor your usage limits, logs, and account options.</p>
           </div>
-          <Link to="/profile">
+          <a href="/profile">
             <Button variant="outline" className="border-white/10 hover:bg-white/5 text-xs rounded-full">
               Profile Settings &rarr;
             </Button>
-          </Link>
+          </a>
         </motion.div>
 
         {/* ACTIVE PLAN & QUOTA */}
@@ -297,19 +299,19 @@ Your EXIF metadata recovery tools are active.
 
               <div className="flex flex-col sm:flex-row gap-4 pt-2">
                 {plan !== 'super' ? (
-                  <Link to="/pricing" className="flex-1">
+                  <a href="/pricing" className="flex-1">
                     <Button className="w-full bg-gradient-to-r from-indigo-500 to-purple-600 hover:opacity-95 border-0 font-bold rounded-full">
                       <Key className="w-4 h-4 mr-2" /> Upgrade Account Plan
                     </Button>
-                  </Link>
+                  </a>
                 ) : (
                   <div className="flex-1 flex items-center justify-center text-xs font-semibold text-white/40 border border-white/5 bg-zinc-900/20 rounded-full py-2.5">
                     Highest Performance Tier Active
                   </div>
                 )}
-                <Link to="/tool" className="flex-1">
+                <a href="/tool" className="flex-1">
                   <Button variant="outline" className="w-full border-white/20 hover:bg-white/10 hover:text-white font-bold rounded-full">Open Recovery Center</Button>
-                </Link>
+                </a>
               </div>
             </CardContent>
           </Card>
@@ -329,40 +331,40 @@ Your EXIF metadata recovery tools are active.
                 </CardHeader>
                 <CardContent className="pt-6">
                   <div className="space-y-3">
-                    <Link to="/support" className="flex items-center justify-between p-3.5 rounded-xl bg-white/[0.02] hover:bg-white/5 border border-white/5 hover:border-white/10 transition-colors">
+                  <a href="/support" className="flex items-center justify-between p-3.5 rounded-xl bg-white/[0.02] hover:bg-white/5 border border-white/5 hover:border-white/10 transition-colors">
+                    <div className="flex items-center gap-3">
+                      <FileText className="w-4 h-4 text-white/50" />
+                      <span className="text-sm font-medium">FAQ & Documentation</span>
+                    </div>
+                    <ArrowRight className="w-4 h-4 text-white/30" />
+                  </a>
+                  
+                  {!isPaid ? (
+                    <a href="/pricing" className="flex items-center justify-between p-3.5 rounded-xl border border-indigo-500/30 bg-indigo-500/5 hover:bg-indigo-500/10 transition-colors group">
                       <div className="flex items-center gap-3">
-                        <FileText className="w-4 h-4 text-white/50" />
-                        <span className="text-sm font-medium">FAQ & Documentation</span>
+                        <LifeBuoy className="w-4 h-4 text-indigo-400" />
+                        <span className="text-sm font-medium text-indigo-400 group-hover:text-indigo-300">Upgrade for Direct Support</span>
                       </div>
-                      <ArrowRight className="w-4 h-4 text-white/30" />
-                    </Link>
-                    
-                    {!isPaid ? (
-                      <Link to="/pricing" className="flex items-center justify-between p-3.5 rounded-xl border border-indigo-500/30 bg-indigo-500/5 hover:bg-indigo-500/10 transition-colors group">
+                      <ArrowRight className="w-4 h-4 text-indigo-400/55 group-hover:text-indigo-400" />
+                    </a>
+                  ) : (
+                    <>
+                      <a href="/support?tab=new" className="flex items-center justify-between p-3.5 rounded-xl bg-white/[0.02] hover:bg-white/5 border border-white/5 hover:border-white/10 transition-colors">
                         <div className="flex items-center gap-3">
-                          <LifeBuoy className="w-4 h-4 text-indigo-400" />
-                          <span className="text-sm font-medium text-indigo-400 group-hover:text-indigo-300">Upgrade for Direct Support</span>
+                          <LifeBuoy className="w-4 h-4 text-white/50" />
+                          <span className="text-sm font-medium">Raise a Support Ticket</span>
                         </div>
-                        <ArrowRight className="w-4 h-4 text-indigo-400/55 group-hover:text-indigo-400" />
-                      </Link>
-                    ) : (
-                      <>
-                        <Link to="/support?tab=new" className="flex items-center justify-between p-3.5 rounded-xl bg-white/[0.02] hover:bg-white/5 border border-white/5 hover:border-white/10 transition-colors">
-                          <div className="flex items-center gap-3">
-                            <LifeBuoy className="w-4 h-4 text-white/50" />
-                            <span className="text-sm font-medium">Raise a Support Ticket</span>
-                          </div>
-                          <ArrowRight className="w-4 h-4 text-white/30" />
-                        </Link>
-                        <Link to="/support?tab=tickets" className="flex items-center justify-between p-3.5 rounded-xl bg-white/[0.02] hover:bg-white/5 border border-white/5 hover:border-white/10 transition-colors">
-                          <div className="flex items-center gap-3">
-                            <History className="w-4 h-4 text-white/50" />
-                            <span className="text-sm font-medium">My Support Tickets</span>
-                          </div>
-                          <ArrowRight className="w-4 h-4 text-white/30" />
-                        </Link>
-                      </>
-                    )}
+                        <ArrowRight className="w-4 h-4 text-white/30" />
+                      </a>
+                      <a href="/support?tab=tickets" className="flex items-center justify-between p-3.5 rounded-xl bg-white/[0.02] hover:bg-white/5 border border-white/5 hover:border-white/10 transition-colors">
+                        <div className="flex items-center gap-3">
+                          <History className="w-4 h-4 text-white/50" />
+                          <span className="text-sm font-medium">My Support Tickets</span>
+                        </div>
+                        <ArrowRight className="w-4 h-4 text-white/30" />
+                      </a>
+                    </>
+                  )}
                   </div>
                 </CardContent>
               </div>
@@ -396,11 +398,11 @@ Your EXIF metadata recovery tools are active.
                       {plan === 'free' || plan === 'recovery_pass' ? (
                         <div className="text-center py-8">
                           <p className="text-xs text-white/50 mb-4">Detailed history logs are only available on Pro and Super plans.</p>
-                          <Link to="/pricing">
+                          <a href="/pricing">
                             <Button variant="outline" className="border-indigo-500/40 text-indigo-400 hover:bg-indigo-500/10 hover:text-indigo-300 text-xs rounded-full">
                               Upgrade to View History
                             </Button>
-                          </Link>
+                          </a>
                         </div>
                       ) : historyLoading ? (
                         <div className="text-center py-8 text-xs text-zinc-500">Syncing history log...</div>

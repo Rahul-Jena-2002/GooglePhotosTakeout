@@ -1,5 +1,4 @@
-import { useState, useEffect } from "react"
-import { useSearchParams, useNavigate, Link } from "react-router-dom"
+// No react-router-dom imports
 import { useAuth } from "../contexts/AuthContext"
 import { db } from "../firebase"
 import { doc, setDoc, addDoc, collection } from "firebase/firestore"
@@ -102,9 +101,7 @@ import { AuthProvider } from "../contexts/AuthContext"
 import { ToastContainer } from "../components/ui/toast"
 
 function CheckoutPageContent() {
-  const { user, userData, refreshUserData, region } = useAuth()
-  const [searchParams] = useSearchParams()
-  const navigate = useNavigate()
+  // No react-router-dom hooks
   
   if (userData?.suspended) {
     return (
@@ -117,16 +114,27 @@ function CheckoutPageContent() {
           Your account has been suspended for violating our terms of service or due to an administrative hold. If you believe this is a mistake, please contact our support team.
         </p>
         <div className="flex gap-4">
-          <Link to="/support" className="px-5 py-2 rounded-full bg-zinc-900 border border-zinc-800 text-sm text-zinc-300 hover:text-white transition-all">
+          <a href="/support" className="px-5 py-2 rounded-full bg-zinc-900 border border-zinc-800 text-sm text-zinc-300 hover:text-white transition-all">
             Contact Support
-          </Link>
+          </a>
         </div>
       </div>
     )
   }
   
-  const planKey = searchParams.get("plan") || ""
-  const regionParam = searchParams.get("region") || region || "us"
+  const { user, userData, refreshUserData, region } = useAuth()
+  const planKey = (() => {
+    if (typeof window !== 'undefined') {
+      return new URLSearchParams(window.location.search).get("plan") || "";
+    }
+    return "";
+  })()
+  const regionParam = (() => {
+    if (typeof window !== 'undefined') {
+      return new URLSearchParams(window.location.search).get("region") || region || "us";
+    }
+    return region || "us";
+  })()
   const plan = getPlanDetails(planKey, regionParam)
 
   const [paymentTab, setPaymentTab] = useState<"card" | "upi">("card")
@@ -142,10 +150,10 @@ function CheckoutPageContent() {
   const [nameOnCard, setNameOnCard] = useState("")
 
   useEffect(() => {
-    if (!user) {
-      navigate("/pricing")
+    if (!user && typeof window !== 'undefined') {
+      window.location.href = "/pricing"
     }
-  }, [user, navigate])
+  }, [user])
 
   if (!plan) {
     return (
@@ -153,9 +161,9 @@ function CheckoutPageContent() {
         <AlertCircle className="w-12 h-12 text-red-400 mx-auto mb-4" />
         <h2 className="text-xl font-bold mb-2">Invalid Plan Selected</h2>
         <p className="text-zinc-400 mb-6">Please select a valid payment option to continue.</p>
-        <Link to="/pricing">
+        <a href="/pricing">
           <Button className="w-full bg-white text-black hover:bg-zinc-200">Return to Pricing</Button>
-        </Link>
+        </a>
       </div>
     )
   }
@@ -233,7 +241,9 @@ function CheckoutPageContent() {
 
       // Short delay, then navigate back
       setTimeout(() => {
-        navigate("/dashboard")
+        if (typeof window !== 'undefined') {
+          window.location.href = "/dashboard";
+        }
       }, 2000)
 
     } catch (err: any) {
@@ -419,9 +429,9 @@ function CheckoutPageContent() {
               </Button>
               
               <div className="text-center">
-                <Link to="/pricing" className="text-xs text-zinc-500 hover:text-zinc-300">
+                <a href="/pricing" className="text-xs text-zinc-500 hover:text-zinc-300">
                   Cancel and return to Pricing
-                </Link>
+                </a>
               </div>
             </form>
           )}

@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react"
 import { useAuth } from "../contexts/AuthContext"
-import { useSearchParams, Link } from "react-router-dom"
+// No react-router-dom imports
 import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card"
 import { Button } from "../components/ui/button"
 import { Input } from "../components/ui/input"
@@ -16,8 +16,13 @@ import { ToastContainer } from "../components/ui/toast"
 
 function SupportPageContent() {
   const { user, userData } = useAuth()
-  const [searchParams, setSearchParams] = useSearchParams()
-  const [activeTab, setActiveTab] = useState(searchParams.get("tab") || "faq")
+  const [activeTab, setActiveTab] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      return params.get("tab") || "faq";
+    }
+    return "faq";
+  })
   
   const [tickets, setTickets] = useState<any[]>([])
   const [loading, setLoading] = useState(false)
@@ -77,11 +82,15 @@ function SupportPageContent() {
   const isPaid = userData?.plan && userData.plan !== "free"
 
   useEffect(() => {
-    setSearchParams({ tab: activeTab })
+    if (typeof window !== 'undefined') {
+      const url = new URL(window.location.href);
+      url.searchParams.set("tab", activeTab);
+      window.history.replaceState({}, "", url.toString());
+    }
     if (activeTab === "tickets" && user && isPaid) {
       loadTickets()
     }
-  }, [activeTab, user, isPaid, setSearchParams])
+  }, [activeTab, user, isPaid])
 
   const loadTickets = async () => {
     setLoading(true)
@@ -290,9 +299,9 @@ function SupportPageContent() {
                         <LifeBuoy className="w-12 h-12 text-indigo-400 mx-auto mb-4 animate-bounce" />
                         <h3 className="text-lg font-bold mb-2">Premium Support Locked</h3>
                         <p className="text-indigo-200/60 mb-6">Direct ticket support is available for users on paid plans.</p>
-                        <Link to="/pricing">
+                        <a href="/pricing">
                           <Button className="bg-indigo-500 hover:bg-indigo-600 text-white rounded-full px-6">Upgrade Plan</Button>
-                        </Link>
+                        </a>
                       </CardContent>
                     </Card>
                   ) : (

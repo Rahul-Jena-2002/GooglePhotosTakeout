@@ -9,7 +9,7 @@ import { Button } from "../components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "../components/ui/card"
 import { Progress } from "../components/ui/progress"
 import { FolderUp, HardDrive, Play, Square, Pause, Activity, Database, CheckCircle2, AlertCircle, XCircle, FileText, Cpu } from "lucide-react"
-import { Link } from "react-router-dom"
+// No react-router-dom imports
 import { indexedDbService } from "../lib/indexedDbService"
 
 // @ts-ignore
@@ -71,9 +71,9 @@ function ToolWorkspaceContent() {
         <p className="text-zinc-400 max-w-md mb-8">
           The TakeoutFix restoration engine is currently undergoing system updates. Normal operations will resume shortly. Thank you for your patience!
         </p>
-        <Link to="/dashboard" className="px-6 py-2.5 rounded-full bg-zinc-900 border border-zinc-800 text-sm text-zinc-300 hover:text-white transition-all font-semibold">
+        <a href="/dashboard" className="px-6 py-2.5 rounded-full bg-zinc-900 border border-zinc-800 text-sm text-zinc-300 hover:text-white transition-all font-semibold">
           Return to Dashboard
-        </Link>
+        </a>
       </div>
     )
   }
@@ -89,9 +89,9 @@ function ToolWorkspaceContent() {
           Your account has been suspended for violating our terms of service or due to an administrative hold. If you believe this is a mistake, please contact our support team.
         </p>
         <div className="flex gap-4">
-          <Link to="/support" className="px-5 py-2 rounded-full bg-zinc-900 border border-zinc-800 text-sm text-zinc-300 hover:text-white transition-all">
+          <a href="/support" className="px-5 py-2 rounded-full bg-zinc-900 border border-zinc-800 text-sm text-zinc-300 hover:text-white transition-all">
             Contact Support
-          </Link>
+          </a>
         </div>
       </div>
     )
@@ -1030,11 +1030,11 @@ function ToolWorkspaceContent() {
             <h3 className="text-xl font-bold text-white mb-2">Restoration Limit Reached</h3>
             <p className="text-zinc-400 text-sm mb-6 leading-relaxed">{quotaAlert.message}</p>
             <div className="space-y-3">
-              <Link to="/pricing">
+              <a href="/pricing">
                 <Button className="w-full bg-gradient-to-r from-indigo-500 to-purple-600 hover:opacity-90 text-white font-bold h-12 rounded-lg border-0 shadow-lg shadow-indigo-500/20">
                   Upgrade Plan
                 </Button>
-              </Link>
+              </a>
               <Button 
                 variant="outline" 
                 onClick={() => setQuotaAlert(null)}

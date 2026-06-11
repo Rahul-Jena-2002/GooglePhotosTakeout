@@ -2,7 +2,7 @@ import { useState, useEffect } from "react"
 import { useAuth } from "../contexts/AuthContext"
 import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card"
 import { Button } from "../components/ui/button"
-import { Link, useNavigate } from "react-router-dom"
+// No react-router-dom imports
 import { collection, query, where, doc, updateDoc, getDocs } from "firebase/firestore"
 import { db } from "../firebase"
 import { ShieldAlert, User, Check, AlertCircle } from "lucide-react"
@@ -21,7 +21,7 @@ import { ToastContainer } from "../components/ui/toast"
 
 function ProfilePageContent() {
   const { user, userData, loading, logout, refreshUserData } = useAuth()
-  const navigate = useNavigate()
+  // No react-router-dom hooks
 
   // Profile Edit States
   const [isEditing, setIsEditing] = useState(false)
@@ -125,7 +125,9 @@ function ProfilePageContent() {
 
   const handleSignOut = async () => {
     await logout()
-    navigate("/")
+    if (typeof window !== 'undefined') {
+      window.location.href = "/"
+    }
   }
 
   if (loading) {
@@ -138,9 +140,9 @@ function ProfilePageContent() {
         <ShieldAlert className="w-12 h-12 text-red-400 mx-auto mb-4" />
         <h2 className="text-xl font-bold mb-2">Authentication Required</h2>
         <p className="text-white/60 mb-6">You must be signed in to view your profile settings.</p>
-        <Link to="/">
+        <a href="/">
           <Button className="w-full bg-white text-black hover:bg-white/90">Return Home</Button>
-        </Link>
+        </a>
       </div>
     )
   }
@@ -156,9 +158,9 @@ function ProfilePageContent() {
           Your account has been suspended. Please contact our support team.
         </p>
         <div className="flex gap-4">
-          <Link to="/support" className="px-5 py-2 rounded-full bg-zinc-900 border border-zinc-800 text-sm text-zinc-300 hover:text-white transition-all">
+          <a href="/support" className="px-5 py-2 rounded-full bg-zinc-900 border border-zinc-800 text-sm text-zinc-300 hover:text-white transition-all">
             Contact Support
-          </Link>
+          </a>
           <button onClick={handleSignOut} className="px-5 py-2 rounded-full bg-red-600 hover:bg-red-700 text-sm font-semibold text-white transition-all">
             Sign Out
           </button>
@@ -349,9 +351,9 @@ function ProfilePageContent() {
           transition={{ delay: 0.4 }}
           className="text-center"
         >
-          <Link to="/dashboard" className="text-xs text-white/40 hover:text-indigo-400 transition-colors font-medium">
+          <a href="/dashboard" className="text-xs text-white/40 hover:text-indigo-400 transition-colors font-medium">
             &larr; Back to Account Dashboard
-          </Link>
+          </a>
         </motion.div>
       </div>
     </div>
