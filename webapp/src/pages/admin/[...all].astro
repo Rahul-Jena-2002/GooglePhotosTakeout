@@ -3,7 +3,22 @@ import "../../index.css";
 import { AuthProvider } from "../../contexts/AuthContext";
 import AdminRouter from "../../components/AdminRouter";
 
-export const prerender = false;
+export const prerender = true;
+
+export function getStaticPaths() {
+  return [
+    { params: { all: undefined } },
+    { params: { all: "users" } },
+    { params: { all: "support" } },
+    { params: { all: "reviews" } },
+    { params: { all: "team" } },
+    { params: { all: "revenue" } },
+    { params: { all: "settings" } },
+    { params: { all: "statistics" } },
+    { params: { all: "tool-monitor" } },
+    { params: { all: "audit" } }
+  ];
+}
 ---
 <!doctype html>
 <html lang="en">

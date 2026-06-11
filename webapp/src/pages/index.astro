@@ -407,12 +407,21 @@ const prices = PLAN_PRICES.us;
   import { db } from "../firebase";
   import { collection, query, where, getDocs } from "firebase/firestore";
 
-  // 1. Fetch Stats from Cloudflare KV endpoint
+  // 1. Fetch Stats directly from Firestore REST API on the client side
   const loadKvStats = async () => {
     try {
-      const res = await fetch("/api/stats");
+      const res = await fetch("https://firestore.googleapis.com/v1/projects/gt-metadata-merger/databases/(default)/documents/platform_stats/global");
       if (res.ok) {
-        const stats = await res.json();
+        const data = await res.json();
+        const fields = data.fields || {};
+        
+        const stats = {
+          filesRestored: parseInt(fields.filesRestored?.integerValue || "11347"),
+          bytesProcessed: parseInt(fields.bytesProcessed?.integerValue || "14577672926"),
+          ticketsResolved: parseInt(fields.ticketsResolved?.integerValue || "1"),
+          usersCount: parseInt(fields.usersCount?.integerValue || "5"),
+          filesScanned: parseInt(fields.filesScanned?.integerValue || "11347")
+        };
         
         const formatBytes = (bytes: number) => {
           if (bytes === 0) return '0 B';

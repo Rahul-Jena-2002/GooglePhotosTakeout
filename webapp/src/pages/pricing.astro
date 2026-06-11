@@ -3,7 +3,7 @@ import Layout from "../layouts/Layout.astro";
 import AdUnit from "../components/AdUnit";
 import { PLAN_PRICES } from "../contexts/AuthContext";
 
-export const prerender = false;
+export const prerender = true;
 
 const COUNTRY_TO_REGION = {
   IN: "in", PK: "t1", BD: "t1", NP: "t1", LK: "t1", ID: "t1", VN: "t1", PH: "t1", NG: "t1", KE: "t1", EG: "t1",
@@ -13,8 +13,7 @@ const COUNTRY_TO_REGION = {
   CN: "cn",
 };
 
-const countryCode = Astro.request.headers.get("cf-ipcountry") || "US";
-const region = COUNTRY_TO_REGION[countryCode.toUpperCase()] || "us";
+const region = "us";
 const prices = PLAN_PRICES[region] || PLAN_PRICES.us;
 ---
 
@@ -65,7 +64,7 @@ const prices = PLAN_PRICES[region] || PLAN_PRICES.us;
             <p class="text-white/50 text-xs mt-1">Best for one-time recovery</p>
           </div>
           <div class="flex-1">
-            <div class="text-4xl font-bold mb-2 text-white">{prices.recovery_pass}</div>
+            <div class="text-4xl font-bold mb-2 text-white"><span class="price-recovery-pass">{prices.recovery_pass}</span></div>
             <div class="text-[10px] text-white/40 mb-6 uppercase tracking-wider font-bold">Single Batch</div>
             <ul class="space-y-3 text-sm text-white/70">
               <li class="flex items-center gap-2"><span class="text-green-400 font-bold">✓</span> 10,000 Files / 20GB limit</li>
@@ -75,7 +74,7 @@ const prices = PLAN_PRICES[region] || PLAN_PRICES.us;
             </ul>
           </div>
           <div class="mt-6">
-            <a href={`/checkout?plan=recovery_pass&region=${region}`} class="w-full">
+            <a href={`/checkout?plan=recovery_pass&region=${region}`} class="w-full link-checkout-recovery-pass">
               <button class="glass-capsule interactive w-full py-3 font-bold text-sm text-white">Buy Pass</button>
             </a>
           </div>
@@ -93,7 +92,7 @@ const prices = PLAN_PRICES[region] || PLAN_PRICES.us;
             <p class="text-white/50 text-xs mt-1">Perfect for large libraries</p>
           </div>
           <div class="flex-1">
-            <div class="text-4xl font-bold mb-2 text-white">{prices.pro}</div>
+            <div class="text-4xl font-bold mb-2 text-white"><span class="price-pro">{prices.pro}</span></div>
             <div class="text-[10px] text-indigo-400/80 mb-6 uppercase tracking-wider font-bold">Lifetime · 2 Devices</div>
             <ul class="space-y-3 text-sm text-white/70">
               <li class="flex items-center gap-2"><span class="text-indigo-400 font-bold">✓</span> Unlimited Processing</li>
@@ -103,7 +102,7 @@ const prices = PLAN_PRICES[region] || PLAN_PRICES.us;
             </ul>
           </div>
           <div class="mt-6">
-            <a href={`/checkout?plan=pro&region=${region}`} class="w-full">
+            <a href={`/checkout?plan=pro&region=${region}`} class="w-full link-checkout-pro">
               <button class="glass-capsule interactive w-full py-3 font-bold text-sm text-white !bg-indigo-500/20 !border-indigo-400/50 hover:!bg-indigo-500/40">Upgrade to Pro</button>
             </a>
           </div>
@@ -118,7 +117,7 @@ const prices = PLAN_PRICES[region] || PLAN_PRICES.us;
             <p class="text-white/50 text-xs mt-1">Inspector + Duplicate tools</p>
           </div>
           <div class="flex-1">
-            <div class="text-4xl font-bold mb-2 text-white">{prices.super}</div>
+            <div class="text-4xl font-bold mb-2 text-white"><span class="price-super">{prices.super}</span></div>
             <div class="text-[10px] text-amber-400/80 mb-6 uppercase tracking-wider font-bold">Lifetime · 3 Devices</div>
             <ul class="space-y-3 text-sm text-white/70">
               <li class="flex items-center gap-2"><span class="text-amber-400 font-bold">✓</span> Ad-Free Experience</li>
@@ -128,7 +127,7 @@ const prices = PLAN_PRICES[region] || PLAN_PRICES.us;
             </ul>
           </div>
           <div class="mt-6">
-            <a href={`/checkout?plan=super&region=${region}`} class="w-full">
+            <a href={`/checkout?plan=super&region=${region}`} class="w-full link-checkout-super">
               <button class="glass-capsule interactive w-full py-3 font-bold text-sm text-white">Get Super</button>
             </a>
           </div>
@@ -216,3 +215,39 @@ const prices = PLAN_PRICES[region] || PLAN_PRICES.us;
     </div>
   </div>
 </Layout>
+
+<script>
+  import { PLAN_PRICES } from "../contexts/AuthContext";
+
+  const COUNTRY_TO_REGION: Record<string, string> = {
+    IN: "in", PK: "t1", BD: "t1", NP: "t1", LK: "t1", ID: "t1", VN: "t1", PH: "t1", NG: "t1", KE: "t1", EG: "t1",
+    MY: "t2", TH: "t2", MX: "t2", BR: "t2", TR: "t2", ZA: "t2", AR: "t2", CL: "t2", PL: "t2", RO: "t2",
+    US: "us", GB: "eu", DE: "eu", FR: "eu", NL: "eu", BE: "eu", AT: "eu", SE: "t3", NO: "t3", DK: "t3", FI: "t3", IE: "eu", NZ: "t3", AU: "t3", CA: "t3",
+    JP: "jp", CH: "t4", LU: "eu", IS: "t4", SG: "t4", KR: "t4", HK: "t4",
+    CN: "cn",
+  };
+
+  async function updatePrices() {
+    let region = "us";
+    try {
+      const res = await fetch("https://freeipapi.com/api/json");
+      if (res.ok) {
+        const data = await res.json();
+        const country = data.countryCode || "US";
+        region = COUNTRY_TO_REGION[country.toUpperCase()] || "us";
+      }
+    } catch (_) {}
+
+    const prices = PLAN_PRICES[region] || PLAN_PRICES.us;
+
+    document.querySelectorAll(".price-recovery-pass").forEach(el => el.textContent = prices.recovery_pass);
+    document.querySelectorAll(".price-pro").forEach(el => el.textContent = prices.pro);
+    document.querySelectorAll(".price-super").forEach(el => el.textContent = prices.super);
+    
+    document.querySelectorAll(".link-checkout-recovery-pass").forEach(el => el.setAttribute("href", `/checkout?plan=recovery_pass&region=${region}`));
+    document.querySelectorAll(".link-checkout-pro").forEach(el => el.setAttribute("href", `/checkout?plan=pro&region=${region}`));
+    document.querySelectorAll(".link-checkout-super").forEach(el => el.setAttribute("href", `/checkout?plan=super&region=${region}`));
+  }
+
+  updatePrices();
+</script>

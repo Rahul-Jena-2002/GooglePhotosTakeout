@@ -4,9 +4,9 @@ import AdUnit from "../components/AdUnit";
 import WriteReviewButton from "../components/WriteReviewButton";
 import { MessageSquareQuote, Star, CornerDownRight } from "lucide-react";
 
-export const prerender = false;
+export const prerender = true;
 
-// Fetch reviews from Firestore REST API at render-time on the Cloudflare Edge
+// Fetch reviews from Firestore REST API at build-time
 let reviews: any[] = [];
 try {
   const firestoreUrl = "https://firestore.googleapis.com/v1/projects/gt-metadata-merger/databases/(default)/documents/reviews";
