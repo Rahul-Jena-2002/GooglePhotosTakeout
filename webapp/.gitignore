@@ -17,8 +17,12 @@ dist-ssr
 !.vscode/extensions.json
 .idea
 .DS_Store
-*.suo
-*.ntvs*
-*.njsproj
-*.sln
 *.sw?
+
+# Cloudflare & Astro cache
+.wrangler
+.astro
+dist
+dist-ssr
+node_modules
+
