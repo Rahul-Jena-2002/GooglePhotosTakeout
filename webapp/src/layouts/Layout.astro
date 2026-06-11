@@ -352,8 +352,13 @@ const {
         loginBtn?.addEventListener("click", async () => {
           try {
             await signInWithPopup(auth, googleProvider);
-          } catch (err) {
+          } catch (err: any) {
             console.error("Login failed:", err);
+            if (err?.code === 'auth/unauthorized-domain') {
+              alert("Configuration Required:\n\nThe domain '" + window.location.hostname + "' is not authorized in your Firebase Project.\n\nPlease go to Firebase Console > Authentication > Settings > Authorized Domains and add '" + window.location.hostname + "' to allow logins.");
+            } else {
+              alert("Login failed: " + (err?.message || err));
+            }
           }
         });
 
