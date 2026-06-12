@@ -148,6 +148,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   });
 
   const [sessionRegistered, setSessionRegistered] = useState(false);
+  const [hasSeenSelfInSessions, setHasSeenSelfInSessions] = useState(false);
   const [showDeviceLimitModal, setShowDeviceLimitModal] = useState(false);
   const [pendingSessionData, setPendingSessionData] = useState<any>(null);
 
@@ -511,6 +512,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setUserData(null);
         setAdminData(null);
         setSessionRegistered(false);
+        setHasSeenSelfInSessions(false);
         setLoading(false);
       }
     });
@@ -528,10 +530,33 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const sessionIds = data.sessionIds || [];
         const localSessionId = localStorage.getItem("takeoutfix_device_session_id");
         
+        // Track if we have seen our own session ID in the active sessions list
+        if (localSessionId && sessionIds.includes(localSessionId)) {
+          setHasSeenSelfInSessions(true);
+        }
+        
         // Evict session if our local device session ID is not in active list (only after session registration completes)
-        if (sessionRegistered && localSessionId && sessionIds.length > 0 && !sessionIds.includes(localSessionId)) {
-          alert("Account session expired. You have been logged out because this account is being used on another device.");
-          logout();
+        if (sessionRegistered && hasSeenSelfInSessions && localSessionId && sessionIds.length > 0 && !sessionIds.includes(localSessionId)) {
+          setPendingSessionData({
+            docRef: userDocRef,
+            profileData: {
+              email: user.email,
+              displayName: user.displayName,
+              photoURL: user.photoURL,
+            },
+            nameUpdates: {
+              firstName: data.firstName || '',
+              lastName: data.lastName || '',
+              username: data.username || '',
+            },
+            data,
+            deviceSessionId: localSessionId,
+            maxDevices: getPlanDeviceLimit(data.plan || 'free'),
+            currentPlan: data.plan || 'free'
+          });
+          setShowDeviceLimitModal(true);
+          setSessionRegistered(false);
+          setHasSeenSelfInSessions(false);
           return;
         }
 
@@ -543,7 +568,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     });
 
     return unsubscribe;
-  }, [user, sessionRegistered]);
+  }, [user, sessionRegistered, hasSeenSelfInSessions]);
 
   const login = async () => {
     const provider = new GoogleAuthProvider();
@@ -580,6 +605,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       localStorage.removeItem("takeoutfix_admin_data");
       localStorage.removeItem("takeoutfix_device_session_id");
     } catch (_) {}
+    setSessionRegistered(false);
+    setHasSeenSelfInSessions(false);
   };
 
   const handleConfirmEvict = async () => {

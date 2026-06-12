@@ -488,6 +488,8 @@ const {
         const notificationList = document.getElementById("notification-list");
         const notificationCountLabel = document.getElementById("notification-count-label");
 
+        const SUPER_ADMIN_EMAILS = ['rahuljenasonu@gmail.com', 'rahuljena.dev@gmail.com'];
+
         // Optimistic UI loader (Gmail-like persistence)
         try {
           const cachedUserStr = localStorage.getItem("takeoutfix_user_data");
@@ -519,7 +521,7 @@ const {
             if (dropdownPlan) dropdownPlan.innerText = planLabel;
             
             // Optimistically sync links (Admin check)
-            const isAdmin = cachedUser.isAdmin === true;
+            const isAdmin = cachedUser.isAdmin === true || (cachedUser.email && SUPER_ADMIN_EMAILS.includes(cachedUser.email)) || !!localStorage.getItem("takeoutfix_admin_data");
             if (mobileToolLink) {
               mobileToolLink.href = isAdmin ? "/admin" : "/tool";
               mobileToolLink.innerText = isAdmin ? "Admin Center" : "Restore My Data";
@@ -644,7 +646,7 @@ const {
                 checkAdBlock();
 
                 // Sync links (Admin check)
-                const isAdmin = data.isAdmin === true;
+                const isAdmin = data.isAdmin === true || (user.email && SUPER_ADMIN_EMAILS.includes(user.email)) || !!localStorage.getItem("takeoutfix_admin_data");
                 if (mobileToolLink) {
                   if (isAdmin) {
                     mobileToolLink.href = "/admin";
