@@ -114,7 +114,7 @@ export default function MainLayout() {
         id="navbar"
         className="fixed top-0 left-0 right-0 w-full z-50 px-6 md:px-8 py-3 transition-all duration-300 nav-header"
       >
-        <div className="max-w-7xl mx-auto w-full flex items-center justify-between relative z-10">
+        <div className="w-full flex items-center justify-between relative z-10">
           <div className="flex items-center gap-2 md:gap-8">
             {/* Left Hamburger Menu Icon (mobile and tablet: lg:hidden) */}
             <button 
