@@ -3,7 +3,7 @@ export const prerender = true;
 import Layout from "../layouts/Layout.astro";
 ---
 
-<Layout title="TakeoutFix | Refund Policy" description="Read the Refund Policy for TakeoutFix. Learn about our 14-day money-back guarantee and how to request a refund.">
+<Layout title="TakeoutFix | Refund Policy" description="Read the Refund Policy for TakeoutFix. Learn about our verified software issue refund guarantee and request conditions.">
   <div class="max-w-4xl mx-auto px-4 py-16 mt-20">
     <div class="text-center mb-16">
       <h1 class="text-4xl md:text-5xl font-bold tracking-tighter mb-4">Refund Policy</h1>
@@ -13,16 +13,57 @@ import Layout from "../layouts/Layout.astro";
     <div class="space-y-12 text-white/80 leading-relaxed">
       
       <section>
-        <h2 class="text-2xl font-bold text-white mb-4">1. 14-Day Money-Back Guarantee</h2>
+        <h2 class="text-2xl font-bold text-white mb-4">1. Recovery Guarantee</h2>
         <p>
-          We offer a simple 14-day money-back guarantee. If you are not satisfied with TakeoutFix or encounter any technical issues, you are eligible for a full refund within **14 days** of your purchase.
+          TakeoutFix is a local desktop utility operated 100% inside your web browser. Because the license grant delivers immediate utility, and to prevent refund abuse, we do not offer blanket, unconditional refunds. 
+        </p>
+        <p class="mt-4">
+          Instead, we offer a **Recovery Guarantee**: If you encounter a verified software issue or technical defect that prevents TakeoutFix from successfully recovering your files, our support team will work with you to resolve it, or provide an appropriate refund under the eligibility criteria below.
         </p>
       </section>
 
       <section>
-        <h2 class="text-2xl font-bold text-white mb-4">2. How to Request a Refund</h2>
+        <h2 class="text-2xl font-bold text-white mb-4">2. Eligibility Thresholds</h2>
         <p>
-          To request a refund, please open a support request by creating a ticket in our <a href="/support" class="text-indigo-400 hover:text-indigo-300 font-bold">Support Center</a>. We will process your request promptly, typically within 3–5 business days.
+          Refund requests must be submitted within our support center under the following terms:
+        </p>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
+          <div class="bg-white/5 border border-white/10 p-5 rounded-xl">
+            <h3 class="font-bold text-white mb-2">Recovery Pass (One-Time)</h3>
+            <ul class="list-disc pl-4 space-y-2 text-sm text-zinc-350">
+              <li>Request must be submitted within **14 days** of purchase.</li>
+              <li>Only applicable if the product fails due to a verified software issue.</li>
+              <li>No refunds are available if you have already successfully restored and downloaded files (usage exceeds 1 GB or 1,000 files).</li>
+            </ul>
+          </div>
+          <div class="bg-white/5 border border-white/10 p-5 rounded-xl">
+            <h3 class="font-bold text-white mb-2">Pro & Super Lifetime</h3>
+            <ul class="list-disc pl-4 space-y-2 text-sm text-zinc-350">
+              <li>Request must be submitted within **7 days** of purchase.</li>
+              <li>**100% Refund:** Available if total restored usage is under 1 GB and 1,000 files.</li>
+              <li>**50% Refund:** Available if total restored usage is between 1 GB (1,000 files) and 20 GB (10,000 files).</li>
+              <li>**No Refund:** No refunds are available if restored usage exceeds 20 GB or 10,000 files.</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <h2 class="text-2xl font-bold text-white mb-4">3. Non-Refundable Scenarios</h2>
+        <p>
+          Refunds will not be issued under the following circumstances:
+        </p>
+        <ul class="list-disc pl-6 space-y-2 mt-3 text-zinc-350">
+          <li>You change your mind after successfully processing and recovering your Google Takeout archive.</li>
+          <li>You purchase a plan without verifying compatibility on the Free tier first, for file formats that are explicitly documented as unsupported.</li>
+          <li>The request is made after the specified duration (14 days for Recovery Pass, 7 days for Lifetime plans).</li>
+        </ul>
+      </section>
+
+      <section>
+        <h2 class="text-2xl font-bold text-white mb-4">4. How to Request a Refund</h2>
+        <p>
+          To request a refund, please open a support request by creating a ticket in our <a href="/support" class="text-indigo-400 hover:text-indigo-300 font-bold">Support Center</a>. Refund requests are typically reviewed and processed within 3–5 business days.
         </p>
       </section>
 

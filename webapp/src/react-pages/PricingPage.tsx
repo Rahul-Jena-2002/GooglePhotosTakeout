@@ -326,10 +326,39 @@ export default function PricingPage() {
         initial={{ opacity: 0, y: 15 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5, delay: 0.65, ease: "easeOut" }}
-        className="mt-16 text-center text-white/40 text-sm max-w-3xl mx-auto p-6 bg-white/5 border border-white/10 rounded-xl"
+        className="mt-20 max-w-4xl mx-auto"
       >
-        <p className="font-bold text-white/80 text-base mb-2">Recovery Quality Guarantee</p>
-        <p>Paid plans unlock Higher Limits, History logs, Support Access, and Ad-Free Experience. Limits on Free and Recovery Pass are enforced on a "whichever comes first" basis (either storage capacity or file count). <strong className="text-white">Recovery quality never changes between plans.</strong> Our core local extraction engine is identical across all tiers.</p>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-left mb-12">
+          <div className="bg-white/[0.02] border border-white/5 p-5 rounded-2xl">
+            <div className="text-indigo-400 font-bold text-sm mb-1">✓ One-Time Purchase</div>
+            <p className="text-xs text-white/60 leading-relaxed">No subscriptions, no hidden fees, and no recurring charges. You own your license forever.</p>
+          </div>
+          <div className="bg-white/[0.02] border border-white/5 p-5 rounded-2xl">
+            <div className="text-indigo-400 font-bold text-sm mb-1">✓ Privacy First</div>
+            <p className="text-xs text-white/60 leading-relaxed">All media processing runs locally inside your browser. Your files never leave your device.</p>
+          </div>
+          <div className="bg-white/[0.02] border border-white/5 p-5 rounded-2xl">
+            <div className="text-indigo-400 font-bold text-sm mb-1">✓ Recovery Guarantee</div>
+            <p className="text-xs text-white/60 leading-relaxed">If MetaForge cannot process your takeout due to a verified software issue, we will work to resolve it or refund you.</p>
+          </div>
+          <div className="bg-white/[0.02] border border-white/5 p-5 rounded-2xl">
+            <div className="text-indigo-400 font-bold text-sm mb-1">✓ Same Engine Quality</div>
+            <p className="text-xs text-white/60 leading-relaxed">Recovery quality never varies. All plans use the identical high-performance metadata engine.</p>
+          </div>
+          <div className="bg-white/[0.02] border border-white/5 p-5 rounded-2xl">
+            <div className="text-indigo-400 font-bold text-sm mb-1">✓ Dedicated Support</div>
+            <p className="text-xs text-white/60 leading-relaxed">Access direct, priority help whenever you run into any trouble with your restoration process.</p>
+          </div>
+          <div className="bg-white/[0.02] border border-white/5 p-5 rounded-2xl">
+            <div className="text-indigo-400 font-bold text-sm mb-1">✓ Fair Refund Policy</div>
+            <p className="text-xs text-white/60 leading-relaxed">Clear, usage-capped thresholds prevent abuse while fully protecting legitimate recovery failures.</p>
+          </div>
+        </div>
+        
+        <div className="text-center text-white/40 text-xs p-6 bg-white/5 border border-white/10 rounded-2xl">
+          <p className="font-bold text-white/80 text-sm mb-2">Plan Limits & Conditions</p>
+          <p>Paid plans unlock higher limits, history logs, support access, and an ad-free experience. Limits on Free and Recovery Pass are enforced on a "whichever comes first" basis (either storage capacity or file count). Our core local extraction engine is identical across all tiers.</p>
+        </div>
       </motion.div>
     </div>
   )
