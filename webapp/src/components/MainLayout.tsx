@@ -249,12 +249,9 @@ export default function MainLayout() {
                   <>
                     {/* Tablet/Desktop App Links (md:flex) */}
                     <div className="hidden md:flex items-center gap-6 mr-1">
-                      {renderNavLink("/dashboard", "Dashboard")}
-                      {isAdmin ? (
-                        renderNavLink("/admin", "Admin Center")
-                      ) : (
-                        renderNavLink("/tool", "Restore My Data")
-                      )}
+                      {!isAdmin && renderNavLink("/dashboard", "Dashboard")}
+                      {renderNavLink("/tool", "Restore My Data")}
+                      {isAdmin && renderNavLink("/admin", "Admin Center")}
                     </div>
 
                     {/* Unified Profile Button Trigger */}
@@ -351,11 +348,12 @@ export default function MainLayout() {
             {user && (
               <div className="border-t border-white/5 pt-3 flex flex-col gap-3">
                 <p className="text-xs font-bold text-white/30 uppercase tracking-wider px-2 mb-1">App Tools</p>
-                <Link to="/dashboard" className="py-2 px-2 text-white/70 hover:text-white hover:bg-white/5 rounded-md text-sm font-medium transition-all" onClick={() => setMobileMenuOpen(false)}>Dashboard</Link>
-                {isAdmin ? (
+                {!isAdmin && (
+                  <Link to="/dashboard" className="py-2 px-2 text-white/70 hover:text-white hover:bg-white/5 rounded-md text-sm font-medium transition-all" onClick={() => setMobileMenuOpen(false)}>Dashboard</Link>
+                )}
+                <Link to="/tool" className="py-2 px-2 text-white/70 hover:text-white hover:bg-white/5 rounded-md text-sm font-medium transition-all" onClick={() => setMobileMenuOpen(false)}>Restore My Data</Link>
+                {isAdmin && (
                   <Link to="/admin" className="py-2 px-2 text-white/70 hover:text-white hover:bg-white/5 rounded-md text-sm font-medium transition-all" onClick={() => setMobileMenuOpen(false)}>Admin Center</Link>
-                ) : (
-                  <Link to="/tool" className="py-2 px-2 text-white/70 hover:text-white hover:bg-white/5 rounded-md text-sm font-medium transition-all" onClick={() => setMobileMenuOpen(false)}>Restore My Data</Link>
                 )}
               </div>
             )}

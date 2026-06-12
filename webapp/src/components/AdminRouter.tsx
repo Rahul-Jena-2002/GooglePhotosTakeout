@@ -9,7 +9,6 @@ import AdminTeam from "../react-pages/AdminTeam"
 import AdminRevenue from "../react-pages/AdminRevenue"
 import AdminSettings from "../react-pages/AdminSettings"
 import AdminStatistics from "../react-pages/AdminStatistics"
-import AdminToolMonitor from "../react-pages/AdminToolMonitor"
 import AdminAudit from "../react-pages/AdminAudit"
 import { ToastContainer } from "./ui/toast"
 
@@ -29,7 +28,6 @@ function AdminRouterContent() {
           <Route path="revenue" element={<AdminRevenue />} />
           <Route path="settings" element={<AdminSettings />} />
           <Route path="statistics" element={<AdminStatistics />} />
-          <Route path="tool-monitor" element={<AdminToolMonitor />} />
           <Route path="audit" element={<AdminAudit />} />
         </Route>
       </Routes>

@@ -64,7 +64,6 @@ export default function AdminLayout() {
       items: [
         { label: "Reviews", path: "/admin/reviews", icon: MessageSquareQuote, show: isModeratorOrAbove },
         { label: "Statistics", path: "/admin/statistics", icon: BarChart3, show: isAdminOrAbove },
-        { label: "Tool Monitor", path: "/admin/tool-monitor", icon: ActivitySquare, show: isAdminOrAbove },
       ],
     },
     {

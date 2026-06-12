@@ -2,12 +2,12 @@ import { Button } from "../components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "../components/ui/card"
 import { Badge } from "../components/ui/badge"
 import { Link } from "react-router-dom"
-import { useAuth, COUNTRIES } from "../contexts/AuthContext"
+import { useAuth } from "../contexts/AuthContext"
 import { motion } from "framer-motion"
 import AdUnit from "../components/AdUnit"
 
 export default function PricingPage() {
-  const { region, selectedCountry, setSelectedCountry, prices, userData } = useAuth()
+  const { region, prices, userData } = useAuth()
 
   return (
     <div className="w-full max-w-7xl mx-auto px-4 py-24">
@@ -29,37 +29,7 @@ export default function PricingPage() {
           Every plan uses the same recovery engine. Every plan receives the same metadata restoration quality.
         </motion.p>
 
-        {userData?.isAdmin && (
-          <motion.div 
-            initial={{ opacity: 0, y: 15 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.15, ease: "easeOut" }}
-            className="mt-8 flex flex-col sm:flex-row items-center gap-3 bg-zinc-900/30 border border-white/5 rounded-2xl px-6 py-4"
-          >
-            <span className="text-zinc-400 text-xs font-semibold uppercase tracking-wider">Select Region/Country:</span>
-            <select
-              value={selectedCountry}
-              onChange={(e) => setSelectedCountry(e.target.value)}
-              className="bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-2 text-sm text-white focus:outline-none focus:border-indigo-500 cursor-pointer min-w-[200px]"
-            >
-              <optgroup label="Tier 1 (India & Similar)" className="bg-zinc-950">
-                {COUNTRIES.filter(c => c.tier === 'in' || c.tier === 't1').map(c => (
-                  <option key={c.code} value={c.code}>{c.name}</option>
-                ))}
-              </optgroup>
-              <optgroup label="Tier 2 (Mid-Income Markets)" className="bg-zinc-950">
-                {COUNTRIES.filter(c => c.tier === 't2').map(c => (
-                  <option key={c.code} value={c.code}>{c.name}</option>
-                ))}
-              </optgroup>
-              <optgroup label="Tier 3 (High-Income Markets)" className="bg-zinc-950">
-                {COUNTRIES.filter(c => c.tier === 't3').map(c => (
-                  <option key={c.code} value={c.code}>{c.name}</option>
-                ))}
-              </optgroup>
-            </select>
-          </motion.div>
-        )}
+
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-16 items-stretch">

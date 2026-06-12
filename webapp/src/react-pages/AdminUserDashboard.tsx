@@ -389,7 +389,7 @@ Your EXIF metadata recovery tools are active.
                   {plan === "super" && (
                     <div className="flex items-center justify-between border-t border-zinc-800/60 pt-3.5">
                       <div className="text-left pr-4">
-                        <label className="block text-xs text-zinc-355 font-medium uppercase tracking-wider">Support with Ads</label>
+                        <label className="block text-xs text-zinc-400 font-medium uppercase tracking-wider">Support with Ads</label>
                         <span className="text-[10px] text-zinc-500 block leading-tight mt-0.5">Show website ads to support developer even though user is Super</span>
                       </div>
                       <input 

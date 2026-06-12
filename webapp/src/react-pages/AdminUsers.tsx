@@ -315,6 +315,18 @@ export default function AdminUsers() {
                     </span>
                   </td>
                   <td className="px-6 py-4 text-right flex items-center justify-end gap-2" onClick={(e) => e.stopPropagation()}>
+                    {u.plan === 'super' && (
+                      <button
+                        onClick={() => handleToggleSupportWithAds(u.id, !u.supportWithAds)}
+                        className={`px-2.5 py-1 rounded text-xs font-semibold border transition-all ${
+                          u.supportWithAds 
+                            ? 'bg-indigo-500/10 text-indigo-400 border-indigo-500/20 hover:bg-indigo-500/25' 
+                            : 'bg-zinc-800 text-zinc-300 border-zinc-700 hover:bg-zinc-750 hover:text-white'
+                        }`}
+                      >
+                        {u.supportWithAds ? 'Disable Ads' : 'Enable Ads'}
+                      </button>
+                    )}
                     <button
                       onClick={() => handleToggleSuspension(u.id, !u.suspended)}
                       className={`px-2.5 py-1 rounded text-xs font-semibold border transition-colors ${
@@ -431,7 +443,7 @@ export default function AdminUsers() {
                     <div className="flex items-center justify-between border-t border-zinc-800 pt-3">
                       <div className="text-left">
                         <label className="block text-xs text-zinc-400 font-medium uppercase tracking-wider">Support with Ads</label>
-                        <span className="text-[10px] text-zinc-550 block leading-tight">Show website ads to support developer</span>
+                        <span className="text-[10px] text-zinc-500 block leading-tight">Show website ads to support developer</span>
                       </div>
                       <input 
                         type="checkbox"

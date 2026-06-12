@@ -1,5 +1,7 @@
-import { useEffect } from "react"
+import { useState, useEffect } from "react"
 import { useAuth } from "../contexts/AuthContext"
+import { auth, db } from "../firebase"
+import { doc, onSnapshot } from "firebase/firestore"
 
 interface AdUnitProps {
   type: "horizontal" | "vertical" | "sponsor"
@@ -15,8 +17,61 @@ const AD_HEIGHTS = {
 }
 
 export default function AdUnit({ type, slot, format = "auto", className = "" }: AdUnitProps) {
-  const { userData } = useAuth()
-  const isAdFree = userData?.plan === "super" && !userData?.supportWithAds
+  const { userData: contextUserData } = useAuth()
+  const [localUserData, setLocalUserData] = useState<any>(null)
+
+  useEffect(() => {
+    // If context is available and has userData, use it
+    if (contextUserData) {
+      setLocalUserData(contextUserData)
+      return
+    }
+
+    // Attempt optimistic load from localStorage
+    try {
+      const saved = localStorage.getItem("takeoutfix_user_data")
+      if (saved) {
+        setLocalUserData(JSON.parse(saved))
+      }
+    } catch (_) {}
+
+    // Listen to Firebase Auth state directly for robust client-side sync (especially on Astro pages)
+    const unsubscribe = auth.onAuthStateChanged((user) => {
+      if (user) {
+        const userDocRef = doc(db, "users", user.uid)
+        const unsubDoc = onSnapshot(userDocRef, (snap) => {
+          if (snap.exists()) {
+            const data = snap.data()
+            const fullData = {
+              uid: user.uid,
+              email: user.email,
+              displayName: user.displayName,
+              photoURL: user.photoURL,
+              ...data
+            }
+            setLocalUserData(fullData)
+            
+            // Sync with localStorage
+            try {
+              localStorage.setItem("takeoutfix_user_data", JSON.stringify(fullData))
+            } catch (_) {}
+          }
+        }, (err) => console.error("AdUnit Firestore error:", err))
+
+        return () => unsubDoc()
+      } else {
+        setLocalUserData(null)
+        try {
+          localStorage.removeItem("takeoutfix_user_data")
+        } catch (_) {}
+      }
+    })
+
+    return () => unsubscribe()
+  }, [contextUserData])
+
+  const activeUserData = contextUserData || localUserData
+  const isAdFree = activeUserData?.plan === "super" && !activeUserData?.supportWithAds
 
   // If the user has an ad-free plan (Super) and has not opted to support with ads, render nothing to maintain a clean premium experience
   if (isAdFree) {
