@@ -85,7 +85,7 @@ export const COUNTRIES: CountryOption[] = [
 ];
 
 // Hardcoded super admin emails — always granted SUPER_ADMIN regardless of DB
-const SUPER_ADMIN_EMAILS = ['rahuljenasonu@gmail.com', 'rahuljena.dev@gmail.com'];
+const SUPER_ADMIN_EMAILS = ['rahuljena.dev@gmail.com'];
 
 const COUNTRY_TO_REGION: Record<string, string> = {
   // Tier 1

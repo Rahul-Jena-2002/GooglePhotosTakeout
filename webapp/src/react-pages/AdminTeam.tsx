@@ -48,6 +48,10 @@ export default function AdminTeam() {
       alert("You cannot modify a Super Admin's role.")
       return
     }
+    if (newRole === "SUPER_ADMIN") {
+      alert("There can only be one Super Admin.")
+      return
+    }
     try {
       await updateDoc(doc(db, "admins", uid), { role: newRole })
       // Log activity
@@ -197,7 +201,7 @@ export default function AdminTeam() {
                         onChange={e => handleRoleChange(a.uid, e.target.value as AdminRole)}
                         className={`text-xs font-bold uppercase border rounded-md px-2 py-1 bg-transparent focus:outline-none cursor-pointer ${ROLE_COLORS[a.role]}`}
                       >
-                        {ROLES.map(r => <option key={r} value={r} className="bg-zinc-900 text-white">{r.replace("_", " ")}</option>)}
+                        {ROLES.filter(r => r !== "SUPER_ADMIN").map(r => <option key={r} value={r} className="bg-zinc-900 text-white">{r.replace("_", " ")}</option>)}
                       </select>
                     )}
                   </td>
