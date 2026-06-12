@@ -697,6 +697,24 @@ const {
       };
 
       highlightActiveLinks();
+
+      // Code Protection & Copy-paste deterrent (Production Only)
+      if (window.location.hostname !== "localhost" && window.location.hostname !== "127.0.0.1") {
+        // Disable Right-Click Context Menu
+        document.addEventListener("contextmenu", (e) => e.preventDefault());
+
+        // Disable Common DevTools Shortcuts
+        document.addEventListener("keydown", (e) => {
+          if (
+            e.key === "F12" ||
+            (e.ctrlKey && e.shiftKey && (e.key === "I" || e.key === "J" || e.key === "C" || e.key === "K")) ||
+            (e.ctrlKey && (e.key === "u" || e.key === "U" || e.key === "s" || e.key === "S"))
+          ) {
+            e.preventDefault();
+            return false;
+          }
+        });
+      }
     </script>
   </body>
 </html>
