@@ -284,6 +284,46 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return "US";
   });
 
+  useEffect(() => {
+    const detectCountry = async () => {
+      const saved = localStorage.getItem("takeoutfix_selected_country");
+      if (saved) return; // Already manually chosen
+
+      let countryCode = "";
+      // 1. Try Cloudflare cdn-cgi trace first
+      try {
+        const res = await fetch("/cdn-cgi/trace");
+        if (res.ok) {
+          const text = await res.text();
+          const lines = text.split("\n");
+          for (const line of lines) {
+            const parts = line.split("=");
+            if (parts[0] === "loc" && parts[1]) {
+              countryCode = parts[1].trim().toUpperCase();
+              break;
+            }
+          }
+        }
+      } catch (e) {}
+
+      // 2. Try freeipapi
+      if (!countryCode) {
+        try {
+          const res = await fetch("https://freeipapi.com/api/json");
+          if (res.ok) {
+            const data = await res.json();
+            countryCode = data.countryCode || "";
+          }
+        } catch (e) {}
+      }
+
+      if (countryCode) {
+        setSelectedCountryState(countryCode.toUpperCase());
+      }
+    };
+    detectCountry();
+  }, []);
+
   const getRegionFromCountry = (countryCode: string): string => {
     const country = countryCode.toUpperCase();
     if (country === 'IN') return 'in';

@@ -17,6 +17,10 @@ export default function AdminSettings() {
   const [baseProLifetime, setBaseProLifetime] = useState("29.00")
   const [baseSuperLifetime, setBaseSuperLifetime] = useState("49.00")
   const [inrConversionRate, setInrConversionRate] = useState("67")
+  const [tier1Scale, setTier1Scale] = useState("0.3")
+  const [tier2Scale, setTier2Scale] = useState("0.6")
+  const [tier3Scale, setTier3Scale] = useState("1.0")
+  const [selectedConfigTier, setSelectedConfigTier] = useState("t3")
   const [saving, setSaving] = useState(false)
 
   const role = adminData?.role || "ADMIN"
@@ -34,6 +38,9 @@ export default function AdminSettings() {
         setBaseProLifetime(String(data.baseProLifetime ?? "29.00"))
         setBaseSuperLifetime(String(data.baseSuperLifetime ?? "49.00"))
         setInrConversionRate(String(data.inrConversionRate ?? "67"))
+        setTier1Scale(String(data.tier1Scale ?? "0.3"))
+        setTier2Scale(String(data.tier2Scale ?? "0.6"))
+        setTier3Scale(String(data.tier3Scale ?? "1.0"))
       }
     })
     return unsub
@@ -50,7 +57,10 @@ export default function AdminSettings() {
         baseRecoveryPass: Number(baseRecoveryPass),
         baseProLifetime: Number(baseProLifetime),
         baseSuperLifetime: Number(baseSuperLifetime),
-        inrConversionRate: Number(inrConversionRate)
+        inrConversionRate: Number(inrConversionRate),
+        tier1Scale: Number(tier1Scale),
+        tier2Scale: Number(tier2Scale),
+        tier3Scale: Number(tier3Scale)
       }, { merge: true })
 
       // Log action to audit activity logs
@@ -59,7 +69,7 @@ export default function AdminSettings() {
         actorName: adminData?.displayName || "Admin",
         actorRole: role,
         action: "SETTINGS_CHANGE",
-        description: `Updated platform settings: Maintenance=${maintenance}, AutoApprove=${reviewAutoApprove}, SLA=${ticketSlaHours}h, FreeQuota=${freeQuotaMB}MB, RecoveryPass=$${baseRecoveryPass}, ProLifetime=$${baseProLifetime}, SuperLifetime=$${baseSuperLifetime}, INRRate=₹${inrConversionRate}`,
+        description: `Updated platform settings: Maintenance=${maintenance}, AutoApprove=${reviewAutoApprove}, SLA=${ticketSlaHours}h, FreeQuota=${freeQuotaMB}MB, RecoveryPass=$${baseRecoveryPass}, ProLifetime=$${baseProLifetime}, SuperLifetime=$${baseSuperLifetime}, INRRate=₹${inrConversionRate}, T1Scale=${tier1Scale}, T2Scale=${tier2Scale}, T3Scale=${tier3Scale}`,
         timestamp: Date.now()
       })
 
@@ -168,60 +178,201 @@ export default function AdminSettings() {
             <CardDescription className="text-zinc-500 text-xs">Adjust basic pricing indices. Local tiers will scale accordingly.</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-              <div>
-                <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 block mb-1">Recovery Pass Price</label>
-                <div className="relative flex items-center">
-                  <span className="text-zinc-500 absolute left-3 text-xs">$</span>
-                  <Input 
-                    type="number" 
-                    step="0.01"
-                    value={baseRecoveryPass} 
-                    onChange={(e) => setBaseRecoveryPass(e.target.value)}
-                    className="bg-zinc-950 border-zinc-800 text-zinc-100 text-xs pl-6 h-9" 
-                  />
-                </div>
-              </div>
-              <div>
-                <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 block mb-1">Pro Lifetime Price</label>
-                <div className="relative flex items-center">
-                  <span className="text-zinc-500 absolute left-3 text-xs">$</span>
-                  <Input 
-                    type="number"
-                    step="0.01"
-                    value={baseProLifetime} 
-                    onChange={(e) => setBaseProLifetime(e.target.value)}
-                    className="bg-zinc-950 border-zinc-800 text-zinc-100 text-xs pl-6 h-9" 
-                  />
-                </div>
-              </div>
-              <div>
-                <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 block mb-1">Super Lifetime Price</label>
-                <div className="relative flex items-center">
-                  <span className="text-zinc-500 absolute left-3 text-xs">$</span>
-                  <Input 
-                    type="number"
-                    step="0.01"
-                    value={baseSuperLifetime} 
-                    onChange={(e) => setBaseSuperLifetime(e.target.value)}
-                    className="bg-zinc-950 border-zinc-800 text-zinc-100 text-xs pl-6 h-9" 
-                  />
-                </div>
-              </div>
-              <div>
-                <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 block mb-1">INR Conv. Rate (₹/$)</label>
-                <div className="relative flex items-center">
-                  <span className="text-zinc-500 absolute left-3 text-xs">₹</span>
-                  <Input 
-                    type="number"
-                    step="0.1"
-                    value={inrConversionRate} 
-                    onChange={(e) => setInrConversionRate(e.target.value)}
-                    className="bg-zinc-950 border-zinc-800 text-zinc-100 text-xs pl-6 h-9" 
-                  />
-                </div>
-              </div>
+            {/* Tier Select Dropdown */}
+            <div className="mb-6">
+              <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 block mb-1.5">Select Configuration Tier</label>
+              <select
+                value={selectedConfigTier}
+                onChange={(e) => setSelectedConfigTier(e.target.value)}
+                className="bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-2 text-sm text-white focus:outline-none focus:border-indigo-500 cursor-pointer w-full md:w-96"
+              >
+                <option value="t3">Tier 3 (High-Income Countries / USD Baseline)</option>
+                <option value="t2">Tier 2 (Mid-Income Countries / USD)</option>
+                <option value="t1">Tier 1 (Low-Income Countries / USD)</option>
+                <option value="in">India (INR Localized Tier)</option>
+              </select>
             </div>
+
+            {/* Conditionally Render Inputs based on active tier */}
+            {selectedConfigTier === "t3" && (
+              <div className="space-y-4 mb-6">
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  <div>
+                    <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 block mb-1">Recovery Pass Price</label>
+                    <div className="relative flex items-center">
+                      <span className="text-zinc-500 absolute left-3 text-xs">$</span>
+                      <Input 
+                        type="number" 
+                        step="0.01"
+                        value={baseRecoveryPass} 
+                        onChange={(e) => setBaseRecoveryPass(e.target.value)}
+                        className="bg-zinc-950 border-zinc-800 text-zinc-100 text-xs pl-6 h-9" 
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 block mb-1">Pro Lifetime Price</label>
+                    <div className="relative flex items-center">
+                      <span className="text-zinc-500 absolute left-3 text-xs">$</span>
+                      <Input 
+                        type="number"
+                        step="0.01"
+                        value={baseProLifetime} 
+                        onChange={(e) => setBaseProLifetime(e.target.value)}
+                        className="bg-zinc-950 border-zinc-800 text-zinc-100 text-xs pl-6 h-9" 
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 block mb-1">Super Lifetime Price</label>
+                    <div className="relative flex items-center">
+                      <span className="text-zinc-500 absolute left-3 text-xs">$</span>
+                      <Input 
+                        type="number"
+                        step="0.01"
+                        value={baseSuperLifetime} 
+                        onChange={(e) => setBaseSuperLifetime(e.target.value)}
+                        className="bg-zinc-950 border-zinc-800 text-zinc-100 text-xs pl-6 h-9" 
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 block mb-1">Tier 3 Scale Factor</label>
+                    <Input 
+                      type="number" 
+                      step="0.05"
+                      value={tier3Scale} 
+                      onChange={(e) => setTier3Scale(e.target.value)}
+                      className="bg-zinc-950 border-zinc-800 text-zinc-100 text-xs h-9" 
+                    />
+                  </div>
+                </div>
+                <div className="bg-indigo-950/20 border border-indigo-900/40 rounded-xl p-4 mt-2">
+                  <div className="text-xs font-bold text-indigo-400">USD Baseline Pricing</div>
+                  <p className="text-[10px] text-zinc-500 mt-1">These values represent the standard baseline pricing. Other local tiers will scale relative to these numbers.</p>
+                </div>
+              </div>
+            )}
+
+            {selectedConfigTier === "t2" && (
+              <div className="space-y-4 mb-6">
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  <div>
+                    <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 block mb-1">Tier 2 Scale Factor</label>
+                    <Input 
+                      type="number" 
+                      step="0.05"
+                      value={tier2Scale} 
+                      onChange={(e) => setTier2Scale(e.target.value)}
+                      className="bg-zinc-950 border-zinc-800 text-zinc-100 text-xs h-9" 
+                    />
+                  </div>
+                  <div>
+                    <div className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 mb-1">Scaled Recovery Pass</div>
+                    <div className="bg-zinc-950 border border-zinc-800 rounded-lg h-9 px-3 flex items-center text-xs text-zinc-400">
+                      ${(Number(baseRecoveryPass) * Number(tier2Scale)).toFixed(2)}
+                    </div>
+                  </div>
+                  <div>
+                    <div className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 mb-1">Scaled Pro Lifetime</div>
+                    <div className="bg-zinc-950 border border-zinc-800 rounded-lg h-9 px-3 flex items-center text-xs text-zinc-400">
+                      ${Math.round(Number(baseProLifetime) * Number(tier2Scale))}
+                    </div>
+                  </div>
+                  <div>
+                    <div className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 mb-1">Scaled Super Lifetime</div>
+                    <div className="bg-zinc-950 border border-zinc-800 rounded-lg h-9 px-3 flex items-center text-xs text-zinc-400">
+                      ${Math.round(Number(baseSuperLifetime) * Number(tier2Scale))}
+                    </div>
+                  </div>
+                </div>
+                <div className="bg-purple-950/20 border border-purple-900/40 rounded-xl p-4 mt-2">
+                  <div className="text-xs font-bold text-purple-400">Mid-Income Country Tier (USD based)</div>
+                  <p className="text-[10px] text-zinc-500 mt-1">Local prices in Tier 2 countries (e.g. Malaysia, Brazil, Poland) are scaled using this factor.</p>
+                </div>
+              </div>
+            )}
+
+            {selectedConfigTier === "t1" && (
+              <div className="space-y-4 mb-6">
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  <div>
+                    <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 block mb-1">Tier 1 Scale Factor</label>
+                    <Input 
+                      type="number" 
+                      step="0.05"
+                      value={tier1Scale} 
+                      onChange={(e) => setTier1Scale(e.target.value)}
+                      className="bg-zinc-950 border-zinc-800 text-zinc-100 text-xs h-9" 
+                    />
+                  </div>
+                  <div>
+                    <div className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 mb-1">Scaled Recovery Pass</div>
+                    <div className="bg-zinc-950 border border-zinc-800 rounded-lg h-9 px-3 flex items-center text-xs text-zinc-400">
+                      ${(Number(baseRecoveryPass) * Number(tier1Scale)).toFixed(2)}
+                    </div>
+                  </div>
+                  <div>
+                    <div className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 mb-1">Scaled Pro Lifetime</div>
+                    <div className="bg-zinc-950 border border-zinc-800 rounded-lg h-9 px-3 flex items-center text-xs text-zinc-400">
+                      ${Math.round(Number(baseProLifetime) * Number(tier1Scale))}
+                    </div>
+                  </div>
+                  <div>
+                    <div className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 mb-1">Scaled Super Lifetime</div>
+                    <div className="bg-zinc-950 border border-zinc-800 rounded-lg h-9 px-3 flex items-center text-xs text-zinc-400">
+                      ${Math.round(Number(baseSuperLifetime) * Number(tier1Scale))}
+                    </div>
+                  </div>
+                </div>
+                <div className="bg-emerald-950/20 border border-emerald-900/40 rounded-xl p-4 mt-2">
+                  <div className="text-xs font-bold text-emerald-400">Low-Income Country Tier (USD based)</div>
+                  <p className="text-[10px] text-zinc-500 mt-1">Local prices in Tier 1 countries (e.g. Pakistan, Egypt, Indonesia) are scaled using this factor.</p>
+                </div>
+              </div>
+            )}
+
+            {selectedConfigTier === "in" && (
+              <div className="space-y-4 mb-6">
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  <div>
+                    <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 block mb-1">INR Conv. Rate (₹/$)</label>
+                    <div className="relative flex items-center">
+                      <span className="text-zinc-500 absolute left-3 text-xs">₹</span>
+                      <Input 
+                        type="number"
+                        step="0.1"
+                        value={inrConversionRate} 
+                        onChange={(e) => setInrConversionRate(e.target.value)}
+                        className="bg-zinc-950 border-zinc-800 text-zinc-100 text-xs pl-6 h-9" 
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <div className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 mb-1">India Recovery Pass</div>
+                    <div className="bg-zinc-950 border border-zinc-800 rounded-lg h-9 px-3 flex items-center text-xs text-zinc-400">
+                      ₹{Math.round(Number(baseRecoveryPass) * Number(tier1Scale) * Number(inrConversionRate))}
+                    </div>
+                  </div>
+                  <div>
+                    <div className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 mb-1">India Pro Lifetime</div>
+                    <div className="bg-zinc-950 border border-zinc-800 rounded-lg h-9 px-3 flex items-center text-xs text-zinc-400">
+                      ₹{Math.round(Number(baseProLifetime) * Number(tier1Scale) * Number(inrConversionRate))}
+                    </div>
+                  </div>
+                  <div>
+                    <div className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 mb-1">India Super Lifetime</div>
+                    <div className="bg-zinc-950 border border-zinc-800 rounded-lg h-9 px-3 flex items-center text-xs text-zinc-400">
+                      ₹{Math.round(Number(baseSuperLifetime) * Number(tier1Scale) * Number(inrConversionRate))}
+                    </div>
+                  </div>
+                </div>
+                <div className="bg-amber-950/20 border border-amber-900/40 rounded-xl p-4 mt-2">
+                  <div className="text-xs font-bold text-amber-400">India Tier Configuration (INR based)</div>
+                  <p className="text-[10px] text-zinc-500 mt-1">Uses Tier 1 scale factor ({tier1Scale}) converted to Indian Rupees (INR) at the conversion rate.</p>
+                </div>
+              </div>
+            )}
 
             <div className="flex justify-end gap-3 border-t border-zinc-800/80 pt-4">
               <Button 
