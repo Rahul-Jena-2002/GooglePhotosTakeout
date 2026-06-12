@@ -1,8 +1,8 @@
 import { Link } from "react-router-dom"
 import { Button } from "../components/ui/button"
 import { motion } from "framer-motion"
-import { Lock, FileJson, ArrowRight, ShieldCheck, Cpu, HardDrive, CheckCircle2, XCircle, Star, ChevronDown } from "lucide-react"
-import { useState, useEffect } from "react"
+import { Lock, FileJson, ArrowRight, ShieldCheck, Cpu, HardDrive, CheckCircle2, XCircle, Star, ChevronDown, ChevronLeft, ChevronRight } from "lucide-react"
+import { useState, useEffect, useRef } from "react"
 import { db } from "../firebase"
 import { doc, onSnapshot } from "firebase/firestore"
 import { useAuth } from "../contexts/AuthContext"
@@ -74,6 +74,122 @@ export default function LandingPage() {
 
     return () => unsubStats()
   }, [])
+
+  const trackRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    const track = trackRef.current
+    if (!track) return
+
+    const cardWidth = 256
+    const gap = 24
+    const itemWidth = cardWidth + gap // 280px
+    const singleCycleWidth = 4 * itemWidth // 1120px
+
+    track.scrollLeft = singleCycleWidth
+
+    let isWrapping = false
+    let isInteracting = false
+    let interactionTimeout: any
+
+    const checkInfiniteWrap = () => {
+      if (isWrapping) return
+      if (track.scrollLeft >= 2 * singleCycleWidth) {
+        isWrapping = true
+        track.scrollLeft -= singleCycleWidth
+        setTimeout(() => { isWrapping = false }, 50)
+      } else if (track.scrollLeft <= 0.5 * singleCycleWidth) {
+        isWrapping = true
+        track.scrollLeft += singleCycleWidth
+        setTimeout(() => { isWrapping = false }, 50)
+      }
+    }
+
+    const updateCenterMagnification = () => {
+      const rect = track.getBoundingClientRect()
+      const center = rect.left + rect.width / 2
+      const cards = track.querySelectorAll(".slider-card")
+
+      cards.forEach((card: any) => {
+        const cardRect = card.getBoundingClientRect()
+        const cardCenter = cardRect.left + cardRect.width / 2
+        const distance = Math.abs(center - cardCenter)
+
+        const maxDistance = 300
+        const factor = Math.max(0, 1 - distance / maxDistance)
+        const scale = 0.88 + factor * 0.24
+        const opacity = 0.4 + factor * 0.6
+
+        card.style.transform = `scale(${scale})`
+        card.style.opacity = `${opacity}`
+
+        if (distance < 140) {
+          card.style.borderColor = "rgba(99, 102, 241, 0.4)"
+          card.style.boxShadow = "0 10px 30px -5px rgba(99, 102, 241, 0.15)"
+        } else {
+          card.style.borderColor = "rgba(255, 255, 255, 0.1)"
+          card.style.boxShadow = "none"
+        }
+      })
+    }
+
+    let animationId: number
+    const autoScrollSpeed = 0.5
+
+    const animateScroll = () => {
+      if (!isInteracting) {
+        track.scrollLeft += autoScrollSpeed
+      }
+      animationId = requestAnimationFrame(animateScroll)
+    }
+
+    const handleInteraction = () => {
+      isInteracting = true
+      clearTimeout(interactionTimeout)
+      interactionTimeout = setTimeout(() => {
+        isInteracting = false
+      }, 4000)
+    }
+
+    track.addEventListener("scroll", checkInfiniteWrap)
+    track.addEventListener("scroll", updateCenterMagnification)
+    track.addEventListener("mousedown", handleInteraction)
+    track.addEventListener("touchstart", handleInteraction)
+
+    animateScroll()
+    setTimeout(updateCenterMagnification, 100)
+
+    return () => {
+      cancelAnimationFrame(animationId)
+      clearTimeout(interactionTimeout)
+      track.removeEventListener("scroll", checkInfiniteWrap)
+      track.removeEventListener("scroll", updateCenterMagnification)
+      track.removeEventListener("mousedown", handleInteraction)
+      track.removeEventListener("touchstart", handleInteraction)
+    }
+  }, [])
+
+  const handleScrollLeft = () => {
+    const track = trackRef.current
+    if (track) {
+      track.dispatchEvent(new Event("mousedown"))
+      track.scrollTo({
+        left: track.scrollLeft - 280,
+        behavior: "smooth"
+      })
+    }
+  }
+
+  const handleScrollRight = () => {
+    const track = trackRef.current
+    if (track) {
+      track.dispatchEvent(new Event("mousedown"))
+      track.scrollTo({
+        left: track.scrollLeft + 280,
+        behavior: "smooth"
+      })
+    }
+  }
 
   const formatBytes = (bytes: number) => {
     if (bytes === 0) return '0 B'
@@ -324,30 +440,95 @@ export default function LandingPage() {
       </div>
 
       {/* 6. HOW IT WORKS DIAGRAM */}
-      <section className="w-full py-36 text-center">
-        <div className="max-w-7xl mx-auto px-4">
+      <section className="w-full py-36 text-center relative overflow-hidden">
+        <div className="max-w-7xl mx-auto px-4 relative">
           <h2 className="text-4xl font-bold tracking-tighter mb-16">How It Works</h2>
-          <div className="flex flex-row items-center gap-4 md:gap-6 overflow-x-auto pb-6 pt-4 max-w-full justify-start md:justify-center custom-faq-scroll px-4 scroll-smooth">
-            <div className="bg-black border border-white/10 p-6 rounded-2xl w-64 min-w-[240px] flex-shrink-0 flow-card-1">
-              <div className="text-2xl font-bold text-white mb-2">Takeout</div>
-              <div className="text-white/50 text-sm">Photos + JSON</div>
-            </div>
-            <ArrowRight className="w-8 h-8 text-white/20 flex-shrink-0 flow-arrow-1" />
-            <div className="bg-indigo-500/10 border border-indigo-500/30 p-6 rounded-2xl w-64 min-w-[240px] flex-shrink-0 flow-card-2">
-              <div className="text-2xl font-bold text-indigo-400 mb-2">Matching</div>
-              <div className="text-white/50 text-sm">Fuzzy Logic Engine</div>
-            </div>
-            <ArrowRight className="w-8 h-8 text-white/20 flex-shrink-0 flow-arrow-2" />
-            <div className="bg-purple-500/10 border border-purple-500/30 p-6 rounded-2xl w-64 min-w-[240px] flex-shrink-0 flow-card-3">
-              <div className="text-2xl font-bold text-purple-400 mb-2">Injection</div>
-              <div className="text-white/50 text-sm">EXIF Header Rebuild</div>
-            </div>
-            <ArrowRight className="w-8 h-8 text-white/20 flex-shrink-0 flow-arrow-3" />
-            <div className="bg-green-500/10 border border-green-500/30 p-6 rounded-2xl w-64 min-w-[240px] flex-shrink-0 flow-card-4">
-              <div className="text-2xl font-bold text-green-400 mb-2">Restored</div>
-              <div className="text-white/50 text-sm">Perfect Timelines</div>
+          
+          {/* Timeline Navigation Arrows */}
+          <div className="flex justify-end gap-3 mb-6 max-w-4xl mx-auto px-6">
+            <button 
+              onClick={handleScrollLeft}
+              className="w-10 h-10 rounded-full border border-white/10 hover:border-indigo-500/50 bg-black flex items-center justify-center text-white transition-all duration-300 hover:scale-105 active:scale-95"
+              aria-label="Previous step"
+            >
+              <ChevronLeft className="w-5 h-5" />
+            </button>
+            <button 
+              onClick={handleScrollRight}
+              className="w-10 h-10 rounded-full border border-white/10 hover:border-indigo-500/50 bg-black flex items-center justify-center text-white transition-all duration-300 hover:scale-105 active:scale-95"
+              aria-label="Next step"
+            >
+              <ChevronRight className="w-5 h-5" />
+            </button>
+          </div>
+
+          {/* Timeline slider container */}
+          <div className="relative max-w-4xl mx-auto px-6">
+            {/* Center Focus Target Frame Indicator */}
+            <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[280px] h-[190px] border-2 border-indigo-500/20 rounded-3xl pointer-events-none z-20 bg-indigo-500/[0.02]"></div>
+
+            {/* Scrollable Track */}
+            <div 
+              ref={trackRef}
+              className="flex items-center gap-6 overflow-x-hidden py-12 px-[calc(50%-128px)] scroll-smooth select-none cursor-grab active:cursor-grabbing"
+              style={{ WebkitOverflowScrolling: 'touch' }}
+            >
+              {/* Cycle 1 */}
+              <div className="slider-card bg-black/40 border border-white/10 p-8 rounded-2xl w-64 min-w-[256px] h-[160px] flex-shrink-0 flex flex-col justify-center items-center text-center transition-all duration-500 ease-out select-none">
+                <div className="text-3xl font-extrabold text-white mb-2">1. Upload Takeout</div>
+                <div className="text-white/50 text-xs font-semibold tracking-wide uppercase">Select Zip or Folder</div>
+              </div>
+              <div className="slider-card bg-black/40 border border-white/10 p-8 rounded-2xl w-64 min-w-[256px] h-[160px] flex-shrink-0 flex flex-col justify-center items-center text-center transition-all duration-500 ease-out select-none">
+                <div className="text-3xl font-extrabold text-indigo-400 mb-2">2. Match Metadata</div>
+                <div className="text-white/50 text-xs font-semibold tracking-wide uppercase">Fuzzy Logic Engine</div>
+              </div>
+              <div className="slider-card bg-black/40 border border-white/10 p-8 rounded-2xl w-64 min-w-[256px] h-[160px] flex-shrink-0 flex flex-col justify-center items-center text-center transition-all duration-500 ease-out select-none">
+                <div className="text-3xl font-extrabold text-purple-400 mb-2">3. Inject EXIF</div>
+                <div className="text-white/50 text-xs font-semibold tracking-wide uppercase">Metadata Rebuild</div>
+              </div>
+              <div className="slider-card bg-black/40 border border-white/10 p-8 rounded-2xl w-64 min-w-[256px] h-[160px] flex-shrink-0 flex flex-col justify-center items-center text-center transition-all duration-500 ease-out select-none">
+                <div className="text-3xl font-extrabold text-green-400 mb-2">4. Perfect Recovery</div>
+                <div className="text-white/50 text-xs font-semibold tracking-wide uppercase">Ready for iCloud/Synology</div>
+              </div>
+
+              {/* Cycle 2 */}
+              <div className="slider-card bg-black/40 border border-white/10 p-8 rounded-2xl w-64 min-w-[256px] h-[160px] flex-shrink-0 flex flex-col justify-center items-center text-center transition-all duration-500 ease-out select-none">
+                <div className="text-3xl font-extrabold text-white mb-2">1. Upload Takeout</div>
+                <div className="text-white/50 text-xs font-semibold tracking-wide uppercase">Select Zip or Folder</div>
+              </div>
+              <div className="slider-card bg-black/40 border border-white/10 p-8 rounded-2xl w-64 min-w-[256px] h-[160px] flex-shrink-0 flex flex-col justify-center items-center text-center transition-all duration-500 ease-out select-none">
+                <div className="text-3xl font-extrabold text-indigo-400 mb-2">2. Match Metadata</div>
+                <div className="text-white/50 text-xs font-semibold tracking-wide uppercase">Fuzzy Logic Engine</div>
+              </div>
+              <div className="slider-card bg-black/40 border border-white/10 p-8 rounded-2xl w-64 min-w-[256px] h-[160px] flex-shrink-0 flex flex-col justify-center items-center text-center transition-all duration-500 ease-out select-none">
+                <div className="text-3xl font-extrabold text-purple-400 mb-2">3. Inject EXIF</div>
+                <div className="text-white/50 text-xs font-semibold tracking-wide uppercase">Metadata Rebuild</div>
+              </div>
+              <div className="slider-card bg-black/40 border border-white/10 p-8 rounded-2xl w-64 min-w-[256px] h-[160px] flex-shrink-0 flex flex-col justify-center items-center text-center transition-all duration-500 ease-out select-none">
+                <div className="text-3xl font-extrabold text-green-400 mb-2">4. Perfect Recovery</div>
+                <div className="text-white/50 text-xs font-semibold tracking-wide uppercase">Ready for iCloud/Synology</div>
+              </div>
+
+              {/* Cycle 3 */}
+              <div className="slider-card bg-black/40 border border-white/10 p-8 rounded-2xl w-64 min-w-[256px] h-[160px] flex-shrink-0 flex flex-col justify-center items-center text-center transition-all duration-500 ease-out select-none">
+                <div className="text-3xl font-extrabold text-white mb-2">1. Upload Takeout</div>
+                <div className="text-white/50 text-xs font-semibold tracking-wide uppercase">Select Zip or Folder</div>
+              </div>
+              <div className="slider-card bg-black/40 border border-white/10 p-8 rounded-2xl w-64 min-w-[256px] h-[160px] flex-shrink-0 flex flex-col justify-center items-center text-center transition-all duration-500 ease-out select-none">
+                <div className="text-3xl font-extrabold text-indigo-400 mb-2">2. Match Metadata</div>
+                <div className="text-white/50 text-xs font-semibold tracking-wide uppercase">Fuzzy Logic Engine</div>
+              </div>
+              <div className="slider-card bg-black/40 border border-white/10 p-8 rounded-2xl w-64 min-w-[256px] h-[160px] flex-shrink-0 flex flex-col justify-center items-center text-center transition-all duration-500 ease-out select-none">
+                <div className="text-3xl font-extrabold text-purple-400 mb-2">3. Inject EXIF</div>
+                <div className="text-white/50 text-xs font-semibold tracking-wide uppercase">Metadata Rebuild</div>
+              </div>
+              <div className="slider-card bg-black/40 border border-white/10 p-8 rounded-2xl w-64 min-w-[256px] h-[160px] flex-shrink-0 flex flex-col justify-center items-center text-center transition-all duration-500 ease-out select-none">
+                <div className="text-3xl font-extrabold text-green-400 mb-2">4. Perfect Recovery</div>
+                <div className="text-white/50 text-xs font-semibold tracking-wide uppercase">Ready for iCloud/Synology</div>
+              </div>
             </div>
           </div>
+
           <div className="mt-16">
             <Link to="/how-it-works">
               <Button variant="outline" className="rounded-full px-8 text-white/70 hover:text-white border-white/20">Read the Technical Whitepaper</Button>
