@@ -618,7 +618,7 @@ html.light .compare-item-value-fixed {
   color: #707085 !important;
 }
 .faq-answer {
-  color: #B8B8CC !important;
+  color: #E8E8F0 !important;
 }
 
 /* Limit paragraph width for maximum typography readability (Apple/Premium style) */
@@ -680,6 +680,24 @@ html:not(.light) .bg-zinc-900 {
 html:not(.light) .border-white\/10,
 html:not(.light) .border-zinc-800 {
   border-color: rgba(255, 255, 255, 0.08) !important;
+}
+
+/* Ensure text inside cards, comparison boxes, and feature grids is bright and highly readable (Dark Mode) */
+html:not(.light) .compare-card .compare-file-desc {
+  color: #B8B8CC !important;
+}
+html:not(.light) .compare-card .compare-item-label {
+  color: #B8B8CC !important;
+}
+html:not(.light) .bg-white\/5 p,
+html:not(.light) .bg-zinc-900 p,
+html:not(.light) .glass-card p {
+  color: #E8E8F0 !important;
+}
+html:not(.light) .bg-white\/5 h3,
+html:not(.light) .bg-zinc-900 h3,
+html:not(.light) .glass-card h3 {
+  color: #FFFFFF !important;
 }
 
 
