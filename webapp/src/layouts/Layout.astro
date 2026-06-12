@@ -128,10 +128,10 @@ const canonicalUrl = `https://takeoutfix.pages.dev${Astro.url.pathname.replace(/
           </div>
           
           <div class="flex items-center gap-2.5 md:gap-6">
-            <!-- Theme Toggle Button -->
+            <!-- Theme Toggle Button (Hidden) -->
             <button 
               id="theme-toggle-btn"
-              class="hidden lg:flex p-2 rounded-full bg-zinc-900 border border-zinc-800 hover:bg-zinc-800 hover:scale-[1.02] focus:outline-none transition-all items-center justify-center text-white/80 hover:text-white"
+              class="hidden p-2 rounded-full bg-zinc-900 border border-zinc-800 hover:bg-zinc-800 hover:scale-[1.02] focus:outline-none transition-all items-center justify-center text-white/80 hover:text-white"
               title="Toggle Theme"
             >
               <!-- Sun Icon -->
@@ -242,8 +242,8 @@ const canonicalUrl = `https://takeoutfix.pages.dev${Astro.url.pathname.replace(/
             <a id="mobile-admin-link" href="/admin" class="py-2 px-2 text-white/70 hover:text-white hover:bg-white/5 rounded-md text-sm font-medium transition-all hidden">Admin Center</a>
           </div>
           
-          <!-- Mobile Theme Toggle -->
-          <div class="flex items-center justify-between py-2 px-2 border-t border-white/5 mt-2 pt-3">
+          <!-- Mobile Theme Toggle (Hidden) -->
+          <div class="hidden items-center justify-between py-2 px-2 border-t border-white/5 mt-2 pt-3">
             <span class="text-xs font-bold text-white/30 uppercase tracking-wider">Appearance</span>
             <button 
               id="mobile-theme-toggle-btn"
@@ -429,48 +429,12 @@ const canonicalUrl = `https://takeoutfix.pages.dev${Astro.url.pathname.replace(/
         checkAdBlock();
       });
 
-      // 1. Theme Toggle System
+      // 1. Theme Toggle System (Forced Dark Mode)
       const initTheme = () => {
         const root = document.documentElement;
-        const savedTheme = localStorage.getItem("takeoutfix_theme") || "light";
-        
-        const updateThemeUI = (theme: string) => {
-          const sunIcon = document.getElementById("theme-sun-icon");
-          const moonIcon = document.getElementById("theme-moon-icon");
-          const mobileSunSvg = document.querySelector(".theme-sun-svg");
-          const mobileMoonSvg = document.querySelector(".theme-moon-svg");
-          const mobileThemeText = document.getElementById("mobile-theme-text");
-
-          if (theme === "light") {
-            root.classList.add("light");
-            root.classList.remove("dark");
-            sunIcon?.classList.add("hidden");
-            moonIcon?.classList.remove("hidden");
-            mobileSunSvg?.classList.add("hidden");
-            mobileMoonSvg?.classList.remove("hidden");
-            if (mobileThemeText) mobileThemeText.innerText = "Dark Mode";
-          } else {
-            root.classList.add("dark");
-            root.classList.remove("light");
-            sunIcon?.classList.remove("hidden");
-            moonIcon?.classList.add("hidden");
-            mobileSunSvg?.classList.remove("hidden");
-            mobileMoonSvg?.classList.add("hidden");
-            if (mobileThemeText) mobileThemeText.innerText = "Light Mode";
-          }
-        };
-
-        updateThemeUI(savedTheme);
-
-        const toggleTheme = () => {
-          const current = root.classList.contains("light") ? "light" : "dark";
-          const next = current === "light" ? "dark" : "light";
-          localStorage.setItem("takeoutfix_theme", next);
-          updateThemeUI(next);
-        };
-
-        document.getElementById("theme-toggle-btn")?.addEventListener("click", toggleTheme);
-        document.getElementById("mobile-theme-toggle-btn")?.addEventListener("click", toggleTheme);
+        root.classList.add("dark");
+        root.classList.remove("light");
+        localStorage.setItem("takeoutfix_theme", "dark");
       };
 
       initTheme();

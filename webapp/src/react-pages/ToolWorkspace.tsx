@@ -208,6 +208,46 @@ function ToolWorkspaceContent() {
   const [dupGroups, setDupGroups] = useState<any[]>([])
   const [dupScanStatus, setDupScanStatus] = useState("Idle")
 
+  const renderSuperTierGate = (
+    title: string,
+    description: string,
+    features: string[],
+    renderContent: () => React.ReactNode
+  ) => {
+    if (plan === 'super') {
+      return renderContent()
+    }
+
+    return (
+      <div className="p-8 flex flex-col items-center justify-center text-center h-full max-w-md mx-auto space-y-6">
+        <div className="w-16 h-16 bg-amber-500/10 border border-amber-500/20 text-amber-400 rounded-full flex items-center justify-center shadow-lg shadow-amber-500/5">
+          <Lock className="w-8 h-8" />
+        </div>
+        <div>
+          <h2 className="text-2xl font-black text-white mb-2">{title}</h2>
+          <p className="text-zinc-400 text-sm leading-relaxed">{description}</p>
+        </div>
+        <div className="w-full bg-zinc-950/50 border border-white/5 rounded-2xl p-5 text-left space-y-3">
+          <span className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest block mb-1">Included Features:</span>
+          {features.map((f, i) => (
+            <div key={i} className="flex items-start gap-2.5 text-xs text-zinc-300">
+              <span className="text-amber-400 font-bold">✓</span>
+              <span>{f}</span>
+            </div>
+          ))}
+        </div>
+        <div className="w-full pt-2">
+          <a href="/pricing">
+            <Button className="w-full h-12 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-black font-bold rounded-xl border-0 shadow-lg shadow-amber-500/10">
+              Unlock with Super Plan
+            </Button>
+          </a>
+        </div>
+      </div>
+    )
+  }
+
+
   // Calculate optimal threads based on hardwareConcurrency, device memory, and headroom (matching the Svelte/Firebase config)
   const getOptimalThreadCount = () => {
     const isMobile = /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent)
@@ -327,7 +367,7 @@ function ToolWorkspaceContent() {
           const baseMem = 32.0 + activeCount * 14.5
           setTelemetryMem(parseFloat((baseMem + Math.random() * 4).toFixed(1)))
           setTelemetryWorkers(0)
-        } else if (scannerRef.current) {
+        } else if (queueRef.current.length === 0) {
           setTelemetryCpu(parseFloat((12.0 + Math.random() * 5).toFixed(1)))
           setTelemetryMem(parseFloat((28.0 + Math.random() * 2).toFixed(1)))
           setTelemetryWorkers(1)

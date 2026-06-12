@@ -281,7 +281,6 @@ export default function AdminUsers() {
                             </span>
                           )}
                         </div>
-                        <div className="text-xs text-zinc-500">{u.email}</div>
                       </div>
                     </div>
                   </td>

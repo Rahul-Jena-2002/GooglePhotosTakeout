@@ -18,23 +18,15 @@ export default function MainLayout() {
   const [profileMenuOpen, setProfileMenuOpen] = useState(false)
   const [notifications, setNotifications] = useState<any[]>([])
   const [notificationMenuOpen, setNotificationMenuOpen] = useState(false)
-  const [theme, setTheme] = useState<'light' | 'dark'>(() => {
-    const saved = localStorage.getItem("takeoutfix_theme")
-    return (saved as 'light' | 'dark') || 'light'
-  })
+  const [theme, setTheme] = useState<'light' | 'dark'>('dark')
 
-  // Synchronize theme with class on HTML element
+  // Synchronize theme with class on HTML element (Always Dark)
   useEffect(() => {
     const root = window.document.documentElement
-    if (theme === 'light') {
-      root.classList.add('light')
-      root.classList.remove('dark')
-    } else {
-      root.classList.add('dark')
-      root.classList.remove('light')
-    }
-    localStorage.setItem("takeoutfix_theme", theme)
-  }, [theme])
+    root.classList.add('dark')
+    root.classList.remove('light')
+    localStorage.setItem("takeoutfix_theme", 'dark')
+  }, [])
 
   // Close menus on page transition
   useEffect(() => {
@@ -166,7 +158,7 @@ export default function MainLayout() {
                  {/* Desktop Theme Toggle */}
                 <button 
                   onClick={() => setTheme(theme === 'light' ? 'dark' : 'light')}
-                  className="hidden lg:flex p-2 rounded-full bg-zinc-900 border border-zinc-800 hover:bg-zinc-800 hover:scale-[1.02] focus:outline-none transition-all items-center justify-center text-white/80 hover:text-white"
+                  className="hidden p-2 rounded-full bg-zinc-900 border border-zinc-800 hover:bg-zinc-800 hover:scale-[1.02] focus:outline-none transition-all items-center justify-center text-white/80 hover:text-white"
                   title={theme === 'light' ? 'Switch to Dark Mode' : 'Switch to Light Mode'}
                 >
                   {theme === 'light' ? (
@@ -372,8 +364,8 @@ export default function MainLayout() {
               </div>
             )}
 
-            {/* Mobile Theme Toggle Row (Left Overlay) */}
-            <div className="flex items-center justify-between py-2 px-2 border-t border-white/5 mt-2 pt-3">
+            {/* Mobile Theme Toggle Row (Left Overlay) (Hidden) */}
+            <div className="hidden items-center justify-between py-2 px-2 border-t border-white/5 mt-2 pt-3">
               <span className="text-xs font-bold text-white/30 uppercase tracking-wider">Appearance</span>
               <button 
                 onClick={() => setTheme(theme === 'light' ? 'dark' : 'light')}
@@ -417,8 +409,8 @@ export default function MainLayout() {
             </div>
             <Link to="/profile" className="py-2 px-2 text-white/70 hover:text-white hover:bg-white/5 rounded-md text-sm font-medium transition-all" onClick={() => setProfileMenuOpen(false)}>Profile</Link>
             
-            {/* Mobile Theme Toggle Row (Right Overlay) */}
-            <div className="flex items-center justify-between py-2 px-2 border-t border-white/5 mt-1 pt-3">
+            {/* Mobile Theme Toggle Row (Right Overlay) (Hidden) */}
+            <div className="hidden items-center justify-between py-2 px-2 border-t border-white/5 mt-1 pt-3">
               <span className="text-xs font-bold text-white/30 uppercase tracking-wider">Appearance</span>
               <button 
                 onClick={() => setTheme(theme === 'light' ? 'dark' : 'light')}
