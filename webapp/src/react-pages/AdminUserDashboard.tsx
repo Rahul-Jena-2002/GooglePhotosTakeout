@@ -226,12 +226,13 @@ export default function AdminUserDashboard() {
   
   // Storage Quota
   const maxQuotaGB = plan === 'free' ? 1 : plan === 'recovery_pass' ? 20 : Infinity
-  const usedGB = (targetUser.usedBytes || 0) / (1024 ** 3)
+  const usedBytesVal = plan === 'free' ? getUserBytes(targetUser) : (targetUser.usedBytes || 0)
+  const usedGB = usedBytesVal / (1024 ** 3)
   const quotaPct = maxQuotaGB === Infinity ? 0 : Math.min(100, (usedGB / maxQuotaGB) * 100)
 
   // Files Quota
   const maxQuotaFiles = plan === 'free' ? 1000 : plan === 'recovery_pass' ? 10000 : Infinity
-  const usedFiles = targetUser.usedFiles || 0
+  const usedFiles = plan === 'free' ? getUserFiles(targetUser) : (targetUser.usedFiles || 0)
   const fileQuotaPct = maxQuotaFiles === Infinity ? 0 : Math.min(100, (usedFiles / maxQuotaFiles) * 100)
 
   const downloadInvoice = (tx: any) => {

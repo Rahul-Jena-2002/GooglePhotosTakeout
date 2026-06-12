@@ -41,8 +41,23 @@ export function ToolWorkspaceContent() {
   const { user, userData, refreshUserData, login } = useAuth()
 
   const plan = userData?.plan || 'free'
-  const currentUsedFiles = userData?.usedFiles || 0
-  const currentUsedBytes = userData?.usedBytes || 0
+
+  const getUserBytes = (u: any) => {
+    if (!u) return 0;
+    return Math.max(u.usedBytes || 0, u.totalBytesProcessed || 0, u.lifetimeBytes || 0);
+  }
+
+  const getUserFiles = (u: any) => {
+    if (!u) return 0;
+    const recorded = Math.max(u.totalFilesProcessed || 0, u.usedFiles || 0, u.lifetimeFiles || 0);
+    const trackedBytes = Math.max(u.totalBytesProcessed || 0, u.usedBytes || 0);
+    const legacyBytes = Math.max(0, (u.lifetimeBytes || 0) - trackedBytes);
+    const legacyFiles = legacyBytes > 0 ? Math.round(legacyBytes / (1.2 * 1024 * 1024)) : 0;
+    return recorded + legacyFiles;
+  }
+
+  const currentUsedFiles = plan === 'free' ? getUserFiles(userData) : (userData?.usedFiles || 0)
+  const currentUsedBytes = plan === 'free' ? getUserBytes(userData) : (userData?.usedBytes || 0)
 
   if (!user) {
     return (
@@ -1184,7 +1199,8 @@ export function ToolWorkspaceContent() {
       console.warn("Failed to check directory handles:", err)
     }
 
-    if (currentUsedFiles >= limitFiles || currentUsedBytes >= limitBytes) {
+    const isBypass = userData?.isAdmin || import.meta.env.DEV;
+    if (!isBypass && (currentUsedFiles >= limitFiles || currentUsedBytes >= limitBytes)) {
       let limitReason = ""
       if (currentUsedFiles >= limitFiles && currentUsedBytes >= limitBytes) {
         limitReason = "both your storage and file count limits"
@@ -1303,7 +1319,8 @@ export function ToolWorkspaceContent() {
               await new Promise(resolve => setTimeout(resolve, 200))
             }
 
-            if (currentUsedBytesRef.current + sessionBytesRef.current > limitBytesRef.current || currentUsedFilesRef.current + sessionFilesRef.current > limitFilesRef.current) {
+            const isBypass = userData?.isAdmin || import.meta.env.DEV;
+            if (!isBypass && (currentUsedBytesRef.current + sessionBytesRef.current > limitBytesRef.current || currentUsedFilesRef.current + sessionFilesRef.current > limitFilesRef.current)) {
               await haltDueToQuota()
               return
             }

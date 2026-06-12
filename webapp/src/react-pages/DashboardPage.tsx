@@ -117,16 +117,6 @@ function DashboardPageContent() {
   const plan = userData?.plan || 'free'
   const isPaid = plan !== 'free'
   
-  // Storage Quota
-  const maxQuotaGB = plan === 'free' ? 1 : plan === 'recovery_pass' ? 20 : Infinity
-  const usedGB = (userData?.usedBytes || 0) / (1024 ** 3)
-  const quotaPct = maxQuotaGB === Infinity ? 0 : Math.min(100, (usedGB / maxQuotaGB) * 100)
-
-  // Files Quota
-  const maxQuotaFiles = plan === 'free' ? 1000 : plan === 'recovery_pass' ? 10000 : Infinity
-  const usedFiles = userData?.usedFiles || 0
-  const fileQuotaPct = maxQuotaFiles === Infinity ? 0 : Math.min(100, (usedFiles / maxQuotaFiles) * 100)
-
   // Lifetime Stats (for Pro/Super users who don't have quotas but want to track their total usage)
   const totalBytesVal = Math.max(
     userData?.usedBytes || 0,
@@ -141,6 +131,17 @@ function DashboardPageContent() {
     userData?.totalFilesProcessed || 0,
     (userData as any)?.lifetimeFiles || 0
   ) + legacyFiles
+
+  // Storage Quota
+  const maxQuotaGB = plan === 'free' ? 1 : plan === 'recovery_pass' ? 20 : Infinity
+  const usedBytesVal = plan === 'free' ? totalBytesVal : (userData?.usedBytes || 0)
+  const usedGB = usedBytesVal / (1024 ** 3)
+  const quotaPct = maxQuotaGB === Infinity ? 0 : Math.min(100, (usedGB / maxQuotaGB) * 100)
+
+  // Files Quota
+  const maxQuotaFiles = plan === 'free' ? 1000 : plan === 'recovery_pass' ? 10000 : Infinity
+  const usedFiles = plan === 'free' ? totalFilesVal : (userData?.usedFiles || 0)
+  const fileQuotaPct = maxQuotaFiles === Infinity ? 0 : Math.min(100, (usedFiles / maxQuotaFiles) * 100)
 
   // Receipt builder
   const downloadInvoice = (tx: any) => {
