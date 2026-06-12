@@ -28,10 +28,7 @@ export default function AdminTeam() {
   const [inviteRole, setInviteRole] = useState<AdminRole>("SUPPORT")
   const [inviting, setInviting] = useState(false)
 
-  // Only SUPER_ADMIN can access this page
-  if (adminData?.role !== "SUPER_ADMIN") {
-    return <Navigate to="/admin" replace />
-  }
+  const isSuperAdmin = adminData?.role === "SUPER_ADMIN"
 
   useEffect(() => {
     const unsub = onSnapshot(collection(db, "admins"), (snap) => {
@@ -111,31 +108,33 @@ export default function AdminTeam() {
         </div>
 
         {/* Invite form */}
-        <div className="flex items-center gap-2">
-          <input
-            type="email"
-            placeholder="Email to invite..."
-            value={inviteEmail}
-            onChange={e => setInviteEmail(e.target.value)}
-            className="bg-zinc-900 border border-zinc-800 rounded-md py-2 px-3 text-sm text-white focus:outline-none focus:border-indigo-500 w-56"
-          />
-          <select
-            value={inviteRole}
-            onChange={e => setInviteRole(e.target.value as AdminRole)}
-            className="bg-zinc-900 border border-zinc-800 rounded-md py-2 px-3 text-sm text-white focus:outline-none focus:border-indigo-500"
-          >
-            {ROLES.filter(r => r !== "SUPER_ADMIN").map(r => (
-              <option key={r} value={r}>{r}</option>
-            ))}
-          </select>
-          <button
-            onClick={handleInvite}
-            disabled={inviting || !inviteEmail.trim()}
-            className="bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white px-4 py-2 rounded-md flex items-center gap-2 text-sm font-medium transition-colors"
-          >
-            <Plus className="w-4 h-4" /> Invite
-          </button>
-        </div>
+        {isSuperAdmin && (
+          <div className="flex items-center gap-2">
+            <input
+              type="email"
+              placeholder="Email to invite..."
+              value={inviteEmail}
+              onChange={e => setInviteEmail(e.target.value)}
+              className="bg-zinc-900 border border-zinc-800 rounded-md py-2 px-3 text-sm text-white focus:outline-none focus:border-indigo-500 w-56"
+            />
+            <select
+              value={inviteRole}
+              onChange={e => setInviteRole(e.target.value as AdminRole)}
+              className="bg-zinc-900 border border-zinc-800 rounded-md py-2 px-3 text-sm text-white focus:outline-none focus:border-indigo-500"
+            >
+              {ROLES.filter(r => r !== "SUPER_ADMIN").map(r => (
+                <option key={r} value={r}>{r}</option>
+              ))}
+            </select>
+            <button
+              onClick={handleInvite}
+              disabled={inviting || !inviteEmail.trim()}
+              className="bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white px-4 py-2 rounded-md flex items-center gap-2 text-sm font-medium transition-colors"
+            >
+              <Plus className="w-4 h-4" /> Invite
+            </button>
+          </div>
+        )}
       </div>
 
       <div className="bg-zinc-900 border border-zinc-800 rounded-lg overflow-hidden">
@@ -146,14 +145,14 @@ export default function AdminTeam() {
               <th className="px-6 py-3 font-medium">Role</th>
               <th className="px-6 py-3 font-medium">Status</th>
               <th className="px-6 py-3 font-medium">Last Seen</th>
-              <th className="px-6 py-3 font-medium text-right">Actions</th>
+              {isSuperAdmin && <th className="px-6 py-3 font-medium text-right">Actions</th>}
             </tr>
           </thead>
           <tbody className="divide-y divide-zinc-800">
             {loading ? (
-              <tr><td colSpan={5} className="px-6 py-8 text-center text-zinc-500">Loading team...</td></tr>
+              <tr><td colSpan={isSuperAdmin ? 5 : 4} className="px-6 py-8 text-center text-zinc-500">Loading team...</td></tr>
             ) : admins.length === 0 ? (
-              <tr><td colSpan={5} className="px-6 py-8 text-center text-zinc-500">No admin accounts found.</td></tr>
+              <tr><td colSpan={isSuperAdmin ? 5 : 4} className="px-6 py-8 text-center text-zinc-500">No admin accounts found.</td></tr>
             ) : (
               admins.map((a) => (
                 <tr key={a.uid} className="hover:bg-zinc-800/40 transition-colors">
@@ -179,7 +178,7 @@ export default function AdminTeam() {
                     </div>
                   </td>
                   <td className="px-6 py-4">
-                    {a.uid === user?.uid ? (
+                    {!isSuperAdmin || a.uid === user?.uid ? (
                       <span className={`inline-flex items-center px-2 py-1 rounded-md text-xs font-bold uppercase border ${ROLE_COLORS[a.role]}`}>
                         {a.role.replace("_", " ")}
                       </span>
@@ -208,17 +207,19 @@ export default function AdminTeam() {
                   <td className="px-6 py-4 text-zinc-500 text-xs">
                     {a.lastSeen ? new Date(a.lastSeen).toLocaleString() : "Never"}
                   </td>
-                  <td className="px-6 py-4 text-right">
-                    {a.uid !== user?.uid && (
-                      <button
-                        onClick={() => handleRemove(a)}
-                        className="text-zinc-500 hover:text-red-400 transition-colors p-1.5 rounded hover:bg-red-500/10"
-                        title="Remove from admin team"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    )}
-                  </td>
+                  {isSuperAdmin && (
+                    <td className="px-6 py-4 text-right">
+                      {a.uid !== user?.uid && (
+                        <button
+                          onClick={() => handleRemove(a)}
+                          className="text-zinc-500 hover:text-red-400 transition-colors p-1.5 rounded hover:bg-red-500/10"
+                          title="Remove from admin team"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      )}
+                    </td>
+                  )}
                 </tr>
               ))
             )}
