@@ -358,38 +358,7 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* 7. VERIFIED METRICS (REPLACES TESTIMONIALS) */}
-      <section className="w-full max-w-7xl mx-auto px-4 py-36 text-center">
-        <h2 className="text-4xl font-bold tracking-tighter mb-4 text-white">Open Source & Verified Metrics</h2>
-        <p className="text-xl text-white/60 mb-16 max-w-2xl mx-auto">TakeoutFix is transparent, open-source, and runs entirely on your local machine.</p>
-        
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-6 max-w-6xl mx-auto">
-          <div className="glass-card p-6 flex flex-col items-center justify-center text-center">
-            <div className="text-3xl font-black text-indigo-400 mb-1">1,240+</div>
-            <div className="text-[10px] uppercase font-bold tracking-wider text-white/40">GitHub Stars</div>
-          </div>
-          <div className="glass-card p-6 flex flex-col items-center justify-center text-center">
-            <div className="text-3xl font-black text-indigo-400 mb-1">15,000+</div>
-            <div className="text-[10px] uppercase font-bold tracking-wider text-white/40">Downloads</div>
-          </div>
-          <div className="glass-card p-6 flex flex-col items-center justify-center text-center">
-            <div id="stat-metric-restored" className="text-3xl font-black text-indigo-400 mb-1">{stats.filesRestored > 0 ? `${stats.filesRestored.toLocaleString()}+` : "11,347+"}</div>
-            <div className="text-[10px] uppercase font-bold tracking-wider text-white/40">Files Restored</div>
-          </div>
-          <div className="glass-card p-6 flex flex-col items-center justify-center text-center">
-            <div className="text-3xl font-black text-indigo-400 mb-1">12</div>
-            <div className="text-[10px] uppercase font-bold tracking-wider text-white/40">Contributors</div>
-          </div>
-          <div className="glass-card p-6 flex flex-col items-center justify-center text-center">
-            <div className="text-3xl font-black text-indigo-400 mb-1">350+</div>
-            <div className="text-[10px] uppercase font-bold tracking-wider text-white/40">Commits</div>
-          </div>
-          <div className="glass-card p-6 flex flex-col items-center justify-center text-center">
-            <div className="text-3xl font-black text-indigo-400 mb-1">94</div>
-            <div className="text-[10px] uppercase font-bold tracking-wider text-white/40">Issues Closed</div>
-          </div>
-        </div>
-      </section>
+
 
       <div className="w-full max-w-4xl mx-auto px-6 my-8">
         <AdUnit type="horizontal" />
