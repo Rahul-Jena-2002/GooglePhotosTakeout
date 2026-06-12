@@ -505,7 +505,14 @@ const canonicalUrl = `https://takeoutfix.pages.dev${Astro.url.pathname.replace(/
             authLoading?.classList.add("hidden");
             
             if (profileNameSpan) profileNameSpan.innerText = `Hi, ${firstName}`;
-            if (profileAvatarCircle) profileAvatarCircle.innerText = firstName.charAt(0).toUpperCase();
+            if (profileAvatarCircle) {
+              const initial = firstName.charAt(0).toUpperCase();
+              if (cachedUser.photoURL) {
+                profileAvatarCircle.innerHTML = `<img src="${cachedUser.photoURL}" class="w-full h-full rounded-full object-cover" referrerpolicy="no-referrer" onerror="this.style.display='none'; this.parentElement.innerText='${initial}'" />`;
+              } else {
+                profileAvatarCircle.innerText = initial;
+              }
+            }
             if (dropdownFullName) dropdownFullName.innerText = cachedUser.displayName || "User";
             
             if (cachedUser.username && dropdownUsername) {
@@ -616,7 +623,14 @@ const canonicalUrl = `https://takeoutfix.pages.dev${Astro.url.pathname.replace(/
 
             // Setup profile content fallback
             if (profileNameSpan) profileNameSpan.innerText = `Hi, ${user.displayName?.split(" ")[0] || "User"}`;
-            if (profileAvatarCircle) profileAvatarCircle.innerText = user.displayName?.charAt(0).toUpperCase() || "U";
+            if (profileAvatarCircle) {
+              const initial = user.displayName?.charAt(0).toUpperCase() || "U";
+              if (user.photoURL) {
+                profileAvatarCircle.innerHTML = `<img src="${user.photoURL}" class="w-full h-full rounded-full object-cover" referrerpolicy="no-referrer" onerror="this.style.display='none'; this.parentElement.innerText='${initial}'" />`;
+              } else {
+                profileAvatarCircle.innerText = initial;
+              }
+            }
             if (dropdownFullName) dropdownFullName.innerText = user.displayName || "User";
 
             // Listen to dynamic user fields in Firestore
@@ -644,7 +658,15 @@ const canonicalUrl = `https://takeoutfix.pages.dev${Astro.url.pathname.replace(/
                   : (data.displayName || user.displayName || 'User');
                 
                 if (profileNameSpan) profileNameSpan.innerText = `Hi, ${firstName}`;
-                if (profileAvatarCircle) profileAvatarCircle.innerText = firstName.charAt(0).toUpperCase();
+                if (profileAvatarCircle) {
+                  const initial = firstName.charAt(0).toUpperCase();
+                  const photo = data.photoURL || user.photoURL;
+                  if (photo) {
+                    profileAvatarCircle.innerHTML = `<img src="${photo}" class="w-full h-full rounded-full object-cover" referrerpolicy="no-referrer" onerror="this.style.display='none'; this.parentElement.innerText='${initial}'" />`;
+                  } else {
+                    profileAvatarCircle.innerText = initial;
+                  }
+                }
                 if (dropdownFullName) dropdownFullName.innerText = fullName;
                 
                 // Sync username

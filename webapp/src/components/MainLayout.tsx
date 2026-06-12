@@ -259,8 +259,17 @@ export default function MainLayout() {
                         <span className="text-xs font-semibold text-white/80 select-none hidden lg:inline-block">
                           Hi, {userData?.firstName || user.displayName?.split(" ")[0] || "User"}
                         </span>
-                        <div className="w-7 h-7 rounded-full bg-gradient-to-tr from-indigo-500 to-purple-600 flex items-center justify-center font-bold text-xs text-white border border-white/20 flex-shrink-0 shadow-[0_0_8px_rgba(99,102,241,0.3)]">
-                          {userData?.firstName?.charAt(0).toUpperCase() || user.displayName?.charAt(0).toUpperCase() || user.email?.charAt(0).toUpperCase() || 'U'}
+                        <div className="w-7 h-7 rounded-full bg-gradient-to-tr from-indigo-500 to-purple-600 flex items-center justify-center font-bold text-xs text-white border border-white/20 flex-shrink-0 shadow-[0_0_8px_rgba(99,102,241,0.3)] overflow-hidden">
+                          {userData?.photoURL || user.photoURL ? (
+                            <img 
+                              src={userData?.photoURL || user.photoURL || undefined} 
+                              alt="" 
+                              className="w-full h-full object-cover" 
+                              referrerPolicy="no-referrer"
+                            />
+                          ) : (
+                            userData?.firstName?.charAt(0).toUpperCase() || user.displayName?.charAt(0).toUpperCase() || user.email?.charAt(0).toUpperCase() || 'U'
+                          )}
                         </div>
                       </button>
 
