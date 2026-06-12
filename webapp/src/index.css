@@ -590,44 +590,46 @@ html.light .compare-item-value-fixed {
 }
 
 /* --- High Contrast Gray & Opacity Text Overrides (Dark Mode) --- */
-html:not(.light) .text-white\/30 {
+.text-white\/30 {
   color: #707085 !important;
 }
-html:not(.light) .text-white\/40 {
+.text-white\/40 {
   color: #9090A8 !important;
 }
-html:not(.light) .text-white\/50 {
+.text-white\/50 {
   color: #B8B8CC !important;
 }
-html:not(.light) .text-white\/60 {
+.text-white\/60 {
   color: #E8E8F0 !important;
 }
-html:not(.light) .text-white\/70 {
+.text-white\/70 {
   color: #E8E8F0 !important;
 }
-html:not(.light) .text-white\/80 {
+.text-white\/80 {
   color: #E8E8F0 !important;
 }
-html:not(.light) .text-zinc-400 {
+.text-zinc-400 {
   color: #B8B8CC !important;
 }
-html:not(.light) .text-zinc-500 {
+.text-zinc-500 {
   color: #9090A8 !important;
 }
-html:not(.light) .text-zinc-600 {
+.text-zinc-600 {
   color: #707085 !important;
 }
-html:not(.light) .faq-answer {
+.faq-answer {
   color: #B8B8CC !important;
 }
 
 /* Limit paragraph width for maximum typography readability (Apple/Premium style) */
 p {
   max-width: 65ch;
-}
-html:not(.light) p {
   color: #E8E8F0;
 }
+html.light p {
+  color: #111827;
+}
+
 
 /* Premium sleek dark scrollbars to replace default browser white tracks */
 ::-webkit-scrollbar {
