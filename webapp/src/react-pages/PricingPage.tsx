@@ -203,37 +203,23 @@ export default function PricingPage() {
         </div>
       </div>
 
-      <div className="mt-20 max-w-4xl mx-auto">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-left mb-12">
-          <div className="bg-white/[0.02] border border-white/5 p-5 rounded-2xl">
-            <div className="text-indigo-400 font-bold text-sm mb-1">✓ One-Time Purchase</div>
-            <p className="text-xs text-white/60 leading-relaxed">No subscriptions, no hidden fees, and no recurring charges. You own your license forever.</p>
-          </div>
-          <div className="bg-white/[0.02] border border-white/5 p-5 rounded-2xl">
-            <div className="text-indigo-400 font-bold text-sm mb-1">✓ Privacy First</div>
-            <p className="text-xs text-white/60 leading-relaxed">All media processing runs locally inside your browser. Your files never leave your device.</p>
-          </div>
-          <div className="bg-white/[0.02] border border-white/5 p-5 rounded-2xl">
-            <div className="text-indigo-400 font-bold text-sm mb-1">✓ Recovery Guarantee</div>
-            <p className="text-xs text-white/60 leading-relaxed">If TakeoutFix cannot process your takeout due to a verified software issue, we will work to resolve it or refund you.</p>
-          </div>
-          <div className="bg-white/[0.02] border border-white/5 p-5 rounded-2xl">
-            <div className="text-indigo-400 font-bold text-sm mb-1">✓ Same Engine Quality</div>
-            <p className="text-xs text-white/60 leading-relaxed">Recovery quality never varies. All plans use the identical high-performance metadata engine.</p>
-          </div>
-          <div className="bg-white/[0.02] border border-white/5 p-5 rounded-2xl">
-            <div className="text-indigo-400 font-bold text-sm mb-1">✓ Dedicated Support</div>
-            <p className="text-xs text-white/60 leading-relaxed">Access direct, priority help whenever you run into any trouble with your restoration process.</p>
-          </div>
-          <div className="bg-white/[0.02] border border-white/5 p-5 rounded-2xl">
-            <div className="text-indigo-400 font-bold text-sm mb-1">✓ Fair Refund Policy</div>
-            <p className="text-xs text-white/60 leading-relaxed">Clear, usage-capped thresholds prevent abuse while fully protecting legitimate recovery failures.</p>
-          </div>
-        </div>
+      <div className="mt-20 max-w-2xl mx-auto text-center">
+        <h2 className="text-2xl font-bold mb-8 text-white font-semibold">Plan Limits & Guarantee Conditions</h2>
         
-        <div className="text-center text-white/40 text-xs p-6 bg-white/5 border border-white/10 rounded-2xl">
-          <p className="font-bold text-white/80 text-sm mb-2">Plan Limits & Conditions</p>
-          <p>Paid plans unlock higher limits, history logs, support access, and an ad-free experience. Limits on Free and Recovery Pass are enforced on a "whichever comes first" basis (either storage capacity or file count). Our core local extraction engine is identical across all tiers.</p>
+        <div className="bg-zinc-950/45 border border-zinc-900 p-8 rounded-2xl space-y-8">
+          <div>
+            <h3 className="text-sm font-bold text-white uppercase tracking-wider mb-3">Enforcement of Limits</h3>
+            <p className="text-xs text-zinc-300 leading-relaxed max-w-md mx-auto">
+              Limits on <strong>Free</strong> (1,000 files/1 GB) and <strong>Recovery Pass</strong> (10,000 files/20 GB) are enforced on a <strong>"whichever comes first"</strong> basis. Device limits are tied to your browser installation environment. Paid lifetime licenses allow activation on up to 2 or 3 separate devices simultaneously.
+            </p>
+          </div>
+          
+          <div className="border-t border-zinc-900 pt-6">
+            <h3 className="text-sm font-bold text-white uppercase tracking-wider mb-3">7-Day Refund Policy</h3>
+            <p className="text-xs text-zinc-300 leading-relaxed max-w-md mx-auto">
+              We offer a 100% Recovery Guarantee: if a verified technical issue prevents your restoration, and our support desk is unable to resolve it, we will issue a full refund within 7 days of purchase. Refunds are not available for change of mind or successfully completed recoveries.
+            </p>
+          </div>
         </div>
       </div>
     </div>

@@ -79,7 +79,7 @@ import { FolderSearch, Binary, Cpu, ArrowRight, ShieldCheck, CheckCircle2 } from
                 <div class="aspect-square bg-zinc-950/80 rounded-xl border border-zinc-800/80 overflow-hidden p-2 flex items-center justify-center relative">
                   
                   <!-- CSS Indexed Diagram -->
-                  <div class="w-full h-full p-6 flex flex-col bg-zinc-950 text-left font-mono justify-between text-xs border border-zinc-800/50 rounded-xl relative overflow-hidden group select-none">
+                  <div class="w-full h-full p-6 flex flex-col diagram-card text-left font-mono justify-between text-xs border border-zinc-800/50 rounded-xl relative overflow-hidden group select-none">
                     <div class="absolute inset-0 bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:16px_16px] pointer-events-none"></div>
                     <div class="flex items-center justify-between border-b border-zinc-800 pb-3 z-10">
                       <div class="flex items-center gap-2">
@@ -88,68 +88,68 @@ import { FolderSearch, Binary, Cpu, ArrowRight, ShieldCheck, CheckCircle2 } from
                       </div>
                       <span class="text-blue-400 text-[10px] font-bold">Active Traversal</span>
                     </div>
-
+ 
                     <div class="space-y-3.5 my-4 z-10 flex-1 justify-center flex flex-col">
-                      <div class="flex items-center justify-between p-2.5 rounded border border-zinc-900 bg-zinc-900/30 hover:border-zinc-800/80 transition-all animate-slide-in-1">
+                      <div class="flex items-center justify-between p-2.5 rounded border border-zinc-900 diagram-sub-box hover:border-zinc-800/80 transition-all animate-slide-in-1">
                         <div class="flex items-center gap-2">
                           <span class="w-1.5 h-1.5 rounded-full bg-cyan-400 shadow-[0_0_8px_rgba(34,211,238,0.5)]"></span>
-                          <span class="text-zinc-300 font-medium truncate max-w-[130px] md:max-w-[180px]">IMG_3021.HEIC</span>
+                          <span class="text-zinc-300 font-medium truncate max-w-[130px] md:max-w-[180px] diagram-nested-file">IMG_3021.HEIC</span>
                         </div>
                         <div class="flex items-center gap-3">
                           <span class="text-zinc-650 text-[10px] font-semibold">4.2 MB</span>
-                          <span class="px-1.5 py-0.5 rounded text-[8px] font-bold uppercase bg-cyan-500/10 text-cyan-400 border border-cyan-500/20">indexed</span>
+                          <span class="px-1.5 py-0.5 rounded text-[8px] font-bold uppercase bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 diagram-badge-indexed">indexed</span>
                         </div>
                       </div>
-                      <div class="flex items-center justify-between p-2.5 rounded border border-zinc-900 bg-zinc-900/30 hover:border-zinc-800/80 transition-all animate-slide-in-2">
+                      <div class="flex items-center justify-between p-2.5 rounded border border-zinc-900 diagram-sub-box hover:border-zinc-800/80 transition-all animate-slide-in-2">
                         <div class="flex items-center gap-2">
                           <span class="w-1.5 h-1.5 rounded-full bg-amber-400 shadow-[0_0_8px_rgba(251,191,36,0.5)]"></span>
-                          <span class="text-zinc-300 font-medium truncate max-w-[130px] md:max-w-[180px]">IMG_3021.HEIC.json</span>
+                          <span class="text-zinc-300 font-medium truncate max-w-[130px] md:max-w-[180px] diagram-nested-file">IMG_3021.HEIC.json</span>
                         </div>
                         <div class="flex items-center gap-3">
                           <span class="text-zinc-650 text-[10px] font-semibold">1.2 KB</span>
-                          <span class="px-1.5 py-0.5 rounded text-[8px] font-bold uppercase bg-amber-500/10 text-amber-400 border border-amber-500/20">parsed</span>
+                          <span class="px-1.5 py-0.5 rounded text-[8px] font-bold uppercase bg-amber-500/10 text-amber-400 border border-amber-500/20 diagram-badge-parsed">parsed</span>
                         </div>
                       </div>
-                      <div class="flex items-center justify-between p-2.5 rounded border border-zinc-900 bg-zinc-900/30 hover:border-zinc-800/80 transition-all animate-slide-in-3">
+                      <div class="flex items-center justify-between p-2.5 rounded border border-zinc-900 diagram-sub-box hover:border-zinc-800/80 transition-all animate-slide-in-3">
                         <div class="flex items-center gap-2">
                           <span class="w-1.5 h-1.5 rounded-full bg-cyan-400 shadow-[0_0_8px_rgba(34,211,238,0.5)]"></span>
-                          <span class="text-zinc-300 font-medium truncate max-w-[130px] md:max-w-[180px]">IMG_3022-edited.JPG</span>
+                          <span class="text-zinc-300 font-medium truncate max-w-[130px] md:max-w-[180px] diagram-nested-file">IMG_3022-edited.JPG</span>
                         </div>
                         <div class="flex items-center gap-3">
                           <span class="text-zinc-650 text-[10px] font-semibold">2.8 MB</span>
-                          <span class="px-1.5 py-0.5 rounded text-[8px] font-bold uppercase bg-cyan-500/10 text-cyan-400 border border-cyan-500/20">indexed</span>
+                          <span class="px-1.5 py-0.5 rounded text-[8px] font-bold uppercase bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 diagram-badge-indexed">indexed</span>
                         </div>
                       </div>
-                      <div class="flex items-center justify-between p-2.5 rounded border border-zinc-900 bg-zinc-900/30 hover:border-zinc-800/80 transition-all animate-slide-in-4">
+                      <div class="flex items-center justify-between p-2.5 rounded border border-zinc-900 diagram-sub-box hover:border-zinc-800/80 transition-all animate-slide-in-4">
                         <div class="flex items-center gap-2">
                           <span class="w-1.5 h-1.5 rounded-full bg-amber-400 shadow-[0_0_8px_rgba(251,191,36,0.5)]"></span>
-                          <span class="text-zinc-300 font-medium truncate max-w-[130px] md:max-w-[180px]">IMG_3022.JPG.json</span>
+                          <span class="text-zinc-300 font-medium truncate max-w-[130px] md:max-w-[180px] diagram-nested-file">IMG_3022.JPG.json</span>
                         </div>
                         <div class="flex items-center gap-3">
                           <span class="text-zinc-650 text-[10px] font-semibold">1.5 KB</span>
-                          <span class="px-1.5 py-0.5 rounded text-[8px] font-bold uppercase bg-amber-500/10 text-amber-400 border border-amber-500/20">parsed</span>
+                          <span class="px-1.5 py-0.5 rounded text-[8px] font-bold uppercase bg-amber-500/10 text-amber-400 border border-amber-500/20 diagram-badge-parsed">parsed</span>
                         </div>
                       </div>
                     </div>
-
+ 
                     <div class="border-t border-zinc-900 pt-3 flex items-center justify-between z-10 text-[10px] text-zinc-500 font-bold uppercase tracking-wider">
                       <div>Scanned: <span class="text-zinc-300 font-extrabold">1,824 files</span></div>
                       <div>Speed: <span class="text-blue-400 font-extrabold">142 files/s</span></div>
                     </div>
                   </div>
-
+ 
                 </div>
               </div>
             </div>
           </div>
         </div>
-
+ 
         <!-- PHASE 2: Heuristic Matching -->
         <div class="relative flex flex-col lg:flex-row items-stretch gap-12 lg:gap-20">
           <div class="absolute left-[50%] -translate-x-1/2 top-4 w-10 h-10 rounded-full bg-zinc-950 border border-zinc-800 flex items-center justify-center shadow-[0_0_20px_rgba(0,0,0,0.8)] z-20 hidden lg:flex">
             <span class="w-3.5 h-3.5 rounded-full bg-gradient-to-br from-indigo-400 to-purple-400 animate-pulse"></span>
           </div>
-
+ 
           <div class="flex-1 flex flex-col justify-center space-y-6 order-1 lg:order-2 lg:text-left">
             <div class="flex items-center gap-3">
               <div class="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-zinc-900 border border-zinc-800 shadow-md">
@@ -166,7 +166,7 @@ import { FolderSearch, Binary, Cpu, ArrowRight, ShieldCheck, CheckCircle2 } from
             <p class="text-base text-zinc-400 leading-relaxed font-normal">
               Google Takeout often edits names, truncates titles, or appends suffixes (like '-edited' or '(1)') to media, making standard matching fail. TakeoutFix applies a multi-layered match heuristic to pair files with their JSON sidecar, resolving filename inconsistencies automatically.
             </p>
-
+ 
             <ul class="space-y-2.5">
               <li class="flex items-start gap-2.5 text-sm text-zinc-400 font-normal">
                 <CheckCircle2 className="w-4 h-4 mt-0.5 flex-shrink-0 text-indigo-400" />
@@ -182,7 +182,7 @@ import { FolderSearch, Binary, Cpu, ArrowRight, ShieldCheck, CheckCircle2 } from
               </li>
             </ul>
           </div>
-
+ 
           <!-- Right Block (Diagram) -->
           <div class="flex-1 flex items-center justify-center order-2 lg:order-1">
             <div class="relative w-full max-w-lg">
@@ -191,7 +191,7 @@ import { FolderSearch, Binary, Cpu, ArrowRight, ShieldCheck, CheckCircle2 } from
                 <div class="aspect-square bg-zinc-950/80 rounded-xl border border-zinc-800/80 overflow-hidden p-2 flex items-center justify-center relative">
                   
                   <!-- CSS Heuristic Matching Diagram -->
-                  <div class="w-full h-full p-6 flex flex-col bg-zinc-950 text-left font-mono justify-between text-xs border border-zinc-800/50 rounded-xl relative overflow-hidden group select-none">
+                  <div class="w-full h-full p-6 flex flex-col diagram-card text-left font-mono justify-between text-xs border border-zinc-800/50 rounded-xl relative overflow-hidden group select-none">
                     <div class="absolute inset-0 bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:16px_16px] pointer-events-none"></div>
                     <div class="flex items-center justify-between border-b border-zinc-800 pb-3 z-10">
                       <div class="flex items-center gap-2">
@@ -200,69 +200,69 @@ import { FolderSearch, Binary, Cpu, ArrowRight, ShieldCheck, CheckCircle2 } from
                       </div>
                       <span class="text-indigo-400 text-[10px] font-bold">Resolving Permutations</span>
                     </div>
-
+ 
                     <div class="my-auto py-2 space-y-4 z-10 flex-1 justify-center flex flex-col">
                       <!-- Match 1 -->
-                      <div class="relative space-y-1 bg-zinc-900/20 p-2.5 rounded border border-zinc-900/60">
+                      <div class="relative space-y-1 bg-zinc-900/20 p-2.5 rounded border border-zinc-900/60 diagram-sub-box">
                         <div class="flex justify-between text-[8px] text-zinc-500 font-bold uppercase tracking-wider px-1">
                           <span>Source Media</span>
                           <span class="text-indigo-400 font-bold">Fuzzy String Match</span>
                           <span>Sidecar JSON</span>
                         </div>
                         <div class="flex items-center justify-between gap-3">
-                          <div class="flex-1 p-2 rounded bg-zinc-900 border border-zinc-800/50 text-zinc-300 truncate max-w-[130px] text-center font-bold text-[10px]">
+                          <div class="flex-1 p-2 rounded bg-zinc-900 border border-zinc-800/50 text-zinc-300 truncate max-w-[130px] text-center font-bold text-[10px] diagram-nested-file">
                             IMG_9102-edited.JPG
                           </div>
                           <div class="relative flex-1 flex items-center justify-center h-2">
                             <div class="absolute inset-0 bg-zinc-800 rounded-full h-[1px]"></div>
                             <div class="absolute w-2.5 h-2.5 rounded-full bg-gradient-to-r from-indigo-500 to-purple-500 shadow-[0_0_8px_rgba(99,102,241,0.8)] animate-beam-1"></div>
                           </div>
-                          <div class="flex-1 p-2 rounded bg-zinc-900 border border-zinc-800/50 text-zinc-455 truncate max-w-[130px] text-center text-[10px]">
+                          <div class="flex-1 p-2 rounded bg-zinc-900 border border-zinc-800/50 text-zinc-455 truncate max-w-[130px] text-center text-[10px] diagram-nested-file">
                             IMG_9102.JPG.json
                           </div>
                         </div>
                       </div>
-
+ 
                       <!-- Match 2 -->
-                      <div class="relative space-y-1 bg-zinc-900/20 p-2.5 rounded border border-zinc-900/60">
+                      <div class="relative space-y-1 bg-zinc-900/20 p-2.5 rounded border border-zinc-900/60 diagram-sub-box">
                         <div class="flex justify-between text-[8px] text-zinc-500 font-bold uppercase tracking-wider px-1">
                           <span>Source Media</span>
                           <span class="text-indigo-400 font-bold">Copy Suffix Resolved</span>
                           <span>Sidecar JSON</span>
                         </div>
                         <div class="flex items-center justify-between gap-3">
-                          <div class="flex-1 p-2 rounded bg-zinc-900 border border-zinc-800/50 text-zinc-300 truncate max-w-[130px] text-center font-bold text-[10px]">
+                          <div class="flex-1 p-2 rounded bg-zinc-900 border border-zinc-800/50 text-zinc-300 truncate max-w-[130px] text-center font-bold text-[10px] diagram-nested-file">
                             IMG_9102(1).JPG
                           </div>
                           <div class="relative flex-1 flex items-center justify-center h-2">
                             <div class="absolute inset-0 bg-zinc-800 rounded-full h-[1px]"></div>
                             <div class="absolute w-2.5 h-2.5 rounded-full bg-gradient-to-r from-purple-500 to-pink-500 shadow-[0_0_8px_rgba(99,102,241,0.8)] animate-beam-2"></div>
                           </div>
-                          <div class="flex-1 p-2 rounded bg-zinc-900 border border-zinc-800/50 text-zinc-455 truncate max-w-[130px] text-center text-[10px]">
+                          <div class="flex-1 p-2 rounded bg-zinc-900 border border-zinc-800/50 text-zinc-455 truncate max-w-[130px] text-center text-[10px] diagram-nested-file">
                             IMG_9102.JPG.json
                           </div>
                         </div>
                       </div>
                     </div>
-
+ 
                     <div class="border-t border-zinc-900 pt-3 flex items-center justify-between z-10 text-[10px] text-zinc-500 font-bold uppercase tracking-wider">
                       <span>Fuzzy Match Accuracy: <span class="text-emerald-400 font-extrabold">99.99%</span></span>
                       <span>Fail Safe Fallback: <span class="text-indigo-400 font-extrabold">Active</span></span>
                     </div>
                   </div>
-
+ 
                 </div>
               </div>
             </div>
           </div>
         </div>
-
+ 
         <!-- PHASE 3: Binary Injection -->
         <div class="relative flex flex-col lg:flex-row items-stretch gap-12 lg:gap-20">
           <div class="absolute left-[50%] -translate-x-1/2 top-4 w-10 h-10 rounded-full bg-zinc-950 border border-zinc-800 flex items-center justify-center shadow-[0_0_20px_rgba(0,0,0,0.8)] z-20 hidden lg:flex">
             <span class="w-3.5 h-3.5 rounded-full bg-gradient-to-br from-purple-400 to-pink-400 animate-pulse"></span>
           </div>
-
+ 
           <div class="flex-1 flex flex-col justify-center space-y-6 order-1 lg:text-left">
             <div class="flex items-center gap-3">
               <div class="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-zinc-900 border border-zinc-800 shadow-md">
@@ -279,7 +279,7 @@ import { FolderSearch, Binary, Cpu, ArrowRight, ShieldCheck, CheckCircle2 } from
             <p class="text-base text-zinc-400 leading-relaxed font-normal">
               Once matched, the engine extracts the Unix epoch timestamps and coordinates. It parses the binary structures of JPEGs, PNGs, and HEICs, injecting the parameters directly into their EXIF headers (DateTimeOriginal and GPS tags) before outputting clean files.
             </p>
-
+ 
             <ul class="space-y-2.5">
               <li class="flex items-start gap-2.5 text-sm text-zinc-400 font-normal">
                 <CheckCircle2 className="w-4 h-4 mt-0.5 flex-shrink-0 text-purple-400" />
@@ -295,7 +295,7 @@ import { FolderSearch, Binary, Cpu, ArrowRight, ShieldCheck, CheckCircle2 } from
               </li>
             </ul>
           </div>
-
+ 
           <!-- Right Block (Diagram) -->
           <div class="flex-1 flex items-center justify-center order-2">
             <div class="relative w-full max-w-lg">
@@ -304,7 +304,7 @@ import { FolderSearch, Binary, Cpu, ArrowRight, ShieldCheck, CheckCircle2 } from
                 <div class="aspect-square bg-zinc-950/80 rounded-xl border border-zinc-800/80 overflow-hidden p-2 flex items-center justify-center relative">
                   
                   <!-- CSS EXIF Injection Diagram -->
-                  <div class="w-full h-full p-6 flex flex-col bg-zinc-950 text-left font-mono justify-between text-xs border border-zinc-800/50 rounded-xl relative overflow-hidden group select-none">
+                  <div class="w-full h-full p-6 flex flex-col diagram-card text-left font-mono justify-between text-xs border border-zinc-800/50 rounded-xl relative overflow-hidden group select-none">
                     <div class="absolute inset-0 bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:16px_16px] pointer-events-none"></div>
                     <div class="flex items-center justify-between border-b border-zinc-800 pb-3 z-10">
                       <div class="flex items-center gap-2">
@@ -313,48 +313,48 @@ import { FolderSearch, Binary, Cpu, ArrowRight, ShieldCheck, CheckCircle2 } from
                       </div>
                       <span class="text-purple-400 text-[10px] font-bold">Writing EXIF Headers</span>
                     </div>
-
+ 
                     <div class="space-y-3 my-4 z-10 flex-1 justify-center flex flex-col">
-                      <div class="flex items-center justify-between p-2.5 rounded border border-zinc-900 bg-zinc-900/30 hover:border-zinc-850 transition-all">
+                      <div class="flex items-center justify-between p-2.5 rounded border border-zinc-900 bg-zinc-900/30 hover:border-zinc-850 transition-all diagram-sub-box">
                         <div class="flex items-center gap-2 text-zinc-500 text-[10px] font-bold uppercase">
-                          <span class="font-extrabold text-purple-400">0x9003</span>
-                          <span class="text-zinc-300 font-bold">DateTimeOriginal</span>
+                          <span class="font-extrabold text-purple-400 diagram-label-param">0x9003</span>
+                          <span class="text-zinc-300 font-bold diagram-nested-file">DateTimeOriginal</span>
                         </div>
                         <div class="flex items-center gap-2">
-                          <span class="text-emerald-400 text-[10px] font-bold tracking-tight truncate max-w-[110px] md:max-w-[140px] animate-pulse">2021:08:15 14:23:35</span>
-                          <span class="text-emerald-400 text-[8px] font-bold border border-emerald-500/20 bg-emerald-500/10 px-1.5 py-0.5 rounded uppercase flex-shrink-0">written</span>
+                          <span class="text-emerald-400 text-[10px] font-bold tracking-tight truncate max-w-[110px] md:max-w-[140px] animate-pulse diagram-label-highlight">2021:08:15 14:23:35</span>
+                          <span class="text-emerald-400 text-[8px] font-bold border border-emerald-500/20 bg-emerald-500/10 px-1.5 py-0.5 rounded uppercase flex-shrink-0 diagram-badge-written">written</span>
                         </div>
                       </div>
-
-                      <div class="flex items-center justify-between p-2.5 rounded border border-zinc-900 bg-zinc-900/30 hover:border-zinc-850 transition-all">
+ 
+                      <div class="flex items-center justify-between p-2.5 rounded border border-zinc-900 bg-zinc-900/30 hover:border-zinc-850 transition-all diagram-sub-box">
                         <div class="flex items-center gap-2 text-zinc-500 text-[10px] font-bold uppercase">
-                          <span class="font-extrabold text-purple-400">0x0002</span>
-                          <span class="text-zinc-300 font-bold">GPSLatitude</span>
+                          <span class="font-extrabold text-purple-400 diagram-label-param">0x0002</span>
+                          <span class="text-zinc-300 font-bold diagram-nested-file">GPSLatitude</span>
                         </div>
                         <div class="flex items-center gap-2">
-                          <span class="text-emerald-400 text-[10px] font-bold tracking-tight truncate max-w-[110px] md:max-w-[140px] animate-pulse">40.7128 N</span>
-                          <span class="text-emerald-400 text-[8px] font-bold border border-emerald-500/20 bg-emerald-500/10 px-1.5 py-0.5 rounded uppercase flex-shrink-0">written</span>
+                          <span class="text-emerald-400 text-[10px] font-bold tracking-tight truncate max-w-[110px] md:max-w-[140px] animate-pulse diagram-label-highlight">40.7128 N</span>
+                          <span class="text-emerald-400 text-[8px] font-bold border border-emerald-500/20 bg-emerald-500/10 px-1.5 py-0.5 rounded uppercase flex-shrink-0 diagram-badge-written">written</span>
                         </div>
                       </div>
-
-                      <div class="flex items-center justify-between p-2.5 rounded border border-zinc-900 bg-zinc-900/30 hover:border-zinc-850 transition-all">
+ 
+                      <div class="flex items-center justify-between p-2.5 rounded border border-zinc-900 bg-zinc-900/30 hover:border-zinc-850 transition-all diagram-sub-box">
                         <div class="flex items-center gap-2 text-zinc-500 text-[10px] font-bold uppercase">
-                          <span class="font-extrabold text-purple-400">0x0004</span>
-                          <span class="text-zinc-300 font-bold">GPSLongitude</span>
+                          <span class="font-extrabold text-purple-400 diagram-label-param">0x0004</span>
+                          <span class="text-zinc-300 font-bold diagram-nested-file">GPSLongitude</span>
                         </div>
                         <div class="flex items-center gap-2">
-                          <span class="text-emerald-400 text-[10px] font-bold tracking-tight truncate max-w-[110px] md:max-w-[140px] animate-pulse">74.0060 W</span>
-                          <span class="text-emerald-400 text-[8px] font-bold border border-emerald-500/20 bg-emerald-500/10 px-1.5 py-0.5 rounded uppercase flex-shrink-0">written</span>
+                          <span class="text-emerald-400 text-[10px] font-bold tracking-tight truncate max-w-[110px] md:max-w-[140px] animate-pulse diagram-label-highlight">74.0060 W</span>
+                          <span class="text-emerald-400 text-[8px] font-bold border border-emerald-500/20 bg-emerald-500/10 px-1.5 py-0.5 rounded uppercase flex-shrink-0 diagram-badge-written">written</span>
                         </div>
                       </div>
                     </div>
-
+ 
                     <div class="border-t border-zinc-900 pt-3 flex items-center justify-between z-10 text-[10px] text-zinc-500 font-bold uppercase tracking-wider">
                       <span>Binary Integrity: <span class="text-emerald-400 font-extrabold">100% Valid</span></span>
                       <span>Recomp: <span class="text-purple-400 font-extrabold">None (Raw)</span></span>
                     </div>
                   </div>
-
+ 
                 </div>
               </div>
             </div>

@@ -327,23 +327,23 @@ export default function LandingPage() {
       <section className="w-full py-36 text-center">
         <div className="max-w-7xl mx-auto px-4">
           <h2 className="text-4xl font-bold tracking-tighter mb-16">How It Works</h2>
-          <div className="flex flex-col md:flex-row items-center justify-center gap-4 md:gap-8 max-w-5xl mx-auto">
-            <div className="bg-black border border-white/10 p-6 rounded-2xl w-full md:w-64">
+          <div className="flex flex-row items-center gap-4 md:gap-6 overflow-x-auto pb-6 pt-4 max-w-full justify-start md:justify-center custom-faq-scroll px-4 scroll-smooth">
+            <div className="bg-black border border-white/10 p-6 rounded-2xl w-64 min-w-[240px] flex-shrink-0 flow-card-1">
               <div className="text-2xl font-bold text-white mb-2">Takeout</div>
               <div className="text-white/50 text-sm">Photos + JSON</div>
             </div>
-            <ArrowRight className="w-8 h-8 text-white/20 rotate-90 md:rotate-0" />
-            <div className="bg-indigo-500/10 border border-indigo-500/30 p-6 rounded-2xl w-full md:w-64">
+            <ArrowRight className="w-8 h-8 text-white/20 flex-shrink-0 flow-arrow-1" />
+            <div className="bg-indigo-500/10 border border-indigo-500/30 p-6 rounded-2xl w-64 min-w-[240px] flex-shrink-0 flow-card-2">
               <div className="text-2xl font-bold text-indigo-400 mb-2">Matching</div>
               <div className="text-white/50 text-sm">Fuzzy Logic Engine</div>
             </div>
-            <ArrowRight className="w-8 h-8 text-white/20 rotate-90 md:rotate-0" />
-            <div className="bg-purple-500/10 border border-purple-500/30 p-6 rounded-2xl w-full md:w-64">
+            <ArrowRight className="w-8 h-8 text-white/20 flex-shrink-0 flow-arrow-2" />
+            <div className="bg-purple-500/10 border border-purple-500/30 p-6 rounded-2xl w-64 min-w-[240px] flex-shrink-0 flow-card-3">
               <div className="text-2xl font-bold text-purple-400 mb-2">Injection</div>
               <div className="text-white/50 text-sm">EXIF Header Rebuild</div>
             </div>
-            <ArrowRight className="w-8 h-8 text-white/20 rotate-90 md:rotate-0" />
-            <div className="bg-green-500/10 border border-green-500/30 p-6 rounded-2xl w-full md:w-64">
+            <ArrowRight className="w-8 h-8 text-white/20 flex-shrink-0 flow-arrow-3" />
+            <div className="bg-green-500/10 border border-green-500/30 p-6 rounded-2xl w-64 min-w-[240px] flex-shrink-0 flow-card-4">
               <div className="text-2xl font-bold text-green-400 mb-2">Restored</div>
               <div className="text-white/50 text-sm">Perfect Timelines</div>
             </div>

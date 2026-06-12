@@ -23,6 +23,7 @@ const ACTION_BADGES: Record<string, string> = {
   REFUND: "bg-purple-500/10 text-purple-400 border-purple-500/20",
   TICKET_REPLY: "bg-emerald-500/10 text-emerald-400 border-emerald-500/20",
   SETTINGS_CHANGE: "bg-blue-500/10 text-blue-400 border-blue-500/20",
+  TOGGLE_SUPPORT_ADS: "badge-toggle-support-ads text-white",
 }
 
 export default function AdminAudit() {

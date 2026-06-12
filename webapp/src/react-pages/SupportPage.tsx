@@ -14,6 +14,29 @@ import AdUnit from "../components/AdUnit"
 import { AuthProvider } from "../contexts/AuthContext"
 import { ToastContainer } from "../components/ui/toast"
 
+function SupportFaqItem({ q, a }: { q: string, a: string }) {
+  const [open, setOpen] = useState(false)
+  return (
+    <Card className="bg-black/45 backdrop-blur-md border-white/10 hover:border-indigo-500/20 transition-all overflow-hidden faq-dropdown-card">
+      <button 
+        type="button"
+        onClick={() => setOpen(!open)}
+        className="w-full text-left px-5 py-4 flex items-center justify-between gap-4 focus:outline-none"
+      >
+        <span className="text-base font-bold text-white">{q}</span>
+        <span className={`text-zinc-500 text-xs transition-transform duration-200 ${open ? 'rotate-180' : ''}`}>
+          ▼
+        </span>
+      </button>
+      {open && (
+        <div className="px-5 pb-5 pt-2 border-t border-white/5 animate-in fade-in slide-in-from-top-1 duration-200">
+          <p className="text-white/60 text-sm leading-relaxed whitespace-pre-wrap">{a}</p>
+        </div>
+      )}
+    </Card>
+  )
+}
+
 function SupportPageContent() {
   const { user, userData } = useAuth()
   const [activeTab, setActiveTab] = useState(() => {
@@ -194,11 +217,11 @@ function SupportPageContent() {
       >
         <h1 className="text-3xl font-bold tracking-tighter mb-8 flex items-center gap-3">
           <LifeBuoy className="w-8 h-8 text-indigo-400" />
-          Help & Support
+          Support & FAQ
         </h1>
-      </motion.div>
-
-      <AdUnit type="horizontal" />
+      </motion.div>      <div className="mb-10 w-full block clear-both">
+        <AdUnit type="horizontal" />
+      </div>
 
       <div className="flex flex-col md:flex-row gap-8">
         
@@ -229,7 +252,7 @@ function SupportPageContent() {
           >
             <History className="w-4 h-4" /> My Tickets
           </button>
-
+ 
           <button 
             onClick={() => setActiveTab("feedback")}
             className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors ${activeTab === 'feedback' ? 'bg-indigo-500 text-white' : 'hover:bg-white/5 text-white/70 hover:text-white'}`}
@@ -237,7 +260,7 @@ function SupportPageContent() {
             <MessageSquare className="w-4 h-4" /> Give Feedback
           </button>
         </motion.div>
-
+ 
         {/* CONTENT AREA */}
         <div className="flex-1">
           <AnimatePresence mode="wait">
@@ -256,24 +279,23 @@ function SupportPageContent() {
                     variants={containerVariants}
                     initial="hidden"
                     animate="show"
-                    className="space-y-4"
+                    className="space-y-4 max-h-[520px] overflow-y-auto pr-2 custom-faq-scroll"
                   >
                     {[
                       { q: "How do I download my Google Takeout?", a: "Go to takeout.google.com, select Google Photos, and create an export. Once finished, download and unzip the folder." },
                       { q: "Why are my photos missing dates?", a: "Google removes EXIF metadata when you download through Takeout. Instead, it places the data in separate JSON sidecar files. TakeoutFix merges these files back together." },
                       { q: "Does TakeoutFix upload my photos?", a: "No. Everything is processed 100% locally on your machine. Your photos never leave your device." },
                       { q: "Is there a limit on the free plan?", a: "Yes, the free plan processes up to 1GB or 1,000 files to let you test the tool. Upgrading removes this limit." },
-                      { q: "What is your refund policy?", a: "We want you to have a great experience with Takeout Fix. We offer a 7-day Recovery Guarantee: if you experience a genuine technical issue that prevents the software from functioning as described, and our support team is unable to resolve it, you may request a refund within 7 days of purchase. Refunds are generally not provided for changing your mind, unsupported/corrupted exports, successful recoveries, or after the 7-day period." }
+                      { q: "What is your refund policy?", a: "We want you to have a great experience with Takeout Fix. We offer a 7-day Recovery Guarantee: if you experience a genuine technical issue that prevents the software from functioning as described, and our support team is unable to resolve it, you may request a refund within 7 days of purchase. Refunds are generally not provided for changing your mind, unsupported/corrupted exports, successful recoveries, or after the 7-day period." },
+                      { q: "Are my photos uploaded to your servers?", a: "No. Never. The entire application runs locally inside your web browser using HTML5 File APIs. Your photos and metadata never leave your computer." },
+                      { q: "Does this work completely offline?", a: "Once the web app has loaded in your browser, you can disconnect from the internet and it will still process all your files locally." },
+                      { q: "Why are my photos showing today's date or out of order after exporting from Google Takeout?", a: "When you export your photos, Google Photos separates the EXIF metadata into separate JSON sidecar files. Without this metadata, your phone or computer defaults to showing today's date (the file modification date), causing your gallery to be completely out of order. TakeoutFix fixes this by merging the JSON sidecars back into your images." },
+                      { q: "What metadata can be recovered?", a: "We recover original creation dates (timestamps), GPS coordinates (latitude, longitude, altitude), and camera device information if it exists in the Google JSON sidecars." },
+                      { q: "Does it support videos?", a: "Yes! We support .mp4 and .mov files alongside standard image formats like .jpg, .heic, and .png." },
+                      { q: "Can I fix Google Takeout metadata online without downloading any software?", a: "Yes! TakeoutFix is a browser-based, no-install Google Takeout fixer tool. It does not require any software downloads or CLI commands like ExifTool. Everything runs directly inside your web browser 100% offline." }
                     ].map((faq, idx) => (
                       <motion.div key={idx} variants={itemVariants}>
-                        <Card className="bg-black/40 backdrop-blur-md border-white/10 hover:border-indigo-500/20 transition-all">
-                          <CardHeader className="pb-2">
-                            <CardTitle className="text-base text-white">{faq.q}</CardTitle>
-                          </CardHeader>
-                          <CardContent>
-                            <p className="text-white/60 text-sm leading-relaxed">{faq.a}</p>
-                          </CardContent>
-                        </Card>
+                        <SupportFaqItem q={faq.q} a={faq.a} />
                       </motion.div>
                     ))}
                   </motion.div>

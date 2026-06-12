@@ -275,13 +275,21 @@ export default function AdminUsers() {
                     <div className="flex items-center gap-3">
                       <img src={u.photoURL || `https://ui-avatars.com/api/?name=${u.displayName || 'U'}&background=random`} alt="" className="w-8 h-8 rounded-full" />
                       <div>
-                        <div className="font-medium text-zinc-100 flex items-center gap-2">
+                        <div className="font-semibold text-zinc-100 flex items-center gap-2">
                           {u.displayName || 'Unknown User'}
                           {u.suspended && (
                             <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium bg-red-500/10 text-red-400 border border-red-500/20">
                               <ShieldAlert className="w-3 h-3" /> Suspended
                             </span>
                           )}
+                        </div>
+                        {u.username && (
+                          <div className="text-xs text-indigo-400 font-mono font-medium mt-0.5">
+                            @{u.username}
+                          </div>
+                        )}
+                        <div className="text-[10px] text-zinc-500 mt-0.5 truncate max-w-[200px]">
+                          {u.email}
                         </div>
                       </div>
                     </div>
@@ -319,10 +327,10 @@ export default function AdminUsers() {
                     {u.plan === 'super' && (
                       <button
                         onClick={() => handleToggleSupportWithAds(u.id, !u.supportWithAds)}
-                        className={`px-2.5 py-1 rounded text-xs font-semibold border transition-all ${
+                        className={`px-2.5 py-1 rounded text-xs font-bold border transition-all ${
                           u.supportWithAds 
-                            ? 'bg-indigo-500/10 text-indigo-400 border-indigo-500/20 hover:bg-indigo-500/25' 
-                            : 'bg-zinc-800 text-zinc-300 border-zinc-700 hover:bg-zinc-750 hover:text-white'
+                            ? 'bg-indigo-600 text-white border-indigo-700 hover:bg-indigo-700' 
+                            : 'bg-zinc-200 text-zinc-800 border-zinc-300 hover:bg-zinc-300 dark:bg-zinc-800 dark:text-zinc-200 dark:border-zinc-700 dark:hover:bg-zinc-700'
                         }`}
                       >
                         {u.supportWithAds ? 'Disable Ads' : 'Enable Ads'}
@@ -443,8 +451,8 @@ export default function AdminUsers() {
                   {selectedUser.plan === "super" && (
                     <div className="flex items-center justify-between border-t border-zinc-800 pt-3">
                       <div className="text-left">
-                        <label className="block text-xs text-zinc-400 font-medium uppercase tracking-wider">Support with Ads</label>
-                        <span className="text-[10px] text-zinc-500 block leading-tight">Show website ads to support developer</span>
+                        <label className="block text-xs text-zinc-850 dark:text-zinc-200 font-bold uppercase tracking-wider">Support with Ads</label>
+                        <span className="text-[10px] text-zinc-600 dark:text-zinc-400 block leading-tight font-medium">Show website ads to support developer</span>
                       </div>
                       <input 
                         type="checkbox"

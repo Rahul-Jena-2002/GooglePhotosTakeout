@@ -166,7 +166,7 @@ export default function AdUnit({ type = "auto", className = "" }: AdUnitProps) {
   );
   
   const badgeClass = "inline-block text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 border rounded-md border-zinc-200 dark:border-zinc-800 bg-zinc-150/50 dark:bg-zinc-900/60 text-zinc-600 dark:text-zinc-400";
-  const btnClass = "w-full py-2.5 rounded-xl font-bold text-xs text-white bg-black hover:bg-zinc-900 border border-zinc-800 transition-all cursor-pointer shadow-lg outline-none flex items-center justify-center gap-1.5 dark:bg-white dark:text-black dark:hover:bg-white/90 dark:border-transparent";
+  const btnClass = "px-6 py-2.5 rounded-xl font-bold text-xs text-white bg-black hover:bg-zinc-900 border border-zinc-800 transition-all cursor-pointer shadow-lg outline-none flex items-center justify-center gap-1.5 dark:bg-white dark:text-black dark:hover:bg-white/90 dark:border-transparent shrink-0";
 
   // 1. HORIZONTAL WIDE BANNER VIEW (width >= 620px)
   if (resolvedLayout === "wide") {

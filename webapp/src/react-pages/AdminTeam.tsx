@@ -142,7 +142,7 @@ export default function AdminTeam() {
             <button
               onClick={handleInvite}
               disabled={inviting || !inviteEmail.trim()}
-              className="bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white px-4 py-2 rounded-md flex items-center gap-2 text-sm font-medium transition-colors"
+              className="bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 btn-admin-invite text-white px-4 py-2 rounded-md flex items-center gap-2 text-sm font-medium transition-colors"
             >
               <Plus className="w-4 h-4" /> Invite
             </button>
@@ -184,7 +184,7 @@ export default function AdminTeam() {
                       <div>
                         <div className="font-medium text-zinc-100 flex items-center gap-2">
                           {a.displayName}
-                          {a.uid === user?.uid && <span className="text-[10px] bg-zinc-800 text-zinc-400 px-1.5 py-0.5 rounded">You</span>}
+                          {a.uid === user?.uid && <span className="text-[10px] you-badge px-1.5 py-0.5 rounded">You</span>}
                         </div>
                         <div className="text-xs text-zinc-500">{a.email}</div>
                       </div>

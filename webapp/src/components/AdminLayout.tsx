@@ -81,18 +81,18 @@ export default function AdminLayout() {
     <div className="min-h-screen bg-zinc-950 text-zinc-100 flex font-sans">
 
       {/* ─── SIDEBAR ─── */}
-      <aside className="w-60 flex-shrink-0 bg-zinc-900/80 border-r border-zinc-800 flex flex-col h-screen sticky top-0">
+      <aside className="w-60 flex-shrink-0 bg-black border-r border-zinc-900 flex flex-col h-screen sticky top-0 admin-sidebar">
 
         {/* Brand */}
-        <div className="px-4 py-5 border-b border-zinc-800 flex items-center justify-between">
-          <div className="flex items-center gap-2.5">
-            <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-indigo-500 to-purple-600 shadow-lg shadow-indigo-500/20 flex items-center justify-center text-xs font-bold">M</div>
+        <div className="px-4 py-5 border-b border-zinc-900 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-indigo-500 to-purple-600 shadow-lg shadow-indigo-500/20 flex items-center justify-center text-sm font-black text-white">M</div>
             <div>
-              <div className="font-bold text-sm tracking-tight text-white">TakeoutFix</div>
-              <div className="text-[9px] text-zinc-500 font-mono uppercase tracking-[0.15em]">Ops Center</div>
+              <div className="font-extrabold text-base tracking-tight text-white">TakeoutFix</div>
+              <div className="text-[11px] font-bold text-zinc-400 font-mono uppercase tracking-[0.15em]">Ops Center</div>
             </div>
           </div>
-          <Bell className="w-4 h-4 text-zinc-500 hover:text-zinc-300 cursor-pointer transition-colors" />
+          <Bell className="w-4.5 h-4.5 text-zinc-400 hover:text-zinc-200 cursor-pointer transition-colors" />
         </div>
 
         {/* Navigation */}

@@ -334,7 +334,7 @@ Polished response:`
                       t.status === 'OPEN' ? 'bg-red-500/10 text-red-400 border border-red-500/20' :
                       t.status === 'IN_PROGRESS' ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20' :
                       t.status === 'RESOLVED' ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' :
-                      'bg-zinc-800 text-zinc-500 border border-zinc-700'
+                      'badge-closed text-white border'
                     }`}>
                       {t.status}
                     </span>

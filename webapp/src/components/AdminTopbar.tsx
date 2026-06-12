@@ -9,7 +9,9 @@ import {
   ChevronDown,
   LogOut,
   Settings,
-  ActivitySquare
+  ActivitySquare,
+  Sun,
+  Moon
 } from "lucide-react"
 import {
   DropdownMenu,
@@ -52,6 +54,39 @@ export default function AdminTopbar() {
   const [searchVal, setSearchVal] = useState("")
   const [openTickets, setOpenTickets] = useState(0)
   const [pendingReviews, setPendingReviews] = useState(0)
+  const [theme, setTheme] = useState<'light' | 'dark'>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem("takeoutfix_theme")
+      return (saved === 'dark' || saved === 'light') ? saved : 'light'
+    }
+    return 'light'
+  })
+
+  // Synchronize theme with class on HTML element
+  useEffect(() => {
+    const root = window.document.documentElement
+    if (theme === 'light') {
+      root.classList.add('light')
+      root.classList.remove('dark')
+    } else {
+      root.classList.add('dark')
+      root.classList.remove('light')
+    }
+    localStorage.setItem("takeoutfix_theme", theme)
+    window.dispatchEvent(new CustomEvent("takeoutfix-theme-changed", { detail: theme }))
+  }, [theme])
+
+  // Listen for outer theme changes
+  useEffect(() => {
+    const handleThemeChange = (e: Event) => {
+      const customEvent = e as CustomEvent;
+      if (customEvent.detail === 'light' || customEvent.detail === 'dark') {
+        setTheme(customEvent.detail);
+      }
+    };
+    window.addEventListener("takeoutfix-theme-changed", handleThemeChange);
+    return () => window.removeEventListener("takeoutfix-theme-changed", handleThemeChange);
+  }, [])
 
   // Get active breadcrumbs
   const path = location.pathname
@@ -93,12 +128,12 @@ export default function AdminTopbar() {
     <header className="h-16 border-b border-zinc-800 bg-zinc-950/40 backdrop-blur-md sticky top-0 z-40 flex items-center justify-between px-6">
       
       {/* ─── BREADCRUMBS ─── */}
-      <div className="flex items-center gap-2 text-xs font-medium font-sans">
+      <div className="flex items-center gap-2 text-sm font-semibold font-sans">
         <span className="text-zinc-500 hover:text-zinc-400 transition-colors cursor-pointer">TakeoutFix</span>
         <span className="text-zinc-700">/</span>
         <span className="text-zinc-400">{breadcrumb[0]}</span>
         <span className="text-zinc-700">/</span>
-        <span className="text-white font-semibold">{breadcrumb[1]}</span>
+        <span className="text-white font-black">{breadcrumb[1]}</span>
       </div>
 
       {/* ─── SEARCH PILL ─── */}
@@ -146,6 +181,19 @@ export default function AdminTopbar() {
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
+
+        {/* Theme Toggle Button */}
+        <button 
+          onClick={() => setTheme(theme === 'light' ? 'dark' : 'light')}
+          className="flex p-1.5 rounded-full bg-zinc-900/60 border border-zinc-800 hover:bg-zinc-900 hover:scale-[1.02] focus:outline-none transition-all items-center justify-center text-zinc-400 hover:text-zinc-200"
+          title={theme === 'light' ? 'Switch to Dark Mode' : 'Switch to Light Mode'}
+        >
+          {theme === 'light' ? (
+            <Moon className="w-4 h-4" />
+          ) : (
+            <Sun className="w-4 h-4" />
+          )}
+        </button>
 
         {/* Notifications Alert Bell */}
         <Link to="/admin/support" className="relative p-1.5 rounded-full hover:bg-zinc-900/60 border border-transparent hover:border-zinc-800 text-zinc-400 hover:text-zinc-200 transition-all">

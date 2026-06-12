@@ -31,7 +31,7 @@ const prices = PLAN_PRICES[region] || PLAN_PRICES.us;
           </div>
           <div class="space-y-6">
             <div>
-              <div class="text-4xl font-bold text-white">$0</div>
+              <div class="text-4xl font-bold text-white"><span class="price-free">$0</span></div>
               <p class="text-[11px] text-zinc-400 mt-1 leading-relaxed">Test with a small set of photos to see how easy it is.</p>
             </div>
             <div class="space-y-2.5">
@@ -47,7 +47,7 @@ const prices = PLAN_PRICES[region] || PLAN_PRICES.us;
         </div>
         <div class="mt-8">
           <a href="/tool" class="w-full">
-            <button class="w-full py-3 bg-zinc-900 border border-zinc-800 rounded-xl font-bold text-xs text-white cursor-pointer hover:bg-zinc-855 transition-all">Start Free Fix</button>
+            <button class="w-full py-3 btn-pricing-free rounded-xl font-bold text-xs cursor-pointer transition-all">Start Free Fix</button>
           </a>
         </div>
       </div>
@@ -76,39 +76,39 @@ const prices = PLAN_PRICES[region] || PLAN_PRICES.us;
         </div>
         <div class="mt-8">
           <a href={`/checkout?plan=recovery_pass&region=${region}`} class="w-full link-checkout-recovery-pass">
-            <button class="w-full py-3 bg-zinc-900 border border-zinc-800 rounded-xl font-bold text-xs text-white cursor-pointer hover:bg-zinc-855 transition-all">Get Recovery Pass</button>
+            <button class="w-full py-3 btn-pricing-pass rounded-xl font-bold text-xs cursor-pointer transition-all">Get Recovery Pass</button>
           </a>
         </div>
       </div>
 
       <!-- PRO LIFETIME -->
-      <div class="flex flex-col bg-zinc-950/60 border border-indigo-500/50 rounded-2xl p-6 h-full relative justify-between scale-105 shadow-xl shadow-indigo-550/5 hover:border-indigo-400 transition-all">
-        <div class="absolute -top-3 left-1/2 -translate-x-1/2 bg-indigo-600 text-white text-[10px] font-bold px-3 py-1 rounded-full uppercase tracking-wider">
+      <div class="flex flex-col pricing-most-popular-card border rounded-2xl p-6 h-full relative justify-between scale-105 transition-all">
+        <div class="absolute -top-3 left-1/2 -translate-x-1/2 pricing-badge-most-popular text-[10px] font-bold px-3 py-1 rounded-full uppercase tracking-wider shadow-sm">
           Most Popular
         </div>
         <div>
           <div class="mb-6">
-            <h2 class="text-2xl font-bold text-indigo-400 font-semibold">Pro Lifetime</h2>
-            <p class="text-indigo-300 text-xs mt-1">For large photo collections</p>
+            <h2 class="text-2xl font-bold text-white font-semibold">Pro Lifetime</h2>
+            <p class="text-white/80 text-xs mt-1">For large photo collections</p>
           </div>
           <div class="space-y-6">
             <div>
               <div class="text-4xl font-bold text-white"><span class="price-pro">{prices.pro}</span></div>
-              <p class="text-[11px] text-indigo-350 mt-1 leading-relaxed">Use forever · On up to 2 devices</p>
+              <p class="text-[11px] text-white/70 mt-1 leading-relaxed">Use forever · On up to 2 devices</p>
             </div>
             <div class="space-y-2.5">
-              <div class="text-[10px] text-indigo-300 uppercase tracking-widest font-bold mb-1">Everything in Pass plus:</div>
-              <ul class="space-y-2 text-xs text-zinc-300">
-                <li class="flex items-center gap-1.5 font-semibold"><span class="text-indigo-455 font-bold">✓</span> Unlimited photos & videos</li>
-                <li class="flex items-center gap-1.5"><span class="text-indigo-455 font-bold">✓</span> Keep history of your runs</li>
-                <li class="flex items-center gap-1.5"><span class="text-indigo-455 font-bold">✓</span> Priority support messages</li>
+              <div class="text-[10px] text-white/80 uppercase tracking-widest font-bold mb-1">Everything in Pass plus:</div>
+              <ul class="space-y-2 text-xs text-white/90">
+                <li class="flex items-center gap-1.5 font-semibold"><span class="text-white font-bold">✓</span> Unlimited photos & videos</li>
+                <li class="flex items-center gap-1.5"><span class="text-white font-bold">✓</span> Keep history of your runs</li>
+                <li class="flex items-center gap-1.5"><span class="text-white font-bold">✓</span> Priority support messages</li>
               </ul>
             </div>
           </div>
         </div>
         <div class="mt-8">
           <a href={`/checkout?plan=pro&region=${region}`} class="w-full link-checkout-pro">
-            <button class="w-full py-3 bg-white hover:bg-white/90 border border-zinc-200 rounded-xl font-bold text-xs text-black cursor-pointer shadow-lg shadow-indigo-550/20 transition-all">Go Pro</button>
+            <button class="w-full py-3 btn-pricing-pro rounded-xl font-bold text-xs cursor-pointer transition-all">Go Pro</button>
           </a>
         </div>
       </div>
@@ -138,7 +138,7 @@ const prices = PLAN_PRICES[region] || PLAN_PRICES.us;
         </div>
         <div class="mt-8">
           <a href={`/checkout?plan=super&region=${region}`} class="w-full link-checkout-super">
-            <button class="w-full py-3 bg-zinc-900 border border-zinc-800 rounded-xl font-bold text-xs text-white cursor-pointer hover:bg-zinc-855 transition-all">Go Super</button>
+            <button class="w-full py-3 btn-pricing-super rounded-xl font-bold text-xs cursor-pointer transition-all">Go Super</button>
           </a>
         </div>
       </div>
@@ -204,37 +204,23 @@ const prices = PLAN_PRICES[region] || PLAN_PRICES.us;
       </div>
     </div>
 
-    <div class="mt-20 max-w-4xl mx-auto">
-      <div class="grid grid-cols-1 md:grid-cols-3 gap-6 text-left mb-12">
-        <div class="bg-white/[0.02] border border-white/5 p-5 rounded-2xl">
-          <div class="text-indigo-400 font-bold text-sm mb-1">✓ One-Time Purchase</div>
-          <p class="text-xs text-white/60 leading-relaxed">No subscriptions, no hidden fees, and no recurring charges. You own your license forever.</p>
-        </div>
-        <div class="bg-white/[0.02] border border-white/5 p-5 rounded-2xl">
-          <div class="text-indigo-400 font-bold text-sm mb-1">✓ Privacy First</div>
-          <p class="text-xs text-white/60 leading-relaxed">All media processing runs locally inside your browser. Your files never leave your device.</p>
-        </div>
-        <div class="bg-white/[0.02] border border-white/5 p-5 rounded-2xl">
-          <div class="text-indigo-400 font-bold text-sm mb-1">✓ Recovery Guarantee</div>
-          <p class="text-xs text-white/60 leading-relaxed">If TakeoutFix cannot process your takeout due to a verified software issue, we will work to resolve it or refund you.</p>
-        </div>
-        <div class="bg-white/[0.02] border border-white/5 p-5 rounded-2xl">
-          <div class="text-indigo-400 font-bold text-sm mb-1">✓ Same Engine Quality</div>
-          <p class="text-xs text-white/60 leading-relaxed">Recovery quality never varies. All plans use the identical high-performance metadata engine.</p>
-        </div>
-        <div class="bg-white/[0.02] border border-white/5 p-5 rounded-2xl">
-          <div class="text-indigo-400 font-bold text-sm mb-1">✓ Dedicated Support</div>
-          <p class="text-xs text-white/60 leading-relaxed">Access direct, priority help whenever you run into any trouble with your restoration process.</p>
-        </div>
-        <div class="bg-white/[0.02] border border-white/5 p-5 rounded-2xl">
-          <div class="text-indigo-400 font-bold text-sm mb-1">✓ Fair Refund Policy</div>
-          <p class="text-xs text-white/60 leading-relaxed">Clear, usage-capped thresholds prevent abuse while fully protecting legitimate recovery failures.</p>
-        </div>
-      </div>
+    <div class="mt-20 max-w-2xl mx-auto" style="text-align: center !important;">
+      <h2 class="text-2xl font-bold mb-8 text-white font-semibold" style="text-align: center !important;">Plan Limits & Guarantee Conditions</h2>
       
-      <div class="text-center text-white/40 text-xs p-6 bg-white/5 border border-white/10 rounded-2xl">
-        <p class="font-bold text-white/80 text-sm mb-2">Plan Limits & Conditions</p>
-        <p>Paid plans unlock higher limits, history logs, support access, and an ad-free experience. Limits on Free and Recovery Pass are enforced on a "whichever comes first" basis (either storage capacity or file count). Our core local extraction engine is identical across all tiers.</p>
+      <div class="bg-zinc-950/45 border border-zinc-900 p-8 rounded-2xl space-y-8" style="text-align: center !important;">
+        <div style="text-align: center !important;">
+          <h3 class="text-sm font-bold text-white uppercase tracking-wider mb-3" style="text-align: center !important;">Enforcement of Limits</h3>
+          <p class="text-xs text-zinc-300 leading-relaxed max-w-md mx-auto" style="text-align: center !important; margin: 0 auto;">
+            Limits on <strong>Free</strong> (1,000 files/1 GB) and <strong>Recovery Pass</strong> (10,000 files/20 GB) are enforced on a <strong>"whichever comes first"</strong> basis. Device limits are tied to your browser installation environment. Paid lifetime licenses allow activation on up to 2 or 3 separate devices simultaneously.
+          </p>
+        </div>
+        
+        <div class="border-t border-zinc-900 pt-6" style="text-align: center !important;">
+          <h3 class="text-sm font-bold text-white uppercase tracking-wider mb-3" style="text-align: center !important;">7-Day Refund Policy</h3>
+          <p class="text-xs text-zinc-300 leading-relaxed max-w-md mx-auto" style="text-align: center !important; margin: 0 auto;">
+            We offer a 100% Recovery Guarantee: if a verified technical issue prevents your restoration, and our support desk is unable to resolve it, we will issue a full refund within 7 days of purchase. Refunds are not available for change of mind or successfully completed recoveries.
+          </p>
+        </div>
       </div>
     </div>
   </div>
@@ -409,5 +395,21 @@ const prices = PLAN_PRICES[region] || PLAN_PRICES.us;
     updatePrices(countryCode);
   }
 
-  fetchSettingsAndInit();
+  let priceUpdateDone = false;
+  async function initWrapper() {
+    if (priceUpdateDone) return;
+    priceUpdateDone = true;
+    await fetchSettingsAndInit();
+  }
+
+  // Trigger on load
+  if (document.readyState === "complete" || document.readyState === "interactive") {
+    initWrapper();
+  } else {
+    document.addEventListener("DOMContentLoaded", initWrapper);
+  }
+
+  // Trigger on hover/touch instantly
+  window.addEventListener("mouseover", initWrapper, { once: true });
+  window.addEventListener("touchstart", initWrapper, { once: true });
 </script>
