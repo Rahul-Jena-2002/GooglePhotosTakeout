@@ -526,11 +526,11 @@ html.light .compare-file-name {
 .compare-file-desc {
   font-family: 'Inter', sans-serif;
   font-size: 0.625rem; /* text-[10px] */
-  color: rgba(255, 255, 255, 0.4);
+  color: rgba(255, 255, 255, 0.6);
 }
 
 html.light .compare-file-desc {
-  color: #71717a !important;
+  color: #4b5563 !important;
 }
 
 /* Rows styling */
@@ -560,11 +560,11 @@ html.light .compare-item {
   font-family: 'Inter', sans-serif;
   font-size: 0.75rem; /* text-xs */
   font-weight: 500;
-  color: rgba(255, 255, 255, 0.4);
+  color: rgba(255, 255, 255, 0.7);
 }
 
 html.light .compare-item-label {
-  color: #71717a !important;
+  color: #4b5563 !important;
 }
 
 .compare-item-value-missing {
