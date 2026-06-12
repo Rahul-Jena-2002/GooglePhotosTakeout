@@ -615,7 +615,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setUserData({ ...data, ...nameUpdates, sessionIds: updatedSessions } as any);
         setSessionRegistered(true);
       } else {
-        if (updatedSessions.length >= maxDevices) {
+        const bypassDeviceLimit = isAdminUser || import.meta.env.DEV;
+        if (!bypassDeviceLimit && updatedSessions.length >= maxDevices) {
           // Exceeds limits! Wait for user input (Hotstar-style)
           setPendingSessionData({
             docRef,
@@ -776,7 +777,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
         
         // Evict session if our local device session ID is not in active list (only after session registration completes)
-        if (sessionRegistered && hasSeenSelfInSessions && localSessionId && sessionIds.length > 0 && !sessionIds.includes(localSessionId)) {
+        const isBypass = data.isAdmin || import.meta.env.DEV;
+        if (!isBypass && sessionRegistered && hasSeenSelfInSessions && localSessionId && sessionIds.length > 0 && !sessionIds.includes(localSessionId)) {
           setPendingSessionData({
             docRef: userDocRef,
             profileData: {

@@ -86,6 +86,18 @@ export function ToolWorkspaceContent() {
   const limitFiles = plan === 'recovery_pass' ? 10000 : (plan === 'pro' || plan === 'super' || plan === 'family' ? Infinity : 1000)
   const limitBytes = plan === 'recovery_pass' ? 20 * 1024 * 1024 * 1024 : (plan === 'pro' || plan === 'super' || plan === 'family' ? Infinity : 1 * 1024 * 1024 * 1024)
 
+  const limitFilesRef = useRef(limitFiles)
+  const limitBytesRef = useRef(limitBytes)
+  const currentUsedFilesRef = useRef(currentUsedFiles)
+  const currentUsedBytesRef = useRef(currentUsedBytes)
+
+  useEffect(() => {
+    limitFilesRef.current = limitFiles
+    limitBytesRef.current = limitBytes
+    currentUsedFilesRef.current = currentUsedFiles
+    currentUsedBytesRef.current = currentUsedBytes
+  }, [limitFiles, limitBytes, currentUsedFiles, currentUsedBytes])
+
   // Maintenance State
   const [maintenance, setMaintenance] = useState(false)
   useEffect(() => {
@@ -746,8 +758,8 @@ export function ToolWorkspaceContent() {
       }
     }
     
-    const storageExceeded = (currentUsedBytes + finalBytes) > limitBytes
-    const filesExceeded = (currentUsedFiles + finalFiles) > limitFiles
+    const storageExceeded = (currentUsedBytesRef.current + finalBytes) > limitBytesRef.current
+    const filesExceeded = (currentUsedFilesRef.current + finalFiles) > limitFilesRef.current
     let limitReason = ""
     if (storageExceeded && filesExceeded) {
       limitReason = "both your storage and file count limits"
@@ -1291,7 +1303,7 @@ export function ToolWorkspaceContent() {
               await new Promise(resolve => setTimeout(resolve, 200))
             }
 
-            if (currentUsedBytes + sessionBytesRef.current > limitBytes || currentUsedFiles + sessionFilesRef.current > limitFiles) {
+            if (currentUsedBytesRef.current + sessionBytesRef.current > limitBytesRef.current || currentUsedFilesRef.current + sessionFilesRef.current > limitFilesRef.current) {
               await haltDueToQuota()
               return
             }

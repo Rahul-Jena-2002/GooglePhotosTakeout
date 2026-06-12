@@ -25,6 +25,20 @@ const formatBytes = (bytes: number) => {
   return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i]
 }
 
+const getUserBytes = (u: any) => {
+  if (!u) return 0;
+  return Math.max(u.usedBytes || 0, u.totalBytesProcessed || 0, u.lifetimeBytes || 0);
+}
+
+const getUserFiles = (u: any) => {
+  if (!u) return 0;
+  const recorded = Math.max(u.totalFilesProcessed || 0, u.usedFiles || 0, u.lifetimeFiles || 0);
+  const trackedBytes = Math.max(u.totalBytesProcessed || 0, u.usedBytes || 0);
+  const legacyBytes = Math.max(0, (u.lifetimeBytes || 0) - trackedBytes);
+  const legacyFiles = legacyBytes > 0 ? Math.round(legacyBytes / (1.2 * 1024 * 1024)) : 0;
+  return recorded + legacyFiles;
+}
+
 export default function AdminUserDashboard() {
   const uid = new URLSearchParams(window.location.search).get("uid") || ""
   const navigate = useNavigate()
@@ -344,8 +358,8 @@ Your EXIF metadata recovery tools are active.
                   {/* Global counters for the user */}
                   <div className="grid grid-cols-2 gap-3 pt-2">
                     {[
-                      { label: "Lifetime Bytes", val: formatBytes(Math.max(targetUser.totalBytesProcessed || 0, targetUser.lifetimeBytes || 0)) },
-                      { label: "Lifetime Files", val: (targetUser.totalFilesProcessed || 0).toLocaleString() },
+                      { label: "Lifetime Bytes", val: formatBytes(getUserBytes(targetUser)) },
+                      { label: "Lifetime Files", val: getUserFiles(targetUser).toLocaleString() },
                       { label: "Current Session Bytes", val: formatBytes(targetUser.usedBytes || 0) },
                       { label: "Current Session Files", val: (targetUser.usedFiles || 0).toLocaleString() }
                     ].map((stat, i) => (

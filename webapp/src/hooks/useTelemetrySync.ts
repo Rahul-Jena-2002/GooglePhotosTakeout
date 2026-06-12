@@ -9,14 +9,10 @@ const getUserBytes = (u: any) => {
 
 const getUserFiles = (u: any) => {
   const recorded = Math.max(u.totalFilesProcessed || 0, u.usedFiles || 0, u.lifetimeFiles || 0);
-  if (recorded > 0) return recorded;
-  
-  // Heuristic for legacy data missing files count (assumes average size of 1.2 MB per file)
-  const bytes = Math.max(u.usedBytes || 0, u.totalBytesProcessed || 0, u.lifetimeBytes || 0);
-  if (bytes > 0) {
-    return Math.round(bytes / (1.2 * 1024 * 1024));
-  }
-  return 0;
+  const trackedBytes = Math.max(u.totalBytesProcessed || 0, u.usedBytes || 0);
+  const legacyBytes = Math.max(0, (u.lifetimeBytes || 0) - trackedBytes);
+  const legacyFiles = legacyBytes > 0 ? Math.round(legacyBytes / (1.2 * 1024 * 1024)) : 0;
+  return recorded + legacyFiles;
 };
 
 /**

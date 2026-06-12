@@ -589,7 +589,7 @@ html.light .compare-item-value-fixed {
   color: #16a34a !important;
 }
 
-/* --- High Contrast Gray Text Overrides (Dark Mode) --- */
+/* --- High Contrast Gray & Opacity Text Overrides (Dark Mode) --- */
 html:not(.light) .text-white\/30 {
   color: rgba(255, 255, 255, 0.55) !important;
 }
@@ -599,12 +599,27 @@ html:not(.light) .text-white\/40 {
 html:not(.light) .text-white\/50 {
   color: rgba(255, 255, 255, 0.75) !important;
 }
+html:not(.light) .text-white\/60 {
+  color: rgba(255, 255, 255, 0.82) !important; /* Made lighter for readability */
+}
+html:not(.light) .text-white\/70 {
+  color: rgba(255, 255, 255, 0.88) !important;
+}
+html:not(.light) .text-white\/80 {
+  color: rgba(255, 255, 255, 0.94) !important;
+}
 html:not(.light) .text-zinc-400 {
-  color: #d4d4d8 !important; /* zinc-300 */
+  color: #e4e4e7 !important; /* shifted to zinc-200 for high readability */
 }
 html:not(.light) .text-zinc-500 {
-  color: #a1a1aa !important; /* zinc-400 */
+  color: #d4d4d8 !important; /* shifted to zinc-300 */
 }
 html:not(.light) .text-zinc-600 {
-  color: #71717a !important; /* zinc-500 */
+  color: #a1a1aa !important; /* shifted to zinc-400 */
 }
+
+/* Limit paragraph width for maximum typography readability (Apple/Premium style) */
+p {
+  max-width: 65ch;
+}
+

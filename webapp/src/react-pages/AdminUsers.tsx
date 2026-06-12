@@ -24,20 +24,22 @@ const getUserBytes = (u: any) => {
   return Math.max(u.usedBytes || 0, u.totalBytesProcessed || 0, u.lifetimeBytes || 0)
 }
 
+const getUserFiles = (u: any) => {
+  const recorded = Math.max(u.totalFilesProcessed || 0, u.usedFiles || 0, u.lifetimeFiles || 0);
+  const trackedBytes = Math.max(u.totalBytesProcessed || 0, u.usedBytes || 0);
+  const legacyBytes = Math.max(0, (u.lifetimeBytes || 0) - trackedBytes);
+  const legacyFiles = legacyBytes > 0 ? Math.round(legacyBytes / (1.2 * 1024 * 1024)) : 0;
+  return recorded + legacyFiles;
+}
+
 const getUserFilesRestored = (u: any, recoveries: any[]) => {
   const userRecoveries = recoveries.filter(r => r.uid === u.id)
-  if (userRecoveries.length > 0) {
-    return userRecoveries.reduce((sum, r) => sum + (r.matched || 0), 0)
-  }
-  const recorded = Math.max(u.usedFiles || 0, u.totalFilesProcessed || 0, u.lifetimeFiles || 0);
-  if (recorded > 0) return recorded;
-
-  // Heuristic fallback for legacy accounts missing files count (1.2 MB average file size)
-  const bytes = Math.max(u.usedBytes || 0, u.totalBytesProcessed || 0, u.lifetimeBytes || 0);
-  if (bytes > 0) {
-    return Math.round(bytes / (1.2 * 1024 * 1024));
-  }
-  return 0;
+  const recoveriesScanned = userRecoveries.reduce((sum, r) => sum + (r.scanned || 0), 0)
+  const recoveriesMatched = userRecoveries.reduce((sum, r) => sum + (r.matched || 0), 0)
+  
+  const totalFiles = getUserFiles(u)
+  const ratio = recoveriesScanned > 0 ? (recoveriesMatched / recoveriesScanned) : 0.999
+  return Math.round(totalFiles * ratio)
 }
 
 export default function AdminUsers() {
@@ -417,7 +419,7 @@ export default function AdminUsers() {
                   </div>
                   <div className="flex justify-between text-sm">
                     <span className="text-zinc-400">Total Lifetime Files</span>
-                    <span className="text-zinc-200 font-medium">{Math.max(selectedUser.totalFilesProcessed || 0, selectedUser.usedFiles || 0)}</span>
+                    <span className="text-zinc-200 font-medium">{getUserFiles(selectedUser).toLocaleString()}</span>
                   </div>
                 </div>
               </div>

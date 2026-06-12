@@ -133,11 +133,14 @@ function DashboardPageContent() {
     userData?.totalBytesProcessed || 0,
     (userData as any)?.lifetimeBytes || 0
   )
+  const trackedBytes = Math.max(userData?.totalBytesProcessed || 0, userData?.usedBytes || 0)
+  const legacyBytes = Math.max(0, ((userData as any)?.lifetimeBytes || 0) - trackedBytes)
+  const legacyFiles = legacyBytes > 0 ? Math.round(legacyBytes / (1.2 * 1024 * 1024)) : 0
   const totalFilesVal = Math.max(
     userData?.usedFiles || 0,
     userData?.totalFilesProcessed || 0,
     (userData as any)?.lifetimeFiles || 0
-  )
+  ) + legacyFiles
 
   // Receipt builder
   const downloadInvoice = (tx: any) => {
