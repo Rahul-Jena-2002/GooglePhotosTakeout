@@ -4,4 +4,4 @@ Disallow: /admin/
 Disallow: /dashboard
 Disallow: /profile
 
-Sitemap: https://takeoutfix.com/sitemap.xml
+Sitemap: https://takeoutfix.pages.dev/sitemap.xml

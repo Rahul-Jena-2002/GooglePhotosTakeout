@@ -14,7 +14,7 @@ const {
 } = Astro.props;
 
 // Generate canonical URL dynamically based on current path
-const canonicalUrl = `https://takeoutfix.com${Astro.url.pathname.replace(/\/$/, "") || "/"}`;
+const canonicalUrl = `https://takeoutfix.pages.dev${Astro.url.pathname.replace(/\/$/, "") || "/"}`;
 ---
 
 <!doctype html>
@@ -54,7 +54,7 @@ const canonicalUrl = `https://takeoutfix.com${Astro.url.pathname.replace(/\/$/, 
         "@context": "https://schema.org",
         "@type": "WebApplication",
         "name": "TakeoutFix",
-        "url": "https://takeoutfix.com",
+        "url": "https://takeoutfix.pages.dev",
         "description": "Restore missing dates, GPS locations, and EXIF metadata from your Google Takeout photos and videos locally in your browser.",
         "applicationCategory": "MultimediaApplication",
         "operatingSystem": "All",
@@ -120,11 +120,11 @@ const canonicalUrl = `https://takeoutfix.com${Astro.url.pathname.replace(/\/$/, 
             </a>
 
             <!-- Desktop Links -->
-            <div class="hidden lg:flex gap-8 text-sm font-medium text-white/70 ml-4">
+            <div class="hidden lg:flex gap-8 text-sm font-medium text-white/70 ml-4 font-sans">
               <a href="/" class="nav-link text-white/70 hover:text-white transition-all pb-1.5 border-b-2 border-transparent">Home</a>
               <a href="/how-it-works" class="nav-link text-white/70 hover:text-white transition-all pb-1.5 border-b-2 border-transparent">How It Works</a>
               <a href="/pricing" class="nav-link text-white/70 hover:text-white transition-all pb-1.5 border-b-2 border-transparent">Pricing</a>
-              <a href="/reviews" class="nav-link text-white/70 hover:text-white transition-all pb-1.5 border-b-2 border-transparent">Reviews</a>
+              <a href="https://github.com/Rahul-Jena-2002/GooglePhotosTakeout" target="_blank" rel="noopener noreferrer" class="nav-link text-white/70 hover:text-white transition-all pb-1.5 border-b-2 border-transparent">GitHub</a>
               <a href="/support" class="nav-link text-white/70 hover:text-white transition-all pb-1.5 border-b-2 border-transparent">Support</a>
             </div>
           </div>
@@ -234,7 +234,7 @@ const canonicalUrl = `https://takeoutfix.com${Astro.url.pathname.replace(/\/$/, 
           <a href="/" class="mobile-nav-link py-2 px-2 text-white/70 hover:text-white hover:bg-white/5 rounded-md text-sm font-medium transition-all">Home</a>
           <a href="/how-it-works" class="mobile-nav-link py-2 px-2 text-white/70 hover:text-white hover:bg-white/5 rounded-md text-sm font-medium transition-all">How It Works</a>
           <a href="/pricing" class="mobile-nav-link py-2 px-2 text-white/70 hover:text-white hover:bg-white/5 rounded-md text-sm font-medium transition-all">Pricing</a>
-          <a href="/reviews" class="mobile-nav-link py-2 px-2 text-white/70 hover:text-white hover:bg-white/5 rounded-md text-sm font-medium transition-all">Reviews</a>
+          <a href="https://github.com/Rahul-Jena-2002/GooglePhotosTakeout" target="_blank" rel="noopener noreferrer" class="mobile-nav-link py-2 px-2 text-white/70 hover:text-white hover:bg-white/5 rounded-md text-sm font-medium transition-all">GitHub</a>
           <a href="/support" class="mobile-nav-link py-2 px-2 text-white/70 hover:text-white hover:bg-white/5 rounded-md text-sm font-medium transition-all">Support</a>
 
           <div id="mobile-auth-section" class="border-t border-white/5 pt-3 flex flex-col gap-3 hidden">
@@ -294,12 +294,20 @@ const canonicalUrl = `https://takeoutfix.com${Astro.url.pathname.replace(/\/$/, 
               </svg>
               &copy; 2026 TakeoutFix System Core. All rights reserved.
             </div>
-            <div class="flex gap-6 text-sm text-white/40">
-              <a href="/privacy" class="hover:text-white transition-colors">Privacy Policy</a>
-              <a href="/terms" class="hover:text-white transition-colors">Terms of Service</a>
-              <a href="/refund" class="hover:text-white transition-colors">Refund Policy</a>
-              <a href="/support" class="hover:text-white transition-colors">Support Center</a>
-              <a href="/support?tab=feedback" class="hover:text-white transition-colors">Give Feedback</a>
+            <div class="flex flex-col md:flex-row gap-6 text-xs text-white/40 items-center">
+              <div class="flex flex-wrap gap-4 justify-center">
+                <a href="/privacy" class="hover:text-white transition-colors">Privacy Policy</a>
+                <a href="/terms" class="hover:text-white transition-colors">Terms of Service</a>
+                <a href="/refund" class="hover:text-white transition-colors">Refund Policy</a>
+                <a href="/how-it-works" class="hover:text-white transition-colors">Documentation</a>
+                <a href="/support" class="hover:text-white transition-colors">Contact</a>
+              </div>
+              <div class="flex flex-wrap gap-4 justify-center md:border-l md:border-white/10 md:pl-6">
+                <a href="https://github.com/Rahul-Jena-2002/GooglePhotosTakeout" target="_blank" rel="noopener noreferrer" class="hover:text-white transition-colors">GitHub</a>
+                <a href="https://github.com/Rahul-Jena-2002/GooglePhotosTakeout/issues" target="_blank" rel="noopener noreferrer" class="hover:text-white transition-colors">Report Issue</a>
+                <span>Version 1.0.4</span>
+                <span>Build: 2026-06-12</span>
+              </div>
             </div>
           </div>
         </footer>

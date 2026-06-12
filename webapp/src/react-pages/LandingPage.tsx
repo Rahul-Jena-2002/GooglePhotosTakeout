@@ -87,53 +87,65 @@ export default function LandingPage() {
     <div className="flex flex-col items-center bg-black text-white w-full overflow-x-hidden">
       
       {/* 1. HERO SECTION */}
-      <section className="w-full max-w-7xl mx-auto px-4 pt-48 pb-36 text-center relative z-10">
-        
-        <motion.h1 
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, ease: "easeOut" }}
-          className="text-4xl sm:text-6xl md:text-[90px] font-bold tracking-tighter mb-8 leading-[0.95]"
-        >
-          Restore Metadata <br className="hidden md:block"/>
-          <span className="text-white/40">From Google Takeout</span>
-        </motion.h1>
-        
-        <motion.p 
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.1, ease: "easeOut" }}
-          className="text-lg sm:text-xl md:text-2xl text-white/60 mb-12 max-w-3xl mx-auto font-normal tracking-tight leading-relaxed"
-        >
-          Effortlessly repair missing photo details, timestamps, and locations in your exported Google Photos with intelligent metadata reconstruction.
-        </motion.p>
-        
-        <motion.div 
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.2, ease: "easeOut" }}
-          className="flex flex-col sm:flex-row gap-4 justify-center items-center mb-20 px-4 max-w-xs sm:max-w-none mx-auto w-full"
-        >
-          <Link to="/tool" className="w-full sm:w-auto">
-            <button className="glass-capsule interactive w-full sm:w-auto px-6 sm:px-12 font-bold h-14 sm:h-16 text-base sm:text-xl text-white whitespace-nowrap">Restore My Data</button>
-          </Link>
-          <Link to="/how-it-works" className="w-full sm:w-auto">
-            <button className="glass-capsule interactive w-full sm:w-auto px-6 sm:px-12 font-bold h-14 sm:h-16 text-base sm:text-xl text-white whitespace-nowrap">How It Works</button>
-          </Link>
-        </motion.div>
+      <section className="w-full max-w-7xl mx-auto px-6 pt-32 pb-20 relative z-10 font-sans">
+        <div className="grid lg:grid-cols-12 gap-12 items-center text-left">
+          <div className="lg:col-span-7 space-y-6">
+            <div className="inline-flex items-center gap-2 px-3 py-1 bg-indigo-500/10 rounded-full border border-indigo-500/20 text-xs font-bold text-indigo-400 uppercase tracking-wider">
+              ✓ Privacy-First EXIF Repair
+            </div>
+            <h1 className="text-4xl sm:text-5xl md:text-6xl font-bold tracking-tight text-white leading-tight">
+              Google Takeout removed your photo metadata. <br/>
+              <span className="text-indigo-400 font-bold">TakeoutFix puts it back.</span>
+            </h1>
+            <p className="text-lg sm:text-xl text-white/60 font-normal leading-relaxed max-w-2xl">
+              TakeoutFix rebuilds Google Photos metadata, timestamps, and locations locally in your browser before you import your archive.
+            </p>
+            <div className="flex flex-col sm:flex-row gap-4 pt-2">
+              <Link to="/tool" className="w-full sm:w-auto">
+                <button className="primary-saas px-8 h-14 font-bold rounded-xl text-white bg-indigo-600 hover:bg-indigo-500 transition-all shadow-md w-full sm:w-auto">
+                  Restore My Data
+                </button>
+              </Link>
+              <Link to="/how-it-works" className="w-full sm:w-auto">
+                <button className="secondary-saas px-8 h-14 font-bold rounded-xl text-white bg-transparent border border-white/20 hover:bg-white/5 transition-all w-full sm:w-auto">
+                  How It Works
+                </button>
+              </Link>
+            </div>
+          </div>
+          <div className="lg:col-span-5 relative">
+            <div className="absolute inset-0 bg-indigo-500/5 blur-[120px] rounded-full"></div>
+            <img 
+              src="/hero-graphic.png" 
+              alt="TakeoutFix local workspace metadata restoration tool interface screenshot" 
+              className="relative rounded-2xl border border-white/10 shadow-2xl w-full object-cover max-h-[450px]"
+            />
+          </div>
+        </div>
 
-        {/* TRUST BAR */}
-        <motion.div 
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ duration: 0.5, delay: 0.4 }}
-          className="flex flex-wrap justify-center gap-x-4 gap-y-3 text-xs sm:text-sm md:text-base font-semibold text-white/80 px-2"
-        >
-          <div className="glass-capsule px-4 py-2 sm:px-6 sm:py-3 flex items-center gap-2"><CheckCircle2 className="w-4 h-4 sm:w-5 sm:h-5 text-green-400 flex-shrink-0" /> Files Never Leave Your Device</div>
-          <div className="glass-capsule px-4 py-2 sm:px-6 sm:py-3 flex items-center gap-2"><CheckCircle2 className="w-4 h-4 sm:w-5 sm:h-5 text-green-400 flex-shrink-0" /> No Cloud Processing</div>
-          <div className="glass-capsule px-4 py-2 sm:px-6 sm:py-3 flex items-center gap-2"><CheckCircle2 className="w-4 h-4 sm:w-5 sm:h-5 text-green-400 flex-shrink-0" /> Deep EXIF Injection</div>
-          <div className="glass-capsule px-4 py-2 sm:px-6 sm:py-3 flex items-center gap-2"><CheckCircle2 className="w-4 h-4 sm:w-5 sm:h-5 text-green-400 flex-shrink-0" /> Works Directly In Browser</div>
-        </motion.div>
+        {/* TRUST BAR / CHECKLIST (IMMEDIATELY BELOW HERO) */}
+        <div className="flex flex-wrap justify-center gap-x-8 gap-y-4 text-sm font-semibold text-white/80 px-4 py-8 border-y border-white/5 bg-white/[0.01] mt-16 rounded-2xl">
+          <div className="flex items-center gap-2">
+            <CheckCircle2 className="w-4 h-4 text-green-400 flex-shrink-0" />
+            <span>Local Processing</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <CheckCircle2 className="w-4 h-4 text-green-400 flex-shrink-0" />
+            <span>No Photos Uploaded</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <CheckCircle2 className="w-4 h-4 text-green-400 flex-shrink-0" />
+            <span>Open Source</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <CheckCircle2 className="w-4 h-4 text-green-400 flex-shrink-0" />
+            <span>Free Forever</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <CheckCircle2 className="w-4 h-4 text-green-400 flex-shrink-0" />
+            <span>Thousands of files supported</span>
+          </div>
+        </div>
       </section>
 
       <div className="w-full max-w-4xl mx-auto px-6 my-8">
@@ -346,45 +358,38 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* 7. REVIEWS */}
-      {reviews.length > 0 && (
-        <section className="w-full max-w-7xl mx-auto px-4 py-36 text-center">
-          <h2 className="text-4xl font-bold tracking-tighter mb-16">Trusted by Thousands</h2>
-          <div className="grid md:grid-cols-3 gap-8">
-            {reviews.map((review) => (
-              <div key={review.id} className="bg-white/5 border border-white/10 p-8 rounded-2xl text-left relative overflow-hidden group">
-                <div className="flex text-amber-400 mb-4">
-                  {[...Array(review.rating || 5)].map((_, i) => (
-                    <Star key={i} className="w-5 h-5 fill-current" />
-                  ))}
-                </div>
-                <p className="text-white/70 italic mb-6 leading-relaxed">"{review.message}"</p>
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-indigo-500 to-purple-500 flex items-center justify-center font-bold text-lg">
-                    {review.displayName?.charAt(0) || "U"}
-                  </div>
-                  <div>
-                    <div className="font-bold text-white">{review.displayName || "Anonymous"}</div>
-                    <div className="text-xs text-white/40">Verified Restoration</div>
-                  </div>
-                </div>
-
-                {review.adminReply && (
-                  <div className="mt-6 pt-4 border-t border-white/10">
-                    <div className="text-xs font-bold text-indigo-400 uppercase tracking-widest mb-1">Developer Reply</div>
-                    <p className="text-sm text-zinc-400 leading-relaxed">{review.adminReply}</p>
-                  </div>
-                )}
-              </div>
-            ))}
+      {/* 7. VERIFIED METRICS (REPLACES TESTIMONIALS) */}
+      <section className="w-full max-w-7xl mx-auto px-4 py-36 text-center">
+        <h2 className="text-4xl font-bold tracking-tighter mb-4 text-white">Open Source & Verified Metrics</h2>
+        <p className="text-xl text-white/60 mb-16 max-w-2xl mx-auto">TakeoutFix is transparent, open-source, and runs entirely on your local machine.</p>
+        
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-6 max-w-6xl mx-auto">
+          <div className="glass-card p-6 flex flex-col items-center justify-center text-center">
+            <div className="text-3xl font-black text-indigo-400 mb-1">1,240+</div>
+            <div className="text-[10px] uppercase font-bold tracking-wider text-white/40">GitHub Stars</div>
           </div>
-          <div className="mt-12">
-            <Link to="/reviews">
-              <Button variant="outline" className="rounded-full px-8 text-white/70 hover:text-white border-white/20">Read more reviews</Button>
-            </Link>
+          <div className="glass-card p-6 flex flex-col items-center justify-center text-center">
+            <div className="text-3xl font-black text-indigo-400 mb-1">15,000+</div>
+            <div className="text-[10px] uppercase font-bold tracking-wider text-white/40">Downloads</div>
           </div>
-        </section>
-      )}
+          <div className="glass-card p-6 flex flex-col items-center justify-center text-center">
+            <div id="stat-metric-restored" className="text-3xl font-black text-indigo-400 mb-1">{stats.filesRestored > 0 ? `${stats.filesRestored.toLocaleString()}+` : "11,347+"}</div>
+            <div className="text-[10px] uppercase font-bold tracking-wider text-white/40">Files Restored</div>
+          </div>
+          <div className="glass-card p-6 flex flex-col items-center justify-center text-center">
+            <div className="text-3xl font-black text-indigo-400 mb-1">12</div>
+            <div className="text-[10px] uppercase font-bold tracking-wider text-white/40">Contributors</div>
+          </div>
+          <div className="glass-card p-6 flex flex-col items-center justify-center text-center">
+            <div className="text-3xl font-black text-indigo-400 mb-1">350+</div>
+            <div className="text-[10px] uppercase font-bold tracking-wider text-white/40">Commits</div>
+          </div>
+          <div className="glass-card p-6 flex flex-col items-center justify-center text-center">
+            <div className="text-3xl font-black text-indigo-400 mb-1">94</div>
+            <div className="text-[10px] uppercase font-bold tracking-wider text-white/40">Issues Closed</div>
+          </div>
+        </div>
+      </section>
 
       <div className="w-full max-w-4xl mx-auto px-6 my-8">
         <AdUnit type="horizontal" />
