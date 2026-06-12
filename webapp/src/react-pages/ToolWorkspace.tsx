@@ -1,7 +1,8 @@
 import { useRef, useEffect, useState } from "react"
 import { useAuth } from "../contexts/AuthContext"
 import { useToolStore } from "../store/useToolStore"
-import { isAllowedMediaFile, sanitizeFilename } from "../services/MetadataMatcher"
+import { isAllowedMediaFile, sanitizeFilename, findMatchingJsonName, safeParseJson, extractTimestamp } from "../services/MetadataMatcher"
+import { injectExifDate, isJpeg } from "../services/ExifRestorer"
 import { db } from "../firebase"
 import { doc, setDoc, increment, addDoc, collection, onSnapshot } from "firebase/firestore"
 import AdBlockGate from "../components/AdBlockGate"
@@ -13,8 +14,7 @@ import { FolderUp, HardDrive, Play, Square, Pause, Activity, Database, CheckCirc
 // No react-router-dom imports
 import { indexedDbService } from "../lib/indexedDbService"
 
-// @ts-ignore
-import ProcessWorker from "../workers/ProcessWorker?worker"
+
 
 type LogEntry = {
   level: string;
@@ -120,13 +120,12 @@ function ToolWorkspaceContent() {
   const [isPaused, setIsPaused] = useState(false)
   const isPausedRef = useRef(false)
   
-  // Multi-worker implementation
-  const scannerRef = useRef<Worker | null>(null)
-  const workersRef = useRef<Worker[]>([])
+  // Concurrency processing pool implementation
   const workerStatusRef = useRef<string[]>([]) // 'idle' or 'busy'
   const queueRef = useRef<any[]>([])
   const [maxWorkers, setMaxWorkers] = useState(1)
   const [activeWorkersCount, setActiveWorkersCount] = useState(0)
+  const dirNamesCache = useRef<Map<string, Set<string>>>(new Map())
 
   const isProcessingRef = useRef(false)
   const logContainerRef = useRef<HTMLDivElement>(null)
@@ -184,10 +183,6 @@ function ToolWorkspaceContent() {
 
     return () => {
       window.removeEventListener('beforeunload', handleBeforeUnload)
-      if (scannerRef.current) {
-        scannerRef.current.terminate()
-      }
-      workersRef.current.forEach(w => w.terminate())
       commitSessionUsage()
       if (flushInterval.current) window.clearInterval(flushInterval.current)
     }
@@ -338,6 +333,20 @@ function ToolWorkspaceContent() {
         lastUpdated: now,
         ...fields
       }, { merge: true })
+
+      // Dynamically update the user's dashboard recovery history record in Firestore
+      if (historySessionIdRef.current) {
+        const historyRef = doc(db, 'recoveryHistory', user.uid, 'sessions', historySessionIdRef.current)
+        await setDoc(historyRef, {
+          filesProcessed: statsBuffer.current.scanned,
+          matched: statsBuffer.current.matched,
+          recovered: statsBuffer.current.matched,
+          failed: statsBuffer.current.errors,
+          bytesProcessed: totalSessionBytesRef.current,
+          duration: Date.now() - startTimeRef.current,
+          status: status === 'processing' ? 'processing' : status
+        }, { merge: true }).catch(err => console.error("Failed to update dynamic recovery history:", err))
+      }
     } catch (err) {
       console.warn("Failed to update active session telemetry:", err)
     }
@@ -402,52 +411,203 @@ function ToolWorkspaceContent() {
     }
   }
 
-  // Dynamic queue dispatcher
-  const dispatchTasks = () => {
-    if (isPausedRef.current || !isProcessingRef.current) return
+  const runProcessingQueue = async (workerId: number) => {
+    while (isProcessingRef.current && queueRef.current.length > 0) {
+      if (isPausedRef.current) {
+        await new Promise(resolve => setTimeout(resolve, 200))
+        continue
+      }
 
-    const poolSize = workersRef.current.length
+      // Quota check
+      if (currentUsedBytes + sessionBytesRef.current > limitBytes || currentUsedFiles + sessionFilesRef.current > limitFiles) {
+        haltDueToQuota()
+        return
+      }
 
-    for (let i = 0; i < poolSize; i++) {
-      if (workerStatusRef.current[i] === 'idle' && queueRef.current.length > 0) {
-        // Double check quota before dispatching
-        if (currentUsedBytes + sessionBytesRef.current > limitBytes || currentUsedFiles + sessionFilesRef.current > limitFiles) {
-          haltDueToQuota()
-          return
+      const item = queueRef.current.shift()
+      if (!item) break
+
+      workerStatusRef.current[workerId] = 'busy'
+      setActiveWorkersCount(workerStatusRef.current.filter(s => s === 'busy').length)
+
+      try {
+        await processFileMainThread(item)
+      } catch (err) {
+        console.error("Worker loop error:", err)
+      }
+
+      workerStatusRef.current[workerId] = 'idle'
+      setActiveWorkersCount(workerStatusRef.current.filter(s => s === 'busy').length)
+    }
+  }
+
+  const getOrCreateDir = async (root: FileSystemDirectoryHandle, parts: string[]): Promise<FileSystemDirectoryHandle> => {
+    let current = root
+    for (const part of parts) {
+      const safe = sanitizeFilename(part)
+      if (!safe) continue
+      current = await current.getDirectoryHandle(safe, { create: true })
+    }
+    return current
+  }
+
+  const processFileMainThread = async (item: any) => {
+    const { fileHandle, dirHandle, relativePath } = item
+    const safeName = sanitizeFilename(fileHandle.name)
+    let fileSize = 0
+
+    try {
+      let file
+      try {
+        file = await fileHandle.getFile()
+      } catch (err) {
+        const freshHandle = await dirHandle.getFileHandle(fileHandle.name)
+        file = await freshHandle.getFile()
+      }
+
+      fileSize = file.size
+
+      // Get directory names cache
+      const cacheKey = relativePath.join('/')
+      let allNamesSet = dirNamesCache.current.get(cacheKey)
+      if (!allNamesSet) {
+        // Enforce cache limit to prevent memory leak
+        if (dirNamesCache.current.size >= 5) {
+          const firstKey = dirNamesCache.current.keys().next().value
+          if (firstKey !== undefined) {
+            dirNamesCache.current.delete(firstKey)
+          }
         }
 
-        const item = queueRef.current.shift()
-        if (!item) break
-
-        workerStatusRef.current[i] = 'busy'
-
-        workersRef.current[i].postMessage({
-          type: 'process_file',
-          fileHandle: item.fileHandle,
-          dirHandle: item.dirHandle,
-          relativePath: item.relativePath,
-          outputHandle: outputFolder,
-          injectExif: true
-        })
+        allNamesSet = new Set<string>()
+        // @ts-ignore
+        for await (const [name] of dirHandle) {
+          const safe = sanitizeFilename(name)
+          if (safe) allNamesSet.add(safe)
+        }
+        dirNamesCache.current.set(cacheKey, allNamesSet)
       }
-    }
 
-    const busyCount = workerStatusRef.current.filter(status => status === 'busy').length
-    setActiveWorkersCount(busyCount)
+      const jsonName = findMatchingJsonName(safeName, allNamesSet)
+      
+      let epochSec: number | null = null
+      if (jsonName) {
+        try {
+          const jsonHandle = await dirHandle.getFileHandle(jsonName)
+          const jsonFile = await jsonHandle.getFile()
+          const parsed = safeParseJson(await jsonFile.text())
+          if (parsed) epochSec = extractTimestamp(parsed)
+        } catch {}
+      }
 
-    // Check if we are finished
-    if (busyCount === 0 && queueRef.current.length === 0 && isProcessingRef.current) {
-      completeProcessing()
+      const baseFolder = (jsonName && epochSec) ? 'restored' : 'unmatched'
+      const outSubDir = await getOrCreateDir(outputFolder!, [baseFolder, ...relativePath])
+      const outHandle = await outSubDir.getFileHandle(safeName, { create: true })
+      
+      // @ts-ignore
+      const writable = await outHandle.createWritable()
+
+      // EXIF date injection
+      if (epochSec && isJpeg(safeName)) {
+        const rawBuffer = await file.arrayBuffer()
+        let mediaBytes: Uint8Array | null = null
+        try {
+          mediaBytes = injectExifDate(rawBuffer, epochSec)
+        } catch (err) {
+          console.error('EXIF fail on', safeName, err)
+          mediaBytes = new Uint8Array(rawBuffer)
+        }
+        await writable.write(mediaBytes as any)
+        mediaBytes = null
+      } else {
+        await writable.write(file)
+      }
+
+      await writable.close()
+      file = null // deallocate reference
+
+      // Update statistics
+      let actionStr = ''
+      let levelStr = ''
+      if (jsonName && epochSec) {
+        actionStr = 'Restored & Injected'
+        levelStr = 'success'
+        statsBuffer.current.matched += 1
+      } else {
+        actionStr = 'No Metadata Found'
+        levelStr = 'warn'
+        statsBuffer.current.unmatched += 1
+      }
+      statsBuffer.current.scanned += 1
+
+      const fileBytes = fileSize || 0
+      sessionBytesRef.current += fileBytes
+      sessionFilesRef.current += 1
+      totalSessionBytesRef.current += fileBytes
+
+      // Log the event
+      logsBuffer.current.push({
+        level: levelStr,
+        path: relativePath,
+        filename: safeName,
+        action: actionStr
+      })
+      fileBuffer.current = safeName
+
+      // Backup pending usage to IndexedDB
+      if (user) {
+        indexedDbService.set('telemetry', 'takeoutfix_pending_usage', {
+          uid: user.uid,
+          bytes: sessionBytesRef.current,
+          files: sessionFilesRef.current,
+          sessionId: sessionIdRef.current,
+          takeoutName: takeoutFolder?.name || 'Google Takeout Archive',
+          historySessionId: historySessionIdRef.current
+        }).catch(err => console.error("Failed to backup usage telemetry:", err))
+      }
+
+      progressBuffer.current = Math.floor((statsBuffer.current.scanned / statsBuffer.current.total) * 100)
+
+      updateActiveSession('processing', {
+        scanned: statsBuffer.current.scanned,
+        bytesProcessed: sessionBytesRef.current,
+        currentFile: fileBuffer.current
+      })
+
+    } catch (err: any) {
+      let errMsg = err.message || ''
+      if (errMsg.includes("state cached") || errMsg.includes("changed since it was read")) {
+        errMsg = "File modification conflict. Ensure you are not writing output files directly inside your source folder."
+      }
+
+      statsBuffer.current.errors += 1
+      statsBuffer.current.scanned += 1
+      sessionFilesRef.current += 1
+
+      logsBuffer.current.push({
+        level: 'error',
+        path: relativePath,
+        filename: safeName,
+        action: `Error: ${errMsg}`
+      })
+      fileBuffer.current = safeName
+
+      if (user) {
+        indexedDbService.set('telemetry', 'takeoutfix_pending_usage', {
+          uid: user.uid,
+          bytes: sessionBytesRef.current,
+          files: sessionFilesRef.current,
+          sessionId: sessionIdRef.current,
+          takeoutName: takeoutFolder?.name || 'Google Takeout Archive',
+          historySessionId: historySessionIdRef.current
+        }).catch(err => console.error("Failed to backup usage telemetry:", err))
+      }
+
+      progressBuffer.current = Math.floor((statsBuffer.current.scanned / statsBuffer.current.total) * 100)
     }
   }
 
   const haltDueToQuota = async () => {
-    if (scannerRef.current) {
-      scannerRef.current.terminate()
-      scannerRef.current = null
-    }
-    workersRef.current.forEach(w => w.terminate())
-    workersRef.current = []
     workerStatusRef.current = []
     setActiveWorkersCount(0)
 
@@ -524,8 +684,6 @@ function ToolWorkspaceContent() {
     isProcessingRef.current = false
     setActiveWorkersCount(0)
     
-    workersRef.current.forEach(w => w.terminate())
-    workersRef.current = []
     workerStatusRef.current = []
 
     if (flushInterval.current) {
@@ -722,13 +880,6 @@ function ToolWorkspaceContent() {
         logsBuffer.current = []
         return newLogs.slice(-1000)
       })
-
-      // Periodically commit session usage to Firestore (every 5 seconds) to prevent loopholes
-      const now = Date.now()
-      if (now - lastCommitTimeRef.current >= 5000) {
-        lastCommitTimeRef.current = now
-        commitSessionUsage()
-      }
     }, 100)
 
     try {
@@ -750,80 +901,25 @@ function ToolWorkspaceContent() {
 
       updateActiveSession('processing', {
         totalFiles: files.length,
-        currentFile: 'Starting worker pool...'
+        currentFile: 'Starting processing pool...'
       })
 
-      // Instantiate Processing Pool
       const poolSize = maxWorkers
-      const newWorkers: Worker[] = []
+      workerStatusRef.current = new Array(poolSize).fill('idle')
+      dirNamesCache.current.clear()
+
+      // Start the loops in parallel directly in the main thread
+      const runners: Promise<void>[] = []
       for (let i = 0; i < poolSize; i++) {
-        const w = new ProcessWorker()
-        w.onmessage = (event: MessageEvent) => {
-          const res = event.data
-          if (res.type === 'file_processed') {
-            workerStatusRef.current[i] = 'idle'
-            
-            const logEntry = {
-              level: res.level,
-              path: res.path,
-              filename: res.filename,
-              action: res.action
-            }
-            logsBuffer.current.push(logEntry)
-            if (res.filename) fileBuffer.current = res.filename
-
-            if (res.level === 'success') {
-              statsBuffer.current.matched += 1
-            } else if (res.level === 'warn') {
-              statsBuffer.current.unmatched += 1
-            } else if (res.level === 'error') {
-              statsBuffer.current.errors += 1
-            }
-            statsBuffer.current.scanned += 1
-
-            const fileBytes = res.bytes || 0
-            sessionBytesRef.current += fileBytes
-            sessionFilesRef.current += 1
-            totalSessionBytesRef.current += fileBytes
-
-            // Backup pending usage to IndexedDB to prevent quota bypass loopholes on tab close/refresh
-            if (user) {
-              indexedDbService.set('telemetry', 'takeoutfix_pending_usage', {
-                uid: user.uid,
-                bytes: sessionBytesRef.current,
-                files: sessionFilesRef.current,
-                sessionId: sessionIdRef.current,
-                takeoutName: takeoutFolder?.name || 'Google Takeout Archive',
-                historySessionId: historySessionIdRef.current
-              }).catch(err => console.error("Failed to backup usage telemetry:", err))
-            }
-
-            // Limit check on every file completion
-            if (currentUsedBytes + sessionBytesRef.current > limitBytes || currentUsedFiles + sessionFilesRef.current > limitFiles) {
-              haltDueToQuota()
-              return
-            }
-
-            progressBuffer.current = Math.floor((statsBuffer.current.scanned / statsBuffer.current.total) * 100)
-
-            updateActiveSession('processing', {
-              scanned: statsBuffer.current.scanned,
-              bytesProcessed: sessionBytesRef.current,
-              currentFile: fileBuffer.current
-            })
-
-            // Dispatch next task
-            dispatchTasks()
-          }
-        }
-        newWorkers.push(w)
+        runners.push(runProcessingQueue(i))
       }
 
-      workersRef.current = newWorkers
-      workerStatusRef.current = new Array(poolSize).fill('idle')
-
-      // Dispatch initial batch
-      dispatchTasks()
+      // Wait for all runner loops to complete
+      Promise.all(runners).then(() => {
+        if (isProcessingRef.current && queueRef.current.length === 0) {
+          completeProcessing()
+        }
+      })
 
     } catch (err: any) {
       logsBuffer.current.push({ level: 'error', msg: `Scanning Error: ${err.message || err}` })
@@ -834,12 +930,6 @@ function ToolWorkspaceContent() {
   }
 
   const cancelProcessing = async () => {
-    if (scannerRef.current) {
-      scannerRef.current.terminate()
-      scannerRef.current = null
-    }
-    workersRef.current.forEach(w => w.terminate())
-    workersRef.current = []
     workerStatusRef.current = []
     queueRef.current = []
     setActiveWorkersCount(0)
@@ -895,6 +985,7 @@ function ToolWorkspaceContent() {
       setIsPaused(true)
       isPausedRef.current = true
       setLogs(prev => [...prev, { level: 'info', msg: 'Processing paused by user.' }])
+      commitSessionUsage()
     }
   }
 
@@ -903,10 +994,6 @@ function ToolWorkspaceContent() {
       setIsPaused(false)
       isPausedRef.current = false
       setLogs(prev => [...prev, { level: 'info', msg: 'Processing resumed by user.' }])
-      // Re-trigger dispatching
-      setTimeout(() => {
-        dispatchTasks()
-      }, 0)
     }
   }
 

@@ -5,6 +5,7 @@ import { doc, setDoc, addDoc, collection } from "firebase/firestore"
 import { Button } from "../components/ui/button"
 import { Card } from "../components/ui/card"
 import { ShieldCheck, Lock, CreditCard, ChevronRight, AlertCircle, Sparkles, CheckCircle2 } from "lucide-react"
+import BrandLogo from "../components/BrandLogo"
 
 interface PlanDetails {
   name: string;
@@ -261,7 +262,7 @@ function CheckoutPageContent() {
         <div className="p-8 border-b md:border-b-0 md:border-r border-white/5 flex flex-col justify-between bg-white/[0.01]">
           <div>
             <div className="flex items-center gap-2 mb-8">
-              <span className="w-6 h-6 rounded-md bg-gradient-to-br from-indigo-500 to-purple-600 shadow-[0_0_15px_rgba(99,102,241,0.5)]"></span>
+              <BrandLogo className="w-6 h-6 shadow-[0_0_15px_rgba(99,102,241,0.5)]" />
               <span className="font-bold tracking-tight text-white">TakeoutFix Core Checkout</span>
             </div>
 
