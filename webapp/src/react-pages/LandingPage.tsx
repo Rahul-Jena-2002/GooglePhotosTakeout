@@ -116,7 +116,7 @@ export default function LandingPage() {
           className="flex flex-col sm:flex-row gap-4 justify-center items-center mb-20 px-4 max-w-xs sm:max-w-none mx-auto w-full"
         >
           <Link to="/tool" className="w-full sm:w-auto">
-            <button className="glass-capsule interactive w-full sm:w-auto px-6 sm:px-12 font-bold h-14 sm:h-16 text-base sm:text-xl text-white whitespace-nowrap">Restore My Metadata</button>
+            <button className="glass-capsule interactive w-full sm:w-auto px-6 sm:px-12 font-bold h-14 sm:h-16 text-base sm:text-xl text-white whitespace-nowrap">Restore My Data</button>
           </Link>
           <Link to="/how-it-works" className="w-full sm:w-auto">
             <button className="glass-capsule interactive w-full sm:w-auto px-6 sm:px-12 font-bold h-14 sm:h-16 text-base sm:text-xl text-white whitespace-nowrap">How It Works</button>
@@ -371,64 +371,161 @@ export default function LandingPage() {
           <p className="text-xl text-white/60 mb-16 max-w-2xl mx-auto">Choose a plan based on your volume. Every plan uses the exact same industry-leading recovery engine.</p>
           
           <div className="grid md:grid-cols-4 gap-6 max-w-6xl mx-auto text-left">
+            {/* Free */}
             <div className="glass-card p-8 flex flex-col justify-between">
-              <div>
-                <div className="text-xl font-bold mb-2 text-white">Free</div>
-                <div className="text-3xl font-black mb-6 text-white">Free</div>
-                <ul className="space-y-3 mb-8 text-sm text-white/60">
-                  <li>✓ 1GB / 1,000 files limit</li>
-                  <li>✓ Deep EXIF injection</li>
-                </ul>
+              <div className="space-y-6">
+                <div>
+                  <div className="text-xl font-bold mb-2 text-white">Free</div>
+                  <div className="text-3xl font-black text-white">₹0</div>
+                  <p className="text-[11px] text-white/50 mt-1 leading-relaxed">Try MetaForge on a small Google Takeout export before upgrading.</p>
+                </div>
+                <div>
+                  <div className="text-[10px] text-white/40 uppercase tracking-widest font-bold mb-2">Includes</div>
+                  <ul className="space-y-2 text-xs text-white/70">
+                    <li className="flex items-center gap-1.5"><span className="text-green-400 font-bold">✓</span> 1,000 Files OR 1 GB per recovery</li>
+                    <li className="flex items-center gap-1.5"><span className="text-green-400 font-bold">✓</span> Metadata Recovery</li>
+                    <li className="flex items-center gap-1.5"><span className="text-green-400 font-bold">✓</span> Deep EXIF Injection</li>
+                    <li className="flex items-center gap-1.5"><span className="text-green-400 font-bold">✓</span> Local Browser Processing</li>
+                    <li className="flex items-center gap-1.5"><span className="text-green-400 font-bold">✓</span> Processing Activity Feed</li>
+                    <li className="flex items-center gap-1.5"><span className="text-green-400 font-bold">✓</span> Processing Log Download</li>
+                    <li className="flex items-center gap-1.5"><span className="text-green-400 font-bold">✓</span> Results Summary</li>
+                    <li className="flex items-center gap-1.5"><span className="text-green-400 font-bold">✓</span> Files Never Leave Your Device</li>
+                    <li className="flex items-center gap-1.5"><span className="text-green-400 font-bold">✓</span> Community Documentation</li>
+                  </ul>
+                </div>
+                <div>
+                  <div className="text-[10px] text-white/40 uppercase tracking-widest font-bold mb-2">Support</div>
+                  <ul className="space-y-1 text-xs text-white/60">
+                    <li>• FAQ</li>
+                    <li>• Documentation</li>
+                  </ul>
+                </div>
+                <div>
+                  <div className="text-[10px] text-white/40 uppercase tracking-widest font-bold mb-2">Website Experience</div>
+                  <ul className="space-y-1 text-xs text-white/50">
+                    <li>• Supported by website ads</li>
+                    <li>• Ad blocker must be disabled</li>
+                  </ul>
+                </div>
               </div>
-              <Link to="/tool" className="w-full">
-                <button className="glass-capsule interactive w-full py-3 font-bold text-sm text-white">Start Free</button>
+              <Link to="/tool" className="w-full mt-6">
+                <button className="glass-capsule interactive w-full py-3 font-bold text-sm text-white">Start Free Recovery</button>
               </Link>
             </div>
 
-            <div className="glass-card p-8 flex flex-col justify-between relative">
-              <div className="absolute top-0 right-0 glass-capsule px-3 py-1 text-xs font-bold -translate-y-1/2 translate-x-2 text-white">20 GB LIMIT</div>
-              <div>
-                <div className="text-xl font-bold mb-2 text-white">Recovery Pass</div>
-                <div className="text-3xl font-black mb-6 text-white">{prices.recovery_pass}</div>
-                <ul className="space-y-3 mb-8 text-sm text-white/60">
-                  <li>✓ 20GB / 20k files batch</li>
-                  <li>✓ Folder organization</li>
-                  <li>✓ Standard support</li>
-                </ul>
+            {/* Recovery Pass */}
+            <div className="glass-card p-8 flex flex-col justify-between">
+              <div className="space-y-6">
+                <div>
+                  <div className="text-xl font-bold mb-2 text-white">Recovery Pass</div>
+                  <div className="text-3xl font-black text-white">{prices.recovery_pass}</div>
+                  <p className="text-[11px] text-white/50 mt-1 leading-relaxed">Recover a large Google Takeout export without committing to a lifetime plan.</p>
+                </div>
+                <div>
+                  <div className="text-[10px] text-white/40 uppercase tracking-widest font-bold mb-2">Includes Everything in Free</div>
+                  <ul className="space-y-2 text-xs text-white/70">
+                    <li className="flex items-center gap-1.5 font-bold"><span className="text-indigo-400 font-bold">✓</span> Up to 10,000 Files OR 20 GB</li>
+                    <li className="flex items-center gap-1.5"><span className="text-indigo-400 font-bold">✓</span> Folder Organization</li>
+                    <li className="flex items-center gap-1.5"><span className="text-indigo-400 font-bold">✓</span> Large Export Processing</li>
+                    <li className="flex items-center gap-1.5"><span className="text-indigo-400 font-bold">✓</span> Standard Support</li>
+                    <li className="flex items-center gap-1.5"><span className="text-indigo-400 font-bold">✓</span> Support Tickets</li>
+                    <li className="flex items-center gap-1.5"><span className="text-indigo-400 font-bold">✓</span> My Tickets</li>
+                  </ul>
+                </div>
+                <div>
+                  <div className="text-[10px] text-white/40 uppercase tracking-widest font-bold mb-2">Support</div>
+                  <div className="text-xs text-white/60">
+                    <p>Typical response time:</p>
+                    <p className="font-semibold text-white/80">24–48 Business Hours</p>
+                  </div>
+                </div>
+                <div>
+                  <div className="text-[10px] text-white/40 uppercase tracking-widest font-bold mb-2">Website Experience</div>
+                  <ul className="space-y-1 text-xs text-white/50">
+                    <li>• Supported by website ads</li>
+                    <li>• Ad blocker must be disabled</li>
+                  </ul>
+                </div>
               </div>
-              <Link to={`/checkout?plan=recovery_pass&region=${region}`} className="w-full">
-                <button className="glass-capsule interactive w-full py-3 font-bold text-sm text-white">Get Pass</button>
+              <Link to={`/checkout?plan=recovery_pass&region=${region}`} className="w-full mt-6">
+                <button className="glass-capsule interactive w-full py-3 font-bold text-sm text-white">Buy Recovery Pass</button>
               </Link>
             </div>
 
+            {/* Pro Lifetime */}
             <div className="glass-card p-8 flex flex-col justify-between relative transform md:-translate-y-4 !border-indigo-500/50 shadow-[0_0_50px_rgba(99,102,241,0.2)]">
               <div className="absolute -top-4 left-1/2 -translate-x-1/2 bg-indigo-500 text-white text-xs px-4 py-1 rounded-full font-bold shadow-[0_0_15px_rgba(99,102,241,0.5)]">MOST POPULAR</div>
-              <div>
-                <div className="text-xl font-bold mb-2 text-indigo-400">Pro Lifetime</div>
-                <div className="text-3xl font-black mb-6 text-white">{prices.pro}</div>
-                <ul className="space-y-3 mb-8 text-sm text-white/80">
-                  <li>✓ Unlimited files/GB</li>
-                  <li>✓ Recovery History log</li>
-                  <li>✓ Priority support queue</li>
-                </ul>
+              <div className="space-y-6">
+                <div>
+                  <div className="text-xl font-bold mb-2 text-indigo-400">Pro Lifetime</div>
+                  <div className="text-3xl font-black text-white">{prices.pro}</div>
+                  <p className="text-[11px] text-indigo-400/80 mt-1 leading-relaxed">Lifetime License · Up to 2 Devices</p>
+                </div>
+                <div>
+                  <div className="text-[10px] text-white/40 uppercase tracking-widest font-bold mb-2">Includes Everything in Recovery Pass</div>
+                  <ul className="space-y-2 text-xs text-white/70">
+                    <li className="flex items-center gap-1.5 font-bold"><span className="text-indigo-400 font-bold">✓</span> Unlimited Processing</li>
+                    <li className="flex items-center gap-1.5 font-bold"><span className="text-indigo-400 font-bold">✓</span> Recovery History</li>
+                    <li className="flex items-center gap-1.5 font-bold"><span className="text-indigo-400 font-bold">✓</span> Recovery Statistics</li>
+                    <li className="flex items-center gap-1.5 font-bold"><span className="text-indigo-400 font-bold">✓</span> Priority Support Queue</li>
+                    <li className="flex items-center gap-1.5 font-bold"><span className="text-indigo-400 font-bold">✓</span> Lifetime License</li>
+                  </ul>
+                </div>
+                <div>
+                  <div className="text-[10px] text-white/40 uppercase tracking-widest font-bold mb-2">Support</div>
+                  <div className="text-xs text-white/60">
+                    <p className="font-bold text-indigo-400">Priority Queue</p>
+                    <p>Typical response time: 24–48 Business Hours</p>
+                  </div>
+                </div>
+                <div>
+                  <div className="text-[10px] text-white/40 uppercase tracking-widest font-bold mb-2">Website Experience</div>
+                  <ul className="space-y-1 text-xs text-white/50">
+                    <li>• Supported by website ads</li>
+                    <li>• Ad blocker must be disabled</li>
+                  </ul>
+                </div>
               </div>
-              <Link to={`/checkout?plan=pro&region=${region}`} className="w-full">
-                <button className="glass-capsule interactive w-full py-3 font-bold text-sm text-white !bg-indigo-500/20 !border-indigo-400/50 hover:!bg-indigo-500/40">Get Pro</button>
+              <Link to={`/checkout?plan=pro&region=${region}`} className="w-full mt-6">
+                <button className="glass-capsule interactive w-full py-3 font-bold text-sm text-white !bg-indigo-500/20 !border-indigo-400/50 hover:!bg-indigo-500/40">Upgrade to Pro</button>
               </Link>
             </div>
 
+            {/* Super Lifetime */}
             <div className="glass-card p-8 flex flex-col justify-between">
-              <div>
-                <div className="text-xl font-bold mb-2 text-amber-400">Super Lifetime</div>
-                <div className="text-3xl font-black mb-6 text-white">{prices.super}</div>
-                <ul className="space-y-3 mb-8 text-sm text-white/60">
-                  <li>✓ Ad-Free Restoration</li>
-                  <li>✓ Visual EXIF Viewer</li>
-                  <li>✓ Duplicate Detector</li>
-                </ul>
+              <div className="space-y-6">
+                <div>
+                  <div className="text-xl font-bold mb-2 text-amber-400">Super Lifetime</div>
+                  <div className="text-3xl font-black text-white">{prices.super}</div>
+                  <p className="text-[11px] text-amber-400/80 mt-1 leading-relaxed">Lifetime License · Up to 3 Devices</p>
+                </div>
+                <div>
+                  <div className="text-[10px] text-white/40 uppercase tracking-widest font-bold mb-2">Includes Everything in Pro</div>
+                  <ul className="space-y-2 text-xs text-white/70">
+                    <li className="flex items-center gap-1.5 font-bold"><span className="text-amber-400 font-bold">✓</span> Ad-Free Experience</li>
+                    <li className="flex items-center gap-1.5 font-bold"><span className="text-amber-400 font-bold">✓</span> Metadata Viewer</li>
+                    <li className="flex items-center gap-1.5 font-bold"><span className="text-amber-400 font-bold">✓</span> Duplicate Space Analyzer</li>
+                    <li className="flex items-center gap-1.5 font-bold"><span className="text-amber-400 font-bold">✓</span> Advanced Recovery Statistics</li>
+                    <li className="flex items-center gap-1.5 font-bold"><span className="text-amber-400 font-bold">✓</span> Highest Priority Support</li>
+                  </ul>
+                </div>
+                <div>
+                  <div className="text-[10px] text-white/40 uppercase tracking-widest font-bold mb-2">Support</div>
+                  <div className="text-xs text-white/60">
+                    <p className="font-bold text-amber-400">Highest Priority Queue</p>
+                    <p>Typical response time: 24–48 Business Hours</p>
+                  </div>
+                </div>
+                <div>
+                  <div className="text-[10px] text-white/40 uppercase tracking-widest font-bold mb-2">Website Experience</div>
+                  <ul className="space-y-1 text-xs text-emerald-400 font-semibold">
+                    <li>• Ad-Free Experience</li>
+                    <li>• No Ads Allowed</li>
+                  </ul>
+                </div>
               </div>
-              <Link to={`/checkout?plan=super&region=${region}`} className="w-full">
-                <button className="glass-capsule interactive w-full py-3 font-bold text-sm text-white">Get Super</button>
+              <Link to={`/checkout?plan=super&region=${region}`} className="w-full mt-6">
+                <button className="glass-capsule interactive w-full py-3 font-bold text-sm text-white">Go Ad-Free</button>
               </Link>
             </div>
           </div>
@@ -444,13 +541,17 @@ export default function LandingPage() {
       </div>
 
       {/* 9. FAQ */}
-      <section className="w-full max-w-3xl mx-auto px-4 py-36">
+      <section className="w-full max-w-5xl mx-auto px-4 py-36">
         <h2 className="text-4xl font-bold tracking-tighter mb-12 text-center">Frequently Asked Questions</h2>
-        <div className="space-y-2">
-          <FaqItem question="Are my photos uploaded to your servers?" answer="No. Never. The entire application runs locally inside your web browser using HTML5 File APIs. Your photos and metadata never leave your computer." />
-          <FaqItem question="Does this work completely offline?" answer="Once the web app has loaded in your browser, you can disconnect from the internet and it will still process all your files locally." />
-          <FaqItem question="What metadata can be recovered?" answer="We recover original creation dates (timestamps), GPS coordinates (latitude, longitude, altitude), and camera device information if it exists in the Google JSON sidecars." />
-          <FaqItem question="Does it support videos?" answer="Yes! We support .mp4 and .mov files alongside standard image formats like .jpg, .heic, and .png." />
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-2">
+          <div className="flex flex-col gap-2">
+            <FaqItem question="Are my photos uploaded to your servers?" answer="No. Never. The entire application runs locally inside your web browser using HTML5 File APIs. Your photos and metadata never leave your computer." />
+            <FaqItem question="Does this work completely offline?" answer="Once the web app has loaded in your browser, you can disconnect from the internet and it will still process all your files locally." />
+          </div>
+          <div className="flex flex-col gap-2">
+            <FaqItem question="What metadata can be recovered?" answer="We recover original creation dates (timestamps), GPS coordinates (latitude, longitude, altitude), and camera device information if it exists in the Google JSON sidecars." />
+            <FaqItem question="Does it support videos?" answer="Yes! We support .mp4 and .mov files alongside standard image formats like .jpg, .heic, and .png." />
+          </div>
         </div>
         <div className="mt-12 text-center">
           <Link to="/faq">

@@ -310,7 +310,7 @@ Your EXIF metadata recovery tools are active.
                   </div>
                 )}
                 <a href="/tool" className="flex-1">
-                  <Button variant="outline" className="w-full border-white/20 hover:bg-white/10 hover:text-white font-bold rounded-full">Open Recovery Center</Button>
+                  <Button variant="outline" className="w-full border-white/20 hover:bg-white/10 hover:text-white font-bold rounded-full">Restore My Data</Button>
                 </a>
               </div>
             </CardContent>

@@ -40,24 +40,48 @@ export default function PricingPage() {
           transition={{ duration: 0.5, delay: 0.15, ease: "easeOut" }}
           className="flex flex-col"
         >
-          <Card className="bg-black/40 border-white/10 backdrop-blur-md flex flex-col h-full">
+          <Card className="bg-black/40 border-white/10 backdrop-blur-md flex flex-col h-full hover:border-white/20 transition-all">
             <CardHeader>
               <CardTitle className="text-2xl">Free</CardTitle>
-              <CardDescription className="text-white/50 text-xs">Good for trying TakeoutFix</CardDescription>
+              <CardDescription className="text-white/50 text-xs">Perfect for trying MetaForge</CardDescription>
             </CardHeader>
-            <CardContent className="flex-1">
-              <div className="text-4xl font-bold mb-6">Free</div>
-              <ul className="space-y-3 text-sm text-white/70">
-                <li className="flex items-center gap-2"><span className="text-green-400 font-bold">✓</span> Up to 1000 files (1GB)</li>
-                <li className="flex items-center gap-2"><span className="text-green-400 font-bold">✓</span> Metadata Recovery</li>
-                <li className="flex items-center gap-2"><span className="text-green-400 font-bold">✓</span> Deep EXIF Injection</li>
-                <li className="flex items-center gap-2 text-white/40"><span className="text-white/40 font-bold">✗</span> Ads Required</li>
-                <li className="flex items-center gap-2 text-white/40"><span className="text-white/40 font-bold">✗</span> No Support Tickets</li>
-              </ul>
+            <CardContent className="flex-1 space-y-6">
+              <div>
+                <div className="text-4xl font-bold">₹0</div>
+                <p className="text-[11px] text-white/50 mt-1 leading-relaxed">Try MetaForge on a small Google Takeout export before upgrading.</p>
+              </div>
+              <div>
+                <div className="text-[10px] text-white/40 uppercase tracking-widest font-bold mb-2">Includes</div>
+                <ul className="space-y-2 text-xs text-white/70">
+                  <li className="flex items-center gap-1.5"><span className="text-green-400 font-bold">✓</span> 1,000 Files OR 1 GB per recovery</li>
+                  <li className="flex items-center gap-1.5"><span className="text-green-400 font-bold">✓</span> Metadata Recovery</li>
+                  <li className="flex items-center gap-1.5"><span className="text-green-400 font-bold">✓</span> Deep EXIF Injection</li>
+                  <li className="flex items-center gap-1.5"><span className="text-green-400 font-bold">✓</span> Local Browser Processing</li>
+                  <li className="flex items-center gap-1.5"><span className="text-green-400 font-bold">✓</span> Processing Activity Feed</li>
+                  <li className="flex items-center gap-1.5"><span className="text-green-400 font-bold">✓</span> Processing Log Download</li>
+                  <li className="flex items-center gap-1.5"><span className="text-green-400 font-bold">✓</span> Results Summary</li>
+                  <li className="flex items-center gap-1.5"><span className="text-green-400 font-bold">✓</span> Files Never Leave Your Device</li>
+                  <li className="flex items-center gap-1.5"><span className="text-green-400 font-bold">✓</span> Community Documentation</li>
+                </ul>
+              </div>
+              <div>
+                <div className="text-[10px] text-white/40 uppercase tracking-widest font-bold mb-2">Support</div>
+                <ul className="space-y-1 text-xs text-white/60">
+                  <li>• FAQ</li>
+                  <li>• Documentation</li>
+                </ul>
+              </div>
+              <div>
+                <div className="text-[10px] text-white/40 uppercase tracking-widest font-bold mb-2">Website Experience</div>
+                <ul className="space-y-1 text-xs text-white/50">
+                  <li>• Supported by website ads</li>
+                  <li>• Ad blocker must be disabled</li>
+                </ul>
+              </div>
             </CardContent>
             <CardFooter>
               <Link to="/tool" className="w-full">
-                <Button className="w-full bg-white/10 hover:bg-white/20 text-white border-none">Get Started</Button>
+                <Button className="w-full bg-white/10 hover:bg-white/20 text-white border-none">Start Free Recovery</Button>
               </Link>
             </CardFooter>
           </Card>
@@ -70,24 +94,45 @@ export default function PricingPage() {
           transition={{ duration: 0.5, delay: 0.25, ease: "easeOut" }}
           className="flex flex-col"
         >
-          <Card className="bg-black/40 border-white/10 backdrop-blur-md flex flex-col h-full">
+          <Card className="bg-black/40 border-white/10 backdrop-blur-md flex flex-col h-full hover:border-white/20 transition-all">
             <CardHeader>
               <CardTitle className="text-2xl">Recovery Pass</CardTitle>
-              <CardDescription className="text-white/50 text-xs">Best for one-time recovery</CardDescription>
+              <CardDescription className="text-white/50 text-xs">Best for one-time Google Takeout recovery</CardDescription>
             </CardHeader>
-            <CardContent className="flex-1">
-              <div className="text-4xl font-bold mb-2">{prices.recovery_pass}</div>
-              <div className="text-[10px] text-white/40 mb-6 uppercase tracking-wider font-bold">Single Batch</div>
-              <ul className="space-y-3 text-sm text-white/70">
-                <li className="flex items-center gap-2"><span className="text-green-400 font-bold">✓</span> 10,000 Files / 20GB limit</li>
-                <li className="flex items-center gap-2"><span className="text-green-400 font-bold">✓</span> Folder Organization</li>
-                <li className="flex items-center gap-2"><span className="text-green-400 font-bold">✓</span> Standard Support</li>
-                <li className="flex items-center gap-2 text-white/40"><span className="text-white/40 font-bold">✗</span> Ads Required</li>
-              </ul>
+            <CardContent className="flex-1 space-y-6">
+              <div>
+                <div className="text-4xl font-bold mb-2">{prices.recovery_pass}</div>
+                <p className="text-[11px] text-white/50 mt-1 leading-relaxed">Recover a large Google Takeout export without committing to a lifetime plan.</p>
+              </div>
+              <div>
+                <div className="text-[10px] text-white/40 uppercase tracking-widest font-bold mb-2">Includes Everything in Free</div>
+                <ul className="space-y-2 text-xs text-white/70">
+                  <li className="flex items-center gap-1.5 font-bold"><span className="text-indigo-400 font-bold">✓</span> Up to 10,000 Files OR 20 GB</li>
+                  <li className="flex items-center gap-1.5"><span className="text-indigo-400 font-bold">✓</span> Folder Organization</li>
+                  <li className="flex items-center gap-1.5"><span className="text-indigo-400 font-bold">✓</span> Large Export Processing</li>
+                  <li className="flex items-center gap-1.5"><span className="text-indigo-400 font-bold">✓</span> Standard Support</li>
+                  <li className="flex items-center gap-1.5"><span className="text-indigo-400 font-bold">✓</span> Support Tickets</li>
+                  <li className="flex items-center gap-1.5"><span className="text-indigo-400 font-bold">✓</span> My Tickets</li>
+                </ul>
+              </div>
+              <div>
+                <div className="text-[10px] text-white/40 uppercase tracking-widest font-bold mb-2">Support</div>
+                <div className="text-xs text-white/60">
+                  <p>Typical response time:</p>
+                  <p className="font-semibold text-white/80">24–48 Business Hours</p>
+                </div>
+              </div>
+              <div>
+                <div className="text-[10px] text-white/40 uppercase tracking-widest font-bold mb-2">Website Experience</div>
+                <ul className="space-y-1 text-xs text-white/50">
+                  <li>• Supported by website ads</li>
+                  <li>• Ad blocker must be disabled</li>
+                </ul>
+              </div>
             </CardContent>
             <CardFooter>
               <Link to={`/checkout?plan=recovery_pass&region=${region}`} className="w-full">
-                <Button className="w-full bg-white/10 hover:bg-white/20 text-white border-none">Buy Pass</Button>
+                <Button className="w-full bg-white/10 hover:bg-white/20 text-white border-none">Buy Recovery Pass</Button>
               </Link>
             </CardFooter>
           </Card>
@@ -100,23 +145,43 @@ export default function PricingPage() {
           transition={{ duration: 0.5, delay: 0.35, ease: "easeOut" }}
           className="flex flex-col scale-105 z-10"
         >
-          <Card className="bg-black/60 border-indigo-500/50 backdrop-blur-md flex flex-col relative h-full shadow-2xl shadow-indigo-500/10">
+          <Card className="bg-black/60 border-indigo-500/50 backdrop-blur-md flex flex-col relative h-full shadow-2xl shadow-indigo-500/10 hover:border-indigo-400 transition-all">
             <div className="absolute -top-3 left-1/2 -translate-x-1/2">
               <Badge className="bg-indigo-500 hover:bg-indigo-600 text-white border-none px-3 py-1">Most Popular</Badge>
             </div>
             <CardHeader>
               <CardTitle className="text-2xl text-indigo-400">Pro Lifetime</CardTitle>
-              <CardDescription className="text-white/50 text-xs">Perfect for large libraries</CardDescription>
+              <CardDescription className="text-white/50 text-xs">Perfect for photographers and large Google Takeout libraries</CardDescription>
             </CardHeader>
-            <CardContent className="flex-1">
-              <div className="text-4xl font-bold mb-2">{prices.pro}</div>
-              <div className="text-[10px] text-indigo-400/80 mb-6 uppercase tracking-wider font-bold">Lifetime · 2 Devices</div>
-              <ul className="space-y-3 text-sm text-white/70">
-                <li className="flex items-center gap-2"><span className="text-indigo-400 font-bold">✓</span> Unlimited Processing</li>
-                <li className="flex items-center gap-2"><span className="text-indigo-400 font-bold">✓</span> Recovery History logs</li>
-                <li className="flex items-center gap-2"><span className="text-indigo-400 font-bold">✓</span> Priority support queue</li>
-                <li className="flex items-center gap-2 text-white/40"><span className="text-white/40 font-bold">✗</span> Ads Required</li>
-              </ul>
+            <CardContent className="flex-1 space-y-6">
+              <div>
+                <div className="text-4xl font-bold mb-2">{prices.pro}</div>
+                <p className="text-[11px] text-indigo-400/80 mt-1 leading-relaxed">Lifetime License · Up to 2 Devices</p>
+              </div>
+              <div>
+                <div className="text-[10px] text-white/40 uppercase tracking-widest font-bold mb-2">Includes Everything in Recovery Pass</div>
+                <ul className="space-y-2 text-xs text-white/70">
+                  <li className="flex items-center gap-1.5 font-bold"><span className="text-indigo-400 font-bold">✓</span> Unlimited Processing</li>
+                  <li className="flex items-center gap-1.5 font-bold"><span className="text-indigo-400 font-bold">✓</span> Recovery History</li>
+                  <li className="flex items-center gap-1.5 font-bold"><span className="text-indigo-400 font-bold">✓</span> Recovery Statistics</li>
+                  <li className="flex items-center gap-1.5 font-bold"><span className="text-indigo-400 font-bold">✓</span> Priority Support Queue</li>
+                  <li className="flex items-center gap-1.5 font-bold"><span className="text-indigo-400 font-bold">✓</span> Lifetime License</li>
+                </ul>
+              </div>
+              <div>
+                <div className="text-[10px] text-white/40 uppercase tracking-widest font-bold mb-2">Support</div>
+                <div className="text-xs text-white/60">
+                  <p className="font-bold text-indigo-400">Priority Queue</p>
+                  <p>Typical response time: 24–48 Business Hours</p>
+                </div>
+              </div>
+              <div>
+                <div className="text-[10px] text-white/40 uppercase tracking-widest font-bold mb-2">Website Experience</div>
+                <ul className="space-y-1 text-xs text-white/50">
+                  <li>• Supported by website ads</li>
+                  <li>• Ad blocker must be disabled</li>
+                </ul>
+              </div>
             </CardContent>
             <CardFooter>
               <Link to={`/checkout?plan=pro&region=${region}`} className="w-full">
@@ -133,24 +198,44 @@ export default function PricingPage() {
           transition={{ duration: 0.5, delay: 0.45, ease: "easeOut" }}
           className="flex flex-col"
         >
-          <Card className="bg-black/40 border-white/10 backdrop-blur-md flex flex-col h-full">
+          <Card className="bg-black/40 border-white/10 backdrop-blur-md flex flex-col h-full hover:border-white/20 transition-all">
             <CardHeader>
               <CardTitle className="text-2xl text-amber-400">Super Lifetime</CardTitle>
-              <CardDescription className="text-white/50 text-xs">Inspector + Duplicate tools</CardDescription>
+              <CardDescription className="text-white/50 text-xs">Advanced recovery analysis</CardDescription>
             </CardHeader>
-            <CardContent className="flex-1">
-              <div className="text-4xl font-bold mb-2">{prices.super}</div>
-              <div className="text-[10px] text-amber-400/80 mb-6 uppercase tracking-wider font-bold">Lifetime · 3 Devices</div>
-              <ul className="space-y-3 text-sm text-white/70">
-                <li className="flex items-center gap-2"><span className="text-amber-400 font-bold">✓</span> Ad-Free Experience</li>
-                <li className="flex items-center gap-2"><span className="text-amber-400 font-bold">✓</span> Visual EXIF Viewer</li>
-                <li className="flex items-center gap-2"><span className="text-amber-400 font-bold">✓</span> Duplicate Space Analyzer</li>
-                <li className="flex items-center gap-2"><span className="text-amber-400 font-bold">✓</span> Highest Priority Support</li>
-              </ul>
+            <CardContent className="flex-1 space-y-6">
+              <div>
+                <div className="text-4xl font-bold mb-2">{prices.super}</div>
+                <p className="text-[11px] text-amber-400/80 mt-1 leading-relaxed">Lifetime License · Up to 3 Devices</p>
+              </div>
+              <div>
+                <div className="text-[10px] text-white/40 uppercase tracking-widest font-bold mb-2">Includes Everything in Pro</div>
+                <ul className="space-y-2 text-xs text-white/70">
+                  <li className="flex items-center gap-1.5 font-bold"><span className="text-amber-400 font-bold">✓</span> Ad-Free Experience</li>
+                  <li className="flex items-center gap-1.5 font-bold"><span className="text-amber-400 font-bold">✓</span> Metadata Viewer</li>
+                  <li className="flex items-center gap-1.5"><span className="text-amber-400 font-bold">✓</span> Duplicate Space Analyzer</li>
+                  <li className="flex items-center gap-1.5"><span className="text-amber-400 font-bold">✓</span> Advanced Recovery Statistics</li>
+                  <li className="flex items-center gap-1.5 font-bold"><span className="text-amber-400 font-bold">✓</span> Highest Priority Support</li>
+                </ul>
+              </div>
+              <div>
+                <div className="text-[10px] text-white/40 uppercase tracking-widest font-bold mb-2">Support</div>
+                <div className="text-xs text-white/60">
+                  <p className="font-bold text-amber-400">Highest Priority Queue</p>
+                  <p>Typical response time: 24–48 Business Hours</p>
+                </div>
+              </div>
+              <div>
+                <div className="text-[10px] text-white/40 uppercase tracking-widest font-bold mb-2">Website Experience</div>
+                <ul className="space-y-1 text-xs text-emerald-400 font-semibold">
+                  <li>• Ad-Free Experience</li>
+                  <li>• No Ads Allowed</li>
+                </ul>
+              </div>
             </CardContent>
             <CardFooter>
               <Link to={`/checkout?plan=super&region=${region}`} className="w-full">
-                <Button className="w-full bg-white/10 hover:bg-white/20 text-white border-none">Get Super</Button>
+                <Button className="w-full bg-white/10 hover:bg-white/20 text-white border-none">Go Ad-Free</Button>
               </Link>
             </CardFooter>
           </Card>

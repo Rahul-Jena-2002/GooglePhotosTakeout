@@ -375,7 +375,7 @@ for await (const [name, entry] of dirHandle) {
         <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
           <Link to="/tool">
             <Button size="lg" className="rounded-full bg-gradient-to-r from-indigo-500 to-purple-600 hover:opacity-90 text-white border-0 shadow-[0_0_35px_rgba(99,102,241,0.4)] px-10 h-14 font-semibold">
-              Start Recovery Center <ArrowRight className="w-5 h-5 ml-2" />
+              Restore My Data <ArrowRight className="w-5 h-5 ml-2" />
             </Button>
           </Link>
           <Link to="/pricing">

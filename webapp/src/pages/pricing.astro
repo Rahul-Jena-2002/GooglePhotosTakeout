@@ -35,21 +35,45 @@ const prices = PLAN_PRICES[region] || PLAN_PRICES.us;
         <div class="bg-black/40 border border-white/10 rounded-2xl p-6 backdrop-blur-md flex flex-col h-full hover:border-white/20 transition-all">
           <div class="mb-6">
             <h2 class="text-2xl font-bold text-white">Free</h2>
-            <p class="text-white/50 text-xs mt-1">Good for trying TakeoutFix</p>
+            <p class="text-white/50 text-xs mt-1">Perfect for trying MetaForge</p>
           </div>
-          <div class="flex-1">
-            <div class="text-4xl font-bold mb-6 text-white">Free</div>
-            <ul class="space-y-3 text-sm text-white/70">
-              <li class="flex items-center gap-2"><span class="text-green-400 font-bold">✓</span> Up to 1000 files (1GB)</li>
-              <li class="flex items-center gap-2"><span class="text-green-400 font-bold">✓</span> Metadata Recovery</li>
-              <li class="flex items-center gap-2"><span class="text-green-400 font-bold">✓</span> Deep EXIF Injection</li>
-              <li class="flex items-center gap-2 text-white/40"><span class="text-white/40 font-bold">✗</span> Ads Required</li>
-              <li class="flex items-center gap-2 text-white/40"><span class="text-white/40 font-bold">✗</span> No Support Tickets</li>
-            </ul>
+          <div class="flex-1 space-y-6">
+            <div>
+              <div class="text-4xl font-bold text-white">₹0</div>
+              <p class="text-[11px] text-white/50 mt-1 leading-relaxed">Try MetaForge on a small Google Takeout export before upgrading.</p>
+            </div>
+            <div>
+              <div class="text-[10px] text-white/40 uppercase tracking-widest font-bold mb-2">Includes</div>
+              <ul class="space-y-2 text-xs text-white/70">
+                <li class="flex items-center gap-1.5"><span class="text-green-400 font-bold">✓</span> 1,000 Files OR 1 GB per recovery</li>
+                <li class="flex items-center gap-1.5"><span class="text-green-400 font-bold">✓</span> Metadata Recovery</li>
+                <li class="flex items-center gap-1.5"><span class="text-green-400 font-bold">✓</span> Deep EXIF Injection</li>
+                <li class="flex items-center gap-1.5"><span class="text-green-400 font-bold">✓</span> Local Browser Processing</li>
+                <li class="flex items-center gap-1.5"><span class="text-green-400 font-bold">✓</span> Processing Activity Feed</li>
+                <li class="flex items-center gap-1.5"><span class="text-green-400 font-bold">✓</span> Processing Log Download</li>
+                <li class="flex items-center gap-1.5"><span class="text-green-400 font-bold">✓</span> Results Summary</li>
+                <li class="flex items-center gap-1.5"><span class="text-green-400 font-bold">✓</span> Files Never Leave Your Device</li>
+                <li class="flex items-center gap-1.5"><span class="text-green-400 font-bold">✓</span> Community Documentation</li>
+              </ul>
+            </div>
+            <div>
+              <div class="text-[10px] text-white/40 uppercase tracking-widest font-bold mb-2">Support</div>
+              <ul class="space-y-1 text-xs text-white/60">
+                <li>• FAQ</li>
+                <li>• Documentation</li>
+              </ul>
+            </div>
+            <div>
+              <div class="text-[10px] text-white/40 uppercase tracking-widest font-bold mb-2">Website Experience</div>
+              <ul class="space-y-1 text-xs text-white/50">
+                <li>• Supported by website ads</li>
+                <li>• Ad blocker must be disabled</li>
+              </ul>
+            </div>
           </div>
           <div class="mt-6">
             <a href="/tool" class="w-full">
-              <button class="glass-capsule interactive w-full py-3 font-bold text-sm text-white">Get Started</button>
+              <button class="glass-capsule interactive w-full py-3 font-bold text-sm text-white">Start Free Recovery</button>
             </a>
           </div>
         </div>
@@ -58,24 +82,44 @@ const prices = PLAN_PRICES[region] || PLAN_PRICES.us;
       <!-- RECOVERY PASS -->
       <div class="flex flex-col">
         <div class="bg-black/40 border border-white/10 rounded-2xl p-6 backdrop-blur-md flex flex-col h-full hover:border-white/20 transition-all relative">
-          <div class="absolute top-0 right-6 bg-zinc-800 text-white text-[10px] px-3 py-1 rounded-full font-bold -translate-y-1/2 uppercase tracking-wider">20 GB LIMIT</div>
           <div class="mb-6">
             <h2 class="text-2xl font-bold text-white">Recovery Pass</h2>
-            <p class="text-white/50 text-xs mt-1">Best for one-time recovery</p>
+            <p class="text-white/50 text-xs mt-1">Best for one-time Google Takeout recovery</p>
           </div>
-          <div class="flex-1">
-            <div class="text-4xl font-bold mb-2 text-white"><span class="price-recovery-pass">{prices.recovery_pass}</span></div>
-            <div class="text-[10px] text-white/40 mb-6 uppercase tracking-wider font-bold">Single Batch</div>
-            <ul class="space-y-3 text-sm text-white/70">
-              <li class="flex items-center gap-2"><span class="text-green-400 font-bold">✓</span> 10,000 Files / 20GB limit</li>
-              <li class="flex items-center gap-2"><span class="text-green-400 font-bold">✓</span> Folder Organization</li>
-              <li class="flex items-center gap-2"><span class="text-green-400 font-bold">✓</span> Standard Support</li>
-              <li class="flex items-center gap-2 text-white/40"><span class="text-white/40 font-bold">✗</span> Ads Required</li>
-            </ul>
+          <div class="flex-1 space-y-6">
+            <div>
+              <div class="text-4xl font-bold text-white"><span class="price-recovery-pass">{prices.recovery_pass}</span></div>
+              <p class="text-[11px] text-white/50 mt-1 leading-relaxed">Recover a large Google Takeout export without committing to a lifetime plan.</p>
+            </div>
+            <div>
+              <div class="text-[10px] text-white/40 uppercase tracking-widest font-bold mb-2">Includes Everything in Free</div>
+              <ul class="space-y-2 text-xs text-white/70">
+                <li class="flex items-center gap-1.5 font-bold"><span class="text-indigo-400 font-bold">✓</span> Up to 10,000 Files OR 20 GB</li>
+                <li class="flex items-center gap-1.5"><span class="text-indigo-400 font-bold">✓</span> Folder Organization</li>
+                <li class="flex items-center gap-1.5"><span class="text-indigo-400 font-bold">✓</span> Large Export Processing</li>
+                <li class="flex items-center gap-1.5"><span class="text-indigo-400 font-bold">✓</span> Standard Support</li>
+                <li class="flex items-center gap-1.5"><span class="text-indigo-400 font-bold">✓</span> Support Tickets</li>
+                <li class="flex items-center gap-1.5"><span class="text-indigo-400 font-bold">✓</span> My Tickets</li>
+              </ul>
+            </div>
+            <div>
+              <div class="text-[10px] text-white/40 uppercase tracking-widest font-bold mb-2">Support</div>
+              <div class="text-xs text-white/60">
+                <p>Typical response time:</p>
+                <p class="font-semibold text-white/80">24–48 Business Hours</p>
+              </div>
+            </div>
+            <div>
+              <div class="text-[10px] text-white/40 uppercase tracking-widest font-bold mb-2">Website Experience</div>
+              <ul class="space-y-1 text-xs text-white/50">
+                <li>• Supported by website ads</li>
+                <li>• Ad blocker must be disabled</li>
+              </ul>
+            </div>
           </div>
           <div class="mt-6">
             <a href={`/checkout?plan=recovery_pass&region=${region}`} class="w-full link-checkout-recovery-pass">
-              <button class="glass-capsule interactive w-full py-3 font-bold text-sm text-white">Buy Pass</button>
+              <button class="glass-capsule interactive w-full py-3 font-bold text-sm text-white">Buy Recovery Pass</button>
             </a>
           </div>
         </div>
@@ -89,17 +133,37 @@ const prices = PLAN_PRICES[region] || PLAN_PRICES.us;
           </div>
           <div class="mb-6">
             <h2 class="text-2xl font-bold text-indigo-400">Pro Lifetime</h2>
-            <p class="text-white/50 text-xs mt-1">Perfect for large libraries</p>
+            <p class="text-white/50 text-xs mt-1">Perfect for photographers and large Google Takeout libraries</p>
           </div>
-          <div class="flex-1">
-            <div class="text-4xl font-bold mb-2 text-white"><span class="price-pro">{prices.pro}</span></div>
-            <div class="text-[10px] text-indigo-400/80 mb-6 uppercase tracking-wider font-bold">Lifetime · 2 Devices</div>
-            <ul class="space-y-3 text-sm text-white/70">
-              <li class="flex items-center gap-2"><span class="text-indigo-400 font-bold">✓</span> Unlimited Processing</li>
-              <li class="flex items-center gap-2"><span class="text-indigo-400 font-bold">✓</span> Recovery History logs</li>
-              <li class="flex items-center gap-2"><span class="text-indigo-400 font-bold">✓</span> Priority support queue</li>
-              <li class="flex items-center gap-2 text-white/40"><span class="text-white/40 font-bold">✗</span> Ads Required</li>
-            </ul>
+          <div class="flex-1 space-y-6">
+            <div>
+              <div class="text-4xl font-bold text-white"><span class="price-pro">{prices.pro}</span></div>
+              <p class="text-[11px] text-indigo-400/80 mt-1 leading-relaxed">Lifetime License · Up to 2 Devices</p>
+            </div>
+            <div>
+              <div class="text-[10px] text-white/40 uppercase tracking-widest font-bold mb-2">Includes Everything in Recovery Pass</div>
+              <ul class="space-y-2 text-xs text-white/70">
+                <li class="flex items-center gap-1.5 font-bold"><span class="text-indigo-400 font-bold">✓</span> Unlimited Processing</li>
+                <li class="flex items-center gap-1.5"><span class="text-indigo-400 font-bold">✓</span> Recovery History</li>
+                <li class="flex items-center gap-1.5"><span class="text-indigo-400 font-bold">✓</span> Recovery Statistics</li>
+                <li class="flex items-center gap-1.5"><span class="text-indigo-400 font-bold">✓</span> Priority Support Queue</li>
+                <li class="flex items-center gap-1.5"><span class="text-indigo-400 font-bold">✓</span> Lifetime License</li>
+              </ul>
+            </div>
+            <div>
+              <div class="text-[10px] text-white/40 uppercase tracking-widest font-bold mb-2">Support</div>
+              <div class="text-xs text-white/60">
+                <p class="font-bold text-indigo-400">Priority Queue</p>
+                <p>Typical response time: 24–48 Business Hours</p>
+              </div>
+            </div>
+            <div>
+              <div class="text-[10px] text-white/40 uppercase tracking-widest font-bold mb-2">Website Experience</div>
+              <ul class="space-y-1 text-xs text-white/50">
+                <li>• Supported by website ads</li>
+                <li>• Ad blocker must be disabled</li>
+              </ul>
+            </div>
           </div>
           <div class="mt-6">
             <a href={`/checkout?plan=pro&region=${region}`} class="w-full link-checkout-pro">
@@ -114,21 +178,41 @@ const prices = PLAN_PRICES[region] || PLAN_PRICES.us;
         <div class="bg-black/40 border border-white/10 rounded-2xl p-6 backdrop-blur-md flex flex-col h-full hover:border-white/20 transition-all">
           <div class="mb-6">
             <h2 class="text-2xl font-bold text-amber-400">Super Lifetime</h2>
-            <p class="text-white/50 text-xs mt-1">Inspector + Duplicate tools</p>
+            <p class="text-white/50 text-xs mt-1">Advanced recovery analysis</p>
           </div>
-          <div class="flex-1">
-            <div class="text-4xl font-bold mb-2 text-white"><span class="price-super">{prices.super}</span></div>
-            <div class="text-[10px] text-amber-400/80 mb-6 uppercase tracking-wider font-bold">Lifetime · 3 Devices</div>
-            <ul class="space-y-3 text-sm text-white/70">
-              <li class="flex items-center gap-2"><span class="text-amber-400 font-bold">✓</span> Ad-Free Experience</li>
-              <li class="flex items-center gap-2"><span class="text-amber-400 font-bold">✓</span> Visual EXIF Viewer</li>
-              <li class="flex items-center gap-2"><span class="text-amber-400 font-bold">✓</span> Duplicate Space Analyzer</li>
-              <li class="flex items-center gap-2"><span class="text-amber-400 font-bold">✓</span> Highest Priority Support</li>
-            </ul>
+          <div class="flex-1 space-y-6">
+            <div>
+              <div class="text-4xl font-bold text-white"><span class="price-super">{prices.super}</span></div>
+              <p class="text-[11px] text-amber-400/80 mt-1 leading-relaxed">Lifetime License · Up to 3 Devices</p>
+            </div>
+            <div>
+              <div class="text-[10px] text-white/40 uppercase tracking-widest font-bold mb-2">Includes Everything in Pro</div>
+              <ul class="space-y-2 text-xs text-white/70">
+                <li class="flex items-center gap-1.5 font-bold"><span class="text-amber-400 font-bold">✓</span> Ad-Free Experience</li>
+                <li class="flex items-center gap-1.5"><span class="text-amber-400 font-bold">✓</span> Metadata Viewer</li>
+                <li class="flex items-center gap-1.5"><span class="text-amber-400 font-bold">✓</span> Duplicate Space Analyzer</li>
+                <li class="flex items-center gap-1.5"><span class="text-amber-400 font-bold">✓</span> Advanced Recovery Statistics</li>
+                <li class="flex items-center gap-1.5"><span class="text-amber-400 font-bold">✓</span> Highest Priority Support</li>
+              </ul>
+            </div>
+            <div>
+              <div class="text-[10px] text-white/40 uppercase tracking-widest font-bold mb-2">Support</div>
+              <div class="text-xs text-white/60">
+                <p class="font-bold text-amber-400">Highest Priority Queue</p>
+                <p>Typical response time: 24–48 Business Hours</p>
+              </div>
+            </div>
+            <div>
+              <div class="text-[10px] text-white/40 uppercase tracking-widest font-bold mb-2">Website Experience</div>
+              <ul class="space-y-1 text-xs text-emerald-400 font-semibold">
+                <li>• Ad-Free Experience</li>
+                <li>• No Ads Allowed</li>
+              </ul>
+            </div>
           </div>
           <div class="mt-6">
             <a href={`/checkout?plan=super&region=${region}`} class="w-full link-checkout-super">
-              <button class="glass-capsule interactive w-full py-3 font-bold text-sm text-white">Get Super</button>
+              <button class="glass-capsule interactive w-full py-3 font-bold text-sm text-white">Go Ad-Free</button>
             </a>
           </div>
         </div>
