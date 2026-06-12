@@ -180,8 +180,8 @@ html.light body::before {
     radial-gradient(circle at 85% 30%, rgba(0, 0, 0, 0.01), transparent 25%) !important;
 }
 
-html.light .bg-black,
-html.light .bg-zinc-950,
+html.light .bg-black:not(button):not(.btn):not(.primary-saas),
+html.light .bg-zinc-950:not(button):not(.btn),
 html.light .bg-\[\#0A0A0A\] {
   background-color: #FFFFFF !important;
 }
@@ -195,7 +195,9 @@ html.light .bg-white\/\[0\.02\],
 html.light .bg-white\/\[0\.04\],
 html.light .bg-white\/\[0\.08\],
 html.light .bg-zinc-900\/60,
-html.light .bg-zinc-950\/50 {
+html.light .bg-zinc-950\/50,
+html.light .bg-zinc-950\/45,
+html.light .bg-zinc-950\/60 {
   background-color: #F5F5F7 !important;
 }
 

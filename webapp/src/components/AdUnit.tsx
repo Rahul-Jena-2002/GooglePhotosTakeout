@@ -11,9 +11,6 @@ interface Ad {
   ctaText: string;
   link: string;
   icon: React.ReactNode;
-  themeColor: string; // Dynamic background gradient classes
-  btnColor: string; // Call-to-action button color matches theme
-  badgeColor: string; // Sponsoring badge styling
 }
 
 interface AdUnitProps {
@@ -88,10 +85,7 @@ export default function AdUnit({ type = "auto", className = "" }: AdUnitProps) {
       description: "Unlock unlimited file sizes, priority support desk, and ad-free local processing.",
       ctaText: "Upgrade Now",
       link: "/pricing",
-      icon: <Key className="w-4 h-4 text-indigo-400" />,
-      themeColor: "from-indigo-500/10 to-purple-500/10",
-      btnColor: "bg-indigo-600 hover:bg-indigo-500 hover:shadow-indigo-500/15",
-      badgeColor: "text-indigo-400 border-indigo-500/20 bg-indigo-500/5",
+      icon: <Key className="w-4 h-4 text-zinc-500 dark:text-zinc-400" />,
     },
     {
       tag: "Advanced Tool",
@@ -99,10 +93,7 @@ export default function AdUnit({ type = "auto", className = "" }: AdUnitProps) {
       description: "Instantly inspect dates, camera details, and embedded GPS coordinates directly in your browser.",
       ctaText: "Check EXIF",
       link: "/tool",
-      icon: <ShieldCheck className="w-4 h-4 text-emerald-400" />,
-      themeColor: "from-emerald-500/10 to-teal-500/10",
-      btnColor: "bg-emerald-600 hover:bg-emerald-500 hover:shadow-emerald-500/15",
-      badgeColor: "text-emerald-400 border-emerald-500/20 bg-emerald-500/5",
+      icon: <ShieldCheck className="w-4 h-4 text-zinc-500 dark:text-zinc-400" />,
     },
     {
       tag: "Disk Space",
@@ -110,10 +101,7 @@ export default function AdUnit({ type = "auto", className = "" }: AdUnitProps) {
       description: "Detect redundant files, double takeout downloads, and optimize your local directory storage.",
       ctaText: "Optimize Space",
       link: "/tool",
-      icon: <RefreshCw className="w-4 h-4 text-amber-550" />,
-      themeColor: "from-amber-500/10 to-orange-500/10",
-      btnColor: "bg-amber-600 hover:bg-amber-500 hover:shadow-amber-500/15",
-      badgeColor: "text-amber-500 border-amber-500/20 bg-amber-500/5",
+      icon: <RefreshCw className="w-4 h-4 text-zinc-500 dark:text-zinc-400" />,
     }
   ];
 
@@ -170,70 +158,75 @@ export default function AdUnit({ type = "auto", className = "" }: AdUnitProps) {
   }
 
   // Base styling for modern dark-themed containers (which adapt dynamically to light overrides)
-  const wrapperBaseClass = `w-full mx-auto bg-zinc-950/45 border border-zinc-900 rounded-2xl relative overflow-hidden group select-none transition-all duration-300 hover:border-zinc-800 shadow-lg ${className}`;
+  const wrapperBaseClass = `w-full mx-auto bg-zinc-950/45 border border-zinc-900 rounded-2xl relative overflow-hidden group select-none transition-all duration-300 hover:border-zinc-850 shadow-lg ${className}`;
+  const sponsoredTag = (
+    <div className="absolute top-3 right-4 text-[7px] font-bold text-zinc-550 dark:text-zinc-500 uppercase tracking-[0.2em]">
+      Sponsored
+    </div>
+  );
+  
+  const badgeClass = "inline-block text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 border rounded-md border-zinc-200 dark:border-zinc-800 bg-zinc-150/50 dark:bg-zinc-900/60 text-zinc-600 dark:text-zinc-400";
+  const btnClass = "w-full py-2.5 rounded-xl font-bold text-xs text-white bg-black hover:bg-zinc-900 border border-zinc-800 transition-all cursor-pointer shadow-lg outline-none flex items-center justify-center gap-1.5 dark:bg-white dark:text-black dark:hover:bg-white/90 dark:border-transparent";
 
   // 1. HORIZONTAL WIDE BANNER VIEW (width >= 620px)
   if (resolvedLayout === "wide") {
     return (
       <div 
         ref={containerRef} 
-        className={`${wrapperBaseClass} p-5 md:p-6 flex flex-col sm:flex-row items-center justify-between gap-6 hover:shadow-2xl hover:shadow-indigo-500/2`}
+        className={`${wrapperBaseClass} p-5 md:p-6 flex flex-col sm:flex-row items-center justify-between gap-6`}
       >
-        <div className="absolute inset-0 bg-gradient-to-r from-transparent to-white/[0.012] pointer-events-none"></div>
+        <div className="absolute inset-0 bg-gradient-to-r from-transparent to-white/[0.005] pointer-events-none"></div>
+        {sponsoredTag}
         <div className="flex items-start gap-4">
-          <div className="w-10 h-10 rounded-xl bg-zinc-900/60 border border-zinc-800/80 flex items-center justify-center shadow-inner shrink-0">
+          <div className="w-10 h-10 rounded-xl bg-zinc-900/60 border border-zinc-800/85 flex items-center justify-center shadow-inner shrink-0">
             {activeAd.icon}
           </div>
           <div className="space-y-1 text-left">
-            <span className={`inline-block text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 border rounded-md ${activeAd.badgeColor}`}>
+            <span className={badgeClass}>
               {activeAd.tag}
             </span>
             <h4 className="text-sm font-bold text-white tracking-tight">{activeAd.title}</h4>
-            <p className="text-[11px] text-zinc-400 max-w-xl leading-relaxed">{activeAd.description}</p>
+            <p className="text-[11px] text-zinc-450 dark:text-zinc-400 max-w-xl leading-relaxed">{activeAd.description}</p>
           </div>
         </div>
         <div className="shrink-0 w-full sm:w-auto">
           <a href={activeAd.link} className="block w-full sm:w-auto">
-            <button className={`w-full sm:w-auto px-4 py-2.5 rounded-xl font-bold text-xs text-white flex items-center justify-center gap-1.5 transition-all cursor-pointer shadow-lg outline-none border-0 ${activeAd.btnColor}`}>
+            <button className={btnClass}>
               <span>{activeAd.ctaText}</span>
               <ArrowRight className="w-3.5 h-3.5" />
             </button>
           </a>
         </div>
-        <div className={`absolute inset-0 bg-gradient-to-r ${activeAd.themeColor} opacity-30 pointer-events-none`}></div>
       </div>
     );
   }
 
-  // 2. VERTICAL COLUMN VIEW (strict sidebar overrides)
+  // 2. VERTICAL COLUMN VIEW (sidebar context: covers the width available)
   if (resolvedLayout === "vertical") {
     return (
       <div 
         ref={containerRef} 
-        className={`${wrapperBaseClass} p-6 max-w-[280px] min-h-[380px] flex flex-col justify-between text-center hover:shadow-2xl hover:shadow-indigo-500/2`}
+        className={`${wrapperBaseClass} p-6 flex flex-col justify-between text-center`}
       >
-        <div className="absolute top-2 left-1/2 -translate-x-1/2 text-[9px] font-bold text-zinc-600 uppercase tracking-widest bg-zinc-900/60 px-2 py-0.5 border border-zinc-800/70 rounded-full">
-          Sponsored Link
-        </div>
-        <div className="flex flex-col items-center justify-center pt-8 pb-4 space-y-4">
-          <div className="w-12 h-12 rounded-xl bg-zinc-900/60 border border-zinc-800/80 flex items-center justify-center shadow-inner">
+        {sponsoredTag}
+        <div className="flex flex-col items-center justify-center pt-6 pb-4 space-y-4">
+          <div className="w-12 h-12 rounded-xl bg-zinc-900/60 border border-zinc-800/85 flex items-center justify-center shadow-inner">
             {activeAd.icon}
           </div>
           <div className="space-y-2">
-            <span className={`inline-block text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 border rounded-md ${activeAd.badgeColor}`}>
+            <span className={badgeClass}>
               {activeAd.tag}
             </span>
             <h4 className="text-sm font-bold text-white leading-snug">{activeAd.title}</h4>
-            <p className="text-[11px] text-zinc-400 leading-relaxed max-w-[210px] mx-auto">{activeAd.description}</p>
+            <p className="text-[11px] text-zinc-450 dark:text-zinc-400 leading-relaxed max-w-[240px] mx-auto">{activeAd.description}</p>
           </div>
         </div>
         <a href={activeAd.link} className="block w-full">
-          <button className={`w-full py-2.5 rounded-xl font-bold text-xs text-white flex items-center justify-center gap-1.5 transition-all cursor-pointer shadow-lg outline-none border-0 ${activeAd.btnColor}`}>
+          <button className={btnClass}>
             <span>{activeAd.ctaText}</span>
             <ArrowRight className="w-3.5 h-3.5" />
           </button>
         </a>
-        <div className={`absolute inset-0 bg-gradient-to-b ${activeAd.themeColor} opacity-40 pointer-events-none`}></div>
       </div>
     );
   }
@@ -243,30 +236,27 @@ export default function AdUnit({ type = "auto", className = "" }: AdUnitProps) {
     return (
       <div 
         ref={containerRef} 
-        className={`${wrapperBaseClass} p-6 max-w-[420px] aspect-[4/3] flex flex-col justify-between text-center hover:shadow-2xl hover:shadow-indigo-500/2`}
+        className={`${wrapperBaseClass} p-6 flex flex-col justify-between text-center`}
       >
-        <div className="absolute top-4 left-4 text-[9px] font-bold text-zinc-600 uppercase tracking-widest">
-          Recommended Resource
-        </div>
+        {sponsoredTag}
         <div className="flex flex-col items-center justify-center pt-6 space-y-3">
-          <div className="w-11 h-11 rounded-xl bg-zinc-900/60 border border-zinc-800/80 flex items-center justify-center shadow-inner">
+          <div className="w-11 h-11 rounded-xl bg-zinc-900/60 border border-zinc-800/85 flex items-center justify-center shadow-inner">
             {activeAd.icon}
           </div>
           <div className="space-y-1.5">
-            <span className={`inline-block text-[8px] font-bold uppercase tracking-wider px-2 py-0.5 border rounded-md ${activeAd.badgeColor}`}>
+            <span className={badgeClass}>
               {activeAd.tag}
             </span>
             <h4 className="text-sm font-bold text-white tracking-tight">{activeAd.title}</h4>
-            <p className="text-[11px] text-zinc-400 leading-relaxed max-w-[260px] mx-auto">{activeAd.description}</p>
+            <p className="text-[11px] text-zinc-450 dark:text-zinc-400 leading-relaxed max-w-[260px] mx-auto">{activeAd.description}</p>
           </div>
         </div>
-        <a href={activeAd.link} className="block w-full">
-          <button className={`w-full py-2.5 rounded-xl font-bold text-xs text-white flex items-center justify-center gap-1.5 transition-all cursor-pointer shadow-lg outline-none border-0 ${activeAd.btnColor}`}>
+        <a href={activeAd.link} className="block w-full mt-4">
+          <button className={btnClass}>
             <span>{activeAd.ctaText}</span>
             <ArrowRight className="w-3.5 h-3.5" />
           </button>
         </a>
-        <div className={`absolute inset-0 bg-gradient-to-tr ${activeAd.themeColor} opacity-40 pointer-events-none`}></div>
       </div>
     );
   }
@@ -275,27 +265,27 @@ export default function AdUnit({ type = "auto", className = "" }: AdUnitProps) {
   return (
     <div 
       ref={containerRef} 
-      className={`${wrapperBaseClass} p-4 flex flex-col justify-between gap-4 text-center hover:shadow-xl`}
+      className={`${wrapperBaseClass} p-4 flex flex-col justify-between gap-4 text-center`}
     >
-      <div className="flex flex-col items-center space-y-2">
-        <div className="w-10 h-10 rounded-lg bg-zinc-900 border border-zinc-800/80 flex items-center justify-center shrink-0">
+      {sponsoredTag}
+      <div className="flex flex-col items-center space-y-2 pt-2">
+        <div className="w-10 h-10 rounded-lg bg-zinc-900 border border-zinc-800/85 flex items-center justify-center shrink-0">
           {activeAd.icon}
         </div>
         <div className="space-y-1">
-          <span className={`inline-block text-[8px] font-bold uppercase tracking-widest px-1.5 py-0.5 border rounded-md ${activeAd.badgeColor}`}>
+          <span className={badgeClass}>
             {activeAd.tag}
           </span>
           <h4 className="text-xs font-bold text-white tracking-tight">{activeAd.title}</h4>
-          <p className="text-[10px] text-zinc-400 leading-normal max-w-[220px] mx-auto">{activeAd.description}</p>
+          <p className="text-[10px] text-zinc-450 dark:text-zinc-400 leading-normal max-w-[220px] mx-auto">{activeAd.description}</p>
         </div>
       </div>
       <a href={activeAd.link} className="block w-full">
-        <button className={`w-full py-2 rounded-lg font-bold text-[10px] text-white flex items-center justify-center gap-1 transition-all cursor-pointer outline-none border-0 ${activeAd.btnColor}`}>
+        <button className={btnClass}>
           <span>{activeAd.ctaText}</span>
           <ArrowRight className="w-3 h-3" />
         </button>
       </a>
-      <div className={`absolute inset-0 bg-gradient-to-tr ${activeAd.themeColor} opacity-30 pointer-events-none`}></div>
     </div>
   );
 }
