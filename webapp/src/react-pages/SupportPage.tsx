@@ -263,7 +263,7 @@ function SupportPageContent() {
                       { q: "Why are my photos missing dates?", a: "Google removes EXIF metadata when you download through Takeout. Instead, it places the data in separate JSON sidecar files. TakeoutFix merges these files back together." },
                       { q: "Does TakeoutFix upload my photos?", a: "No. Everything is processed 100% locally on your machine. Your photos never leave your device." },
                       { q: "Is there a limit on the free plan?", a: "Yes, the free plan processes up to 1GB or 1,000 files to let you test the tool. Upgrading removes this limit." },
-                      { q: "What is your refund policy?", a: "We offer a 14-day refund policy based strictly on data usage: 100% refund if total restored usage is under 1 GB and 1,000 files; 50% refund for Pro and Super plans if usage is between 1 GB and 20 GB (10,000 files); no refunds if usage exceeds 20 GB (or 10,000 files) for any plan, or if usage exceeds 1 GB (or 1,000 files) for Recovery Pass users." }
+                      { q: "What is your refund policy?", a: "We offer a simple 14-day money-back guarantee. If you are not satisfied with TakeoutFix or encounter any technical issues, just open a ticket in our Support Center within 14 days of purchase and we will issue a full refund." }
                     ].map((faq, idx) => (
                       <motion.div key={idx} variants={itemVariants}>
                         <Card className="bg-black/40 backdrop-blur-md border-white/10 hover:border-indigo-500/20 transition-all">

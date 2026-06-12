@@ -162,11 +162,8 @@ function ToolWorkspaceContent() {
   const isPausedRef = useRef(false)
   
   // Concurrency processing pool implementation
-  const workerStatusRef = useRef<string[]>([]) // 'idle' or 'busy'
-  const queueRef = useRef<any[]>([])
   const [maxWorkers, setMaxWorkers] = useState(1)
   const [activeWorkersCount, setActiveWorkersCount] = useState(0)
-  const dirNamesCache = useRef<Map<string, Set<string>>>(new Map())
 
   const isProcessingRef = useRef(false)
   const logContainerRef = useRef<HTMLDivElement>(null)
@@ -372,7 +369,7 @@ function ToolWorkspaceContent() {
           const baseMem = 32.0 + activeCount * 14.5
           setTelemetryMem(parseFloat((baseMem + Math.random() * 4).toFixed(1)))
           setTelemetryWorkers(0)
-        } else if (queueRef.current.length === 0) {
+        } else if (activeWorkersCount === 0) {
           setTelemetryCpu(parseFloat((12.0 + Math.random() * 5).toFixed(1)))
           setTelemetryMem(parseFloat((28.0 + Math.random() * 2).toFixed(1)))
           setTelemetryWorkers(1)
@@ -546,36 +543,6 @@ function ToolWorkspaceContent() {
     }
   }
 
-  const runProcessingQueue = async (workerId: number) => {
-    while (isProcessingRef.current && queueRef.current.length > 0) {
-      if (isPausedRef.current) {
-        await new Promise(resolve => setTimeout(resolve, 200))
-        continue
-      }
-
-      // Quota check
-      if (currentUsedBytes + sessionBytesRef.current > limitBytes || currentUsedFiles + sessionFilesRef.current > limitFiles) {
-        haltDueToQuota()
-        return
-      }
-
-      const item = queueRef.current.shift()
-      if (!item) break
-
-      workerStatusRef.current[workerId] = 'busy'
-      setActiveWorkersCount(workerStatusRef.current.filter(s => s === 'busy').length)
-
-      try {
-        await processFileMainThread(item)
-      } catch (err) {
-        console.error("Worker loop error:", err)
-      }
-
-      workerStatusRef.current[workerId] = 'idle'
-      setActiveWorkersCount(workerStatusRef.current.filter(s => s === 'busy').length)
-    }
-  }
-
   const getOrCreateDir = async (root: FileSystemDirectoryHandle, parts: string[]): Promise<FileSystemDirectoryHandle> => {
     let current = root
     for (const part of parts) {
@@ -586,8 +553,12 @@ function ToolWorkspaceContent() {
     return current
   }
 
-  const processFileMainThread = async (item: any) => {
-    const { fileHandle, dirHandle, relativePath } = item
+  const processFileMainThread = async (
+    fileHandle: FileSystemFileHandle,
+    dirHandle: FileSystemDirectoryHandle,
+    allNames: Set<string>,
+    relativePath: string[]
+  ) => {
     const safeName = sanitizeFilename(fileHandle.name)
     let fileSize = 0
 
@@ -602,28 +573,7 @@ function ToolWorkspaceContent() {
 
       fileSize = file.size
 
-      // Get directory names cache
-      const cacheKey = relativePath.join('/')
-      let allNamesSet = dirNamesCache.current.get(cacheKey)
-      if (!allNamesSet) {
-        // Enforce cache limit to prevent memory leak (buffered up to 200 directories in memory)
-        if (dirNamesCache.current.size >= 200) {
-          const firstKey = dirNamesCache.current.keys().next().value
-          if (firstKey !== undefined) {
-            dirNamesCache.current.delete(firstKey)
-          }
-        }
-
-        allNamesSet = new Set<string>()
-        // @ts-ignore
-        for await (const [name] of dirHandle) {
-          const safe = sanitizeFilename(name)
-          if (safe) allNamesSet.add(safe)
-        }
-        dirNamesCache.current.set(cacheKey, allNamesSet)
-      }
-
-      const jsonName = findMatchingJsonName(safeName, allNamesSet)
+      const jsonName = findMatchingJsonName(safeName, allNames)
       
       let epochSec: number | null = null
       if (jsonName) {
@@ -743,7 +693,6 @@ function ToolWorkspaceContent() {
   }
 
   const haltDueToQuota = async () => {
-    workerStatusRef.current = []
     setActiveWorkersCount(0)
 
     if (flushInterval.current) {
@@ -818,8 +767,6 @@ function ToolWorkspaceContent() {
     setIsProcessing(false)
     isProcessingRef.current = false
     setActiveWorkersCount(0)
-    
-    workerStatusRef.current = []
 
     if (flushInterval.current) {
       window.clearInterval(flushInterval.current)
@@ -899,12 +846,14 @@ function ToolWorkspaceContent() {
 
     async function walk(handle: FileSystemDirectoryHandle, path: string[]) {
       const currentFiles: FileSystemFileHandle[] = [];
+      const allNames = new Set<string>();
 
       // @ts-ignore
       for await (const [name, entry] of handle) {
         if (!isProcessingRef.current || isPausedRef.current) return;
         const safeName = sanitizeFilename(name);
         if (!safeName) continue;
+        allNames.add(safeName);
         
         if (entry.kind === 'file' && isAllowedMediaFile(safeName)) {
           currentFiles.push(entry as FileSystemFileHandle);
@@ -913,13 +862,15 @@ function ToolWorkspaceContent() {
         }
       }
 
-      for (const f of currentFiles) {
-        if (!isProcessingRef.current || isPausedRef.current) return;
-        results.push({ fileHandle: f, dirHandle: handle, relativePath: path });
-        fileCount++;
-        if (fileCount % 50 === 0) {
-          fileBuffer.current = `Scanning folders... Found ${fileCount} media files`;
-        }
+      if (currentFiles.length > 0) {
+        results.push({
+          mediaFiles: currentFiles,
+          dirHandle: handle,
+          allNames,
+          relativePath: path
+        });
+        fileCount += currentFiles.length;
+        fileBuffer.current = `Scanning folders... Found ${fileCount} media files`;
       }
     }
 
@@ -1296,12 +1247,17 @@ function ToolWorkspaceContent() {
     }, 100)
 
     try {
-      const files = await scanDirectory(takeoutFolder)
+      const folderGroups = await scanDirectory(takeoutFolder)
       if (!isProcessingRef.current) return // User cancelled during scanning
       
-      logsBuffer.current.push({ level: 'info', msg: `Scanning complete. Found ${files.length} media files.` })
+      let totalFiles = 0
+      for (const g of folderGroups) {
+        totalFiles += g.mediaFiles.length
+      }
+
+      logsBuffer.current.push({ level: 'info', msg: `Scanning complete. Found ${totalFiles} media files across ${folderGroups.length} folders.` })
       
-      if (files.length === 0) {
+      if (totalFiles === 0) {
         setIsProcessing(false)
         isProcessingRef.current = false
         setCurrentFile("Finished: No files found")
@@ -1309,29 +1265,63 @@ function ToolWorkspaceContent() {
         return
       }
 
-      statsBuffer.current.total = files.length
-      queueRef.current = files
+      statsBuffer.current.total = totalFiles
 
       updateActiveSession('processing', {
-        totalFiles: files.length,
-        currentFile: 'Starting processing pool...'
+        totalFiles: totalFiles,
+        currentFile: 'Starting folder restoration...'
       })
 
-      const poolSize = maxWorkers
-      workerStatusRef.current = new Array(poolSize).fill('idle')
-      dirNamesCache.current.clear()
+      const runFolders = async () => {
+        for (const group of folderGroups) {
+          if (!isProcessingRef.current) break
+          
+          while (isPausedRef.current) {
+            if (!isProcessingRef.current) break
+            await new Promise(resolve => setTimeout(resolve, 200))
+          }
 
-      // Start the loops in parallel directly in the main thread
-      const runners: Promise<void>[] = []
-      for (let i = 0; i < poolSize; i++) {
-        runners.push(runProcessingQueue(i))
+          const { mediaFiles, dirHandle, allNames, relativePath } = group
+          
+          for (let i = 0; i < mediaFiles.length; i += maxWorkers) {
+            if (!isProcessingRef.current) break
+
+            while (isPausedRef.current) {
+              if (!isProcessingRef.current) break
+              await new Promise(resolve => setTimeout(resolve, 200))
+            }
+
+            if (currentUsedBytes + sessionBytesRef.current > limitBytes || currentUsedFiles + sessionFilesRef.current > limitFiles) {
+              await haltDueToQuota()
+              return
+            }
+
+            const chunk = mediaFiles.slice(i, i + maxWorkers)
+            
+            setActiveWorkersCount(chunk.length)
+
+            await Promise.all(chunk.map(async (fileHandle) => {
+              try {
+                await processFileMainThread(fileHandle, dirHandle, allNames, relativePath)
+              } catch (err) {
+                console.error("File processing error:", err)
+              }
+            }))
+
+            setActiveWorkersCount(0)
+          }
+        }
+
+        if (isProcessingRef.current) {
+          await completeProcessing()
+        }
       }
 
-      // Wait for all runner loops to complete
-      Promise.all(runners).then(() => {
-        if (isProcessingRef.current && queueRef.current.length === 0) {
-          completeProcessing()
-        }
+      runFolders().catch((err) => {
+        logsBuffer.current.push({ level: 'error', msg: `Processing Error: ${err.message || err}` })
+        setIsProcessing(false)
+        isProcessingRef.current = false
+        if (flushInterval.current) window.clearInterval(flushInterval.current)
       })
 
     } catch (err: any) {
@@ -1343,8 +1333,6 @@ function ToolWorkspaceContent() {
   }
 
   const cancelProcessing = async () => {
-    workerStatusRef.current = []
-    queueRef.current = []
     setActiveWorkersCount(0)
 
     if (flushInterval.current) window.clearInterval(flushInterval.current)
