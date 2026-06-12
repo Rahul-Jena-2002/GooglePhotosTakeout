@@ -144,6 +144,8 @@ function ToolWorkspaceContent() {
   const flushInterval = useRef<number | null>(null)
   
   const sessionIdRef = useRef<string | null>(null)
+  const historySessionIdRef = useRef<string | null>(null)
+  const totalSessionBytesRef = useRef<number>(0)
   const lastActiveSessionUpdateRef = useRef<number>(0)
   const lastCommitTimeRef = useRef<number>(0)
 
@@ -196,6 +198,64 @@ function ToolWorkspaceContent() {
       logContainerRef.current.scrollTop = logContainerRef.current.scrollHeight
     }
   }, [logs])
+
+  // Recover usage from any previous crashed/interrupted session stored in IndexedDB
+  const recoverPendingUsage = async () => {
+    if (!user) return
+    try {
+      const pending = await indexedDbService.get('telemetry', 'takeoutfix_pending_usage')
+      if (pending && pending.uid === user.uid) {
+        const { bytes, files, sessionId, takeoutName, historySessionId } = pending
+        if (bytes > 0 || files > 0) {
+          console.log(`Recovering pending usage from crashed session: ${files} files, ${bytes} bytes`)
+          await saveUsageToFirestore(bytes, files)
+          
+          if (historySessionId) {
+            const historyRef = doc(db, 'recoveryHistory', user.uid, 'sessions', historySessionId)
+            await setDoc(historyRef, {
+              filesProcessed: increment(files),
+              matched: increment(files),
+              recovered: increment(files),
+              bytesProcessed: increment(bytes),
+              status: 'failed',
+              recoveredFromCrash: true
+            }, { merge: true }).catch(err => console.error("Failed to update crashed session history:", err))
+          } else {
+            await addDoc(collection(db, 'recoveryHistory', user.uid, 'sessions'), {
+              archiveName: takeoutName || 'Google Takeout Archive (Recovered)',
+              timestamp: Date.now(),
+              filesProcessed: files,
+              matched: files,
+              recovered: files,
+              failed: 0,
+              bytesProcessed: bytes,
+              duration: 0,
+              status: 'failed',
+              recoveredFromCrash: true
+            }).catch(err => console.error("Failed to write crashed session history fallback:", err))
+          }
+          
+          // Update platform stats
+          const globalRef = doc(db, 'platform_stats', 'global')
+          await setDoc(globalRef, {
+            filesRestored: increment(files),
+            filesScanned: increment(files),
+            bytesProcessed: increment(bytes),
+            ticketsResolved: increment(0)
+          }, { merge: true }).catch(console.error)
+        }
+        await indexedDbService.remove('telemetry', 'takeoutfix_pending_usage')
+      }
+    } catch (err) {
+      console.error("Failed to recover pending usage:", err)
+    }
+  }
+
+  useEffect(() => {
+    if (user) {
+      recoverPendingUsage()
+    }
+  }, [user])
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -311,6 +371,19 @@ function ToolWorkspaceContent() {
 
     try {
       await saveUsageToFirestore(bytesToSave, filesToSave)
+
+      // Dynamically update user's live session history record in Firestore
+      if (user && historySessionIdRef.current) {
+        const historyRef = doc(db, 'recoveryHistory', user.uid, 'sessions', historySessionIdRef.current)
+        await setDoc(historyRef, {
+          filesProcessed: statsBuffer.current.scanned,
+          matched: statsBuffer.current.matched,
+          recovered: statsBuffer.current.matched,
+          failed: statsBuffer.current.errors,
+          bytesProcessed: totalSessionBytesRef.current,
+          duration: Date.now() - startTimeRef.current
+        }, { merge: true }).catch(err => console.error("Failed to update dynamic recovery history:", err))
+      }
     } catch (err) {
       console.error("Failed to commit usage:", err)
       // Restore counts on failure so they aren't lost
@@ -322,7 +395,8 @@ function ToolWorkspaceContent() {
           bytes: sessionBytesRef.current,
           files: sessionFilesRef.current,
           sessionId: sessionIdRef.current,
-          takeoutName: takeoutFolder?.name || 'Google Takeout Archive'
+          takeoutName: takeoutFolder?.name || 'Google Takeout Archive',
+          historySessionId: historySessionIdRef.current
         })
       }
     }
@@ -402,17 +476,30 @@ function ToolWorkspaceContent() {
 
     if (user && statsBuffer.current.scanned > 0) {
       const duration = Date.now() - startTimeRef.current
-      await addDoc(collection(db, 'recoveryHistory', user.uid, 'sessions'), {
-        archiveName: takeoutFolder?.name || 'Google Takeout Archive',
-        timestamp: Date.now(),
-        filesProcessed: statsBuffer.current.scanned,
-        matched: statsBuffer.current.matched,
-        recovered: statsBuffer.current.matched,
-        failed: statsBuffer.current.errors,
-        bytesProcessed: finalBytes,
-        duration,
-        status: 'failed'
-      }).catch((err) => console.error("Failed to write to recoveryHistory:", err))
+      if (historySessionIdRef.current) {
+        const historyRef = doc(db, 'recoveryHistory', user.uid, 'sessions', historySessionIdRef.current)
+        await setDoc(historyRef, {
+          filesProcessed: statsBuffer.current.scanned,
+          matched: statsBuffer.current.matched,
+          recovered: statsBuffer.current.matched,
+          failed: statsBuffer.current.errors,
+          bytesProcessed: totalSessionBytesRef.current,
+          duration,
+          status: 'failed'
+        }, { merge: true }).catch((err) => console.error("Failed to update dynamic recoveryHistory:", err))
+      } else {
+        await addDoc(collection(db, 'recoveryHistory', user.uid, 'sessions'), {
+          archiveName: takeoutFolder?.name || 'Google Takeout Archive',
+          timestamp: Date.now(),
+          filesProcessed: statsBuffer.current.scanned,
+          matched: statsBuffer.current.matched,
+          recovered: statsBuffer.current.matched,
+          failed: statsBuffer.current.errors,
+          bytesProcessed: totalSessionBytesRef.current,
+          duration,
+          status: 'failed'
+        }).catch((err) => console.error("Failed to write fallback recoveryHistory:", err))
+      }
     }
     
     const storageExceeded = (currentUsedBytes + finalBytes) > limitBytes
@@ -471,22 +558,35 @@ function ToolWorkspaceContent() {
         matched: statsBuffer.current.matched,
         unmatched: statsBuffer.current.unmatched,
         errors: statsBuffer.current.errors,
-        bytesProcessed: finalBytes,
+        bytesProcessed: totalSessionBytesRef.current,
         duration
       }).catch(console.error)
 
-      // Save detailed run session to recoveryHistory/uid/sessions for user dashboards
-      await addDoc(collection(db, 'recoveryHistory', user.uid, 'sessions'), {
-        archiveName: takeoutFolder?.name || 'Google Takeout Archive',
-        timestamp: Date.now(),
-        filesProcessed: statsBuffer.current.scanned,
-        matched: statsBuffer.current.matched,
-        recovered: statsBuffer.current.matched,
-        failed: statsBuffer.current.errors,
-        bytesProcessed: finalBytes,
-        duration,
-        status: 'completed'
-      }).catch((err) => console.error("Failed to write to recoveryHistory:", err))
+      // Save/update final run session to recoveryHistory/uid/sessions for user dashboards
+      if (historySessionIdRef.current) {
+        const historyRef = doc(db, 'recoveryHistory', user.uid, 'sessions', historySessionIdRef.current)
+        await setDoc(historyRef, {
+          filesProcessed: statsBuffer.current.scanned,
+          matched: statsBuffer.current.matched,
+          recovered: statsBuffer.current.matched,
+          failed: statsBuffer.current.errors,
+          bytesProcessed: totalSessionBytesRef.current,
+          duration,
+          status: 'completed'
+        }, { merge: true }).catch((err) => console.error("Failed to update final recoveryHistory:", err))
+      } else {
+        await addDoc(collection(db, 'recoveryHistory', user.uid, 'sessions'), {
+          archiveName: takeoutFolder?.name || 'Google Takeout Archive',
+          timestamp: Date.now(),
+          filesProcessed: statsBuffer.current.scanned,
+          matched: statsBuffer.current.matched,
+          recovered: statsBuffer.current.matched,
+          failed: statsBuffer.current.errors,
+          bytesProcessed: totalSessionBytesRef.current,
+          duration,
+          status: 'completed'
+        }).catch((err) => console.error("Failed to write fallback recoveryHistory:", err))
+      }
     }
 
     if (userData && statsBuffer.current.scanned > 0) {
@@ -583,6 +683,9 @@ function ToolWorkspaceContent() {
     startTimeRef.current = Date.now()
     lastCommitTimeRef.current = Date.now()
 
+    totalSessionBytesRef.current = 0
+    historySessionIdRef.current = null
+
     if (user) {
       sessionIdRef.current = `${user.uid}_${Date.now()}`
       updateActiveSession('initializing', {
@@ -593,6 +696,21 @@ function ToolWorkspaceContent() {
         bytesProcessed: 0,
         currentFile: 'Scanning folders...'
       })
+
+      // Create a session in recoveryHistory immediately so it starts updating dynamically
+      addDoc(collection(db, 'recoveryHistory', user.uid, 'sessions'), {
+        archiveName: takeoutFolder?.name || 'Google Takeout Archive',
+        timestamp: Date.now(),
+        filesProcessed: 0,
+        matched: 0,
+        recovered: 0,
+        failed: 0,
+        bytesProcessed: 0,
+        duration: 0,
+        status: 'processing'
+      }).then(docRef => {
+        historySessionIdRef.current = docRef.id
+      }).catch(err => console.error("Failed to initialize recoveryHistory session:", err))
     }
 
     flushInterval.current = window.setInterval(() => {
@@ -666,6 +784,7 @@ function ToolWorkspaceContent() {
             const fileBytes = res.bytes || 0
             sessionBytesRef.current += fileBytes
             sessionFilesRef.current += 1
+            totalSessionBytesRef.current += fileBytes
 
             // Backup pending usage to IndexedDB to prevent quota bypass loopholes on tab close/refresh
             if (user) {
@@ -674,7 +793,8 @@ function ToolWorkspaceContent() {
                 bytes: sessionBytesRef.current,
                 files: sessionFilesRef.current,
                 sessionId: sessionIdRef.current,
-                takeoutName: takeoutFolder?.name || 'Google Takeout Archive'
+                takeoutName: takeoutFolder?.name || 'Google Takeout Archive',
+                historySessionId: historySessionIdRef.current
               }).catch(err => console.error("Failed to backup usage telemetry:", err))
             }
 
@@ -743,17 +863,30 @@ function ToolWorkspaceContent() {
 
     if (user && statsBuffer.current.scanned > 0) {
       const duration = Date.now() - startTimeRef.current
-      await addDoc(collection(db, 'recoveryHistory', user.uid, 'sessions'), {
-        archiveName: takeoutFolder?.name || 'Google Takeout Archive',
-        timestamp: Date.now(),
-        filesProcessed: statsBuffer.current.scanned,
-        matched: statsBuffer.current.matched,
-        recovered: statsBuffer.current.matched,
-        failed: statsBuffer.current.errors,
-        bytesProcessed: finalBytes,
-        duration,
-        status: 'cancelled'
-      }).catch((err) => console.error("Failed to write to recoveryHistory:", err))
+      if (historySessionIdRef.current) {
+        const historyRef = doc(db, 'recoveryHistory', user.uid, 'sessions', historySessionIdRef.current)
+        await setDoc(historyRef, {
+          filesProcessed: statsBuffer.current.scanned,
+          matched: statsBuffer.current.matched,
+          recovered: statsBuffer.current.matched,
+          failed: statsBuffer.current.errors,
+          bytesProcessed: totalSessionBytesRef.current,
+          duration,
+          status: 'cancelled'
+        }, { merge: true }).catch((err) => console.error("Failed to update final recoveryHistory:", err))
+      } else {
+        await addDoc(collection(db, 'recoveryHistory', user.uid, 'sessions'), {
+          archiveName: takeoutFolder?.name || 'Google Takeout Archive',
+          timestamp: Date.now(),
+          filesProcessed: statsBuffer.current.scanned,
+          matched: statsBuffer.current.matched,
+          recovered: statsBuffer.current.matched,
+          failed: statsBuffer.current.errors,
+          bytesProcessed: totalSessionBytesRef.current,
+          duration,
+          status: 'cancelled'
+        }).catch((err) => console.error("Failed to write fallback recoveryHistory:", err))
+      }
     }
   }
 

@@ -242,12 +242,107 @@ const {
           </div>
         </footer>
       )}
+      <!-- ADBLOCKER GATE OVERLAY -->
+      <div id="adblock-gate" class="fixed inset-0 bg-[#0A0A0A] z-[9999] flex items-center justify-center p-4 overflow-hidden hidden">
+        <!-- Background mesh glows -->
+        <div class="absolute top-1/4 left-1/4 w-[400px] h-[400px] bg-red-500/5 blur-[120px] rounded-full pointer-events-none"></div>
+        <div class="absolute bottom-1/4 right-1/4 w-[400px] h-[400px] bg-indigo-500/5 blur-[120px] rounded-full pointer-events-none"></div>
+
+        <div
+          class="relative max-w-lg w-full bg-zinc-950/80 border border-white/10 p-8 rounded-3xl backdrop-blur-2xl shadow-2xl overflow-hidden text-center"
+          style="box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.08);"
+        >
+          <!-- Top highlight bar -->
+          <div class="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-red-500 via-indigo-500 to-purple-600"></div>
+
+          <svg class="w-14 h-14 text-indigo-400 mx-auto mb-6 animate-pulse" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+          </svg>
+
+          <h2 class="text-2xl font-black text-white tracking-tight mb-3">
+            AdBlocker Detected
+          </h2>
+
+          <p class="text-sm text-zinc-400 leading-relaxed mb-6 px-2">
+            TakeoutFix runs EXIF metadata mergers completely offline in your browser. To support our free hosting costs and servers, we require ad block whitelisting for our free tier.
+          </p>
+
+          <!-- Quick instructions container -->
+          <div class="bg-white/[0.02] border border-white/5 rounded-2xl p-4 text-left text-xs text-zinc-500 space-y-2 mb-8">
+            <p class="font-bold text-white/80 uppercase tracking-wider text-[10px] mb-2 flex items-center gap-1.5">
+              <svg class="w-3.5 h-3.5 text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
+              </svg>
+              How to Whitelist TakeoutFix:
+            </p>
+            <ol class="list-decimal pl-4 space-y-1.5 leading-relaxed text-zinc-400">
+              <li>Click your AdBlocker extension icon (uBlock, AdBlock, etc.).</li>
+              <li>Toggle the power switch off to disable blocking on this site.</li>
+              <li>Click the refresh button below to unlock the website.</li>
+            </ol>
+          </div>
+
+          <div class="flex flex-col sm:flex-row gap-3">
+            <button
+              id="adblock-refresh-btn"
+              class="flex-1 bg-white text-black hover:bg-zinc-200 font-bold rounded-full py-2.5 flex items-center justify-center gap-2 text-sm transition-all"
+            >
+              <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 1121.21 8H17" />
+              </svg>
+              Refresh Check
+            </button>
+            <a href="/pricing" class="flex-1">
+              <button
+                class="w-full bg-gradient-to-r from-indigo-500 to-purple-600 hover:opacity-95 border-0 font-bold rounded-full py-2.5 flex items-center justify-center gap-2 shadow-lg shadow-indigo-500/20 text-white text-sm transition-all"
+              >
+                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M15 7a2 2 0 012 2m-2-2a2 2 0 11-2-2m2 2l-3 3m0 0l-3-3m3 3v8a2 2 0 01-2 2H9a2 2 0 01-2-2v-3a2 2 0 012-2h3" />
+                </svg>
+                Go Ad-Free (Pro)
+              </button>
+            </a>
+          </div>
+        </div>
+      </div>
     </div>
 
     <!-- CLIENT SIDE EVENT HANDLERS AND AUTH LISTENER -->
     <script>
       import { auth, db, googleProvider, signInWithPopup, signOut } from "../firebase";
       import { doc, onSnapshot, collection, query, where } from "firebase/firestore";
+      import { detectAdBlock } from "../services/AdBlockDetector";
+
+      // AdBlocker State & Functions
+      let isAdFree = false;
+
+      const checkAdBlock = async () => {
+        const adblockGate = document.getElementById("adblock-gate");
+        if (isAdFree) {
+          adblockGate?.classList.add("hidden");
+          return;
+        }
+
+        const isBlocked = await detectAdBlock();
+        if (isBlocked) {
+          adblockGate?.classList.remove("hidden");
+        } else {
+          adblockGate?.classList.add("hidden");
+        }
+      };
+
+      // Set up refresh button listener
+      document.addEventListener("DOMContentLoaded", () => {
+        const refreshBtn = document.getElementById("adblock-refresh-btn");
+        refreshBtn?.addEventListener("click", async () => {
+          refreshBtn.classList.add("animate-pulse");
+          await checkAdBlock();
+          refreshBtn.classList.remove("animate-pulse");
+        });
+      });
+
+      // Initial check
+      checkAdBlock();
 
       // 1. Theme Toggle System
       const initTheme = () => {
@@ -445,6 +540,10 @@ const {
                 
                 if (dropdownPlan) dropdownPlan.innerText = planLabel;
 
+                // Sync plan for AdBlock bypass
+                isAdFree = data.plan === "super";
+                checkAdBlock();
+
                 // Sync links (Admin check)
                 const isAdmin = data.isAdmin === true;
                 if (mobileToolLink) {
@@ -521,6 +620,9 @@ const {
             profileContainer?.classList.add("hidden");
             mobileAuthSection?.classList.add("hidden");
             notificationContainer?.classList.add("hidden");
+
+            isAdFree = false;
+            checkAdBlock();
           }
         });
       };
