@@ -349,6 +349,7 @@ const {
 
       // AdBlocker State & Functions
       let isAdFree = false;
+      let gracePeriodElapsed = false;
 
       const checkAdBlock = async () => {
         const adblockGate = document.getElementById("adblock-gate");
@@ -358,7 +359,7 @@ const {
         }
 
         const isBlocked = await detectAdBlock();
-        if (isBlocked) {
+        if (isBlocked && gracePeriodElapsed) {
           adblockGate?.classList.remove("hidden");
         } else {
           adblockGate?.classList.add("hidden");
@@ -370,13 +371,23 @@ const {
         const refreshBtn = document.getElementById("adblock-refresh-btn");
         refreshBtn?.addEventListener("click", async () => {
           refreshBtn.classList.add("animate-pulse");
-          await checkAdBlock();
+          // Manual verification always bypasses grace period
+          const isBlocked = await detectAdBlock();
+          const adblockGate = document.getElementById("adblock-gate");
+          if (isBlocked && !isAdFree) {
+            adblockGate?.classList.remove("hidden");
+          } else {
+            adblockGate?.classList.add("hidden");
+          }
           refreshBtn.classList.remove("animate-pulse");
         });
       });
 
-      // Initial check
-      checkAdBlock();
+      // Initial check deferred by 15 seconds
+      setTimeout(() => {
+        gracePeriodElapsed = true;
+        checkAdBlock();
+      }, 15000);
 
       // 1. Theme Toggle System
       const initTheme = () => {
