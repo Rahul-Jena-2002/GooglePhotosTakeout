@@ -3,7 +3,7 @@ import { useParams, Link, useNavigate } from "react-router-dom"
 import { motion } from "framer-motion"
 import { Button } from "../components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card"
-import { ShieldCheck, ArrowRight, CheckCircle2, AlertTriangle, Cpu, HardDrive, Eye } from "lucide-react"
+import { ShieldCheck, ArrowRight, CheckCircle2, AlertTriangle, Cpu, HardDrive, Eye, XCircle } from "lucide-react"
 
 // SEO Keyword Permutation Dictionary
 const actions: Record<string, string> = {
@@ -168,36 +168,80 @@ export default function SeoLandingPage() {
         
         {/* Comparison Showcase (Before / After) */}
         <Card className="bg-zinc-950/40 border-white/5 backdrop-blur-md overflow-hidden">
-          <CardHeader className="border-b border-white/5 py-4">
-            <CardTitle className="text-sm font-mono tracking-wider text-zinc-400 uppercase flex items-center gap-2">
+          <CardHeader className="border-b border-white/5 py-4 px-6">
+            <CardTitle className="text-sm font-sans font-bold tracking-tight text-zinc-300 flex items-center gap-2">
               <Eye className="w-4 h-4 text-indigo-400" />
-              Dynamic Metadata Header Comparison
+              Dynamic EXIF Header Verification Matrix
             </CardTitle>
           </CardHeader>
-          <CardContent className="grid md:grid-cols-2 gap-8 p-8">
-            <div className="space-y-4">
-              <h3 className="text-sm font-bold uppercase tracking-wider text-red-400 flex items-center gap-2">
-                <AlertTriangle className="w-4 h-4" /> Before TakeoutFix Processing
-              </h3>
-              <div className="bg-zinc-950 border border-zinc-900 rounded-lg p-5 font-mono text-xs text-zinc-500 space-y-2">
-                <p className="text-white font-semibold">File: IMG_3012.JPG</p>
-                <p>Date Taken: <span className="text-red-400/80 font-bold">Missing (Shows Today's Upload Date)</span></p>
-                <p>GPS Coordinates: <span className="text-red-400/80 font-bold">None (Latitude: 0.0, Longitude: 0.0)</span></p>
-                <p>Camera Make/Model: <span className="text-red-400/80 font-bold">Stripped (No Exif Header Blocks)</span></p>
-                <p className="text-[10px] text-zinc-600 mt-2 font-bold italic">* Operating systems default to filesystem creation date</p>
+          <CardContent className="p-8">
+            <div className="compare-container">
+              {/* BEFORE */}
+              <div className="compare-card compare-card-before">
+                <div className="compare-header compare-header-before">
+                  <XCircle className="w-4 h-4" /> Before TakeoutFix
+                </div>
+                
+                <div className="compare-file-badge compare-file-badge-before">
+                  <div className="compare-file-icon-before">
+                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                    </svg>
+                  </div>
+                  <div>
+                    <span className="compare-file-name">IMG_3012.JPG</span>
+                    <span className="compare-file-desc">3.1 MB · Camera Original</span>
+                  </div>
+                </div>
+
+                <div className="compare-list">
+                  <div className="compare-item">
+                    <span className="compare-item-label">Date Taken</span>
+                    <span className="compare-item-value-missing">Missing (Today's Date)</span>
+                  </div>
+                  <div className="compare-item">
+                    <span className="compare-item-label">GPS Coordinates</span>
+                    <span className="compare-item-value-missing">None (0.0, 0.0)</span>
+                  </div>
+                  <div className="compare-item">
+                    <span className="compare-item-label">Camera Model</span>
+                    <span className="compare-item-value-missing">Stripped</span>
+                  </div>
+                </div>
               </div>
-            </div>
-            
-            <div className="space-y-4">
-              <h3 className="text-sm font-bold uppercase tracking-wider text-emerald-400 flex items-center gap-2">
-                <CheckCircle2 className="w-4 h-4" /> After TakeoutFix Recovery
-              </h3>
-              <div className="bg-zinc-950 border border-zinc-900 rounded-lg p-5 font-mono text-xs text-zinc-400 space-y-2 shadow-[0_0_15px_rgba(16,185,129,0.05)]">
-                <p className="text-white font-semibold">File: IMG_3012.JPG</p>
-                <p>Date Taken: <span className="text-emerald-400 font-bold">2018:04:12 18:32:04 (DateTimeOriginal)</span></p>
-                <p>GPS Coordinates: <span className="text-emerald-400 font-bold">40.7128° N, 74.0060° W</span></p>
-                <p>Camera Make/Model: <span className="text-emerald-400 font-bold">Apple iPhone X (Injected Exif tags)</span></p>
-                <p className="text-[10px] text-emerald-400/75 mt-2 font-bold">✓ Successfully merged from sidecar JSON</p>
+
+              {/* AFTER */}
+              <div className="compare-card compare-card-after">
+                <div className="compare-header compare-header-after">
+                  <CheckCircle2 className="w-4 h-4" /> After TakeoutFix
+                </div>
+
+                <div className="compare-file-badge compare-file-badge-after">
+                  <div className="compare-file-icon-after">
+                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                    </svg>
+                  </div>
+                  <div>
+                    <span className="compare-file-name">IMG_3012.JPG</span>
+                    <span className="compare-file-desc">3.1 MB · EXIF Restored</span>
+                  </div>
+                </div>
+
+                <div className="compare-list">
+                  <div className="compare-item">
+                    <span className="compare-item-label">Date Taken</span>
+                    <span className="compare-item-value-fixed">2018:04:12 18:32:04</span>
+                  </div>
+                  <div className="compare-item">
+                    <span className="compare-item-label">GPS Coordinates</span>
+                    <span className="compare-item-value-fixed">40.7128° N, 74.0060° W</span>
+                  </div>
+                  <div className="compare-item">
+                    <span className="compare-item-label">Camera Model</span>
+                    <span className="compare-item-value-fixed">Apple iPhone X</span>
+                  </div>
+                </div>
               </div>
             </div>
           </CardContent>

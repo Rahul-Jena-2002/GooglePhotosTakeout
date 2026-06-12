@@ -206,48 +206,71 @@ export default function LandingPage() {
         <div className="max-w-7xl mx-auto px-4 text-center">
           <h2 className="text-4xl md:text-5xl font-bold tracking-tighter mb-16">The TakeoutFix Solution</h2>
           
-          <div className="grid md:grid-cols-2 gap-12 max-w-4xl mx-auto">
+          <div className="compare-container">
             {/* BEFORE */}
-            <div className="bg-black/50 border border-white/10 rounded-2xl p-8 text-left shadow-xl">
-              <div className="text-red-400 font-bold tracking-widest uppercase mb-6 flex items-center gap-2">
-                <XCircle className="w-5 h-5" /> Before TakeoutFix
+            <div className="compare-card compare-card-before">
+              <div className="compare-header compare-header-before">
+                <XCircle className="w-4 h-4" /> Before TakeoutFix
               </div>
-              <div className="space-y-4">
-                <div className="font-mono text-lg font-bold text-white mb-6">IMG_9942.jpg</div>
-                <div className="flex justify-between border-b border-white/5 pb-2">
-                  <span className="text-white/40">Date Taken:</span>
-                  <span className="text-red-400 font-mono">Missing</span>
+              
+              <div className="compare-file-badge compare-file-badge-before">
+                <div className="compare-file-icon-before">
+                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                  </svg>
                 </div>
-                <div className="flex justify-between border-b border-white/5 pb-2">
-                  <span className="text-white/40">Location (GPS):</span>
-                  <span className="text-red-400 font-mono">Missing</span>
+                <div>
+                  <span className="compare-file-name">IMG_9942.jpg</span>
+                  <span className="compare-file-desc">2.4 MB · JPEG Image</span>
                 </div>
-                <div className="flex justify-between pb-2">
-                  <span className="text-white/40">Device:</span>
-                  <span className="text-red-400 font-mono">Missing</span>
+              </div>
+
+              <div className="compare-list">
+                <div className="compare-item">
+                  <span className="compare-item-label">Date Taken</span>
+                  <span className="compare-item-value-missing">Missing</span>
+                </div>
+                <div className="compare-item">
+                  <span className="compare-item-label">Location (GPS)</span>
+                  <span className="compare-item-value-missing">Missing</span>
+                </div>
+                <div className="compare-item">
+                  <span className="compare-item-label">Device</span>
+                  <span className="compare-item-value-missing">Missing</span>
                 </div>
               </div>
             </div>
 
             {/* AFTER */}
-            <div className="bg-gradient-to-br from-indigo-500/10 to-purple-600/10 border border-indigo-500/30 rounded-2xl p-8 text-left shadow-[0_0_50px_rgba(99,102,241,0.1)] relative overflow-hidden">
-              <div className="absolute top-0 right-0 p-4 opacity-10"><ShieldCheck className="w-32 h-32" /></div>
-              <div className="text-green-400 font-bold tracking-widest uppercase mb-6 flex items-center gap-2 relative z-10">
-                <CheckCircle2 className="w-5 h-5" /> After TakeoutFix
+            <div className="compare-card compare-card-after">
+              <div className="compare-header compare-header-after">
+                <CheckCircle2 className="w-4 h-4" /> After TakeoutFix
               </div>
-              <div className="space-y-4 relative z-10">
-                <div className="font-mono text-lg font-bold text-white mb-6">IMG_9942.jpg</div>
-                <div className="flex justify-between border-b border-white/5 pb-2">
-                  <span className="text-white/40">Date Taken:</span>
-                  <span className="text-green-400 font-mono">Aug 12, 2014 14:30</span>
+
+              <div className="compare-file-badge compare-file-badge-after">
+                <div className="compare-file-icon-after">
+                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                  </svg>
                 </div>
-                <div className="flex justify-between border-b border-white/5 pb-2">
-                  <span className="text-white/40">Location (GPS):</span>
-                  <span className="text-green-400 font-mono">48.8584° N, 2.2945° E</span>
+                <div>
+                  <span className="compare-file-name">IMG_9942.jpg</span>
+                  <span className="compare-file-desc">2.4 MB · EXIF Injected</span>
                 </div>
-                <div className="flex justify-between pb-2">
-                  <span className="text-white/40">Device:</span>
-                  <span className="text-green-400 font-mono">iPhone 6</span>
+              </div>
+
+              <div className="compare-list">
+                <div className="compare-item">
+                  <span className="compare-item-label">Date Taken</span>
+                  <span className="compare-item-value-fixed">Aug 12, 2014 14:30</span>
+                </div>
+                <div className="compare-item">
+                  <span className="compare-item-label">Location (GPS)</span>
+                  <span className="compare-item-value-fixed">48.8584° N, 2.2945° E</span>
+                </div>
+                <div className="compare-item">
+                  <span className="compare-item-label">Device</span>
+                  <span className="compare-item-value-fixed">iPhone 6</span>
                 </div>
               </div>
             </div>

@@ -130,53 +130,77 @@ const prices = PLAN_PRICES[region] || PLAN_PRICES.us;
       <div class="max-w-7xl mx-auto px-4 text-center">
         <h2 class="text-4xl md:text-5xl font-bold tracking-tighter mb-16">The TakeoutFix Solution</h2>
         
-        <div class="grid md:grid-cols-2 gap-12 max-w-4xl mx-auto">
+        <div class="compare-container">
           <!-- BEFORE -->
-          <div class="bg-black/50 border border-white/10 rounded-2xl p-8 text-left shadow-xl">
-            <div class="text-red-400 font-bold tracking-widest uppercase mb-6 flex items-center gap-2">
-              <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <div class="compare-card compare-card-before">
+            <div class="compare-header compare-header-before">
+              <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
               Before TakeoutFix
             </div>
-            <div class="space-y-4">
-              <div class="font-mono text-lg font-bold text-white mb-6">IMG_9942.jpg</div>
-              <div class="flex justify-between border-b border-white/5 pb-2">
-                <span class="text-white/40">Date Taken:</span>
-                <span class="text-red-400 font-mono">Missing</span>
+            
+            <div class="compare-file-badge compare-file-badge-before">
+              <div class="compare-file-icon-before">
+                <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                </svg>
               </div>
-              <div class="flex justify-between border-b border-white/5 pb-2">
-                <span class="text-white/40">Location (GPS):</span>
-                <span class="text-red-400 font-mono">Missing</span>
+              <div>
+                <span class="compare-file-name">IMG_9942.jpg</span>
+                <span class="compare-file-desc">2.4 MB · JPEG Image</span>
               </div>
-              <div class="flex justify-between pb-2">
-                <span class="text-white/40">Device:</span>
-                <span class="text-red-400 font-mono">Missing</span>
+            </div>
+
+            <div class="compare-list">
+              <div class="compare-item">
+                <span class="compare-item-label">Date Taken</span>
+                <span class="compare-item-value-missing">Missing</span>
+              </div>
+              <div class="compare-item">
+                <span class="compare-item-label">Location (GPS)</span>
+                <span class="compare-item-value-missing">Missing</span>
+              </div>
+              <div class="compare-item">
+                <span class="compare-item-label">Device</span>
+                <span class="compare-item-value-missing">Missing</span>
               </div>
             </div>
           </div>
 
           <!-- AFTER -->
-          <div class="bg-gradient-to-br from-indigo-500/10 to-purple-600/10 border border-indigo-500/30 rounded-2xl p-8 text-left shadow-[0_0_50px_rgba(99,102,241,0.1)] relative overflow-hidden">
-            <div class="text-green-400 font-bold tracking-widest uppercase mb-6 flex items-center gap-2 relative z-10">
-              <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <div class="compare-card compare-card-after">
+            <div class="compare-header compare-header-after">
+              <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
               After TakeoutFix
             </div>
-            <div class="space-y-4 relative z-10">
-              <div class="font-mono text-lg font-bold text-white mb-6">IMG_9942.jpg</div>
-              <div class="flex justify-between border-b border-white/5 pb-2">
-                <span class="text-white/40">Date Taken:</span>
-                <span class="text-green-400 font-mono">Aug 12, 2014 14:30</span>
+
+            <div class="compare-file-badge compare-file-badge-after">
+              <div class="compare-file-icon-after">
+                <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                </svg>
               </div>
-              <div class="flex justify-between border-b border-white/5 pb-2">
-                <span class="text-white/40">Location (GPS):</span>
-                <span class="text-green-400 font-mono">48.8584° N, 2.2945° E</span>
+              <div>
+                <span class="compare-file-name">IMG_9942.jpg</span>
+                <span class="compare-file-desc">2.4 MB · EXIF Injected</span>
               </div>
-              <div class="flex justify-between pb-2">
-                <span class="text-white/40">Device:</span>
-                <span class="text-green-400 font-mono">iPhone 6</span>
+            </div>
+
+            <div class="compare-list">
+              <div class="compare-item">
+                <span class="compare-item-label">Date Taken</span>
+                <span class="compare-item-value-fixed">Aug 12, 2014 14:30</span>
+              </div>
+              <div class="compare-item">
+                <span class="compare-item-label">Location (GPS)</span>
+                <span class="compare-item-value-fixed">48.8584° N, 2.2945° E</span>
+              </div>
+              <div class="compare-item">
+                <span class="compare-item-label">Device</span>
+                <span class="compare-item-value-fixed">iPhone 6</span>
               </div>
             </div>
           </div>
