@@ -591,35 +591,42 @@ html.light .compare-item-value-fixed {
 
 /* --- High Contrast Gray & Opacity Text Overrides (Dark Mode) --- */
 html:not(.light) .text-white\/30 {
-  color: rgba(255, 255, 255, 0.55) !important;
+  color: #707085 !important;
 }
 html:not(.light) .text-white\/40 {
-  color: rgba(255, 255, 255, 0.65) !important;
+  color: #9090A8 !important;
 }
 html:not(.light) .text-white\/50 {
-  color: rgba(255, 255, 255, 0.75) !important;
+  color: #B8B8CC !important;
 }
 html:not(.light) .text-white\/60 {
-  color: rgba(255, 255, 255, 0.82) !important; /* Made lighter for readability */
+  color: #E8E8F0 !important;
 }
 html:not(.light) .text-white\/70 {
-  color: rgba(255, 255, 255, 0.88) !important;
+  color: #E8E8F0 !important;
 }
 html:not(.light) .text-white\/80 {
-  color: rgba(255, 255, 255, 0.94) !important;
+  color: #E8E8F0 !important;
 }
 html:not(.light) .text-zinc-400 {
-  color: #e4e4e7 !important; /* shifted to zinc-200 for high readability */
+  color: #B8B8CC !important;
 }
 html:not(.light) .text-zinc-500 {
-  color: #d4d4d8 !important; /* shifted to zinc-300 */
+  color: #9090A8 !important;
 }
 html:not(.light) .text-zinc-600 {
-  color: #a1a1aa !important; /* shifted to zinc-400 */
+  color: #707085 !important;
+}
+html:not(.light) .faq-answer {
+  color: #B8B8CC !important;
 }
 
 /* Limit paragraph width for maximum typography readability (Apple/Premium style) */
 p {
   max-width: 65ch;
 }
+html:not(.light) p {
+  color: #E8E8F0;
+}
+
 
