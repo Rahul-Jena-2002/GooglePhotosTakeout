@@ -442,7 +442,7 @@ export default function AdminUsers() {
                     </div>
                   )}
                   <div className="flex flex-col gap-3 pt-2">
-                    <Link to={`/admin/users/dashboard/${selectedUser.id}`}>
+                    <Link to={`/admin/users/dashboard?uid=${selectedUser.id}`}>
                       <button className="w-full py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold rounded-md transition-colors flex items-center justify-center gap-1.5 shadow-md shadow-indigo-500/10">
                         View Complete User Dashboard &rarr;
                       </button>

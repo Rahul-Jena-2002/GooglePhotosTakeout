@@ -17,12 +17,12 @@ import { AuthProvider } from "../contexts/AuthContext"
 
 function AdminRouterContent() {
   return (
-    <BrowserRouter basename="/admin">
+    <BrowserRouter>
       <Routes>
-        <Route path="/" element={<AdminLayout />}>
+        <Route path="/admin" element={<AdminLayout />}>
           <Route index element={<AdminDashboard />} />
           <Route path="users" element={<AdminUsers />} />
-          <Route path="users/dashboard/:uid" element={<AdminUserDashboard />} />
+          <Route path="users/dashboard" element={<AdminUserDashboard />} />
           <Route path="support" element={<AdminSupport />} />
           <Route path="reviews" element={<AdminReviews />} />
           <Route path="team" element={<AdminTeam />} />

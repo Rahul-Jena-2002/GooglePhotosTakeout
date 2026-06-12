@@ -26,7 +26,7 @@ const formatBytes = (bytes: number) => {
 }
 
 export default function AdminUserDashboard() {
-  const { uid } = useParams<{ uid: string }>()
+  const uid = new URLSearchParams(window.location.search).get("uid") || ""
   const navigate = useNavigate()
 
   const { adminData } = useAuth()
