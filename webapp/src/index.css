@@ -75,8 +75,8 @@ html.light .animate-page > div {
 /* --- Premium Docked Navbar & Solid Buttons (Apple Style) --- */
 
 .nav-header {
-  background-color: #161617;
-  border-bottom: 1px solid #333336;
+  background-color: #0b0b0c;
+  border-bottom: 1px solid #1f1f22;
 }
 
 html.light .nav-header {

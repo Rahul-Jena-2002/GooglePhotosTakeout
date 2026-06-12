@@ -89,10 +89,10 @@ export default function MainLayout() {
     return (
       <Link 
         to={to} 
-        className={`text-sm font-semibold transition-all pb-1.5 border-b-2 ${
+        className={`text-sm font-medium transition-colors duration-150 ${
           active 
-            ? 'text-indigo-400 border-indigo-500' 
-            : 'text-white/70 hover:text-white border-transparent'
+            ? 'text-white' 
+            : 'text-zinc-400 hover:text-white'
         }`}
       >
         {label}
@@ -104,7 +104,7 @@ export default function MainLayout() {
     <div className="flex flex-col min-h-screen bg-black text-white selection:bg-indigo-500/30">
       <nav 
         id="navbar"
-        className="fixed top-0 left-0 right-0 w-full z-50 px-6 md:px-8 py-3 transition-all duration-300 nav-header"
+        className="fixed top-0 left-0 right-0 w-full z-50 px-6 md:px-8 py-2.5 transition-all duration-300 nav-header"
       >
         <div className="w-full flex items-center justify-between relative z-10">
           <div className="flex items-center gap-2 md:gap-8">
@@ -120,7 +120,7 @@ export default function MainLayout() {
               {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
             </button>
 
-            <Link to="/" className="text-xl font-bold tracking-tighter text-white flex items-center gap-2" onClick={() => setMobileMenuOpen(false)}>
+            <Link to="/" className="text-[17px] font-semibold tracking-tight text-white flex items-center gap-2" onClick={() => setMobileMenuOpen(false)}>
               <svg className="w-5 h-5 md:w-6 md:h-6 flex-shrink-0" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                 <defs>
                   <linearGradient id="logo-grad" x1="0%" y1="0%" x2="100%" y2="100%">
@@ -139,11 +139,11 @@ export default function MainLayout() {
                 <path d="M2 20L8 14L13 19L18 13L22 17" stroke="url(#logo-grad)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
                 <circle cx="16" cy="14" r="1.5" fill="url(#logo-grad)" />
               </svg>
-              <span className="text-base md:text-xl">TakeoutFix</span>
+              <span className="text-base md:text-lg font-semibold tracking-tight">TakeoutFix</span>
             </Link>
 
             {/* Marketing Links (Desktop only: lg:flex) */}
-            <div className="hidden lg:flex gap-8 text-sm font-medium text-white/70 ml-4">
+            <div className="hidden lg:flex gap-8 text-sm font-medium ml-4">
               {renderNavLink("/", "Home")}
               {renderNavLink("/how-it-works", "How It Works")}
               {renderNavLink("/pricing", "Pricing")}
@@ -323,7 +323,7 @@ export default function MainLayout() {
                   <>
                     <button 
                       onClick={login} 
-                      className="rounded-full bg-[#0071e3] hover:bg-[#0077ed] text-white border-none px-4 py-1.5 md:px-6 md:py-2 font-semibold text-xs md:text-sm transition-all"
+                      className="rounded-lg bg-white hover:bg-white/90 text-black border-none px-4 py-2 font-semibold text-xs md:text-sm transition-all shadow-sm"
                     >
                       Get Started
                     </button>
