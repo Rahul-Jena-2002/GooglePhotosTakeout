@@ -657,5 +657,31 @@ html.light p {
   scrollbar-color: rgba(255, 255, 255, 0.12) rgba(0, 0, 0, 0.2);
 }
 
+/* --- Design System Background & Card Overrides (Dark Mode) --- */
+html:not(.light) body,
+html:not(.light) .bg-black,
+html:not(.light) .bg-zinc-950,
+html:not(.light) .bg-\[\#0A0A0A\] {
+  background-color: #0f0f14 !important;
+}
+
+/* Make cards slightly lighter (~#1a1a26) */
+html:not(.light) .glass-card,
+html:not(.light) .compare-card,
+html:not(.light) .bg-black\/40,
+html:not(.light) .bg-black\/60,
+html:not(.light) .bg-white\/5,
+html:not(.light) .bg-zinc-900 {
+  background-color: #1a1a26 !important;
+  background-image: none !important;
+}
+
+/* Ensure borders match a subtle premium look */
+html:not(.light) .border-white\/10,
+html:not(.light) .border-zinc-800 {
+  border-color: rgba(255, 255, 255, 0.08) !important;
+}
+
+
 
 
