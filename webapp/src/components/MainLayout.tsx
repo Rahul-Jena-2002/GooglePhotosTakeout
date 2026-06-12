@@ -254,12 +254,12 @@ export default function MainLayout() {
                           setMobileMenuOpen(false)
                           setNotificationMenuOpen(false)
                         }}
-                        className="flex items-center gap-2 p-1 lg:px-3 lg:py-1.5 rounded-full bg-zinc-900 border border-zinc-800 hover:bg-zinc-800 hover:border-zinc-700 hover:scale-[1.02] focus:outline-none transition-all shadow-sm"
+                        className="flex items-center gap-2 p-1 lg:px-3 lg:py-1.5 rounded-full bg-zinc-900 border border-indigo-500/40 hover:bg-zinc-800 hover:border-indigo-400 hover:scale-[1.02] focus:outline-none transition-all shadow-sm hover:shadow-[0_0_12px_rgba(99,102,241,0.35)]"
                       >
                         <span className="text-xs font-semibold text-white/80 select-none hidden lg:inline-block">
                           Hi, {userData?.firstName || user.displayName?.split(" ")[0] || "User"}
                         </span>
-                        <div className="w-7 h-7 rounded-full bg-zinc-800 flex items-center justify-center font-bold text-xs text-white border border-white/10 flex-shrink-0">
+                        <div className="w-7 h-7 rounded-full bg-gradient-to-tr from-indigo-500 to-purple-600 flex items-center justify-center font-bold text-xs text-white border border-white/20 flex-shrink-0 shadow-[0_0_8px_rgba(99,102,241,0.3)]">
                           {userData?.firstName?.charAt(0).toUpperCase() || user.displayName?.charAt(0).toUpperCase() || user.email?.charAt(0).toUpperCase() || 'U'}
                         </div>
                       </button>
