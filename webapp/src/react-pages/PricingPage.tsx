@@ -44,12 +44,12 @@ export default function PricingPage() {
           <Card className="bg-black/40 border-white/10 backdrop-blur-md flex flex-col h-full hover:border-white/20 transition-all">
             <CardHeader>
               <CardTitle className="text-2xl">Free</CardTitle>
-              <CardDescription className="text-white/50 text-xs">Perfect for trying MetaForge</CardDescription>
+              <CardDescription className="text-white/50 text-xs">Perfect for trying TakeoutFix</CardDescription>
             </CardHeader>
             <CardContent className="flex-1 space-y-6">
               <div>
                 <div className="text-4xl font-bold">{region === 'in' ? "₹0" : "$0"}</div>
-                <p className="text-[11px] text-white/50 mt-1 leading-relaxed">Try MetaForge on a small Google Takeout export before upgrading.</p>
+                <p className="text-[11px] text-white/50 mt-1 leading-relaxed">Try TakeoutFix on a small Google Takeout export before upgrading.</p>
               </div>
               <div>
                 <div className="text-[10px] text-white/40 uppercase tracking-widest font-bold mb-2">Includes</div>
@@ -339,7 +339,7 @@ export default function PricingPage() {
           </div>
           <div className="bg-white/[0.02] border border-white/5 p-5 rounded-2xl">
             <div className="text-indigo-400 font-bold text-sm mb-1">✓ Recovery Guarantee</div>
-            <p className="text-xs text-white/60 leading-relaxed">If MetaForge cannot process your takeout due to a verified software issue, we will work to resolve it or refund you.</p>
+            <p className="text-xs text-white/60 leading-relaxed">If TakeoutFix cannot process your takeout due to a verified software issue, we will work to resolve it or refund you.</p>
           </div>
           <div className="bg-white/[0.02] border border-white/5 p-5 rounded-2xl">
             <div className="text-indigo-400 font-bold text-sm mb-1">✓ Same Engine Quality</div>
