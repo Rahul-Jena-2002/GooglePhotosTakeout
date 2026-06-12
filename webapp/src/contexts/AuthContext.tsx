@@ -194,21 +194,48 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   useEffect(() => {
     const detectRegion = async () => {
+      let countryCode = "";
+
+      // 1. Try Cloudflare cdn-cgi trace first (extremely fast, same-origin, bypasses adblockers)
       try {
-        const res = await fetch("https://freeipapi.com/api/json")
+        const res = await fetch("/cdn-cgi/trace");
         if (res.ok) {
-          const data = await res.json()
-          const countryCode = data.countryCode || ""
-          const mapped = COUNTRY_TO_REGION[countryCode.toUpperCase()]
-          if (mapped) {
-            setRegionState(mapped)
+          const text = await res.text();
+          const lines = text.split("\n");
+          for (const line of lines) {
+            const parts = line.split("=");
+            if (parts[0] === "loc" && parts[1]) {
+              countryCode = parts[1].trim().toUpperCase();
+              break;
+            }
           }
         }
-      } catch (err) {
-        console.warn("GeoIP detection failed, using browser language/timezone fallback:", err)
+      } catch (e) {
+        console.warn("Cloudflare cdn-cgi/trace check failed:", e);
       }
-    }
-    detectRegion()
+
+      // 2. Try freeipapi as fallback (e.g. on localhost)
+      if (!countryCode) {
+        try {
+          const res = await fetch("https://freeipapi.com/api/json");
+          if (res.ok) {
+            const data = await res.json();
+            countryCode = data.countryCode || "";
+          }
+        } catch (err) {
+          console.warn("GeoIP detection failed, using browser language/timezone fallback:", err);
+        }
+      }
+
+      // 3. Map country code to region
+      if (countryCode) {
+        const mapped = COUNTRY_TO_REGION[countryCode.toUpperCase()];
+        if (mapped) {
+          setRegionState(mapped);
+        }
+      }
+    };
+    detectRegion();
   }, []);
 
   const refreshUserData = async (currentUser: User) => {

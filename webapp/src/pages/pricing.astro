@@ -217,7 +217,17 @@ const prices = PLAN_PRICES[region] || PLAN_PRICES.us;
 </Layout>
 
 <script>
-  import { PLAN_PRICES } from "../contexts/AuthContext";
+  const PLAN_PRICES: Record<string, { recovery_pass: string; pro: string; super: string; family: string }> = {
+    in: { recovery_pass: "₹99", pro: "₹799", super: "₹1499", family: "₹3999" },
+    us: { recovery_pass: "$4.99", pro: "$29", super: "$49", family: "$79" },
+    eu: { recovery_pass: "€4.99", pro: "€29", super: "€49", family: "€79" },
+    jp: { recovery_pass: "¥899", pro: "¥5900", super: "¥9900", family: "¥14900" },
+    cn: { recovery_pass: "¥29", pro: "¥199", super: "¥399", family: "¥999" },
+    t1: { recovery_pass: "$1.49", pro: "$9.99", super: "$19.99", family: "$49.99" },
+    t2: { recovery_pass: "$3.99", pro: "$19", super: "$39", family: "$49" },
+    t3: { recovery_pass: "$4.99", pro: "$29", super: "$49", family: "$79" },
+    t4: { recovery_pass: "$5.99", pro: "$39", super: "$69", family: "$99" },
+  };
 
   const COUNTRY_TO_REGION: Record<string, string> = {
     IN: "in", PK: "t1", BD: "t1", NP: "t1", LK: "t1", ID: "t1", VN: "t1", PH: "t1", NG: "t1", KE: "t1", EG: "t1",
@@ -229,14 +239,42 @@ const prices = PLAN_PRICES[region] || PLAN_PRICES.us;
 
   async function updatePrices() {
     let region = "us";
+    let countryCode = "";
+
+    // 1. Try Cloudflare cdn-cgi trace first (extremely fast, same-origin, bypasses adblockers)
     try {
-      const res = await fetch("https://freeipapi.com/api/json");
+      const res = await fetch("/cdn-cgi/trace");
       if (res.ok) {
-        const data = await res.json();
-        const country = data.countryCode || "US";
-        region = COUNTRY_TO_REGION[country.toUpperCase()] || "us";
+        const text = await res.text();
+        const lines = text.split("\n");
+        for (const line of lines) {
+          const parts = line.split("=");
+          if (parts[0] === "loc" && parts[1]) {
+            countryCode = parts[1].trim().toUpperCase();
+            break;
+          }
+        }
       }
-    } catch (_) {}
+    } catch (e) {
+      console.warn("Cloudflare cdn-cgi/trace check failed:", e);
+    }
+
+    // 2. Try freeipapi as fallback
+    if (!countryCode) {
+      try {
+        const res = await fetch("https://freeipapi.com/api/json");
+        if (res.ok) {
+          const data = await res.json();
+          countryCode = data.countryCode || "";
+        }
+      } catch (err) {
+        console.warn("freeipapi lookup failed:", err);
+      }
+    }
+
+    if (countryCode) {
+      region = COUNTRY_TO_REGION[countryCode.toUpperCase()] || "us";
+    }
 
     const prices = PLAN_PRICES[region] || PLAN_PRICES.us;
 
