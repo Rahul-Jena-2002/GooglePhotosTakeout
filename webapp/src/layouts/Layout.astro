@@ -586,7 +586,7 @@ const {
                 if (dropdownPlan) dropdownPlan.innerText = planLabel;
 
                 // Sync plan for AdBlock bypass
-                isAdFree = data.plan === "super";
+                isAdFree = data.plan === "super" && !data.supportWithAds;
                 checkAdBlock();
 
                 // Sync links (Admin check)

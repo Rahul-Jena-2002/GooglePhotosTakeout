@@ -16,9 +16,9 @@ const AD_HEIGHTS = {
 
 export default function AdUnit({ type, slot, format = "auto", className = "" }: AdUnitProps) {
   const { userData } = useAuth()
-  const isAdFree = userData?.plan === "super"
+  const isAdFree = userData?.plan === "super" && !userData?.supportWithAds
 
-  // If the user has an ad-free plan (Super), render nothing to maintain a clean premium experience
+  // If the user has an ad-free plan (Super) and has not opted to support with ads, render nothing to maintain a clean premium experience
   if (isAdFree) {
     return <div className="py-1 opacity-0 select-none pointer-events-none" />
   }

@@ -97,6 +97,31 @@ export default function AdminUsers() {
     }
   }
 
+  const handleToggleSupportWithAds = async (userId: string, enable: boolean) => {
+    try {
+      await updateDoc(doc(db, "users", userId), { supportWithAds: enable })
+      
+      const userDoc = users.find(u => u.id === userId)
+      const updatedUserDoc = { ...userDoc, supportWithAds: enable }
+      if (selectedUser && selectedUser.id === userId) {
+        setSelectedUser(updatedUserDoc)
+      }
+      
+      await addDoc(collection(db, "admin_activity"), {
+        actorUid: adminData?.uid || "system",
+        actorName: adminData?.displayName || "Admin",
+        actorRole: role,
+        action: "TOGGLE_SUPPORT_ADS",
+        target: userId,
+        description: `${enable ? "Enabled" : "Disabled"} support-with-ads setting for ${userDoc?.email || userId}`,
+        timestamp: Date.now()
+      })
+    } catch (err: any) {
+      console.error(err)
+      alert("Failed to update support-with-ads setting: " + err.message)
+    }
+  }
+
   const handleToggleSuspension = async (userId: string, suspend: boolean) => {
     try {
       await updateDoc(doc(db, "users", userId), { suspended: suspend })
@@ -402,6 +427,20 @@ export default function AdminUsers() {
                       <option value="super">Super</option>
                     </select>
                   </div>
+                  {selectedUser.plan === "super" && (
+                    <div className="flex items-center justify-between border-t border-zinc-800 pt-3">
+                      <div className="text-left">
+                        <label className="block text-xs text-zinc-400 font-medium uppercase tracking-wider">Support with Ads</label>
+                        <span className="text-[10px] text-zinc-550 block leading-tight">Show website ads to support developer</span>
+                      </div>
+                      <input 
+                        type="checkbox"
+                        checked={selectedUser.supportWithAds || false}
+                        onChange={(e) => handleToggleSupportWithAds(selectedUser.id, e.target.checked)}
+                        className="w-4 h-4 rounded border-zinc-800 bg-zinc-900 text-indigo-500 focus:ring-indigo-500 cursor-pointer"
+                      />
+                    </div>
+                  )}
                   <div className="flex flex-col gap-3 pt-2">
                     <Link to={`/admin/users/dashboard/${selectedUser.id}`}>
                       <button className="w-full py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold rounded-md transition-colors flex items-center justify-center gap-1.5 shadow-md shadow-indigo-500/10">

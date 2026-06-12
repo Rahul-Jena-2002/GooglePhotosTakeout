@@ -3,10 +3,11 @@ import { useParams, Link, useNavigate } from "react-router-dom"
 import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card"
 import { Progress } from "../components/ui/progress"
 import { Button } from "../components/ui/button"
-import { doc, collection, query, where, orderBy, onSnapshot } from "firebase/firestore"
+import { doc, collection, query, where, orderBy, onSnapshot, updateDoc, deleteDoc, addDoc } from "firebase/firestore"
 import { db } from "../firebase"
-import { ShieldAlert, HardDrive, History, FileText, ArrowLeft, ShieldCheck, Download, CreditCard } from "lucide-react"
+import { ShieldAlert, HardDrive, History, FileText, ArrowLeft, ShieldCheck, Download, CreditCard, Trash2 } from "lucide-react"
 import { motion } from "framer-motion"
+import { useAuth } from "../contexts/AuthContext"
 
 const PLAN_LABELS: Record<string, string> = {
   free: "Free",
@@ -28,12 +29,116 @@ export default function AdminUserDashboard() {
   const { uid } = useParams<{ uid: string }>()
   const navigate = useNavigate()
 
+  const { adminData } = useAuth()
+  const role = adminData?.role || "ADMIN"
+
   const [targetUser, setTargetUser] = useState<any>(null)
   const [userLoading, setUserLoading] = useState(true)
   const [history, setHistory] = useState<any[]>([])
   const [historyLoading, setHistoryLoading] = useState(true)
   const [transactions, setTransactions] = useState<any[]>([])
   const [txLoading, setTxLoading] = useState(true)
+
+  const handleUpdatePlan = async (userId: string, newPlan: string) => {
+    try {
+      await updateDoc(doc(db, "users", userId), { 
+        plan: newPlan,
+        usedBytes: 0,
+        usedFiles: 0
+      })
+      
+      await addDoc(collection(db, "admin_activity"), {
+        actorUid: adminData?.uid || "system",
+        actorName: adminData?.displayName || "Admin",
+        actorRole: role,
+        action: "UPDATE_PLAN",
+        target: userId,
+        description: `Updated plan for ${targetUser?.email || userId} to ${PLAN_LABELS[newPlan] || newPlan}`,
+        timestamp: Date.now()
+      })
+
+      // Generate a transaction receipt if upgraded to a paid plan by admin
+      if (["pro", "super", "recovery_pass"].includes(newPlan)) {
+        await addDoc(collection(db, "transactions"), {
+          uid: userId,
+          email: targetUser?.email || "",
+          displayName: targetUser?.displayName || "User",
+          plan: newPlan,
+          amount: 0, // Free admin grant
+          currency: "INR",
+          paymentMethod: "Admin Grant",
+          status: "succeeded",
+          txId: `ADM-${Math.random().toString(36).substring(2, 10).toUpperCase()}`,
+          timestamp: Date.now(),
+          approvedByAdmin: adminData?.displayName || "Admin"
+        }).catch(console.error)
+      }
+    } catch (err: any) {
+      console.error(err)
+      alert("Failed to update user plan. Make sure you have SUPER_ADMIN or ADMIN permissions.")
+    }
+  }
+
+  const handleToggleSupportWithAds = async (userId: string, enable: boolean) => {
+    try {
+      await updateDoc(doc(db, "users", userId), { supportWithAds: enable })
+      
+      await addDoc(collection(db, "admin_activity"), {
+        actorUid: adminData?.uid || "system",
+        actorName: adminData?.displayName || "Admin",
+        actorRole: role,
+        action: "TOGGLE_SUPPORT_ADS",
+        target: userId,
+        description: `${enable ? "Enabled" : "Disabled"} support-with-ads setting for ${targetUser?.email || userId}`,
+        timestamp: Date.now()
+      })
+    } catch (err: any) {
+      console.error(err)
+      alert("Failed to update support-with-ads setting: " + err.message)
+    }
+  }
+
+  const handleToggleSuspension = async (userId: string, suspend: boolean) => {
+    try {
+      await updateDoc(doc(db, "users", userId), { suspended: suspend })
+      
+      await addDoc(collection(db, "admin_activity"), {
+        actorUid: adminData?.uid || "system",
+        actorName: adminData?.displayName || "Admin",
+        actorRole: role,
+        action: suspend ? "SUSPEND" : "REACTIVATE",
+        target: userId,
+        description: `${suspend ? "Suspended" : "Reactivated"} user account ${targetUser?.email || userId}`,
+        timestamp: Date.now()
+      })
+    } catch (err: any) {
+      console.error(err)
+      alert("Failed to update user status: " + err.message)
+    }
+  }
+
+  const handleDeleteUser = async (userId: string, email: string) => {
+    if (!window.confirm(`Are you sure you want to permanently delete the user document for ${email || userId}? This cannot be undone.`)) {
+      return
+    }
+    try {
+      await deleteDoc(doc(db, "users", userId))
+      
+      await addDoc(collection(db, "admin_activity"), {
+        actorUid: adminData?.uid || "system",
+        actorName: adminData?.displayName || "Admin",
+        actorRole: role,
+        action: "DELETE_USER",
+        target: userId,
+        description: `Permanently deleted user document for ${email || userId}`,
+        timestamp: Date.now()
+      })
+      navigate("/admin/users")
+    } catch (err: any) {
+      console.error(err)
+      alert("Failed to delete user: " + err.message)
+    }
+  }
 
   useEffect(() => {
     if (!uid) return
@@ -193,64 +298,134 @@ Your EXIF metadata recovery tools are active.
           </div>
         </motion.div>
 
-        {/* ACTIVE PLAN & QUOTA */}
-        <motion.div variants={itemVariants}>
-          <Card className="bg-zinc-900 border-zinc-800 shadow-none overflow-hidden">
-            <CardHeader className="border-b border-zinc-800 py-4">
-              <CardTitle className="text-base font-semibold flex justify-between items-center">
-                <span className="flex items-center gap-2">
-                  <ShieldCheck className="w-5 h-5 text-indigo-400" />
-                  Subscription details & telemetry quotas
-                </span>
-                <span className="text-xs bg-indigo-500/10 text-indigo-400 px-3 py-1 rounded-md border border-indigo-500/20 font-bold uppercase tracking-widest">
-                  {PLAN_LABELS[plan] || plan} Plan
-                </span>
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="pt-6 space-y-6">
-              
-              <div className="grid md:grid-cols-2 gap-6">
-                {/* Storage Quota Card */}
-                <div className="bg-zinc-950 border border-zinc-850 rounded-xl p-4 space-y-3">
-                  <div className="flex justify-between text-xs text-zinc-400">
-                    <span className="flex items-center gap-1.5 font-semibold"><HardDrive className="w-3.5 h-3.5 text-zinc-500" /> Storage Capacity Used</span>
-                    <span className="font-mono">{usedGB.toFixed(2)} GB / {maxQuotaGB === Infinity ? 'Unlimited' : `${maxQuotaGB}.00 GB`}</span>
-                  </div>
-                  {maxQuotaGB !== Infinity && (
-                    <Progress value={quotaPct} className="h-1.5 bg-zinc-850" />
-                  )}
-                </div>
+        {/* PLAN, QUOTA & CONTROLS GRID */}
+        <div className="grid md:grid-cols-2 gap-8">
+          {/* ACTIVE PLAN & QUOTA */}
+          <motion.div variants={itemVariants} className="h-full">
+            <Card className="bg-zinc-900 border-zinc-800 shadow-none overflow-hidden h-full flex flex-col justify-between">
+              <div>
+                <CardHeader className="border-b border-zinc-800 py-4">
+                  <CardTitle className="text-base font-semibold flex justify-between items-center">
+                    <span className="flex items-center gap-2 text-zinc-200">
+                      <ShieldCheck className="w-5 h-5 text-indigo-400" />
+                      Subscription details & telemetry quotas
+                    </span>
+                    <span className="text-xs bg-indigo-500/10 text-indigo-400 px-3 py-1 rounded-md border border-indigo-500/20 font-bold uppercase tracking-widest">
+                      {PLAN_LABELS[plan] || plan} Plan
+                    </span>
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="pt-6 space-y-6">
+                  
+                  <div className="grid sm:grid-cols-2 gap-4">
+                    {/* Storage Quota Card */}
+                    <div className="bg-zinc-950 border border-zinc-850 rounded-xl p-4 space-y-3">
+                      <div className="flex justify-between text-xs text-zinc-400">
+                        <span className="flex items-center gap-1.5 font-semibold"><HardDrive className="w-3.5 h-3.5 text-zinc-500" /> Storage Capacity</span>
+                        <span className="font-mono">{usedGB.toFixed(2)} GB / {maxQuotaGB === Infinity ? 'Unlimited' : `${maxQuotaGB}.00 GB`}</span>
+                      </div>
+                      {maxQuotaGB !== Infinity && (
+                        <Progress value={quotaPct} className="h-1.5 bg-zinc-850" />
+                      )}
+                    </div>
 
-                {/* Files Quota Card */}
-                <div className="bg-zinc-950 border border-zinc-850 rounded-xl p-4 space-y-3">
-                  <div className="flex justify-between text-xs text-zinc-400">
-                    <span className="flex items-center gap-1.5 font-semibold"><FileText className="w-3.5 h-3.5 text-zinc-500" /> Files Processed</span>
-                    <span className="font-mono">{usedFiles.toLocaleString()} / {maxQuotaFiles === Infinity ? 'Unlimited' : maxQuotaFiles.toLocaleString()} files</span>
+                    {/* Files Quota Card */}
+                    <div className="bg-zinc-950 border border-zinc-850 rounded-xl p-4 space-y-3">
+                      <div className="flex justify-between text-xs text-zinc-400">
+                        <span className="flex items-center gap-1.5 font-semibold"><FileText className="w-3.5 h-3.5 text-zinc-500" /> Files Processed</span>
+                        <span className="font-mono">{usedFiles.toLocaleString()} / {maxQuotaFiles === Infinity ? 'Unlimited' : maxQuotaFiles.toLocaleString()}</span>
+                      </div>
+                      {maxQuotaFiles !== Infinity && (
+                        <Progress value={fileQuotaPct} className="h-1.5 bg-zinc-850" />
+                      )}
+                    </div>
                   </div>
-                  {maxQuotaFiles !== Infinity && (
-                    <Progress value={fileQuotaPct} className="h-1.5 bg-zinc-850" />
-                  )}
-                </div>
+
+                  {/* Global counters for the user */}
+                  <div className="grid grid-cols-2 gap-3 pt-2">
+                    {[
+                      { label: "Lifetime Bytes", val: formatBytes(Math.max(targetUser.totalBytesProcessed || 0, targetUser.lifetimeBytes || 0)) },
+                      { label: "Lifetime Files", val: (targetUser.totalFilesProcessed || 0).toLocaleString() },
+                      { label: "Current Session Bytes", val: formatBytes(targetUser.usedBytes || 0) },
+                      { label: "Current Session Files", val: (targetUser.usedFiles || 0).toLocaleString() }
+                    ].map((stat, i) => (
+                      <div key={i} className="bg-zinc-950/40 border border-zinc-850 p-2.5 rounded-lg text-center">
+                        <div className="text-[9px] font-bold text-zinc-500 uppercase tracking-wider mb-1">{stat.label}</div>
+                        <div className="text-sm font-semibold text-white">{stat.val}</div>
+                      </div>
+                    ))}
+                  </div>
+
+                </CardContent>
               </div>
+            </Card>
+          </motion.div>
 
-              {/* Global counters for the user */}
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 pt-2">
-                {[
-                  { label: "Lifetime Bytes", val: formatBytes(Math.max(targetUser.totalBytesProcessed || 0, targetUser.lifetimeBytes || 0)) },
-                  { label: "Lifetime Files", val: (targetUser.totalFilesProcessed || 0).toLocaleString() },
-                  { label: "Current Session Bytes", val: formatBytes(targetUser.usedBytes || 0) },
-                  { label: "Current Session Files", val: (targetUser.usedFiles || 0).toLocaleString() }
-                ].map((stat, i) => (
-                  <div key={i} className="bg-zinc-950/40 border border-zinc-850 p-3 rounded-lg text-center">
-                    <div className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider mb-1">{stat.label}</div>
-                    <div className="text-lg font-semibold text-white">{stat.val}</div>
+          {/* ADMINISTRATIVE CONTROLS */}
+          <motion.div variants={itemVariants} className="h-full">
+            <Card className="bg-zinc-900 border-zinc-800 shadow-none overflow-hidden h-full flex flex-col justify-between">
+              <div>
+                <CardHeader className="border-b border-zinc-800 py-4">
+                  <CardTitle className="text-base font-semibold flex items-center gap-2 text-zinc-200">
+                    <ShieldAlert className="w-5 h-5 text-red-400" />
+                    Administrative Controls
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="pt-6 space-y-4">
+                  <div>
+                    <label className="block text-xs text-zinc-400 mb-1.5 font-medium uppercase tracking-wider">Change Subscription Plan</label>
+                    <select
+                      value={plan}
+                      onChange={(e) => handleUpdatePlan(targetUser.id, e.target.value)}
+                      className="w-full bg-zinc-950 border border-zinc-850 rounded-md py-2 px-3 text-sm text-white focus:outline-none focus:border-indigo-500 cursor-pointer"
+                    >
+                      <option value="free">Free</option>
+                      <option value="recovery_pass">Single Time (Recovery Pass)</option>
+                      <option value="pro">Pro</option>
+                      <option value="super">Super</option>
+                    </select>
                   </div>
-                ))}
-              </div>
 
-            </CardContent>
-          </Card>
-        </motion.div>
+                  {plan === "super" && (
+                    <div className="flex items-center justify-between border-t border-zinc-800/60 pt-3.5">
+                      <div className="text-left pr-4">
+                        <label className="block text-xs text-zinc-355 font-medium uppercase tracking-wider">Support with Ads</label>
+                        <span className="text-[10px] text-zinc-500 block leading-tight mt-0.5">Show website ads to support developer even though user is Super</span>
+                      </div>
+                      <input 
+                        type="checkbox"
+                        checked={targetUser.supportWithAds || false}
+                        onChange={(e) => handleToggleSupportWithAds(targetUser.id, e.target.checked)}
+                        className="w-4 h-4 rounded border-zinc-800 bg-zinc-900 text-indigo-500 focus:ring-indigo-500 cursor-pointer"
+                      />
+                    </div>
+                  )}
+
+                  <div className="flex gap-3 pt-3 border-t border-zinc-800/60">
+                    <button
+                      onClick={() => handleToggleSuspension(targetUser.id, !targetUser.suspended)}
+                      className={`flex-1 py-2 rounded-md text-xs font-semibold border transition-all ${
+                        targetUser.suspended 
+                          ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20 hover:bg-emerald-500/20' 
+                          : 'bg-red-500/10 text-red-400 border-red-500/20 hover:bg-red-500/20'
+                      }`}
+                    >
+                      {targetUser.suspended ? 'Reactivate Account' : 'Suspend Account'}
+                    </button>
+                    <button
+                      onClick={() => handleDeleteUser(targetUser.id, targetUser.email)}
+                      className="px-3 py-2 rounded-md bg-red-900/20 hover:bg-red-950 text-red-400 border border-red-900/30 hover:border-red-900/50 transition-colors"
+                      title="Delete Account Document"
+                    >
+                      <Trash2 className="w-4.5 h-4.5" />
+                    </button>
+                  </div>
+
+                </CardContent>
+              </div>
+            </Card>
+          </motion.div>
+        </div>
 
         {/* DETAILS GRID */}
         <div className="grid md:grid-cols-2 gap-8">
