@@ -1409,9 +1409,40 @@ function ToolWorkspaceContent() {
 
               <div className="mt-auto pt-6">
                 {takeoutFolder && outputFolder && !isProcessing && progress === 0 && (
-                  <Button size="lg" onClick={startProcessing} className="w-full max-w-xl h-16 text-xl bg-gradient-to-r from-indigo-500 to-purple-600 hover:opacity-90 text-white shadow-[0_0_40px_rgba(99,102,241,0.3)] border-0 rounded-xl font-bold">
-                    <Play className="w-6 h-6 mr-3 fill-current" /> Initialize Recovery Engine
-                  </Button>
+                  <>
+                    <div className="mb-6 p-5 bg-indigo-500/5 border border-indigo-500/10 rounded-2xl max-w-xl text-left space-y-4">
+                      <h3 className="text-sm font-bold uppercase tracking-widest text-indigo-400">Pre-Flight Recovery Summary</h3>
+                      
+                      <div className="space-y-3 text-sm text-zinc-300">
+                        <div className="flex items-start gap-2.5">
+                          <span className="text-base leading-none">📂</span>
+                          <div>
+                            <span className="font-semibold text-white block">Source Directory:</span>
+                            <span className="font-mono text-xs text-zinc-400 break-all">{takeoutFolder.name}</span>
+                            <span className="text-[10px] text-zinc-500 block mt-0.5">(Read-only: Originals are never modified)</span>
+                          </div>
+                        </div>
+                        
+                        <div className="flex items-start gap-2.5">
+                          <span className="text-base leading-none">📁</span>
+                          <div>
+                            <span className="font-semibold text-white block">Destination Directory:</span>
+                            <span className="font-mono text-xs text-zinc-400 break-all">{outputFolder.name}</span>
+                            <span className="text-[10px] text-zinc-500 block mt-0.5">(New corrected photos and videos are saved here)</span>
+                          </div>
+                        </div>
+                        
+                        <div className="flex items-center gap-2.5 pt-2 border-t border-white/5 text-xs text-green-400 font-medium">
+                          <CheckCircle2 className="w-4 h-4 text-green-400 flex-shrink-0" />
+                          <span>Original files remain completely untouched and safe.</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <Button size="lg" onClick={startProcessing} className="w-full max-w-xl h-16 text-xl bg-gradient-to-r from-indigo-500 to-purple-600 hover:opacity-90 text-white shadow-[0_0_40px_rgba(99,102,241,0.3)] border-0 rounded-xl font-bold">
+                      <Play className="w-6 h-6 mr-3 fill-current" /> Initialize Recovery Engine
+                    </Button>
+                  </>
                 )}
 
                 {(isProcessing || progress > 0) && (
