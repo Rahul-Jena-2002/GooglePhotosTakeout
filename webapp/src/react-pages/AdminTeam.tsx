@@ -43,6 +43,11 @@ export default function AdminTeam() {
       alert("You cannot change your own role.")
       return
     }
+    const targetAdmin = admins.find(a => a.uid === uid)
+    if (targetAdmin?.role === "SUPER_ADMIN") {
+      alert("You cannot modify a Super Admin's role.")
+      return
+    }
     try {
       await updateDoc(doc(db, "admins", uid), { role: newRole })
       // Log activity
@@ -60,6 +65,10 @@ export default function AdminTeam() {
 
   const handleRemove = async (admin: AdminData) => {
     if (admin.uid === user?.uid) { alert("You cannot remove yourself."); return }
+    if (admin.role === "SUPER_ADMIN") {
+      alert("You cannot remove a Super Admin from the team.")
+      return
+    }
     if (!confirm(`Remove ${admin.displayName} from the admin team?`)) return
     try {
       await deleteDoc(doc(db, "admins", admin.uid))
@@ -178,7 +187,7 @@ export default function AdminTeam() {
                     </div>
                   </td>
                   <td className="px-6 py-4">
-                    {!isSuperAdmin || a.uid === user?.uid ? (
+                    {!isSuperAdmin || a.role === "SUPER_ADMIN" || a.uid === user?.uid ? (
                       <span className={`inline-flex items-center px-2 py-1 rounded-md text-xs font-bold uppercase border ${ROLE_COLORS[a.role]}`}>
                         {a.role.replace("_", " ")}
                       </span>
@@ -209,7 +218,7 @@ export default function AdminTeam() {
                   </td>
                   {isSuperAdmin && (
                     <td className="px-6 py-4 text-right">
-                      {a.uid !== user?.uid && (
+                      {a.uid !== user?.uid && a.role !== "SUPER_ADMIN" && (
                         <button
                           onClick={() => handleRemove(a)}
                           className="text-zinc-500 hover:text-red-400 transition-colors p-1.5 rounded hover:bg-red-500/10"
