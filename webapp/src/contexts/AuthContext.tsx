@@ -124,7 +124,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [user, setUser] = useState<User | null>(null);
   const [userData, setUserDataState] = useState<UserData | null>(() => {
     try {
-      const saved = sessionStorage.getItem("takeoutfix_user_data");
+      const saved = localStorage.getItem("takeoutfix_user_data");
       return saved ? JSON.parse(saved) : null;
     } catch (_) {
       return null;
@@ -132,7 +132,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   });
   const [adminData, setAdminDataState] = useState<AdminData | null>(() => {
     try {
-      const saved = sessionStorage.getItem("takeoutfix_admin_data");
+      const saved = localStorage.getItem("takeoutfix_admin_data");
       return saved ? JSON.parse(saved) : null;
     } catch (_) {
       return null;
@@ -140,20 +140,24 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   });
   const [loading, setLoading] = useState(() => {
     try {
-      const saved = sessionStorage.getItem("takeoutfix_user_data");
+      const saved = localStorage.getItem("takeoutfix_user_data");
       return saved ? false : true;
     } catch (_) {
       return true;
     }
   });
 
+  const [sessionRegistered, setSessionRegistered] = useState(false);
+  const [showDeviceLimitModal, setShowDeviceLimitModal] = useState(false);
+  const [pendingSessionData, setPendingSessionData] = useState<any>(null);
+
   const setUserData = (data: UserData | null) => {
     setUserDataState(data);
     try {
       if (data) {
-        sessionStorage.setItem("takeoutfix_user_data", JSON.stringify(data));
+        localStorage.setItem("takeoutfix_user_data", JSON.stringify(data));
       } else {
-        sessionStorage.removeItem("takeoutfix_user_data");
+        localStorage.removeItem("takeoutfix_user_data");
       }
     } catch (_) {}
   };
@@ -162,9 +166,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setAdminDataState(data);
     try {
       if (data) {
-        sessionStorage.setItem("takeoutfix_admin_data", JSON.stringify(data));
+        localStorage.setItem("takeoutfix_admin_data", JSON.stringify(data));
       } else {
-        sessionStorage.removeItem("takeoutfix_admin_data");
+        localStorage.removeItem("takeoutfix_admin_data");
       }
     } catch (_) {}
   };
@@ -292,6 +296,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const snap = await getDoc(docRef);
     const isSuperAdmin = SUPER_ADMIN_EMAILS.includes(currentUser.email || '');
 
+    // Fetch admin record first to dynamically check client-side admin privileges
+    const adminRef = doc(db, 'admins', currentUser.uid);
+    const adminSnap = await getDoc(adminRef);
+    const isAdminUser = adminSnap.exists() || isSuperAdmin;
+
     const profileData = {
       email: currentUser.email,
       displayName: currentUser.displayName,
@@ -300,8 +309,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     if (snap.exists()) {
       const data = snap.data() as UserData & { sessionIds?: string[] };
-      // Force isAdmin for hardcoded super admin emails
-      if (isSuperAdmin) data.isAdmin = true;
+      // Force isAdmin for hardcoded super admin emails or registered admins
+      if (isAdminUser) {
+        data.isAdmin = true;
+        // Self-heal/sync user document if isAdmin is missing/false in DB
+        if (!snap.data().isAdmin) {
+          await setDoc(docRef, { isAdmin: true }, { merge: true }).catch(console.error);
+        }
+      }
 
       // Migrate legacy licenseType to new plan model
       if (!data.plan) {
@@ -312,12 +327,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         } else {
           data.plan = 'free';
         }
-        await setDoc(docRef, { plan: data.plan }, { merge: true });
+        await setDoc(docRef, { plan: data.plan }, { merge: true }).catch(console.error);
       }
 
       // If missing profile details in the db document, merge them dynamically!
       if (!data.email || !data.displayName || !data.photoURL) {
-        await setDoc(docRef, profileData, { merge: true });
+        await setDoc(docRef, profileData, { merge: true }).catch(console.error);
         data.email = data.email || currentUser.email;
         data.displayName = data.displayName || currentUser.displayName;
         data.photoURL = data.photoURL || currentUser.photoURL;
@@ -346,7 +361,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
 
       if (needsNameUpdate) {
-        await setDoc(docRef, nameUpdates, { merge: true });
+        await setDoc(docRef, nameUpdates, { merge: true }).catch(console.error);
       }
 
       // Manage slot limits for concurrent session IDs
@@ -354,16 +369,30 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const maxDevices = getPlanDeviceLimit(currentPlan);
       
       let updatedSessions = data.sessionIds ? [...data.sessionIds] : [];
-      if (!updatedSessions.includes(deviceSessionId)) {
-        updatedSessions.push(deviceSessionId);
+      if (updatedSessions.includes(deviceSessionId)) {
+        await setDoc(docRef, { ...profileData, ...nameUpdates, sessionIds: updatedSessions }, { merge: true }).catch(console.error);
+        setUserData({ ...data, ...nameUpdates, sessionIds: updatedSessions } as any);
+        setSessionRegistered(true);
+      } else {
+        if (updatedSessions.length >= maxDevices) {
+          // Exceeds limits! Wait for user input (Hotstar-style)
+          setPendingSessionData({
+            docRef,
+            profileData,
+            nameUpdates,
+            data,
+            deviceSessionId,
+            maxDevices,
+            currentPlan
+          });
+          setShowDeviceLimitModal(true);
+        } else {
+          updatedSessions.push(deviceSessionId);
+          await setDoc(docRef, { ...profileData, ...nameUpdates, sessionIds: updatedSessions }, { merge: true }).catch(console.error);
+          setUserData({ ...data, ...nameUpdates, sessionIds: updatedSessions } as any);
+          setSessionRegistered(true);
+        }
       }
-      
-      while (updatedSessions.length > maxDevices) {
-        updatedSessions.shift();
-      }
-
-      await setDoc(docRef, { ...profileData, ...nameUpdates, sessionIds: updatedSessions }, { merge: true });
-      setUserData({ ...data, ...nameUpdates, sessionIds: updatedSessions } as any);
     } else {
       const displayName = currentUser.displayName || '';
       const email = currentUser.email || '';
@@ -383,7 +412,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         totalBytesProcessed: 0,
         totalFilesProcessed: 0,
         expiresAt: null as number | null,
-        isAdmin: isSuperAdmin,
+        isAdmin: isAdminUser,
         ...profileData,
         firstName: extractedFirstName,
         lastName: extractedLastName,
@@ -394,6 +423,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       };
       await setDoc(docRef, newData);
       setUserData(newData as any);
+      setSessionRegistered(true);
 
       // Increment usersCount in platform_stats/global
       const globalRef = doc(db, 'platform_stats', 'global');
@@ -403,9 +433,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
 
     // Check / bootstrap admin record
-    const adminRef = doc(db, 'admins', currentUser.uid);
-    const adminSnap = await getDoc(adminRef);
-
     if (isSuperAdmin) {
       const adminRecord: AdminData = {
         uid: currentUser.uid,
@@ -417,7 +444,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         lastSeen: Date.now(),
         createdAt: adminSnap.exists() ? adminSnap.data().createdAt : Date.now(),
       };
-      await setDoc(adminRef, adminRecord, { merge: true });
+      await setDoc(adminRef, adminRecord, { merge: true }).catch(console.error);
       setAdminData(adminRecord);
     } else if (adminSnap.exists()) {
       const adminRecord = adminSnap.data() as AdminData;
@@ -434,23 +461,24 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           
           if (pendingInvite) {
             const inviteDoc = pendingInvite;
-            const inviteData = inviteDoc.data();
-            
-            const adminRecord: AdminData = {
-              uid: currentUser.uid,
-              email: currentUser.email,
-              displayName: currentUser.displayName || inviteData.displayName || 'Admin',
-              photoURL: currentUser.photoURL,
-              role: inviteData.role || 'SUPPORT',
-              status: 'online',
-              lastSeen: Date.now(),
-              createdAt: Date.now()
-            };
-            
-            await setDoc(adminRef, adminRecord);
-            await deleteDoc(inviteDoc.ref);
-            await setDoc(doc(db, 'users', currentUser.uid), { isAdmin: true }, { merge: true });
-            setAdminData(adminRecord);
+            const inviteData = inviteDoc.ref ? inviteDoc.data() : null;
+            if (inviteData) {
+              const adminRecord: AdminData = {
+                uid: currentUser.uid,
+                email: currentUser.email,
+                displayName: currentUser.displayName || inviteData.displayName || 'Admin',
+                photoURL: currentUser.photoURL,
+                role: inviteData.role || 'SUPPORT',
+                status: 'online',
+                lastSeen: Date.now(),
+                createdAt: Date.now()
+              };
+              
+              await setDoc(adminRef, adminRecord);
+              await deleteDoc(inviteDoc.ref);
+              await setDoc(docRef, { isAdmin: true }, { merge: true }).catch(console.error);
+              setAdminData(adminRecord);
+            }
           } else {
             setAdminData(null);
           }
@@ -482,6 +510,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       } else {
         setUserData(null);
         setAdminData(null);
+        setSessionRegistered(false);
         setLoading(false);
       }
     });
@@ -499,8 +528,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const sessionIds = data.sessionIds || [];
         const localSessionId = localStorage.getItem("takeoutfix_device_session_id");
         
-        // Evict session if our local device session ID is not in active list
-        if (localSessionId && sessionIds.length > 0 && !sessionIds.includes(localSessionId)) {
+        // Evict session if our local device session ID is not in active list (only after session registration completes)
+        if (sessionRegistered && localSessionId && sessionIds.length > 0 && !sessionIds.includes(localSessionId)) {
           alert("Account session expired. You have been logged out because this account is being used on another device.");
           logout();
           return;
@@ -514,7 +543,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     });
 
     return unsubscribe;
-  }, [user]);
+  }, [user, sessionRegistered]);
 
   const login = async () => {
     const provider = new GoogleAuthProvider();
@@ -547,10 +576,35 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
     await signOut(auth);
     try {
-      sessionStorage.removeItem("takeoutfix_user_data");
-      sessionStorage.removeItem("takeoutfix_admin_data");
+      localStorage.removeItem("takeoutfix_user_data");
+      localStorage.removeItem("takeoutfix_admin_data");
       localStorage.removeItem("takeoutfix_device_session_id");
     } catch (_) {}
+  };
+
+  const handleConfirmEvict = async () => {
+    if (!pendingSessionData) return;
+    try {
+      const { docRef, profileData, nameUpdates, data, deviceSessionId } = pendingSessionData;
+      
+      // Clear older device sessions and replace with only this new session ID
+      const updatedSessions = [deviceSessionId];
+      await setDoc(docRef, { ...profileData, ...nameUpdates, sessionIds: updatedSessions }, { merge: true });
+      
+      setUserData({ ...data, ...nameUpdates, sessionIds: updatedSessions } as any);
+      setSessionRegistered(true);
+      setShowDeviceLimitModal(false);
+      setPendingSessionData(null);
+    } catch (err) {
+      console.error("Failed to disconnect other sessions:", err);
+      alert("Failed to confirm connection. Please try again.");
+    }
+  };
+
+  const handleCancelEvict = async () => {
+    setShowDeviceLimitModal(false);
+    setPendingSessionData(null);
+    await logout();
   };
 
   return (
@@ -566,6 +620,48 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setRegion
     }}>
       {children}
+      
+      {showDeviceLimitModal && pendingSessionData && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-md z-[9999] flex items-center justify-center p-4 select-none">
+          <div className="bg-zinc-950 border border-white/10 p-6 rounded-3xl max-w-md w-full relative overflow-hidden shadow-2xl animate-in fade-in zoom-in-95 duration-200">
+            <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-red-500 via-amber-500 to-indigo-500"></div>
+            
+            <div className="text-center space-y-4 pt-4">
+              <div className="w-12 h-12 bg-amber-500/10 text-amber-400 rounded-full flex items-center justify-center mx-auto border border-amber-500/20">
+                <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+              </div>
+              
+              <h2 className="text-xl font-bold text-white tracking-tight">Active Device Limit Reached</h2>
+              
+              <div className="text-zinc-400 text-sm leading-relaxed space-y-3">
+                <p>
+                  Your <span className="text-indigo-400 font-bold uppercase tracking-wider text-xs">{(pendingSessionData.currentPlan || 'free')} Plan</span> limits active usage to <span className="text-white font-bold">{pendingSessionData.maxDevices} active session(s)</span> at the same time.
+                </p>
+                <p>
+                  You are currently logged in on other browsers or devices. To access the recovery center on this device, you must log out of the other sessions.
+                </p>
+              </div>
+              
+              <div className="pt-4 flex flex-col gap-2.5">
+                <button
+                  onClick={handleConfirmEvict}
+                  className="w-full h-11 bg-white text-black hover:bg-zinc-200 font-bold rounded-xl transition-colors shadow-lg active:scale-95 duration-100"
+                >
+                  Log Out Other Devices & Continue
+                </button>
+                <button
+                  onClick={handleCancelEvict}
+                  className="w-full h-11 bg-white/5 text-white hover:bg-white/10 font-semibold rounded-xl transition-all border border-white/10 active:scale-95 duration-100"
+                >
+                  Cancel & Sign Out
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </AuthContext.Provider>
   );
 };

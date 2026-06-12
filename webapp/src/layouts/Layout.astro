@@ -488,6 +488,57 @@ const {
         const notificationList = document.getElementById("notification-list");
         const notificationCountLabel = document.getElementById("notification-count-label");
 
+        // Optimistic UI loader (Gmail-like persistence)
+        try {
+          const cachedUserStr = localStorage.getItem("takeoutfix_user_data");
+          if (cachedUserStr) {
+            const cachedUser = JSON.parse(cachedUserStr);
+            const firstName = cachedUser.firstName || cachedUser.displayName?.split(" ")[0] || "User";
+            
+            // Instantly show profile container preview (optimistic load)
+            loginBtn?.classList.add("hidden");
+            profileContainer?.classList.remove("hidden");
+            authLoading?.classList.add("hidden");
+            
+            if (profileNameSpan) profileNameSpan.innerText = `Hi, ${firstName}`;
+            if (profileAvatarCircle) profileAvatarCircle.innerText = firstName.charAt(0).toUpperCase();
+            if (dropdownFullName) dropdownFullName.innerText = cachedUser.displayName || "User";
+            
+            if (cachedUser.username && dropdownUsername) {
+              dropdownUsername.innerText = `@${cachedUser.username}`;
+              dropdownUsername.classList.remove("hidden");
+            } else {
+              dropdownUsername?.classList.add("hidden");
+            }
+            
+            let planLabel = "Free Tier";
+            if (cachedUser.plan === "pro") planLabel = "Pro Tier";
+            else if (cachedUser.plan === "super") planLabel = "Super Tier";
+            else if (cachedUser.plan === "recovery_pass") planLabel = "Single Pass";
+            else if (cachedUser.plan === "family") planLabel = "Family Tier";
+            if (dropdownPlan) dropdownPlan.innerText = planLabel;
+            
+            // Optimistically sync links (Admin check)
+            const isAdmin = cachedUser.isAdmin === true;
+            if (mobileToolLink) {
+              mobileToolLink.href = isAdmin ? "/admin" : "/tool";
+              mobileToolLink.innerText = isAdmin ? "Admin Center" : "Restore My Data";
+            }
+            if (desktopToolLink) {
+              desktopToolLink.href = isAdmin ? "/admin" : "/tool";
+              desktopToolLink.innerText = isAdmin ? "Admin Center" : "Restore My Data";
+            }
+          } else {
+            // Show loading by default, but if it takes too long without auth, fallback
+            setTimeout(() => {
+              if (!auth.currentUser && !localStorage.getItem("takeoutfix_user_data")) {
+                loginBtn?.classList.remove("hidden");
+                authLoading?.classList.add("hidden");
+              }
+            }, 1000);
+          }
+        } catch (_) {}
+
         // Action Events
         loginBtn?.addEventListener("click", async () => {
           try {
@@ -504,6 +555,9 @@ const {
 
         document.getElementById("logout-btn")?.addEventListener("click", async () => {
           try {
+            localStorage.removeItem("takeoutfix_user_data");
+            localStorage.removeItem("takeoutfix_admin_data");
+            localStorage.removeItem("takeoutfix_device_session_id");
             await signOut(auth);
             window.location.href = "/";
           } catch (err) {
