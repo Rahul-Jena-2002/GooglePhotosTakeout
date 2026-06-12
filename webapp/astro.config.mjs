@@ -6,6 +6,7 @@ import { fileURLToPath } from 'url';
 
 // https://astro.build/config
 export default defineConfig({
+  site: 'https://takeoutfix.com',
   output: 'static',
   integrations: [
     react(),

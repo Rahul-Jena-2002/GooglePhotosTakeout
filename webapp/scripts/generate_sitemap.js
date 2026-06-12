@@ -5,7 +5,7 @@ const actionKeys = ["restore", "recover", "fix", "repair", "merge", "sync", "reb
 const targetKeys = ["metadata", "exif", "gps", "location", "timestamp", "date-taken", "creation-date", "albums", "people-tags", "camera-data", "photo-information", "video-information"];
 const sourceKeys = ["takeout", "photos", "export"];
 
-const baseUrl = "https://gt-metadata-merger.web.app";
+const baseUrl = "https://takeoutfix.com";
 const today = new Date().toISOString().split('T')[0];
 
 let xml = `<?xml version="1.0" encoding="UTF-8"?>

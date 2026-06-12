@@ -12,6 +12,9 @@ const {
   description = "Restore missing dates, GPS locations and EXIF data from your Google Takeout photos and videos. Free, browser-based, no download needed. Your files never leave your device.",
   isToolPage = false 
 } = Astro.props;
+
+// Generate canonical URL dynamically based on current path
+const canonicalUrl = `https://takeoutfix.com${Astro.url.pathname.replace(/\/$/, "") || "/"}`;
 ---
 
 <!doctype html>
@@ -30,16 +33,39 @@ const {
     <meta name="keywords" content="Google Takeout, metadata merger, EXIF recovery, photo restore, GPS coordinates Google Photos, JSON sidecar fixer, restore photo date taken" />
     <meta name="robots" content="index, follow" />
     <meta name="google-site-verification" content="yjn_T1bJ3RfrKhKTaT4in3ciTBkK5Ngw9LfOChfRztk" />
+    <link rel="canonical" href={canonicalUrl} />
     
     <!-- Open Graph / Facebook -->
     <meta property="og:type" content="website" />
     <meta property="og:title" content={title} />
     <meta property="og:description" content={description} />
+    <meta property="og:url" content={canonicalUrl} />
+    <meta property="og:site_name" content="TakeoutFix" />
     
     <!-- Twitter -->
     <meta property="twitter:card" content="summary_large_image" />
     <meta property="twitter:title" content={title} />
     <meta property="twitter:description" content={description} />
+    <meta property="twitter:url" content={canonicalUrl} />
+
+    <!-- Schema.org JSON-LD Structured Data for Search Engine Optimization -->
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "WebApplication",
+        "name": "TakeoutFix",
+        "url": "https://takeoutfix.com",
+        "description": "Restore missing dates, GPS locations, and EXIF metadata from your Google Takeout photos and videos locally in your browser.",
+        "applicationCategory": "MultimediaApplication",
+        "operatingSystem": "All",
+        "browserRequirements": "Requires HTML5 File System Access API (Google Chrome, Microsoft Edge, Brave recommended)",
+        "offers": {
+          "@type": "Offer",
+          "price": "0.00",
+          "priceCurrency": "USD"
+        }
+      }
+    </script>
 
     <!-- Google Web Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
