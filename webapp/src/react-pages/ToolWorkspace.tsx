@@ -14,6 +14,7 @@ import { FolderUp, HardDrive, Play, Square, Pause, Activity, Database, CheckCirc
 // No react-router-dom imports
 import { indexedDbService } from "../lib/indexedDbService"
 import piexif from "piexifjs"
+import { detectAdBlock } from "../services/AdBlockDetector"
 
 
 
@@ -1110,6 +1111,17 @@ function ToolWorkspaceContent() {
   }
 
   const startProcessing = async () => {
+    // Whitelist Enforcement: Only start restoration process if not blocked by ad blocker
+    const isAdFree = userData?.plan === "super" && !userData?.supportWithAds;
+    if (!isAdFree) {
+      const isBlocked = await detectAdBlock();
+      if (isBlocked) {
+        window.dispatchEvent(new CustomEvent('takeoutfix-action-triggered'));
+        alert("Ad Blocker Detected:\n\nTo start the restoration process, please disable your ad blocker or whitelist TakeoutFix. Alternatively, upgrade to Super for an ad-free experience.");
+        return;
+      }
+    }
+
     window.dispatchEvent(new CustomEvent('takeoutfix-action-triggered'))
     if (!takeoutFolder || !outputFolder) return
 
