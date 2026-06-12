@@ -147,11 +147,19 @@ export default function AdminLayout() {
       {/* ─── MAIN CONTENT ─── */}
       <main className="flex-1 flex flex-col min-h-screen overflow-x-hidden">
         <AdminTopbar />
-        <div className="flex-grow max-w-7xl w-full mx-auto p-8 overflow-hidden">
-          <div key={location.pathname} className="animate-page h-full">
-            <Outlet />
+        {location.pathname === "/admin/tool" ? (
+          <div className="flex-grow w-full overflow-hidden">
+            <div key={location.pathname} className="animate-page h-full">
+              <Outlet />
+            </div>
           </div>
-        </div>
+        ) : (
+          <div className="flex-grow max-w-7xl w-full mx-auto p-8 overflow-hidden">
+            <div key={location.pathname} className="animate-page h-full">
+              <Outlet />
+            </div>
+          </div>
+        )}
       </main>
 
     </div>
