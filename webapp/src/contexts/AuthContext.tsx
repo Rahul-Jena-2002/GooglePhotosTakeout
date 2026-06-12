@@ -235,13 +235,25 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   // Load global settings in real-time
   const [globalSettings, setGlobalSettings] = useState({
-    baseRecoveryPass: 4.99,
-    baseProLifetime: 29.00,
-    baseSuperLifetime: 49.00,
-    inrConversionRate: 67.0,
-    tier1Scale: 0.3,
-    tier2Scale: 0.6,
-    tier3Scale: 1.0
+    t3_recovery_pass: 4.99,
+    t3_pro: 29.00,
+    t3_super: 49.00,
+    t3_family: 79.00,
+    
+    t2_recovery_pass: 3.99,
+    t2_pro: 19.00,
+    t2_super: 39.00,
+    t2_family: 49.00,
+    
+    t1_recovery_pass: 1.49,
+    t1_pro: 9.99,
+    t1_super: 19.99,
+    t1_family: 49.99,
+    
+    in_recovery_pass: 99,
+    in_pro: 799,
+    in_super: 1499,
+    in_family: 3999
   });
 
   useEffect(() => {
@@ -249,13 +261,25 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (snap.exists()) {
         const data = snap.data();
         setGlobalSettings({
-          baseRecoveryPass: Number(data.baseRecoveryPass ?? 4.99),
-          baseProLifetime: Number(data.baseProLifetime ?? 29.00),
-          baseSuperLifetime: Number(data.baseSuperLifetime ?? 49.00),
-          inrConversionRate: Number(data.inrConversionRate ?? 67.0),
-          tier1Scale: Number(data.tier1Scale ?? 0.3),
-          tier2Scale: Number(data.tier2Scale ?? 0.6),
-          tier3Scale: Number(data.tier3Scale ?? 1.0)
+          t3_recovery_pass: Number(data.t3_recovery_pass ?? 4.99),
+          t3_pro: Number(data.t3_pro ?? 29.00),
+          t3_super: Number(data.t3_super ?? 49.00),
+          t3_family: Number(data.t3_family ?? 79.00),
+          
+          t2_recovery_pass: Number(data.t2_recovery_pass ?? 3.99),
+          t2_pro: Number(data.t2_pro ?? 19.00),
+          t2_super: Number(data.t2_super ?? 39.00),
+          t2_family: Number(data.t2_family ?? 49.00),
+          
+          t1_recovery_pass: Number(data.t1_recovery_pass ?? 1.49),
+          t1_pro: Number(data.t1_pro ?? 9.99),
+          t1_super: Number(data.t1_super ?? 19.99),
+          t1_family: Number(data.t1_family ?? 49.99),
+          
+          in_recovery_pass: Number(data.in_recovery_pass ?? 99),
+          in_pro: Number(data.in_pro ?? 799),
+          in_super: Number(data.in_super ?? 1499),
+          in_family: Number(data.in_family ?? 3999)
         });
       }
     });
@@ -352,51 +376,45 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const getDynamicPrices = (regionKey: string): PlanPrices => {
-    const { baseRecoveryPass, baseProLifetime, baseSuperLifetime, inrConversionRate, tier1Scale, tier2Scale, tier3Scale } = globalSettings;
-    const baseFamily = 79.00;
-
     if (regionKey === 'in') {
-      const scale = tier1Scale;
       return {
-        recovery_pass: `₹${Math.round(baseRecoveryPass * scale * inrConversionRate)}`,
-        pro: `₹${Math.round(baseProLifetime * scale * inrConversionRate)}`,
-        super: `₹${Math.round(baseSuperLifetime * scale * inrConversionRate)}`,
-        family: `₹${Math.round(baseFamily * scale * inrConversionRate)}`
+        recovery_pass: `₹${globalSettings.in_recovery_pass}`,
+        pro: `₹${globalSettings.in_pro}`,
+        super: `₹${globalSettings.in_super}`,
+        family: `₹${globalSettings.in_family}`
       };
     }
-
-    let scale = tier3Scale;
-    if (regionKey === 't1') scale = tier1Scale;
-    else if (regionKey === 't2') scale = tier2Scale;
-
+    if (regionKey === 't1') {
+      return {
+        recovery_pass: `$${globalSettings.t1_recovery_pass}`,
+        pro: `$${globalSettings.t1_pro}`,
+        super: `$${globalSettings.t1_super}`,
+        family: `$${globalSettings.t1_family}`
+      };
+    }
+    if (regionKey === 't2') {
+      return {
+        recovery_pass: `$${globalSettings.t2_recovery_pass}`,
+        pro: `$${globalSettings.t2_pro}`,
+        super: `$${globalSettings.t2_super}`,
+        family: `$${globalSettings.t2_family}`
+      };
+    }
     return {
-      recovery_pass: `$${(baseRecoveryPass * scale).toFixed(2)}`,
-      pro: `$${Math.round(baseProLifetime * scale)}`,
-      super: `$${Math.round(baseSuperLifetime * scale)}`,
-      family: `$${Math.round(baseFamily * scale)}`
+      recovery_pass: `$${globalSettings.t3_recovery_pass}`,
+      pro: `$${globalSettings.t3_pro}`,
+      super: `$${globalSettings.t3_super}`,
+      family: `$${globalSettings.t3_family}`
     };
   };
 
   const getPlanPriceValue = (planKey: string, regionKey: string): number => {
-    const { baseRecoveryPass, baseProLifetime, baseSuperLifetime, inrConversionRate, tier1Scale, tier2Scale, tier3Scale } = globalSettings;
-    const baseFamily = 79.00;
-
-    let base = 0;
-    if (planKey === 'recovery_pass') base = baseRecoveryPass;
-    else if (planKey === 'pro') base = baseProLifetime;
-    else if (planKey === 'super') base = baseSuperLifetime;
-    else if (planKey === 'family') base = baseFamily;
-
-    if (regionKey === 'in') {
-      return Math.round(base * tier1Scale * inrConversionRate);
+    let key = 't3';
+    if (regionKey === 'in' || regionKey === 't1' || regionKey === 't2') {
+      key = regionKey;
     }
-
-    let scale = tier3Scale;
-    if (regionKey === 't1') scale = tier1Scale;
-    else if (regionKey === 't2') scale = tier2Scale;
-
-    const calculated = base * scale;
-    return planKey === 'recovery_pass' ? Number(calculated.toFixed(2)) : Math.round(calculated);
+    const settingsKey = `${key}_${planKey === 'recovery_pass' ? 'recovery_pass' : planKey === 'pro' ? 'pro' : planKey === 'super' ? 'super' : 'family'}` as keyof typeof globalSettings;
+    return globalSettings[settingsKey] || 0;
   };
 
   const prices = getDynamicPrices(region);

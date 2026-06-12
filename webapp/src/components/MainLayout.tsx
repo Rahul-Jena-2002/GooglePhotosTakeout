@@ -111,16 +111,10 @@ export default function MainLayout() {
   return (
     <div className="flex flex-col min-h-screen bg-black text-white selection:bg-indigo-500/30">
       <nav 
-        className={`fixed top-4 left-0 right-0 mx-auto w-[calc(100%-2rem)] z-50 px-6 md:px-8 py-2.5 backdrop-saturate-150 transition-all duration-300 ${
-          (mobileMenuOpen || (profileMenuOpen && window.innerWidth < 1024)) ? 'rounded-[24px] py-4 bg-black/95 border-white/20' : 'rounded-full bg-white/[0.08] border-white/10'
-        }`}
-        style={{ 
-          backdropFilter: 'blur(20px)', 
-          WebkitBackdropFilter: 'blur(20px)', 
-          boxShadow: '0 8px 32px rgba(0,0,0,.35), inset 0 1px 0 rgba(255,255,255,.12)' 
-        }}
+        id="navbar"
+        className="fixed top-0 left-0 right-0 w-full z-50 px-6 md:px-8 py-3 transition-all duration-300 nav-header"
       >
-        <div className="flex items-center justify-between w-full relative z-10">
+        <div className="max-w-7xl mx-auto w-full flex items-center justify-between relative z-10">
           <div className="flex items-center gap-2 md:gap-8">
             {/* Left Hamburger Menu Icon (mobile and tablet: lg:hidden) */}
             <button 
@@ -135,7 +129,24 @@ export default function MainLayout() {
             </button>
 
             <Link to="/" className="text-xl font-bold tracking-tighter text-white flex items-center gap-2" onClick={() => setMobileMenuOpen(false)}>
-              <span className="w-5 h-5 md:w-6 md:h-6 rounded-md bg-gradient-to-br from-indigo-500 to-purple-600 shadow-[0_0_15px_rgba(99,102,241,0.5)] flex-shrink-0"></span>
+              <svg className="w-5 h-5 md:w-6 md:h-6 flex-shrink-0" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <defs>
+                  <linearGradient id="logo-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" stopColor="#6366f1" />
+                    <stop offset="100%" stopColor="#a855f7" />
+                  </linearGradient>
+                </defs>
+                <rect x="9" y="1" width="1.5" height="1.5" fill="url(#logo-grad)" />
+                <rect x="14" y="2" width="1.5" height="1.5" fill="url(#logo-grad)" />
+                <rect x="11" y="4" width="1.5" height="1.5" fill="url(#logo-grad)" />
+                <rect x="8" y="5" width="1.5" height="1.5" fill="url(#logo-grad)" />
+                <rect x="15" y="5" width="1.5" height="1.5" fill="url(#logo-grad)" />
+                <rect x="10" y="7" width="1.5" height="1.5" fill="url(#logo-grad)" />
+                <rect x="13" y="7" width="1.5" height="1.5" fill="url(#logo-grad)" />
+                <path d="M8 10H4C2.89543 10 2 10.8954 2 12V20C2 21.1046 2.89543 22 4 22H20C21.1046 22 22 21.1046 22 20V12C22 10.8954 21.1046 10 20 10H16" stroke="url(#logo-grad)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                <path d="M2 20L8 14L13 19L18 13L22 17" stroke="url(#logo-grad)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                <circle cx="16" cy="14" r="1.5" fill="url(#logo-grad)" />
+              </svg>
               <span className="text-base md:text-xl">TakeoutFix</span>
             </Link>
 
@@ -152,10 +163,10 @@ export default function MainLayout() {
           <div className="flex items-center gap-2.5 md:gap-6">
             {!loading && (
               <>
-                {/* Desktop Theme Toggle */}
+                 {/* Desktop Theme Toggle */}
                 <button 
                   onClick={() => setTheme(theme === 'light' ? 'dark' : 'light')}
-                  className="hidden lg:flex p-2 rounded-full bg-white/[0.04] border border-white/10 hover:bg-white/[0.08] hover:scale-[1.02] focus:outline-none transition-all items-center justify-center text-white/80 hover:text-white"
+                  className="hidden lg:flex p-2 rounded-full bg-zinc-900 border border-zinc-800 hover:bg-zinc-800 hover:scale-[1.02] focus:outline-none transition-all items-center justify-center text-white/80 hover:text-white"
                   title={theme === 'light' ? 'Switch to Dark Mode' : 'Switch to Light Mode'}
                 >
                   {theme === 'light' ? (
@@ -173,7 +184,7 @@ export default function MainLayout() {
                         setMobileMenuOpen(false)
                         setProfileMenuOpen(false)
                       }}
-                      className="relative p-2 rounded-full bg-white/[0.04] border border-white/10 hover:bg-white/[0.08] hover:scale-[1.02] focus:outline-none transition-all flex items-center justify-center"
+                      className="relative p-2 rounded-full bg-zinc-900 border border-zinc-800 hover:bg-zinc-800 hover:scale-[1.02] focus:outline-none transition-all flex items-center justify-center"
                     >
                       <Bell className="w-4 h-4 text-white/80" />
                       {notifications.length > 0 && (
@@ -254,12 +265,12 @@ export default function MainLayout() {
                           setMobileMenuOpen(false)
                           setNotificationMenuOpen(false)
                         }}
-                        className="flex items-center gap-2 p-1 lg:px-3 lg:py-1.5 rounded-full bg-white/[0.04] border border-white/10 hover:bg-white/[0.08] hover:border-white/20 hover:scale-[1.02] focus:outline-none transition-all shadow-[0_4px_12px_rgba(0,0,0,0.1)]"
+                        className="flex items-center gap-2 p-1 lg:px-3 lg:py-1.5 rounded-full bg-zinc-900 border border-zinc-800 hover:bg-zinc-800 hover:border-zinc-700 hover:scale-[1.02] focus:outline-none transition-all shadow-sm"
                       >
                         <span className="text-xs font-semibold text-white/80 select-none hidden lg:inline-block">
                           Hi, {userData?.firstName || user.displayName?.split(" ")[0] || "User"}
                         </span>
-                        <div className="w-7 h-7 rounded-full bg-gradient-to-tr from-indigo-500 to-purple-600 flex items-center justify-center font-bold text-xs text-white shadow-[0_0_10px_rgba(99,102,241,0.4)] border border-white/10 flex-shrink-0">
+                        <div className="w-7 h-7 rounded-full bg-zinc-800 flex items-center justify-center font-bold text-xs text-white border border-white/10 flex-shrink-0">
                           {userData?.firstName?.charAt(0).toUpperCase() || user.displayName?.charAt(0).toUpperCase() || user.email?.charAt(0).toUpperCase() || 'U'}
                         </div>
                       </button>
@@ -314,7 +325,7 @@ export default function MainLayout() {
                   <>
                     <button 
                       onClick={login} 
-                      className="rounded-full bg-gradient-to-r from-indigo-500 to-purple-600 hover:opacity-90 text-white border-0 shadow-[0_0_20px_rgba(99,102,241,0.4)] px-4 py-1.5 md:px-6 md:py-2 font-semibold text-xs md:text-sm transition-all"
+                      className="rounded-full bg-[#0071e3] hover:bg-[#0077ed] text-white border-none px-4 py-1.5 md:px-6 md:py-2 font-semibold text-xs md:text-sm transition-all"
                     >
                       Get Started
                     </button>

@@ -13,13 +13,31 @@ export default function AdminSettings() {
   const [reviewAutoApprove, setReviewAutoApprove] = useState(true)
   const [ticketSlaHours, setTicketSlaHours] = useState("24")
   const [freeQuotaMB, setFreeQuotaMB] = useState("1024")
-  const [baseRecoveryPass, setBaseRecoveryPass] = useState("4.99")
-  const [baseProLifetime, setBaseProLifetime] = useState("29.00")
-  const [baseSuperLifetime, setBaseSuperLifetime] = useState("49.00")
-  const [inrConversionRate, setInrConversionRate] = useState("67")
-  const [tier1Scale, setTier1Scale] = useState("0.3")
-  const [tier2Scale, setTier2Scale] = useState("0.6")
-  const [tier3Scale, setTier3Scale] = useState("1.0")
+  
+  // T3 prices
+  const [t3RecoveryPass, setT3RecoveryPass] = useState("4.99")
+  const [t3Pro, setT3Pro] = useState("29.00")
+  const [t3Super, setT3Super] = useState("49.00")
+  const [t3Family, setT3Family] = useState("79.00")
+
+  // T2 prices
+  const [t2RecoveryPass, setT2RecoveryPass] = useState("3.99")
+  const [t2Pro, setT2Pro] = useState("19.00")
+  const [t2Super, setT2Super] = useState("39.00")
+  const [t2Family, setT2Family] = useState("49.00")
+
+  // T1 prices
+  const [t1RecoveryPass, setT1RecoveryPass] = useState("1.49")
+  const [t1Pro, setT1Pro] = useState("9.99")
+  const [t1Super, setT1Super] = useState("19.99")
+  const [t1Family, setT1Family] = useState("49.99")
+
+  // India local prices
+  const [inRecoveryPass, setInRecoveryPass] = useState("99")
+  const [inPro, setInPro] = useState("799")
+  const [inSuper, setInSuper] = useState("1499")
+  const [inFamily, setInFamily] = useState("3999")
+
   const [selectedConfigTier, setSelectedConfigTier] = useState("t3")
   const [saving, setSaving] = useState(false)
 
@@ -34,13 +52,26 @@ export default function AdminSettings() {
         setReviewAutoApprove(data.reviewAutoApprove ?? true)
         setTicketSlaHours(String(data.ticketSlaHours ?? "24"))
         setFreeQuotaMB(String(data.freeQuotaMB ?? "1024"))
-        setBaseRecoveryPass(String(data.baseRecoveryPass ?? "4.99"))
-        setBaseProLifetime(String(data.baseProLifetime ?? "29.00"))
-        setBaseSuperLifetime(String(data.baseSuperLifetime ?? "49.00"))
-        setInrConversionRate(String(data.inrConversionRate ?? "67"))
-        setTier1Scale(String(data.tier1Scale ?? "0.3"))
-        setTier2Scale(String(data.tier2Scale ?? "0.6"))
-        setTier3Scale(String(data.tier3Scale ?? "1.0"))
+        
+        setT3RecoveryPass(String(data.t3_recovery_pass ?? "4.99"))
+        setT3Pro(String(data.t3_pro ?? "29.00"))
+        setT3Super(String(data.t3_super ?? "49.00"))
+        setT3Family(String(data.t3_family ?? "79.00"))
+
+        setT2RecoveryPass(String(data.t2_recovery_pass ?? "3.99"))
+        setT2Pro(String(data.t2_pro ?? "19.00"))
+        setT2Super(String(data.t2_super ?? "39.00"))
+        setT2Family(String(data.t2_family ?? "49.00"))
+
+        setT1RecoveryPass(String(data.t1_recovery_pass ?? "1.49"))
+        setT1Pro(String(data.t1_pro ?? "9.99"))
+        setT1Super(String(data.t1_super ?? "19.99"))
+        setT1Family(String(data.t1_family ?? "49.99"))
+
+        setInRecoveryPass(String(data.in_recovery_pass ?? "99"))
+        setInPro(String(data.in_pro ?? "799"))
+        setInSuper(String(data.in_super ?? "1499"))
+        setInFamily(String(data.in_family ?? "3999"))
       }
     })
     return unsub
@@ -54,13 +85,26 @@ export default function AdminSettings() {
         reviewAutoApprove,
         ticketSlaHours: Number(ticketSlaHours),
         freeQuotaMB: Number(freeQuotaMB),
-        baseRecoveryPass: Number(baseRecoveryPass),
-        baseProLifetime: Number(baseProLifetime),
-        baseSuperLifetime: Number(baseSuperLifetime),
-        inrConversionRate: Number(inrConversionRate),
-        tier1Scale: Number(tier1Scale),
-        tier2Scale: Number(tier2Scale),
-        tier3Scale: Number(tier3Scale)
+        
+        t3_recovery_pass: Number(t3RecoveryPass),
+        t3_pro: Number(t3Pro),
+        t3_super: Number(t3Super),
+        t3_family: Number(t3Family),
+
+        t2_recovery_pass: Number(t2RecoveryPass),
+        t2_pro: Number(t2Pro),
+        t2_super: Number(t2Super),
+        t2_family: Number(t2Family),
+
+        t1_recovery_pass: Number(t1RecoveryPass),
+        t1_pro: Number(t1Pro),
+        t1_super: Number(t1Super),
+        t1_family: Number(t1Family),
+
+        in_recovery_pass: Number(inRecoveryPass),
+        in_pro: Number(inPro),
+        in_super: Number(inSuper),
+        in_family: Number(inFamily)
       }, { merge: true })
 
       // Log action to audit activity logs
@@ -69,7 +113,7 @@ export default function AdminSettings() {
         actorName: adminData?.displayName || "Admin",
         actorRole: role,
         action: "SETTINGS_CHANGE",
-        description: `Updated platform settings: Maintenance=${maintenance}, AutoApprove=${reviewAutoApprove}, SLA=${ticketSlaHours}h, FreeQuota=${freeQuotaMB}MB, RecoveryPass=$${baseRecoveryPass}, ProLifetime=$${baseProLifetime}, SuperLifetime=$${baseSuperLifetime}, INRRate=₹${inrConversionRate}, T1Scale=${tier1Scale}, T2Scale=${tier2Scale}, T3Scale=${tier3Scale}`,
+        description: `Updated platform settings: Maintenance=${maintenance}, AutoApprove=${reviewAutoApprove}, SLA=${ticketSlaHours}h, FreeQuota=${freeQuotaMB}MB. Saved custom tier prices (India Recovery=${inRecoveryPass}, Pro=${inPro}, Super=${inSuper}).`,
         timestamp: Date.now()
       })
 
@@ -173,9 +217,9 @@ export default function AdminSettings() {
         <Card className="bg-zinc-900 border-zinc-800 shadow-none md:col-span-2">
           <CardHeader>
             <CardTitle className="text-sm font-semibold flex items-center gap-2 text-zinc-200">
-              <DollarSign className="w-4 h-4 text-emerald-400" /> Dynamic Pricing Configuration (USD Baseline)
+              <DollarSign className="w-4 h-4 text-emerald-400" /> Global Tier Pricing Configuration
             </CardTitle>
-            <CardDescription className="text-zinc-500 text-xs">Adjust basic pricing indices. Local tiers will scale accordingly.</CardDescription>
+            <CardDescription className="text-zinc-500 text-xs">Adjust pricing values directly for each region tier. Local visitors see these exact currencies/amounts.</CardDescription>
           </CardHeader>
           <CardContent>
             {/* Tier Select Dropdown */}
@@ -193,186 +237,107 @@ export default function AdminSettings() {
               </select>
             </div>
 
-            {/* Conditionally Render Inputs based on active tier */}
-            {selectedConfigTier === "t3" && (
-              <div className="space-y-4 mb-6">
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                  <div>
-                    <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 block mb-1">Recovery Pass Price</label>
-                    <div className="relative flex items-center">
-                      <span className="text-zinc-500 absolute left-3 text-xs">$</span>
-                      <Input 
-                        type="number" 
-                        step="0.01"
-                        value={baseRecoveryPass} 
-                        onChange={(e) => setBaseRecoveryPass(e.target.value)}
-                        className="bg-zinc-950 border-zinc-800 text-zinc-100 text-xs pl-6 h-9" 
-                      />
-                    </div>
-                  </div>
-                  <div>
-                    <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 block mb-1">Pro Lifetime Price</label>
-                    <div className="relative flex items-center">
-                      <span className="text-zinc-500 absolute left-3 text-xs">$</span>
-                      <Input 
-                        type="number"
-                        step="0.01"
-                        value={baseProLifetime} 
-                        onChange={(e) => setBaseProLifetime(e.target.value)}
-                        className="bg-zinc-950 border-zinc-800 text-zinc-100 text-xs pl-6 h-9" 
-                      />
-                    </div>
-                  </div>
-                  <div>
-                    <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 block mb-1">Super Lifetime Price</label>
-                    <div className="relative flex items-center">
-                      <span className="text-zinc-500 absolute left-3 text-xs">$</span>
-                      <Input 
-                        type="number"
-                        step="0.01"
-                        value={baseSuperLifetime} 
-                        onChange={(e) => setBaseSuperLifetime(e.target.value)}
-                        className="bg-zinc-950 border-zinc-800 text-zinc-100 text-xs pl-6 h-9" 
-                      />
-                    </div>
-                  </div>
-                  <div>
-                    <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 block mb-1">Tier 3 Scale Factor</label>
+            {/* Dynamic Inputs based on active tier */}
+            <div className="space-y-4 mb-6">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div>
+                  <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 block mb-1">Recovery Pass Price</label>
+                  <div className="relative flex items-center">
+                    <span className="text-zinc-500 absolute left-3 text-xs">{selectedConfigTier === "in" ? "₹" : "$"}</span>
                     <Input 
                       type="number" 
-                      step="0.05"
-                      value={tier3Scale} 
-                      onChange={(e) => setTier3Scale(e.target.value)}
-                      className="bg-zinc-950 border-zinc-800 text-zinc-100 text-xs h-9" 
+                      step={selectedConfigTier === "in" ? "1" : "0.01"}
+                      value={
+                        selectedConfigTier === "t3" ? t3RecoveryPass :
+                        selectedConfigTier === "t2" ? t2RecoveryPass :
+                        selectedConfigTier === "t1" ? t1RecoveryPass :
+                        inRecoveryPass
+                      } 
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        if (selectedConfigTier === "t3") setT3RecoveryPass(val);
+                        else if (selectedConfigTier === "t2") setT2RecoveryPass(val);
+                        else if (selectedConfigTier === "t1") setT1RecoveryPass(val);
+                        else setInRecoveryPass(val);
+                      }}
+                      className="bg-zinc-950 border-zinc-800 text-zinc-100 text-xs pl-6 h-9" 
                     />
                   </div>
                 </div>
-                <div className="bg-indigo-950/20 border border-indigo-900/40 rounded-xl p-4 mt-2">
-                  <div className="text-xs font-bold text-indigo-400">USD Baseline Pricing</div>
-                  <p className="text-[10px] text-zinc-500 mt-1">These values represent the standard baseline pricing. Other local tiers will scale relative to these numbers.</p>
-                </div>
-              </div>
-            )}
-
-            {selectedConfigTier === "t2" && (
-              <div className="space-y-4 mb-6">
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                  <div>
-                    <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 block mb-1">Tier 2 Scale Factor</label>
+                <div>
+                  <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 block mb-1">Pro Lifetime Price</label>
+                  <div className="relative flex items-center">
+                    <span className="text-zinc-500 absolute left-3 text-xs">{selectedConfigTier === "in" ? "₹" : "$"}</span>
                     <Input 
-                      type="number" 
-                      step="0.05"
-                      value={tier2Scale} 
-                      onChange={(e) => setTier2Scale(e.target.value)}
-                      className="bg-zinc-950 border-zinc-800 text-zinc-100 text-xs h-9" 
+                      type="number"
+                      step={selectedConfigTier === "in" ? "1" : "0.01"}
+                      value={
+                        selectedConfigTier === "t3" ? t3Pro :
+                        selectedConfigTier === "t2" ? t2Pro :
+                        selectedConfigTier === "t1" ? t1Pro :
+                        inPro
+                      } 
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        if (selectedConfigTier === "t3") setT3Pro(val);
+                        else if (selectedConfigTier === "t2") setT2Pro(val);
+                        else if (selectedConfigTier === "t1") setT1Pro(val);
+                        else setInPro(val);
+                      }}
+                      className="bg-zinc-950 border-zinc-800 text-zinc-100 text-xs pl-6 h-9" 
                     />
                   </div>
-                  <div>
-                    <div className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 mb-1">Scaled Recovery Pass</div>
-                    <div className="bg-zinc-950 border border-zinc-800 rounded-lg h-9 px-3 flex items-center text-xs text-zinc-400">
-                      ${(Number(baseRecoveryPass) * Number(tier2Scale)).toFixed(2)}
-                    </div>
-                  </div>
-                  <div>
-                    <div className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 mb-1">Scaled Pro Lifetime</div>
-                    <div className="bg-zinc-950 border border-zinc-800 rounded-lg h-9 px-3 flex items-center text-xs text-zinc-400">
-                      ${Math.round(Number(baseProLifetime) * Number(tier2Scale))}
-                    </div>
-                  </div>
-                  <div>
-                    <div className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 mb-1">Scaled Super Lifetime</div>
-                    <div className="bg-zinc-950 border border-zinc-800 rounded-lg h-9 px-3 flex items-center text-xs text-zinc-400">
-                      ${Math.round(Number(baseSuperLifetime) * Number(tier2Scale))}
-                    </div>
-                  </div>
                 </div>
-                <div className="bg-purple-950/20 border border-purple-900/40 rounded-xl p-4 mt-2">
-                  <div className="text-xs font-bold text-purple-400">Mid-Income Country Tier (USD based)</div>
-                  <p className="text-[10px] text-zinc-500 mt-1">Local prices in Tier 2 countries (e.g. Malaysia, Brazil, Poland) are scaled using this factor.</p>
-                </div>
-              </div>
-            )}
-
-            {selectedConfigTier === "t1" && (
-              <div className="space-y-4 mb-6">
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                  <div>
-                    <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 block mb-1">Tier 1 Scale Factor</label>
+                <div>
+                  <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 block mb-1">Super Lifetime Price</label>
+                  <div className="relative flex items-center">
+                    <span className="text-zinc-500 absolute left-3 text-xs">{selectedConfigTier === "in" ? "₹" : "$"}</span>
                     <Input 
-                      type="number" 
-                      step="0.05"
-                      value={tier1Scale} 
-                      onChange={(e) => setTier1Scale(e.target.value)}
-                      className="bg-zinc-950 border-zinc-800 text-zinc-100 text-xs h-9" 
+                      type="number"
+                      step={selectedConfigTier === "in" ? "1" : "0.01"}
+                      value={
+                        selectedConfigTier === "t3" ? t3Super :
+                        selectedConfigTier === "t2" ? t2Super :
+                        selectedConfigTier === "t1" ? t1Super :
+                        inSuper
+                      } 
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        if (selectedConfigTier === "t3") setT3Super(val);
+                        else if (selectedConfigTier === "t2") setT2Super(val);
+                        else if (selectedConfigTier === "t1") setT1Super(val);
+                        else setInSuper(val);
+                      }}
+                      className="bg-zinc-950 border-zinc-800 text-zinc-100 text-xs pl-6 h-9" 
                     />
                   </div>
-                  <div>
-                    <div className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 mb-1">Scaled Recovery Pass</div>
-                    <div className="bg-zinc-950 border border-zinc-800 rounded-lg h-9 px-3 flex items-center text-xs text-zinc-400">
-                      ${(Number(baseRecoveryPass) * Number(tier1Scale)).toFixed(2)}
-                    </div>
-                  </div>
-                  <div>
-                    <div className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 mb-1">Scaled Pro Lifetime</div>
-                    <div className="bg-zinc-950 border border-zinc-800 rounded-lg h-9 px-3 flex items-center text-xs text-zinc-400">
-                      ${Math.round(Number(baseProLifetime) * Number(tier1Scale))}
-                    </div>
-                  </div>
-                  <div>
-                    <div className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 mb-1">Scaled Super Lifetime</div>
-                    <div className="bg-zinc-950 border border-zinc-800 rounded-lg h-9 px-3 flex items-center text-xs text-zinc-400">
-                      ${Math.round(Number(baseSuperLifetime) * Number(tier1Scale))}
-                    </div>
-                  </div>
                 </div>
-                <div className="bg-emerald-950/20 border border-emerald-900/40 rounded-xl p-4 mt-2">
-                  <div className="text-xs font-bold text-emerald-400">Low-Income Country Tier (USD based)</div>
-                  <p className="text-[10px] text-zinc-500 mt-1">Local prices in Tier 1 countries (e.g. Pakistan, Egypt, Indonesia) are scaled using this factor.</p>
-                </div>
-              </div>
-            )}
-
-            {selectedConfigTier === "in" && (
-              <div className="space-y-4 mb-6">
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                  <div>
-                    <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 block mb-1">INR Conv. Rate (₹/$)</label>
-                    <div className="relative flex items-center">
-                      <span className="text-zinc-500 absolute left-3 text-xs">₹</span>
-                      <Input 
-                        type="number"
-                        step="0.1"
-                        value={inrConversionRate} 
-                        onChange={(e) => setInrConversionRate(e.target.value)}
-                        className="bg-zinc-950 border-zinc-800 text-zinc-100 text-xs pl-6 h-9" 
-                      />
-                    </div>
+                <div>
+                  <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 block mb-1">Family Lifetime Price</label>
+                  <div className="relative flex items-center">
+                    <span className="text-zinc-500 absolute left-3 text-xs">{selectedConfigTier === "in" ? "₹" : "$"}</span>
+                    <Input 
+                      type="number"
+                      step={selectedConfigTier === "in" ? "1" : "0.01"}
+                      value={
+                        selectedConfigTier === "t3" ? t3Family :
+                        selectedConfigTier === "t2" ? t2Family :
+                        selectedConfigTier === "t1" ? t1Family :
+                        inFamily
+                      } 
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        if (selectedConfigTier === "t3") setT3Family(val);
+                        else if (selectedConfigTier === "t2") setT2Family(val);
+                        else if (selectedConfigTier === "t1") setT1Family(val);
+                        else setInFamily(val);
+                      }}
+                      className="bg-zinc-950 border-zinc-800 text-zinc-100 text-xs pl-6 h-9" 
+                    />
                   </div>
-                  <div>
-                    <div className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 mb-1">India Recovery Pass</div>
-                    <div className="bg-zinc-950 border border-zinc-800 rounded-lg h-9 px-3 flex items-center text-xs text-zinc-400">
-                      ₹{Math.round(Number(baseRecoveryPass) * Number(tier1Scale) * Number(inrConversionRate))}
-                    </div>
-                  </div>
-                  <div>
-                    <div className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 mb-1">India Pro Lifetime</div>
-                    <div className="bg-zinc-950 border border-zinc-800 rounded-lg h-9 px-3 flex items-center text-xs text-zinc-400">
-                      ₹{Math.round(Number(baseProLifetime) * Number(tier1Scale) * Number(inrConversionRate))}
-                    </div>
-                  </div>
-                  <div>
-                    <div className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 mb-1">India Super Lifetime</div>
-                    <div className="bg-zinc-950 border border-zinc-800 rounded-lg h-9 px-3 flex items-center text-xs text-zinc-400">
-                      ₹{Math.round(Number(baseSuperLifetime) * Number(tier1Scale) * Number(inrConversionRate))}
-                    </div>
-                  </div>
-                </div>
-                <div className="bg-amber-950/20 border border-amber-900/40 rounded-xl p-4 mt-2">
-                  <div className="text-xs font-bold text-amber-400">India Tier Configuration (INR based)</div>
-                  <p className="text-[10px] text-zinc-500 mt-1">Uses Tier 1 scale factor ({tier1Scale}) converted to Indian Rupees (INR) at the conversion rate.</p>
                 </div>
               </div>
-            )}
+            </div>
 
             <div className="flex justify-end gap-3 border-t border-zinc-800/80 pt-4">
               <Button 

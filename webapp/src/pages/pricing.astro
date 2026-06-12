@@ -27,7 +27,7 @@ const prices = PLAN_PRICES[region] || PLAN_PRICES.us;
         Every plan uses the same recovery engine. Every plan receives the same metadata restoration quality.
       </p>
 
-      <div class="mt-8 flex flex-col sm:flex-row items-center gap-3 bg-zinc-900/30 border border-white/5 rounded-2xl px-6 py-4">
+      <div id="country-select-container" class="hidden mt-8 flex flex-col sm:flex-row items-center gap-3 bg-zinc-900/30 border border-white/5 rounded-2xl px-6 py-4">
         <span class="text-zinc-400 text-xs font-semibold uppercase tracking-wider">Select Region/Country:</span>
         <select
           id="country-select"
@@ -132,7 +132,7 @@ const prices = PLAN_PRICES[region] || PLAN_PRICES.us;
           </div>
           <div class="mt-6">
             <a href="/tool" class="w-full">
-              <button class="glass-capsule interactive w-full py-3 font-bold text-sm text-white">Start Free Recovery</button>
+              <button class="btn-solid-dark w-full py-3 font-semibold text-sm text-white cursor-pointer">Start Free Recovery</button>
             </a>
           </div>
         </div>
@@ -178,7 +178,7 @@ const prices = PLAN_PRICES[region] || PLAN_PRICES.us;
           </div>
           <div class="mt-6">
             <a href={`/checkout?plan=recovery_pass&region=${region}`} class="w-full link-checkout-recovery-pass">
-              <button class="glass-capsule interactive w-full py-3 font-bold text-sm text-white">Buy Recovery Pass</button>
+              <button class="btn-solid-dark w-full py-3 font-semibold text-sm text-white cursor-pointer">Buy Recovery Pass</button>
             </a>
           </div>
         </div>
@@ -226,7 +226,7 @@ const prices = PLAN_PRICES[region] || PLAN_PRICES.us;
           </div>
           <div class="mt-6">
             <a href={`/checkout?plan=pro&region=${region}`} class="w-full link-checkout-pro">
-              <button class="glass-capsule interactive w-full py-3 font-bold text-sm text-white !bg-indigo-500/20 !border-indigo-400/50 hover:!bg-indigo-500/40">Upgrade to Pro</button>
+              <button class="btn-solid-primary w-full py-3 font-semibold text-sm text-white cursor-pointer">Upgrade to Pro</button>
             </a>
           </div>
         </div>
@@ -271,7 +271,7 @@ const prices = PLAN_PRICES[region] || PLAN_PRICES.us;
           </div>
           <div class="mt-6">
             <a href={`/checkout?plan=super&region=${region}`} class="w-full link-checkout-super">
-              <button class="glass-capsule interactive w-full py-3 font-bold text-sm text-white">Go Ad-Free</button>
+              <button class="btn-solid-dark w-full py-3 font-semibold text-sm text-white cursor-pointer">Go Ad-Free</button>
             </a>
           </div>
         </div>
@@ -361,13 +361,21 @@ const prices = PLAN_PRICES[region] || PLAN_PRICES.us;
 
 <script>
   let globalSettings = {
-    baseRecoveryPass: 4.99,
-    baseProLifetime: 29.00,
-    baseSuperLifetime: 49.00,
-    inrConversionRate: 67.0,
-    tier1Scale: 0.3,
-    tier2Scale: 0.6,
-    tier3Scale: 1.0
+    t3_recovery_pass: 4.99,
+    t3_pro: 29.00,
+    t3_super: 49.00,
+    
+    t2_recovery_pass: 3.99,
+    t2_pro: 19.00,
+    t2_super: 39.00,
+    
+    t1_recovery_pass: 1.49,
+    t1_pro: 9.99,
+    t1_super: 19.99,
+    
+    in_recovery_pass: 99,
+    in_pro: 799,
+    in_super: 1499
   };
 
   const selectEl = document.getElementById("country-select");
@@ -384,28 +392,39 @@ const prices = PLAN_PRICES[region] || PLAN_PRICES.us;
 
   function calculatePrices(countryCode) {
     const regionKey = getRegionFromCountry(countryCode);
-    const { baseRecoveryPass, baseProLifetime, baseSuperLifetime, inrConversionRate, tier1Scale, tier2Scale, tier3Scale } = globalSettings;
-    const baseFamily = 79.00;
 
     if (regionKey === 'in') {
-      const scale = tier1Scale;
       return {
         free: "₹0",
-        recovery_pass: `₹${Math.round(baseRecoveryPass * scale * inrConversionRate)}`,
-        pro: `₹${Math.round(baseProLifetime * scale * inrConversionRate)}`,
-        super: `₹${Math.round(baseSuperLifetime * scale * inrConversionRate)}`
+        recovery_pass: `₹${globalSettings.in_recovery_pass}`,
+        pro: `₹${globalSettings.in_pro}`,
+        super: `₹${globalSettings.in_super}`
       };
     }
 
-    let scale = tier3Scale;
-    if (regionKey === 't1') scale = tier1Scale;
-    else if (regionKey === 't2') scale = tier2Scale;
+    if (regionKey === 't2') {
+      return {
+        free: "$0",
+        recovery_pass: `$${globalSettings.t2_recovery_pass.toFixed(2)}`,
+        pro: `$${globalSettings.t2_pro}`,
+        super: `$${globalSettings.t2_super}`
+      };
+    }
+
+    if (regionKey === 't1') {
+      return {
+        free: "$0",
+        recovery_pass: `$${globalSettings.t1_recovery_pass.toFixed(2)}`,
+        pro: `$${globalSettings.t1_pro}`,
+        super: `$${globalSettings.t1_super}`
+      };
+    }
 
     return {
       free: "$0",
-      recovery_pass: `$${(baseRecoveryPass * scale).toFixed(2)}`,
-      pro: `$${Math.round(baseProLifetime * scale)}`,
-      super: `$${Math.round(baseSuperLifetime * scale)}`
+      recovery_pass: `$${globalSettings.t3_recovery_pass.toFixed(2)}`,
+      pro: `$${globalSettings.t3_pro}`,
+      super: `$${globalSettings.t3_super}`
     };
   }
 
@@ -434,20 +453,39 @@ const prices = PLAN_PRICES[region] || PLAN_PRICES.us;
           if (!fieldObj) return null;
           if (fieldObj.doubleValue !== undefined) return Number(fieldObj.doubleValue);
           if (fieldObj.integerValue !== undefined) return Number(fieldObj.integerValue);
+          if (fieldObj.stringValue !== undefined) return Number(fieldObj.stringValue);
           return null;
         };
 
-        globalSettings.baseRecoveryPass = getNum(fields.baseRecoveryPass) ?? globalSettings.baseRecoveryPass;
-        globalSettings.baseProLifetime = getNum(fields.baseProLifetime) ?? globalSettings.baseProLifetime;
-        globalSettings.baseSuperLifetime = getNum(fields.baseSuperLifetime) ?? globalSettings.baseSuperLifetime;
-        globalSettings.inrConversionRate = getNum(fields.inrConversionRate) ?? globalSettings.inrConversionRate;
-        globalSettings.tier1Scale = getNum(fields.tier1Scale) ?? globalSettings.tier1Scale;
-        globalSettings.tier2Scale = getNum(fields.tier2Scale) ?? globalSettings.tier2Scale;
-        globalSettings.tier3Scale = getNum(fields.tier3Scale) ?? globalSettings.tier3Scale;
+        globalSettings.t3_recovery_pass = getNum(fields.t3_recovery_pass) ?? globalSettings.t3_recovery_pass;
+        globalSettings.t3_pro = getNum(fields.t3_pro) ?? globalSettings.t3_pro;
+        globalSettings.t3_super = getNum(fields.t3_super) ?? globalSettings.t3_super;
+
+        globalSettings.t2_recovery_pass = getNum(fields.t2_recovery_pass) ?? globalSettings.t2_recovery_pass;
+        globalSettings.t2_pro = getNum(fields.t2_pro) ?? globalSettings.t2_pro;
+        globalSettings.t2_super = getNum(fields.t2_super) ?? globalSettings.t2_super;
+
+        globalSettings.t1_recovery_pass = getNum(fields.t1_recovery_pass) ?? globalSettings.t1_recovery_pass;
+        globalSettings.t1_pro = getNum(fields.t1_pro) ?? globalSettings.t1_pro;
+        globalSettings.t1_super = getNum(fields.t1_super) ?? globalSettings.t1_super;
+
+        globalSettings.in_recovery_pass = getNum(fields.in_recovery_pass) ?? globalSettings.in_recovery_pass;
+        globalSettings.in_pro = getNum(fields.in_pro) ?? globalSettings.in_pro;
+        globalSettings.in_super = getNum(fields.in_super) ?? globalSettings.in_super;
       }
     } catch (e) {
       console.warn("Failed to fetch settings from Firestore:", e);
     }
+
+    try {
+      const cachedUserStr = localStorage.getItem("takeoutfix_user_data");
+      if (cachedUserStr) {
+        const cachedUser = JSON.parse(cachedUserStr);
+        if (cachedUser.isAdmin) {
+          document.getElementById("country-select-container")?.classList.remove("hidden");
+        }
+      }
+    } catch (_) {}
 
     let countryCode = localStorage.getItem("takeoutfix_selected_country") || "";
     

@@ -7,7 +7,7 @@ import { motion } from "framer-motion"
 import AdUnit from "../components/AdUnit"
 
 export default function PricingPage() {
-  const { region, selectedCountry, setSelectedCountry, prices } = useAuth()
+  const { region, selectedCountry, setSelectedCountry, prices, userData } = useAuth()
 
   return (
     <div className="w-full max-w-7xl mx-auto px-4 py-24">
@@ -29,35 +29,37 @@ export default function PricingPage() {
           Every plan uses the same recovery engine. Every plan receives the same metadata restoration quality.
         </motion.p>
 
-        <motion.div 
-          initial={{ opacity: 0, y: 15 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.15, ease: "easeOut" }}
-          className="mt-8 flex flex-col sm:flex-row items-center gap-3 bg-zinc-900/30 border border-white/5 rounded-2xl px-6 py-4"
-        >
-          <span className="text-zinc-400 text-xs font-semibold uppercase tracking-wider">Select Region/Country:</span>
-          <select
-            value={selectedCountry}
-            onChange={(e) => setSelectedCountry(e.target.value)}
-            className="bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-2 text-sm text-white focus:outline-none focus:border-indigo-500 cursor-pointer min-w-[200px]"
+        {userData?.isAdmin && (
+          <motion.div 
+            initial={{ opacity: 0, y: 15 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 0.15, ease: "easeOut" }}
+            className="mt-8 flex flex-col sm:flex-row items-center gap-3 bg-zinc-900/30 border border-white/5 rounded-2xl px-6 py-4"
           >
-            <optgroup label="Tier 1 (India & Similar)" className="bg-zinc-950">
-              {COUNTRIES.filter(c => c.tier === 'in' || c.tier === 't1').map(c => (
-                <option key={c.code} value={c.code}>{c.name}</option>
-              ))}
-            </optgroup>
-            <optgroup label="Tier 2 (Mid-Income Markets)" className="bg-zinc-950">
-              {COUNTRIES.filter(c => c.tier === 't2').map(c => (
-                <option key={c.code} value={c.code}>{c.name}</option>
-              ))}
-            </optgroup>
-            <optgroup label="Tier 3 (High-Income Markets)" className="bg-zinc-950">
-              {COUNTRIES.filter(c => c.tier === 't3').map(c => (
-                <option key={c.code} value={c.code}>{c.name}</option>
-              ))}
-            </optgroup>
-          </select>
-        </motion.div>
+            <span className="text-zinc-400 text-xs font-semibold uppercase tracking-wider">Select Region/Country:</span>
+            <select
+              value={selectedCountry}
+              onChange={(e) => setSelectedCountry(e.target.value)}
+              className="bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-2 text-sm text-white focus:outline-none focus:border-indigo-500 cursor-pointer min-w-[200px]"
+            >
+              <optgroup label="Tier 1 (India & Similar)" className="bg-zinc-950">
+                {COUNTRIES.filter(c => c.tier === 'in' || c.tier === 't1').map(c => (
+                  <option key={c.code} value={c.code}>{c.name}</option>
+                ))}
+              </optgroup>
+              <optgroup label="Tier 2 (Mid-Income Markets)" className="bg-zinc-950">
+                {COUNTRIES.filter(c => c.tier === 't2').map(c => (
+                  <option key={c.code} value={c.code}>{c.name}</option>
+                ))}
+              </optgroup>
+              <optgroup label="Tier 3 (High-Income Markets)" className="bg-zinc-950">
+                {COUNTRIES.filter(c => c.tier === 't3').map(c => (
+                  <option key={c.code} value={c.code}>{c.name}</option>
+                ))}
+              </optgroup>
+            </select>
+          </motion.div>
+        )}
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-16 items-stretch">
@@ -110,7 +112,7 @@ export default function PricingPage() {
             </CardContent>
             <CardFooter>
               <Link to="/tool" className="w-full">
-                <Button className="w-full bg-white/10 hover:bg-white/20 text-white border-none">Start Free Recovery</Button>
+                <Button className="w-full btn-solid-dark h-11 font-semibold text-sm">Start Free Recovery</Button>
               </Link>
             </CardFooter>
           </Card>
@@ -161,7 +163,7 @@ export default function PricingPage() {
             </CardContent>
             <CardFooter>
               <Link to={`/checkout?plan=recovery_pass&region=${region}`} className="w-full">
-                <Button className="w-full bg-white/10 hover:bg-white/20 text-white border-none">Buy Recovery Pass</Button>
+                <Button className="w-full btn-solid-dark h-11 font-semibold text-sm">Buy Recovery Pass</Button>
               </Link>
             </CardFooter>
           </Card>
@@ -214,7 +216,7 @@ export default function PricingPage() {
             </CardContent>
             <CardFooter>
               <Link to={`/checkout?plan=pro&region=${region}`} className="w-full">
-                <Button className="w-full bg-indigo-500 hover:bg-indigo-600 text-white">Upgrade to Pro</Button>
+                <Button className="w-full btn-solid-primary h-11 font-semibold text-sm">Upgrade to Pro</Button>
               </Link>
             </CardFooter>
           </Card>
@@ -264,7 +266,7 @@ export default function PricingPage() {
             </CardContent>
             <CardFooter>
               <Link to={`/checkout?plan=super&region=${region}`} className="w-full">
-                <Button className="w-full bg-white/10 hover:bg-white/20 text-white border-none">Go Ad-Free</Button>
+                <Button className="w-full btn-solid-dark h-11 font-semibold text-sm">Go Ad-Free</Button>
               </Link>
             </CardFooter>
           </Card>
