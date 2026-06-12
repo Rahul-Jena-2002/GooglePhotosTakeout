@@ -277,67 +277,41 @@ const {
           </div>
         </footer>
       )}
-      <!-- ADBLOCKER GATE OVERLAY -->
-      <div id="adblock-gate" class="fixed inset-0 bg-[#0A0A0A] z-[9999] flex items-center justify-center p-4 overflow-hidden hidden">
-        <!-- Background mesh glows -->
-        <div class="absolute top-1/4 left-1/4 w-[400px] h-[400px] bg-red-500/5 blur-[120px] rounded-full pointer-events-none"></div>
-        <div class="absolute bottom-1/4 right-1/4 w-[400px] h-[400px] bg-indigo-500/5 blur-[120px] rounded-full pointer-events-none"></div>
-
-        <div
-          class="relative max-w-lg w-full bg-zinc-950/80 border border-white/10 p-8 rounded-3xl backdrop-blur-2xl shadow-2xl overflow-hidden text-center"
-          style="box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.08);"
-        >
-          <!-- Top highlight bar -->
-          <div class="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-red-500 via-indigo-500 to-purple-600"></div>
-
-          <svg class="w-14 h-14 text-rose-400 mx-auto mb-6 animate-pulse" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
-          </svg>
-
-          <h2 class="text-2xl font-black text-white tracking-tight mb-3">
-            Support TakeoutFix
-          </h2>
-
-          <p class="text-sm text-zinc-400 leading-relaxed mb-6 px-2">
-            We hope you are enjoying TakeoutFix! To keep our browser-based EXIF restorer free and running without server subscriptions, we kindly ask that you whitelist our site on your ad blocker, or upgrade to our ad-free Super plan.
-          </p>
-
-          <!-- Quick instructions container -->
-          <div class="bg-white/[0.02] border border-white/5 rounded-2xl p-4 text-left text-xs text-zinc-500 space-y-2 mb-8">
-            <p class="font-bold text-white/80 uppercase tracking-wider text-[10px] mb-2 flex items-center gap-1.5">
-              <svg class="w-3.5 h-3.5 text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-              How to Support Us:
-            </p>
-            <ol class="list-decimal pl-4 space-y-1.5 leading-relaxed text-zinc-400">
-              <li>Click your AdBlocker extension icon (uBlock, AdBlock, AdGuard, etc.).</li>
-              <li>Toggle the switch off to allow ads on this website.</li>
-              <li>Click the button below to confirm and continue using the tool.</li>
-            </ol>
-          </div>
-
-          <div class="flex flex-col sm:flex-row gap-3">
+      <!-- ADBLOCKER SOFT BANNER -->
+      <div 
+        id="adblock-banner" 
+        class="fixed top-0 left-0 right-0 z-[9999] bg-zinc-950/95 border-b border-red-500/20 px-4 py-3 sm:py-2.5 backdrop-blur-lg shadow-xl transition-all duration-500 transform -translate-y-full flex flex-col sm:flex-row items-center justify-between gap-3 text-center sm:text-left hidden"
+      >
+        <div class="flex items-center gap-2 text-zinc-200 text-xs sm:text-sm font-medium">
+          <span class="text-amber-500 text-base sm:text-lg">⚠️</span>
+          <span>
+            Ads keep TakeoutFix free. Please whitelist us, or upgrade to <span class="text-indigo-400 font-bold uppercase tracking-wider text-[10px]">Super</span> for an ad-free experience.
+          </span>
+        </div>
+        
+        <div class="flex items-center gap-2.5 flex-wrap justify-center">
+          <button
+            id="adblock-whitelist-btn"
+            class="px-3.5 py-1.5 bg-white text-black hover:bg-zinc-200 text-xs font-bold rounded-lg transition-all active:scale-95 duration-100 flex items-center gap-1"
+          >
+            I've Whitelisted
+          </button>
+          <a href="/pricing">
             <button
-              id="adblock-refresh-btn"
-              class="flex-1 bg-white text-black hover:bg-zinc-200 font-bold rounded-full py-2.5 flex items-center justify-center gap-2 text-sm transition-all"
+              class="px-3.5 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-lg transition-all active:scale-95 duration-100 shadow-md shadow-indigo-500/20"
             >
-              <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-              I have whitelisted TakeoutFix
+              Upgrade
             </button>
-            <a href="/pricing" class="flex-1">
-              <button
-                class="w-full bg-gradient-to-r from-indigo-500 to-purple-600 hover:opacity-95 border-0 font-bold rounded-full py-2.5 flex items-center justify-center gap-2 shadow-lg shadow-indigo-500/20 text-white text-sm transition-all"
-              >
-                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-                </svg>
-                Upgrade to Super (Ad-Free)
-              </button>
-            </a>
-          </div>
+          </a>
+          <button
+            id="adblock-close-btn"
+            class="w-7 h-7 flex items-center justify-center text-zinc-500 hover:text-white hover:bg-white/5 rounded-full transition-all"
+            aria-label="Dismiss banner"
+          >
+            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
         </div>
       </div>
     </div>
@@ -350,45 +324,76 @@ const {
 
       // AdBlocker State & Functions
       let isAdFree = false;
-      let gracePeriodElapsed = false;
+      let isBannerDismissed = false;
+      let hasUserInteracted = false;
 
       const checkAdBlock = async () => {
-        const adblockGate = document.getElementById("adblock-gate");
-        if (isAdFree) {
-          adblockGate?.classList.add("hidden");
+        const isToolPage = window.location.pathname.replace(/\/$/, '') === "/tool";
+        if (!isToolPage) return;
+
+        if (isAdFree || isBannerDismissed) {
+          hideBanner();
           return;
         }
 
+        if (!hasUserInteracted) return;
+
         const isBlocked = await detectAdBlock();
-        if (isBlocked && gracePeriodElapsed) {
-          adblockGate?.classList.remove("hidden");
+        if (isBlocked) {
+          showBanner();
         } else {
-          adblockGate?.classList.add("hidden");
+          hideBanner();
         }
       };
 
-      // Set up refresh button listener
+      const showBanner = () => {
+        const banner = document.getElementById("adblock-banner");
+        if (banner) {
+          banner.classList.remove("hidden");
+          setTimeout(() => {
+            banner.classList.remove("-translate-y-full");
+          }, 50);
+        }
+      };
+
+      const hideBanner = () => {
+        const banner = document.getElementById("adblock-banner");
+        if (banner) {
+          banner.classList.add("-translate-y-full");
+          setTimeout(() => {
+            banner.classList.add("hidden");
+          }, 500);
+        }
+      };
+
+      // Set up button listeners
       document.addEventListener("DOMContentLoaded", () => {
-        const refreshBtn = document.getElementById("adblock-refresh-btn");
-        refreshBtn?.addEventListener("click", async () => {
-          refreshBtn.classList.add("animate-pulse");
-          // Manual verification always bypasses grace period
+        const whitelistBtn = document.getElementById("adblock-whitelist-btn");
+        const closeBtn = document.getElementById("adblock-close-btn");
+
+        whitelistBtn?.addEventListener("click", async () => {
+          whitelistBtn.classList.add("animate-pulse");
+          hasUserInteracted = true;
           const isBlocked = await detectAdBlock();
-          const adblockGate = document.getElementById("adblock-gate");
           if (isBlocked && !isAdFree) {
-            adblockGate?.classList.remove("hidden");
+            alert("Ad blocker is still active. Please disable it for TakeoutFix or refresh the page.");
           } else {
-            adblockGate?.classList.add("hidden");
+            hideBanner();
           }
-          refreshBtn.classList.remove("animate-pulse");
+          whitelistBtn.classList.remove("animate-pulse");
+        });
+
+        closeBtn?.addEventListener("click", () => {
+          isBannerDismissed = true;
+          hideBanner();
         });
       });
 
-      // Initial check deferred by 15 seconds
-      setTimeout(() => {
-        gracePeriodElapsed = true;
+      // Stage 2: Wait for folder selection or restore button click
+      window.addEventListener('takeoutfix-action-triggered', () => {
+        hasUserInteracted = true;
         checkAdBlock();
-      }, 15000);
+      });
 
       // 1. Theme Toggle System
       const initTheme = () => {
@@ -724,7 +729,8 @@ const {
             notificationContainer?.classList.add("hidden");
 
             isAdFree = false;
-            checkAdBlock();
+            hasUserInteracted = false;
+            hideBanner();
           }
         });
       };

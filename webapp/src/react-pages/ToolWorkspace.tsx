@@ -355,6 +355,7 @@ function ToolWorkspaceContent() {
     try {
       const dirHandle = await window.showDirectoryPicker({ mode: 'read' })
       setTakeoutFolder(dirHandle)
+      window.dispatchEvent(new CustomEvent('takeoutfix-action-triggered'))
     } catch (err) {
       console.log('User cancelled picker')
     }
@@ -364,6 +365,7 @@ function ToolWorkspaceContent() {
     try {
       const dirHandle = await window.showDirectoryPicker({ mode: 'readwrite' })
       setOutputFolder(dirHandle)
+      window.dispatchEvent(new CustomEvent('takeoutfix-action-triggered'))
     } catch (err) {
       console.log('User cancelled picker')
     }
@@ -1108,6 +1110,7 @@ function ToolWorkspaceContent() {
   }
 
   const startProcessing = async () => {
+    window.dispatchEvent(new CustomEvent('takeoutfix-action-triggered'))
     if (!takeoutFolder || !outputFolder) return
 
     try {
