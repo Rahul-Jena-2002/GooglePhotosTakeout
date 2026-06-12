@@ -256,17 +256,22 @@ function ToolWorkspaceContent() {
     if (isMobile) {
       maxC = Math.max(2, Math.floor(cores * 0.5))
     } else {
-      maxC = Math.max(4, Math.floor(cores * 0.8))
+      // Desktop: Use 100% of cores up to 24 cores for maximum throughput on high-RAM systems
+      maxC = Math.max(4, cores)
     }
     
     // Check device memory to prevent OOM on lower-end systems
     if ('deviceMemory' in navigator) {
       const mem = (navigator as any).deviceMemory
+      if (mem >= 8) {
+        // If memory is abundant (8GB+), let's allow full multi-threading (up to 24 cores)
+        return Math.min(24, maxC)
+      }
       if (mem < 4) {
         maxC = Math.max(1, Math.min(maxC, Math.floor(mem)))
       }
     }
-    return maxC
+    return Math.min(16, maxC)
   }
 
   useEffect(() => {
@@ -601,8 +606,8 @@ function ToolWorkspaceContent() {
       const cacheKey = relativePath.join('/')
       let allNamesSet = dirNamesCache.current.get(cacheKey)
       if (!allNamesSet) {
-        // Enforce cache limit to prevent memory leak
-        if (dirNamesCache.current.size >= 5) {
+        // Enforce cache limit to prevent memory leak (buffered up to 200 directories in memory)
+        if (dirNamesCache.current.size >= 200) {
           const firstKey = dirNamesCache.current.keys().next().value
           if (firstKey !== undefined) {
             dirNamesCache.current.delete(firstKey)
