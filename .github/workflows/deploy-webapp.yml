@@ -1,0 +1,56 @@
+name: Deploy Web App to GitHub Pages
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'webapp/**'
+      - '.github/workflows/deploy-webapp.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: webapp/package-lock.json
+
+      - name: Install dependencies
+        working-directory: webapp
+        run: npm ci
+
+      - name: Build
+        working-directory: webapp
+        run: npm run build
+        env:
+          NODE_ENV: production
+
+      - name: Add Security Headers via _headers file (Netlify compatible)
+        working-directory: webapp/dist
+        run: |
+          cat > _headers << 'EOF'
+          /*
+            X-Frame-Options: DENY
+            X-Content-Type-Options: nosniff
+            X-XSS-Protection: 1; mode=block
+            Referrer-Policy: no-referrer
+            Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=()
+            Content-Security-Policy: default-src 'self'; script-src 'self' https://pagead2.googlesyndication.com https://www.googletagservices.com https://adservice.google.com 'unsafe-inline'; style-src 'self' https://fonts.googleapis.com 'unsafe-inline'; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https:; connect-src 'self' https://pagead2.googlesyndication.com; frame-src https://googleads.g.doubleclick.net; frame-ancestors 'none';
+          EOF
+
+      - name: Deploy to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: webapp/dist
+          cname: ''   # Leave blank for github.io URL; set to your custom domain if you have one
