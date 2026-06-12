@@ -115,5 +115,11 @@ service cloud.firestore {
       allow read: if true;
       allow update, create: if request.auth != null;
     }
+
+    // ─── Settings Collection ─────────────────────────────────────────────────────
+    match /settings/{document} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
   }
 }

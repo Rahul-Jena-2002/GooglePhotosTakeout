@@ -26,6 +26,65 @@ const prices = PLAN_PRICES[region] || PLAN_PRICES.us;
       <p class="text-xl text-white/60 max-w-2xl mx-auto">
         Every plan uses the same recovery engine. Every plan receives the same metadata restoration quality.
       </p>
+
+      <div class="mt-8 flex flex-col sm:flex-row items-center gap-3 bg-zinc-900/30 border border-white/5 rounded-2xl px-6 py-4">
+        <span class="text-zinc-400 text-xs font-semibold uppercase tracking-wider">Select Region/Country:</span>
+        <select
+          id="country-select"
+          class="bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-2 text-sm text-white focus:outline-none focus:border-indigo-500 cursor-pointer min-w-[200px]"
+        >
+          <optgroup label="Tier 1 (India & Similar)" class="bg-zinc-950">
+            <option value="IN">India</option>
+            <option value="PK">Pakistan</option>
+            <option value="BD">Bangladesh</option>
+            <option value="NP">Nepal</option>
+            <option value="LK">Sri Lanka</option>
+            <option value="ID">Indonesia</option>
+            <option value="VN">Vietnam</option>
+            <option value="PH">Philippines</option>
+            <option value="NG">Nigeria</option>
+            <option value="KE">Kenya</option>
+            <option value="EG">Egypt</option>
+            <option value="CN">China</option>
+          </optgroup>
+          <optgroup label="Tier 2 (Mid-Income Markets)" class="bg-zinc-950">
+            <option value="MY">Malaysia</option>
+            <option value="TH">Thailand</option>
+            <option value="MX">Mexico</option>
+            <option value="BR">Brazil</option>
+            <option value="TR">Turkey</option>
+            <option value="ZA">South Africa</option>
+            <option value="AR">Argentina</option>
+            <option value="CL">Chile</option>
+            <option value="PL">Poland</option>
+            <option value="RO">Romania</option>
+          </optgroup>
+          <optgroup label="Tier 3 (High-Income Markets)" class="bg-zinc-950">
+            <option value="US" selected>United States</option>
+            <option value="GB">United Kingdom</option>
+            <option value="DE">Germany</option>
+            <option value="FR">France</option>
+            <option value="NL">Netherlands</option>
+            <option value="BE">Belgium</option>
+            <option value="AT">Austria</option>
+            <option value="SE">Sweden</option>
+            <option value="NO">Norway</option>
+            <option value="DK">Denmark</option>
+            <option value="FI">Finland</option>
+            <option value="IE">Ireland</option>
+            <option value="NZ">New Zealand</option>
+            <option value="AU">Australia</option>
+            <option value="CA">Canada</option>
+            <option value="JP">Japan</option>
+            <option value="CH">Switzerland</option>
+            <option value="LU">Luxembourg</option>
+            <option value="IS">Iceland</option>
+            <option value="SG">Singapore</option>
+            <option value="KR">South Korea</option>
+            <option value="HK">Hong Kong</option>
+          </optgroup>
+        </select>
+      </div>
     </div>
 
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-16 items-stretch">
@@ -39,7 +98,7 @@ const prices = PLAN_PRICES[region] || PLAN_PRICES.us;
           </div>
           <div class="flex-1 space-y-6">
             <div>
-              <div class="text-4xl font-bold text-white">₹0</div>
+              <div class="text-4xl font-bold text-white"><span class="price-free">$0</span></div>
               <p class="text-[11px] text-white/50 mt-1 leading-relaxed">Try MetaForge on a small Google Takeout export before upgrading.</p>
             </div>
             <div>
@@ -301,67 +360,60 @@ const prices = PLAN_PRICES[region] || PLAN_PRICES.us;
 </Layout>
 
 <script>
-  const PLAN_PRICES: Record<string, { recovery_pass: string; pro: string; super: string; family: string }> = {
-    in: { recovery_pass: "₹99", pro: "₹799", super: "₹1499", family: "₹3999" },
-    us: { recovery_pass: "$4.99", pro: "$29", super: "$49", family: "$79" },
-    eu: { recovery_pass: "€4.99", pro: "€29", super: "€49", family: "€79" },
-    jp: { recovery_pass: "¥899", pro: "¥5900", super: "¥9900", family: "¥14900" },
-    cn: { recovery_pass: "¥29", pro: "¥199", super: "¥399", family: "¥999" },
-    t1: { recovery_pass: "$1.49", pro: "$9.99", super: "$19.99", family: "$49.99" },
-    t2: { recovery_pass: "$3.99", pro: "$19", super: "$39", family: "$49" },
-    t3: { recovery_pass: "$4.99", pro: "$29", super: "$49", family: "$79" },
-    t4: { recovery_pass: "$5.99", pro: "$39", super: "$69", family: "$99" },
+  let globalSettings = {
+    baseRecoveryPass: 4.99,
+    baseProLifetime: 29.00,
+    baseSuperLifetime: 49.00,
+    inrConversionRate: 67.0,
+    tier1Scale: 0.3,
+    tier2Scale: 0.6,
+    tier3Scale: 1.0
   };
 
-  const COUNTRY_TO_REGION: Record<string, string> = {
-    IN: "in", PK: "t1", BD: "t1", NP: "t1", LK: "t1", ID: "t1", VN: "t1", PH: "t1", NG: "t1", KE: "t1", EG: "t1",
-    MY: "t2", TH: "t2", MX: "t2", BR: "t2", TR: "t2", ZA: "t2", AR: "t2", CL: "t2", PL: "t2", RO: "t2",
-    US: "us", GB: "eu", DE: "eu", FR: "eu", NL: "eu", BE: "eu", AT: "eu", SE: "t3", NO: "t3", DK: "t3", FI: "t3", IE: "eu", NZ: "t3", AU: "t3", CA: "t3",
-    JP: "jp", CH: "t4", LU: "eu", IS: "t4", SG: "t4", KR: "t4", HK: "t4",
-    CN: "cn",
-  };
+  const selectEl = document.getElementById("country-select");
 
-  async function updatePrices() {
-    let region = "us";
-    let countryCode = "";
+  function getRegionFromCountry(countryCode) {
+    const country = countryCode.toUpperCase();
+    if (country === 'IN') return 'in';
+    const lowTiers = ["PK", "BD", "NP", "LK", "ID", "VN", "PH", "NG", "KE", "EG", "CN"];
+    const midTiers = ["MY", "TH", "MX", "BR", "TR", "ZA", "AR", "CL", "PL", "RO"];
+    if (lowTiers.includes(country)) return 't1';
+    if (midTiers.includes(country)) return 't2';
+    return 't3';
+  }
 
-    // 1. Try Cloudflare cdn-cgi trace first (extremely fast, same-origin, bypasses adblockers)
-    try {
-      const res = await fetch("/cdn-cgi/trace");
-      if (res.ok) {
-        const text = await res.text();
-        const lines = text.split("\n");
-        for (const line of lines) {
-          const parts = line.split("=");
-          if (parts[0] === "loc" && parts[1]) {
-            countryCode = parts[1].trim().toUpperCase();
-            break;
-          }
-        }
-      }
-    } catch (e) {
-      console.warn("Cloudflare cdn-cgi/trace check failed:", e);
+  function calculatePrices(countryCode) {
+    const regionKey = getRegionFromCountry(countryCode);
+    const { baseRecoveryPass, baseProLifetime, baseSuperLifetime, inrConversionRate, tier1Scale, tier2Scale, tier3Scale } = globalSettings;
+    const baseFamily = 79.00;
+
+    if (regionKey === 'in') {
+      const scale = tier1Scale;
+      return {
+        free: "₹0",
+        recovery_pass: `₹${Math.round(baseRecoveryPass * scale * inrConversionRate)}`,
+        pro: `₹${Math.round(baseProLifetime * scale * inrConversionRate)}`,
+        super: `₹${Math.round(baseSuperLifetime * scale * inrConversionRate)}`
+      };
     }
 
-    // 2. Try freeipapi as fallback
-    if (!countryCode) {
-      try {
-        const res = await fetch("https://freeipapi.com/api/json");
-        if (res.ok) {
-          const data = await res.json();
-          countryCode = data.countryCode || "";
-        }
-      } catch (err) {
-        console.warn("freeipapi lookup failed:", err);
-      }
-    }
+    let scale = tier3Scale;
+    if (regionKey === 't1') scale = tier1Scale;
+    else if (regionKey === 't2') scale = tier2Scale;
 
-    if (countryCode) {
-      region = COUNTRY_TO_REGION[countryCode.toUpperCase()] || "us";
-    }
+    return {
+      free: "$0",
+      recovery_pass: `$${(baseRecoveryPass * scale).toFixed(2)}`,
+      pro: `$${Math.round(baseProLifetime * scale)}`,
+      super: `$${Math.round(baseSuperLifetime * scale)}`
+    };
+  }
 
-    const prices = PLAN_PRICES[region] || PLAN_PRICES.us;
+  function updatePrices(countryCode) {
+    const prices = calculatePrices(countryCode);
+    const region = getRegionFromCountry(countryCode);
 
+    document.querySelectorAll(".price-free").forEach(el => el.textContent = prices.free);
     document.querySelectorAll(".price-recovery-pass").forEach(el => el.textContent = prices.recovery_pass);
     document.querySelectorAll(".price-pro").forEach(el => el.textContent = prices.pro);
     document.querySelectorAll(".price-super").forEach(el => el.textContent = prices.super);
@@ -371,5 +423,95 @@ const prices = PLAN_PRICES[region] || PLAN_PRICES.us;
     document.querySelectorAll(".link-checkout-super").forEach(el => el.setAttribute("href", `/checkout?plan=super&region=${region}`));
   }
 
-  updatePrices();
+  async function fetchSettingsAndInit() {
+    try {
+      const res = await fetch("https://firestore.googleapis.com/v1/projects/gt-metadata-merger/databases/(default)/documents/settings/global");
+      if (res.ok) {
+        const json = await res.json();
+        const fields = json.fields || {};
+        
+        const getNum = (fieldObj) => {
+          if (!fieldObj) return null;
+          if (fieldObj.doubleValue !== undefined) return Number(fieldObj.doubleValue);
+          if (fieldObj.integerValue !== undefined) return Number(fieldObj.integerValue);
+          return null;
+        };
+
+        globalSettings.baseRecoveryPass = getNum(fields.baseRecoveryPass) ?? globalSettings.baseRecoveryPass;
+        globalSettings.baseProLifetime = getNum(fields.baseProLifetime) ?? globalSettings.baseProLifetime;
+        globalSettings.baseSuperLifetime = getNum(fields.baseSuperLifetime) ?? globalSettings.baseSuperLifetime;
+        globalSettings.inrConversionRate = getNum(fields.inrConversionRate) ?? globalSettings.inrConversionRate;
+        globalSettings.tier1Scale = getNum(fields.tier1Scale) ?? globalSettings.tier1Scale;
+        globalSettings.tier2Scale = getNum(fields.tier2Scale) ?? globalSettings.tier2Scale;
+        globalSettings.tier3Scale = getNum(fields.tier3Scale) ?? globalSettings.tier3Scale;
+      }
+    } catch (e) {
+      console.warn("Failed to fetch settings from Firestore:", e);
+    }
+
+    let countryCode = localStorage.getItem("takeoutfix_selected_country") || "";
+    
+    if (!countryCode) {
+      // 1. Try Cloudflare cdn-cgi trace first
+      try {
+        const res = await fetch("/cdn-cgi/trace");
+        if (res.ok) {
+          const text = await res.text();
+          const lines = text.split("\n");
+          for (const line of lines) {
+            const parts = line.split("=");
+            if (parts[0] === "loc" && parts[1]) {
+              countryCode = parts[1].trim().toUpperCase();
+              break;
+            }
+          }
+        }
+      } catch (e) {}
+    }
+
+    if (!countryCode) {
+      // 2. Try freeipapi
+      try {
+        const res = await fetch("https://freeipapi.com/api/json");
+        if (res.ok) {
+          const data = await res.json();
+          countryCode = data.countryCode || "";
+        }
+      } catch (e) {}
+    }
+
+    if (!countryCode) {
+      // 3. Fallback based on timezone
+      try {
+        const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+        if (tz) {
+          const lowerTz = tz.toLowerCase();
+          if (lowerTz.includes("kolkata") || lowerTz.includes("calcutta") || lowerTz.includes("india")) countryCode = "IN";
+          else if (lowerTz.includes("tokyo") || lowerTz.includes("japan")) countryCode = "JP";
+          else if (lowerTz.includes("shanghai") || lowerTz.includes("beijing") || lowerTz.includes("china")) countryCode = "CN";
+          else if (lowerTz.includes("london") || lowerTz.includes("paris") || lowerTz.includes("berlin") || lowerTz.includes("rose")) countryCode = "GB";
+        }
+      } catch (e) {}
+    }
+
+    if (!countryCode) {
+      countryCode = "US";
+    }
+
+    countryCode = countryCode.toUpperCase();
+    if (selectEl) {
+      selectEl.value = countryCode;
+    }
+    updatePrices(countryCode);
+  }
+
+  if (selectEl) {
+    selectEl.addEventListener("change", (e) => {
+      const code = e.target.value;
+      updatePrices(code);
+      localStorage.setItem("takeoutfix_selected_country", code);
+    });
+  }
+
+  fetchSettingsAndInit();
 </script>

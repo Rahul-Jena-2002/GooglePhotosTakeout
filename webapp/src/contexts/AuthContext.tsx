@@ -26,20 +26,75 @@ export const PLAN_PRICES: Record<string, PlanPrices> = {
   t4: { recovery_pass: "$5.99", pro: "$39", super: "$69", family: "$99" },
 };
 
+export interface CountryOption {
+  code: string;
+  name: string;
+  tier: 't1' | 't2' | 't3' | 'in';
+}
+
+export const COUNTRIES: CountryOption[] = [
+  // Tier 1 (India & Similar)
+  { code: "IN", name: "India", tier: "in" },
+  { code: "PK", name: "Pakistan", tier: "t1" },
+  { code: "BD", name: "Bangladesh", tier: "t1" },
+  { code: "NP", name: "Nepal", tier: "t1" },
+  { code: "LK", name: "Sri Lanka", tier: "t1" },
+  { code: "ID", name: "Indonesia", tier: "t1" },
+  { code: "VN", name: "Vietnam", tier: "t1" },
+  { code: "PH", name: "Philippines", tier: "t1" },
+  { code: "NG", name: "Nigeria", tier: "t1" },
+  { code: "KE", name: "Kenya", tier: "t1" },
+  { code: "EG", name: "Egypt", tier: "t1" },
+  { code: "CN", name: "China", tier: "t1" },
+
+  // Tier 2 (Mid USD)
+  { code: "MY", name: "Malaysia", tier: "t2" },
+  { code: "TH", name: "Thailand", tier: "t2" },
+  { code: "MX", name: "Mexico", tier: "t2" },
+  { code: "BR", name: "Brazil", tier: "t2" },
+  { code: "TR", name: "Turkey", tier: "t2" },
+  { code: "ZA", name: "South Africa", tier: "t2" },
+  { code: "AR", name: "Argentina", tier: "t2" },
+  { code: "CL", name: "Chile", tier: "t2" },
+  { code: "PL", name: "Poland", tier: "t2" },
+  { code: "RO", name: "Romania", tier: "t2" },
+
+  // Tier 3 (High USD)
+  { code: "US", name: "United States", tier: "t3" },
+  { code: "GB", name: "United Kingdom", tier: "t3" },
+  { code: "DE", name: "Germany", tier: "t3" },
+  { code: "FR", name: "France", tier: "t3" },
+  { code: "NL", name: "Netherlands", tier: "t3" },
+  { code: "BE", name: "Belgium", tier: "t3" },
+  { code: "AT", name: "Austria", tier: "t3" },
+  { code: "SE", name: "Sweden", tier: "t3" },
+  { code: "NO", name: "Norway", tier: "t3" },
+  { code: "DK", name: "Denmark", tier: "t3" },
+  { code: "FI", name: "Finland", tier: "t3" },
+  { code: "IE", name: "Ireland", tier: "t3" },
+  { code: "NZ", name: "New Zealand", tier: "t3" },
+  { code: "AU", name: "Australia", tier: "t3" },
+  { code: "CA", name: "Canada", tier: "t3" },
+  { code: "JP", name: "Japan", tier: "t3" },
+  { code: "CH", name: "Switzerland", tier: "t3" },
+  { code: "LU", name: "Luxembourg", tier: "t3" },
+  { code: "IS", name: "Iceland", tier: "t3" },
+  { code: "SG", name: "Singapore", tier: "t3" },
+  { code: "KR", name: "South Korea", tier: "t3" },
+  { code: "HK", name: "Hong Kong", tier: "t3" }
+];
+
 // Hardcoded super admin emails — always granted SUPER_ADMIN regardless of DB
 const SUPER_ADMIN_EMAILS = ['rahuljenasonu@gmail.com', 'rahuljena.dev@gmail.com'];
 
 const COUNTRY_TO_REGION: Record<string, string> = {
   // Tier 1
-  IN: "in", PK: "t1", BD: "t1", NP: "t1", LK: "t1", ID: "t1", VN: "t1", PH: "t1", NG: "t1", KE: "t1", EG: "t1",
+  IN: "in", PK: "t1", BD: "t1", NP: "t1", LK: "t1", ID: "t1", VN: "t1", PH: "t1", NG: "t1", KE: "t1", EG: "t1", CN: "t1",
   // Tier 2
   MY: "t2", TH: "t2", MX: "t2", BR: "t2", TR: "t2", ZA: "t2", AR: "t2", CL: "t2", PL: "t2", RO: "t2",
-  // Tier 3 (US/EU/Other Dev)
-  US: "us", GB: "eu", DE: "eu", FR: "eu", NL: "eu", BE: "eu", AT: "eu", SE: "t3", NO: "t3", DK: "t3", FI: "t3", IE: "eu", NZ: "t3", AU: "t3", CA: "t3",
-  // Tier 4 (JP/Other Prem)
-  JP: "jp", CH: "t4", LU: "eu", IS: "t4", SG: "t4", KR: "t4", HK: "t4",
-  // China
-  CN: "cn",
+  // Tier 3
+  US: "t3", GB: "t3", DE: "t3", FR: "t3", NL: "t3", BE: "t3", AT: "t3", SE: "t3", NO: "t3", DK: "t3", FI: "t3", IE: "t3", NZ: "t3", AU: "t3", CA: "t3",
+  JP: "t3", CH: "t3", LU: "t3", IS: "t3", SG: "t3", KR: "t3", HK: "t3",
 };
 
 export interface UserData {
@@ -83,6 +138,10 @@ interface AuthContextType {
   refreshUserData: () => Promise<void>;
   region: string;
   setRegion: (r: string) => void;
+  selectedCountry: string;
+  setSelectedCountry: (code: string) => void;
+  prices: PlanPrices;
+  getPlanPriceValue: (planKey: string, regionKey: string) => number;
 }
 
 const getPlanDeviceLimit = (plan: string): number => {
@@ -174,31 +233,157 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } catch (_) {}
   };
 
-  const [region, setRegionState] = useState<string>(() => {
+  // Load global settings in real-time
+  const [globalSettings, setGlobalSettings] = useState({
+    baseRecoveryPass: 4.99,
+    baseProLifetime: 29.00,
+    baseSuperLifetime: 49.00,
+    inrConversionRate: 67.0,
+    tier1Scale: 0.3,
+    tier2Scale: 0.6,
+    tier3Scale: 1.0
+  });
+
+  useEffect(() => {
+    const unsub = onSnapshot(doc(db, "settings", "global"), (snap) => {
+      if (snap.exists()) {
+        const data = snap.data();
+        setGlobalSettings({
+          baseRecoveryPass: Number(data.baseRecoveryPass ?? 4.99),
+          baseProLifetime: Number(data.baseProLifetime ?? 29.00),
+          baseSuperLifetime: Number(data.baseSuperLifetime ?? 49.00),
+          inrConversionRate: Number(data.inrConversionRate ?? 67.0),
+          tier1Scale: Number(data.tier1Scale ?? 0.3),
+          tier2Scale: Number(data.tier2Scale ?? 0.6),
+          tier3Scale: Number(data.tier3Scale ?? 1.0)
+        });
+      }
+    });
+    return unsub;
+  }, []);
+
+  const [selectedCountry, setSelectedCountryState] = useState<string>(() => {
     try {
+      const saved = localStorage.getItem("takeoutfix_selected_country");
+      if (saved) return saved.toUpperCase();
+      
       const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
       if (tz) {
         const lowerTz = tz.toLowerCase();
-        if (lowerTz.includes("kolkata") || lowerTz.includes("calcutta") || lowerTz.includes("india")) return "in";
-        if (lowerTz.includes("tokyo") || lowerTz.includes("japan")) return "jp";
-        if (lowerTz.includes("shanghai") || lowerTz.includes("beijing") || lowerTz.includes("china")) return "cn";
-        if (lowerTz.includes("europe") || lowerTz.includes("london") || lowerTz.includes("paris") || lowerTz.includes("berlin") || lowerTz.includes("rose") || lowerTz.includes("madrid")) return "eu";
+        if (lowerTz.includes("kolkata") || lowerTz.includes("calcutta") || lowerTz.includes("india")) return "IN";
+        if (lowerTz.includes("tokyo") || lowerTz.includes("japan")) return "JP";
+        if (lowerTz.includes("shanghai") || lowerTz.includes("beijing") || lowerTz.includes("china")) return "CN";
+        if (lowerTz.includes("europe") || lowerTz.includes("london") || lowerTz.includes("paris") || lowerTz.includes("berlin") || lowerTz.includes("rose") || lowerTz.includes("madrid")) return "GB";
       }
       const lang = (navigator.language || "").toLowerCase();
-      if (lang.startsWith("en-in") || lang.startsWith("hi")) return "in";
-      if (lang.startsWith("ja")) return "jp";
-      if (lang.startsWith("zh")) return "cn";
-      if (lang.startsWith("de") || lang.startsWith("fr") || lang.startsWith("it") || lang.startsWith("es")) return "eu";
+      if (lang.startsWith("en-in") || lang.startsWith("hi")) return "IN";
+      if (lang.startsWith("ja")) return "JP";
+      if (lang.startsWith("zh")) return "CN";
+      if (lang.startsWith("de") || lang.startsWith("fr") || lang.startsWith("it") || lang.startsWith("es")) return "DE";
     } catch (_) {}
-    return "us";
+    return "US";
   });
 
-  const setRegion = (newRegion: string) => {
-    setRegionState(newRegion);
+  const getRegionFromCountry = (countryCode: string): string => {
+    const country = countryCode.toUpperCase();
+    if (country === 'IN') return 'in';
+    const lowTiers = ["PK", "BD", "NP", "LK", "ID", "VN", "PH", "NG", "KE", "EG", "CN"];
+    const midTiers = ["MY", "TH", "MX", "BR", "TR", "ZA", "AR", "CL", "PL", "RO"];
+    if (lowTiers.includes(country)) return 't1';
+    if (midTiers.includes(country)) return 't2';
+    return 't3'; // Default high tier
   };
+
+  const region = getRegionFromCountry(selectedCountry);
+
+  const setSelectedCountry = (code: string) => {
+    const upper = code.toUpperCase();
+    setSelectedCountryState(upper);
+    try {
+      localStorage.setItem("takeoutfix_selected_country", upper);
+    } catch (_) {}
+  };
+
+  const setRegion = (newRegion: string) => {
+    if (newRegion === 'in') setSelectedCountry('IN');
+    else if (newRegion === 't1') setSelectedCountry('PK');
+    else if (newRegion === 't2') setSelectedCountry('MY');
+    else setSelectedCountry('US');
+  };
+
+  const getDynamicPrices = (regionKey: string): PlanPrices => {
+    const { baseRecoveryPass, baseProLifetime, baseSuperLifetime, inrConversionRate, tier1Scale, tier2Scale, tier3Scale } = globalSettings;
+    const baseFamily = 79.00;
+
+    if (regionKey === 'in') {
+      const scale = tier1Scale;
+      return {
+        recovery_pass: `₹${Math.round(baseRecoveryPass * scale * inrConversionRate)}`,
+        pro: `₹${Math.round(baseProLifetime * scale * inrConversionRate)}`,
+        super: `₹${Math.round(baseSuperLifetime * scale * inrConversionRate)}`,
+        family: `₹${Math.round(baseFamily * scale * inrConversionRate)}`
+      };
+    }
+
+    let scale = tier3Scale;
+    if (regionKey === 't1') scale = tier1Scale;
+    else if (regionKey === 't2') scale = tier2Scale;
+
+    return {
+      recovery_pass: `$${(baseRecoveryPass * scale).toFixed(2)}`,
+      pro: `$${Math.round(baseProLifetime * scale)}`,
+      super: `$${Math.round(baseSuperLifetime * scale)}`,
+      family: `$${Math.round(baseFamily * scale)}`
+    };
+  };
+
+  const getPlanPriceValue = (planKey: string, regionKey: string): number => {
+    const { baseRecoveryPass, baseProLifetime, baseSuperLifetime, inrConversionRate, tier1Scale, tier2Scale, tier3Scale } = globalSettings;
+    const baseFamily = 79.00;
+
+    let base = 0;
+    if (planKey === 'recovery_pass') base = baseRecoveryPass;
+    else if (planKey === 'pro') base = baseProLifetime;
+    else if (planKey === 'super') base = baseSuperLifetime;
+    else if (planKey === 'family') base = baseFamily;
+
+    if (regionKey === 'in') {
+      return Math.round(base * tier1Scale * inrConversionRate);
+    }
+
+    let scale = tier3Scale;
+    if (regionKey === 't1') scale = tier1Scale;
+    else if (regionKey === 't2') scale = tier2Scale;
+
+    const calculated = base * scale;
+    return planKey === 'recovery_pass' ? Number(calculated.toFixed(2)) : Math.round(calculated);
+  };
+
+  const prices = getDynamicPrices(region);
+
+  useEffect(() => {
+    // In-place update the static PLAN_PRICES dictionary properties!
+    const regions = ['in', 't1', 't2', 't3'];
+    regions.forEach(r => {
+      const computed = getDynamicPrices(r);
+      if (PLAN_PRICES[r]) {
+        PLAN_PRICES[r].recovery_pass = computed.recovery_pass;
+        PLAN_PRICES[r].pro = computed.pro;
+        PLAN_PRICES[r].super = computed.super;
+        PLAN_PRICES[r].family = computed.family;
+      } else {
+        PLAN_PRICES[r] = computed;
+      }
+    });
+    PLAN_PRICES.us = PLAN_PRICES.t3;
+    PLAN_PRICES.eu = PLAN_PRICES.t3;
+    PLAN_PRICES.jp = PLAN_PRICES.t3;
+    PLAN_PRICES.cn = PLAN_PRICES.t1;
+  }, [globalSettings]);
 
   useEffect(() => {
     const detectRegion = async () => {
+      if (localStorage.getItem("takeoutfix_selected_country")) return;
       let countryCode = "";
 
       // 1. Try Cloudflare cdn-cgi trace first (extremely fast, same-origin, bypasses adblockers)
@@ -232,12 +417,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
       }
 
-      // 3. Map country code to region
+      // 3. Map country code
       if (countryCode) {
-        const mapped = COUNTRY_TO_REGION[countryCode.toUpperCase()];
-        if (mapped) {
-          setRegionState(mapped);
-        }
+        setSelectedCountryState(countryCode.toUpperCase());
       }
     };
     detectRegion();
@@ -644,7 +826,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       logout,
       refreshUserData: () => user ? refreshUserData(user) : Promise.resolve(),
       region,
-      setRegion
+      setRegion,
+      selectedCountry,
+      setSelectedCountry,
+      prices,
+      getPlanPriceValue
     }}>
       {children}
       
@@ -704,8 +890,12 @@ export const useAuth = () => {
       login: async () => {},
       logout: async () => {},
       refreshUserData: async () => {},
-      region: 'us',
+      region: 't3',
       setRegion: () => {},
+      selectedCountry: 'US',
+      setSelectedCountry: () => {},
+      prices: { recovery_pass: "$4.99", pro: "$29", super: "$49", family: "$79" },
+      getPlanPriceValue: () => 0,
     };
   }
   return context;

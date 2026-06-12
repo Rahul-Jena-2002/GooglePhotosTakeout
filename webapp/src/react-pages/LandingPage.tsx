@@ -5,7 +5,7 @@ import { Lock, FileJson, ArrowRight, ShieldCheck, Cpu, HardDrive, CheckCircle2, 
 import { useState, useEffect } from "react"
 import { db } from "../firebase"
 import { doc, onSnapshot } from "firebase/firestore"
-import { useAuth, PLAN_PRICES } from "../contexts/AuthContext"
+import { useAuth } from "../contexts/AuthContext"
 import AdUnit from "../components/AdUnit"
 
 function FaqItem({ question, answer }: { question: string, answer: string }) {
@@ -22,8 +22,7 @@ function FaqItem({ question, answer }: { question: string, answer: string }) {
 }
 
 export default function LandingPage() {
-  const { region } = useAuth()
-  const prices = PLAN_PRICES[region] || PLAN_PRICES.us
+  const { region, prices } = useAuth()
 
   const [stats, setStats] = useState({
     filesRestored: 0,
@@ -376,7 +375,7 @@ export default function LandingPage() {
               <div className="space-y-6">
                 <div>
                   <div className="text-xl font-bold mb-2 text-white">Free</div>
-                  <div className="text-3xl font-black text-white">₹0</div>
+                  <div className="text-3xl font-black text-white">{region === 'in' ? "₹0" : "$0"}</div>
                   <p className="text-[11px] text-white/50 mt-1 leading-relaxed">Try MetaForge on a small Google Takeout export before upgrading.</p>
                 </div>
                 <div>

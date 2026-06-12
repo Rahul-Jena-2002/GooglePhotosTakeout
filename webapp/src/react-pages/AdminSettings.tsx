@@ -13,6 +13,10 @@ export default function AdminSettings() {
   const [reviewAutoApprove, setReviewAutoApprove] = useState(true)
   const [ticketSlaHours, setTicketSlaHours] = useState("24")
   const [freeQuotaMB, setFreeQuotaMB] = useState("1024")
+  const [baseRecoveryPass, setBaseRecoveryPass] = useState("4.99")
+  const [baseProLifetime, setBaseProLifetime] = useState("29.00")
+  const [baseSuperLifetime, setBaseSuperLifetime] = useState("49.00")
+  const [inrConversionRate, setInrConversionRate] = useState("67")
   const [saving, setSaving] = useState(false)
 
   const role = adminData?.role || "ADMIN"
@@ -26,6 +30,10 @@ export default function AdminSettings() {
         setReviewAutoApprove(data.reviewAutoApprove ?? true)
         setTicketSlaHours(String(data.ticketSlaHours ?? "24"))
         setFreeQuotaMB(String(data.freeQuotaMB ?? "1024"))
+        setBaseRecoveryPass(String(data.baseRecoveryPass ?? "4.99"))
+        setBaseProLifetime(String(data.baseProLifetime ?? "29.00"))
+        setBaseSuperLifetime(String(data.baseSuperLifetime ?? "49.00"))
+        setInrConversionRate(String(data.inrConversionRate ?? "67"))
       }
     })
     return unsub
@@ -38,7 +46,11 @@ export default function AdminSettings() {
         maintenance,
         reviewAutoApprove,
         ticketSlaHours: Number(ticketSlaHours),
-        freeQuotaMB: Number(freeQuotaMB)
+        freeQuotaMB: Number(freeQuotaMB),
+        baseRecoveryPass: Number(baseRecoveryPass),
+        baseProLifetime: Number(baseProLifetime),
+        baseSuperLifetime: Number(baseSuperLifetime),
+        inrConversionRate: Number(inrConversionRate)
       }, { merge: true })
 
       // Log action to audit activity logs
@@ -47,7 +59,7 @@ export default function AdminSettings() {
         actorName: adminData?.displayName || "Admin",
         actorRole: role,
         action: "SETTINGS_CHANGE",
-        description: `Updated platform settings: Maintenance=${maintenance}, AutoApprove=${reviewAutoApprove}, SLA=${ticketSlaHours}h, FreeQuota=${freeQuotaMB}MB`,
+        description: `Updated platform settings: Maintenance=${maintenance}, AutoApprove=${reviewAutoApprove}, SLA=${ticketSlaHours}h, FreeQuota=${freeQuotaMB}MB, RecoveryPass=$${baseRecoveryPass}, ProLifetime=$${baseProLifetime}, SuperLifetime=$${baseSuperLifetime}, INRRate=₹${inrConversionRate}`,
         timestamp: Date.now()
       })
 
@@ -156,26 +168,57 @@ export default function AdminSettings() {
             <CardDescription className="text-zinc-500 text-xs">Adjust basic pricing indices. Local tiers will scale accordingly.</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-3 gap-4 mb-6">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
               <div>
-                <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-500 block mb-1">Recovery Pass Price</label>
+                <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 block mb-1">Recovery Pass Price</label>
                 <div className="relative flex items-center">
-                  <span className="text-zinc-600 absolute left-3 text-xs">$</span>
-                  <Input type="text" defaultValue="4.99" disabled className="bg-zinc-950 border-zinc-850 text-zinc-500 text-xs pl-6 h-9 cursor-not-allowed" />
+                  <span className="text-zinc-500 absolute left-3 text-xs">$</span>
+                  <Input 
+                    type="number" 
+                    step="0.01"
+                    value={baseRecoveryPass} 
+                    onChange={(e) => setBaseRecoveryPass(e.target.value)}
+                    className="bg-zinc-950 border-zinc-800 text-zinc-100 text-xs pl-6 h-9" 
+                  />
                 </div>
               </div>
               <div>
-                <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-500 block mb-1">Pro Lifetime Price</label>
+                <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 block mb-1">Pro Lifetime Price</label>
                 <div className="relative flex items-center">
-                  <span className="text-zinc-600 absolute left-3 text-xs">$</span>
-                  <Input type="text" defaultValue="29.00" disabled className="bg-zinc-950 border-zinc-850 text-zinc-500 text-xs pl-6 h-9 cursor-not-allowed" />
+                  <span className="text-zinc-500 absolute left-3 text-xs">$</span>
+                  <Input 
+                    type="number"
+                    step="0.01"
+                    value={baseProLifetime} 
+                    onChange={(e) => setBaseProLifetime(e.target.value)}
+                    className="bg-zinc-950 border-zinc-800 text-zinc-100 text-xs pl-6 h-9" 
+                  />
                 </div>
               </div>
               <div>
-                <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-500 block mb-1">Super Lifetime Price</label>
+                <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 block mb-1">Super Lifetime Price</label>
                 <div className="relative flex items-center">
-                  <span className="text-zinc-600 absolute left-3 text-xs">$</span>
-                  <Input type="text" defaultValue="49.00" disabled className="bg-zinc-950 border-zinc-850 text-zinc-500 text-xs pl-6 h-9 cursor-not-allowed" />
+                  <span className="text-zinc-500 absolute left-3 text-xs">$</span>
+                  <Input 
+                    type="number"
+                    step="0.01"
+                    value={baseSuperLifetime} 
+                    onChange={(e) => setBaseSuperLifetime(e.target.value)}
+                    className="bg-zinc-950 border-zinc-800 text-zinc-100 text-xs pl-6 h-9" 
+                  />
+                </div>
+              </div>
+              <div>
+                <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 block mb-1">INR Conv. Rate (₹/$)</label>
+                <div className="relative flex items-center">
+                  <span className="text-zinc-500 absolute left-3 text-xs">₹</span>
+                  <Input 
+                    type="number"
+                    step="0.1"
+                    value={inrConversionRate} 
+                    onChange={(e) => setInrConversionRate(e.target.value)}
+                    className="bg-zinc-950 border-zinc-800 text-zinc-100 text-xs pl-6 h-9" 
+                  />
                 </div>
               </div>
             </div>

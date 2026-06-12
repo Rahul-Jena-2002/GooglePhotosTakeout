@@ -353,22 +353,50 @@ function ToolWorkspaceContent() {
   }, [isProcessing, isPaused, activeWorkersCount, maxWorkers])
 
   const handleSelectTakeout = async () => {
+    if (typeof window === 'undefined' || !window.showDirectoryPicker) {
+      alert("Browser Support Required:\n\nYour browser does not support the File System Access API required to select folders directly. Please use a desktop version of Google Chrome, Brave, or Microsoft Edge.")
+      return
+    }
     try {
-      const dirHandle = await window.showDirectoryPicker({ mode: 'read' })
+      // @ts-ignore
+      const dirHandle = await window.showDirectoryPicker()
       setTakeoutFolder(dirHandle)
       window.dispatchEvent(new CustomEvent('takeoutfix-action-triggered'))
-    } catch (err) {
-      console.log('User cancelled picker')
+    } catch (err: any) {
+      if (err.name === 'AbortError') {
+        console.log('User cancelled picker')
+        return
+      }
+      console.error('Error selecting takeout folder:', err)
+      alert(`Could not open folder picker: ${err.message || err}\n\nNote: Browsers block folder access if the site is not served securely (HTTPS or localhost), or if you select a system-sensitive directory (like Downloads, Documents, or root C:/). Please try another folder or make sure you are accessing the site via localhost/HTTPS.`)
     }
   }
 
   const handleSelectOutput = async () => {
+    if (typeof window === 'undefined' || !window.showDirectoryPicker) {
+      alert("Browser Support Required:\n\nYour browser does not support the File System Access API required to select folders directly. Please use a desktop version of Google Chrome, Brave, or Microsoft Edge.")
+      return
+    }
     try {
-      const dirHandle = await window.showDirectoryPicker({ mode: 'readwrite' })
+      // @ts-ignore
+      const dirHandle = await window.showDirectoryPicker()
+      
+      // Request write permission explicitly
+      const status = await dirHandle.requestPermission({ mode: 'readwrite' })
+      if (status !== 'granted') {
+        alert('Write permission is required for the output directory.')
+        return
+      }
+
       setOutputFolder(dirHandle)
       window.dispatchEvent(new CustomEvent('takeoutfix-action-triggered'))
-    } catch (err) {
-      console.log('User cancelled picker')
+    } catch (err: any) {
+      if (err.name === 'AbortError') {
+        console.log('User cancelled picker')
+        return
+      }
+      console.error('Error selecting output folder:', err)
+      alert(`Could not open folder picker: ${err.message || err}\n\nNote: Browsers block folder access if the site is not served securely (HTTPS or localhost), or if you select a system-sensitive directory (like Downloads, Documents, or root C:/). Please try another folder or make sure you are accessing the site via localhost/HTTPS.`)
     }
   }
 
@@ -1030,11 +1058,21 @@ function ToolWorkspaceContent() {
 
   // 3. Duplicate Space Analyzer logic
   const handleSelectDupFolder = async () => {
+    if (typeof window === 'undefined' || !window.showDirectoryPicker) {
+      alert("Browser Support Required:\n\nYour browser does not support the File System Access API required to select folders directly. Please use a desktop version of Google Chrome, Brave, or Microsoft Edge.")
+      return
+    }
     try {
-      const handle = await window.showDirectoryPicker({ mode: 'read' })
+      // @ts-ignore
+      const handle = await window.showDirectoryPicker()
       setDupFolder(handle)
-    } catch {
-      console.log('User cancelled picker')
+    } catch (err: any) {
+      if (err.name === 'AbortError') {
+        console.log('User cancelled picker')
+        return
+      }
+      console.error('Error selecting duplicate folder:', err)
+      alert(`Could not open folder picker: ${err.message || err}\n\nNote: Browsers block folder access if the site is not served securely (HTTPS or localhost), or if you select a system-sensitive directory (like Downloads, Documents, or root C:/). Please try another folder or make sure you are accessing the site via localhost/HTTPS.`)
     }
   }
 
@@ -1377,6 +1415,19 @@ function ToolWorkspaceContent() {
           <div className="mb-6">
             <AdUnit type="horizontal" />
           </div>
+
+          {/* Browser compatibility check alert */}
+          {typeof window !== 'undefined' && !window.showDirectoryPicker && (
+            <div className="p-4 bg-amber-500/10 border border-amber-500/20 text-amber-400 rounded-xl text-xs mb-6 flex items-start gap-3">
+              <AlertCircle className="w-5 h-5 flex-shrink-0 mt-0.5" />
+              <div>
+                <div className="font-bold">Browser Support Warning</div>
+                <div className="text-[11px] text-amber-500/70 mt-0.5 leading-relaxed">
+                  Your browser does not support native local directory access APIs. To restore Google Takeout folders directly on your device, please use a modern Chromium-based desktop browser (e.g., <strong>Google Chrome, Microsoft Edge, or Brave</strong>). Safari, Firefox, and mobile browsers are currently not supported for direct local directory operations.
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Tool specific Left Panel render */}
           {activeToolTab === 'restore' && (

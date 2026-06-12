@@ -16,34 +16,16 @@ interface PlanDetails {
   features: string[];
 }
 
-const getPlanDetails = (planKey: string, region: string): PlanDetails | null => {
-  const currencyMap: Record<string, { currency: string; symbol: string }> = {
-    in: { currency: "INR", symbol: "₹" },
-    us: { currency: "USD", symbol: "$" },
-    eu: { currency: "EUR", symbol: "€" },
-    jp: { currency: "JPY", symbol: "¥" },
-    cn: { currency: "CNY", symbol: "¥" },
-    t1: { currency: "USD", symbol: "$" },
-    t2: { currency: "USD", symbol: "$" },
-    t3: { currency: "USD", symbol: "$" },
-    t4: { currency: "USD", symbol: "$" },
-  }
+const getPlanDetails = (
+  planKey: string, 
+  region: string, 
+  getPlanPriceValue: (p: string, r: string) => number
+): PlanDetails | null => {
+  const regionConf = region === 'in'
+    ? { currency: "INR", symbol: "₹" }
+    : { currency: "USD", symbol: "$" }
 
-  const rates: Record<string, Record<string, number>> = {
-    in: { recovery_pass: 99, pro: 799, super: 1499, family: 3999 },
-    us: { recovery_pass: 4.99, pro: 29, super: 49, family: 79 },
-    eu: { recovery_pass: 4.99, pro: 29, super: 49, family: 79 },
-    jp: { recovery_pass: 899, pro: 5900, super: 9900, family: 14900 },
-    cn: { recovery_pass: 29, pro: 199, super: 399, family: 999 },
-    t1: { recovery_pass: 1.49, pro: 9.99, super: 19.99, family: 49.99 },
-    t2: { recovery_pass: 3.99, pro: 19, super: 39, family: 49 },
-    t3: { recovery_pass: 4.99, pro: 29, super: 49, family: 79 },
-    t4: { recovery_pass: 5.99, pro: 39, super: 69, family: 99 },
-  }
-
-  const regionConf = currencyMap[region] || currencyMap.us
-  const regionPrices = rates[region] || rates.us
-  const priceVal = regionPrices[planKey]
+  const priceVal = getPlanPriceValue(planKey, region)
   
   const details: Record<string, { name: string; description: string; features: string[] }> = {
     recovery_pass: {
@@ -102,7 +84,7 @@ import { AuthProvider } from "../contexts/AuthContext"
 import { ToastContainer } from "../components/ui/toast"
 
 function CheckoutPageContent() {
-  // No react-router-dom hooks
+  const { user, userData, refreshUserData, region, getPlanPriceValue } = useAuth()
   
   if (userData?.suspended) {
     return (
@@ -123,7 +105,6 @@ function CheckoutPageContent() {
     )
   }
   
-  const { user, userData, refreshUserData, region } = useAuth()
   const planKey = (() => {
     if (typeof window !== 'undefined') {
       return new URLSearchParams(window.location.search).get("plan") || "";
@@ -136,7 +117,17 @@ function CheckoutPageContent() {
     }
     return region || "us";
   })()
-  const plan = getPlanDetails(planKey, regionParam)
+
+  // Normalize region parameter to one of: in, t1, t2, t3
+  const normalizedRegion = (() => {
+    const r = regionParam.toLowerCase();
+    if (r === 'in') return 'in';
+    if (r === 't1') return 't1';
+    if (r === 't2') return 't2';
+    return 't3'; // Fallback for us/eu/jp etc.
+  })()
+
+  const plan = getPlanDetails(planKey, normalizedRegion, getPlanPriceValue)
 
   const [paymentTab, setPaymentTab] = useState<"card" | "upi">("card")
   const [isProcessing, setIsProcessing] = useState(false)

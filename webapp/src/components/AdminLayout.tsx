@@ -54,7 +54,6 @@ export default function AdminLayout() {
       label: "Operations",
       items: [
         { label: "Dashboard", path: "/admin", icon: LayoutDashboard, show: true },
-        { label: "Recovery Center", path: "/tool", icon: ExternalLink, show: true },
         { label: "Users", path: "/admin/users", icon: Users, show: isAdminOrAbove },
         { label: "Tickets", path: "/admin/support", icon: LifeBuoy, show: isSupportOrAbove },
         { label: "Revenue", path: "/admin/revenue", icon: CreditCard, show: isAdminOrAbove },
@@ -130,13 +129,18 @@ export default function AdminLayout() {
         </div>
 
         <div className="border-t border-zinc-800 p-3 space-y-1">
-          <Link
-            to="/"
+          <a
+            href="/"
+            rel="external"
+            onClick={(e) => {
+              e.preventDefault()
+              window.location.href = "/"
+            }}
             className="flex items-center gap-2.5 px-3 py-2 rounded-md text-sm text-zinc-400 hover:bg-zinc-800 hover:text-zinc-200 transition-all group"
           >
             <ExternalLink className="w-4 h-4 text-zinc-500 group-hover:text-indigo-400 transition-colors" />
             Open Website
-          </Link>
+          </a>
         </div>
       </aside>
 
