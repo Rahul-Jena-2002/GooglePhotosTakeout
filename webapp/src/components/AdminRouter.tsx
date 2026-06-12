@@ -10,6 +10,7 @@ import AdminRevenue from "../react-pages/AdminRevenue"
 import AdminSettings from "../react-pages/AdminSettings"
 import AdminStatistics from "../react-pages/AdminStatistics"
 import AdminAudit from "../react-pages/AdminAudit"
+import { ToolWorkspaceContent } from "../react-pages/ToolWorkspace"
 import { ToastContainer } from "./ui/toast"
 
 import { AuthProvider } from "../contexts/AuthContext"
@@ -20,6 +21,7 @@ function AdminRouterContent() {
       <Routes>
         <Route path="/admin" element={<AdminLayout />}>
           <Route index element={<AdminDashboard />} />
+          <Route path="tool" element={<ToolWorkspaceContent />} />
           <Route path="users" element={<AdminUsers />} />
           <Route path="users/dashboard" element={<AdminUserDashboard />} />
           <Route path="support" element={<AdminSupport />} />

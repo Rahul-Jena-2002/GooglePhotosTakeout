@@ -37,7 +37,7 @@ const PLAN_LABELS: Record<string, string> = {
 import { AuthProvider } from "../contexts/AuthContext"
 import { ToastContainer } from "../components/ui/toast"
 
-function ToolWorkspaceContent() {
+export function ToolWorkspaceContent() {
   const { user, userData, refreshUserData, login } = useAuth()
 
   const plan = userData?.plan || 'free'

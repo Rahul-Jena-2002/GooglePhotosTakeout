@@ -54,6 +54,7 @@ export default function AdminLayout() {
       label: "Operations",
       items: [
         { label: "Dashboard", path: "/admin", icon: LayoutDashboard, show: true },
+        { label: "Tool Center", path: "/admin/tool", icon: ActivitySquare, show: true },
         { label: "Users", path: "/admin/users", icon: Users, show: isAdminOrAbove },
         { label: "Tickets", path: "/admin/support", icon: LifeBuoy, show: isSupportOrAbove },
         { label: "Revenue", path: "/admin/revenue", icon: CreditCard, show: isAdminOrAbove },
