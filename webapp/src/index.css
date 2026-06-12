@@ -118,11 +118,11 @@ html.light .btn-solid-dark:hover {
 }
 
 html.light .btn-solid-primary {
-  background-color: #0071e3 !important;
+  background-color: #1d1d1f !important;
   color: #ffffff !important;
 }
 html.light .btn-solid-primary:hover {
-  background-color: #0077ed !important;
+  background-color: #000000 !important;
 }
 
 .glass-capsule, .glass-card {
@@ -160,30 +160,34 @@ html.light .btn-solid-primary:hover {
   pointer-events: none;
 }
 
-/* --- Light Mode Color Overrides --- */
+/* --- Light Mode Color Overrides (Premium Apple-style Monochrome) --- */
 html.light, html.light body {
-  background-color: #FAFAFA !important;
-  color: #111827 !important;
-  --background: 0 0% 98%;
-  --foreground: 220 14% 9.6%;
+  background-color: #FFFFFF !important;
+  color: #1d1d1f !important;
+  --background: 0 0% 100%;
+  --foreground: 220 14% 12%;
   --card: 0 0% 100%;
-  --card-foreground: 220 14% 9.6%;
-  --border: 220 13% 91%;
-  --input: 220 13% 91%;
+  --card-foreground: 220 14% 12%;
+  --border: 220 13% 90%;
+  --input: 220 13% 90%;
 }
 
 html.light body::before {
+  /* Subtle light vignette instead of blue/indigo glow */
   background: 
-    radial-gradient(ellipse at 50% 35%, rgba(37, 99, 235, 0.04) 0%, rgba(14, 165, 233, 0.01) 45%, transparent 70%),
-    radial-gradient(circle at 15% 50%, rgba(37, 99, 235, 0.02), transparent 25%),
-    radial-gradient(circle at 85% 30%, rgba(14, 165, 233, 0.02), transparent 25%) !important;
+    radial-gradient(ellipse at 50% 35%, rgba(0, 0, 0, 0.02) 0%, rgba(0, 0, 0, 0.005) 45%, transparent 70%),
+    radial-gradient(circle at 15% 50%, rgba(0, 0, 0, 0.01), transparent 25%),
+    radial-gradient(circle at 85% 30%, rgba(0, 0, 0, 0.01), transparent 25%) !important;
 }
 
 html.light .bg-black,
 html.light .bg-zinc-950,
-html.light .bg-\[\#0A0A0A\],
-html.light .bg-zinc-900 {
+html.light .bg-\[\#0A0A0A\] {
   background-color: #FFFFFF !important;
+}
+
+html.light .bg-zinc-900 {
+  background-color: #F5F5F7 !important; /* Apple secondary background */
 }
 
 html.light .bg-black\/40,
@@ -192,15 +196,15 @@ html.light .bg-white\/\[0\.04\],
 html.light .bg-white\/\[0\.08\],
 html.light .bg-zinc-900\/60,
 html.light .bg-zinc-950\/50 {
-  background-color: #F3F4F6 !important;
+  background-color: #F5F5F7 !important;
 }
 
 html.light .bg-zinc-950\/95 {
-  background-color: rgba(255, 255, 255, 0.95) !important;
+  background-color: rgba(255, 255, 255, 0.96) !important;
 }
 
 html.light .bg-zinc-950 {
-  background-color: #F3F4F6 !important;
+  background-color: #F5F5F7 !important;
 }
 
 html.light .text-white,
@@ -208,7 +212,7 @@ html.light .text-white\/80,
 html.light .text-zinc-100,
 html.light .text-zinc-200,
 html.light .text-zinc-300 {
-  color: #111827 !important;
+  color: #1d1d1f !important;
 }
 
 html.light .text-white\/70,
@@ -216,12 +220,12 @@ html.light .text-white\/60,
 html.light .text-white\/50,
 html.light .text-zinc-400,
 html.light .text-zinc-500 {
-  color: #4b5563 !important;
+  color: #6e6e73 !important; /* Apple secondary text */
 }
 
 html.light .text-white\/30,
 html.light .text-white\/40 {
-  color: #6b7280 !important;
+  color: #86868b !important; /* Apple tertiary text */
 }
 
 html.light .border-white\/10,
@@ -229,24 +233,24 @@ html.light .border-white\/5,
 html.light .border-zinc-800,
 html.light .border-zinc-850,
 html.light .border-zinc-900 {
-  border-color: #E5E7EB !important;
+  border-color: #D2D2D7 !important; /* Apple divider */
 }
 
 html.light input,
 html.light textarea,
 html.light select {
   background-color: #FFFFFF !important;
-  color: #111827 !important;
-  border-color: #E5E7EB !important;
+  color: #1d1d1f !important;
+  border-color: #D2D2D7 !important;
 }
 
 html.light button.bg-white {
-  background-color: #111827 !important;
+  background-color: #1d1d1f !important;
   color: #FFFFFF !important;
 }
 
 html.light button.bg-white:hover {
-  background-color: #1F2937 !important;
+  background-color: #000000 !important;
 }
 
 /* Clean solid cards for light mode, avoiding neon/glass overrides */
@@ -255,8 +259,8 @@ html.light .glass-card,
 html.light .compare-card {
   background-color: #FFFFFF !important;
   background-image: none !important;
-  border: 1px solid #E5E7EB !important;
-  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06) !important;
+  border: 1px solid #D2D2D7 !important;
+  box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.05) !important;
   backdrop-filter: none !important;
   -webkit-backdrop-filter: none !important;
 }
@@ -269,47 +273,53 @@ html.light .compare-card::before {
 
 html.light nav {
   background-color: rgba(255, 255, 255, 0.9) !important;
-  border-color: #E5E7EB !important;
+  border-color: #D2D2D7 !important;
   box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05), inset 0 1px 0 rgba(255, 255, 255, 1) !important;
 }
 
 html.light nav .text-white\/70 {
-  color: #4B5563 !important;
+  color: #6e6e73 !important;
 }
 
 html.light nav .text-white\/70:hover {
-  color: #111827 !important;
+  color: #1d1d1f !important;
 }
 
 html.light nav a.text-indigo-400,
-html.light .text-indigo-400 {
-  color: #2563EB !important;
+html.light .text-indigo-400,
+html.light .text-indigo-300,
+html.light .text-indigo-500,
+html.light .text-indigo-600,
+html.light .text-purple-400,
+html.light .text-purple-500,
+html.light .text-purple-600 {
+  color: #1d1d1f !important;
 }
 
 html.light footer {
-  background-color: #F9FAFB !important;
-  border-color: #E5E7EB !important;
+  background-color: #F5F5F7 !important;
+  border-color: #D2D2D7 !important;
 }
 
 html.light footer .text-white\/50,
 html.light footer .text-white\/40 {
-  color: #6B7280 !important;
+  color: #6e6e73 !important;
 }
 
 html.light footer a:hover {
-  color: #111827 !important;
+  color: #1d1d1f !important;
 }
 
 /* Premium SaaS Button Styling */
 .primary-saas {
-  background-color: #2563EB !important;
+  background-color: #0071e3 !important;
   color: #FFFFFF !important;
   border: none !important;
   transition: all 0.15s ease-in-out !important;
   box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05) !important;
 }
 .primary-saas:hover {
-  background-color: #1D4ED8 !important;
+  background-color: #0077ed !important;
 }
 
 .secondary-saas {
@@ -324,37 +334,89 @@ html.light footer a:hover {
 }
 
 html.light .primary-saas {
-  background-color: #2563EB !important;
+  background-color: #1d1d1f !important;
   color: #FFFFFF !important;
 }
 html.light .primary-saas:hover {
-  background-color: #1D4ED8 !important;
+  background-color: #000000 !important;
 }
 
 html.light .secondary-saas {
   background-color: #FFFFFF !important;
-  color: #111827 !important;
-  border: 1px solid #D1D5DB !important;
+  color: #1d1d1f !important;
+  border: 1px solid #D2D2D7 !important;
 }
 html.light .secondary-saas:hover {
-  background-color: #F9FAFB !important;
-  border-color: #9CA3AF !important;
+  background-color: #F5F5F7 !important;
+  border-color: #86868b !important;
 }
 
 html.light .bg-zinc-900\/20 {
-  background-color: #f4f4f5 !important;
+  background-color: #F5F5F7 !important;
 }
 
 html.light .text-indigo-200\/60 {
-  color: #4f46e5 !important;
+  color: #1d1d1f !important;
 }
 
 html.light .bg-indigo-500\/5 {
-  background-color: rgba(79, 70, 229, 0.06) !important;
+  background-color: rgba(0, 0, 0, 0.03) !important;
 }
 
 html.light .bg-indigo-500\/10 {
-  background-color: rgba(79, 70, 229, 0.1) !important;
+  background-color: rgba(0, 0, 0, 0.05) !important;
+}
+
+/* --- Apple-style Transition & Physics (Highly Damped) --- */
+button,
+a.btn,
+.btn,
+.primary-saas,
+.secondary-saas,
+.glass-card,
+.compare-card,
+.faq-item button,
+.nav-link,
+.mobile-nav-link,
+#theme-toggle-btn,
+#mobile-theme-toggle-btn {
+  transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1), 
+              box-shadow 0.4s cubic-bezier(0.16, 1, 0.3, 1), 
+              background-color 0.3s cubic-bezier(0.16, 1, 0.3, 1), 
+              border-color 0.3s cubic-bezier(0.16, 1, 0.3, 1), 
+              color 0.3s cubic-bezier(0.16, 1, 0.3, 1) !important;
+}
+
+/* Subtle Apple-style Lift and Press animations */
+button:hover,
+a.btn:hover,
+.btn:hover,
+.primary-saas:hover,
+.secondary-saas:hover,
+#theme-toggle-btn:hover,
+#mobile-theme-toggle-btn:hover {
+  transform: scale(1.02) !important;
+}
+
+button:active,
+a.btn:active,
+.btn:active,
+.primary-saas:active,
+.secondary-saas:active,
+#theme-toggle-btn:active,
+#mobile-theme-toggle-btn:active {
+  transform: scale(0.97) !important;
+}
+
+.glass-card:hover,
+.compare-card:hover {
+  transform: translateY(-2px) scale(1.005) !important;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.05) !important;
+}
+
+html.dark .glass-card:hover,
+html.dark .compare-card:hover {
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.25) !important;
 }
 
 /* --- Apple-style Subtle Page Transitions --- */

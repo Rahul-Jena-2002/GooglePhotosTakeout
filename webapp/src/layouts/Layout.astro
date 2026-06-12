@@ -131,7 +131,7 @@ const canonicalUrl = `https://takeoutfix.pages.dev${Astro.url.pathname.replace(/
             <!-- Theme Toggle Button (Hidden) -->
             <button 
               id="theme-toggle-btn"
-              class="hidden p-2 rounded-full bg-zinc-900 border border-zinc-800 hover:bg-zinc-800 hover:scale-[1.02] focus:outline-none transition-all items-center justify-center text-white/80 hover:text-white"
+              class="flex p-2 rounded-full bg-zinc-900 border border-zinc-800 hover:bg-zinc-800 hover:scale-[1.02] focus:outline-none transition-all items-center justify-center text-white/80 hover:text-white"
               title="Toggle Theme"
             >
               <!-- Sun Icon -->
@@ -243,7 +243,7 @@ const canonicalUrl = `https://takeoutfix.pages.dev${Astro.url.pathname.replace(/
           </div>
           
           <!-- Mobile Theme Toggle (Hidden) -->
-          <div class="hidden items-center justify-between py-2 px-2 border-t border-white/5 mt-2 pt-3">
+          <div class="flex items-center justify-between py-2 px-2 border-t border-white/5 mt-2 pt-3">
             <span class="text-xs font-bold text-white/30 uppercase tracking-wider">Appearance</span>
             <button 
               id="mobile-theme-toggle-btn"
@@ -427,15 +427,65 @@ const canonicalUrl = `https://takeoutfix.pages.dev${Astro.url.pathname.replace(/
         checkAdBlock();
       });
 
-      // 1. Theme Toggle System (Forced Dark Mode)
+      // 1. Theme Toggle System
       const initTheme = () => {
         const root = document.documentElement;
-        root.classList.add("dark");
-        root.classList.remove("light");
-        localStorage.setItem("takeoutfix_theme", "dark");
+        const savedTheme = localStorage.getItem("takeoutfix_theme");
+        const theme = (savedTheme === 'dark' || savedTheme === 'light') ? savedTheme : 'light';
+        
+        if (theme === 'light') {
+          root.classList.add("light");
+          root.classList.remove("dark");
+        } else {
+          root.classList.add("dark");
+          root.classList.remove("light");
+        }
+        localStorage.setItem("takeoutfix_theme", theme);
+        
+        // Update toggle icons
+        const sunIcon = document.getElementById("theme-sun-icon");
+        const moonIcon = document.getElementById("theme-moon-icon");
+        const mobileText = document.getElementById("mobile-theme-text");
+        const mobileSun = document.querySelector(".theme-sun-svg");
+        const mobileMoon = document.querySelector(".theme-moon-svg");
+
+        if (theme === 'light') {
+          sunIcon?.classList.remove("hidden");
+          moonIcon?.classList.add("hidden");
+          if (mobileText) mobileText.textContent = "Light Mode";
+          mobileSun?.classList.remove("hidden");
+          mobileMoon?.classList.add("hidden");
+        } else {
+          sunIcon?.classList.add("hidden");
+          moonIcon?.classList.remove("hidden");
+          if (mobileText) mobileText.textContent = "Dark Mode";
+          mobileSun?.classList.add("hidden");
+          mobileMoon?.classList.remove("hidden");
+        }
       };
 
       initTheme();
+
+      // Hook up theme toggle listeners
+      const setupThemeToggles = () => {
+        const toggleBtn = document.getElementById("theme-toggle-btn");
+        const mobileToggleBtn = document.getElementById("mobile-theme-toggle-btn");
+
+        const handleToggle = () => {
+          const isLight = document.documentElement.classList.contains("light");
+          const nextTheme = isLight ? "dark" : "light";
+          localStorage.setItem("takeoutfix_theme", nextTheme);
+          initTheme();
+          
+          // Dispatch custom event to notify React components
+          window.dispatchEvent(new CustomEvent("takeoutfix-theme-changed", { detail: nextTheme }));
+        };
+
+        toggleBtn?.addEventListener("click", handleToggle);
+        mobileToggleBtn?.addEventListener("click", handleToggle);
+      };
+
+      setupThemeToggles();
 
       // 2. Mobile Menu System
       const initMobileMenu = () => {
