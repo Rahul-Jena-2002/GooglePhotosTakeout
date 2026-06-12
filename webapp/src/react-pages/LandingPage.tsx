@@ -100,15 +100,13 @@ export default function LandingPage() {
             <p className="text-lg sm:text-xl text-white/60 font-normal leading-relaxed max-w-2xl">
               TakeoutFix rebuilds Google Photos metadata, timestamps, and locations locally in your browser before you import your archive.
             </p>
-            <div className="flex flex-col sm:flex-row gap-4 pt-2">
-              <Link to="/tool" className="w-full sm:w-auto">
-                <button className="primary-saas px-8 h-14 font-bold rounded-xl text-white bg-indigo-600 hover:bg-indigo-500 transition-all shadow-md w-full sm:w-auto">
-                  Restore My Data
-                </button>
+            <div className="flex flex-col sm:flex-row gap-4 pt-2 items-center">
+              <Link to="/how-it-works" className="text-zinc-400 hover:text-white transition-colors flex items-center justify-center h-14 font-bold px-6 w-full sm:w-auto">
+                How It Works
               </Link>
-              <Link to="/how-it-works" className="w-full sm:w-auto">
-                <button className="secondary-saas px-8 h-14 font-bold rounded-xl text-white bg-transparent border border-white/20 hover:bg-white/5 transition-all w-full sm:w-auto">
-                  How It Works
+              <Link to="/tool" className="w-full sm:w-auto">
+                <button className="bg-white text-black border border-zinc-200 hover:bg-white/90 rounded-xl px-8 h-14 font-bold transition-all w-full sm:w-auto cursor-pointer flex items-center justify-center">
+                  Restore My Data
                 </button>
               </Link>
             </div>
