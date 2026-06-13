@@ -4,8 +4,6 @@ import AdUnit from "../components/AdUnit";
 import WriteReviewButton from "../components/WriteReviewButton";
 import { MessageSquareQuote, Star, CornerDownRight } from "lucide-react";
 
-export const prerender = true;
-
 // Fetch reviews from Firestore REST API at build-time
 let reviews: any[] = [];
 try {
@@ -67,7 +65,7 @@ try {
       <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-6 relative z-10 items-stretch">
         {reviews.map((review) => (
           <div class="h-full">
-            <div class="bg-black/60 backdrop-blur-xl border border-white/10 hover:border-indigo-500/30 rounded-xl p-6 transition-all duration-300 h-full flex flex-col justify-between group">
+            <div class="review-card bg-black/60 backdrop-blur-xl border border-white/10 hover:border-indigo-500/30 rounded-xl p-6 transition-all duration-300 h-full flex flex-col justify-between group">
               <div class="flex-1 flex flex-col justify-between">
                 <div>
                   <div class="flex text-amber-400 mb-4">

@@ -76,34 +76,83 @@ export default function LandingPage() {
   }, [])
 
   const trackRef = useRef<HTMLDivElement>(null)
+  const [activeStep, setActiveStep] = useState(0)
+  const [isPlaying, setIsPlaying] = useState(true)
+  const [isExplicitlyPaused, setIsExplicitlyPaused] = useState(false)
+  const isAutoScrollingRef = useRef(false)
+  const userInteractionTimeoutRef = useRef<any>(null)
+
+  // Autoplay cycle advancing step-by-step
+  useEffect(() => {
+    if (!isPlaying) return
+
+    const interval = setInterval(() => {
+      setActiveStep((prev) => (prev + 1) % 4)
+    }, 3000)
+
+    return () => clearInterval(interval)
+  }, [isPlaying])
+
+  // Scroll to activeStep when it changes
+  useEffect(() => {
+    const track = trackRef.current
+    if (!track) return
+
+    const itemWidth = 280 // cardWidth (256) + gap (24)
+    const targetScrollLeft = activeStep * itemWidth
+
+    if (Math.abs(track.scrollLeft - targetScrollLeft) > 10) {
+      isAutoScrollingRef.current = true
+      track.scrollTo({
+        left: targetScrollLeft,
+        behavior: "smooth"
+      })
+      const timeout = setTimeout(() => {
+        isAutoScrollingRef.current = false
+      }, 500)
+      return () => clearTimeout(timeout)
+    }
+  }, [activeStep])
+
+  const handleUserInteraction = () => {
+    setIsPlaying(false)
+    clearTimeout(userInteractionTimeoutRef.current)
+    
+    // Only set auto-resume timeout if NOT explicitly paused
+    if (!isExplicitlyPaused) {
+      userInteractionTimeoutRef.current = setTimeout(() => {
+        setIsPlaying(true)
+      }, 8000)
+    }
+  }
+
+  // Toggles play/pause
+  const togglePlayPause = () => {
+    clearTimeout(userInteractionTimeoutRef.current)
+    if (isPlaying) {
+      setIsPlaying(false)
+      setIsExplicitlyPaused(true)
+    } else {
+      setIsPlaying(true)
+      setIsExplicitlyPaused(false)
+    }
+  }
+
+  const handleScrollLeft = () => {
+    handleUserInteraction()
+    setActiveStep((prev) => (prev - 1 + 4) % 4)
+  }
+
+  const handleScrollRight = () => {
+    handleUserInteraction()
+    setActiveStep((prev) => (prev + 1) % 4)
+  }
 
   useEffect(() => {
     const track = trackRef.current
     if (!track) return
 
-    const cardWidth = 256
-    const gap = 24
-    const itemWidth = cardWidth + gap // 280px
-    const singleCycleWidth = 4 * itemWidth // 1120px
-
-    track.scrollLeft = singleCycleWidth
-
-    let isWrapping = false
-    let isInteracting = false
-    let interactionTimeout: any
-
-    const checkInfiniteWrap = () => {
-      if (isWrapping) return
-      if (track.scrollLeft >= 2 * singleCycleWidth) {
-        isWrapping = true
-        track.scrollLeft -= singleCycleWidth
-        setTimeout(() => { isWrapping = false }, 50)
-      } else if (track.scrollLeft <= 0.5 * singleCycleWidth) {
-        isWrapping = true
-        track.scrollLeft += singleCycleWidth
-        setTimeout(() => { isWrapping = false }, 50)
-      }
-    }
+    const itemWidth = 280
 
     const updateCenterMagnification = () => {
       const rect = track.getBoundingClientRect()
@@ -133,63 +182,33 @@ export default function LandingPage() {
       })
     }
 
-    let animationId: number
-    const autoScrollSpeed = 0.5
+    const handleScroll = () => {
+      updateCenterMagnification()
 
-    const animateScroll = () => {
-      if (!isInteracting) {
-        track.scrollLeft += autoScrollSpeed
+      if (!isAutoScrollingRef.current) {
+        const scrollPos = track.scrollLeft
+        const currentStep = Math.round(scrollPos / itemWidth)
+        const clampedStep = Math.max(0, Math.min(3, currentStep))
+        setActiveStep(clampedStep)
       }
-      animationId = requestAnimationFrame(animateScroll)
     }
 
-    const handleInteraction = () => {
-      isInteracting = true
-      clearTimeout(interactionTimeout)
-      interactionTimeout = setTimeout(() => {
-        isInteracting = false
-      }, 4000)
-    }
+    track.addEventListener("scroll", handleScroll)
+    track.addEventListener("mousedown", handleUserInteraction)
+    track.addEventListener("touchstart", handleUserInteraction, { passive: true })
+    track.addEventListener("wheel", handleUserInteraction, { passive: true })
 
-    track.addEventListener("scroll", checkInfiniteWrap)
-    track.addEventListener("scroll", updateCenterMagnification)
-    track.addEventListener("mousedown", handleInteraction)
-    track.addEventListener("touchstart", handleInteraction)
-
-    animateScroll()
+    // Initial styling setup
     setTimeout(updateCenterMagnification, 100)
 
     return () => {
-      cancelAnimationFrame(animationId)
-      clearTimeout(interactionTimeout)
-      track.removeEventListener("scroll", checkInfiniteWrap)
-      track.removeEventListener("scroll", updateCenterMagnification)
-      track.removeEventListener("mousedown", handleInteraction)
-      track.removeEventListener("touchstart", handleInteraction)
+      track.removeEventListener("scroll", handleScroll)
+      track.removeEventListener("mousedown", handleUserInteraction)
+      track.removeEventListener("touchstart", handleUserInteraction)
+      track.removeEventListener("wheel", handleUserInteraction)
+      clearTimeout(userInteractionTimeoutRef.current)
     }
-  }, [])
-
-  const handleScrollLeft = () => {
-    const track = trackRef.current
-    if (track) {
-      track.dispatchEvent(new Event("mousedown"))
-      track.scrollTo({
-        left: track.scrollLeft - 280,
-        behavior: "smooth"
-      })
-    }
-  }
-
-  const handleScrollRight = () => {
-    const track = trackRef.current
-    if (track) {
-      track.dispatchEvent(new Event("mousedown"))
-      track.scrollTo({
-        left: track.scrollLeft + 280,
-        behavior: "smooth"
-      })
-    }
-  }
+  }, [isExplicitlyPaused, isPlaying])
 
   const formatBytes = (bytes: number) => {
     if (bytes === 0) return '0 B'
@@ -444,18 +463,33 @@ export default function LandingPage() {
         <div className="max-w-7xl mx-auto px-4 relative">
           <h2 className="text-4xl font-bold tracking-tighter mb-16">How It Works</h2>
           
-          {/* Timeline Navigation Arrows */}
-          <div className="flex justify-end gap-3 mb-6 max-w-4xl mx-auto px-6">
+          {/* Timeline Navigation Controls */}
+          <div className="flex justify-center items-center gap-3 mb-6 max-w-4xl mx-auto px-6">
             <button 
               onClick={handleScrollLeft}
-              className="w-10 h-10 rounded-full border border-white/10 hover:border-indigo-500/50 bg-black flex items-center justify-center text-white transition-all duration-300 hover:scale-105 active:scale-95"
+              className="w-10 h-10 rounded-full border border-white/10 hover:border-indigo-500/50 bg-black flex items-center justify-center text-white transition-all duration-300 hover:scale-105 active:scale-95 cursor-pointer"
               aria-label="Previous step"
             >
               <ChevronLeft className="w-5 h-5" />
             </button>
             <button 
+              onClick={togglePlayPause}
+              className="w-10 h-10 rounded-full border border-white/10 hover:border-indigo-500/50 bg-black flex items-center justify-center text-white transition-all duration-300 hover:scale-105 active:scale-95 cursor-pointer"
+              aria-label={isPlaying ? "Pause auto-scroll" : "Play auto-scroll"}
+            >
+              {isPlaying ? (
+                <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                  <path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/>
+                </svg>
+              ) : (
+                <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                  <path d="M8 5v14l11-7z"/>
+                </svg>
+              )}
+            </button>
+            <button 
               onClick={handleScrollRight}
-              className="w-10 h-10 rounded-full border border-white/10 hover:border-indigo-500/50 bg-black flex items-center justify-center text-white transition-all duration-300 hover:scale-105 active:scale-95"
+              className="w-10 h-10 rounded-full border border-white/10 hover:border-indigo-500/50 bg-black flex items-center justify-center text-white transition-all duration-300 hover:scale-105 active:scale-95 cursor-pointer"
               aria-label="Next step"
             >
               <ChevronRight className="w-5 h-5" />
@@ -465,66 +499,29 @@ export default function LandingPage() {
           {/* Timeline slider container */}
           <div className="relative max-w-4xl mx-auto px-6">
             {/* Center Focus Target Frame Indicator */}
-            <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[280px] h-[190px] border-2 border-indigo-500/20 rounded-3xl pointer-events-none z-20 bg-indigo-500/[0.02]"></div>
+            <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[280px] h-[210px] border-2 border-indigo-500/20 rounded-3xl pointer-events-none z-20 bg-indigo-500/[0.02]"></div>
 
             {/* Scrollable Track */}
             <div 
               ref={trackRef}
-              className="flex items-center gap-6 overflow-x-hidden py-12 px-[calc(50%-128px)] scroll-smooth select-none cursor-grab active:cursor-grabbing"
-              style={{ WebkitOverflowScrolling: 'touch' }}
+              className="flex items-center gap-6 overflow-x-auto no-scrollbar py-12 px-[calc(50%-128px)] scroll-smooth select-none cursor-grab active:cursor-grabbing"
+              style={{ WebkitOverflowScrolling: 'touch', scrollSnapType: 'x mandatory', scrollbarWidth: 'none' }}
             >
-              {/* Cycle 1 */}
-              <div className="slider-card bg-black/40 border border-white/10 p-8 rounded-2xl w-64 min-w-[256px] h-[160px] flex-shrink-0 flex flex-col justify-center items-center text-center transition-all duration-500 ease-out select-none">
-                <div className="text-3xl font-extrabold text-white mb-2">1. Upload Takeout</div>
-                <div className="text-white/50 text-xs font-semibold tracking-wide uppercase">Select Zip or Folder</div>
+              <div className="slider-card bg-black border border-white/10 p-8 rounded-2xl w-64 min-w-[256px] h-48 flex-shrink-0 flex flex-col justify-center items-center text-center transition-all duration-300 scroll-snap-align-center" data-step="0">
+                <div className="text-3xl font-black text-white mb-2 tracking-tight">Takeout</div>
+                <div className="text-white/50 text-sm font-semibold">Photos + JSON</div>
               </div>
-              <div className="slider-card bg-black/40 border border-white/10 p-8 rounded-2xl w-64 min-w-[256px] h-[160px] flex-shrink-0 flex flex-col justify-center items-center text-center transition-all duration-500 ease-out select-none">
-                <div className="text-3xl font-extrabold text-indigo-400 mb-2">2. Match Metadata</div>
-                <div className="text-white/50 text-xs font-semibold tracking-wide uppercase">Fuzzy Logic Engine</div>
+              <div className="slider-card bg-indigo-950/20 border border-indigo-500/20 p-8 rounded-2xl w-64 min-w-[256px] h-48 flex-shrink-0 flex flex-col justify-center items-center text-center transition-all duration-300 scroll-snap-align-center" data-step="1">
+                <div className="text-3xl font-black text-indigo-400 mb-2 tracking-tight">Matching</div>
+                <div className="text-white/50 text-sm font-semibold">Fuzzy Logic Engine</div>
               </div>
-              <div className="slider-card bg-black/40 border border-white/10 p-8 rounded-2xl w-64 min-w-[256px] h-[160px] flex-shrink-0 flex flex-col justify-center items-center text-center transition-all duration-500 ease-out select-none">
-                <div className="text-3xl font-extrabold text-purple-400 mb-2">3. Inject EXIF</div>
-                <div className="text-white/50 text-xs font-semibold tracking-wide uppercase">Metadata Rebuild</div>
+              <div className="slider-card bg-purple-950/20 border border-purple-500/20 p-8 rounded-2xl w-64 min-w-[256px] h-48 flex-shrink-0 flex flex-col justify-center items-center text-center transition-all duration-300 scroll-snap-align-center" data-step="2">
+                <div className="text-3xl font-black text-purple-400 mb-2 tracking-tight">Injection</div>
+                <div className="text-white/50 text-sm font-semibold">EXIF Header Rebuild</div>
               </div>
-              <div className="slider-card bg-black/40 border border-white/10 p-8 rounded-2xl w-64 min-w-[256px] h-[160px] flex-shrink-0 flex flex-col justify-center items-center text-center transition-all duration-500 ease-out select-none">
-                <div className="text-3xl font-extrabold text-green-400 mb-2">4. Perfect Recovery</div>
-                <div className="text-white/50 text-xs font-semibold tracking-wide uppercase">Ready for iCloud/Synology</div>
-              </div>
-
-              {/* Cycle 2 */}
-              <div className="slider-card bg-black/40 border border-white/10 p-8 rounded-2xl w-64 min-w-[256px] h-[160px] flex-shrink-0 flex flex-col justify-center items-center text-center transition-all duration-500 ease-out select-none">
-                <div className="text-3xl font-extrabold text-white mb-2">1. Upload Takeout</div>
-                <div className="text-white/50 text-xs font-semibold tracking-wide uppercase">Select Zip or Folder</div>
-              </div>
-              <div className="slider-card bg-black/40 border border-white/10 p-8 rounded-2xl w-64 min-w-[256px] h-[160px] flex-shrink-0 flex flex-col justify-center items-center text-center transition-all duration-500 ease-out select-none">
-                <div className="text-3xl font-extrabold text-indigo-400 mb-2">2. Match Metadata</div>
-                <div className="text-white/50 text-xs font-semibold tracking-wide uppercase">Fuzzy Logic Engine</div>
-              </div>
-              <div className="slider-card bg-black/40 border border-white/10 p-8 rounded-2xl w-64 min-w-[256px] h-[160px] flex-shrink-0 flex flex-col justify-center items-center text-center transition-all duration-500 ease-out select-none">
-                <div className="text-3xl font-extrabold text-purple-400 mb-2">3. Inject EXIF</div>
-                <div className="text-white/50 text-xs font-semibold tracking-wide uppercase">Metadata Rebuild</div>
-              </div>
-              <div className="slider-card bg-black/40 border border-white/10 p-8 rounded-2xl w-64 min-w-[256px] h-[160px] flex-shrink-0 flex flex-col justify-center items-center text-center transition-all duration-500 ease-out select-none">
-                <div className="text-3xl font-extrabold text-green-400 mb-2">4. Perfect Recovery</div>
-                <div className="text-white/50 text-xs font-semibold tracking-wide uppercase">Ready for iCloud/Synology</div>
-              </div>
-
-              {/* Cycle 3 */}
-              <div className="slider-card bg-black/40 border border-white/10 p-8 rounded-2xl w-64 min-w-[256px] h-[160px] flex-shrink-0 flex flex-col justify-center items-center text-center transition-all duration-500 ease-out select-none">
-                <div className="text-3xl font-extrabold text-white mb-2">1. Upload Takeout</div>
-                <div className="text-white/50 text-xs font-semibold tracking-wide uppercase">Select Zip or Folder</div>
-              </div>
-              <div className="slider-card bg-black/40 border border-white/10 p-8 rounded-2xl w-64 min-w-[256px] h-[160px] flex-shrink-0 flex flex-col justify-center items-center text-center transition-all duration-500 ease-out select-none">
-                <div className="text-3xl font-extrabold text-indigo-400 mb-2">2. Match Metadata</div>
-                <div className="text-white/50 text-xs font-semibold tracking-wide uppercase">Fuzzy Logic Engine</div>
-              </div>
-              <div className="slider-card bg-black/40 border border-white/10 p-8 rounded-2xl w-64 min-w-[256px] h-[160px] flex-shrink-0 flex flex-col justify-center items-center text-center transition-all duration-500 ease-out select-none">
-                <div className="text-3xl font-extrabold text-purple-400 mb-2">3. Inject EXIF</div>
-                <div className="text-white/50 text-xs font-semibold tracking-wide uppercase">Metadata Rebuild</div>
-              </div>
-              <div className="slider-card bg-black/40 border border-white/10 p-8 rounded-2xl w-64 min-w-[256px] h-[160px] flex-shrink-0 flex flex-col justify-center items-center text-center transition-all duration-500 ease-out select-none">
-                <div className="text-3xl font-extrabold text-green-400 mb-2">4. Perfect Recovery</div>
-                <div className="text-white/50 text-xs font-semibold tracking-wide uppercase">Ready for iCloud/Synology</div>
+              <div className="slider-card bg-emerald-950/20 border border-emerald-500/20 p-8 rounded-2xl w-64 min-w-[256px] h-48 flex-shrink-0 flex flex-col justify-center items-center text-center transition-all duration-300 scroll-snap-align-center" data-step="3">
+                <div className="text-3xl font-black text-emerald-400 mb-2 tracking-tight">Restored</div>
+                <div className="text-white/50 text-sm font-semibold font-sans">Perfect Timelines</div>
               </div>
             </div>
           </div>

@@ -2,22 +2,6 @@
 import "../../index.css";
 import AdminRouter from "../../components/AdminRouter";
 
-export const prerender = true;
-
-export function getStaticPaths() {
-  return [
-    { params: { all: undefined } },
-    { params: { all: "users" } },
-    { params: { all: "users/dashboard" } },
-    { params: { all: "support" } },
-    { params: { all: "reviews" } },
-    { params: { all: "team" } },
-    { params: { all: "revenue" } },
-    { params: { all: "settings" } },
-    { params: { all: "statistics" } },
-    { params: { all: "audit" } }
-  ];
-}
 ---
 <!doctype html>
 <html lang="en">

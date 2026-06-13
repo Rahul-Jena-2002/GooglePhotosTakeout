@@ -1,5 +1,6 @@
 ---
 import "../index.css";
+import { ClientRouter } from "astro:transitions";
 
 interface Props {
   title?: string;
@@ -24,11 +25,27 @@ const canonicalUrl = `https://takeoutfix.pages.dev${Astro.url.pathname.replace(/
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     
+    <!-- Theme Initialization Script -->
+    <script is:inline>
+      (() => {
+        const saved = localStorage.getItem("takeoutfix_theme");
+        const theme = saved || "light";
+        if (theme === "dark") {
+          document.documentElement.classList.add("dark");
+          document.documentElement.classList.remove("light");
+        } else {
+          document.documentElement.classList.add("light");
+          document.documentElement.classList.remove("dark");
+        }
+      })();
+    </script>
+    
     <!-- Google AdSense Account Setup -->
     <meta name="google-adsense-account" content="ca-pub-7628736172233995">
     <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-7628736172233995" crossorigin="anonymous"></script>
 
     <title>{title}</title>
+    <ClientRouter />
     <meta name="description" content={description} />
     <meta name="keywords" content="Google Takeout, metadata merger, EXIF recovery, photo restore, GPS coordinates Google Photos, JSON sidecar fixer, restore photo date taken" />
     <meta name="robots" content="index, follow" />
@@ -123,7 +140,8 @@ const canonicalUrl = `https://takeoutfix.pages.dev${Astro.url.pathname.replace(/
               <a href="/" class="nav-link text-zinc-400 hover:text-white transition-colors duration-150">Home</a>
               <a href="/how-it-works" class="nav-link text-zinc-400 hover:text-white transition-colors duration-150">How It Works</a>
               <a href="/pricing" class="nav-link text-zinc-400 hover:text-white transition-colors duration-150">Pricing</a>
-              <a href="/support" class="nav-link text-zinc-400 hover:text-white transition-colors duration-150">Support & FAQ</a>
+              <a href="/reviews" class="nav-link text-zinc-400 hover:text-white transition-colors duration-150">Reviews</a>
+              <a href="/support" class="nav-link text-zinc-400 hover:text-white transition-colors duration-150">Support</a>
             </div>
           </div>
           
@@ -192,9 +210,9 @@ const canonicalUrl = `https://takeoutfix.pages.dev${Astro.url.pathname.replace(/
               <div id="profile-container" class="relative hidden flex items-center gap-4">
                 <!-- Desktop App Links (logged in) -->
                 <div class="hidden lg:flex items-center gap-6 mr-2">
-                  <a id="desktop-dashboard-link" href="/dashboard" class="text-sm font-medium text-zinc-400 hover:text-white transition-colors duration-150">Dashboard</a>
-                  <a id="desktop-tool-link" href="/tool" class="text-sm font-medium text-zinc-400 hover:text-white transition-colors duration-150">Restore My Data</a>
-                  <a id="desktop-admin-link" href="/admin" class="text-sm font-medium text-zinc-400 hover:text-white transition-colors duration-150 hidden">Admin Center</a>
+                  <a id="desktop-dashboard-link" href="/dashboard" class="text-sm font-medium text-zinc-400 hover:text-white transition-colors duration-150" data-astro-reload>Dashboard</a>
+                  <a id="desktop-tool-link" href="/tool" class="text-sm font-medium text-zinc-400 hover:text-white transition-colors duration-150" data-astro-reload>Restore My Data</a>
+                  <a id="desktop-admin-link" href="/admin" class="text-sm font-medium text-zinc-400 hover:text-white transition-colors duration-150 hidden" data-astro-reload>Admin Center</a>
                 </div>
 
                 <button 
@@ -217,7 +235,7 @@ const canonicalUrl = `https://takeoutfix.pages.dev${Astro.url.pathname.replace(/
                     <p id="dropdown-username" class="text-xs text-indigo-400 font-semibold font-mono truncate max-w-full hidden">@username</p>
                     <p id="dropdown-plan" class="text-[11px] text-indigo-400/80 font-bold uppercase tracking-wider mt-0.5">Free Tier</p>
                   </div>
-                  <a href="/profile" class="flex items-center px-4 py-2 text-sm text-white/70 hover:text-white hover:bg-white/5 transition-colors text-left w-full">Profile</a>
+                  <a href="/profile" class="flex items-center px-4 py-2 text-sm text-white/70 hover:text-white hover:bg-white/5 transition-colors text-left w-full" data-astro-reload>Profile</a>
                   <div class="border-t border-white/5 mt-1.5 pt-1.5">
                     <button id="logout-btn" class="flex items-center px-4 py-2 text-sm text-red-400 hover:text-red-300 hover:bg-red-500/5 transition-colors text-left w-full font-medium">Sign Out</button>
                   </div>
@@ -233,13 +251,14 @@ const canonicalUrl = `https://takeoutfix.pages.dev${Astro.url.pathname.replace(/
           <a href="/" class="mobile-nav-link py-2 px-2 text-white/70 hover:text-white hover:bg-white/5 rounded-md text-sm font-medium transition-all">Home</a>
           <a href="/how-it-works" class="mobile-nav-link py-2 px-2 text-white/70 hover:text-white hover:bg-white/5 rounded-md text-sm font-medium transition-all">How It Works</a>
           <a href="/pricing" class="mobile-nav-link py-2 px-2 text-white/70 hover:text-white hover:bg-white/5 rounded-md text-sm font-medium transition-all">Pricing</a>
-          <a href="/support" class="mobile-nav-link py-2 px-2 text-white/70 hover:text-white hover:bg-white/5 rounded-md text-sm font-medium transition-all">Support & FAQ</a>
+          <a href="/reviews" class="mobile-nav-link py-2 px-2 text-white/70 hover:text-white hover:bg-white/5 rounded-md text-sm font-medium transition-all">Reviews</a>
+          <a href="/support" class="mobile-nav-link py-2 px-2 text-white/70 hover:text-white hover:bg-white/5 rounded-md text-sm font-medium transition-all">Support</a>
 
           <div id="mobile-auth-section" class="border-t border-white/5 pt-3 flex flex-col gap-3 hidden">
             <p class="text-xs font-bold text-white/30 uppercase tracking-wider px-2 mb-1">App Tools</p>
-            <a id="mobile-dashboard-link" href="/dashboard" class="py-2 px-2 text-white/70 hover:text-white hover:bg-white/5 rounded-md text-sm font-medium transition-all">Dashboard</a>
-            <a id="mobile-tool-link" href="/tool" class="py-2 px-2 text-white/70 hover:text-white hover:bg-white/5 rounded-md text-sm font-medium transition-all">Restore My Data</a>
-            <a id="mobile-admin-link" href="/admin" class="py-2 px-2 text-white/70 hover:text-white hover:bg-white/5 rounded-md text-sm font-medium transition-all hidden">Admin Center</a>
+            <a id="mobile-dashboard-link" href="/dashboard" class="py-2 px-2 text-white/70 hover:text-white hover:bg-white/5 rounded-md text-sm font-medium transition-all" data-astro-reload>Dashboard</a>
+            <a id="mobile-tool-link" href="/tool" class="py-2 px-2 text-white/70 hover:text-white hover:bg-white/5 rounded-md text-sm font-medium transition-all" data-astro-reload>Restore My Data</a>
+            <a id="mobile-admin-link" href="/admin" class="py-2 px-2 text-white/70 hover:text-white hover:bg-white/5 rounded-md text-sm font-medium transition-all hidden" data-astro-reload>Admin Center</a>
           </div>
           
           <!-- Mobile Theme Toggle (Hidden) -->
@@ -299,6 +318,7 @@ const canonicalUrl = `https://takeoutfix.pages.dev${Astro.url.pathname.replace(/
                 <a href="/terms" class="hover:text-white transition-colors">Terms of Service</a>
                 <a href="/refund" class="hover:text-white transition-colors">Refund Policy</a>
                 <a href="/how-it-works" class="hover:text-white transition-colors">Documentation</a>
+                <a href="/reviews" class="hover:text-white transition-colors">Reviews</a>
                 <a href="/support" class="hover:text-white transition-colors">Contact</a>
               </div>
               <div class="flex flex-wrap gap-4 justify-center md:border-l md:border-white/10 md:pl-6">
@@ -350,9 +370,14 @@ const canonicalUrl = `https://takeoutfix.pages.dev${Astro.url.pathname.replace(/
 
     <!-- CLIENT SIDE EVENT HANDLERS AND AUTH LISTENER -->
     <script>
+      import * as Sentry from "@sentry/astro";
       import { auth, db, googleProvider, signInWithPopup, signOut } from "../firebase";
       import { doc, onSnapshot, collection, query, where } from "firebase/firestore";
       import { detectAdBlock } from "../services/AdBlockDetector";
+
+      Sentry.init({
+        dsn: "https://789a81283ea0ec0d1f762a19102c7a91@o4507198765277184.ingest.us.sentry.io/4508912384729182",
+      });
 
       // AdBlocker State & Functions
       let isAdFree = false;
@@ -398,35 +423,6 @@ const canonicalUrl = `https://takeoutfix.pages.dev${Astro.url.pathname.replace(/
         }
       };
 
-      // Set up button listeners
-      document.addEventListener("DOMContentLoaded", () => {
-        const whitelistBtn = document.getElementById("adblock-whitelist-btn");
-        const closeBtn = document.getElementById("adblock-close-btn");
-
-        whitelistBtn?.addEventListener("click", async () => {
-          whitelistBtn.classList.add("animate-pulse");
-          hasUserInteracted = true;
-          const isBlocked = await detectAdBlock();
-          if (isBlocked && !isAdFree) {
-            alert("Ad blocker is still active. Please disable it for TakeoutFix or refresh the page.");
-          } else {
-            hideBanner();
-          }
-          whitelistBtn.classList.remove("animate-pulse");
-        });
-
-        closeBtn?.addEventListener("click", () => {
-          isBannerDismissed = true;
-          hideBanner();
-        });
-      });
-
-      // Stage 2: Wait for folder selection or restore button click
-      window.addEventListener('takeoutfix-action-triggered', () => {
-        hasUserInteracted = true;
-        checkAdBlock();
-      });
-
       // 1. Theme Toggle System
       const initTheme = () => {
         const root = document.documentElement;
@@ -464,29 +460,6 @@ const canonicalUrl = `https://takeoutfix.pages.dev${Astro.url.pathname.replace(/
         }
       };
 
-      initTheme();
-
-      // Hook up theme toggle listeners
-      const setupThemeToggles = () => {
-        const toggleBtn = document.getElementById("theme-toggle-btn");
-        const mobileToggleBtn = document.getElementById("mobile-theme-toggle-btn");
-
-        const handleToggle = () => {
-          const isLight = document.documentElement.classList.contains("light");
-          const nextTheme = isLight ? "dark" : "light";
-          localStorage.setItem("takeoutfix_theme", nextTheme);
-          initTheme();
-          
-          // Dispatch custom event to notify React components
-          window.dispatchEvent(new CustomEvent("takeoutfix-theme-changed", { detail: nextTheme }));
-        };
-
-        toggleBtn?.addEventListener("click", handleToggle);
-        mobileToggleBtn?.addEventListener("click", handleToggle);
-      };
-
-      setupThemeToggles();
-
       // 2. Mobile Menu System
       const initMobileMenu = () => {
         const hamburgerBtn = document.getElementById("hamburger-btn");
@@ -494,24 +467,33 @@ const canonicalUrl = `https://takeoutfix.pages.dev${Astro.url.pathname.replace(/
         const closeIcon = document.getElementById("close-icon");
         const mobileMenu = document.getElementById("mobile-menu");
 
-        hamburgerBtn?.addEventListener("click", () => {
-          const isOpen = !mobileMenu?.classList.contains("hidden");
-          if (isOpen) {
-            mobileMenu?.classList.add("hidden");
-            hamburgerIcon?.classList.remove("hidden");
-            closeIcon?.classList.add("hidden");
-          } else {
-            mobileMenu?.classList.remove("hidden");
-            hamburgerIcon?.classList.add("hidden");
-            closeIcon?.classList.remove("hidden");
-          }
-        });
+        if (hamburgerBtn && mobileMenu) {
+          // Clone and replace to prevent multiple event listeners on page transitions
+          const newBtn = hamburgerBtn.cloneNode(true) as HTMLButtonElement;
+          hamburgerBtn.parentNode?.replaceChild(newBtn, hamburgerBtn);
+          
+          newBtn.addEventListener("click", () => {
+            const isOpen = !mobileMenu.classList.contains("hidden");
+            if (isOpen) {
+              mobileMenu.classList.add("hidden");
+              hamburgerIcon?.classList.remove("hidden");
+              closeIcon?.classList.add("hidden");
+            } else {
+              mobileMenu.classList.remove("hidden");
+              hamburgerIcon?.classList.add("hidden");
+              closeIcon?.classList.remove("hidden");
+            }
+          });
+        }
       };
 
-      initMobileMenu();
-
       // 3. User Authentication State & UI Sync
-      const initAuthSync = () => {
+      const SUPER_ADMIN_EMAILS = ['rahuljena.dev@gmail.com'];
+      let unsubUserDoc: any = null;
+      let unsubNotifications: any = null;
+      let isAuthListenerInitialized = false;
+
+      const syncUserUI = () => {
         const authLoading = document.getElementById("auth-loading");
         const loginBtn = document.getElementById("login-btn");
         const profileContainer = document.getElementById("profile-container");
@@ -534,31 +516,29 @@ const canonicalUrl = `https://takeoutfix.pages.dev${Astro.url.pathname.replace(/
         const mobileAdminLink = document.getElementById("mobile-admin-link");
         
         const notificationContainer = document.getElementById("notification-container");
-        const notificationBtn = document.getElementById("notification-btn");
         const notificationBadge = document.getElementById("notification-badge");
-        const notificationDropdown = document.getElementById("notification-dropdown");
         const notificationList = document.getElementById("notification-list");
         const notificationCountLabel = document.getElementById("notification-count-label");
 
-        const SUPER_ADMIN_EMAILS = ['rahuljena.dev@gmail.com'];
-
-        // Optimistic UI loader (Gmail-like persistence)
-        try {
-          const cachedUserStr = localStorage.getItem("takeoutfix_user_data");
-          if (cachedUserStr) {
+        const cachedUserStr = localStorage.getItem("takeoutfix_user_data");
+        if (cachedUserStr) {
+          try {
             const cachedUser = JSON.parse(cachedUserStr);
             const firstName = cachedUser.firstName || cachedUser.displayName?.split(" ")[0] || "User";
             
-            // Instantly show profile container preview (optimistic load)
+            // Instantly show profile container preview
             loginBtn?.classList.add("hidden");
             profileContainer?.classList.remove("hidden");
+            mobileAuthSection?.classList.remove("hidden");
+            notificationContainer?.classList.remove("hidden");
             authLoading?.classList.add("hidden");
             
             if (profileNameSpan) profileNameSpan.innerText = `Hi, ${firstName}`;
             if (profileAvatarCircle) {
               const initial = firstName.charAt(0).toUpperCase();
-              if (cachedUser.photoURL) {
-                profileAvatarCircle.innerHTML = `<img src="${cachedUser.photoURL}" class="w-full h-full rounded-full object-cover" referrerpolicy="no-referrer" onerror="this.style.display='none'; this.parentElement.innerText='${initial}'" />`;
+              const photo = cachedUser.photoURL;
+              if (photo) {
+                profileAvatarCircle.innerHTML = `<img src="${photo}" class="w-full h-full rounded-full object-cover" referrerpolicy="no-referrer" onerror="this.style.display='none'; this.parentElement.innerText='${initial}'" />`;
               } else {
                 profileAvatarCircle.innerText = initial;
               }
@@ -579,7 +559,6 @@ const canonicalUrl = `https://takeoutfix.pages.dev${Astro.url.pathname.replace(/
             else if (cachedUser.plan === "family") planLabel = "Family Tier";
             if (dropdownPlan) dropdownPlan.innerText = planLabel;
             
-            // Optimistically sync links (Admin check)
             const isAdmin = cachedUser.isAdmin === true || (cachedUser.email && SUPER_ADMIN_EMAILS.includes(cachedUser.email)) || !!localStorage.getItem("takeoutfix_admin_data");
             if (isAdmin) {
               desktopDashboardLink?.classList.add("hidden");
@@ -600,32 +579,119 @@ const canonicalUrl = `https://takeoutfix.pages.dev${Astro.url.pathname.replace(/
               desktopToolLink.href = "/tool";
               desktopToolLink.innerText = "Restore My Data";
             }
-          } else {
-            // Show loading by default, but if it takes too long without auth, fallback
-            setTimeout(() => {
-              if (!auth.currentUser && !localStorage.getItem("takeoutfix_user_data")) {
-                loginBtn?.classList.remove("hidden");
-                authLoading?.classList.add("hidden");
-              }
-            }, 1000);
-          }
-        } catch (_) {}
+          } catch (_) {}
+        } else {
+          // Logged out
+          loginBtn?.classList.remove("hidden");
+          profileContainer?.classList.add("hidden");
+          mobileAuthSection?.classList.add("hidden");
+          notificationContainer?.classList.add("hidden");
+          authLoading?.classList.add("hidden");
+        }
+      };
 
-        // Action Events
+      const setupAuthListeners = () => {
+        if (isAuthListenerInitialized) return;
+        isAuthListenerInitialized = true;
+
+        auth.onAuthStateChanged((user) => {
+          if (unsubUserDoc) unsubUserDoc();
+          if (unsubNotifications) unsubNotifications();
+          
+          if (user) {
+            // Firestore snap for user
+            unsubUserDoc = onSnapshot(doc(db, "users", user.uid), (snap) => {
+              if (snap.exists()) {
+                const data = snap.data();
+                const fullData = {
+                  uid: user.uid,
+                  email: user.email,
+                  displayName: user.displayName,
+                  photoURL: user.photoURL,
+                  ...data
+                };
+                localStorage.setItem("takeoutfix_user_data", JSON.stringify(fullData));
+                
+                isAdFree = data.plan === "super" && !data.supportWithAds;
+                checkAdBlock();
+                syncUserUI();
+              }
+            });
+
+            // Firestore snap for notifications
+            const q = query(
+              collection(db, "tickets"),
+              where("uid", "==", user.uid),
+              where("status", "==", "RESOLVED")
+            );
+            unsubNotifications = onSnapshot(q, (snap) => {
+              const list = snap.docs.map(d => ({ id: d.id, ...d.data() as any }));
+              const badge = document.getElementById("notification-badge");
+              const label = document.getElementById("notification-count-label");
+              const notifList = document.getElementById("notification-list");
+
+              if (list.length > 0) {
+                if (badge) {
+                  badge.innerText = String(list.length);
+                  badge.classList.remove("hidden");
+                }
+                if (label) label.innerText = `${list.length} Alert${list.length > 1 ? 's' : ''}`;
+              } else {
+                badge?.classList.add("hidden");
+                if (label) label.innerText = "0 Alerts";
+              }
+
+              if (notifList) {
+                if (list.length === 0) {
+                  notifList.innerHTML = `<div class="px-4 py-6 text-center text-xs text-white/50">No new notifications</div>`;
+                } else {
+                  notifList.innerHTML = list.map(n => `
+                    <a href="/support?tab=tickets" class="block px-4 py-2.5 hover:bg-white/5 text-left border-b border-white/5 last:border-0 transition-colors">
+                      <div class="text-[11px] font-bold text-white truncate flex items-center gap-1.5">
+                        <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                        Ticket Resolved: ${n.ticketId || n.id.slice(0, 8)}
+                      </div>
+                      <p class="text-xs text-white/60 truncate mt-0.5">${n.subject || 'resolved support ticket'}</p>
+                      <span class="text-[9px] text-white/30 block mt-1">Click to view resolution</span>
+                    </a>
+                  `).join("");
+                }
+              }
+            });
+          } else {
+            localStorage.removeItem("takeoutfix_user_data");
+            isAdFree = false;
+            hasUserInteracted = false;
+            hideBanner();
+            syncUserUI();
+          }
+        });
+      };
+
+      const setupInteractionEvents = () => {
+        const loginBtn = document.getElementById("login-btn");
+        const logoutBtn = document.getElementById("logout-btn");
+        const profileTriggerBtn = document.getElementById("profile-trigger-btn");
+        const profileDropdown = document.getElementById("profile-dropdown");
+        const notificationBtn = document.getElementById("notification-btn");
+        const notificationDropdown = document.getElementById("notification-dropdown");
+        const toggleBtn = document.getElementById("theme-toggle-btn");
+        const mobileToggleBtn = document.getElementById("mobile-theme-toggle-btn");
+        
+        const whitelistBtn = document.getElementById("adblock-whitelist-btn");
+        const closeBtn = document.getElementById("adblock-close-btn");
+
+        // Auth Buttons
         loginBtn?.addEventListener("click", async () => {
           try {
             await signInWithPopup(auth, googleProvider);
           } catch (err: any) {
             console.error("Login failed:", err);
-            if (err?.code === 'auth/unauthorized-domain') {
-              alert("Configuration Required:\n\nThe domain '" + window.location.hostname + "' is not authorized in your Firebase Project.\n\nPlease go to Firebase Console > Authentication > Settings > Authorized Domains and add '" + window.location.hostname + "' to allow logins.");
-            } else {
-              alert("Login failed: " + (err?.message || err));
-            }
+            alert("Login failed: " + (err?.message || err));
           }
         });
 
-        document.getElementById("logout-btn")?.addEventListener("click", async () => {
+        logoutBtn?.addEventListener("click", async () => {
           try {
             localStorage.removeItem("takeoutfix_user_data");
             localStorage.removeItem("takeoutfix_admin_data");
@@ -637,7 +703,7 @@ const canonicalUrl = `https://takeoutfix.pages.dev${Astro.url.pathname.replace(/
           }
         });
 
-        // Toggle dropdowns
+        // Dropdowns Toggles
         profileTriggerBtn?.addEventListener("click", (e) => {
           e.stopPropagation();
           profileDropdown?.classList.toggle("hidden");
@@ -655,181 +721,38 @@ const canonicalUrl = `https://takeoutfix.pages.dev${Astro.url.pathname.replace(/
           notificationDropdown?.classList.add("hidden");
         });
 
-        profileDropdown?.addEventListener("click", (e) => e.stopPropagation());
-        notificationDropdown?.addEventListener("click", (e) => e.stopPropagation());
+        // Theme Toggle Buttons
+        const handleThemeToggle = () => {
+          const isLight = document.documentElement.classList.contains("light");
+          const nextTheme = isLight ? "dark" : "light";
+          localStorage.setItem("takeoutfix_theme", nextTheme);
+          initTheme();
+          window.dispatchEvent(new CustomEvent("takeoutfix-theme-changed", { detail: nextTheme }));
+        };
 
-        let unsubUserDoc: any = null;
-        let unsubNotifications: any = null;
+        toggleBtn?.addEventListener("click", handleThemeToggle);
+        mobileToggleBtn?.addEventListener("click", handleThemeToggle);
 
-        auth.onAuthStateChanged((user) => {
-          authLoading?.classList.add("hidden");
-          
-          if (user) {
-            // Show logged in elements
-            loginBtn?.classList.add("hidden");
-            profileContainer?.classList.remove("hidden");
-            mobileAuthSection?.classList.remove("hidden");
-            notificationContainer?.classList.remove("hidden");
-
-            // Setup profile content fallback
-            if (profileNameSpan) profileNameSpan.innerText = `Hi, ${user.displayName?.split(" ")[0] || "User"}`;
-            if (profileAvatarCircle) {
-              const initial = user.displayName?.charAt(0).toUpperCase() || "U";
-              if (user.photoURL) {
-                profileAvatarCircle.innerHTML = `<img src="${user.photoURL}" class="w-full h-full rounded-full object-cover" referrerpolicy="no-referrer" onerror="this.style.display='none'; this.parentElement.innerText='${initial}'" />`;
-              } else {
-                profileAvatarCircle.innerText = initial;
-              }
-            }
-            if (dropdownFullName) dropdownFullName.innerText = user.displayName || "User";
-
-            // Listen to dynamic user fields in Firestore
-            const userDocRef = doc(db, "users", user.uid);
-            unsubUserDoc = onSnapshot(userDocRef, (snap) => {
-              if (snap.exists()) {
-                const data = snap.data();
-                
-                // Sync with localStorage
-                try {
-                  const fullData = {
-                    uid: user.uid,
-                    email: user.email,
-                    displayName: user.displayName,
-                    photoURL: user.photoURL,
-                    ...data
-                  };
-                  localStorage.setItem("takeoutfix_user_data", JSON.stringify(fullData));
-                } catch (_) {}
-
-                // Sync name
-                const firstName = data.firstName || user.displayName?.split(" ")[0] || "User";
-                const fullName = (data.firstName || data.lastName) 
-                  ? `${data.firstName || ''} ${data.lastName || ''}`.trim() 
-                  : (data.displayName || user.displayName || 'User');
-                
-                if (profileNameSpan) profileNameSpan.innerText = `Hi, ${firstName}`;
-                if (profileAvatarCircle) {
-                  const initial = firstName.charAt(0).toUpperCase();
-                  const photo = data.photoURL || user.photoURL;
-                  if (photo) {
-                    profileAvatarCircle.innerHTML = `<img src="${photo}" class="w-full h-full rounded-full object-cover" referrerpolicy="no-referrer" onerror="this.style.display='none'; this.parentElement.innerText='${initial}'" />`;
-                  } else {
-                    profileAvatarCircle.innerText = initial;
-                  }
-                }
-                if (dropdownFullName) dropdownFullName.innerText = fullName;
-                
-                // Sync username
-                if (data.username) {
-                  if (dropdownUsername) {
-                    dropdownUsername.innerText = `@${data.username}`;
-                    dropdownUsername.classList.remove("hidden");
-                  }
-                } else {
-                  dropdownUsername?.classList.add("hidden");
-                }
-
-                // Sync plan
-                let planLabel = "Free Tier";
-                if (data.plan === "pro") planLabel = "Pro Tier";
-                else if (data.plan === "super") planLabel = "Super Tier";
-                else if (data.plan === "recovery_pass") planLabel = "Single Pass";
-                else if (data.plan === "family") planLabel = "Family Tier";
-                
-                if (dropdownPlan) dropdownPlan.innerText = planLabel;
-
-                // Sync plan for AdBlock bypass
-                isAdFree = data.plan === "super" && !data.supportWithAds;
-                checkAdBlock();
-
-                // Sync links (Admin check)
-                const isAdmin = data.isAdmin === true || (user.email && SUPER_ADMIN_EMAILS.includes(user.email)) || !!localStorage.getItem("takeoutfix_admin_data");
-                if (isAdmin) {
-                  desktopDashboardLink?.classList.add("hidden");
-                  mobileDashboardLink?.classList.add("hidden");
-                  desktopAdminLink?.classList.remove("hidden");
-                  mobileAdminLink?.classList.remove("hidden");
-                } else {
-                  desktopDashboardLink?.classList.remove("hidden");
-                  mobileDashboardLink?.classList.remove("hidden");
-                  desktopAdminLink?.classList.add("hidden");
-                  mobileAdminLink?.classList.add("hidden");
-                }
-                if (mobileToolLink) {
-                  mobileToolLink.href = "/tool";
-                  mobileToolLink.innerText = "Restore My Data";
-                }
-                if (desktopToolLink) {
-                  desktopToolLink.href = "/tool";
-                  desktopToolLink.innerText = "Restore My Data";
-                }
-              }
-            });
-
-            // Listen to support ticket notifications in real-time
-            const q = query(
-              collection(db, "tickets"),
-              where("uid", "==", user.uid),
-              where("status", "==", "RESOLVED")
-            );
-            unsubNotifications = onSnapshot(q, (snap) => {
-              const list = snap.docs.map(doc => ({ id: doc.id, ...doc.data() as any }));
-              
-              // Update badge
-              if (list.length > 0) {
-                if (notificationBadge) {
-                  notificationBadge.innerText = String(list.length);
-                  notificationBadge.classList.remove("hidden");
-                }
-                if (notificationCountLabel) notificationCountLabel.innerText = `${list.length} Alert${list.length > 1 ? 's' : ''}`;
-              } else {
-                notificationBadge?.classList.add("hidden");
-                if (notificationCountLabel) notificationCountLabel.innerText = "0 Alerts";
-              }
-
-              // Build HTML
-              if (notificationList) {
-                if (list.length === 0) {
-                  notificationList.innerHTML = `<div class="px-4 py-6 text-center text-xs text-white/50">No new notifications</div>`;
-                } else {
-                  notificationList.innerHTML = list.map(n => `
-                    <a 
-                      href="/support?tab=tickets" 
-                      class="block px-4 py-2.5 hover:bg-white/5 text-left border-b border-white/5 last:border-0 transition-colors"
-                    >
-                      <div class="text-[11px] font-bold text-white truncate flex items-center gap-1.5">
-                        <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
-                        Ticket Resolved: ${n.ticketId || n.id.slice(0, 8)}
-                      </div>
-                      <p class="text-xs text-white/60 truncate mt-0.5">${n.subject || 'resolved support ticket'}</p>
-                      <span class="text-[9px] text-white/30 block mt-1">Click to view resolution</span>
-                    </a>
-                  `).join("");
-                }
-              }
-            });
-
+        // AdBlocker Buttons
+        whitelistBtn?.addEventListener("click", async () => {
+          whitelistBtn.classList.add("animate-pulse");
+          hasUserInteracted = true;
+          const isBlocked = await detectAdBlock();
+          if (isBlocked && !isAdFree) {
+            alert("Ad blocker is still active. Please disable it for TakeoutFix or refresh the page.");
           } else {
-            // Clean up listeners
-            if (unsubUserDoc) unsubUserDoc();
-            if (unsubNotifications) unsubNotifications();
-            
-            // Show logged out elements
-            loginBtn?.classList.remove("hidden");
-            profileContainer?.classList.add("hidden");
-            mobileAuthSection?.classList.add("hidden");
-            notificationContainer?.classList.add("hidden");
-
-            isAdFree = false;
-            hasUserInteracted = false;
             hideBanner();
           }
+          whitelistBtn.classList.remove("animate-pulse");
+        });
+
+        closeBtn?.addEventListener("click", () => {
+          isBannerDismissed = true;
+          hideBanner();
         });
       };
 
-      initAuthSync();
-
-      // Highlight active nav links based on pathname
+      // 4. Highlight active nav links based on pathname
       const highlightActiveLinks = () => {
         const path = window.location.pathname;
         const navLinks = document.querySelectorAll(".nav-link");
@@ -840,6 +763,9 @@ const canonicalUrl = `https://takeoutfix.pages.dev${Astro.url.pathname.replace(/
           if (href === path || (href !== "/" && path.startsWith(href))) {
             link.classList.remove("text-zinc-400");
             link.classList.add("text-white");
+          } else {
+            link.classList.add("text-zinc-400");
+            link.classList.remove("text-white");
           }
         });
 
@@ -847,18 +773,46 @@ const canonicalUrl = `https://takeoutfix.pages.dev${Astro.url.pathname.replace(/
           const href = link.getAttribute("href");
           if (href === path || (href !== "/" && path.startsWith(href))) {
             link.classList.add("text-indigo-400", "bg-white/5");
+          } else {
+            link.classList.remove("text-indigo-400", "bg-white/5");
           }
         });
       };
 
-      highlightActiveLinks();
+      // Register Auth State Listener once globally
+      setupAuthListeners();
+
+      // Hook immediately after Astro Swaps pages
+      document.addEventListener("astro:after-swap", () => {
+        const savedTheme = localStorage.getItem("takeoutfix_theme") || "light";
+        if (savedTheme === "dark") {
+          document.documentElement.classList.add("dark");
+          document.documentElement.classList.remove("light");
+        } else {
+          document.documentElement.classList.add("light");
+          document.documentElement.classList.remove("dark");
+        }
+      });
+
+      // Hook for initial load and page-load transitions
+      document.addEventListener("astro:page-load", () => {
+        initTheme();
+        initMobileMenu();
+        syncUserUI();
+        setupInteractionEvents();
+        highlightActiveLinks();
+        checkAdBlock();
+      });
+
+      // Stage 2: Wait for folder selection or restore button click
+      window.addEventListener('takeoutfix-action-triggered', () => {
+        hasUserInteracted = true;
+        checkAdBlock();
+      });
 
       // Code Protection & Copy-paste deterrent (Production Only)
       if (window.location.hostname !== "localhost" && window.location.hostname !== "127.0.0.1") {
-        // Disable Right-Click Context Menu
         document.addEventListener("contextmenu", (e) => e.preventDefault());
-
-        // Disable Common DevTools Shortcuts
         document.addEventListener("keydown", (e) => {
           if (
             e.key === "F12" ||

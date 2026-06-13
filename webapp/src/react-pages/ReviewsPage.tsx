@@ -197,7 +197,7 @@ export default function ReviewsPage() {
               transition={{ duration: 0.5, delay: Math.min(0.5, idx * 0.08), ease: "easeOut" }}
               className="h-full"
             >
-              <Card className="bg-black/60 backdrop-blur-xl border-white/10 hover:border-indigo-500/30 transition-colors group h-full flex flex-col justify-between">
+              <Card className="review-card bg-black/60 backdrop-blur-xl border-white/10 hover:border-indigo-500/30 transition-colors group h-full flex flex-col justify-between">
                 <CardContent className="pt-6 flex flex-col h-full justify-between">
                   <div>
                     <div className="flex text-amber-400 mb-4">

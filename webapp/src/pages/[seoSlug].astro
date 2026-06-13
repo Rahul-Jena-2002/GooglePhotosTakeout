@@ -2,27 +2,6 @@
 import Layout from "../layouts/Layout.astro";
 import AdUnit from "../components/AdUnit";
 import { ShieldCheck, ArrowRight, CheckCircle2, AlertTriangle, Cpu, HardDrive, Eye } from "lucide-react";
-
-export const prerender = true;
-
-export function getStaticPaths() {
-  const actionKeys = ["restore", "recover", "fix", "repair", "merge", "sync", "rebuild", "reconstruct", "retrieve", "preserve", "extract", "convert", "transfer"];
-  const targetKeys = ["metadata", "exif", "gps", "location", "timestamp", "date-taken", "creation-date", "albums", "people-tags", "camera-data", "photo-information", "video-information"];
-  const sourceKeys = ["takeout", "photos", "export"];
-
-  const paths = [];
-  for (const action of actionKeys) {
-    for (const target of targetKeys) {
-      for (const source of sourceKeys) {
-        paths.push({
-          params: { seoSlug: `how-to-${action}-${target}-from-${source}` }
-        });
-      }
-    }
-  }
-  return paths;
-}
-
 const { seoSlug } = Astro.params;
 const slug = (seoSlug || "").toLowerCase();
 

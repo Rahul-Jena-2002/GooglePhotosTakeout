@@ -2,8 +2,7 @@
 import Layout from "../layouts/Layout.astro";
 import AdUnit from "../components/AdUnit";
 import { PLAN_PRICES } from "../contexts/AuthContext";
-
-export const prerender = true;
+---
 
 const region = "us";
 const prices = PLAN_PRICES[region] || PLAN_PRICES.us;
@@ -402,12 +401,11 @@ const prices = PLAN_PRICES[region] || PLAN_PRICES.us;
     await fetchSettingsAndInit();
   }
 
-  // Trigger on load
-  if (document.readyState === "complete" || document.readyState === "interactive") {
+  // Listen to Astro page transitions
+  document.addEventListener("astro:page-load", () => {
+    priceUpdateDone = false;
     initWrapper();
-  } else {
-    document.addEventListener("DOMContentLoaded", initWrapper);
-  }
+  });
 
   // Trigger on hover/touch instantly
   window.addEventListener("mouseover", initWrapper, { once: true });

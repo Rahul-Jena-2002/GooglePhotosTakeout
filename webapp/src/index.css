@@ -349,7 +349,8 @@ html.light .hover\:bg-amber-500\/30:hover {
 /* Clean solid cards for light mode, avoiding neon/glass overrides */
 html.light .glass-capsule,
 html.light .glass-card,
-html.light .compare-card {
+html.light .compare-card,
+html.light .review-card {
   background-color: #FFFFFF !important;
   background-image: none !important;
   border: 1px solid #D2D2D7 !important;
@@ -360,8 +361,13 @@ html.light .compare-card {
 
 html.light .glass-capsule::before,
 html.light .glass-card::before,
-html.light .compare-card::before {
+html.light .compare-card::before,
+html.light .review-card::before {
   display: none !important;
+}
+
+html.light .review-card .bg-zinc-900\/50 {
+  background-color: #F5F5F7 !important;
 }
 
 html.light nav {

@@ -452,7 +452,7 @@ Polished response:`
                   {(!selectedTicket.assignedTo || selectedTicket.assignedTo !== adminData?.uid) && adminData && (
                     <button
                       onClick={handleClaimTicket}
-                      className="px-3.5 bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-400 border border-indigo-500/20 text-xs font-bold rounded-lg transition-all"
+                      className="px-3.5 bg-indigo-600 hover:bg-indigo-700 text-white border border-indigo-700 text-xs font-bold rounded-lg transition-all"
                     >
                       Claim
                     </button>
