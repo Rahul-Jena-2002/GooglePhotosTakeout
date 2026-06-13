@@ -6,6 +6,7 @@ import { Button } from "../components/ui/button"
 import { Card } from "../components/ui/card"
 import { ShieldCheck, Lock, CreditCard, ChevronRight, AlertCircle, Sparkles, CheckCircle2 } from "lucide-react"
 import BrandLogo from "../components/BrandLogo"
+import { useState, useEffect } from "react"
 
 interface PlanDetails {
   name: string;
@@ -30,7 +31,7 @@ const getPlanDetails = (
   const details: Record<string, { name: string; description: string; features: string[] }> = {
     recovery_pass: {
       name: "Recovery Pass",
-      description: "One-time metadata recovery for up to 10,000 files (20 GB)",
+      description: "One-time metadata recovery for up to 10,005 files (20 GB)",
       features: [
         "20 GB or 10,000 Files limit (whichever comes first)",
         "Full folder organization structure",
@@ -88,16 +89,16 @@ function CheckoutPageContent() {
   
   if (userData?.suspended) {
     return (
-      <div className="min-h-screen bg-black flex flex-col items-center justify-center p-6 text-center">
-        <div className="w-16 h-16 bg-red-500/10 border border-red-500/20 text-red-500 rounded-full flex items-center justify-center mb-6">
+      <div className="min-h-screen bg-background flex flex-col items-center justify-center p-6 text-center">
+        <div className="w-16 h-16 bg-red-500/10 border border-red-500/20 text-red-500 rounded-lg flex items-center justify-center mb-6">
           <AlertCircle className="w-8 h-8" />
         </div>
-        <h1 className="text-2xl font-bold tracking-tight text-white mb-2">Account Suspended</h1>
-        <p className="text-zinc-400 max-w-md mb-8">
+        <h1 className="text-2xl font-bold tracking-tight text-foreground mb-2">Account Suspended</h1>
+        <p className="text-zinc-550 dark:text-zinc-405 max-w-md mb-8">
           Your account has been suspended for violating our terms of service or due to an administrative hold. If you believe this is a mistake, please contact our support team.
         </p>
         <div className="flex gap-4">
-          <a href="/support" className="px-5 py-2 rounded-full bg-zinc-900 border border-zinc-800 text-sm text-zinc-300 hover:text-white transition-all">
+          <a href="/support" className="px-5 py-2 rounded-lg bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-sm text-zinc-800 dark:text-zinc-200 hover:bg-zinc-200 dark:hover:bg-zinc-800 transition-all">
             Contact Support
           </a>
         </div>
@@ -149,12 +150,12 @@ function CheckoutPageContent() {
 
   if (!plan) {
     return (
-      <div className="max-w-md mx-auto mt-32 p-6 bg-zinc-900 border border-zinc-800 rounded-xl text-center">
-        <AlertCircle className="w-12 h-12 text-red-400 mx-auto mb-4" />
+      <div className="max-w-md mx-auto mt-32 p-6 bg-zinc-50 dark:bg-zinc-955 border border-zinc-200 dark:border-zinc-900 rounded-lg text-center">
+        <AlertCircle className="w-12 h-12 text-red-500 mx-auto mb-4" />
         <h2 className="text-xl font-bold mb-2">Invalid Plan Selected</h2>
-        <p className="text-zinc-400 mb-6">Please select a valid payment option to continue.</p>
+        <p className="text-zinc-500 mb-6">Please select a valid payment option to continue.</p>
         <a href="/pricing">
-          <Button className="w-full bg-white text-black hover:bg-zinc-200">Return to Pricing</Button>
+          <Button variant="outline" className="w-full">Return to Pricing</Button>
         </a>
       </div>
     )
@@ -246,91 +247,91 @@ function CheckoutPageContent() {
   }
 
   return (
-    <div className="min-h-screen bg-black text-zinc-100 flex items-center justify-center p-4 py-20 relative">
-      <Card className="w-full max-w-5xl bg-zinc-950/40 border-white/5 backdrop-blur-2xl shadow-2xl overflow-hidden rounded-2xl grid md:grid-cols-2">
+    <div className="min-h-screen bg-background text-foreground flex items-center justify-center p-4 py-20 relative z-10 font-sans">
+      <Card className="w-full max-w-5xl bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 overflow-hidden rounded-lg grid md:grid-cols-2 shadow-none">
         
         {/* LEFT PANEL: PRODUCT DETAILS & INVOICE */}
-        <div className="p-8 border-b md:border-b-0 md:border-r border-white/5 flex flex-col justify-between bg-white/[0.01]">
+        <div className="p-8 border-b md:border-b-0 md:border-r border-zinc-200 dark:border-zinc-800 flex flex-col justify-between bg-zinc-100/10 dark:bg-zinc-900/10">
           <div>
             <div className="flex items-center gap-2 mb-8">
-              <BrandLogo className="w-6 h-6 shadow-[0_0_15px_rgba(99,102,241,0.5)]" />
-              <span className="font-bold tracking-tight text-white">TakeoutFix Core Checkout</span>
+              <BrandLogo className="w-6 h-6 shadow-none" />
+              <span className="font-bold tracking-tight text-foreground">TakeoutFix Core Checkout</span>
             </div>
 
-            <div className="text-zinc-500 text-xs font-bold uppercase tracking-wider mb-1">Subscribe to</div>
-            <h1 className="text-3xl font-black text-white mb-2">{plan.name}</h1>
-            <p className="text-zinc-400 text-sm mb-6">{plan.description}</p>
+            <div className="text-zinc-400 text-xs font-bold uppercase tracking-wider mb-1">Subscribe to</div>
+            <h1 className="text-3xl font-black text-foreground mb-2">{plan.name}</h1>
+            <p className="text-zinc-550 dark:text-zinc-400 text-sm mb-6">{plan.description}</p>
 
             <div className="flex items-baseline gap-1.5 mb-8">
-              <span className="text-5xl font-black text-white">{plan.symbol}{plan.priceVal}</span>
+              <span className="text-5xl font-black text-foreground">{plan.symbol}{plan.priceVal}</span>
               <span className="text-zinc-500 text-sm font-semibold">{planKey === "recovery_pass" ? "/ one-time" : "/ lifetime"}</span>
             </div>
 
             <div className="space-y-4">
               {plan.features.map((feat, i) => (
-                <div key={i} className="flex items-start gap-3 text-sm text-zinc-300">
-                  <CheckCircle2 className="w-4 h-4 text-indigo-400 mt-0.5 flex-shrink-0" />
+                <div key={i} className="flex items-start gap-3 text-sm text-zinc-650 dark:text-zinc-350">
+                  <CheckCircle2 className="w-4 h-4 text-zinc-900 dark:text-zinc-100 mt-0.5 flex-shrink-0" />
                   <span>{feat}</span>
                 </div>
               ))}
             </div>
           </div>
 
-          <div className="pt-8 border-t border-white/5 mt-8 space-y-4 text-xs text-zinc-500">
+          <div className="pt-8 border-t border-zinc-200 dark:border-zinc-800 mt-8 space-y-4 text-xs text-zinc-450 dark:text-zinc-500">
             <div className="flex items-center gap-2">
-              <ShieldCheck className="w-4 h-4 text-emerald-400" />
+              <ShieldCheck className="w-4 h-4 text-emerald-500" />
               <span>100% Privacy Guaranteed. Files remain local during execution.</span>
             </div>
             <div className="flex items-center gap-2">
-              <Lock className="w-4 h-4 text-indigo-400" />
+              <Lock className="w-4 h-4 text-zinc-400" />
               <span>Payments secured by simulated Stripe Billing sandbox network.</span>
             </div>
           </div>
         </div>
 
         {/* RIGHT PANEL: PAYMENT FORM & INJECTION CONTROL */}
-        <div className="p-8 flex flex-col justify-center min-h-[500px]">
+        <div className="p-8 flex flex-col justify-center min-h-[500px] bg-background">
           {success ? (
             <div className="text-center py-12 space-y-4">
-              <div className="w-16 h-16 bg-green-500/10 border border-green-500/20 text-green-400 flex items-center justify-center rounded-full mx-auto animate-bounce shadow-[0_0_30px_rgba(34,197,94,0.2)]">
+              <div className="w-16 h-16 bg-green-500/10 border border-green-500/20 text-green-500 flex items-center justify-center rounded-full mx-auto animate-bounce">
                 <CheckCircle2 className="w-8 h-8" />
               </div>
-              <h2 className="text-2xl font-bold text-white">Payment Successful!</h2>
-              <p className="text-zinc-400 text-sm">Your plan is upgraded to <span className="font-semibold text-white">{plan.name}</span>.</p>
-              <p className="text-zinc-500 text-xs animate-pulse">Redirecting to account dashboard...</p>
+              <h2 className="text-2xl font-bold text-foreground">Payment Successful!</h2>
+              <p className="text-zinc-500 text-sm">Your plan is upgraded to <span className="font-semibold text-foreground">{plan.name}</span>.</p>
+              <p className="text-zinc-400 text-xs animate-pulse">Redirecting to account dashboard...</p>
             </div>
           ) : isProcessing ? (
             <div className="text-center py-12 space-y-6">
-              <div className="w-12 h-12 border-2 border-zinc-800 border-t-indigo-500 rounded-full animate-spin mx-auto"></div>
+              <div className="w-12 h-12 border-2 border-zinc-200 dark:border-zinc-800 border-t-zinc-900 dark:border-t-zinc-100 rounded-full animate-spin mx-auto"></div>
               <div className="space-y-2">
-                <h3 className="text-lg font-semibold text-white">Processing Transaction</h3>
-                <p className="text-zinc-400 font-mono text-xs">{processStep}</p>
+                <h3 className="text-lg font-semibold text-foreground">Processing Transaction</h3>
+                <p className="text-zinc-500 font-mono text-xs">{processStep}</p>
               </div>
             </div>
           ) : (
             <form onSubmit={handleSimulatedPayment} className="space-y-6">
-              <h2 className="text-xl font-bold tracking-tight text-white">Select Payment Method</h2>
+              <h2 className="text-xl font-bold tracking-tight text-foreground">Select Payment Method</h2>
               
               {/* Payment tab toggler */}
-              <div className="grid grid-cols-2 bg-zinc-900 border border-zinc-800 p-1 rounded-lg">
+              <div className="grid grid-cols-2 bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 p-1 rounded-lg">
                 <button
                   type="button"
                   onClick={() => setPaymentTab("card")}
-                  className={`flex items-center justify-center gap-2 py-2 text-sm font-medium rounded-md transition-colors ${paymentTab === "card" ? "bg-zinc-800 text-white shadow-inner" : "text-zinc-500 hover:text-zinc-300"}`}
+                  className={`flex items-center justify-center gap-2 py-2 text-sm font-medium rounded-md transition-colors ${paymentTab === "card" ? "bg-zinc-200 dark:bg-zinc-800 text-foreground shadow-none" : "text-zinc-450 dark:text-zinc-500 hover:text-foreground"}`}
                 >
                   <CreditCard className="w-4 h-4" /> Credit Card
                 </button>
                 <button
                   type="button"
                   onClick={() => setPaymentTab("upi")}
-                  className={`flex items-center justify-center gap-2 py-2 text-sm font-medium rounded-md transition-colors ${paymentTab === "upi" ? "bg-zinc-800 text-white shadow-inner" : "text-zinc-500 hover:text-zinc-300"}`}
+                  className={`flex items-center justify-center gap-2 py-2 text-sm font-medium rounded-md transition-colors ${paymentTab === "upi" ? "bg-zinc-200 dark:bg-zinc-800 text-foreground shadow-none" : "text-zinc-450 dark:text-zinc-500 hover:text-foreground"}`}
                 >
                   <Sparkles className="w-4 h-4" /> UPI Netbanking
                 </button>
               </div>
 
               {error && (
-                <div className="p-3 bg-red-500/5 border border-red-500/20 text-red-400 rounded-md text-xs flex items-center gap-2">
+                <div className="p-3 bg-red-500/5 border border-red-500/20 text-red-500 rounded-md text-xs flex items-center gap-2">
                   <AlertCircle className="w-4 h-4 flex-shrink-0" />
                   <span>{error}</span>
                 </div>
@@ -339,89 +340,89 @@ function CheckoutPageContent() {
               {paymentTab === "card" ? (
                 <div className="space-y-4">
                   <div>
-                    <label className="text-xs text-zinc-400 font-medium block mb-1">Card Number</label>
+                    <label className="text-xs text-zinc-500 font-medium block mb-1">Card Number</label>
                     <div className="relative">
                       <input
                         type="text"
-                        placeholder="4242 4242 4242 4242 (Simulated)"
+                        placeholder="4242 4242 4242 4242"
                         value={cardNumber}
                         onChange={(e) => setCardNumber(e.target.value.replace(/\D/g, "").substring(0, 16))}
                         required
-                        className="w-full bg-zinc-900 border border-zinc-800 rounded-md py-2 px-3 text-sm text-white focus:outline-none focus:border-indigo-500 font-mono tracking-wider"
+                        className="w-full bg-background border border-zinc-200 dark:border-zinc-800 rounded-lg py-2 px-3 text-sm text-foreground focus:outline-none focus:border-zinc-400 dark:focus:border-zinc-600 font-mono tracking-wider"
                       />
-                      <CreditCard className="w-4 h-4 text-zinc-500 absolute right-3 top-1/2 -translate-y-1/2" />
+                      <CreditCard className="w-4 h-4 text-zinc-450 dark:text-zinc-500 absolute right-3 top-1/2 -translate-y-1/2" />
                     </div>
                   </div>
                   
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <label className="text-xs text-zinc-400 font-medium block mb-1">Expiration Date</label>
+                      <label className="text-xs text-zinc-500 font-medium block mb-1">Expiration Date</label>
                       <input
                         type="text"
                         placeholder="MM / YY"
                         value={expiry}
                         onChange={(e) => setExpiry(e.target.value.substring(0, 5))}
                         required
-                        className="w-full bg-zinc-900 border border-zinc-800 rounded-md py-2 px-3 text-sm text-white focus:outline-none focus:border-indigo-500 font-mono text-center"
+                        className="w-full bg-background border border-zinc-200 dark:border-zinc-800 rounded-lg py-2 px-3 text-sm text-foreground focus:outline-none focus:border-zinc-400 dark:focus:border-zinc-600 font-mono text-center"
                       />
                     </div>
                     <div>
-                      <label className="text-xs text-zinc-400 font-medium block mb-1">CVC / CVV</label>
+                      <label className="text-xs text-zinc-500 font-medium block mb-1">CVC / CVV</label>
                       <input
                         type="password"
                         placeholder="•••"
                         value={cvc}
                         onChange={(e) => setCvc(e.target.value.replace(/\D/g, "").substring(0, 3))}
                         required
-                        className="w-full bg-zinc-900 border border-zinc-800 rounded-md py-2 px-3 text-sm text-white focus:outline-none focus:border-indigo-500 font-mono text-center"
+                        className="w-full bg-background border border-zinc-200 dark:border-zinc-800 rounded-lg py-2 px-3 text-sm text-foreground focus:outline-none focus:border-zinc-400 dark:focus:border-zinc-600 font-mono text-center"
                       />
                     </div>
                   </div>
 
                   <div>
-                    <label className="text-xs text-zinc-400 font-medium block mb-1">Name on Card</label>
+                    <label className="text-xs text-zinc-500 font-medium block mb-1">Name on Card</label>
                     <input
                       type="text"
                       placeholder="e.g. Rahul Jena"
                       value={nameOnCard}
                       onChange={(e) => setNameOnCard(e.target.value)}
                       required
-                      className="w-full bg-zinc-900 border border-zinc-800 rounded-md py-2 px-3 text-sm text-white focus:outline-none focus:border-indigo-500"
+                      className="w-full bg-background border border-zinc-200 dark:border-zinc-800 rounded-lg py-2 px-3 text-sm text-foreground focus:outline-none focus:border-zinc-400 dark:focus:border-zinc-600"
                     />
                   </div>
                 </div>
               ) : (
                 <div className="space-y-4">
-                  <div className="p-4 bg-zinc-900/60 border border-zinc-800 rounded-lg">
-                    <label className="text-xs text-zinc-400 font-medium block mb-2">Select UPI App Provider</label>
+                  <div className="p-4 bg-zinc-100/50 dark:bg-zinc-900/60 border border-zinc-200 dark:border-zinc-800 rounded-lg">
+                    <label className="text-xs text-zinc-500 font-medium block mb-2">Select UPI App Provider</label>
                     <div className="grid grid-cols-2 gap-2 text-center text-xs">
-                      <div className="p-2 border border-zinc-800 bg-black/40 rounded hover:border-indigo-500/50 cursor-pointer transition-colors">Google Pay</div>
-                      <div className="p-2 border border-zinc-800 bg-black/40 rounded hover:border-indigo-500/50 cursor-pointer transition-colors">PhonePe</div>
-                      <div className="p-2 border border-indigo-500 bg-indigo-500/10 text-indigo-400 rounded">Paytm (Simulated)</div>
-                      <div className="p-2 border border-zinc-800 bg-black/40 rounded hover:border-indigo-500/50 cursor-pointer transition-colors">BHIM / Any UPI ID</div>
+                      <div className="p-2 border border-zinc-200 dark:border-zinc-800 bg-background rounded hover:border-zinc-400 dark:hover:border-zinc-600 cursor-pointer transition-colors text-foreground">Google Pay</div>
+                      <div className="p-2 border border-zinc-200 dark:border-zinc-800 bg-background rounded hover:border-zinc-400 dark:hover:border-zinc-600 cursor-pointer transition-colors text-foreground">PhonePe</div>
+                      <div className="p-2 border border-zinc-900 dark:border-zinc-100 bg-zinc-200 dark:bg-zinc-800 text-foreground font-semibold rounded">Paytm (Simulated)</div>
+                      <div className="p-2 border border-zinc-200 dark:border-zinc-800 bg-background rounded hover:border-zinc-400 dark:hover:border-zinc-600 cursor-pointer transition-colors text-foreground">BHIM / Any UPI ID</div>
                     </div>
                   </div>
                   <div>
-                    <label className="text-xs text-zinc-400 font-medium block mb-1">Enter UPI VPA ID</label>
+                    <label className="text-xs text-zinc-500 font-medium block mb-1">Enter UPI VPA ID</label>
                     <input
                       type="text"
-                      placeholder="rahul@paytm (Simulated)"
+                      placeholder="rahul@paytm"
                       required
-                      className="w-full bg-zinc-900 border border-zinc-800 rounded-md py-2 px-3 text-sm text-white focus:outline-none focus:border-indigo-500"
+                      className="w-full bg-background border border-zinc-200 dark:border-zinc-800 rounded-lg py-2 px-3 text-sm text-foreground focus:outline-none focus:border-zinc-400 dark:focus:border-zinc-600"
                     />
                   </div>
                 </div>
               )}
 
-              <Button
+              <button
                 type="submit"
-                className="w-full h-12 bg-gradient-to-r from-indigo-500 to-purple-600 text-white font-bold hover:opacity-90 transition-opacity flex items-center justify-center gap-2 border-0 shadow-lg shadow-indigo-500/15"
+                className="w-full h-12 bg-zinc-950 dark:bg-zinc-50 text-white dark:text-black font-bold hover:bg-zinc-800 dark:hover:bg-zinc-250 transition-colors flex items-center justify-center gap-2 border border-transparent rounded-lg cursor-pointer"
               >
                 Pay {plan.symbol}{plan.priceVal} <ChevronRight className="w-4 h-4" />
-              </Button>
+              </button>
               
               <div className="text-center">
-                <a href="/pricing" className="text-xs text-zinc-500 hover:text-zinc-300">
+                <a href="/pricing" className="text-xs text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-350">
                   Cancel and return to Pricing
                 </a>
               </div>

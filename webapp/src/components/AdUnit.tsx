@@ -157,16 +157,16 @@ export default function AdUnit({ type = "auto", className = "" }: AdUnitProps) {
     }
   }
 
-  // Base styling for modern dark-themed containers (which adapt dynamically to light overrides)
-  const wrapperBaseClass = `w-full mx-auto bg-zinc-950/45 border border-zinc-900 rounded-2xl relative overflow-hidden group select-none transition-all duration-300 hover:border-zinc-850 shadow-lg ${className}`;
+  // Base styling for minimal card containers (adapting to light/dark themes)
+  const wrapperBaseClass = `w-full mx-auto bg-zinc-50 dark:bg-zinc-950/20 border border-zinc-200 dark:border-zinc-900 rounded-xl relative overflow-hidden group select-none transition-all duration-150 hover:border-zinc-300 dark:hover:border-zinc-800 ${className}`;
   const sponsoredTag = (
-    <div className="absolute top-3 right-4 text-[7px] font-bold text-zinc-550 dark:text-zinc-500 uppercase tracking-[0.2em]">
+    <div className="absolute top-3 right-4 text-[7px] font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-[0.2em]">
       Sponsored
     </div>
   );
   
-  const badgeClass = "inline-block text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 border rounded-md border-zinc-200 dark:border-zinc-800 bg-zinc-150/50 dark:bg-zinc-900/60 text-zinc-600 dark:text-zinc-400";
-  const btnClass = "px-6 py-2.5 rounded-xl font-bold text-xs text-white bg-black hover:bg-zinc-900 border border-zinc-800 transition-all cursor-pointer shadow-lg outline-none flex items-center justify-center gap-1.5 dark:bg-white dark:text-black dark:hover:bg-white/90 dark:border-transparent shrink-0";
+  const badgeClass = "inline-block text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 border rounded-md border-zinc-250 dark:border-zinc-800 bg-zinc-100 dark:bg-zinc-900/60 text-zinc-500 dark:text-zinc-400";
+  const btnClass = "px-6 py-2 rounded-lg font-semibold text-xs border btn-outline-custom transition-all cursor-pointer flex items-center justify-center gap-1.5 shrink-0";
 
   // 1. HORIZONTAL WIDE BANNER VIEW (width >= 620px)
   if (resolvedLayout === "wide") {

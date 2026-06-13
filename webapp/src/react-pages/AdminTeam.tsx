@@ -8,16 +8,16 @@ import { Users2, ShieldCheck, Trash2, Plus, Wifi, WifiOff } from "lucide-react"
 const ROLES: AdminRole[] = ["SUPER_ADMIN", "ADMIN", "SUPPORT", "MODERATOR"]
 
 const ROLE_COLORS: Record<AdminRole, string> = {
-  SUPER_ADMIN: "text-amber-400 bg-amber-400/10 border-amber-400/20",
-  ADMIN: "text-indigo-400 bg-indigo-400/10 border-indigo-400/20",
-  SUPPORT: "text-emerald-400 bg-emerald-400/10 border-emerald-400/20",
-  MODERATOR: "text-purple-400 bg-purple-400/10 border-purple-400/20",
+  SUPER_ADMIN: "admin-role-super-admin px-1.5 py-0.5",
+  ADMIN: "admin-role-admin px-1.5 py-0.5",
+  SUPPORT: "admin-role-support px-1.5 py-0.5",
+  MODERATOR: "admin-role-moderator px-1.5 py-0.5",
 }
 
 const STATUS_DOT: Record<string, string> = {
-  online: "bg-emerald-400",
-  idle: "bg-amber-400",
-  offline: "bg-zinc-600",
+  online: "bg-zinc-100 dark:bg-white border border-zinc-400 dark:border-transparent shadow-sm",
+  idle: "bg-zinc-450 dark:bg-zinc-500",
+  offline: "bg-zinc-700 dark:bg-zinc-800",
 }
 
 export default function AdminTeam() {
@@ -33,6 +33,9 @@ export default function AdminTeam() {
   useEffect(() => {
     const unsub = onSnapshot(collection(db, "admins"), (snap) => {
       setAdmins(snap.docs.map(d => d.data() as AdminData))
+      setLoading(false)
+    }, (err) => {
+      console.error("Admins list team error:", err)
       setLoading(false)
     })
     return () => unsub()
@@ -115,7 +118,7 @@ export default function AdminTeam() {
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-white flex items-center gap-3">
-            <Users2 className="w-6 h-6 text-indigo-400" /> Admin Team
+            <Users2 className="w-6 h-6 text-zinc-400" /> Admin Team
           </h1>
           <p className="text-zinc-400 text-sm mt-1">Manage admin accounts, roles, and online presence.</p>
         </div>
@@ -128,12 +131,12 @@ export default function AdminTeam() {
               placeholder="Email to invite..."
               value={inviteEmail}
               onChange={e => setInviteEmail(e.target.value)}
-              className="bg-zinc-900 border border-zinc-800 rounded-md py-2 px-3 text-sm text-white focus:outline-none focus:border-indigo-500 w-56"
+              className="bg-zinc-900 border border-zinc-800 rounded-md py-2 px-3 text-sm text-white focus:outline-none focus:border-zinc-500 w-56"
             />
             <select
               value={inviteRole}
               onChange={e => setInviteRole(e.target.value as AdminRole)}
-              className="bg-zinc-900 border border-zinc-800 rounded-md py-2 px-3 text-sm text-white focus:outline-none focus:border-indigo-500"
+              className="bg-zinc-900 border border-zinc-800 rounded-md py-2 px-3 text-sm text-white focus:outline-none focus:border-zinc-500"
             >
               {ROLES.filter(r => r !== "SUPER_ADMIN").map(r => (
                 <option key={r} value={r}>{r}</option>
@@ -142,7 +145,7 @@ export default function AdminTeam() {
             <button
               onClick={handleInvite}
               disabled={inviting || !inviteEmail.trim()}
-              className="bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 btn-admin-invite text-white px-4 py-2 rounded-md flex items-center gap-2 text-sm font-medium transition-colors"
+              className="btn-monochrome-primary disabled:opacity-50 btn-admin-invite px-4 py-2 rounded-md flex items-center gap-2 text-sm font-medium transition-colors"
             >
               <Plus className="w-4 h-4" /> Invite
             </button>
@@ -151,98 +154,100 @@ export default function AdminTeam() {
       </div>
 
       <div className="bg-zinc-900 border border-zinc-800 rounded-lg overflow-hidden">
-        <table className="w-full text-left text-sm">
-          <thead className="bg-zinc-950/50 border-b border-zinc-800 text-zinc-400">
-            <tr>
-              <th className="px-6 py-3 font-medium">Admin</th>
-              <th className="px-6 py-3 font-medium">Role</th>
-              <th className="px-6 py-3 font-medium">Status</th>
-              <th className="px-6 py-3 font-medium">Last Seen</th>
-              {isSuperAdmin && <th className="px-6 py-3 font-medium text-right">Actions</th>}
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-zinc-800">
-            {loading ? (
-              <tr><td colSpan={isSuperAdmin ? 5 : 4} className="px-6 py-8 text-center text-zinc-500">Loading team...</td></tr>
-            ) : admins.length === 0 ? (
-              <tr><td colSpan={isSuperAdmin ? 5 : 4} className="px-6 py-8 text-center text-zinc-500">No admin accounts found.</td></tr>
-            ) : (
-              admins.map((a) => (
-                <tr key={a.uid} className="hover:bg-zinc-800/40 transition-colors">
-                  <td className="px-6 py-4">
-                    <div className="flex items-center gap-3">
-                      <div className="relative flex-shrink-0">
-                        {a.photoURL ? (
-                          <img src={a.photoURL} alt="" className="w-9 h-9 rounded-full" />
-                        ) : (
-                          <div className="w-9 h-9 rounded-full bg-indigo-500/20 flex items-center justify-center font-bold text-indigo-400">
-                            {a.displayName?.charAt(0) || "A"}
-                          </div>
-                        )}
-                        <span className={`absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border-2 border-zinc-900 ${STATUS_DOT[a.status] || "bg-zinc-600"}`} />
-                      </div>
-                      <div>
-                        <div className="font-medium text-zinc-100 flex items-center gap-2">
-                          {a.displayName}
-                          {a.uid === user?.uid && <span className="text-[10px] you-badge px-1.5 py-0.5 rounded">You</span>}
+        <div className="w-full overflow-x-auto">
+          <table className="w-full text-left text-sm">
+            <thead className="bg-zinc-950/50 border-b border-zinc-800 text-zinc-400">
+              <tr>
+                <th className="px-6 py-3 font-medium">Admin</th>
+                <th className="px-6 py-3 font-medium">Role</th>
+                <th className="px-6 py-3 font-medium">Status</th>
+                <th className="px-6 py-3 font-medium">Last Seen</th>
+                {isSuperAdmin && <th className="px-6 py-3 font-medium text-right">Actions</th>}
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-zinc-800">
+              {loading ? (
+                <tr><td colSpan={isSuperAdmin ? 5 : 4} className="px-6 py-8 text-center text-zinc-500">Loading team...</td></tr>
+              ) : admins.length === 0 ? (
+                <tr><td colSpan={isSuperAdmin ? 5 : 4} className="px-6 py-8 text-center text-zinc-500">No admin accounts found.</td></tr>
+              ) : (
+                admins.map((a) => (
+                  <tr key={a.uid} className="hover:bg-zinc-800/40 transition-colors">
+                    <td className="px-6 py-4">
+                      <div className="flex items-center gap-3">
+                        <div className="relative flex-shrink-0">
+                          {a.photoURL ? (
+                            <img src={a.photoURL} alt="" className="w-9 h-9 rounded-full" />
+                          ) : (
+                            <div className="w-9 h-9 rounded-full bg-zinc-800 dark:bg-zinc-200 flex items-center justify-center font-bold text-zinc-350 dark:text-zinc-800 border border-zinc-700 dark:border-zinc-350">
+                              {a.displayName?.charAt(0) || "A"}
+                            </div>
+                          )}
+                          <span className={`absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border-2 border-zinc-900 ${STATUS_DOT[a.status] || "bg-zinc-600"}`} />
                         </div>
-                        <div className="text-xs text-zinc-500">{a.email}</div>
+                        <div>
+                          <div className="font-medium text-zinc-100 flex items-center gap-2">
+                            {a.displayName}
+                            {a.uid === user?.uid && <span className="text-[10px] you-badge px-1.5 py-0.5 rounded">You</span>}
+                          </div>
+                          <div className="text-xs text-zinc-500">{a.email}</div>
+                        </div>
                       </div>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4">
-                    {!isSuperAdmin || a.role === "SUPER_ADMIN" || a.uid === user?.uid ? (
-                      <span className={`inline-flex items-center px-2 py-1 rounded-md text-xs font-bold uppercase border ${ROLE_COLORS[a.role]}`}>
-                        {a.role.replace("_", " ")}
-                      </span>
-                    ) : (
-                      <select
-                        value={a.role}
-                        onChange={e => handleRoleChange(a.uid, e.target.value as AdminRole)}
-                        className={`text-xs font-bold uppercase border rounded-md px-2 py-1 bg-transparent focus:outline-none cursor-pointer ${ROLE_COLORS[a.role]}`}
-                      >
-                        {ROLES.filter(r => r !== "SUPER_ADMIN").map(r => <option key={r} value={r} className="bg-zinc-900 text-white">{r.replace("_", " ")}</option>)}
-                      </select>
-                    )}
-                  </td>
-                  <td className="px-6 py-4">
-                    <div className="flex items-center gap-2">
-                      {a.status === "offline" ? (
-                        <WifiOff className="w-3.5 h-3.5 text-zinc-600" />
+                    </td>
+                    <td className="px-6 py-4">
+                      {!isSuperAdmin || a.role === "SUPER_ADMIN" || a.uid === user?.uid ? (
+                        <span className={`inline-flex items-center px-2 py-1 rounded-md text-xs font-bold uppercase border ${ROLE_COLORS[a.role]}`}>
+                          {a.role.replace("_", " ")}
+                        </span>
                       ) : (
-                        <Wifi className={`w-3.5 h-3.5 ${a.status === "online" ? "text-emerald-400" : "text-amber-400"}`} />
-                      )}
-                      <span className={`text-xs capitalize ${a.status === "online" ? "text-emerald-400" : a.status === "idle" ? "text-amber-400" : "text-zinc-600"}`}>
-                        {a.status}
-                      </span>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 text-zinc-500 text-xs">
-                    {a.lastSeen ? new Date(a.lastSeen).toLocaleString() : "Never"}
-                  </td>
-                  {isSuperAdmin && (
-                    <td className="px-6 py-4 text-right">
-                      {a.uid !== user?.uid && a.role !== "SUPER_ADMIN" && (
-                        <button
-                          onClick={() => handleRemove(a)}
-                          className="text-zinc-500 hover:text-red-400 transition-colors p-1.5 rounded hover:bg-red-500/10"
-                          title="Remove from admin team"
+                        <select
+                          value={a.role}
+                          onChange={e => handleRoleChange(a.uid, e.target.value as AdminRole)}
+                          className={`text-xs font-bold uppercase border rounded-md px-2 py-1 bg-transparent focus:outline-none cursor-pointer ${ROLE_COLORS[a.role]}`}
                         >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
+                          {ROLES.filter(r => r !== "SUPER_ADMIN").map(r => <option key={r} value={r} className="bg-zinc-900 text-zinc-250">{r.replace("_", " ")}</option>)}
+                        </select>
                       )}
                     </td>
-                  )}
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
+                    <td className="px-6 py-4">
+                      <div className="flex items-center gap-2">
+                        {a.status === "offline" ? (
+                          <WifiOff className="w-3.5 h-3.5 text-zinc-650" />
+                        ) : (
+                          <Wifi className={`w-3.5 h-3.5 ${a.status === "online" ? "text-zinc-200 dark:text-zinc-100" : "text-zinc-450"}`} />
+                        )}
+                        <span className={`text-xs capitalize ${a.status === "online" ? "text-zinc-200 dark:text-zinc-100 font-bold" : a.status === "idle" ? "text-zinc-450" : "text-zinc-650"}`}>
+                          {a.status}
+                        </span>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 text-zinc-500 text-xs">
+                      {a.lastSeen ? new Date(a.lastSeen).toLocaleString() : "Never"}
+                    </td>
+                    {isSuperAdmin && (
+                      <td className="px-6 py-4 text-right">
+                        {a.uid !== user?.uid && a.role !== "SUPER_ADMIN" && (
+                          <button
+                            onClick={() => handleRemove(a)}
+                            className="text-zinc-500 hover:text-red-400 transition-colors p-1.5 rounded hover:bg-red-500/10"
+                            title="Remove from admin team"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        )}
+                      </td>
+                    )}
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
 
-      <div className="bg-amber-500/5 border border-amber-500/20 rounded-lg p-4 flex items-start gap-3">
-        <ShieldCheck className="w-4 h-4 text-amber-400 flex-shrink-0 mt-0.5" />
-        <p className="text-sm text-amber-200/70">
+      <div className="bg-zinc-900/20 border border-zinc-800/80 rounded-lg p-4 flex items-start gap-3">
+        <ShieldCheck className="w-4 h-4 text-zinc-400 flex-shrink-0 mt-0.5" />
+        <p className="text-sm text-zinc-400">
           Role changes take effect immediately. SUPER_ADMIN is the only role that can access Settings, create or remove admins. All actions are recorded in Audit Logs.
         </p>
       </div>

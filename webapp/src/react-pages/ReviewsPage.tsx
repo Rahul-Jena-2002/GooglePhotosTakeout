@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react"
-import { useAuth } from "../contexts/AuthContext"
+import { useAuth, AuthProvider } from "../contexts/AuthContext"
 import { Card, CardContent } from "../components/ui/card"
 import { Button } from "../components/ui/button"
 import { Star, MessageSquareQuote, Send, CornerDownRight } from "lucide-react"
@@ -8,8 +8,8 @@ import { db } from "../firebase"
 import { motion } from "framer-motion"
 import AdUnit from "../components/AdUnit"
 
-export default function ReviewsPage() {
-  const { user } = useAuth()
+function ReviewsPageContent() {
+  const { user, login } = useAuth()
   const [reviews, setReviews] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   
@@ -19,6 +19,18 @@ export default function ReviewsPage() {
   const [message, setMessage] = useState("")
   const [submitting, setSubmitting] = useState(false)
   const [submitSuccess, setSubmitSuccess] = useState(false)
+
+  const handleWriteReviewClick = async () => {
+    if (!user) {
+      try {
+        await login()
+      } catch (err) {
+        console.error("Login failed:", err)
+      }
+    } else {
+      setShowForm(true)
+    }
+  }
 
   useEffect(() => {
     fetchReviews()
@@ -103,9 +115,9 @@ export default function ReviewsPage() {
             transition={{ duration: 0.4, delay: 0.3 }}
           >
             <Button 
-              onClick={() => setShowForm(true)}
+              onClick={handleWriteReviewClick}
               size="lg" 
-              className="rounded-full bg-white text-black hover:bg-zinc-200"
+              className="btn-monochrome-primary rounded-full px-8 py-3 font-semibold"
             >
               {user ? "Write a Review" : "Sign in to Write a Review"}
             </Button>
@@ -170,7 +182,7 @@ export default function ReviewsPage() {
 
               <div className="flex justify-end gap-3">
                 <Button type="button" variant="ghost" onClick={() => setShowForm(false)}>Cancel</Button>
-                <Button type="submit" disabled={submitting || !message.trim()} className="bg-indigo-600 hover:bg-indigo-700 text-white">
+                <Button type="submit" disabled={submitting || !message.trim()} className="btn-monochrome-primary">
                   {submitting ? "Submitting..." : <><Send className="w-4 h-4 mr-2" /> Submit Review</>}
                 </Button>
               </div>
@@ -197,7 +209,7 @@ export default function ReviewsPage() {
               transition={{ duration: 0.5, delay: Math.min(0.5, idx * 0.08), ease: "easeOut" }}
               className="h-full"
             >
-              <Card className="review-card bg-black/60 backdrop-blur-xl border-white/10 hover:border-indigo-500/30 transition-colors group h-full flex flex-col justify-between">
+              <Card className="review-card bg-black/60 backdrop-blur-xl border-white/10 hover:border-zinc-500/30 transition-colors group h-full flex flex-col justify-between">
                 <CardContent className="pt-6 flex flex-col h-full justify-between">
                   <div>
                     <div className="flex text-amber-400 mb-4">
@@ -213,12 +225,12 @@ export default function ReviewsPage() {
                       {review.photoURL ? (
                         <img src={review.photoURL} alt="" className="w-8 h-8 rounded-full" />
                       ) : (
-                        <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-indigo-500 to-purple-500 flex items-center justify-center text-xs font-bold uppercase">
+                        <div className="w-8 h-8 rounded-full bg-zinc-800 flex items-center justify-center text-xs font-bold uppercase text-zinc-300">
                           {review.displayName?.charAt(0) || "U"}
                         </div>
                       )}
                       <div>
-                        <div className="text-sm font-medium text-white group-hover:text-indigo-400 transition-colors">{review.displayName || "Anonymous User"}</div>
+                        <div className="text-sm font-medium text-white group-hover:text-zinc-200 dark:group-hover:text-zinc-950 transition-colors">{review.displayName || "Anonymous User"}</div>
                         <div className="text-xs text-white/40">
                           {review.createdAt?.seconds ? new Date(review.createdAt.seconds * 1000).toLocaleDateString() : "Recently"}
                         </div>
@@ -229,9 +241,9 @@ export default function ReviewsPage() {
                     {review.adminReply && (
                       <div className="mt-4 pt-4 border-t border-zinc-800 bg-zinc-900/50 rounded-b-lg -mx-6 -mb-6 px-6 pb-6 text-left">
                         <div className="flex items-start gap-2">
-                          <CornerDownRight className="w-4 h-4 text-indigo-500 mt-1 flex-shrink-0" />
+                          <CornerDownRight className="w-4 h-4 text-zinc-400 mt-1 flex-shrink-0" />
                           <div>
-                            <div className="text-xs font-bold text-indigo-400 uppercase tracking-wider mb-1">Developer Reply</div>
+                            <div className="text-xs font-bold text-zinc-400 dark:text-zinc-300 uppercase tracking-wider mb-1">Developer Reply</div>
                             <p className="text-sm text-zinc-400 leading-relaxed">{review.adminReply}</p>
                           </div>
                         </div>
@@ -249,5 +261,13 @@ export default function ReviewsPage() {
         <AdUnit type="horizontal" />
       </div>
     </div>
+  )
+}
+
+export default function ReviewsPage() {
+  return (
+    <AuthProvider>
+      <ReviewsPageContent />
+    </AuthProvider>
   )
 }

@@ -179,7 +179,7 @@ function ProfilePageContent() {
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={{ duration: 0.4, ease: "easeOut" }}
-            className="w-20 h-20 mx-auto mb-4 rounded-full bg-gradient-to-tr from-indigo-500 to-purple-600 flex items-center justify-center shadow-[0_0_25px_rgba(99,102,241,0.4)] border border-white/10"
+            className="profile-avatar-mono w-20 h-20 mx-auto mb-4 rounded-full flex items-center justify-center border shadow-sm"
           >
             {user.photoURL ? (
               <img src={user.photoURL} alt="Profile" className="w-full h-full rounded-full object-cover" />
@@ -211,10 +211,10 @@ function ProfilePageContent() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, delay: 0.2, ease: "easeOut" }}
         >
-          <Card className="bg-black/40 backdrop-blur-xl border-white/10 shadow-2xl">
+          <Card className="profile-card-mono bg-black/40 backdrop-blur-xl border-white/10 shadow-2xl">
             <CardHeader className="border-b border-white/5 pb-4">
               <CardTitle className="text-base font-semibold flex items-center gap-2">
-                <User className="w-4 h-4 text-indigo-400" />
+                <User className="w-4 h-4 text-zinc-400" />
                 <span>Personal Account Details</span>
               </CardTitle>
             </CardHeader>
@@ -257,18 +257,18 @@ function ProfilePageContent() {
                   <div className="bg-white/[0.02] border border-white/5 rounded-xl p-4 flex justify-between items-center">
                     <div>
                       <span className="text-[10px] text-white/45 block uppercase font-bold tracking-wider mb-1">Username Reference</span>
-                      <span className="text-sm font-semibold font-mono text-indigo-400">@{userData?.username || "—"}</span>
+                      <span className="text-sm font-semibold font-mono text-zinc-450 dark:text-zinc-300">@{userData?.username || "—"}</span>
                     </div>
                     <div className="text-right">
                       <span className="text-[10px] text-white/45 block uppercase font-bold tracking-wider mb-1">Active Plan</span>
-                      <span className="text-xs font-bold text-indigo-400 bg-indigo-500/10 border border-indigo-500/20 px-2.5 py-0.5 rounded-full inline-block">
+                      <span className="text-xs font-bold text-zinc-400 dark:text-zinc-300 bg-zinc-850/50 dark:bg-zinc-800/60 border border-zinc-800 px-2.5 py-0.5 rounded-full inline-block">
                         {PLAN_LABELS[plan] || plan}
                       </span>
                     </div>
                   </div>
 
                   <div className="flex flex-col sm:flex-row gap-3 pt-2">
-                    <Button onClick={() => setIsEditing(true)} className="flex-1 bg-gradient-to-r from-indigo-500 to-purple-600 hover:opacity-95 text-white font-semibold rounded-full shadow-[0_4px_15px_rgba(99,102,241,0.3)] border-0">
+                    <Button onClick={() => setIsEditing(true)} className="btn-monochrome-secondary flex-1 font-semibold rounded-full border-0">
                       Edit Profile Credentials
                     </Button>
                     <Button onClick={handleSignOut} variant="outline" className="sm:w-32 border-red-500/20 text-red-400 hover:bg-red-500/10 hover:text-red-300 rounded-full">
@@ -286,7 +286,7 @@ function ProfilePageContent() {
                         value={firstName} 
                         onChange={(e) => setFirstName(e.target.value)}
                         required
-                        className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-sm text-white focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all" 
+                        className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-sm text-white focus:outline-none focus:border-zinc-500 focus:ring-1 focus:ring-zinc-505 transition-all" 
                       />
                     </div>
                     <div>
@@ -296,7 +296,7 @@ function ProfilePageContent() {
                         value={lastName} 
                         onChange={(e) => setLastName(e.target.value)}
                         required
-                        className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-sm text-white focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all" 
+                        className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-sm text-white focus:outline-none focus:border-zinc-500 focus:ring-1 focus:ring-zinc-505 transition-all" 
                       />
                     </div>
                   </div>
@@ -311,7 +311,7 @@ function ProfilePageContent() {
                         onChange={(e) => setUsername(e.target.value)}
                         required
                         placeholder="username"
-                        className="w-full bg-white/5 border border-white/10 rounded-xl pl-8 pr-3 py-2.5 text-sm text-white focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 font-mono transition-all" 
+                        className="w-full bg-white/5 border border-white/10 rounded-xl pl-8 pr-3 py-2.5 text-sm text-white focus:outline-none focus:border-zinc-500 focus:ring-1 focus:ring-zinc-505 font-mono transition-all" 
                       />
                     </div>
                   </div>
@@ -334,7 +334,7 @@ function ProfilePageContent() {
                     <Button 
                       type="submit" 
                       disabled={saveLoading} 
-                      className="flex-1 bg-indigo-500 hover:bg-indigo-600 text-white font-semibold rounded-full"
+                      className="btn-monochrome-secondary flex-1 font-semibold rounded-full"
                     >
                       {saveLoading ? "Saving Changes..." : "Save Credentials"}
                     </Button>
@@ -351,7 +351,7 @@ function ProfilePageContent() {
           transition={{ delay: 0.4 }}
           className="text-center"
         >
-          <a href="/dashboard" className="text-xs text-white/40 hover:text-indigo-400 transition-colors font-medium">
+          <a href="/dashboard" className="text-xs text-white/40 hover:text-zinc-200 dark:hover:text-zinc-950 transition-colors font-medium">
             &larr; Back to Account Dashboard
           </a>
         </motion.div>

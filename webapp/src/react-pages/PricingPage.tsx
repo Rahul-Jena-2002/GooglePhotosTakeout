@@ -46,7 +46,7 @@ export default function PricingPage() {
           </div>
           <div className="mt-8">
             <Link to="/tool" className="w-full">
-              <button className="w-full py-3 bg-zinc-900 border border-zinc-800 rounded-xl font-bold text-xs text-white cursor-pointer hover:bg-zinc-850">Start Free Fix</button>
+              <button className="btn-monochrome-primary w-full py-3 rounded-xl font-bold text-xs cursor-pointer transition-all">Start Free Fix</button>
             </Link>
           </div>
         </div>
@@ -65,49 +65,49 @@ export default function PricingPage() {
               </div>
               <div className="space-y-2.5">
                 <div className="text-[10px] text-zinc-400 uppercase tracking-widest font-bold mb-1">Everything in Free plus:</div>
-                <ul className="space-y-2 text-xs text-zinc-300">
-                  <li className="flex items-center gap-1.5 font-semibold text-indigo-400"><span className="text-indigo-400 font-bold">✓</span> Up to 10,000 photos (20 GB max)</li>
-                  <li className="flex items-center gap-1.5"><span className="text-indigo-400 font-bold">✓</span> Friendly support help desk</li>
-                  <li className="flex items-center gap-1.5"><span className="text-indigo-400 font-bold">✓</span> Download clean file update logs</li>
+                <ul className="space-y-2 text-xs text-zinc-350 dark:text-zinc-300">
+                  <li className="flex items-center gap-1.5 recovery-pass-highlight"><span className="font-bold">✓</span> Up to 10,000 photos (20 GB max)</li>
+                  <li className="flex items-center gap-1.5"><span className="text-zinc-600 dark:text-zinc-400 font-bold">✓</span> Friendly support help desk</li>
+                  <li className="flex items-center gap-1.5"><span className="text-zinc-600 dark:text-zinc-400 font-bold">✓</span> Download clean file update logs</li>
                 </ul>
               </div>
             </div>
           </div>
           <div className="mt-8">
             <Link to={`/checkout?plan=recovery_pass&region=${region}`} className="w-full">
-              <button className="w-full py-3 bg-zinc-900 border border-zinc-800 rounded-xl font-bold text-xs text-white cursor-pointer hover:bg-zinc-850">Get Recovery Pass</button>
+              <button className="btn-monochrome-primary w-full py-3 rounded-xl font-bold text-xs cursor-pointer transition-all">Get Recovery Pass</button>
             </Link>
           </div>
         </div>
 
         {/* PRO LIFETIME */}
-        <div className="flex flex-col bg-zinc-950/60 border border-indigo-500/50 rounded-2xl p-6 h-full relative justify-between scale-105 shadow-xl shadow-indigo-550/5 hover:border-indigo-400 transition-all">
-          <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-indigo-600 text-white text-[10px] font-bold px-3 py-1 rounded-full uppercase tracking-wider">
+        <div className="flex flex-col bg-zinc-950/45 border border-blue-500/30 rounded-2xl p-6 h-full relative justify-between scale-105 hover:border-blue-500/50 transition-all shadow-xl shadow-blue-500/5">
+          <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-blue-600 text-white text-[10px] font-bold px-3 py-1 rounded-full uppercase tracking-wider shadow-sm">
             Most Popular
           </div>
           <div>
             <div className="mb-6">
-              <h2 className="text-2xl font-bold text-indigo-400 font-semibold">Pro Lifetime</h2>
-              <p className="text-indigo-300 text-xs mt-1">For large photo collections</p>
+              <h2 className="text-2xl font-bold text-blue-500 dark:text-blue-400 font-semibold">Pro Lifetime</h2>
+              <p className="text-blue-400 dark:text-blue-350 text-xs mt-1">For large photo collections</p>
             </div>
             <div className="space-y-6">
               <div>
                 <div className="text-4xl font-bold text-white">{prices.pro}</div>
-                <p className="text-[11px] text-indigo-300 mt-1 leading-relaxed">Use forever · On up to 2 devices</p>
+                <p className="text-[11px] text-blue-500 dark:text-blue-300 mt-1 leading-relaxed">Use forever · On up to 2 devices</p>
               </div>
               <div className="space-y-2.5">
-                <div className="text-[10px] text-indigo-300 uppercase tracking-widest font-bold mb-1">Everything in Pass plus:</div>
-                <ul className="space-y-2 text-xs text-zinc-300">
-                  <li className="flex items-center gap-1.5 font-semibold"><span className="text-indigo-400 font-bold">✓</span> Unlimited photos & videos</li>
-                  <li className="flex items-center gap-1.5"><span className="text-indigo-400 font-bold">✓</span> Keep history of your runs</li>
-                  <li className="flex items-center gap-1.5"><span className="text-indigo-400 font-bold">✓</span> Priority support messages</li>
+                <div className="text-[10px] text-zinc-400 uppercase tracking-widest font-bold mb-1">Everything in Pass plus:</div>
+                <ul className="space-y-2 text-xs text-zinc-350 dark:text-zinc-300">
+                  <li className="flex items-center gap-1.5 font-semibold text-blue-500 dark:text-blue-400"><span className="text-blue-500 dark:text-blue-400 font-bold">✓</span> Unlimited photos & videos</li>
+                  <li className="flex items-center gap-1.5 font-semibold"><span className="text-blue-500 dark:text-blue-400 font-bold">✓</span> Keep history of your runs</li>
+                  <li className="flex items-center gap-1.5 font-semibold"><span className="text-blue-500 dark:text-blue-400 font-bold">✓</span> Priority support messages</li>
                 </ul>
               </div>
             </div>
           </div>
           <div className="mt-8">
             <Link to={`/checkout?plan=pro&region=${region}`} className="w-full">
-              <button className="w-full py-3 bg-white hover:bg-white/90 border border-zinc-200 rounded-xl font-bold text-xs text-black cursor-pointer shadow-lg shadow-indigo-550/20 transition-all">Go Pro</button>
+              <button className="btn-pro-blue w-full py-3 rounded-xl font-bold text-xs cursor-pointer transition-all">Go Pro</button>
             </Link>
           </div>
         </div>
@@ -128,16 +128,16 @@ export default function PricingPage() {
                 <div className="text-[10px] text-zinc-400 uppercase tracking-widest font-bold mb-1">Everything in Pro plus:</div>
                 <ul className="space-y-2 text-xs text-zinc-300">
                   <li className="flex items-center gap-1.5 font-semibold text-amber-500"><span className="text-amber-500 font-bold">✓</span> Complete ad-free experience</li>
-                  <li className="flex items-center gap-1.5 font-semibold"><span className="text-amber-550 font-bold">✓</span> View hidden photo details</li>
-                  <li className="flex items-center gap-1.5 font-semibold"><span className="text-amber-550 font-bold">✓</span> Find and clean duplicates</li>
-                  <li className="flex items-center gap-1.5 font-semibold"><span className="text-amber-550 font-bold">✓</span> Compare before & after logs</li>
+                  <li className="flex items-center gap-1.5 font-semibold"><span className="text-amber-500 font-bold">✓</span> View hidden photo details</li>
+                  <li className="flex items-center gap-1.5 font-semibold"><span className="text-amber-500 font-bold">✓</span> Find and clean duplicates</li>
+                  <li className="flex items-center gap-1.5 font-semibold"><span className="text-amber-500 font-bold">✓</span> Compare before & after logs</li>
                 </ul>
               </div>
             </div>
           </div>
           <div className="mt-8">
             <Link to={`/checkout?plan=super&region=${region}`} className="w-full">
-              <button className="w-full py-3 bg-zinc-900 border border-zinc-800 rounded-xl font-bold text-xs text-white cursor-pointer hover:bg-zinc-850">Go Super</button>
+              <button className="btn-super-orange w-full py-3 rounded-xl font-bold text-xs cursor-pointer transition-all">Go Super</button>
             </Link>
           </div>
         </div>

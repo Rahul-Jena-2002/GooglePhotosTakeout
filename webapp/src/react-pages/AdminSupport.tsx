@@ -122,6 +122,8 @@ Polished response:`
     // Load admin list for assignment dropdown
     const unsubAdmins = onSnapshot(collection(db, "admins"), (snap) => {
       setAdminsList(snap.docs.map(d => d.data()))
+    }, (err) => {
+      console.error("Admins list query error:", err)
     })
 
     return () => {
@@ -241,10 +243,10 @@ Polished response:`
 
   // Priority calculations
   const getTicketPriority = (plan: string) => {
-    if (plan === "super") return { label: "High Priority", color: "bg-red-500/10 text-red-400 border-red-500/20" }
-    if (plan === "pro") return { label: "Medium Priority", color: "bg-amber-500/10 text-amber-400 border-amber-500/20" }
-    if (plan === "recovery_pass") return { label: "Normal Priority", color: "bg-indigo-500/10 text-indigo-400 border-indigo-500/20" }
-    return { label: "Low Priority", color: "bg-zinc-800 text-zinc-500 border-zinc-700" }
+    if (plan === "super") return { label: "High Priority", color: "bg-zinc-800 text-zinc-100 dark:bg-zinc-200 dark:text-zinc-900 border border-zinc-700 dark:border-zinc-300" }
+    if (plan === "pro") return { label: "Medium Priority", color: "bg-zinc-900 text-zinc-300 dark:bg-zinc-850 dark:text-zinc-200 border border-zinc-800 dark:border-zinc-750" }
+    if (plan === "recovery_pass") return { label: "Normal Priority", color: "bg-zinc-950/40 text-zinc-400 dark:bg-zinc-900/40 dark:text-zinc-400 border border-zinc-900 dark:border-zinc-800/80" }
+    return { label: "Low Priority", color: "bg-transparent text-zinc-500 border border-zinc-900/40 dark:border-zinc-800/40" }
   }
 
   const activePriority = ticketUser ? getTicketPriority(ticketUser.plan || "free") : getTicketPriority("free")
@@ -256,7 +258,7 @@ Polished response:`
       <div className="mb-8 flex flex-col md:flex-row md:items-end justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-white flex items-center gap-2">
-            <Inbox className="w-6 h-6 text-indigo-400" /> Support Queue
+            <Inbox className="w-6 h-6 text-zinc-400" /> Support Queue
           </h1>
           <p className="text-zinc-400 text-sm mt-1">Manage user support tickets, prioritize claims, and assign cases.</p>
         </div>
@@ -269,13 +271,13 @@ Polished response:`
               placeholder="Search subject or email..." 
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="bg-zinc-900 border border-zinc-800 rounded-md py-1.5 pl-9 pr-3 text-sm text-white focus:outline-none focus:border-indigo-500 w-64 focus:bg-zinc-950 transition-colors"
+              className="bg-zinc-900 border border-zinc-800 rounded-md py-1.5 pl-9 pr-3 text-sm text-white focus:outline-none focus:border-zinc-500 w-64 focus:bg-zinc-950 transition-colors"
             />
           </div>
           <select 
             value={filter}
             onChange={(e) => setFilter(e.target.value)}
-            className="bg-zinc-900 border border-zinc-800 rounded-md py-1.5 px-3 text-sm text-white focus:outline-none focus:border-indigo-500 cursor-pointer"
+            className="bg-zinc-900 border border-zinc-800 rounded-md py-1.5 px-3 text-sm text-white focus:outline-none focus:border-zinc-500 cursor-pointer"
           >
             <option value="all">All Status</option>
             <option value="OPEN">Open</option>
@@ -288,74 +290,76 @@ Polished response:`
 
       {/* TICKETS TABLE */}
       <div className="bg-zinc-900 border border-zinc-800 rounded-lg overflow-hidden shadow-xl">
-        <table className="w-full text-left text-sm whitespace-nowrap">
-          <thead className="bg-zinc-950/50 border-b border-zinc-800 text-zinc-400">
-            <tr>
-              <th className="px-6 py-3.5 font-medium">Ticket / Subject</th>
-              <th className="px-6 py-3.5 font-medium">User Email</th>
-              <th className="px-6 py-3.5 font-medium">Created At</th>
-              <th className="px-6 py-3.5 font-medium">Status</th>
-              <th className="px-6 py-3.5 font-medium text-right">Actions</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-zinc-800">
-            {loading ? (
+        <div className="w-full overflow-x-auto">
+          <table className="w-full text-left text-sm whitespace-nowrap">
+            <thead className="bg-zinc-950/50 border-b border-zinc-800 text-zinc-400">
               <tr>
-                <td colSpan={5} className="px-6 py-8 text-center text-zinc-500">Loading tickets...</td>
+                <th className="px-6 py-3.5 font-medium">Ticket / Subject</th>
+                <th className="px-6 py-3.5 font-medium">User Email</th>
+                <th className="px-6 py-3.5 font-medium">Created At</th>
+                <th className="px-6 py-3.5 font-medium">Status</th>
+                <th className="px-6 py-3.5 font-medium text-right">Actions</th>
               </tr>
-            ) : filteredTickets.length === 0 ? (
-              <tr>
-                <td colSpan={5} className="px-6 py-8 text-center text-zinc-500">
-                  <AlertCircle className="w-8 h-8 text-zinc-700 mx-auto mb-2" />
-                  No tickets found in the queue.
-                </td>
-              </tr>
-            ) : (
-              filteredTickets.map((t) => (
-                <tr 
-                  key={t.id} 
-                  onClick={() => openTicketDetails(t)}
-                  className="hover:bg-zinc-800/40 cursor-pointer transition-colors"
-                >
-                  <td className="px-6 py-4">
-                    <div className="font-semibold text-zinc-200 mb-0.5 max-w-[300px] truncate" title={t.subject}>
-                      {t.subject}
-                    </div>
-                    <div className="text-[10px] text-zinc-400 font-mono font-bold">{t.ticketId || `#${t.id.slice(0, 8)}`}</div>
-                  </td>
-                  <td className="px-6 py-4">
-                    <div className="text-zinc-300 font-medium">{t.email}</div>
-                  </td>
-                  <td className="px-6 py-4 text-zinc-400 text-xs">
-                    {new Date(t.createdAt).toLocaleString()}
-                  </td>
-                  <td className="px-6 py-4">
-                    <span className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${
-                      t.status === 'OPEN' ? 'bg-red-500/10 text-red-400 border border-red-500/20' :
-                      t.status === 'IN_PROGRESS' ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20' :
-                      t.status === 'RESOLVED' ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' :
-                      'badge-closed text-white border'
-                    }`}>
-                      {t.status}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 text-right" onClick={(e) => e.stopPropagation()}>
-                    <select 
-                      value={t.status}
-                      onChange={(e) => handleStatusChange(t.id, e.target.value)}
-                      className="bg-zinc-950 border border-zinc-800 rounded text-xs px-2.5 py-1 text-zinc-300 focus:outline-none cursor-pointer"
-                    >
-                      <option value="OPEN">Open</option>
-                      <option value="IN_PROGRESS">In Progress</option>
-                      <option value="RESOLVED">Resolve</option>
-                      <option value="CLOSED">Close</option>
-                    </select>
+            </thead>
+            <tbody className="divide-y divide-zinc-800">
+              {loading ? (
+                <tr>
+                  <td colSpan={5} className="px-6 py-8 text-center text-zinc-500">Loading tickets...</td>
+                </tr>
+              ) : filteredTickets.length === 0 ? (
+                <tr>
+                  <td colSpan={5} className="px-6 py-8 text-center text-zinc-500">
+                    <AlertCircle className="w-8 h-8 text-zinc-700 mx-auto mb-2" />
+                    No tickets found in the queue.
                   </td>
                 </tr>
-              ))
-            )}
-          </tbody>
-        </table>
+              ) : (
+                filteredTickets.map((t) => (
+                  <tr 
+                    key={t.id} 
+                    onClick={() => openTicketDetails(t)}
+                    className="hover:bg-zinc-800/40 cursor-pointer transition-colors"
+                  >
+                    <td className="px-6 py-4">
+                      <div className="font-semibold text-zinc-200 mb-0.5 max-w-[300px] truncate" title={t.subject}>
+                        {t.subject}
+                      </div>
+                      <div className="text-[10px] text-zinc-400 font-mono font-bold">{t.ticketId || `#${t.id.slice(0, 8)}`}</div>
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="text-zinc-300 font-medium">{t.email}</div>
+                    </td>
+                    <td className="px-6 py-4 text-zinc-400 text-xs">
+                      {new Date(t.createdAt).toLocaleString()}
+                    </td>
+                    <td className="px-6 py-4">
+                      <span className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${
+                        t.status === 'OPEN' ? 'bg-red-500/10 text-red-400 border border-red-500/20' :
+                        t.status === 'IN_PROGRESS' ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20' :
+                        t.status === 'RESOLVED' ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' :
+                        'badge-closed text-white border'
+                      }`}>
+                        {t.status}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 text-right" onClick={(e) => e.stopPropagation()}>
+                      <select 
+                        value={t.status}
+                        onChange={(e) => handleStatusChange(t.id, e.target.value)}
+                        className="bg-zinc-950 border border-zinc-800 rounded text-xs px-2.5 py-1 text-zinc-300 focus:outline-none cursor-pointer"
+                      >
+                        <option value="OPEN">Open</option>
+                        <option value="IN_PROGRESS">In Progress</option>
+                        <option value="RESOLVED">Resolve</option>
+                        <option value="CLOSED">Close</option>
+                      </select>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
 
       {/* SLIDING DETAILS DRAWER PANEL */}
@@ -452,7 +456,7 @@ Polished response:`
                   {(!selectedTicket.assignedTo || selectedTicket.assignedTo !== adminData?.uid) && adminData && (
                     <button
                       onClick={handleClaimTicket}
-                      className="px-3.5 bg-indigo-600 hover:bg-indigo-700 text-white border border-indigo-700 text-xs font-bold rounded-lg transition-all"
+                      className="px-3.5 bg-zinc-950 hover:bg-black dark:bg-white dark:hover:bg-zinc-100 text-zinc-100 dark:text-zinc-950 border border-zinc-950 dark:border-white text-xs font-bold rounded-lg transition-all"
                     >
                       Claim
                     </button>
@@ -466,8 +470,8 @@ Polished response:`
                   <h4 className="text-xs font-bold text-zinc-400 uppercase">Conversation History</h4>
                   <div className="space-y-3 max-h-60 overflow-y-auto pr-1">
                     {selectedTicket.adminReply && (!selectedTicket.replies || selectedTicket.replies.length === 0) && (
-                      <div className="bg-indigo-500/5 border border-indigo-500/20 p-3.5 rounded-xl ml-6">
-                        <div className="text-[10px] font-bold text-indigo-400 uppercase mb-1">Developer Reply Sent (Legacy)</div>
+                      <div className="bg-zinc-900/20 border border-zinc-800/80 p-3.5 rounded-xl ml-6">
+                        <div className="text-[10px] font-bold text-zinc-400 uppercase mb-1">Developer Reply Sent (Legacy)</div>
                         <p className="text-xs text-zinc-300 leading-relaxed font-sans">{selectedTicket.adminReply}</p>
                         <div className="text-[9px] text-zinc-500 mt-2 font-mono">Replied by {selectedTicket.repliedBy || "Support"}</div>
                       </div>
@@ -481,10 +485,10 @@ Polished response:`
                           className={`p-3.5 rounded-xl ${
                             isUserReply 
                               ? 'bg-zinc-900 border border-zinc-800/80 mr-6' 
-                              : 'bg-indigo-500/5 border border-indigo-500/20 ml-6'
+                              : 'bg-zinc-900/20 border border-zinc-800/80 ml-6'
                           }`}
                         >
-                          <div className={`text-[10px] font-bold uppercase mb-1 ${isUserReply ? 'text-zinc-500' : 'text-indigo-400'}`}>
+                          <div className={`text-[10px] font-bold uppercase mb-1 ${isUserReply ? 'text-zinc-500' : 'text-zinc-450 dark:text-zinc-400'}`}>
                             {isUserReply ? `${reply.senderName || 'User'} (User)` : `${reply.senderName || 'Support'} (Support)`}
                           </div>
                           <p className="text-xs text-zinc-300 leading-relaxed font-sans whitespace-pre-wrap">{reply.message}</p>
@@ -515,11 +519,11 @@ Polished response:`
                         onChange={(e) => setReplyBody(e.target.value)}
                         rows={5}
                         disabled={aiLoading}
-                        className="w-full bg-zinc-950 border border-zinc-800 rounded-xl p-3 text-xs text-white focus:outline-none focus:border-indigo-500/80 focus:bg-zinc-950 transition-all font-sans leading-relaxed resize-none disabled:opacity-50"
+                        className="w-full bg-zinc-950 border border-zinc-800 rounded-xl p-3 text-xs text-white focus:outline-none focus:border-zinc-500 focus:bg-zinc-950 transition-all font-sans leading-relaxed resize-none disabled:opacity-50"
                       />
                       {aiLoading && (
                         <div className="absolute inset-0 bg-black/60 rounded-xl flex items-center justify-center">
-                          <span className="text-xs font-bold text-indigo-400 animate-pulse">{aiStatus || 'Thinking...'}</span>
+                          <span className="text-xs font-bold text-zinc-400 animate-pulse">{aiStatus || 'Thinking...'}</span>
                         </div>
                       )}
                     </div>
@@ -530,7 +534,7 @@ Polished response:`
                         type="button"
                         onClick={handleAIDraft}
                         disabled={aiLoading}
-                        className="flex-1 py-1.5 px-3 bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-400 border border-indigo-500/20 text-[10px] font-bold rounded-lg transition-all flex items-center justify-center gap-1.5 disabled:opacity-50"
+                        className="flex-1 py-1.5 px-3 bg-zinc-800/40 hover:bg-zinc-800/80 text-zinc-350 dark:text-zinc-200 border border-zinc-750 dark:border-zinc-700 text-[10px] font-bold rounded-lg transition-all flex items-center justify-center gap-1.5 disabled:opacity-50"
                       >
                         ✨ AI Draft Reply
                       </button>
@@ -538,7 +542,7 @@ Polished response:`
                         type="button"
                         onClick={handleAIPolish}
                         disabled={aiLoading || !replyBody.trim()}
-                        className="flex-1 py-1.5 px-3 bg-purple-500/10 hover:bg-purple-500/20 text-purple-400 border border-purple-500/20 text-[10px] font-bold rounded-lg transition-all flex items-center justify-center gap-1.5 disabled:opacity-50"
+                        className="flex-1 py-1.5 px-3 bg-zinc-800/40 hover:bg-zinc-800/80 text-zinc-350 dark:text-zinc-200 border border-zinc-750 dark:border-zinc-700 text-[10px] font-bold rounded-lg transition-all flex items-center justify-center gap-1.5 disabled:opacity-50"
                       >
                         ✨ AI Polish & Refine
                       </button>
@@ -546,7 +550,7 @@ Polished response:`
                     <button
                       onClick={handleReply}
                       disabled={!replyBody.trim()}
-                      className="w-full h-10 bg-gradient-to-r from-indigo-500 to-purple-600 hover:opacity-90 disabled:opacity-50 text-white font-bold rounded-lg border-0 shadow-lg text-xs transition-all flex items-center justify-center gap-2"
+                      className="w-full h-10 bg-zinc-950 hover:bg-black dark:bg-white dark:hover:bg-zinc-100 text-zinc-100 dark:text-zinc-950 border border-zinc-950 dark:border-white disabled:opacity-50 font-bold rounded-lg shadow-sm text-xs transition-all flex items-center justify-center gap-2"
                     >
                       <CheckCircle2 className="w-4 h-4" /> Send Reply & Resolve Ticket
                     </button>

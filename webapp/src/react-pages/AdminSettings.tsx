@@ -73,6 +73,8 @@ export default function AdminSettings() {
         setInSuper(String(data.in_super ?? "1499"))
         setInFamily(String(data.in_family ?? "3999"))
       }
+    }, (err) => {
+      console.error("Settings listener error:", err)
     })
     return unsub
   }, [])

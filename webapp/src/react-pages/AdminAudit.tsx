@@ -148,54 +148,56 @@ export default function AdminAudit() {
 
       {/* LOG TABLE */}
       <div className="bg-zinc-900 border border-zinc-800 rounded-xl overflow-hidden shadow-lg">
-        <table className="w-full text-left text-xs whitespace-nowrap">
-          <thead className="bg-zinc-950/50 border-b border-zinc-800 text-zinc-400">
-            <tr>
-              <th className="px-6 py-3.5 font-semibold">Actor / Admin</th>
-              <th className="px-6 py-3.5 font-semibold">Action Type</th>
-              <th className="px-6 py-3.5 font-semibold">Description</th>
-              <th className="px-6 py-3.5 font-semibold">Timestamp</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-zinc-800">
-            {loading ? (
+        <div className="w-full overflow-x-auto">
+          <table className="w-full text-left text-xs whitespace-nowrap">
+            <thead className="bg-zinc-950/50 border-b border-zinc-800 text-zinc-400">
               <tr>
-                <td colSpan={4} className="px-6 py-8 text-center text-zinc-500">Syncing audit database...</td>
+                <th className="px-6 py-3.5 font-semibold">Actor / Admin</th>
+                <th className="px-6 py-3.5 font-semibold">Action Type</th>
+                <th className="px-6 py-3.5 font-semibold">Description</th>
+                <th className="px-6 py-3.5 font-semibold">Timestamp</th>
               </tr>
-            ) : filteredLogs.length === 0 ? (
-              <tr>
-                <td colSpan={4} className="px-6 py-8 text-center text-zinc-500">
-                  <FileText className="w-8 h-8 text-zinc-700 mx-auto mb-2" />
-                  No audit logs match your search criteria.
-                </td>
-              </tr>
-            ) : (
-              filteredLogs.map((log) => (
-                <tr key={log.id} className="hover:bg-zinc-800/10 transition-colors">
-                  <td className="px-6 py-4">
-                    <div>
-                      <div className="font-semibold text-zinc-200">{log.actorName}</div>
-                      <div className="text-[10px] text-zinc-500 uppercase tracking-wider mt-0.5">{log.actorRole.replace("_", " ")}</div>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4">
-                    <span className={`inline-flex items-center px-2 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider border ${
-                      ACTION_BADGES[log.action] || "bg-zinc-800 text-zinc-400 border-zinc-700"
-                    }`}>
-                      {log.action.replace("_", " ")}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 text-zinc-300 font-medium whitespace-normal max-w-xs leading-relaxed">
-                    {log.description}
-                  </td>
-                  <td className="px-6 py-4 text-zinc-400 text-xs">
-                    {formatLogTime(log.timestamp)}
+            </thead>
+            <tbody className="divide-y divide-zinc-800">
+              {loading ? (
+                <tr>
+                  <td colSpan={4} className="px-6 py-8 text-center text-zinc-500">Syncing audit database...</td>
+                </tr>
+              ) : filteredLogs.length === 0 ? (
+                <tr>
+                  <td colSpan={4} className="px-6 py-8 text-center text-zinc-500">
+                    <FileText className="w-8 h-8 text-zinc-700 mx-auto mb-2" />
+                    No audit logs match your search criteria.
                   </td>
                 </tr>
-              ))
-            )}
-          </tbody>
-        </table>
+              ) : (
+                filteredLogs.map((log) => (
+                  <tr key={log.id} className="hover:bg-zinc-800/10 transition-colors">
+                    <td className="px-6 py-4">
+                      <div>
+                        <div className="font-semibold text-zinc-200">{log.actorName}</div>
+                        <div className="text-[10px] text-zinc-500 uppercase tracking-wider mt-0.5">{log.actorRole.replace("_", " ")}</div>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4">
+                      <span className={`inline-flex items-center px-2 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider border ${
+                        ACTION_BADGES[log.action] || "bg-zinc-800 text-zinc-400 border-zinc-700"
+                      }`}>
+                        {log.action.replace("_", " ")}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 text-zinc-300 font-medium whitespace-normal max-w-xs leading-relaxed">
+                      {log.description}
+                    </td>
+                    <td className="px-6 py-4 text-zinc-400 text-xs">
+                      {formatLogTime(log.timestamp)}
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
 
     </div>

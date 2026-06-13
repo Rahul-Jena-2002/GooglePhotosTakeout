@@ -11,7 +11,8 @@ import {
   Settings,
   ActivitySquare,
   Sun,
-  Moon
+  Moon,
+  Menu
 } from "lucide-react"
 import {
   DropdownMenu,
@@ -35,10 +36,10 @@ const BREADCRUMBS: Record<string, string[]> = {
 }
 
 const ROLE_COLORS: Record<AdminRole, string> = {
-  SUPER_ADMIN: "text-amber-400 bg-amber-400/10 border-amber-400/20",
-  ADMIN: "text-indigo-400 bg-indigo-400/10 border-indigo-400/20",
-  SUPPORT: "text-emerald-400 bg-emerald-400/10 border-emerald-400/20",
-  MODERATOR: "text-purple-400 bg-purple-400/10 border-purple-400/20",
+  SUPER_ADMIN: "admin-role-super-admin px-1.5 py-0.5",
+  ADMIN: "admin-role-admin px-1.5 py-0.5",
+  SUPPORT: "admin-role-support px-1.5 py-0.5",
+  MODERATOR: "admin-role-moderator px-1.5 py-0.5",
 }
 
 const ROLE_LABELS: Record<AdminRole, string> = {
@@ -48,7 +49,7 @@ const ROLE_LABELS: Record<AdminRole, string> = {
   MODERATOR: "Moderator",
 }
 
-export default function AdminTopbar() {
+export default function AdminTopbar({ onMenuClick }: { onMenuClick?: () => void }) {
   const { user, adminData, logout } = useAuth()
   const location = useLocation()
   const [searchVal, setSearchVal] = useState("")
@@ -125,12 +126,20 @@ export default function AdminTopbar() {
   const totalAlerts = openTickets + pendingReviews
 
   return (
-    <header className="h-16 border-b border-zinc-800 bg-zinc-950/40 backdrop-blur-md sticky top-0 z-40 flex items-center justify-between px-6">
+    <header className="h-16 border-b border-zinc-800 bg-zinc-950/40 backdrop-blur-md sticky top-0 z-40 flex items-center justify-between px-6 admin-topbar">
       
       {/* ─── BREADCRUMBS ─── */}
       <div className="flex items-center gap-2 text-sm font-semibold font-sans">
-        <span className="text-zinc-500 hover:text-zinc-400 transition-colors cursor-pointer">TakeoutFix</span>
-        <span className="text-zinc-700">/</span>
+        {onMenuClick && (
+          <button
+            onClick={onMenuClick}
+            className="md:hidden p-1.5 mr-1 rounded bg-zinc-900 border border-zinc-800 text-zinc-400 hover:text-white transition-colors focus:outline-none"
+          >
+            <Menu className="w-4 h-4" />
+          </button>
+        )}
+        <span className="hidden sm:inline text-zinc-500 hover:text-zinc-400 transition-colors cursor-pointer">TakeoutFix</span>
+        <span className="hidden sm:inline text-zinc-700">/</span>
         <span className="text-zinc-400">{breadcrumb[0]}</span>
         <span className="text-zinc-700">/</span>
         <span className="text-white font-black">{breadcrumb[1]}</span>
@@ -138,13 +147,13 @@ export default function AdminTopbar() {
 
       {/* ─── SEARCH PILL ─── */}
       <div className="hidden md:flex items-center w-80 max-w-xs relative group">
-        <Search className="w-4 h-4 text-zinc-500 absolute left-3 group-focus-within:text-indigo-400 transition-colors" />
+        <Search className="w-4 h-4 text-zinc-500 absolute left-3 group-focus-within:text-zinc-300 transition-colors" />
         <input
           type="text"
           value={searchVal}
           onChange={(e) => setSearchVal(e.target.value)}
           placeholder="Search logs, tickets, users..."
-          className="w-full h-9 bg-zinc-900/40 hover:bg-zinc-900/60 focus:bg-zinc-950 focus:border-indigo-500/40 border border-zinc-800/80 rounded-full pl-9 pr-10 text-xs text-zinc-200 placeholder-zinc-500 focus:outline-none transition-all"
+          className="w-full h-9 bg-zinc-900/40 hover:bg-zinc-900/60 focus:bg-zinc-950 focus:border-zinc-500 border border-zinc-800/80 rounded-full pl-9 pr-10 text-xs text-zinc-200 placeholder-zinc-500 focus:outline-none transition-all"
         />
         <div className="absolute right-3 top-2.5 h-4 px-1.5 rounded bg-zinc-800/50 border border-zinc-700/30 text-[9px] text-zinc-500 font-mono flex items-center justify-center pointer-events-none">
           ⌘K
@@ -185,7 +194,7 @@ export default function AdminTopbar() {
         {/* Theme Toggle Button */}
         <button 
           onClick={() => setTheme(theme === 'light' ? 'dark' : 'light')}
-          className="flex p-1.5 rounded-full bg-zinc-900/60 border border-zinc-800 hover:bg-zinc-900 hover:scale-[1.02] focus:outline-none transition-all items-center justify-center text-zinc-400 hover:text-zinc-200"
+          className="btn-theme-toggle-navbar flex p-1.5 rounded-full bg-zinc-900/60 border border-zinc-800 hover:bg-zinc-900 hover:scale-[1.02] focus:outline-none transition-all items-center justify-center text-zinc-400 hover:text-zinc-200"
           title={theme === 'light' ? 'Switch to Dark Mode' : 'Switch to Light Mode'}
         >
           {theme === 'light' ? (
@@ -196,10 +205,10 @@ export default function AdminTopbar() {
         </button>
 
         {/* Notifications Alert Bell */}
-        <Link to="/admin/support" className="relative p-1.5 rounded-full hover:bg-zinc-900/60 border border-transparent hover:border-zinc-800 text-zinc-400 hover:text-zinc-200 transition-all">
+        <Link to="/admin/support" className="btn-notification-navbar relative p-1.5 rounded-full hover:bg-zinc-900/60 border border-transparent hover:border-zinc-800 text-zinc-400 hover:text-zinc-200 transition-all">
           <Bell className="w-4.5 h-4.5" />
           {totalAlerts > 0 && (
-            <span className="absolute -top-0.5 -right-0.5 w-4 h-4 bg-indigo-500 text-[9px] font-bold text-white rounded-full flex items-center justify-center shadow-[0_0_8px_rgba(99,102,241,0.5)] border border-zinc-950 animate-bounce">
+            <span className="absolute -top-0.5 -right-0.5 w-4 h-4 text-[9px] font-bold rounded-full flex items-center justify-center admin-notification-badge animate-bounce">
               {totalAlerts}
             </span>
           )}
@@ -207,11 +216,11 @@ export default function AdminTopbar() {
 
         {/* Profile Settings Dropdown */}
         <DropdownMenu>
-          <DropdownMenuTrigger className="flex items-center gap-2 hover:bg-zinc-900/60 p-1 pr-2 rounded-full border border-transparent hover:border-zinc-800 transition-all focus:outline-none">
+          <DropdownMenuTrigger className="btn-profile-trigger flex items-center gap-2 hover:bg-zinc-900/60 p-1 pr-2 rounded-full border border-transparent hover:border-zinc-800 transition-all focus:outline-none">
             {adminData?.photoURL ? (
               <img src={adminData.photoURL} alt="" className="w-7 h-7 rounded-full flex-shrink-0 border border-white/5" />
             ) : (
-              <div className="w-7 h-7 rounded-full bg-gradient-to-tr from-indigo-500 to-purple-500 flex-shrink-0 flex items-center justify-center font-bold text-xs text-white">
+              <div className="w-7 h-7 rounded-full bg-zinc-800 dark:bg-zinc-200 flex-shrink-0 flex items-center justify-center font-bold text-xs text-zinc-200 dark:text-zinc-900 border border-zinc-700 dark:border-zinc-300">
                 {adminData?.displayName?.charAt(0) || "A"}
               </div>
             )}

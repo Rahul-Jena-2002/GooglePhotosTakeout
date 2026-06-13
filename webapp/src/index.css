@@ -4,8 +4,31 @@
 
 @layer base {
   :root {
+    --background: 0 0% 100%;
+    --foreground: 240 10% 3.9%;
+    --card: 0 0% 100%;
+    --card-foreground: 240 10% 3.9%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 240 10% 3.9%;
+    --primary: 240 5.9% 10%;
+    --primary-foreground: 0 0% 98%;
+    --secondary: 240 4.8% 95.9%;
+    --secondary-foreground: 240 5.9% 10%;
+    --muted: 240 4.8% 95.9%;
+    --muted-foreground: 240 3.8% 46.1%;
+    --accent: 240 4.8% 95.9%;
+    --accent-foreground: 240 5.9% 10%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 240 5.9% 90%;
+    --input: 240 5.9% 90%;
+    --ring: 240 5.9% 10%;
+    --radius: 0.5rem;
+  }
+
+  .dark {
     --background: 0 0% 0%;
-    --foreground: 0 0% 100%;
+    --foreground: 0 0% 98%;
     --card: 240 10% 3.9%;
     --card-foreground: 0 0% 98%;
     --popover: 240 10% 3.9%;
@@ -23,7 +46,6 @@
     --border: 240 3.7% 15.9%;
     --input: 240 3.7% 15.9%;
     --ring: 240 4.9% 83.9%;
-    --radius: 0.75rem;
   }
 }
 
@@ -34,7 +56,6 @@
   body {
     @apply bg-background text-foreground;
     font-feature-settings: "rlig" 1, "calt" 1;
-    background-color: #000000 !important;
   }
 }
 
@@ -126,12 +147,9 @@ html.light .btn-solid-primary:hover {
 }
 
 .glass-capsule, .glass-card {
-  background: rgba(255,255,255,0.06);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border: 1px solid rgba(255,255,255,0.08);
-  box-shadow: 0 8px 32px rgba(0,0,0,.35), inset 0 1px 0 rgba(255,255,255,.12);
-  transition: all .25s ease;
+  background: #09090b;
+  border: 1px solid #27272a;
+  transition: all 150ms ease-out;
   position: relative;
 }
 
@@ -145,19 +163,12 @@ html.light .btn-solid-primary:hover {
 
 .glass-capsule.interactive:hover, .glass-card.interactive:hover, button.glass-capsule:hover, a.glass-capsule:hover {
   transform: translateY(-2px);
-  background: rgba(255,255,255,.12);
+  background: #18181b;
 }
 
 /* The Secret Sauce Top Highlight */
 .glass-capsule::before, .glass-card::before {
-  content: "";
-  position: absolute;
-  top: 0;
-  left: 10%;
-  width: 80%;
-  height: 1px;
-  background: rgba(255,255,255,.15);
-  pointer-events: none;
+  display: none !important;
 }
 
 /* --- Light Mode Color Overrides (Premium Apple-style Monochrome) --- */
@@ -482,11 +493,11 @@ a.btn,
 .mobile-nav-link,
 #theme-toggle-btn,
 #mobile-theme-toggle-btn {
-  transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1), 
-              box-shadow 0.4s cubic-bezier(0.16, 1, 0.3, 1), 
-              background-color 0.3s cubic-bezier(0.16, 1, 0.3, 1), 
-              border-color 0.3s cubic-bezier(0.16, 1, 0.3, 1), 
-              color 0.3s cubic-bezier(0.16, 1, 0.3, 1) !important;
+  transition: transform 150ms ease-out, 
+              box-shadow 150ms ease-out, 
+              background-color 150ms ease-out, 
+              border-color 150ms ease-out, 
+              color 150ms ease-out !important;
 }
 
 /* Subtle Apple-style Lift and Press animations */
@@ -513,12 +524,12 @@ a.btn:active,
 .glass-card:hover,
 .compare-card:hover {
   transform: translateY(-2px) scale(1.005) !important;
-  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.05) !important;
+  box-shadow: none !important;
 }
 
 html.dark .glass-card:hover,
 html.dark .compare-card:hover {
-  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.25) !important;
+  box-shadow: none !important;
 }
 
 /* --- Apple-style Subtle Page Transitions --- */
@@ -829,14 +840,14 @@ html:not(.light) .bg-\[\#0A0A0A\] {
   background-color: #0f0f14 !important;
 }
 
-/* Make cards slightly lighter (~#1a1a26) */
+/* Make cards slightly lighter (~#09090b) */
 html:not(.light) .glass-card,
 html:not(.light) .compare-card,
 html:not(.light) .bg-black\/40,
 html:not(.light) .bg-black\/60,
 html:not(.light) .bg-white\/5,
 html:not(.light) .bg-zinc-900 {
-  background-color: #1a1a26 !important;
+  background-color: #09090b !important;
   background-image: none !important;
 }
 
@@ -887,6 +898,26 @@ html.light a.btn-solid-dark *,
 html.light button.primary-saas *,
 html.light a.primary-saas * {
   color: #FFFFFF !important;
+}
+
+html.light button.bg-black:hover,
+html.light a.bg-black:hover,
+html.light button.bg-zinc-900:hover,
+html.light a.bg-zinc-900:hover,
+html.light button.btn-solid-dark:hover,
+html.light a.btn-solid-dark:hover {
+  background-color: #ffffff !important;
+  color: #000000 !important;
+  border-color: #000000 !important;
+}
+
+html.light button.bg-black:hover *,
+html.light a.bg-black:hover *,
+html.light button.bg-zinc-900:hover *,
+html.light a.bg-zinc-900:hover *,
+html.light button.btn-solid-dark:hover *,
+html.light a.btn-solid-dark:hover * {
+  color: #000000 !important;
 }
 
 /* active indigo buttons (like FAQ sidebar tabs) keep white text and indigo background */
@@ -967,16 +998,14 @@ html:not(.light) .custom-faq-scroll::-webkit-scrollbar-thumb {
 }
 
 /* Dark mode button contrast guarantees */
-html:not(.light) button.bg-zinc-900,
-html:not(.light) button.bg-black,
-html:not(.light) button.btn-solid-dark,
-html:not(.light) button:not(.bg-white) {
+html:not(.light) button.bg-zinc-900:not(.btn-theme-toggle-navbar):not(.btn-notification-navbar):not(.btn-profile-trigger),
+html:not(.light) button.bg-black:not(.btn-theme-toggle-navbar):not(.btn-notification-navbar):not(.btn-profile-trigger),
+html:not(.light) button.btn-solid-dark:not(.btn-theme-toggle-navbar):not(.btn-notification-navbar):not(.btn-profile-trigger),
+html:not(.light) button:not(.bg-white):not(.tool-tab-btn):not(.btn-monochrome-primary):not(.btn-monochrome-secondary):not(.btn-pricing-pro):not(.btn-pro-blue):not(.btn-super-orange):not(.btn-theme-toggle-navbar):not(.btn-notification-navbar):not(.btn-profile-trigger) {
   color: #FFFFFF !important;
 }
-html:not(.light) button.bg-zinc-900 *,
-html:not(.light) button.bg-black *,
-html:not(.light) button.btn-solid-dark *,
-html:not(.light) button:not(.bg-white) * {
+html:not(.light) button:not(.bg-zinc-900):not(.bg-black):not(.btn-solid-dark):not(.bg-white):not(.btn-monochrome-primary):not(.btn-monochrome-secondary):not(.btn-pricing-pro):not(.btn-pro-blue):not(.btn-super-orange):not(.btn-theme-toggle-navbar):not(.btn-notification-navbar):not(.btn-profile-trigger) *,
+html:not(.light) button:not(.bg-white):not(.tool-tab-btn):not(.btn-monochrome-primary):not(.btn-monochrome-secondary):not(.btn-pricing-pro):not(.btn-pro-blue):not(.btn-super-orange):not(.btn-theme-toggle-navbar):not(.btn-notification-navbar):not(.btn-profile-trigger) * {
   color: #FFFFFF !important;
 }
 
@@ -990,16 +1019,31 @@ html:not(.light) button.bg-white * {
 
 /* Pricing Page Specific Card & Button Styles */
 .pricing-most-popular-card {
-  background-color: #4f46e5 !important;
-  background-image: linear-gradient(to bottom, #4f46e5, #3730a3) !important;
-  border-color: #6366f1 !important;
+  background-color: #09090b !important;
+  background-image: none !important;
+  border-color: #ffffff !important;
+  border-width: 2px !important;
 }
 .pricing-most-popular-card,
 .pricing-most-popular-card * {
   color: #FFFFFF !important;
 }
 .pricing-most-popular-card:hover {
-  border-color: #818cf8 !important;
+  border-color: #e4e4e7 !important;
+}
+
+html.light .pricing-most-popular-card {
+  background-color: #ffffff !important;
+  background-image: none !important;
+  border-color: #000000 !important;
+  border-width: 2px !important;
+}
+html.light .pricing-most-popular-card,
+html.light .pricing-most-popular-card * {
+  color: #000000 !important;
+}
+html.light .pricing-most-popular-card:hover {
+  border-color: #27272a !important;
 }
 
 .btn-pricing-free {
@@ -1038,24 +1082,44 @@ html.light .btn-pricing-pass:hover {
 
 .btn-pricing-pro {
   background-color: #FFFFFF !important;
-  color: #4f46e5 !important;
+  color: #000000 !important;
   border: 1px solid #FFFFFF !important;
 }
 .btn-pricing-pro:hover {
-  background-color: #f3f4f6 !important;
-  color: #3730a3 !important;
-  border-color: #f3f4f6 !important;
+  background-color: #e4e4e7 !important;
+  color: #000000 !important;
+  border-color: #e4e4e7 !important;
+}
+html.light .btn-pricing-pro {
+  background-color: #000000 !important;
+  color: #FFFFFF !important;
+  border: 1px solid #000000 !important;
+}
+html.light .btn-pricing-pro:hover {
+  background-color: #27272a !important;
+  color: #FFFFFF !important;
+  border-color: #27272a !important;
 }
 
 .btn-pricing-super {
-  background-color: #f59e0b !important;
-  color: #FFFFFF !important;
-  border: 1px solid #f59e0b !important;
+  background-color: transparent !important;
+  color: #ffffff !important;
+  border: 1px solid #27272a !important;
 }
 .btn-pricing-super:hover {
-  background-color: #d97706 !important;
-  border-color: #d97706 !important;
-  color: #FFFFFF !important;
+  background-color: #18181b !important;
+  border-color: #3f3f46 !important;
+  color: #ffffff !important;
+}
+html.light .btn-pricing-super {
+  background-color: transparent !important;
+  color: #000000 !important;
+  border: 1px solid #e4e4e7 !important;
+}
+html.light .btn-pricing-super:hover {
+  background-color: #f4f4f5 !important;
+  border-color: #d4d4d8 !important;
+  color: #000000 !important;
 }
 
 /* Global light mode card shadow removal for a flat, modern, high-contrast monochrome aesthetic */
@@ -1420,7 +1484,720 @@ html.light #adblock-whitelist-btn:hover {
   border-color: #000000 !important;
 }
 
+/* --- Aceternity UI Grid & Overlay Aesthetics --- */
+.aceternity-grid {
+  position: relative;
+}
+.aceternity-grid::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image: 
+    linear-gradient(to right, rgba(255, 255, 255, 0.02) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(255, 255, 255, 0.02) 1px, transparent 1px);
+  background-size: 40px 40px;
+  mask-image: radial-gradient(ellipse at center, transparent 20%, black 80%);
+  -webkit-mask-image: radial-gradient(ellipse at center, transparent 20%, black 80%);
+  pointer-events: none;
+  z-index: 0;
+}
 
+html.light .aceternity-grid::before {
+  background-image: 
+    linear-gradient(to right, rgba(0, 0, 0, 0.03) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(0, 0, 0, 0.03) 1px, transparent 1px);
+  mask-image: radial-gradient(ellipse at center, transparent 20%, white 80%);
+  -webkit-mask-image: radial-gradient(ellipse at center, transparent 20%, white 80%);
+}
 
+/* Custom AdUnit CTA Button style to override Tailwind */
+.ad-unit-cta-btn {
+  background-color: #000000 !important;
+  color: #FFFFFF !important;
+  border: 1px solid #18181b !important;
+  transition: all 0.2s ease-in-out !important;
+}
 
+.ad-unit-cta-btn:hover {
+  background-color: #18181b !important;
+  border-color: #27272a !important;
+}
+
+html.light .ad-unit-cta-btn {
+  background-color: #18181b !important;
+  color: #FFFFFF !important;
+  border-color: #18181b !important;
+}
+
+html.light .ad-unit-cta-btn:hover {
+  background-color: #000000 !important;
+  border-color: #000000 !important;
+}
+
+/* Custom Outline Button Style for Shadcn theme consistency */
+html.light .btn-outline-custom {
+  background-color: #FFFFFF !important;
+  color: #18181b !important;
+  border: 1px solid #e4e4e7 !important;
+}
+
+html.light .btn-outline-custom:hover {
+  background-color: #f4f4f5 !important;
+  color: #000000 !important;
+}
+
+html:not(.light) .btn-outline-custom {
+  background-color: #09090b !important;
+  color: #fafafa !important;
+  border: 1px solid #27272a !important;
+}
+
+html:not(.light) .btn-outline-custom:hover {
+  background-color: #27272a !important;
+  color: #ffffff !important;
+}
+
+/* Custom High-Contrast Monochromatic Button Styles */
+.btn-monochrome-primary {
+  background-color: #000000 !important;
+  color: #ffffff !important;
+  border: 1px solid #000000 !important;
+}
+.btn-monochrome-primary:hover {
+  background-color: #ffffff !important;
+  color: #000000 !important;
+  border-color: #000000 !important;
+}
+
+html.dark .btn-monochrome-primary {
+  background-color: #ffffff !important;
+  color: #000000 !important;
+  border: 1px solid #ffffff !important;
+}
+html.dark .btn-monochrome-primary:hover {
+  background-color: #000000 !important;
+  color: #ffffff !important;
+  border-color: #ffffff !important;
+}
+
+.btn-monochrome-secondary {
+  background-color: #ffffff !important;
+  color: #000000 !important;
+  border: 1px solid #000000 !important;
+}
+.btn-monochrome-secondary:hover {
+  background-color: #000000 !important;
+  color: #ffffff !important;
+  border-color: #000000 !important;
+}
+
+html.dark .btn-monochrome-secondary {
+  background-color: #000000 !important;
+  color: #ffffff !important;
+  border: 1px solid #ffffff !important;
+}
+html.dark .btn-monochrome-secondary:hover {
+  background-color: #ffffff !important;
+  color: #000000 !important;
+  border-color: #ffffff !important;
+}
+
+/* Specific overrides to prevent global dark mode button selector from breaking monochromatic buttons */
+html:not(.light) button.btn-monochrome-primary,
+html:not(.light) button.btn-monochrome-primary *,
+html.dark button.btn-monochrome-primary,
+html.dark button.btn-monochrome-primary *,
+html:not(.light) button.btn-pricing-pro,
+html:not(.light) button.btn-pricing-pro *,
+html.dark button.btn-pricing-pro,
+html.dark button.btn-pricing-pro * {
+  background-color: #ffffff !important;
+  color: #000000 !important;
+}
+html:not(.light) button.btn-monochrome-primary:hover,
+html:not(.light) button.btn-monochrome-primary:hover *,
+html.dark button.btn-monochrome-primary:hover,
+html.dark button.btn-monochrome-primary:hover *,
+html:not(.light) button.btn-pricing-pro:hover,
+html:not(.light) button.btn-pricing-pro:hover *,
+html.dark button.btn-pricing-pro:hover,
+html.dark button.btn-pricing-pro:hover * {
+  background-color: #000000 !important;
+  color: #ffffff !important;
+}
+html:not(.light) button.btn-monochrome-secondary,
+html:not(.light) button.btn-monochrome-secondary *,
+html.dark button.btn-monochrome-secondary,
+html.dark button.btn-monochrome-secondary * {
+  background-color: #000000 !important;
+  color: #ffffff !important;
+}
+html:not(.light) button.btn-monochrome-secondary:hover,
+html:not(.light) button.btn-monochrome-secondary:hover *,
+html.dark button.btn-monochrome-secondary:hover,
+html.dark button.btn-monochrome-secondary:hover * {
+  background-color: #ffffff !important;
+  color: #000000 !important;
+}
+
+/* Quick Tab Selector Monochromatic Theme Styling */
+.tool-tab-container {
+  background-color: rgba(255, 255, 255, 0.02) !important;
+  border: 1px solid rgba(255, 255, 255, 0.05) !important;
+}
+
+html.light .tool-tab-container {
+  background-color: #f5f5f7 !important;
+  border-color: #d2d2d7 !important;
+}
+
+.tool-tab-btn {
+  color: #a1a1aa !important; /* text-zinc-400 */
+  transition: all 150ms ease-out !important;
+}
+
+.tool-tab-btn:hover {
+  color: #fafafa !important; /* text-zinc-100 */
+}
+
+html.light .tool-tab-btn {
+  color: #6e6e73 !important; /* Apple secondary text */
+}
+
+html.light .tool-tab-btn:hover {
+  color: #1d1d1f !important;
+}
+
+/* Active tab style: white in dark mode, black in light mode */
+.tool-tab-btn.active {
+  background-color: #ffffff !important;
+  color: #000000 !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1) !important;
+}
+
+html.light .tool-tab-btn.active {
+  background-color: #000000 !important;
+  color: #ffffff !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1) !important;
+}
+
+/* Recovery Pass bold black/white highlight */
+.recovery-pass-highlight {
+  font-weight: 800 !important;
+  color: #000000 !important;
+}
+.recovery-pass-highlight * {
+  font-weight: 800 !important;
+  color: #000000 !important;
+}
+html.dark .recovery-pass-highlight,
+html.dark .recovery-pass-highlight * {
+  color: #ffffff !important;
+}
+html:not(.light) .recovery-pass-highlight,
+html:not(.light) .recovery-pass-highlight * {
+  color: #ffffff !important;
+}
+
+/* Blue Pro Button */
+.btn-pro-blue,
+button.btn-pro-blue,
+html.dark button.btn-pro-blue {
+  background-color: #ffffff !important;
+  color: #2563eb !important; /* blue-600 */
+  border: 1px solid #ffffff !important;
+}
+.btn-pro-blue *,
+button.btn-pro-blue *,
+html.dark button.btn-pro-blue * {
+  color: #2563eb !important;
+}
+.btn-pro-blue:hover,
+button.btn-pro-blue:hover,
+html.dark button.btn-pro-blue:hover {
+  background-color: #000000 !important;
+  color: #3b82f6 !important; /* blue-500 */
+  border-color: #3b82f6 !important;
+}
+.btn-pro-blue:hover *,
+button.btn-pro-blue:hover *,
+html.dark button.btn-pro-blue:hover * {
+  color: #3b82f6 !important;
+}
+
+html.light button.btn-pro-blue,
+html.light button.btn-pro-blue * {
+  background-color: #000000 !important;
+  color: #3b82f6 !important; /* blue-500 */
+  border: 1px solid #000000 !important;
+}
+html.light button.btn-pro-blue:hover,
+html.light button.btn-pro-blue:hover *,
+html.light button.btn-pro-blue:focus,
+html.light button.btn-pro-blue:focus * {
+  background-color: #ffffff !important;
+  color: #2563eb !important; /* blue-600 */
+  border-color: #2563eb !important;
+}
+
+/* Orange Super Button */
+.btn-super-orange,
+button.btn-super-orange,
+html.dark button.btn-super-orange {
+  background-color: #ffffff !important;
+  color: #ea580c !important; /* orange-600 */
+  border: 1px solid #ffffff !important;
+}
+.btn-super-orange *,
+button.btn-super-orange *,
+html.dark button.btn-super-orange * {
+  color: #ea580c !important;
+}
+.btn-super-orange:hover,
+button.btn-super-orange:hover,
+html.dark button.btn-super-orange:hover {
+  background-color: #000000 !important;
+  color: #f97316 !important; /* orange-500 */
+  border-color: #f97316 !important;
+}
+.btn-super-orange:hover *,
+button.btn-super-orange:hover *,
+html.dark button.btn-super-orange:hover * {
+  color: #f97316 !important;
+}
+
+html.light button.btn-super-orange,
+html.light button.btn-super-orange * {
+  background-color: #000000 !important;
+  color: #f97316 !important; /* orange-500 */
+  border: 1px solid #000000 !important;
+}
+html.light button.btn-super-orange:hover,
+html.light button.btn-super-orange:hover *,
+html.light button.btn-super-orange:focus,
+html.light button.btn-super-orange:focus * {
+  background-color: #ffffff !important;
+  color: #ea580c !important; /* orange-600 */
+  border-color: #ea580c !important;
+}
+
+/* --- MONOCHROMATIC ADMIN OPS CENTER THEME --- */
+
+/* Sidebar wrapper */
+.admin-sidebar {
+  background-color: #000000 !important;
+  border-color: #1f1f22 !important;
+}
+html.light .admin-sidebar {
+  background-color: #FFFFFF !important;
+  border-color: #E5E5E7 !important;
+}
+
+/* Header/Topbar wrapper */
+.admin-topbar {
+  background-color: rgba(9, 9, 11, 0.6) !important;
+  border-color: #1f1f22 !important;
+}
+html.light .admin-topbar {
+  background-color: rgba(255, 255, 255, 0.8) !important;
+  border-color: #E5E5E7 !important;
+}
+
+/* Brand logo */
+.admin-brand-logo {
+  background-color: #ffffff !important;
+  border-color: #ffffff !important;
+  color: #000000 !important;
+}
+html.light .admin-brand-logo {
+  background-color: #000000 !important;
+  border-color: #000000 !important;
+  color: #ffffff !important;
+}
+
+/* Navigation Links */
+.admin-nav-link {
+  transition: all 150ms ease-out;
+}
+.admin-nav-link-active {
+  background-color: rgba(255, 255, 255, 0.08) !important;
+  color: #ffffff !important;
+}
+.admin-nav-link-active .admin-nav-icon {
+  color: #ffffff !important;
+}
+.admin-nav-link-inactive {
+  color: #a1a1aa !important;
+}
+.admin-nav-link-inactive .admin-nav-icon {
+  color: #71717a !important;
+}
+.admin-nav-link-inactive:hover {
+  background-color: rgba(255, 255, 255, 0.04) !important;
+  color: #f4f4f5 !important;
+}
+.admin-nav-link-inactive:hover .admin-nav-icon {
+  color: #e4e4e7 !important;
+}
+
+html.light .admin-nav-link-active {
+  background-color: rgba(0, 0, 0, 0.06) !important;
+  color: #000000 !important;
+}
+html.light .admin-nav-link-active .admin-nav-icon {
+  color: #000000 !important;
+}
+html.light .admin-nav-link-inactive {
+  color: #71717a !important;
+}
+html.light .admin-nav-link-inactive .admin-nav-icon {
+  color: #a1a1aa !important;
+}
+html.light .admin-nav-link-inactive:hover {
+  background-color: rgba(0, 0, 0, 0.03) !important;
+  color: #18181b !important;
+}
+html.light .admin-nav-link-inactive:hover .admin-nav-icon {
+  color: #18181b !important;
+}
+
+/* Notification badge */
+.admin-notification-badge {
+  background-color: #ffffff !important;
+  color: #000000 !important;
+  border-color: #000000 !important;
+  box-shadow: 0 0 6px rgba(255, 255, 255, 0.3) !important;
+}
+html.light .admin-notification-badge {
+  background-color: #000000 !important;
+  color: #ffffff !important;
+  border-color: #ffffff !important;
+  box-shadow: 0 0 6px rgba(0, 0, 0, 0.1) !important;
+}
+
+/* Admin Role Badges */
+.admin-role-super-admin,
+.admin-role-admin,
+.admin-role-support,
+.admin-role-moderator {
+  display: inline-flex;
+  align-items: center;
+  font-weight: 700;
+  border-radius: 4px;
+  border-width: 1px;
+}
+
+/* Dark mode role styles */
+.admin-role-super-admin {
+  background-color: #ffffff !important;
+  color: #000000 !important;
+  border-color: #ffffff !important;
+}
+.admin-role-admin {
+  background-color: rgba(255, 255, 255, 0.1) !important;
+  color: #e4e4e7 !important;
+  border-color: rgba(255, 255, 255, 0.15) !important;
+}
+.admin-role-support {
+  background-color: rgba(255, 255, 255, 0.05) !important;
+  color: #a1a1aa !important;
+  border-color: rgba(255, 255, 255, 0.08) !important;
+}
+.admin-role-moderator {
+  background-color: transparent !important;
+  color: #71717a !important;
+  border-color: rgba(255, 255, 255, 0.05) !important;
+}
+
+/* Light mode role styles */
+html.light .admin-role-super-admin {
+  background-color: #000000 !important;
+  color: #ffffff !important;
+  border-color: #000000 !important;
+}
+html.light .admin-role-admin {
+  background-color: rgba(0, 0, 0, 0.08) !important;
+  color: #27272a !important;
+  border-color: rgba(0, 0, 0, 0.12) !important;
+}
+html.light .admin-role-support {
+  background-color: rgba(0, 0, 0, 0.04) !important;
+  color: #71717a !important;
+  border-color: rgba(0, 0, 0, 0.06) !important;
+}
+html.light .admin-role-moderator {
+  background-color: transparent !important;
+  color: #a1a1aa !important;
+  border-color: rgba(0, 0, 0, 0.04) !important;
+}
+
+/* General clean up to prevent colored background highlight bleed inside admin containers */
+.admin-layout-root div[class*="from-indigo-"],
+.admin-layout-root div[class*="from-purple-"],
+.admin-layout-root div[class*="to-purple-"],
+.admin-layout-root div[class*="via-purple-"],
+.admin-layout-root div[class*="to-indigo-"] {
+  background-image: none !important;
+}
+
+/* Compare Slider Handle Circle Specific Colors & Animation Overrides */
+.compare-handle-circle {
+  background-color: #000000 !important;
+  color: #ffffff !important;
+  border: 1px solid #000000 !important;
+  transform: translate(-50%, -50%) scale(1) !important;
+}
+
+html.dark .compare-handle-circle,
+html:not(.light) .compare-handle-circle {
+  background-color: #ffffff !important;
+  color: #000000 !important;
+  border: 1px solid #ffffff !important;
+}
+
+.compare-handle-circle:hover {
+  transform: translate(-50%, -50%) scale(1.1) !important;
+}
+
+.compare-handle-circle:active {
+  transform: translate(-50%, -50%) scale(0.95) !important;
+}
+
+/* --- Global Capsule & Circle Overrides --- */
+/* Override all circles and capsules (rounded-full) to have standard button curves */
+/* Exclude spinners/loaders and radio elements from the overrides to preserve browser standards */
+[class*="rounded-full"]:not(.animate-spin):not([class*="spinner"]):not(.loading-spinner):not([type="radio"]),
+.rounded-full:not(.animate-spin):not([class*="spinner"]):not(.loading-spinner):not([type="radio"]),
+.compare-handle-circle,
+.avatar {
+  border-radius: var(--radius) !important;
+}
+
+/* --- Monochromatic Profile Styling (Black in Light Mode, White in Dark Mode) --- */
+
+/* 1. Navbar Profile trigger button */
+.btn-profile-trigger {
+  background-color: #000000 !important;
+  border: 1px solid #000000 !important;
+  color: #ffffff !important;
+  transition: all 0.15s ease-in-out !important;
+}
+.btn-profile-trigger *,
+.btn-profile-trigger span {
+  color: #ffffff !important;
+  stroke: #ffffff !important;
+  transition: all 0.15s ease-in-out !important;
+}
+.btn-profile-trigger .profile-avatar-circle {
+  background-color: #1c1c1e !important;
+  color: #ffffff !important;
+  border: 1px solid rgba(255, 255, 255, 0.2) !important;
+  transition: all 0.15s ease-in-out !important;
+}
+.btn-profile-trigger:hover {
+  background-color: #ffffff !important;
+  border-color: #000000 !important;
+  color: #000000 !important;
+}
+.btn-profile-trigger:hover *,
+.btn-profile-trigger:hover span {
+  color: #000000 !important;
+  stroke: #000000 !important;
+}
+.btn-profile-trigger:hover .profile-avatar-circle {
+  background-color: #f4f4f5 !important;
+  color: #000000 !important;
+  border-color: rgba(0, 0, 0, 0.2) !important;
+}
+
+html.dark .btn-profile-trigger,
+html:not(.light) .btn-profile-trigger {
+  background-color: #ffffff !important;
+  border: 1px solid #ffffff !important;
+  color: #000000 !important;
+}
+html.dark .btn-profile-trigger *,
+html.dark .btn-profile-trigger span,
+html:not(.light) .btn-profile-trigger *,
+html:not(.light) .btn-profile-trigger span {
+  color: #000000 !important;
+  stroke: #000000 !important;
+}
+html.dark .btn-profile-trigger .profile-avatar-circle,
+html:not(.light) .btn-profile-trigger .profile-avatar-circle {
+  background-color: #e5e5e7 !important;
+  color: #000000 !important;
+  border: 1px solid rgba(0, 0, 0, 0.2) !important;
+}
+html.dark .btn-profile-trigger:hover,
+html:not(.light) .btn-profile-trigger:hover {
+  background-color: #000000 !important;
+  border-color: #ffffff !important;
+  color: #ffffff !important;
+}
+html.dark .btn-profile-trigger:hover *,
+html.dark .btn-profile-trigger:hover span,
+html:not(.light) .btn-profile-trigger:hover *,
+html:not(.light) .btn-profile-trigger:hover span {
+  color: #ffffff !important;
+  stroke: #ffffff !important;
+}
+html.dark .btn-profile-trigger:hover .profile-avatar-circle,
+html:not(.light) .btn-profile-trigger:hover .profile-avatar-circle {
+  background-color: #1c1c1e !important;
+  color: #ffffff !important;
+  border-color: rgba(255, 255, 255, 0.2) !important;
+}
+
+/* 2. Profile page avatar background */
+.profile-avatar-mono {
+  background-color: #000000 !important;
+  border-color: #27272a !important;
+  color: #ffffff !important;
+}
+.profile-avatar-mono svg {
+  color: #ffffff !important;
+}
+html.dark .profile-avatar-mono,
+html:not(.light) .profile-avatar-mono {
+  background-color: #ffffff !important;
+  border-color: #e4e4e7 !important;
+  color: #000000 !important;
+}
+html.dark .profile-avatar-mono svg,
+html:not(.light) .profile-avatar-mono svg {
+  color: #000000 !important;
+}
+
+/* 3. Profile page card container background */
+.profile-card-mono {
+  background-color: #000000 !important;
+  border-color: #27272a !important;
+  color: #ffffff !important;
+}
+.profile-card-mono *,
+.profile-card-mono div,
+.profile-card-mono span,
+.profile-card-mono p,
+.profile-card-mono h2,
+.profile-card-mono h3,
+.profile-card-mono label {
+  color: #ffffff !important;
+}
+.profile-card-mono input,
+.profile-card-mono select,
+.profile-card-mono textarea {
+  background-color: #18181b !important;
+  color: #ffffff !important;
+  border-color: #27272a !important;
+}
+.profile-card-mono button:not(.btn-monochrome-secondary):not(.btn-monochrome-primary) {
+  border-color: rgba(255, 255, 255, 0.2) !important;
+  color: #ffffff !important;
+  background-color: transparent !important;
+}
+.profile-card-mono button:not(.btn-monochrome-secondary):not(.btn-monochrome-primary):hover {
+  background-color: rgba(255, 255, 255, 0.08) !important;
+}
+
+html.dark .profile-card-mono,
+html:not(.light) .profile-card-mono {
+  background-color: #ffffff !important;
+  border-color: #e4e4e7 !important;
+  color: #000000 !important;
+}
+html.dark .profile-card-mono *,
+html.dark .profile-card-mono div,
+html.dark .profile-card-mono span,
+html.dark .profile-card-mono p,
+html.dark .profile-card-mono h2,
+html.dark .profile-card-mono h3,
+html.dark .profile-card-mono label,
+html:not(.light) .profile-card-mono *,
+html:not(.light) .profile-card-mono div,
+html:not(.light) .profile-card-mono span,
+html:not(.light) .profile-card-mono p,
+html:not(.light) .profile-card-mono h2,
+html:not(.light) .profile-card-mono h3,
+html:not(.light) .profile-card-mono label {
+  color: #000000 !important;
+}
+html.dark .profile-card-mono input,
+html.dark .profile-card-mono select,
+html.dark .profile-card-mono textarea,
+html:not(.light) .profile-card-mono input,
+html:not(.light) .profile-card-mono select,
+html:not(.light) .profile-card-mono textarea {
+  background-color: #f4f4f5 !important;
+  color: #000000 !important;
+  border-color: #e4e4e7 !important;
+}
+html.dark .profile-card-mono button:not(.btn-monochrome-secondary):not(.btn-monochrome-primary),
+html.dark .profile-card-mono button:not(.btn-monochrome-secondary):not(.btn-monochrome-primary):hover,
+html:not(.light) .profile-card-mono button:not(.btn-monochrome-secondary):not(.btn-monochrome-primary),
+html:not(.light) .profile-card-mono button:not(.btn-monochrome-secondary):not(.btn-monochrome-primary):hover {
+  border-color: rgba(0, 0, 0, 0.2) !important;
+  color: #000000 !important;
+  background-color: transparent !important;
+}
+html.dark .profile-card-mono button:not(.btn-monochrome-secondary):not(.btn-monochrome-primary):hover,
+html:not(.light) .profile-card-mono button:not(.btn-monochrome-secondary):not(.btn-monochrome-primary):hover {
+  background-color: rgba(0, 0, 0, 0.08) !important;
+}
+
+/* --- Monochromatic Navbar Control Buttons (Theme Toggle, Notifications) --- */
+.btn-theme-toggle-navbar,
+.btn-notification-navbar {
+  background-color: #000000 !important;
+  color: #ffffff !important;
+  border: 1px solid #000000 !important;
+  transition: all 0.15s ease-in-out !important;
+}
+.btn-theme-toggle-navbar svg,
+.btn-notification-navbar svg {
+  color: #ffffff !important;
+  stroke: #ffffff !important;
+}
+.btn-theme-toggle-navbar:hover,
+.btn-notification-navbar:hover {
+  background-color: #ffffff !important;
+  color: #000000 !important;
+  border-color: #000000 !important;
+}
+.btn-theme-toggle-navbar:hover svg,
+.btn-notification-navbar:hover svg {
+  color: #000000 !important;
+  stroke: #000000 !important;
+}
+
+html.dark .btn-theme-toggle-navbar,
+html.dark .btn-notification-navbar,
+html:not(.light) .btn-theme-toggle-navbar,
+html:not(.light) .btn-notification-navbar {
+  background-color: #ffffff !important;
+  color: #000000 !important;
+  border: 1px solid #ffffff !important;
+}
+html.dark .btn-theme-toggle-navbar svg,
+html.dark .btn-notification-navbar svg,
+html:not(.light) .btn-theme-toggle-navbar svg,
+html:not(.light) .btn-notification-navbar svg {
+  color: #000000 !important;
+  stroke: #000000 !important;
+}
+html.dark .btn-theme-toggle-navbar:hover,
+html.dark .btn-notification-navbar:hover,
+html:not(.light) .btn-theme-toggle-navbar:hover,
+html:not(.light) .btn-notification-navbar:hover {
+  background-color: #000000 !important;
+  color: #ffffff !important;
+  border-color: #ffffff !important;
+}
+html.dark .btn-theme-toggle-navbar:hover svg,
+html.dark .btn-notification-navbar:hover svg,
+html:not(.light) .btn-theme-toggle-navbar:hover svg,
+html:not(.light) .btn-notification-navbar:hover svg {
+  color: #ffffff !important;
+  stroke: #ffffff !important;
+}
 

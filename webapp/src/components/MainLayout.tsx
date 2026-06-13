@@ -171,17 +171,17 @@ export default function MainLayout() {
               {renderNavLink("/how-it-works", "How It Works")}
               {renderNavLink("/pricing", "Pricing")}
               {renderNavLink("/reviews", "Reviews")}
-              {renderNavLink("/support", "Support")}
+              {renderNavLink("/support", "Support & FAQ")}
             </div>
           </div>
           
           <div className="flex items-center gap-2.5 md:gap-6">
             {!loading && (
               <>
-                 {/* Desktop Theme Toggle */}
+                {/* Desktop Theme Toggle */}
                 <button 
                   onClick={() => setTheme(theme === 'light' ? 'dark' : 'light')}
-                  className="flex p-2 rounded-full bg-zinc-900 border border-zinc-800 hover:bg-zinc-800 hover:scale-[1.02] focus:outline-none transition-all items-center justify-center text-white/80 hover:text-white"
+                  className="btn-theme-toggle-navbar flex p-2 rounded-full bg-zinc-900 border border-zinc-800 hover:bg-zinc-800 hover:scale-[1.02] focus:outline-none transition-all items-center justify-center text-white/80 hover:text-white"
                   title={theme === 'light' ? 'Switch to Dark Mode' : 'Switch to Light Mode'}
                 >
                   {theme === 'light' ? (
@@ -199,7 +199,7 @@ export default function MainLayout() {
                         setMobileMenuOpen(false)
                         setProfileMenuOpen(false)
                       }}
-                      className="relative p-2 rounded-full bg-zinc-900 border border-zinc-800 hover:bg-zinc-800 hover:scale-[1.02] focus:outline-none transition-all flex items-center justify-center"
+                      className="btn-notification-navbar relative p-2 rounded-full bg-zinc-900 border border-zinc-800 hover:bg-zinc-800 hover:scale-[1.02] focus:outline-none transition-all flex items-center justify-center"
                     >
                       <Bell className="w-4 h-4 text-white/80" />
                       {notifications.length > 0 && (
@@ -277,12 +277,12 @@ export default function MainLayout() {
                           setMobileMenuOpen(false)
                           setNotificationMenuOpen(false)
                         }}
-                        className="flex items-center gap-2 p-1 lg:px-3 lg:py-1.5 rounded-full bg-zinc-900 border border-indigo-500/40 hover:bg-zinc-800 hover:border-indigo-400 hover:scale-[1.02] focus:outline-none transition-all shadow-sm hover:shadow-[0_0_12px_rgba(99,102,241,0.35)]"
+                        className="btn-profile-trigger flex items-center gap-2 p-1 lg:px-3 lg:py-1.5 rounded-full bg-zinc-900 border border-zinc-800 hover:bg-zinc-800 hover:scale-[1.02] focus:outline-none transition-all shadow-sm"
                       >
                         <span className="text-xs font-semibold text-white/80 select-none hidden lg:inline-block">
                           Hi, {userData?.firstName || user.displayName?.split(" ")[0] || "User"}
                         </span>
-                        <div className="w-7 h-7 rounded-full bg-gradient-to-tr from-indigo-500 to-purple-600 flex items-center justify-center font-bold text-xs text-white border border-white/20 flex-shrink-0 shadow-[0_0_8px_rgba(99,102,241,0.3)] overflow-hidden">
+                        <div className="profile-avatar-circle w-7 h-7 rounded-full bg-zinc-950 flex items-center justify-center font-bold text-xs text-white border border-white/10 flex-shrink-0 overflow-hidden">
                           {userData?.photoURL || user.photoURL ? (
                             <img 
                               src={userData?.photoURL || user.photoURL || undefined} 
@@ -366,7 +366,7 @@ export default function MainLayout() {
             <Link to="/how-it-works" className="py-2 px-2 text-white/70 hover:text-white hover:bg-white/5 rounded-md text-sm font-medium transition-all" onClick={() => setMobileMenuOpen(false)}>How It Works</Link>
             <Link to="/pricing" className="py-2 px-2 text-white/70 hover:text-white hover:bg-white/5 rounded-md text-sm font-medium transition-all" onClick={() => setMobileMenuOpen(false)}>Pricing</Link>
             <Link to="/reviews" className="py-2 px-2 text-white/70 hover:text-white hover:bg-white/5 rounded-md text-sm font-medium transition-all" onClick={() => setMobileMenuOpen(false)}>Reviews</Link>
-            <Link to="/support" className="py-2 px-2 text-white/70 hover:text-white hover:bg-white/5 rounded-md text-sm font-medium transition-all" onClick={() => setMobileMenuOpen(false)}>Support</Link>
+            <Link to="/support" className="py-2 px-2 text-white/70 hover:text-white hover:bg-white/5 rounded-md text-sm font-medium transition-all" onClick={() => setMobileMenuOpen(false)}>Support & FAQ</Link>
 
             {/* Authenticated Tools */}
             {user && (

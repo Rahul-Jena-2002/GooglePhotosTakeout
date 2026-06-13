@@ -50,6 +50,8 @@ export default function AdminRevenue() {
     const usersQuery = collection(db, "users")
     const unsubUsers = onSnapshot(usersQuery, (snap) => {
       setTotalUsersCount(snap.size)
+    }, (err) => {
+      console.error("Users listener error:", err)
     })
 
     return () => {
@@ -222,7 +224,7 @@ export default function AdminRevenue() {
       {/* HEADER */}
       <div>
         <h1 className="text-3xl font-black tracking-tight text-white flex items-center gap-2">
-          <TrendingUp className="w-8 h-8 text-emerald-400" /> Revenue Operations Center
+          <TrendingUp className="w-8 h-8 text-zinc-400" /> Revenue Operations Center
         </h1>
         <p className="text-zinc-400 text-sm">Monitor platform subscriptions, active conversions, and invoice status.</p>
       </div>
@@ -230,7 +232,7 @@ export default function AdminRevenue() {
       {/* KPI METRIC CARDS */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <div className="bg-zinc-900 border border-zinc-800 p-6 rounded-xl relative overflow-hidden shadow-lg">
-          <div className="absolute top-4 right-4 p-2 bg-emerald-500/10 text-emerald-400 rounded-lg">
+          <div className="absolute top-4 right-4 p-2 bg-zinc-800 dark:bg-zinc-200 text-zinc-400 dark:text-zinc-800 rounded-lg">
             <DollarSign className="w-5 h-5" />
           </div>
           <div className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-2">Today's Revenue</div>
@@ -239,7 +241,7 @@ export default function AdminRevenue() {
         </div>
 
         <div className="bg-zinc-900 border border-zinc-800 p-6 rounded-xl relative overflow-hidden shadow-lg">
-          <div className="absolute top-4 right-4 p-2 bg-indigo-500/10 text-indigo-400 rounded-lg">
+          <div className="absolute top-4 right-4 p-2 bg-zinc-800 dark:bg-zinc-200 text-zinc-400 dark:text-zinc-800 rounded-lg">
             <TrendingUp className="w-5 h-5" />
           </div>
           <div className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-2">Monthly Revenue</div>
@@ -248,16 +250,16 @@ export default function AdminRevenue() {
         </div>
 
         <div className="bg-zinc-900 border border-zinc-800 p-6 rounded-xl relative overflow-hidden shadow-lg">
-          <div className="absolute top-4 right-4 p-2 bg-amber-500/10 text-amber-400 rounded-lg">
+          <div className="absolute top-4 right-4 p-2 bg-zinc-800 dark:bg-zinc-200 text-zinc-400 dark:text-zinc-800 rounded-lg">
             <Award className="w-5 h-5" />
           </div>
           <div className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-2">Lifetime Revenue</div>
           <div className="text-3xl font-black text-white">₹{lifetimeRevenue}</div>
-          <div className="text-xs text-emerald-400 mt-2 font-medium">₹{lifetimeRevenue - activeTx.length * 0} net payout</div>
+          <div className="text-xs text-zinc-450 mt-2 font-medium">₹{lifetimeRevenue - activeTx.length * 0} net payout</div>
         </div>
 
         <div className="bg-zinc-900 border border-zinc-800 p-6 rounded-xl relative overflow-hidden shadow-lg">
-          <div className="absolute top-4 right-4 p-2 bg-purple-500/10 text-purple-400 rounded-lg">
+          <div className="absolute top-4 right-4 p-2 bg-zinc-800 dark:bg-zinc-200 text-zinc-400 dark:text-zinc-800 rounded-lg">
             <Users className="w-5 h-5" />
           </div>
           <div className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-2">Conversion Funnel</div>
@@ -281,7 +283,7 @@ export default function AdminRevenue() {
               <div className="h-40 flex items-center justify-center text-zinc-600 italic text-sm">No transaction events to plot.</div>
             ) : (
               <div>
-                <svg className="w-full h-40 overflow-visible" viewBox="0 0 650 150">
+                <svg className="w-full h-40 overflow-visible text-zinc-700 dark:text-zinc-300" viewBox="0 0 650 150">
                   {/* Grid Lines */}
                   <line x1="50" y1="20" x2="650" y2="20" stroke="#1f2937" strokeWidth="1" strokeDasharray="4" />
                   <line x1="50" y1="75" x2="650" y2="75" stroke="#1f2937" strokeWidth="1" strokeDasharray="4" />
@@ -290,7 +292,7 @@ export default function AdminRevenue() {
                   {/* Line Path */}
                   <polyline
                     fill="none"
-                    stroke="#10b981"
+                    stroke="currentColor"
                     strokeWidth="3.5"
                     strokeLinecap="round"
                     strokeLinejoin="round"
@@ -303,8 +305,8 @@ export default function AdminRevenue() {
                     const y = 140 - (val / chartData.maxVal) * 110
                     return (
                       <g key={idx} className="group cursor-pointer">
-                        <circle cx={x} cy={y} r="5" fill="#10b981" className="transition-all duration-300 group-hover:r-7" />
-                        <circle cx={x} cy={y} r="10" stroke="#10b981" strokeWidth="1.5" fill="none" className="opacity-0 group-hover:opacity-100 animate-ping" />
+                        <circle cx={x} cy={y} r="5" fill="currentColor" className="transition-all duration-300 group-hover:r-7" />
+                        <circle cx={x} cy={y} r="10" stroke="currentColor" strokeWidth="1.5" fill="none" className="opacity-0 group-hover:opacity-100 animate-ping" />
                       </g>
                     )
                   })}
@@ -333,12 +335,12 @@ export default function AdminRevenue() {
           <div className="space-y-5 py-4">
             <div>
               <div className="flex justify-between text-xs text-zinc-400 mb-1.5">
-                <span className="flex items-center gap-2 font-medium"><span className="w-2 h-2 rounded-full bg-emerald-500"></span> Single Time (₹99)</span>
+                <span className="flex items-center gap-2 font-medium"><span className="w-2 h-2 rounded-full bg-zinc-600"></span> Single Time (₹99)</span>
                 <span className="font-bold text-white">{planBreakdown.recovery_pass} Sales <span className="text-zinc-500">(₹{planRevenueBreakdown.recovery_pass})</span></span>
               </div>
               <div className="h-2 w-full bg-zinc-950 rounded-full overflow-hidden">
                 <div 
-                  className="h-full bg-emerald-500 rounded-full" 
+                  className="h-full bg-zinc-600 rounded-full" 
                   style={{ width: `${activeTx.length > 0 ? (planBreakdown.recovery_pass / activeTx.length) * 100 : 0}%` }}
                 ></div>
               </div>
@@ -346,12 +348,12 @@ export default function AdminRevenue() {
 
             <div>
               <div className="flex justify-between text-xs text-zinc-400 mb-1.5">
-                <span className="flex items-center gap-2 font-medium"><span className="w-2 h-2 rounded-full bg-indigo-500"></span> Pro Lifetime (₹799)</span>
+                <span className="flex items-center gap-2 font-medium"><span className="w-2 h-2 rounded-full bg-zinc-400"></span> Pro Lifetime (₹799)</span>
                 <span className="font-bold text-white">{planBreakdown.pro} Sales <span className="text-zinc-500">(₹{planRevenueBreakdown.pro})</span></span>
               </div>
               <div className="h-2 w-full bg-zinc-950 rounded-full overflow-hidden">
                 <div 
-                  className="h-full bg-indigo-500 rounded-full" 
+                  className="h-full bg-zinc-400 rounded-full" 
                   style={{ width: `${activeTx.length > 0 ? (planBreakdown.pro / activeTx.length) * 100 : 0}%` }}
                 ></div>
               </div>
@@ -359,12 +361,12 @@ export default function AdminRevenue() {
 
             <div>
               <div className="flex justify-between text-xs text-zinc-400 mb-1.5">
-                <span className="flex items-center gap-2 font-medium"><span className="w-2 h-2 rounded-full bg-amber-500"></span> Super Lifetime (₹1499)</span>
+                <span className="flex items-center gap-2 font-medium"><span className="w-2 h-2 rounded-full bg-zinc-200"></span> Super Lifetime (₹1499)</span>
                 <span className="font-bold text-white">{planBreakdown.super} Sales <span className="text-zinc-500">(₹{planRevenueBreakdown.super})</span></span>
               </div>
               <div className="h-2 w-full bg-zinc-950 rounded-full overflow-hidden">
                 <div 
-                  className="h-full bg-amber-500 rounded-full" 
+                  className="h-full bg-zinc-200 rounded-full" 
                   style={{ width: `${activeTx.length > 0 ? (planBreakdown.super / activeTx.length) * 100 : 0}%` }}
                 ></div>
               </div>
@@ -388,89 +390,91 @@ export default function AdminRevenue() {
               placeholder="Search transactions..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="bg-zinc-950 border border-zinc-800 rounded-md py-1.5 pl-9 pr-3 text-xs text-white focus:outline-none focus:border-indigo-500 w-64"
+              className="bg-zinc-950 border border-zinc-800 rounded-md py-1.5 pl-9 pr-3 text-xs text-white focus:outline-none focus:border-zinc-500 w-64"
             />
           </div>
         </div>
 
-        <table className="w-full text-left text-xs whitespace-nowrap">
-          <thead className="bg-zinc-950/50 border-b border-zinc-800 text-zinc-400">
-            <tr>
-              <th className="px-6 py-3 font-semibold">Session ID</th>
-              <th className="px-6 py-3 font-semibold">User</th>
-              <th className="px-6 py-3 font-semibold">Purchased Tier</th>
-              <th className="px-6 py-3 font-semibold">Amount</th>
-              <th className="px-6 py-3 font-semibold">Date & Time</th>
-              <th className="px-6 py-3 font-semibold">Status</th>
-              <th className="px-6 py-3 font-semibold text-right">Moderation</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-zinc-800">
-            {loading ? (
+        <div className="w-full overflow-x-auto">
+          <table className="w-full text-left text-xs whitespace-nowrap">
+            <thead className="bg-zinc-950/50 border-b border-zinc-800 text-zinc-400">
               <tr>
-                <td colSpan={7} className="px-6 py-8 text-center text-zinc-500">Syncing transaction registry...</td>
+                <th className="px-6 py-3 font-semibold">Session ID</th>
+                <th className="px-6 py-3 font-semibold">User</th>
+                <th className="px-6 py-3 font-semibold">Purchased Tier</th>
+                <th className="px-6 py-3 font-semibold">Amount</th>
+                <th className="px-6 py-3 font-semibold">Date & Time</th>
+                <th className="px-6 py-3 font-semibold">Status</th>
+                <th className="px-6 py-3 font-semibold text-right">Moderation</th>
               </tr>
-            ) : filteredTransactions.length === 0 ? (
-              <tr>
-                <td colSpan={7} className="px-6 py-8 text-center text-zinc-500">No transactions recorded.</td>
-              </tr>
-            ) : (
-              filteredTransactions.map((tx) => (
-                <tr key={tx.id} className="hover:bg-zinc-800/20 transition-colors">
-                  <td className="px-6 py-4 font-mono text-zinc-400">{tx.txId}</td>
-                  <td className="px-6 py-4">
-                    <div>
-                      <div className="font-semibold text-zinc-200">{tx.displayName}</div>
-                      <div className="text-zinc-500 text-[10px]">{tx.email}</div>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4">
-                    <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${
-                      tx.plan === "pro" ? "bg-indigo-500/10 text-indigo-400 border border-indigo-500/20" :
-                      tx.plan === "super" ? "bg-amber-500/10 text-amber-400 border border-amber-500/20" :
-                      "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
-                    }`}>
-                      {PLAN_LABELS[tx.plan] || tx.plan}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 font-bold text-white">₹{tx.amount}.00</td>
-                  <td className="px-6 py-4 text-zinc-400">
-                    {new Date(tx.timestamp).toLocaleString("en-IN", {
-                      day: "numeric",
-                      month: "short",
-                      year: "numeric",
-                      hour: "2-digit",
-                      minute: "2-digit"
-                    })}
-                  </td>
-                  <td className="px-6 py-4">
-                    <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full font-semibold ${
-                      tx.status === "succeeded" ? "bg-emerald-500/10 text-emerald-400" : "bg-red-500/10 text-red-400"
-                    }`}>
-                      <span className={`w-1 h-1 rounded-full ${tx.status === "succeeded" ? "bg-emerald-400" : "bg-red-400"}`}></span>
-                      {tx.status}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 text-right">
-                    {tx.status === "succeeded" ? (
-                      <button
-                        onClick={() => handleRefund(tx)}
-                        disabled={!isSuperAdminOrAdmin}
-                        className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded bg-red-500/10 border border-red-500/20 text-red-400 hover:bg-red-500/20 transition-all font-semibold ${
-                          !isSuperAdminOrAdmin ? "opacity-50 cursor-not-allowed" : ""
-                        }`}
-                      >
-                        <RotateCcw className="w-3 h-3" /> Refund
-                      </button>
-                    ) : (
-                      <span className="text-zinc-500 italic">Refunded</span>
-                    )}
-                  </td>
+            </thead>
+            <tbody className="divide-y divide-zinc-800">
+              {loading ? (
+                <tr>
+                  <td colSpan={7} className="px-6 py-8 text-center text-zinc-500">Syncing transaction registry...</td>
                 </tr>
-              ))
-            )}
-          </tbody>
-        </table>
+              ) : filteredTransactions.length === 0 ? (
+                <tr>
+                  <td colSpan={7} className="px-6 py-8 text-center text-zinc-500">No transactions recorded.</td>
+                </tr>
+              ) : (
+                filteredTransactions.map((tx) => (
+                  <tr key={tx.id} className="hover:bg-zinc-800/20 transition-colors">
+                    <td className="px-6 py-4 font-mono text-zinc-400">{tx.txId}</td>
+                    <td className="px-6 py-4">
+                      <div>
+                        <div className="font-semibold text-zinc-200">{tx.displayName}</div>
+                        <div className="text-zinc-500 text-[10px]">{tx.email}</div>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4">
+                      <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${
+                        tx.plan === "pro" ? "bg-zinc-800/40 text-zinc-300 dark:text-zinc-200 border border-zinc-800" :
+                        tx.plan === "super" ? "bg-zinc-800 text-zinc-150 dark:bg-zinc-200 dark:text-zinc-900 border border-zinc-700 dark:border-zinc-300" :
+                        "bg-zinc-900/20 text-zinc-400 border border-zinc-850"
+                      }`}>
+                        {PLAN_LABELS[tx.plan] || tx.plan}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 font-bold text-white">₹{tx.amount}.00</td>
+                    <td className="px-6 py-4 text-zinc-400">
+                      {new Date(tx.timestamp).toLocaleString("en-IN", {
+                        day: "numeric",
+                        month: "short",
+                        year: "numeric",
+                        hour: "2-digit",
+                        minute: "2-digit"
+                      })}
+                    </td>
+                    <td className="px-6 py-4">
+                      <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full font-semibold ${
+                        tx.status === "succeeded" ? "bg-zinc-800/80 text-zinc-200 border border-zinc-700" : "bg-zinc-950/40 text-zinc-500 border border-zinc-900"
+                      }`}>
+                        <span className={`w-1 h-1 rounded-full ${tx.status === "succeeded" ? "bg-emerald-400" : "bg-red-400"}`}></span>
+                        {tx.status}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 text-right">
+                      {tx.status === "succeeded" ? (
+                        <button
+                          onClick={() => handleRefund(tx)}
+                          disabled={!isSuperAdminOrAdmin}
+                          className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded bg-red-500/10 border border-red-500/20 text-red-400 hover:bg-red-500/20 transition-all font-semibold ${
+                            !isSuperAdminOrAdmin ? "opacity-50 cursor-not-allowed" : ""
+                          }`}
+                        >
+                          <RotateCcw className="w-3 h-3" /> Refund
+                        </button>
+                      ) : (
+                        <span className="text-zinc-500 italic">Refunded</span>
+                      )}
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   )

@@ -217,10 +217,10 @@ Your EXIF metadata recovery tools are active.
             <CardHeader className="border-b border-white/5 py-4">
               <CardTitle className="text-base font-semibold flex justify-between items-center">
                 <span className="flex items-center gap-2">
-                  <ShieldCheck className="w-5 h-5 text-indigo-400" />
+                  <ShieldCheck className="w-5 h-5 text-zinc-900 dark:text-zinc-100" />
                   Active Plan Details
                 </span>
-                {plan === 'pro' && <span className="text-xs bg-indigo-500 text-white px-2.5 py-1 rounded-md font-bold">Most Popular</span>}
+                {plan === 'pro' && <span className="text-xs bg-zinc-950 dark:bg-zinc-50 text-white dark:text-black px-2.5 py-1 rounded-md font-bold border border-zinc-200 dark:border-zinc-800">Most Popular</span>}
                 {plan === 'super' && <span className="text-xs bg-purple-500 text-white px-2.5 py-1 rounded-md flex items-center gap-1 font-bold"><ShieldCheck className="w-3.5 h-3.5"/> Premium Enabled</span>}
               </CardTitle>
             </CardHeader>
@@ -271,10 +271,10 @@ Your EXIF metadata recovery tools are active.
 
               {(plan === 'pro' || plan === 'super') && (
                 <div className="space-y-6">
-                  <div className="p-4 border border-indigo-500/20 bg-indigo-500/5 rounded-xl space-y-2">
+                  <div className="p-4 border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-950 rounded-lg space-y-2">
                     <div className="flex items-center gap-3">
-                      <CheckCircle2 className="w-5 h-5 text-indigo-400" />
-                      <span className="font-bold text-base text-zinc-100">Unlimited Lifetime Recovery Active</span>
+                      <CheckCircle2 className="w-5 h-5 text-zinc-900 dark:text-zinc-100" />
+                      <span className="font-bold text-base text-foreground">Unlimited Lifetime Recovery Active</span>
                     </div>
                     <p className="text-xs text-zinc-400 leading-relaxed">
                       {plan === 'pro'
@@ -287,13 +287,13 @@ Your EXIF metadata recovery tools are active.
                   <div className="grid md:grid-cols-2 gap-6">
                     <div className="bg-white/[0.01] border border-white/5 rounded-xl p-4 space-y-2">
                       <div className="text-xs text-white/40 uppercase tracking-widest font-semibold flex items-center gap-1.5">
-                        <HardDrive className="w-3.5 h-3.5 text-indigo-400" /> Total Data Restored
+                        <HardDrive className="w-3.5 h-3.5 text-zinc-500" /> Total Data Restored
                       </div>
                       <div className="text-2xl font-black text-white">{formatBytes(totalBytesVal)}</div>
                     </div>
                     <div className="bg-white/[0.01] border border-white/5 rounded-xl p-4 space-y-2">
                       <div className="text-xs text-white/40 uppercase tracking-widest font-semibold flex items-center gap-1.5">
-                        <FileText className="w-3.5 h-3.5 text-indigo-400" /> Total Files Restored
+                        <FileText className="w-3.5 h-3.5 text-zinc-500" /> Total Files Restored
                       </div>
                       <div className="text-2xl font-black text-white">{totalFilesVal.toLocaleString()}</div>
                     </div>
@@ -304,17 +304,17 @@ Your EXIF metadata recovery tools are active.
               <div className="flex flex-col sm:flex-row gap-4 pt-2">
                 {plan !== 'super' ? (
                   <a href="/pricing" className="flex-1">
-                    <Button className="w-full bg-gradient-to-r from-indigo-500 to-purple-600 hover:opacity-95 border-0 font-bold rounded-full">
+                    <Button className="w-full bg-zinc-950 dark:bg-zinc-50 text-white dark:text-black hover:bg-zinc-800 dark:hover:bg-zinc-200 font-bold rounded-lg border border-transparent">
                       <Key className="w-4 h-4 mr-2" /> Upgrade Account Plan
                     </Button>
                   </a>
                 ) : (
-                  <div className="flex-1 flex items-center justify-center text-xs font-semibold text-white/40 border border-white/5 bg-zinc-900/20 rounded-full py-2.5">
+                  <div className="flex-1 flex items-center justify-center text-xs font-semibold text-white/40 border border-white/5 bg-zinc-900/20 rounded-lg py-2.5">
                     Highest Performance Tier Active
                   </div>
                 )}
                 <a href="/tool" data-astro-reload className="flex-1">
-                  <Button variant="outline" className="w-full border-white/20 hover:bg-white/10 hover:text-white font-bold rounded-full">Restore My Data</Button>
+                  <Button variant="outline" className="w-full border-zinc-200 dark:border-zinc-800 hover:bg-zinc-100 dark:hover:bg-zinc-900 font-bold rounded-lg">Restore My Data</Button>
                 </a>
               </div>
             </CardContent>
@@ -329,13 +329,13 @@ Your EXIF metadata recovery tools are active.
               <div>
                 <CardHeader className="border-b border-white/5 py-4">
                   <CardTitle className="text-base font-semibold flex items-center gap-2">
-                    <LifeBuoy className="w-4 h-4 text-indigo-400" />
+                    <LifeBuoy className="w-4 h-4 text-zinc-500" />
                     Support & Help Center
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="pt-6">
                   <div className="space-y-3">
-                  <a href="/support" className="flex items-center justify-between p-3.5 rounded-xl bg-white/[0.02] hover:bg-white/5 border border-white/5 hover:border-white/10 transition-colors">
+                  <a href="/support" className="flex items-center justify-between p-3.5 rounded-lg bg-white/[0.02] hover:bg-white/5 border border-white/5 hover:border-white/10 transition-colors">
                     <div className="flex items-center gap-3">
                       <FileText className="w-4 h-4 text-white/50" />
                       <span className="text-sm font-medium">FAQ & Documentation</span>
@@ -344,12 +344,12 @@ Your EXIF metadata recovery tools are active.
                   </a>
                   
                   {!isPaid ? (
-                    <a href="/pricing" className="flex items-center justify-between p-3.5 rounded-xl border border-indigo-500/30 bg-indigo-500/5 hover:bg-indigo-500/10 transition-colors group">
+                    <a href="/pricing" className="flex items-center justify-between p-3.5 rounded-lg border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-950 hover:bg-zinc-100 dark:hover:bg-zinc-900 transition-all group">
                       <div className="flex items-center gap-3">
-                        <LifeBuoy className="w-4 h-4 text-indigo-400" />
-                        <span className="text-sm font-medium text-indigo-400 group-hover:text-indigo-300">Upgrade for Direct Support</span>
+                        <LifeBuoy className="w-4 h-4 text-zinc-500" />
+                        <span className="text-sm font-medium text-zinc-900 dark:text-zinc-100">Upgrade for Direct Support</span>
                       </div>
-                      <ArrowRight className="w-4 h-4 text-indigo-400/55 group-hover:text-indigo-400" />
+                      <ArrowRight className="w-4 h-4 text-zinc-500" />
                     </a>
                   ) : (
                     <>
@@ -403,7 +403,7 @@ Your EXIF metadata recovery tools are active.
                         <div className="text-center py-8">
                           <p className="text-xs text-white/50 mb-4">Detailed history logs are only available on Pro and Super plans.</p>
                           <a href="/pricing">
-                            <Button variant="outline" className="border-indigo-500/40 text-indigo-400 hover:bg-indigo-500/10 hover:text-indigo-300 text-xs rounded-full">
+                            <Button variant="outline" className="border-zinc-200 dark:border-zinc-800 text-zinc-900 dark:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-900 text-xs rounded-lg">
                               Upgrade to View History
                             </Button>
                           </a>
@@ -415,8 +415,8 @@ Your EXIF metadata recovery tools are active.
                       ) : (
                         <div className="space-y-3">
                           {/* Summary Bar */}
-                          <div className="flex justify-between items-center p-3.5 bg-indigo-500/10 border border-indigo-500/20 rounded-xl text-xs mb-1">
-                            <span className="font-semibold text-indigo-300">Lifetime Recovery Stats</span>
+                          <div className="flex justify-between items-center p-3.5 bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-lg text-xs mb-1">
+                            <span className="font-semibold text-zinc-900 dark:text-zinc-100">Lifetime Recovery Stats</span>
                             <span className="font-mono font-bold text-zinc-100">
                               {totalFilesVal.toLocaleString()} files • {formatBytes(totalBytesVal)}
                             </span>
@@ -454,7 +454,7 @@ Your EXIF metadata recovery tools are active.
                               <div>
                                 {tx.approvedByAdmin ? (
                                   <>
-                                    <div className="font-bold text-indigo-400">TakeoutFix {PLAN_LABELS[tx.plan] || tx.plan} (Admin Approved)</div>
+                                    <div className="font-bold text-zinc-900 dark:text-zinc-100">TakeoutFix {PLAN_LABELS[tx.plan] || tx.plan} (Admin Approved)</div>
                                     <div className="text-[10px] text-zinc-400">Approved by Admin: {tx.approvedByAdmin}</div>
                                     <div className="text-[9px] text-zinc-500">{new Date(tx.timestamp).toLocaleDateString()} • {tx.txId}</div>
                                   </>

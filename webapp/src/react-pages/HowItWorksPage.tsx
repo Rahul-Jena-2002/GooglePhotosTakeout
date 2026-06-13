@@ -21,10 +21,10 @@ function DirectoryParsingDiagram() {
       
       <div className="flex items-center justify-between border-b border-zinc-800 pb-3 z-10">
         <div className="flex items-center gap-2">
-          <span className="w-2 h-2 rounded-full bg-blue-500 animate-pulse"></span>
+          <span className="w-2 h-2 rounded-full bg-zinc-500 animate-pulse"></span>
           <span className="text-zinc-400 font-semibold text-[10px] uppercase tracking-wider">File System Indexer</span>
         </div>
-        <span className="text-blue-400 text-[10px] font-bold">Active Traversal</span>
+        <span className="text-zinc-400 text-[10px] font-bold">Active Traversal</span>
       </div>
 
       <div className="space-y-3.5 my-4 z-10 flex-1 justify-center flex flex-col">
@@ -37,13 +37,13 @@ function DirectoryParsingDiagram() {
             className="flex items-center justify-between p-2.5 rounded border border-zinc-900 bg-zinc-900/30 hover:border-zinc-800/80 transition-all"
           >
             <div className="flex items-center gap-2">
-              <span className={`w-1.5 h-1.5 rounded-full ${file.type === 'media' ? 'bg-cyan-400 shadow-[0_0_8px_rgba(34,211,238,0.5)]' : 'bg-amber-400 shadow-[0_0_8px_rgba(251,191,36,0.5)]'}`}></span>
+              <span className={`w-1.5 h-1.5 rounded-full ${file.type === 'media' ? 'bg-zinc-400 shadow-[0_0_8px_rgba(255,255,255,0.15)]' : 'bg-zinc-600 shadow-[0_0_8px_rgba(255,255,255,0.05)]'}`}></span>
               <span className="text-zinc-300 font-medium truncate max-w-[130px] md:max-w-[180px]">{file.name}</span>
             </div>
             <div className="flex items-center gap-3">
-              <span className="text-zinc-600 text-[10px] font-semibold">{file.size}</span>
+              <span className="text-zinc-500 text-[10px] font-semibold">{file.size}</span>
               <span className={`px-1.5 py-0.5 rounded text-[8px] font-bold uppercase ${
-                file.status === 'parsed' ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20' : 'bg-cyan-500/10 text-cyan-400 border border-cyan-500/20'
+                file.status === 'parsed' ? 'bg-zinc-900 text-zinc-400 border border-zinc-800' : 'bg-zinc-800 text-zinc-300 border border-zinc-750'
               }`}>
                 {file.status}
               </span>
@@ -57,7 +57,7 @@ function DirectoryParsingDiagram() {
           Scanned: <span className="text-zinc-300 font-extrabold">1,824 files</span>
         </div>
         <div>
-          Speed: <span className="text-blue-400 font-extrabold">142 files/s</span>
+          Speed: <span className="text-zinc-400 font-extrabold">142 files/s</span>
         </div>
       </div>
     </div>
@@ -67,9 +67,9 @@ function DirectoryParsingDiagram() {
 // Dynamic visual representation for Phase 2
 function MetadataMatchingDiagram() {
   const matches = [
-    { media: "IMG_9102-edited.JPG", json: "IMG_9102.JPG.json", type: "Fuzzy String Match", color: "from-indigo-500 to-purple-500" },
-    { media: "IMG_9102(1).JPG", json: "IMG_9102.JPG.json", type: "Copy Suffix Resolved", color: "from-purple-500 to-pink-500" },
-    { media: "IMG_9102_GPS.JPG", json: "IMG_9102.JPG.json", type: "Timestamp Match", color: "from-pink-500 to-indigo-500" },
+    { media: "IMG_9102-edited.JPG", json: "IMG_9102.JPG.json", type: "Fuzzy String Match", color: "from-zinc-400 to-zinc-500" },
+    { media: "IMG_9102(1).JPG", json: "IMG_9102.JPG.json", type: "Copy Suffix Resolved", color: "from-zinc-500 to-zinc-650" },
+    { media: "IMG_9102_GPS.JPG", json: "IMG_9102.JPG.json", type: "Timestamp Match", color: "from-zinc-600 to-zinc-400" },
   ];
 
   return (
@@ -79,10 +79,10 @@ function MetadataMatchingDiagram() {
 
       <div className="flex items-center justify-between border-b border-zinc-800 pb-3 z-10">
         <div className="flex items-center gap-2">
-          <span className="w-2 h-2 rounded-full bg-indigo-500 animate-pulse"></span>
+          <span className="w-2 h-2 rounded-full bg-zinc-500 animate-pulse"></span>
           <span className="text-zinc-400 font-semibold text-[10px] uppercase tracking-wider">Heuristic Matching Engine</span>
         </div>
-        <span className="text-indigo-400 text-[10px] font-bold">Resolving Permutations</span>
+        <span className="text-zinc-400 text-[10px] font-bold">Resolving Permutations</span>
       </div>
 
       <div className="my-auto py-2 space-y-4 z-10 flex-1 justify-center flex flex-col">
@@ -90,7 +90,7 @@ function MetadataMatchingDiagram() {
           <div key={i} className="relative space-y-1 bg-zinc-900/20 p-2.5 rounded border border-zinc-900/60">
             <div className="flex justify-between text-[8px] text-zinc-500 font-bold uppercase tracking-wider px-1">
               <span>Source Media</span>
-              <span className="text-indigo-400 font-bold">{match.type}</span>
+              <span className="text-zinc-400 font-bold">{match.type}</span>
               <span>Sidecar JSON</span>
             </div>
             <div className="flex items-center justify-between gap-3">
@@ -103,7 +103,7 @@ function MetadataMatchingDiagram() {
                   initial={{ left: 0 }}
                   animate={{ left: "100%" }}
                   transition={{ duration: 2, repeat: Infinity, ease: "easeInOut", delay: i * 0.4 }}
-                  className={`absolute w-2.5 h-2.5 -mt-[4px] rounded-full bg-gradient-to-r ${match.color} shadow-[0_0_8px_rgba(99,102,241,0.8)]`}
+                  className={`absolute w-2.5 h-2.5 -mt-[4px] rounded-full bg-gradient-to-r ${match.color} shadow-[0_0_8px_rgba(255,255,255,0.2)]`}
                 ></motion.div>
               </div>
               <div className="flex-1 p-2 rounded bg-zinc-900 border border-zinc-800/50 text-zinc-400 truncate max-w-[130px] text-center text-[10px]">
@@ -115,8 +115,8 @@ function MetadataMatchingDiagram() {
       </div>
 
       <div className="border-t border-zinc-900 pt-3 flex items-center justify-between z-10 text-[10px] text-zinc-500 font-bold uppercase tracking-wider">
-        <span>Fuzzy Match Accuracy: <span className="text-emerald-400 font-extrabold">99.99%</span></span>
-        <span>Fail Safe Fallback: <span className="text-indigo-400 font-extrabold">Active</span></span>
+        <span>Fuzzy Match Accuracy: <span className="text-zinc-300 font-extrabold">99.99%</span></span>
+        <span>Fail Safe Fallback: <span className="text-zinc-400 font-extrabold">Active</span></span>
       </div>
     </div>
   );
@@ -138,17 +138,17 @@ function ExifHeaderInjectionDiagram() {
 
       <div className="flex items-center justify-between border-b border-zinc-800 pb-3 z-10">
         <div className="flex items-center gap-2">
-          <span className="w-2 h-2 rounded-full bg-purple-500 animate-pulse"></span>
+          <span className="w-2 h-2 rounded-full bg-zinc-500 animate-pulse"></span>
           <span className="text-zinc-400 font-semibold text-[10px] uppercase tracking-wider">EXIF Binary Injector</span>
         </div>
-        <span className="text-purple-400 text-[10px] font-bold">Writing EXIF Headers</span>
+        <span className="text-zinc-400 text-[10px] font-bold">Writing EXIF Headers</span>
       </div>
 
       <div className="space-y-3 my-4 z-10 flex-1 justify-center flex flex-col">
         {tags.map((item, i) => (
           <div key={i} className="flex items-center justify-between p-2.5 rounded border border-zinc-900 bg-zinc-900/30 hover:border-zinc-850 transition-all">
             <div className="flex items-center gap-2 text-zinc-500 text-[10px] font-bold uppercase">
-              <span className="font-extrabold text-purple-400">{item.tag}</span>
+              <span className="font-extrabold text-zinc-400">{item.tag}</span>
               <span className="text-zinc-300 font-bold">{item.name}</span>
             </div>
             <div className="flex items-center gap-2">
@@ -156,11 +156,11 @@ function ExifHeaderInjectionDiagram() {
                 initial={{ opacity: 0.5 }}
                 animate={{ opacity: [0.5, 1, 0.5] }}
                 transition={{ duration: 2.5, repeat: Infinity, delay: i * 0.3 }}
-                className="text-emerald-400 text-[10px] font-bold tracking-tight truncate max-w-[110px] md:max-w-[140px]"
+                className="text-zinc-300 text-[10px] font-bold tracking-tight truncate max-w-[110px] md:max-w-[140px]"
               >
                 {item.val}
               </motion.span>
-              <span className="text-emerald-400 text-[8px] font-bold border border-emerald-500/20 bg-emerald-500/10 px-1.5 py-0.5 rounded uppercase flex-shrink-0">
+              <span className="text-zinc-300 text-[8px] font-bold border border-zinc-750 bg-zinc-850 px-1.5 py-0.5 rounded uppercase flex-shrink-0">
                 {item.status}
               </span>
             </div>
@@ -169,8 +169,8 @@ function ExifHeaderInjectionDiagram() {
       </div>
 
       <div className="border-t border-zinc-900 pt-3 flex items-center justify-between z-10 text-[10px] text-zinc-500 font-bold uppercase tracking-wider">
-        <span>Binary Integrity: <span className="text-emerald-400 font-extrabold">100% Valid</span></span>
-        <span>Recomp: <span className="text-purple-400 font-extrabold">None (Raw)</span></span>
+        <span>Binary Integrity: <span className="text-zinc-300 font-extrabold">100% Valid</span></span>
+        <span>Recomp: <span className="text-zinc-450 font-extrabold">None (Raw)</span></span>
       </div>
     </div>
   );
@@ -183,8 +183,8 @@ export default function HowItWorksPage() {
       title: "Local Directory Parsing",
       subtitle: "Secure Client-Side Indexing",
       icon: FolderSearch,
-      color: "text-blue-400",
-      glowColor: "from-blue-500/20 to-cyan-500/5",
+      color: "text-zinc-400",
+      glowColor: "",
       description: "TakeoutFix utilizes the modern browser File System Access API to gain read-only permission to your Google Takeout folder. It executes a high-performance recursive traversal to locate all media files and their corresponding sidecar JSON files entirely on your machine.",
       technicalDetails: [
         "Zero-upload architecture: media bytes never leave your device.",
@@ -210,8 +210,8 @@ for await (const [name, entry] of dirHandle) {
       title: "Heuristic Metadata Matching",
       subtitle: "Pairing Files with Sidecars",
       icon: Cpu,
-      color: "text-indigo-400",
-      glowColor: "from-indigo-500/20 to-purple-500/5",
+      color: "text-zinc-400",
+      glowColor: "",
       description: "Google Takeout often edits names, truncates titles, or appends suffixes (like '-edited' or '(1)') to media, making standard matching fail. TakeoutFix applies a multi-layered match heuristic to pair files with their JSON sidecar, resolving filename inconsistencies automatically.",
       technicalDetails: [
         "Name-hash pairing checks original file titles inside the JSON schema.",
@@ -237,8 +237,8 @@ for await (const [name, entry] of dirHandle) {
       title: "Deep EXIF Header Injection",
       subtitle: "Rebuilding Media Headers",
       icon: Binary,
-      color: "text-purple-400",
-      glowColor: "from-purple-500/20 to-pink-500/5",
+      color: "text-zinc-400",
+      glowColor: "",
       description: "Once matched, the engine extracts the Unix epoch timestamps and coordinates. It parses the binary structures of JPEGs, PNGs, and HEICs, injecting the parameters directly into their EXIF headers (DateTimeOriginal and GPS tags) before outputting clean files.",
       technicalDetails: [
         "Reconstructs native binary EXIF tags without re-compressing the image.",
@@ -264,9 +264,9 @@ for await (const [name, entry] of dirHandle) {
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ duration: 0.5 }}
-          className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-zinc-900 border border-zinc-800 text-xs font-semibold text-indigo-400 mb-6 font-mono"
+          className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-zinc-900 border border-zinc-800 text-xs font-semibold text-zinc-400 mb-6 font-mono"
         >
-          <ShieldCheck className="w-4 h-4 text-indigo-400" />
+          <ShieldCheck className="w-4 h-4 text-zinc-400" />
           100% Client-Side Engine Telemetry
         </motion.div>
         <motion.h1
@@ -275,7 +275,7 @@ for await (const [name, entry] of dirHandle) {
           transition={{ duration: 0.5, delay: 0.1 }}
           className="text-5xl md:text-7xl font-extrabold tracking-tight text-white mb-6"
         >
-          How It <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 via-purple-400 to-pink-500">Works</span>
+          How It <span className="text-white">Works</span>
         </motion.h1>
         <motion.p
           initial={{ opacity: 0, y: 20 }}
@@ -291,7 +291,7 @@ for await (const [name, entry] of dirHandle) {
       <div className="max-w-6xl mx-auto relative">
         
         {/* Central connecting line for desktop */}
-        <div className="absolute left-[50%] top-12 bottom-20 w-[1px] bg-gradient-to-b from-blue-500 via-indigo-500 to-purple-500 opacity-20 hidden lg:block"></div>
+        <div className="absolute left-[50%] top-12 bottom-20 w-[1px] bg-zinc-800 opacity-30 hidden lg:block"></div>
 
         <div className="space-y-40">
           {steps.map((step, idx) => {
@@ -309,7 +309,7 @@ for await (const [name, entry] of dirHandle) {
               >
                 {/* Timeline node marker for desktop */}
                 <div className="absolute left-[50%] -translate-x-1/2 top-4 w-10 h-10 rounded-full bg-zinc-950 border border-zinc-800 flex items-center justify-center shadow-[0_0_20px_rgba(0,0,0,0.8)] z-20 hidden lg:flex">
-                  <span className={`w-3.5 h-3.5 rounded-full bg-gradient-to-br ${isEven ? 'from-blue-400 to-cyan-400' : 'from-indigo-400 to-purple-400'} animate-pulse`}></span>
+                  <span className="w-3.5 h-3.5 rounded-full bg-zinc-500 animate-pulse"></span>
                 </div>
 
                 {/* Left Block (Text & Code) */}
@@ -344,9 +344,6 @@ for await (const [name, entry] of dirHandle) {
                 {/* Right Block (Image / Interactive Diagram Card) */}
                 <div className={`flex-1 flex items-center justify-center order-2 ${isEven ? 'lg:order-2' : 'lg:order-1'}`}>
                   <div className="relative w-full max-w-lg">
-                    {/* Shadow Backing Glow */}
-                    <div className={`absolute -inset-1 bg-gradient-to-tr ${step.glowColor} blur-3xl opacity-50 rounded-2xl`}></div>
-                    
                     {/* Glass Container */}
                     <div className="relative bg-zinc-900/30 border border-white/5 rounded-2xl p-4 shadow-2xl backdrop-blur-md">
                       <div className="aspect-square bg-zinc-950/80 rounded-xl border border-zinc-800/80 overflow-hidden p-2 flex items-center justify-center relative">
@@ -373,15 +370,15 @@ for await (const [name, entry] of dirHandle) {
         <h2 className="text-3xl md:text-4xl font-bold tracking-tight mb-4 text-white">Ready to reclaim your metadata?</h2>
         <p className="text-zinc-500 mb-8 max-w-md mx-auto">Launch the recovery center and process your files securely, 100% offline in your browser.</p>
         <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
-          <Link to="/tool">
-            <Button size="lg" className="rounded-full bg-gradient-to-r from-indigo-500 to-purple-600 hover:opacity-90 text-white border-0 shadow-[0_0_35px_rgba(99,102,241,0.4)] px-10 h-14 font-semibold">
-              Restore My Data <ArrowRight className="w-5 h-5 ml-2" />
-            </Button>
-          </Link>
-          <Link to="/pricing">
-            <Button size="lg" variant="outline" className="rounded-full border-zinc-800 text-zinc-300 hover:bg-zinc-900 hover:text-white px-8 h-14 font-semibold">
+          <Link to="/pricing" className="w-full sm:w-auto">
+            <button className="btn-monochrome-secondary px-8 h-14 font-semibold rounded-xl transition-all flex items-center justify-center w-full sm:w-auto cursor-pointer">
               Compare Plans
-            </Button>
+            </button>
+          </Link>
+          <Link to="/tool" className="w-full sm:w-auto">
+            <button className="btn-monochrome-primary px-10 h-14 font-semibold rounded-xl transition-all flex items-center justify-center gap-2 w-full sm:w-auto cursor-pointer">
+              Restore My Data <ArrowRight className="w-5 h-5" />
+            </button>
           </Link>
         </div>
       </div>

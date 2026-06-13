@@ -14,9 +14,9 @@ import { db } from "../firebase"
 import type { AdminData, AdminRole } from "../contexts/AuthContext"
 
 const STATUS_DOT: Record<string, string> = {
-  online: "bg-emerald-400",
-  idle: "bg-amber-400",
-  offline: "bg-zinc-600",
+  online: "bg-zinc-100 dark:bg-white border border-zinc-400 dark:border-transparent shadow-sm",
+  idle: "bg-zinc-450 dark:bg-zinc-500",
+  offline: "bg-zinc-700 dark:bg-zinc-800",
 }
 
 const ROLE_LABEL: Record<AdminRole, string> = {
@@ -109,7 +109,8 @@ export default function AdminDashboard() {
     // 3. Live online admins
     const unsubAdmins = onSnapshot(
       query(collection(db, "admins"), where("status", "in", ["online", "idle"])),
-      (snap) => setOnlineAdmins(snap.docs.map(d => d.data() as AdminData))
+      (snap) => setOnlineAdmins(snap.docs.map(d => d.data() as AdminData)),
+      (err) => console.error("Admins listener error:", err)
     )
 
     // 4. Live admin activity feed
@@ -206,18 +207,18 @@ export default function AdminDashboard() {
         <>
           <div className="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-8 gap-4">
             {[
-              { label: "Open Tickets", val: kpi.openTickets, icon: LifeBuoy, color: "text-red-400", urgent: kpi.openTickets > 0 },
-              { label: "Pending Reviews", val: kpi.pendingReviews, icon: MessageSquareQuote, color: "text-amber-400", urgent: kpi.pendingReviews > 0 },
-              { label: "Revenue Today", val: `₹${revenueToday.toLocaleString("en-IN", { maximumFractionDigits: 0 })}`, icon: CreditCard, color: "text-emerald-400", urgent: false },
-              { label: "Files Recovered", val: (globalStats?.filesRestored || 4115).toLocaleString(), icon: RefreshCw, color: "text-indigo-400", urgent: false },
-              { label: "Data Processed", val: formatBytes(globalStats?.bytesProcessed || 12944482578), icon: HardDrive, color: "text-purple-400", urgent: false },
-              { label: "Online Admins", val: onlineAdmins.length, icon: UserCheck, color: "text-indigo-400", urgent: false },
-              { label: "Pro Users", val: kpi.proUsers, icon: Star, color: "text-indigo-300", urgent: false },
-              { label: "Super Users", val: kpi.superUsers, icon: Zap, color: "text-amber-300", urgent: false },
+              { label: "Open Tickets", val: kpi.openTickets, icon: LifeBuoy, color: "text-zinc-500 dark:text-zinc-400", urgent: kpi.openTickets > 0 },
+              { label: "Pending Reviews", val: kpi.pendingReviews, icon: MessageSquareQuote, color: "text-zinc-500 dark:text-zinc-400", urgent: kpi.pendingReviews > 0 },
+              { label: "Revenue Today", val: `₹${revenueToday.toLocaleString("en-IN", { maximumFractionDigits: 0 })}`, icon: CreditCard, color: "text-zinc-500 dark:text-zinc-400", urgent: false },
+              { label: "Files Recovered", val: (globalStats?.filesRestored || 4115).toLocaleString(), icon: RefreshCw, color: "text-zinc-500 dark:text-zinc-400", urgent: false },
+              { label: "Data Processed", val: formatBytes(globalStats?.bytesProcessed || 12944482578), icon: HardDrive, color: "text-zinc-500 dark:text-zinc-400", urgent: false },
+              { label: "Online Admins", val: onlineAdmins.length, icon: UserCheck, color: "text-zinc-500 dark:text-zinc-400", urgent: false },
+              { label: "Pro Users", val: kpi.proUsers, icon: Star, color: "text-zinc-500 dark:text-zinc-400", urgent: false },
+              { label: "Super Users", val: kpi.superUsers, icon: Zap, color: "text-zinc-500 dark:text-zinc-400", urgent: false },
             ].map((kpiItem, i) => (
               <Card
                 key={i}
-                className={`bg-zinc-900 border-zinc-800 shadow-none transition-colors ${kpiItem.urgent ? "border-l-2 border-l-red-500" : ""}`}
+                className={`bg-zinc-900 border-zinc-800 shadow-none transition-colors ${kpiItem.urgent ? "border-l-2 border-l-black dark:border-l-white" : ""}`}
               >
                 <CardHeader className="p-4 pb-2 flex flex-row items-center justify-between">
                   <CardTitle className="text-[11px] font-medium text-zinc-500 uppercase tracking-wider leading-tight">{kpiItem.label}</CardTitle>
@@ -235,7 +236,7 @@ export default function AdminDashboard() {
             <Card className="bg-zinc-900 border-zinc-800 shadow-none">
               <CardHeader className="px-5 py-4 border-b border-zinc-800">
                 <CardTitle className="text-sm font-semibold text-zinc-200 flex items-center gap-2">
-                  <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                  <span className="w-2 h-2 rounded-full bg-zinc-200 dark:bg-white border border-zinc-400 dark:border-transparent animate-pulse"></span>
                   Admin Team Online
                 </CardTitle>
               </CardHeader>
@@ -250,7 +251,7 @@ export default function AdminDashboard() {
                           {a.photoURL ? (
                             <img src={a.photoURL} alt="" className="w-8 h-8 rounded-full" />
                           ) : (
-                            <div className="w-8 h-8 rounded-full bg-indigo-500/20 flex items-center justify-center font-bold text-xs text-indigo-400">
+                            <div className="w-8 h-8 rounded-full bg-zinc-800 dark:bg-zinc-200 flex items-center justify-center font-bold text-xs text-zinc-300 dark:text-zinc-800 border border-zinc-700 dark:border-zinc-300">
                               {a.displayName?.charAt(0)}
                             </div>
                           )}
@@ -260,7 +261,7 @@ export default function AdminDashboard() {
                           <div className="text-sm font-medium text-zinc-200 truncate">{a.displayName}</div>
                           <div className="text-xs text-zinc-500">{ROLE_LABEL[a.role]}</div>
                         </div>
-                        <div className={`text-xs capitalize ${a.status === 'online' ? 'text-emerald-400' : 'text-amber-400'}`}>
+                        <div className={`text-xs capitalize ${a.status === 'online' ? 'text-zinc-200 dark:text-zinc-100 font-bold' : 'text-zinc-400'}`}>
                           {a.status}
                         </div>
                       </div>
@@ -274,19 +275,19 @@ export default function AdminDashboard() {
             <Card className="bg-zinc-900 border-zinc-800 shadow-none flex flex-col justify-between">
               <CardHeader className="px-5 py-4 border-b border-zinc-800">
                 <CardTitle className="text-sm font-semibold text-zinc-200 flex items-center gap-2">
-                  <TrendingUp className="w-4 h-4 text-emerald-400" /> Revenue (Last 6 Days)
+                  <TrendingUp className="w-4 h-4 text-zinc-400" /> Revenue (Last 6 Days)
                 </CardTitle>
               </CardHeader>
               <CardContent className="p-5 flex-1 flex flex-col justify-between">
                 <div className="w-full relative">
-                  <svg className="w-full h-32 overflow-visible" viewBox="0 0 400 120">
+                  <svg className="w-full h-32 overflow-visible text-zinc-700 dark:text-zinc-300" viewBox="0 0 400 120">
                     <line x1="30" y1="30" x2="380" y2="30" stroke="#1f2937" strokeWidth="1" strokeDasharray="3" />
                     <line x1="30" y1="70" x2="380" y2="70" stroke="#1f2937" strokeWidth="1" strokeDasharray="3" />
                     <line x1="30" y1="110" x2="380" y2="110" stroke="#1f2937" strokeWidth="1" strokeDasharray="3" />
 
                     <polyline
                       fill="none"
-                      stroke="#10b981"
+                      stroke="currentColor"
                       strokeWidth="2.5"
                       strokeLinecap="round"
                       strokeLinejoin="round"
@@ -302,7 +303,7 @@ export default function AdminDashboard() {
                           cx={x}
                           cy={y}
                           r="3.5"
-                          fill="#10b981"
+                          fill="currentColor"
                           className="hover:scale-150 transition-transform cursor-pointer"
                         />
                       );
@@ -313,7 +314,7 @@ export default function AdminDashboard() {
                   <span>6d ago</span>
                   <span>4d ago</span>
                   <span>2d ago</span>
-                  <span className="text-emerald-400 font-bold">Today</span>
+                  <span className="text-zinc-900 dark:text-zinc-100 font-bold">Today</span>
                 </div>
               </CardContent>
             </Card>
@@ -322,7 +323,7 @@ export default function AdminDashboard() {
             <Card className="bg-zinc-900 border-zinc-800 shadow-none">
               <CardHeader className="px-5 py-4 border-b border-zinc-800">
                 <CardTitle className="text-sm font-semibold text-zinc-200 flex items-center gap-2">
-                  <Activity className="w-4 h-4 text-indigo-400" /> Admin Activity Feed
+                  <Activity className="w-4 h-4 text-zinc-400" /> Admin Activity Feed
                 </CardTitle>
               </CardHeader>
               <CardContent className="p-0">
@@ -332,7 +333,7 @@ export default function AdminDashboard() {
                   <div className="divide-y divide-zinc-800">
                     {activity.map((a) => (
                       <div key={a.id} className="flex items-start gap-3 px-5 py-3.5 hover:bg-zinc-950/20 transition-colors">
-                        <div className="w-1.5 h-1.5 rounded-full bg-indigo-500 mt-2 flex-shrink-0"></div>
+                        <div className="w-1.5 h-1.5 rounded-full bg-zinc-400 dark:bg-zinc-600 mt-2 flex-shrink-0"></div>
                         <div className="flex-1 min-w-0">
                           <div className="text-sm text-zinc-300 leading-normal">{a.description}</div>
                           <div className="text-[10px] text-zinc-500 mt-1 flex justify-between items-center">

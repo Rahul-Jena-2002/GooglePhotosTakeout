@@ -61,7 +61,7 @@ export default function WriteReviewButton() {
       {!showForm && !submitSuccess && (
         <button 
           onClick={handleOpenForm}
-          className="rounded-full bg-white text-black hover:bg-zinc-200 px-8 py-3 text-sm font-semibold transition-all cursor-pointer shadow-lg shadow-white/5"
+          className="btn-monochrome-primary rounded-full px-8 py-3 text-sm font-semibold transition-all cursor-pointer"
         >
           {user ? "Write a Review" : "Sign in to Write a Review"}
         </button>
@@ -106,7 +106,7 @@ export default function WriteReviewButton() {
                 value={message}
                 onChange={(e) => setMessage(e.target.value)}
                 placeholder="How was your experience using TakeoutFix?"
-                className="w-full bg-black border border-zinc-800 rounded-lg p-3 text-white focus:outline-none focus:border-indigo-500 resize-none"
+                className="w-full bg-black border border-zinc-800 rounded-lg p-3 text-white focus:outline-none focus:border-zinc-500 resize-none"
               ></textarea>
             </div>
 
@@ -121,7 +121,7 @@ export default function WriteReviewButton() {
               <button 
                 type="submit" 
                 disabled={submitting || !message.trim()}
-                className="bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white px-5 py-2 rounded-lg text-sm font-semibold flex items-center gap-2 cursor-pointer transition-colors"
+                className="btn-monochrome-primary disabled:opacity-50 px-5 py-2 rounded-lg text-sm font-semibold flex items-center gap-2 cursor-pointer transition-colors"
               >
                 {submitting ? "Submitting..." : <><Send className="w-4 h-4" /> Submit Review</>}
               </button>

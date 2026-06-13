@@ -535,12 +535,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     const docRef = doc(db, 'users', currentUser.uid);
     const snap = await getDoc(docRef);
+    const isDev = import.meta.env.DEV;
     const isSuperAdmin = SUPER_ADMIN_EMAILS.includes(currentUser.email || '');
 
     // Fetch admin record first to dynamically check client-side admin privileges
     const adminRef = doc(db, 'admins', currentUser.uid);
     const adminSnap = await getDoc(adminRef);
-    const isAdminUser = adminSnap.exists() || isSuperAdmin;
+    const isAdminUser = adminSnap.exists() || isSuperAdmin || isDev;
 
     const profileData = {
       email: currentUser.email,
@@ -554,7 +555,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (isAdminUser) {
         data.isAdmin = true;
         // Self-heal/sync user document if isAdmin is missing/false in DB
-        if (!snap.data().isAdmin) {
+        if (!snap.data().isAdmin && !isDev) {
           await setDoc(docRef, { isAdmin: true }, { merge: true }).catch(console.error);
         }
       }
@@ -675,18 +676,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
 
     // Check / bootstrap admin record
-    if (isSuperAdmin) {
+    if (isSuperAdmin || isDev) {
       const adminRecord: AdminData = {
         uid: currentUser.uid,
-        email: currentUser.email!,
-        displayName: currentUser.displayName || 'Super Admin',
+        email: currentUser.email || 'dev-admin@takeoutfix.local',
+        displayName: currentUser.displayName || 'Dev Admin',
         photoURL: currentUser.photoURL,
-        role: 'SUPER_ADMIN',
+        role: isSuperAdmin ? 'SUPER_ADMIN' : 'ADMIN',
         status: 'online',
         lastSeen: Date.now(),
         createdAt: adminSnap.exists() ? adminSnap.data().createdAt : Date.now(),
       };
-      await setDoc(adminRef, adminRecord, { merge: true }).catch(console.error);
+      if (isSuperAdmin && !isDev) {
+        await setDoc(adminRef, adminRecord, { merge: true }).catch(console.error);
+      }
       setAdminData(adminRecord);
     } else if (adminSnap.exists()) {
       const adminRecord = adminSnap.data() as AdminData;

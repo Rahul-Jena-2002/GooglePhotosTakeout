@@ -8,7 +8,7 @@ import { fileURLToPath } from 'url';
 // https://astro.build/config
 export default defineConfig({
   site: 'https://takeoutfix.pages.dev',
-  output: 'hybrid',
+  output: 'static',
   adapter: cloudflare({
     imageService: 'cloudflare'
   }),

@@ -244,121 +244,123 @@ export default function AdminUsers() {
       </div>
 
       <div className="bg-zinc-900 border border-zinc-800 rounded-lg overflow-hidden">
-        <table className="w-full text-left text-sm whitespace-nowrap">
-          <thead className="bg-zinc-950/50 border-b border-zinc-800 text-zinc-400">
-            <tr>
-              <th className="px-6 py-3 font-medium">User</th>
-              <th className="px-6 py-3 font-medium">Plan</th>
-              <th className="px-6 py-3 font-medium">Processed</th>
-              <th className="px-6 py-3 font-medium">Files Restored</th>
-              <th className="px-6 py-3 font-medium">Status</th>
-              <th className="px-6 py-3 font-medium text-right">Actions</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-zinc-800">
-            {loading ? (
+        <div className="w-full overflow-x-auto">
+          <table className="w-full text-left text-sm whitespace-nowrap">
+            <thead className="bg-zinc-950/50 border-b border-zinc-800 text-zinc-400">
               <tr>
-                <td colSpan={6} className="px-6 py-8 text-center text-zinc-500">Loading users...</td>
+                <th className="px-6 py-3 font-medium">User</th>
+                <th className="px-6 py-3 font-medium">Plan</th>
+                <th className="px-6 py-3 font-medium">Processed</th>
+                <th className="px-6 py-3 font-medium">Files Restored</th>
+                <th className="px-6 py-3 font-medium">Status</th>
+                <th className="px-6 py-3 font-medium text-right">Actions</th>
               </tr>
-            ) : filteredUsers.length === 0 ? (
-              <tr>
-                <td colSpan={6} className="px-6 py-8 text-center text-zinc-500">No users found matching criteria.</td>
-              </tr>
-            ) : (
-              filteredUsers.map((u) => (
-                <tr 
-                  key={u.id} 
-                  className="hover:bg-zinc-800/50 cursor-pointer transition-colors"
-                  onClick={() => setSelectedUser(u)}
-                >
-                  <td className="px-6 py-4">
-                    <div className="flex items-center gap-3">
-                      <img src={u.photoURL || `https://ui-avatars.com/api/?name=${u.displayName || 'U'}&background=random`} alt="" className="w-8 h-8 rounded-full" />
-                      <div>
-                        <div className="font-semibold text-zinc-100 flex items-center gap-2">
-                          {u.displayName || 'Unknown User'}
-                          {u.suspended && (
-                            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium bg-red-500/10 text-red-400 border border-red-500/20">
-                              <ShieldAlert className="w-3 h-3" /> Suspended
-                            </span>
-                          )}
-                        </div>
-                        {u.username && (
-                          <div className="text-xs text-indigo-400 font-mono font-medium mt-0.5">
-                            @{u.username}
+            </thead>
+            <tbody className="divide-y divide-zinc-800">
+              {loading ? (
+                <tr>
+                  <td colSpan={6} className="px-6 py-8 text-center text-zinc-500">Loading users...</td>
+                </tr>
+              ) : filteredUsers.length === 0 ? (
+                <tr>
+                  <td colSpan={6} className="px-6 py-8 text-center text-zinc-500">No users found matching criteria.</td>
+                </tr>
+              ) : (
+                filteredUsers.map((u) => (
+                  <tr 
+                    key={u.id} 
+                    className="hover:bg-zinc-800/50 cursor-pointer transition-colors"
+                    onClick={() => setSelectedUser(u)}
+                  >
+                    <td className="px-6 py-4">
+                      <div className="flex items-center gap-3">
+                        <img src={u.photoURL || `https://ui-avatars.com/api/?name=${u.displayName || 'U'}&background=random`} alt="" className="w-8 h-8 rounded-full" />
+                        <div>
+                          <div className="font-semibold text-zinc-100 flex items-center gap-2">
+                            {u.displayName || 'Unknown User'}
+                            {u.suspended && (
+                              <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium bg-red-500/10 text-red-400 border border-red-500/20">
+                                <ShieldAlert className="w-3 h-3" /> Suspended
+                              </span>
+                            )}
                           </div>
-                        )}
-                        <div className="text-[10px] text-zinc-500 mt-0.5 truncate max-w-[200px]">
-                          {u.email}
+                          {u.username && (
+                            <div className="text-xs text-zinc-400 font-mono font-medium mt-0.5">
+                              @{u.username}
+                            </div>
+                          )}
+                          <div className="text-[10px] text-zinc-500 mt-0.5 truncate max-w-[200px]">
+                            {u.email}
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4" onClick={(e) => e.stopPropagation()}>
-                    <select
-                      value={u.plan || 'free'}
-                      onChange={(e) => handleUpdatePlan(u.id, e.target.value)}
-                      className={`inline-flex items-center px-2 py-1 rounded-md text-xs font-semibold uppercase tracking-wider bg-zinc-950 border border-zinc-800 text-zinc-300 focus:outline-none focus:ring-1 focus:ring-indigo-500 cursor-pointer ${
-                        u.plan === 'pro' ? 'text-indigo-400 border-indigo-500/20 bg-indigo-500/5' :
-                        u.plan === 'super' ? 'text-amber-400 border-amber-500/20 bg-amber-500/5' :
-                        u.plan === 'recovery_pass' ? 'text-emerald-400 border-emerald-500/20 bg-emerald-500/5' :
-                        'text-zinc-400 border-zinc-700 bg-zinc-850'
-                      }`}
-                    >
-                      <option value="free" className="bg-zinc-900 text-zinc-400">Free</option>
-                      <option value="recovery_pass" className="bg-zinc-900 text-emerald-400">Single Time</option>
-                      <option value="pro" className="bg-zinc-900 text-indigo-400">Pro</option>
-                      <option value="super" className="bg-zinc-900 text-amber-400">Super</option>
-                    </select>
-                  </td>
-                  <td className="px-6 py-4 text-zinc-300">
-                    {formatBytes(getUserBytes(u))}
-                  </td>
-                  <td className="px-6 py-4 text-zinc-300">
-                    {getUserFilesRestored(u, recoveries).toLocaleString()}
-                  </td>
-                  <td className="px-6 py-4">
-                    <span className={`inline-flex items-center gap-1.5 text-xs font-medium ${u.suspended ? 'text-red-400' : 'text-emerald-400'}`}>
-                      <span className={`w-1.5 h-1.5 rounded-full ${u.suspended ? 'bg-red-400' : 'bg-emerald-400'}`}></span>
-                      {u.suspended ? 'Suspended' : 'Active'}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 text-right flex items-center justify-end gap-2" onClick={(e) => e.stopPropagation()}>
-                    {u.plan === 'super' && (
-                      <button
-                        onClick={() => handleToggleSupportWithAds(u.id, !u.supportWithAds)}
-                        className={`px-2.5 py-1 rounded text-xs font-bold border transition-all ${
-                          u.supportWithAds 
-                            ? 'bg-indigo-600 text-white border-indigo-700 hover:bg-indigo-700' 
-                            : 'bg-zinc-200 text-zinc-800 border-zinc-300 hover:bg-zinc-300 dark:bg-zinc-800 dark:text-zinc-200 dark:border-zinc-700 dark:hover:bg-zinc-700'
+                    </td>
+                    <td className="px-6 py-4" onClick={(e) => e.stopPropagation()}>
+                      <select
+                        value={u.plan || 'free'}
+                        onChange={(e) => handleUpdatePlan(u.id, e.target.value)}
+                        className={`inline-flex items-center px-2 py-1 rounded-md text-xs font-semibold uppercase tracking-wider bg-zinc-950 border border-zinc-800 text-zinc-350 focus:outline-none focus:ring-1 focus:ring-zinc-600 cursor-pointer ${
+                          u.plan === 'pro' ? 'text-zinc-200 border-zinc-700 bg-zinc-800/40' :
+                          u.plan === 'super' ? 'text-white border-zinc-600 bg-zinc-850 font-bold' :
+                          u.plan === 'recovery_pass' ? 'text-zinc-300 border-zinc-750 bg-zinc-900/60' :
+                          'text-zinc-450 border-zinc-800 bg-zinc-950/20'
                         }`}
                       >
-                        {u.supportWithAds ? 'Disable Ads' : 'Enable Ads'}
+                        <option value="free" className="bg-zinc-900 text-zinc-400">Free</option>
+                        <option value="recovery_pass" className="bg-zinc-900 text-zinc-300">Single Time</option>
+                        <option value="pro" className="bg-zinc-900 text-zinc-250">Pro</option>
+                        <option value="super" className="bg-zinc-900 text-white font-bold">Super</option>
+                      </select>
+                    </td>
+                    <td className="px-6 py-4 text-zinc-300">
+                      {formatBytes(getUserBytes(u))}
+                    </td>
+                    <td className="px-6 py-4 text-zinc-300">
+                      {getUserFilesRestored(u, recoveries).toLocaleString()}
+                    </td>
+                    <td className="px-6 py-4">
+                      <span className={`inline-flex items-center gap-1.5 text-xs font-medium ${u.suspended ? 'text-red-400' : 'text-zinc-400'}`}>
+                        <span className={`w-1.5 h-1.5 rounded-full ${u.suspended ? 'bg-red-400' : 'bg-zinc-400'}`}></span>
+                        {u.suspended ? 'Suspended' : 'Active'}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 text-right flex items-center justify-end gap-2" onClick={(e) => e.stopPropagation()}>
+                      {u.plan === 'super' && (
+                        <button
+                          onClick={() => handleToggleSupportWithAds(u.id, !u.supportWithAds)}
+                          className={`px-2.5 py-1 rounded text-xs font-bold border transition-all ${
+                            u.supportWithAds 
+                              ? 'bg-zinc-150 text-zinc-900 border-zinc-200 hover:bg-zinc-200 dark:bg-zinc-200 dark:text-zinc-950 dark:border-zinc-350 dark:hover:bg-zinc-300' 
+                              : 'bg-zinc-850 text-zinc-300 border-zinc-800 hover:bg-zinc-800 dark:bg-zinc-900 dark:text-zinc-450 dark:border-zinc-800 dark:hover:bg-zinc-800'
+                          }`}
+                        >
+                          {u.supportWithAds ? 'Disable Ads' : 'Enable Ads'}
+                        </button>
+                      )}
+                      <button
+                        onClick={() => handleToggleSuspension(u.id, !u.suspended)}
+                        className={`px-2.5 py-1 rounded text-xs font-semibold border transition-all ${
+                          u.suspended 
+                            ? 'bg-zinc-800/80 text-zinc-200 border-zinc-700 hover:bg-zinc-700/50' 
+                            : 'bg-zinc-950 text-zinc-400 border-zinc-850 hover:bg-zinc-900'
+                        }`}
+                      >
+                        {u.suspended ? 'Reactivate' : 'Suspend'}
                       </button>
-                    )}
-                    <button
-                      onClick={() => handleToggleSuspension(u.id, !u.suspended)}
-                      className={`px-2.5 py-1 rounded text-xs font-semibold border transition-colors ${
-                        u.suspended 
-                          ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20 hover:bg-emerald-500/20' 
-                          : 'bg-red-500/10 text-red-400 border-red-500/20 hover:bg-red-500/20'
-                      }`}
-                    >
-                      {u.suspended ? 'Reactivate' : 'Suspend'}
-                    </button>
-                    <button
-                      onClick={() => handleDeleteUser(u.id, u.email)}
-                      className="text-zinc-500 hover:text-red-400 p-1.5 rounded hover:bg-zinc-800 transition-colors"
-                      title="Delete User Document"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  </td>
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
+                      <button
+                        onClick={() => handleDeleteUser(u.id, u.email)}
+                        className="text-zinc-500 hover:text-red-400 p-1.5 rounded hover:bg-zinc-800 transition-colors"
+                        title="Delete User Document"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
 
       {/* ─── USER DETAILS PANEL (SLIDE-OVER DRAWER) ─── */}
