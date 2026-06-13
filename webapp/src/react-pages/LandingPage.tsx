@@ -528,7 +528,7 @@ export default function LandingPage() {
 
           <div className="mt-16">
             <Link to="/how-it-works">
-              <Button variant="outline" className="rounded-full px-8 text-white/70 hover:text-white border-white/20">Read the Technical Whitepaper</Button>
+              <Button variant="outline" className="rounded-full px-8 text-white/70 hover:text-white border-white/20">See here for more details</Button>
             </Link>
           </div>
         </div>

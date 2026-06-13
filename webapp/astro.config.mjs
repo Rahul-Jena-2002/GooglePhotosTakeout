@@ -8,7 +8,7 @@ import { fileURLToPath } from 'url';
 // https://astro.build/config
 export default defineConfig({
   site: 'https://takeoutfix.pages.dev',
-  output: 'server',
+  output: 'hybrid',
   adapter: cloudflare({
     imageService: 'cloudflare'
   }),
@@ -24,24 +24,25 @@ export default defineConfig({
         '@': fileURLToPath(new URL('./src', import.meta.url))
       }
     },
-    ssr: {
-      external: ['@sentry/astro', '@astrojs/cloudflare'],
-      optimizeDeps: {
-        exclude: [
-          '@astrojs/cloudflare',
-          '@sentry/astro',
-          'react-router-dom',
-          'lucide-react',
-          'firebase',
-          'framer-motion',
-          'piexifjs'
-        ]
-      }
-    },
     optimizeDeps: {
-      exclude: [
-        '@astrojs/cloudflare',
-        '@sentry/astro',
+      include: [
+        'react',
+        'react-dom',
+        'react-router-dom',
+        'lucide-react',
+        'firebase/app',
+        'firebase/auth',
+        'firebase/firestore',
+        'framer-motion',
+        'piexifjs',
+        '@sentry/astro'
+      ]
+    },
+    ssr: {
+      external: ['@sentry/astro'],
+      noExternal: [
+        'react',
+        'react-dom',
         'react-router-dom',
         'lucide-react',
         'firebase',

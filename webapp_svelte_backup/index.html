@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="google-site-verification" content="Kl7micFiML9xHVDlk_-B2eyqYaH0SvekwdVauaJPE34" />
+    <title>GT Metadata Merger — Restore Google Takeout Photo Dates</title>
+    
+    <!-- Primary Meta Tags -->
+    <meta name="title" content="GT Metadata Merger — Restore Google Takeout Photo Dates" />
+    <meta name="description" content="Free browser tool to restore original Date Taken timestamps from Google Photos Takeout exports. 100% local, secure, no uploads required. Fast parallel processing." />
+    <meta name="keywords" content="Google Takeout, Google Photos, restore metadata, EXIF, JSON, fix dates, merge takeout, photo dates, local processing, free tool" />
+    <meta name="author" content="GT Metadata Merger" />
+    <meta name="robots" content="index, follow" />
+    <link rel="canonical" href="https://gt-metadata-merger.web.app/" />
+
+    <!-- Open Graph / Facebook -->
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://gt-metadata-merger.web.app/" />
+    <meta property="og:title" content="GT Metadata Merger — Restore Google Takeout Photo Dates" />
+    <meta property="og:description" content="Free browser tool to restore original Date Taken timestamps from Google Photos Takeout exports. 100% local, secure, no uploads required." />
+    <meta property="og:image" content="https://gt-metadata-merger.web.app/icon.png" />
+
+    <!-- Twitter -->
+    <meta property="twitter:card" content="summary_large_image" />
+    <meta property="twitter:url" content="https://gt-metadata-merger.web.app/" />
+    <meta property="twitter:title" content="GT Metadata Merger — Restore Google Takeout Photo Dates" />
+    <meta property="twitter:description" content="Free browser tool to restore original Date Taken timestamps from Google Photos Takeout exports. 100% local, secure, no uploads required." />
+    <meta property="twitter:image" content="https://gt-metadata-merger.web.app/icon.png" />
+
+    <!-- Schema.org Markup for WebApplication -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "WebApplication",
+      "name": "GT Metadata Merger",
+      "url": "https://gt-metadata-merger.web.app/",
+      "description": "Browser-based tool to merge JSON metadata back into Google Photos Takeout exports.",
+      "applicationCategory": "UtilitiesApplication",
+      "operatingSystem": "All",
+      "offers": {
+        "@type": "Offer",
+        "price": "0.00",
+        "priceCurrency": "USD"
+      }
+    }
+    </script>
+
+    <!-- Custom Favicon / Site Icon -->
+    <link rel="icon" type="image/png" href="/icon.png" />
+    <link rel="apple-touch-icon" href="/icon.png" />
+
+    <!-- Google Fonts (Deferred - only needed weights) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="preload" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" as="style" onload="this.onload=null;this.rel='stylesheet'" />
+    <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" /></noscript>
+
+    <!-- Google AdSense (Deferred to React) -->
+
+    <style>
+      *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+      body{font-family:'Inter',system-ui,sans-serif;background:#04060e;color:#e8eaf6;min-height:100vh;overflow-x:hidden;-webkit-font-smoothing:antialiased;line-height:1.6}
+      @media(prefers-color-scheme:light){body{background:#fcfaff;color:#0f172a}}
+      #app-shell{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;padding:40px 20px;text-align:center;transition:opacity 0.3s ease}
+      .shell-title{font-size:clamp(2.5rem,6vw,3.8rem);font-weight:800;line-height:1.1;margin-bottom:16px;background:linear-gradient(135deg,#fff 20%,#a78bfa 60%,#8b5cf6 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+      @media(prefers-color-scheme:light){.shell-title{background:linear-gradient(135deg,#8b5cf6 20%,#6366f1 60%,#0f172a 100%);-webkit-background-clip:text;background-clip:text}}
+      .shell-desc{color:rgba(200,210,255,0.6);font-size:1.1rem;max-width:600px;margin:0 auto 32px}
+      @media(prefers-color-scheme:light){.shell-desc{color:#475569}}
+      .shell-loader{width:40px;height:40px;border:3px solid rgba(99,102,241,0.2);border-top-color:#6366f1;border-radius:50%;animation:spin 0.8s linear infinite;margin:0 auto}
+      @keyframes spin{to{transform:rotate(360deg)}}
+    </style>
+  </head>
+  <body>
+    <div id="root">
+      <div id="app-shell">
+        <h1 class="shell-title">Restore Takeout Data</h1>
+        <p class="shell-desc">100% private. Re-links Google Takeout JSON metadata back into your media files locally within your browser.</p>
+        <div class="shell-loader"></div>
+      </div>
+    </div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

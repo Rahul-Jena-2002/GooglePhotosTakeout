@@ -1,0 +1,869 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <!-- ===== SEO ===== -->
+  <title>GT Metadata Merger — Restore Google Takeout Photo Dates Instantly</title>
+  <meta name="description" content="GT Metadata Merger is a free, privacy-first desktop app that restores original 'Date Taken' timestamps to your Google Photos Takeout exports. Works on Windows, macOS and Linux. No cloud. 100% offline." />
+  <meta name="keywords" content="google takeout date fix, restore photo dates, google photos metadata, exif date restore, google takeout tool, fix photo timestamps" />
+  <meta name="author" content="Rahul" />
+  <link rel="canonical" href="https://rahul-jena-2002.github.io/GooglePhotosTakeout/" />
+
+  <!-- Open Graph -->
+  <meta property="og:type" content="website" />
+  <meta property="og:title" content="GT Metadata Merger — Restore Google Takeout Photo Dates" />
+  <meta property="og:description" content="Fix your Google Takeout photo dates in minutes. Free, offline, open-source. Works on Windows, Mac & Linux." />
+  <meta property="og:image" content="assets/logo.png" />
+  <meta property="og:url" content="https://rahul-jena-2002.github.io/GooglePhotosTakeout/" />
+
+  <!-- Twitter Card -->
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="GT Metadata Merger" />
+  <meta name="twitter:description" content="Fix your Google Photos Takeout timestamps for free. No cloud, no sign-in." />
+  <meta name="twitter:image" content="assets/logo.png" />
+
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet" />
+
+  <!-- ===== GOOGLE ADSENSE =====
+       IMPORTANT: Replace 'ca-pub-XXXXXXXXXXXXXXXX' with YOUR real AdSense Publisher ID
+       You get this from: https://adsense.google.com
+  -->
+  <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-XXXXXXXXXXXXXXXX" crossorigin="anonymous"></script>
+
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #080c18;
+      --surface: #0f1629;
+      --surface2: #151c35;
+      --border: rgba(99, 130, 255, 0.15);
+      --accent: #6366f1;
+      --accent2: #8b5cf6;
+      --glow: #6366f133;
+      --text: #e8eaf6;
+      --muted: #8892b0;
+      --green: #34d399;
+      --red: #f87171;
+      --yellow: #fbbf24;
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      overflow-x: hidden;
+      line-height: 1.6;
+    }
+
+    /* ── ANIMATED BACKGROUND ── */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background:
+        radial-gradient(ellipse 80% 50% at 20% 20%, rgba(99,102,241,0.12) 0%, transparent 60%),
+        radial-gradient(ellipse 60% 40% at 80% 80%, rgba(139,92,246,0.10) 0%, transparent 60%);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    section, header, footer { position: relative; z-index: 1; }
+
+    /* ── NAV ── */
+    nav {
+      position: fixed;
+      top: 0; left: 0; right: 0;
+      z-index: 100;
+      background: rgba(8, 12, 24, 0.80);
+      backdrop-filter: blur(20px);
+      border-bottom: 1px solid var(--border);
+      padding: 0 5%;
+      height: 64px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .nav-logo {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 1.1rem;
+      font-weight: 700;
+      color: var(--text);
+      text-decoration: none;
+    }
+
+    .nav-logo img { width: 32px; height: 32px; border-radius: 8px; }
+
+    .nav-links {
+      display: flex;
+      align-items: center;
+      gap: 28px;
+      list-style: none;
+    }
+
+    .nav-links a {
+      color: var(--muted);
+      text-decoration: none;
+      font-size: 0.9rem;
+      font-weight: 500;
+      transition: color 0.2s;
+    }
+
+    .nav-links a:hover { color: var(--text); }
+
+    .nav-cta {
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      color: #fff !important;
+      padding: 8px 20px;
+      border-radius: 8px;
+      font-weight: 600 !important;
+      transition: opacity 0.2s, transform 0.2s !important;
+    }
+
+    .nav-cta:hover { opacity: 0.9; transform: translateY(-1px); }
+
+    /* ── HERO ── */
+    .hero {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      padding: 120px 5% 80px;
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: rgba(99,102,241,0.12);
+      border: 1px solid rgba(99,102,241,0.3);
+      color: #a5b4fc;
+      padding: 6px 16px;
+      border-radius: 50px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      margin-bottom: 28px;
+      animation: fadeInDown 0.6s ease;
+    }
+
+    .badge-dot {
+      width: 8px; height: 8px;
+      background: var(--green);
+      border-radius: 50%;
+      animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.5; transform: scale(0.8); }
+    }
+
+    .hero-logo {
+      width: 130px;
+      height: 130px;
+      border-radius: 28px;
+      margin-bottom: 36px;
+      box-shadow: 0 0 60px var(--glow), 0 20px 60px rgba(0,0,0,0.5);
+      animation: fadeInUp 0.7s ease 0.1s both;
+    }
+
+    h1 {
+      font-size: clamp(2.4rem, 5.5vw, 4rem);
+      font-weight: 900;
+      line-height: 1.1;
+      letter-spacing: -0.03em;
+      background: linear-gradient(135deg, #ffffff 30%, #a5b4fc 70%, #8b5cf6 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      margin-bottom: 20px;
+      animation: fadeInUp 0.7s ease 0.2s both;
+    }
+
+    .hero-sub {
+      font-size: clamp(1rem, 2vw, 1.25rem);
+      color: var(--muted);
+      max-width: 620px;
+      margin: 0 auto 40px;
+      font-weight: 400;
+      animation: fadeInUp 0.7s ease 0.3s both;
+    }
+
+    .hero-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 14px;
+      justify-content: center;
+      animation: fadeInUp 0.7s ease 0.4s both;
+    }
+
+    .btn-primary {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      color: #fff;
+      padding: 14px 32px;
+      border-radius: 12px;
+      font-size: 1rem;
+      font-weight: 700;
+      text-decoration: none;
+      box-shadow: 0 8px 30px rgba(99,102,241,0.4);
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+
+    .btn-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 12px 40px rgba(99,102,241,0.5);
+    }
+
+    .btn-secondary {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      background: rgba(255,255,255,0.05);
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 14px 32px;
+      border-radius: 12px;
+      font-size: 1rem;
+      font-weight: 600;
+      text-decoration: none;
+      transition: background 0.2s, transform 0.2s;
+    }
+
+    .btn-secondary:hover {
+      background: rgba(255,255,255,0.1);
+      transform: translateY(-2px);
+    }
+
+    .btn-donate {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      background: linear-gradient(135deg, #f97316, #ef4444);
+      color: #fff;
+      padding: 14px 28px;
+      border-radius: 12px;
+      font-size: 1rem;
+      font-weight: 700;
+      text-decoration: none;
+      box-shadow: 0 8px 30px rgba(249,115,22,0.3);
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+
+    .btn-donate:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 12px 40px rgba(249,115,22,0.45);
+    }
+
+    .platform-icons {
+      margin-top: 36px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      justify-content: center;
+      flex-wrap: wrap;
+      animation: fadeInUp 0.7s ease 0.5s both;
+    }
+
+    .platform-icons span {
+      font-size: 0.8rem;
+      color: var(--muted);
+      font-weight: 500;
+    }
+
+    .platform-badge {
+      background: rgba(255,255,255,0.06);
+      border: 1px solid var(--border);
+      color: var(--muted);
+      padding: 5px 14px;
+      border-radius: 50px;
+      font-size: 0.8rem;
+      font-weight: 600;
+    }
+
+    /* ── AD CONTAINER ── */
+    .ad-container {
+      background: rgba(99,102,241,0.04);
+      border: 1px dashed rgba(99,102,241,0.2);
+      border-radius: 16px;
+      padding: 16px;
+      text-align: center;
+      margin: 48px auto;
+      max-width: 900px;
+    }
+
+    .ad-label {
+      font-size: 0.65rem;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--muted);
+      margin-bottom: 8px;
+      opacity: 0.6;
+    }
+
+    /* ── SECTIONS ── */
+    .section {
+      padding: 80px 5%;
+      max-width: 1100px;
+      margin: 0 auto;
+    }
+
+    .section-label {
+      text-align: center;
+      font-size: 0.8rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      color: var(--accent);
+      margin-bottom: 12px;
+    }
+
+    .section-title {
+      text-align: center;
+      font-size: clamp(1.8rem, 3.5vw, 2.6rem);
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      margin-bottom: 14px;
+    }
+
+    .section-sub {
+      text-align: center;
+      color: var(--muted);
+      max-width: 560px;
+      margin: 0 auto 56px;
+      font-size: 1.05rem;
+    }
+
+    /* ── PROBLEM/SOLUTION ── */
+    .split {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 24px;
+    }
+
+    @media (max-width: 700px) { .split { grid-template-columns: 1fr; } }
+
+    .problem-card {
+      background: rgba(248,113,113,0.06);
+      border: 1px solid rgba(248,113,113,0.2);
+      border-radius: 20px;
+      padding: 32px;
+    }
+
+    .solution-card {
+      background: rgba(52,211,153,0.06);
+      border: 1px solid rgba(52,211,153,0.2);
+      border-radius: 20px;
+      padding: 32px;
+    }
+
+    .card-icon { font-size: 2.5rem; margin-bottom: 16px; }
+
+    .card-title {
+      font-size: 1.2rem;
+      font-weight: 700;
+      margin-bottom: 12px;
+    }
+
+    .card-body { color: var(--muted); line-height: 1.7; }
+
+    /* ── FEATURES ── */
+    .features-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 20px;
+    }
+
+    .feature-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 28px;
+      transition: transform 0.25s, box-shadow 0.25s, border-color 0.25s;
+    }
+
+    .feature-card:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 20px 50px rgba(0,0,0,0.4);
+      border-color: rgba(99,102,241,0.35);
+    }
+
+    .feature-icon {
+      font-size: 2rem;
+      margin-bottom: 14px;
+      display: block;
+    }
+
+    .feature-title {
+      font-size: 1.05rem;
+      font-weight: 700;
+      margin-bottom: 8px;
+    }
+
+    .feature-body { color: var(--muted); font-size: 0.92rem; line-height: 1.65; }
+
+    /* ── HOW IT WORKS ── */
+    .steps {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 20px;
+      counter-reset: steps;
+    }
+
+    .step {
+      position: relative;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 28px;
+      counter-increment: steps;
+    }
+
+    .step::before {
+      content: counter(steps);
+      position: absolute;
+      top: -14px; left: 24px;
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      color: #fff;
+      font-size: 0.8rem;
+      font-weight: 800;
+      width: 28px; height: 28px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .step-title {
+      font-weight: 700;
+      margin-bottom: 8px;
+      font-size: 1rem;
+    }
+
+    .step-body { color: var(--muted); font-size: 0.9rem; }
+
+    /* ── DOWNLOAD GRID ── */
+    .download-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 20px;
+    }
+
+    .download-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 32px 28px;
+      text-align: center;
+      text-decoration: none;
+      color: var(--text);
+      transition: transform 0.25s, border-color 0.25s, box-shadow 0.25s;
+    }
+
+    .download-card:hover {
+      transform: translateY(-6px);
+      border-color: var(--accent);
+      box-shadow: 0 20px 60px rgba(99,102,241,0.2);
+    }
+
+    .download-os { font-size: 3rem; margin-bottom: 16px; display: block; }
+    .download-name { font-size: 1.2rem; font-weight: 700; margin-bottom: 8px; }
+    .download-desc { color: var(--muted); font-size: 0.85rem; margin-bottom: 20px; }
+
+    .download-btn {
+      display: inline-block;
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      color: #fff;
+      padding: 10px 24px;
+      border-radius: 10px;
+      font-size: 0.9rem;
+      font-weight: 700;
+      text-decoration: none;
+    }
+
+    /* ── DONATE ── */
+    .donate-section {
+      background: linear-gradient(135deg, rgba(99,102,241,0.12), rgba(139,92,246,0.12));
+      border: 1px solid rgba(99,102,241,0.2);
+      border-radius: 28px;
+      padding: 56px 40px;
+      text-align: center;
+    }
+
+    .donate-title {
+      font-size: clamp(1.6rem, 3vw, 2.2rem);
+      font-weight: 800;
+      margin-bottom: 14px;
+    }
+
+    .donate-sub { color: var(--muted); max-width: 500px; margin: 0 auto 32px; }
+
+    .donate-buttons {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 14px;
+      justify-content: center;
+    }
+
+    .btn-kofi {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      background: #FF5E5B;
+      color: #fff;
+      padding: 14px 28px;
+      border-radius: 12px;
+      font-size: 1rem;
+      font-weight: 700;
+      text-decoration: none;
+      transition: transform 0.2s, opacity 0.2s;
+    }
+
+    .btn-kofi:hover { transform: translateY(-2px); opacity: 0.9; }
+
+    .btn-github-sponsor {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      background: rgba(255,255,255,0.08);
+      border: 1px solid rgba(255,255,255,0.15);
+      color: #fff;
+      padding: 14px 28px;
+      border-radius: 12px;
+      font-size: 1rem;
+      font-weight: 700;
+      text-decoration: none;
+      transition: transform 0.2s, background 0.2s;
+    }
+
+    .btn-github-sponsor:hover { background: rgba(255,255,255,0.14); transform: translateY(-2px); }
+
+    /* ── FOOTER ── */
+    footer {
+      background: var(--surface);
+      border-top: 1px solid var(--border);
+      padding: 40px 5%;
+      text-align: center;
+    }
+
+    .footer-logo { margin-bottom: 14px; }
+
+    .footer-links {
+      display: flex;
+      justify-content: center;
+      gap: 24px;
+      flex-wrap: wrap;
+      list-style: none;
+      margin-bottom: 20px;
+    }
+
+    .footer-links a {
+      color: var(--muted);
+      text-decoration: none;
+      font-size: 0.9rem;
+      transition: color 0.2s;
+    }
+
+    .footer-links a:hover { color: var(--text); }
+
+    .footer-copy { color: var(--muted); font-size: 0.85rem; }
+
+    /* ── ANIMATIONS ── */
+    @keyframes fadeInUp {
+      from { opacity: 0; transform: translateY(24px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    @keyframes fadeInDown {
+      from { opacity: 0; transform: translateY(-12px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    /* ── RESPONSIVE ── */
+    @media (max-width: 640px) {
+      .nav-links { display: none; }
+      .hero-actions { flex-direction: column; align-items: center; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ════════════════ NAV ════════════════ -->
+<nav>
+  <a href="#" class="nav-logo">
+    <img src="assets/logo.png" alt="GT Metadata Merger Logo" />
+    GT Metadata Merger
+  </a>
+  <ul class="nav-links">
+    <li><a href="#features">Features</a></li>
+    <li><a href="#how-it-works">How It Works</a></li>
+    <li><a href="#download">Download</a></li>
+    <li><a href="#donate">Support</a></li>
+    <li><a href="https://github.com/Rahul-Jena-2002/GooglePhotosTakeout" target="_blank" rel="noopener" class="nav-cta">⭐ Star on GitHub</a></li>
+  </ul>
+</nav>
+
+
+<!-- ════════════════ HERO ════════════════ -->
+<section class="hero">
+  <div class="badge">
+    <span class="badge-dot"></span>
+    Free &amp; Open Source · v2.0 Now Available
+  </div>
+
+  <img src="assets/logo.png" class="hero-logo" alt="GT Metadata Merger" />
+
+  <h1>Restore Your Google<br />Photos Timestamps</h1>
+
+  <p class="hero-sub">
+    Google Takeout strips your original "Date Taken" from every photo. GT Metadata Merger fixes that in minutes — completely offline, zero cloud, zero sign-in required.
+  </p>
+
+  <div class="hero-actions">
+    <a href="#download" class="btn-primary">
+      ⬇️ Free Download
+    </a>
+    <a href="https://github.com/Rahul-Jena-2002/GooglePhotosTakeout" target="_blank" rel="noopener" class="btn-secondary">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12z"/></svg>
+      View Source Code
+    </a>
+    <a href="https://ko-fi.com/YOUR_KOFI_USERNAME" target="_blank" rel="noopener" class="btn-donate">
+      ☕ Buy Me a Coffee
+    </a>
+  </div>
+
+  <div class="platform-icons">
+    <span>Runs on:</span>
+    <span class="platform-badge">🪟 Windows</span>
+    <span class="platform-badge">🍎 macOS</span>
+    <span class="platform-badge">🐧 Linux</span>
+    <span class="platform-badge">No Java Required</span>
+  </div>
+</section>
+
+
+<!-- ════════════════ AD SLOT 1 (below hero) ════════════════ -->
+<div style="max-width:900px;margin:0 auto;padding:0 5%;">
+  <div class="ad-container">
+    <div class="ad-label">Advertisement</div>
+    <!-- Replace data-ad-client and data-ad-slot with your real values from AdSense -->
+    <ins class="adsbygoogle"
+         style="display:block"
+         data-ad-client="ca-pub-XXXXXXXXXXXXXXXX"
+         data-ad-slot="XXXXXXXXXX"
+         data-ad-format="auto"
+         data-full-width-responsive="true"></ins>
+    <script>(adsbygoogle = window.adsbygoogle || []).push({});</script>
+  </div>
+</div>
+
+
+<!-- ════════════════ PROBLEM / SOLUTION ════════════════ -->
+<section class="section" id="why">
+  <div class="section-label">The Problem</div>
+  <h2 class="section-title">Why Your Photos Have Wrong Dates</h2>
+  <p class="section-sub">When you export from Google Photos, your memories get corrupted. We fix that.</p>
+
+  <div class="split">
+    <div class="problem-card">
+      <div class="card-icon">😢</div>
+      <div class="card-title" style="color:#f87171;">Without GT Metadata Merger</div>
+      <div class="card-body">
+        Google strips EXIF "Date Taken" from your exported files and stores them in hidden <code>.json</code> sidecars. When you open the photos, they all appear as today's date. Your memories are completely out of order in any photo viewer, gallery app, or file manager.
+      </div>
+    </div>
+    <div class="solution-card">
+      <div class="card-icon">🎉</div>
+      <div class="card-title" style="color:#34d399;">With GT Metadata Merger</div>
+      <div class="card-body">
+        GT Metadata Merger intelligently reads every <code>.json</code> file, matches it to your photo (even handling Google's truncated filenames), and injects the correct original date back into the EXIF header of the photo binary itself. Your photos will be perfectly sorted in any app forever.
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<!-- ════════════════ FEATURES ════════════════ -->
+<section class="section" id="features" style="padding-top:20px;">
+  <div class="section-label">Features</div>
+  <h2 class="section-title">Everything You Need</h2>
+  <p class="section-sub">Built for speed, privacy, and reliability. No compromises.</p>
+
+  <div class="features-grid">
+    <div class="feature-card">
+      <span class="feature-icon">🔒</span>
+      <div class="feature-title">100% Local &amp; Private</div>
+      <div class="feature-body">Your photos never leave your device. No accounts, no cloud, no telemetry. Everything runs entirely on your own computer.</div>
+    </div>
+    <div class="feature-card">
+      <span class="feature-icon">⚡</span>
+      <div class="feature-title">Java 21 Virtual Threads</div>
+      <div class="feature-body">Powered by Project Loom, the engine processes hundreds of photos simultaneously. What used to take hours now takes minutes.</div>
+    </div>
+    <div class="feature-card">
+      <span class="feature-icon">🖼️</span>
+      <div class="feature-title">Deep EXIF Injection</div>
+      <div class="feature-body">Goes beyond file system dates. Embeds the date permanently into the binary EXIF header of JPEG images — works in every app on every OS.</div>
+    </div>
+    <div class="feature-card">
+      <span class="feature-icon">🎬</span>
+      <div class="feature-title">MP4 &amp; MOV Support</div>
+      <div class="feature-body">Rewrites the internal creation_time metadata boxes inside MP4 and MOV video files. Your videos will finally show the right date too.</div>
+    </div>
+    <div class="feature-card">
+      <span class="feature-icon">🤖</span>
+      <div class="feature-title">Dynamic JSON Matching</div>
+      <div class="feature-body">Automatically handles Google's weird truncated filenames like <code>IMG_2023.jpg.supplem.json</code> using a dynamic regex engine.</div>
+    </div>
+    <div class="feature-card">
+      <span class="feature-icon">💻</span>
+      <div class="feature-title">No Installation Needed</div>
+      <div class="feature-body">Download, unzip, and run. No Java, no Node.js, no dependencies. Bundled as a native executable for Windows, macOS, and Linux.</div>
+    </div>
+  </div>
+</section>
+
+
+<!-- ════════════════ AD SLOT 2 (mid page) ════════════════ -->
+<div style="max-width:900px;margin:0 auto;padding:0 5%;">
+  <div class="ad-container">
+    <div class="ad-label">Advertisement</div>
+    <ins class="adsbygoogle"
+         style="display:block"
+         data-ad-client="ca-pub-XXXXXXXXXXXXXXXX"
+         data-ad-slot="XXXXXXXXXX"
+         data-ad-format="auto"
+         data-full-width-responsive="true"></ins>
+    <script>(adsbygoogle = window.adsbygoogle || []).push({});</script>
+  </div>
+</div>
+
+
+<!-- ════════════════ HOW IT WORKS ════════════════ -->
+<section class="section" id="how-it-works" style="padding-top:20px;">
+  <div class="section-label">How It Works</div>
+  <h2 class="section-title">Simple as 1, 2, 3</h2>
+  <p class="section-sub">No technical knowledge required. Just point, click, and done.</p>
+
+  <div class="steps">
+    <div class="step">
+      <div class="step-title">Download & Unzip</div>
+      <div class="step-body">Download the executable for your OS from the Releases page. Unzip and run — no installation wizard, no admin rights needed.</div>
+    </div>
+    <div class="step">
+      <div class="step-title">Select Your Folders</div>
+      <div class="step-body">Use the native folder browser to pick your Google Takeout folder as input, and an empty folder as output.</div>
+    </div>
+    <div class="step">
+      <div class="step-title">Configure Options</div>
+      <div class="step-body">Optionally set the Takeout export date to filter bad timestamps. Enable "Deep EXIF Injection" to embed dates inside the files themselves.</div>
+    </div>
+    <div class="step">
+      <div class="step-title">Click Start &amp; Relax</div>
+      <div class="step-body">The engine processes all your files in parallel using Virtual Threads. Watch the live log stream as your memories are fully restored!</div>
+    </div>
+  </div>
+</section>
+
+
+<!-- ════════════════ DOWNLOAD ════════════════ -->
+<section class="section" id="download" style="padding-top:20px;">
+  <div class="section-label">Download</div>
+  <h2 class="section-title">Get It Free</h2>
+  <p class="section-sub">No Java or Node.js required. Download the standalone executable for your OS.</p>
+
+  <div class="download-grid">
+    <a href="https://github.com/Rahul-Jena-2002/GooglePhotosTakeout/releases/latest" class="download-card" target="_blank" rel="noopener">
+      <span class="download-os">🪟</span>
+      <div class="download-name">Windows</div>
+      <div class="download-desc">Windows 10 / 11 (64-bit)<br />Portable ZIP — no installer</div>
+      <span class="download-btn">Download .zip</span>
+    </a>
+    <a href="https://github.com/Rahul-Jena-2002/GooglePhotosTakeout/releases/latest" class="download-card" target="_blank" rel="noopener">
+      <span class="download-os">🍎</span>
+      <div class="download-name">macOS</div>
+      <div class="download-desc">macOS 12 Monterey and later<br />Portable ZIP — just unzip and run</div>
+      <span class="download-btn">Download .zip</span>
+    </a>
+    <a href="https://github.com/Rahul-Jena-2002/GooglePhotosTakeout/releases/latest" class="download-card" target="_blank" rel="noopener">
+      <span class="download-os">🐧</span>
+      <div class="download-name">Linux</div>
+      <div class="download-desc">Ubuntu, Debian, Fedora &amp; more<br />Portable tar.gz archive</div>
+      <span class="download-btn">Download .tar.gz</span>
+    </a>
+  </div>
+</section>
+
+
+<!-- ════════════════ DONATE ════════════════ -->
+<section class="section" id="donate" style="padding-top:20px;">
+  <div class="donate-section">
+    <div style="font-size:3rem;margin-bottom:16px;">💜</div>
+    <div class="donate-title">This Tool Saved You Hours.<br />Buy Me a Coffee?</div>
+    <p class="donate-sub">
+      GT Metadata Merger is completely free and open-source. If it saved your memories, a small tip helps keep the project alive and motivates new features!
+    </p>
+    <div class="donate-buttons">
+      <!-- IMPORTANT: Replace YOUR_KOFI_USERNAME with your actual Ko-fi username from https://ko-fi.com -->
+      <a href="https://ko-fi.com/YOUR_KOFI_USERNAME" target="_blank" rel="noopener" class="btn-kofi">
+        ☕ Buy Me a Coffee on Ko-fi
+      </a>
+      <!-- IMPORTANT: Replace Rahul-Jena-2002 with your actual GitHub username -->
+      <a href="https://github.com/sponsors/Rahul-Jena-2002" target="_blank" rel="noopener" class="btn-github-sponsor">
+        ❤️ GitHub Sponsors
+      </a>
+    </div>
+  </div>
+</section>
+
+
+<!-- ════════════════ AD SLOT 3 (before footer) ════════════════ -->
+<div style="max-width:900px;margin:0 auto;padding:0 5%;">
+  <div class="ad-container">
+    <div class="ad-label">Advertisement</div>
+    <ins class="adsbygoogle"
+         style="display:block"
+         data-ad-client="ca-pub-XXXXXXXXXXXXXXXX"
+         data-ad-slot="XXXXXXXXXX"
+         data-ad-format="auto"
+         data-full-width-responsive="true"></ins>
+    <script>(adsbygoogle = window.adsbygoogle || []).push({});</script>
+  </div>
+</div>
+
+
+<!-- ════════════════ FOOTER ════════════════ -->
+<footer>
+  <div class="footer-logo">
+    <img src="assets/logo.png" alt="GT Metadata Merger" width="40" style="border-radius:10px;" />
+  </div>
+  <ul class="footer-links">
+    <li><a href="https://github.com/Rahul-Jena-2002/GooglePhotosTakeout" target="_blank" rel="noopener">GitHub</a></li>
+    <li><a href="https://github.com/Rahul-Jena-2002/GooglePhotosTakeout/issues" target="_blank" rel="noopener">Report a Bug</a></li>
+    <li><a href="https://github.com/Rahul-Jena-2002/GooglePhotosTakeout/releases" target="_blank" rel="noopener">Releases</a></li>
+    <li><a href="https://ko-fi.com/YOUR_KOFI_USERNAME" target="_blank" rel="noopener">Donate</a></li>
+    <li><a href="https://github.com/Rahul-Jena-2002/GooglePhotosTakeout/blob/main/LICENSE" target="_blank" rel="noopener">MIT License</a></li>
+  </ul>
+  <p class="footer-copy">
+    Made with ❤️ by Rahul · GT Metadata Merger is free and open-source software.
+  </p>
+</footer>
+
+</body>
+</html>

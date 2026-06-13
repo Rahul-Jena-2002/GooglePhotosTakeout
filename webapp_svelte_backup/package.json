@@ -1,0 +1,26 @@
+{
+  "name": "gt-metadata-merger-webapp",
+  "private": true,
+  "version": "2.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build && node scripts/inline-css.mjs",
+    "preview": "vite preview",
+    "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0"
+  },
+  "dependencies": {
+    "firebase": "^12.14.0",
+    "piexifjs": "^1.0.6"
+  },
+  "devDependencies": {
+    "@sveltejs/vite-plugin-svelte": "^7.1.2",
+    "@tsconfig/svelte": "^5.0.8",
+    "@types/wicg-file-system-access": "^2023.10.5",
+    "firebase-tools": "^15.19.1",
+    "svelte": "^5.56.3",
+    "svelte-check": "^4.6.0",
+    "typescript": "^5.4.5",
+    "vite": "^8.0.16"
+  }
+}

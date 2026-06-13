@@ -1399,6 +1399,28 @@ html.light .flow-card-4 .text-white\/50 {
   color: #71717a !important;
 }
 
+/* AdBlock Banner Light Mode Overrides */
+html.light #adblock-banner {
+  background-color: #F5F5F7 !important;
+  border-color: #D2D2D7 !important;
+}
+
+html.light #adblock-banner .text-zinc-200 {
+  color: #1d1d1f !important;
+}
+
+html.light #adblock-whitelist-btn {
+  background-color: #1d1d1f !important;
+  color: #FFFFFF !important;
+  border: 1px solid #1d1d1f !important;
+}
+
+html.light #adblock-whitelist-btn:hover {
+  background-color: #000000 !important;
+  border-color: #000000 !important;
+}
+
+
 
 
 

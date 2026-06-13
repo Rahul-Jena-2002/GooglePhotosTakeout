@@ -204,7 +204,7 @@ Your EXIF metadata recovery tools are active.
             <h1 className="text-3xl font-bold tracking-tighter">Account Dashboard</h1>
             <p className="text-sm text-white/50 mt-1">Monitor your usage limits, logs, and account options.</p>
           </div>
-          <a href="/profile" data-astro-reload>
+          <a href="/profile">
             <Button variant="outline" className="border-white/10 hover:bg-white/5 text-xs rounded-full">
               Profile Settings &rarr;
             </Button>

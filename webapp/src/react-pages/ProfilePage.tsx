@@ -351,7 +351,7 @@ function ProfilePageContent() {
           transition={{ delay: 0.4 }}
           className="text-center"
         >
-          <a href="/dashboard" data-astro-reload className="text-xs text-white/40 hover:text-indigo-400 transition-colors font-medium">
+          <a href="/dashboard" className="text-xs text-white/40 hover:text-indigo-400 transition-colors font-medium">
             &larr; Back to Account Dashboard
           </a>
         </motion.div>

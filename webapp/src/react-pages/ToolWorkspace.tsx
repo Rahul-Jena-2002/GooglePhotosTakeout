@@ -140,7 +140,7 @@ export function ToolWorkspaceContent() {
         <p className="text-zinc-400 max-w-md mb-8">
           The TakeoutFix restoration engine is currently undergoing system updates. Normal operations will resume shortly. Thank you for your patience!
         </p>
-        <a href="/dashboard" data-astro-reload className="px-6 py-2.5 rounded-full bg-zinc-900 border border-zinc-800 text-sm text-zinc-300 hover:text-white transition-all font-semibold">
+        <a href="/dashboard" className="px-6 py-2.5 rounded-full bg-zinc-900 border border-zinc-800 text-sm text-zinc-300 hover:text-white transition-all font-semibold">
           Return to Dashboard
         </a>
       </div>
