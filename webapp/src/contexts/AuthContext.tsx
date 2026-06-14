@@ -866,6 +866,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const login = async () => {
     const provider = new GoogleAuthProvider();
     await signInWithPopup(auth, provider);
+    if (typeof window !== 'undefined') {
+      window.location.href = "/dashboard";
+    }
   };
 
   const logout = async () => {
@@ -900,6 +903,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } catch (_) {}
     setSessionRegistered(false);
     setHasSeenSelfInSessions(false);
+    if (typeof window !== 'undefined') {
+      window.location.href = "/";
+    }
   };
 
   const handleConfirmEvict = async () => {
