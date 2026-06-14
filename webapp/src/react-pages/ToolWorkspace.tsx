@@ -547,15 +547,8 @@ export function ToolWorkspaceContent() {
     }
     try {
       // @ts-ignore
-      const dirHandle = await window.showDirectoryPicker()
+      const dirHandle = await window.showDirectoryPicker({ mode: 'readwrite' })
       
-      // Request write permission explicitly
-      const status = await dirHandle.requestPermission({ mode: 'readwrite' })
-      if (status !== 'granted') {
-        alert('Write permission is required for the output directory.')
-        return
-      }
-
       setOutputFolder(dirHandle)
       window.dispatchEvent(new CustomEvent('takeoutfix-action-triggered'))
     } catch (err: any) {
