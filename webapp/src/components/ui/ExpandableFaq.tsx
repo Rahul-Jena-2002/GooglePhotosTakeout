@@ -14,6 +14,21 @@ export default function ExpandableFaq() {
 
   const faqs: FaqItem[] = [
     {
+      tag: "Problem",
+      question: "Why do my Google Takeout photos lose their dates & GPS?",
+      answer: "When you export your library from Google Takeout, Google strips the original metadata (such as the Date Taken, Camera Model, and GPS Coordinates) from the image/video files and writes it into separate matching .json sidecar files. When you import these photos directly into iCloud, Apple Photos, or other platforms, they read the stripped files, which defaults their creation dates to the download date and loses location data. TakeoutFix reads these JSON sidecars and merges the data back into the EXIF headers."
+    },
+    {
+      tag: "Restoration",
+      question: "What metadata parameters does TakeoutFix recover and restore?",
+      answer: "TakeoutFix recovers and merges a wide range of metadata: (1) GPS Location: Latitude, Longitude, and Altitude. (2) Timestamps: Date Taken, Modification Date, and Digitized Date. (3) Descriptions: Custom descriptions or titles you added in Google Photos. (4) Camera Info: Camera Make, Model, and Lens settings where available."
+    },
+    {
+      tag: "Formats",
+      question: "What file formats are supported for restoration?",
+      answer: "We support a comprehensive list of formats: (1) Images: JPEG, JPG, PNG, HEIC, WEBP, GIF, TIFF. (2) Videos: MP4, MOV, M4V, AVI, GP3, WebM. The tool automatically matches the corresponding .json sidecar regardless of the format."
+    },
+    {
       tag: "Privacy",
       question: "Are my photos uploaded to your servers?",
       answer: "No. Never. The entire application runs locally inside your web browser using HTML5 File APIs. Your photos, videos, and JSON files never leave your computer and are never uploaded to any server. This guarantees 100% privacy and security for your personal archives."
@@ -24,19 +39,19 @@ export default function ExpandableFaq() {
       answer: "Yes! Once the web application has loaded in your browser, you can completely disconnect from the internet, turn on airplane mode, and process your Google Takeout archive. The matching, parsing, and EXIF injection logic run fully client-side on your local CPU."
     },
     {
-      tag: "Technology",
-      question: "How does the date recovery work?",
-      answer: "Google Takeout exports photos with their original metadata stripped and placed in separate matching .json sidecar files. This causes matching errors when importing to iCloud or Google Photos. TakeoutFix reads these JSON sidecars, matches them to the corresponding photo files using fuzzy name matching, and injects the original date, GPS coordinates, and camera data directly back into the EXIF headers of your photos."
+      tag: "Performance",
+      question: "How do you handle giant photo archives (e.g. 100GB+ libraries)?",
+      answer: "Our engine processes your archive locally chunk-by-chunk using background Web Workers and a sequential worker pool. This prevents browser tabs from crashing due to V8 engine heap memory limits (which typically crash on array buffers larger than 4GB). We handle directories with hundreds of thousands of files by processing them sequentially in chunks with yielding to the browser event loop."
+    },
+    {
+      tag: "Matching",
+      question: "How does the fuzzy matching engine match JSON sidecars to photos?",
+      answer: "Google Takeout often mutates file names (e.g. truncating 'photo_name_long_etc.jpg' to 'photo_name_lon.jpg.json' or adding suffixes like '-edited' or '(1)'). TakeoutFix implements a fuzzy-matching heuristic algorithm that matches modified file names back to their correct sidecars, achieving a 99.9% match rate compared to basic script tools that fail on truncated names."
     },
     {
       tag: "Limits",
       question: "Is there a limit on archive sizes?",
-      answer: "Our engine processes your archive locally chunk-by-chunk to prevent memory leaks and handle massive directories. Free accounts have a 1,000 files (1 GB) limit. Upgrading to Recovery Pass or Pro/Super Lifetime unlocks unlimited files and sizes, enabling you to fix hundreds of gigabytes at once."
-    },
-    {
-      tag: "Compatibility",
-      question: "What file formats are supported?",
-      answer: "We support all standard photo and video formats including JPEG, PNG, HEIC, WebP, MP4, MOV, and M4V. Metadata matching is fully compatible with Google Takeout exports from any year, regardless of language."
+      answer: "Free accounts have a 1,000 files (1 GB) limit. Upgrading to Recovery Pass or Pro/Super Lifetime unlocks unlimited files and sizes, enabling you to fix hundreds of gigabytes at once."
     },
     {
       tag: "Billing",

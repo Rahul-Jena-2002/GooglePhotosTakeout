@@ -117,8 +117,9 @@ service cloud.firestore {
 
     // ─── Settings Collection ─────────────────────────────────────────────────────
     match /settings/{document} {
-      allow read: if true;
+      allow read: if document != 'secure';
       allow write: if isAdmin();
+      allow read, write: if isAdmin();
     }
   }
 }

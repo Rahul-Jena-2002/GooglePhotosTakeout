@@ -11,7 +11,11 @@ const app = express();
 
 // Enable CORS for all origins (useful when called from AI platforms or local test environments)
 app.use(cors({ origin: true }));
-app.use(express.json());
+app.use(express.json({
+  verify: (req, res, buf) => {
+    req.rawBody = buf.toString();
+  }
+}));
 
 /**
  * Security Middleware: Validates API Key header to prevent abuse.
@@ -40,9 +44,158 @@ const authenticateApiKey = (req, res, next) => {
       message: "Invalid or missing API key in headers. Provide 'x-api-key' or Bearer Token."
     });
   }
-  
+
   next();
 };
+
+// Verification helper for Dodo Payments Webhooks (Standard Webhooks Specification)
+const verifyDodoWebhook = (req, webhookSecret) => {
+  const webhookId = req.headers["webhook-id"];
+  const webhookTimestamp = req.headers["webhook-timestamp"];
+  const webhookSignature = req.headers["webhook-signature"];
+
+  if (!webhookId || !webhookTimestamp || !webhookSignature || !webhookSecret) {
+    return false;
+  }
+
+  // Remove "whsec_" prefix if present, and decode from base64
+  let secretStr = webhookSecret;
+  if (secretStr.startsWith("whsec_")) {
+    secretStr = secretStr.substring(6);
+  }
+  
+  let secretBuffer;
+  try {
+    secretBuffer = Buffer.from(secretStr, "base64");
+  } catch (err) {
+    console.error("Failed to decode webhook secret from base64:", err);
+    return false;
+  }
+
+  const rawBody = req.rawBody || JSON.stringify(req.body);
+  const signedContent = `${webhookId}.${webhookTimestamp}.${rawBody}`;
+
+  const crypto = require("crypto");
+  const computedHash = crypto
+    .createHmac("sha256", secretBuffer)
+    .update(signedContent)
+    .digest("base64");
+
+  const signatures = webhookSignature.split(" ");
+  for (const sig of signatures) {
+    const parts = sig.split(",");
+    if (parts.length === 2 && parts[0] === "v1") {
+      const signatureHash = parts[1];
+      const computedBuffer = Buffer.from(computedHash);
+      const signatureBuffer = Buffer.from(signatureHash);
+      if (computedBuffer.length === signatureBuffer.length && 
+          crypto.timingSafeEqual(computedBuffer, signatureBuffer)) {
+        return true;
+      }
+    }
+  }
+
+  return false;
+};
+
+// Dodo Payments Webhook handler
+app.post("/dodo-webhook", async (req, res) => {
+  let webhookSecret = process.env.DODO_WEBHOOK_KEY || functions.config().dodo?.webhook_key;
+  
+  if (!webhookSecret) {
+    try {
+      const secureSnap = await db.collection("settings").doc("secure").get();
+      if (secureSnap.exists) {
+        webhookSecret = secureSnap.data().dodo_webhook_key;
+      }
+    } catch (err) {
+      console.error("Failed to read secure settings from Firestore:", err);
+    }
+  }
+  
+  if (!webhookSecret) {
+    webhookSecret = "dodo-webhook-secret-placeholder";
+  }
+  
+  // Verify signature unless in placeholder test mode
+  if (webhookSecret !== "dodo-webhook-secret-placeholder") {
+    if (!verifyDodoWebhook(req, webhookSecret)) {
+      console.warn("Invalid Dodo webhook signature received.");
+      return res.status(401).json({ error: "Invalid signature" });
+    }
+  } else {
+    console.log("Placeholder secret detected. Skipping Dodo webhook signature verification (TEST MODE).");
+  }
+
+  const { type, data } = req.body;
+  if (!type || !data) {
+    return res.status(400).json({ error: "Missing type or data in payload." });
+  }
+
+  console.log(`Processing Dodo webhook event: ${type}`);
+
+  if (type === "payment.succeeded") {
+    const userId = data.metadata?.userId || data.metadata?.userid;
+    const plan = data.metadata?.plan || data.metadata?.plankey;
+
+    if (!userId || !plan) {
+      console.error("Missing userId or plan in payment metadata:", data.metadata);
+      return res.status(400).json({ error: "Missing metadata fields userId/plan in payload." });
+    }
+
+    try {
+      const timestamp = Date.now();
+      const txId = data.payment_id || `TXN-DODO-${timestamp}`;
+      const userEmail = data.customer?.email || "";
+      const amount = data.total_amount || 0;
+      const currency = data.currency || "USD";
+
+      // 1. Create Transaction Document
+      await db.collection("transactions").doc(txId).set({
+        txId,
+        uid: userId,
+        email: userEmail,
+        displayName: userEmail.split("@")[0] || "Dodo Customer",
+        plan: plan,
+        amount: amount,
+        currency: currency,
+        displayAmount: `${currency === "INR" ? "₹" : "$"}${amount}`,
+        status: "succeeded",
+        timestamp,
+        paymentMethod: "Dodo Payments",
+        cardLast4: null
+      });
+
+      // 2. Update User Document plan details & reset usage
+      const expiresAt = plan === "recovery_pass" ? timestamp + (24 * 60 * 60 * 1000) : null;
+      await db.collection("users").doc(userId).set({
+        plan: plan,
+        usedBytes: 0,
+        usedFiles: 0,
+        expiresAt,
+        updatedAt: timestamp
+      }, { merge: true });
+
+      // 3. Add Log in Admin Activity feed
+      await db.collection("admin_activity").add({
+        actorUid: userId,
+        actorName: userEmail || "Dodo Customer",
+        actorRole: "USER",
+        action: "PURCHASE",
+        target: plan,
+        description: `Purchased ${plan} via Dodo Payments for ${currency} ${amount}`,
+        timestamp
+      });
+
+      console.log(`User ${userId} successfully upgraded to ${plan} plan.`);
+    } catch (err) {
+      console.error("Failed to update user license in Firestore:", err);
+      return res.status(500).json({ error: "Database update failure", message: err.message });
+    }
+  }
+
+  return res.status(200).json({ received: true });
+});
 
 app.use(authenticateApiKey);
 

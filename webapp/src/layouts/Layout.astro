@@ -284,41 +284,85 @@ const canonicalUrl = `https://takeoutfix.pages.dev${Astro.url.pathname.replace(/
 
       <!-- FOOTER -->
       {!isToolPage && (
-        <footer class="w-full border-t border-white/5 py-12 bg-black/40 backdrop-blur-md mt-auto">
-          <div class="max-w-7xl mx-auto px-6 flex flex-col md:flex-row items-center justify-between gap-4">
-            <div class="flex items-center gap-2 text-white/50 text-sm">
-              <svg class="w-4 h-4 flex-shrink-0" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <defs>
-                  <linearGradient id="footer-logo-grad" x1="0%" y1="0%" x2="100%" y2="100%">
-                    <stop offset="0%" stop-color="#6366f1" />
-                    <stop offset="100%" stop-color="#a855f7" />
-                  </linearGradient>
-                </defs>
-                <rect x="9" y="1" width="1.5" height="1.5" fill="url(#footer-logo-grad)" />
-                <rect x="14" y="2" width="1.5" height="1.5" fill="url(#footer-logo-grad)" />
-                <rect x="11" y="4" width="1.5" height="1.5" fill="url(#footer-logo-grad)" />
-                <rect x="8" y="5" width="1.5" height="1.5" fill="url(#footer-logo-grad)" />
-                <rect x="15" y="5" width="1.5" height="1.5" fill="url(#footer-logo-grad)" />
-                <rect x="10" y="7" width="1.5" height="1.5" fill="url(#footer-logo-grad)" />
-                <rect x="13" y="7" width="1.5" height="1.5" fill="url(#footer-logo-grad)" />
-                <path d="M8 10H4C2.89543 10 2 10.8954 2 12V20C2 21.1046 2.89543 22 4 22H20C21.1046 22 22 21.1046 22 20V12C22 10.8954 21.1046 10 20 10H16" stroke="url(#footer-logo-grad)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
-                <path d="M2 20L8 14L13 19L18 13L22 17" stroke="url(#footer-logo-grad)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
-                <circle cx="16" cy="14" r="1.5" fill="url(#footer-logo-grad)" />
-              </svg>
-              &copy; 2026 TakeoutFix System Core. All rights reserved.
-            </div>
-            <div class="flex flex-col md:flex-row gap-6 text-xs text-white/40 items-center">
-              <div class="flex flex-wrap gap-4 justify-center">
-                <a href="/privacy" class="hover:text-white transition-colors">Privacy Policy</a>
-                <a href="/terms" class="hover:text-white transition-colors">Terms of Service</a>
-                <a href="/refund" class="hover:text-white transition-colors">Refund Policy</a>
-                <a href="/how-it-works" class="hover:text-white transition-colors">Documentation</a>
-                <a href="/reviews" class="hover:text-white transition-colors">Reviews</a>
-                <a href="/support" class="hover:text-white transition-colors">Contact</a>
+        <footer class="w-full border-t border-white/5 bg-black/40 backdrop-blur-md mt-auto py-16">
+          <div class="max-w-7xl mx-auto px-6">
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-12 mb-12">
+              
+              <!-- Column 1: Brand & Trademark Disclaimer -->
+              <div class="space-y-4">
+                <div class="flex items-center gap-2 text-white font-bold text-base">
+                  <svg class="w-5 h-5 flex-shrink-0" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <defs>
+                      <linearGradient id="footer-logo-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+                        <stop offset="0%" stop-color="#ffffff" />
+                        <stop offset="100%" stop-color="#a1a1aa" />
+                      </linearGradient>
+                    </defs>
+                    <rect x="9" y="1" width="1.5" height="1.5" fill="url(#footer-logo-grad)" />
+                    <rect x="14" y="2" width="1.5" height="1.5" fill="url(#footer-logo-grad)" />
+                    <rect x="11" y="4" width="1.5" height="1.5" fill="url(#footer-logo-grad)" />
+                    <rect x="8" y="5" width="1.5" height="1.5" fill="url(#footer-logo-grad)" />
+                    <rect x="15" y="5" width="1.5" height="1.5" fill="url(#footer-logo-grad)" />
+                    <rect x="10" y="7" width="1.5" height="1.5" fill="url(#footer-logo-grad)" />
+                    <rect x="13" y="7" width="1.5" height="1.5" fill="url(#footer-logo-grad)" />
+                    <path d="M8 10H4C2.89543 10 2 10.8954 2 12V20C2 21.1046 2.89543 22 4 22H20C21.1046 22 22 21.1046 22 20V12C22 10.8954 21.1046 10 20 10H16" stroke="url(#footer-logo-grad)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+                    <path d="M2 20L8 14L13 19L18 13L22 17" stroke="url(#footer-logo-grad)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+                    <circle cx="16" cy="14" r="1.5" fill="url(#footer-logo-grad)" />
+                  </svg>
+                  TakeoutFix
+                </div>
+                <p class="text-xs text-zinc-400 leading-relaxed">
+                  Fast, secure, and private browser-based restoration utility for Google Takeout photo archives. Restores original timestamps and GPS tags entirely on your local CPU.
+                </p>
+                <p class="text-[10px] text-zinc-500 leading-normal">
+                  Google Takeout and Google Photos are trademarks of Google LLC. TakeoutFix is an independent utility and is not affiliated with Google.
+                </p>
               </div>
-              <div class="flex flex-wrap gap-4 justify-center md:border-l md:border-white/10 md:pl-6">
-                <span>Version 1.0.4</span>
-                <span>Build: 2026-06-12</span>
+
+              <!-- Column 2: Product Actions -->
+              <div>
+                <h4 class="text-xs font-bold text-white uppercase tracking-widest mb-4">Product</h4>
+                <ul class="space-y-3 text-xs">
+                  <li><a href="/tool" class="text-zinc-400 hover:text-white transition-colors">Restore Tool</a></li>
+                  <li><a href="/pricing" class="text-zinc-400 hover:text-white transition-colors">Pricing Plans</a></li>
+                  <li><a href="/reviews" class="text-zinc-400 hover:text-white transition-colors">Customer Reviews</a></li>
+                  <li><a href="/how-it-works#tech-specs" class="text-zinc-400 hover:text-white transition-colors">Technical Specifications</a></li>
+                </ul>
+              </div>
+
+              <!-- Column 3: Resources & Guides -->
+              <div>
+                <h4 class="text-xs font-bold text-white uppercase tracking-widest mb-4">Resources</h4>
+                <ul class="space-y-3 text-xs">
+                  <li><a href="/how-it-works" class="text-zinc-400 hover:text-white transition-colors">How to Use</a></li>
+                  <li><a href="/how-it-works#tech-deep-dive" class="text-zinc-400 hover:text-white transition-colors">JSON Sidecars Explained</a></li>
+                  <li><a href="/how-it-works#dates-guide" class="text-zinc-400 hover:text-white transition-colors">Wrong Dates Guide</a></li>
+                  <li><a href="/dashboard" class="text-zinc-400 hover:text-white transition-colors">Account Dashboard</a></li>
+                </ul>
+              </div>
+
+              <!-- Column 4: Company & Support -->
+              <div>
+                <h4 class="text-xs font-bold text-white uppercase tracking-widest mb-4">Support & Legal</h4>
+                <ul class="space-y-3 text-xs">
+                  <li><a href="/support" class="text-zinc-400 hover:text-white transition-colors">Contact / Help Desk</a></li>
+                  <li><a href="/privacy" class="text-zinc-400 hover:text-white transition-colors">Privacy Policy</a></li>
+                  <li><a href="/terms" class="text-zinc-400 hover:text-white transition-colors">Terms of Service</a></li>
+                  <li><a href="/refund" class="text-zinc-400 hover:text-white transition-colors">Refund Policy</a></li>
+                </ul>
+              </div>
+
+            </div>
+
+            <!-- Bottom Row: Copyright & Build details -->
+            <div class="border-t border-white/5 pt-8 flex flex-col md:flex-row items-center justify-between gap-4 text-[11px] text-zinc-550 dark:text-zinc-500">
+              <div>
+                &copy; {new Date().getFullYear()} TakeoutFix System Core. All rights reserved.
+              </div>
+              <div class="flex items-center gap-4">
+                <span>Version 1.0.5</span>
+                <span class="w-1 h-1 rounded-full bg-zinc-800"></span>
+                <span>Build: 2026-06-14</span>
               </div>
             </div>
           </div>

@@ -1,11 +1,11 @@
 import { useState, useEffect } from "react"
 import { useAuth } from "../contexts/AuthContext"
 import { db } from "../firebase"
-import { doc, setDoc, onSnapshot, collection, addDoc } from "firebase/firestore"
+import { doc, setDoc, getDoc, onSnapshot, collection, addDoc } from "firebase/firestore"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../components/ui/card"
 import { Button } from "../components/ui/button"
 import { Input } from "../components/ui/input"
-import { Shield, Settings, Sliders, DollarSign, Database } from "lucide-react"
+import { Shield, Settings, Sliders, DollarSign, Database, Lock } from "lucide-react"
 
 export default function AdminSettings() {
   const { adminData } = useAuth()
@@ -37,6 +37,13 @@ export default function AdminSettings() {
   const [inPro, setInPro] = useState("799")
   const [inSuper, setInSuper] = useState("1499")
   const [inFamily, setInFamily] = useState("3999")
+
+  // Dodo Product IDs
+  const [dodoRecoveryPassId, setDodoRecoveryPassId] = useState("pdt_recovery_pass_placeholder")
+  const [dodoProId, setDodoProId] = useState("pdt_pro_placeholder")
+  const [dodoSuperId, setDodoSuperId] = useState("pdt_super_placeholder")
+  const [dodoFamilyId, setDodoFamilyId] = useState("pdt_family_placeholder")
+  const [dodoWebhookKey, setDodoWebhookKey] = useState("")
 
   const [selectedConfigTier, setSelectedConfigTier] = useState("t3")
   const [saving, setSaving] = useState(false)
@@ -72,11 +79,31 @@ export default function AdminSettings() {
         setInPro(String(data.in_pro ?? "799"))
         setInSuper(String(data.in_super ?? "1499"))
         setInFamily(String(data.in_family ?? "3999"))
+
+        setDodoRecoveryPassId(data.dodo_recovery_pass_id ?? "pdt_recovery_pass_placeholder")
+        setDodoProId(data.dodo_pro_id ?? "pdt_pro_placeholder")
+        setDodoSuperId(data.dodo_super_id ?? "pdt_super_placeholder")
+        setDodoFamilyId(data.dodo_family_id ?? "pdt_family_placeholder")
       }
     }, (err) => {
       console.error("Settings listener error:", err)
     })
     return unsub
+  }, [])
+
+  // Load secure settings on mount
+  useEffect(() => {
+    const loadSecureSettings = async () => {
+      try {
+        const secureDoc = await getDoc(doc(db, "settings", "secure"))
+        if (secureDoc.exists()) {
+          setDodoWebhookKey(secureDoc.data().dodo_webhook_key || "")
+        }
+      } catch (err) {
+        console.error("Failed to load secure settings:", err)
+      }
+    }
+    loadSecureSettings()
   }, [])
 
   const handleSaveSettings = async () => {
@@ -106,7 +133,16 @@ export default function AdminSettings() {
         in_recovery_pass: Number(inRecoveryPass),
         in_pro: Number(inPro),
         in_super: Number(inSuper),
-        in_family: Number(inFamily)
+        in_family: Number(inFamily),
+
+        dodo_recovery_pass_id: dodoRecoveryPassId,
+        dodo_pro_id: dodoProId,
+        dodo_super_id: dodoSuperId,
+        dodo_family_id: dodoFamilyId
+      }, { merge: true })
+
+      await setDoc(doc(db, "settings", "secure"), {
+        dodo_webhook_key: dodoWebhookKey
       }, { merge: true })
 
       // Log action to audit activity logs
@@ -115,7 +151,7 @@ export default function AdminSettings() {
         actorName: adminData?.displayName || "Admin",
         actorRole: role,
         action: "SETTINGS_CHANGE",
-        description: `Updated platform settings: Maintenance=${maintenance}, AutoApprove=${reviewAutoApprove}, SLA=${ticketSlaHours}h, FreeQuota=${freeQuotaMB}MB. Saved custom tier prices (India Recovery=${inRecoveryPass}, Pro=${inPro}, Super=${inSuper}).`,
+        description: `Updated platform settings: Maintenance=${maintenance}, AutoApprove=${reviewAutoApprove}, SLA=${ticketSlaHours}h, FreeQuota=${freeQuotaMB}MB. Saved custom tier prices and updated Dodo Payments Product IDs/Webhook Key.`,
         timestamp: Date.now()
       })
 
@@ -341,18 +377,113 @@ export default function AdminSettings() {
               </div>
             </div>
 
-            <div className="flex justify-end gap-3 border-t border-zinc-800/80 pt-4">
-              <Button 
-                onClick={handleSaveSettings} 
-                disabled={saving}
-                className="bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white h-9 text-xs font-semibold"
-              >
-                {saving ? "Saving..." : "Save Settings"}
-              </Button>
+            {/* Removed internal Save button to use page footer */}
+          </CardContent>
+        </Card>
+
+        {/* Dodo Payments Configuration Card */}
+        <Card className="bg-zinc-900 border-zinc-800 shadow-none md:col-span-2">
+          <CardHeader>
+            <CardTitle className="text-sm font-semibold flex items-center gap-2 text-zinc-200">
+              <Lock className="w-4 h-4 text-indigo-400" /> Dodo Payments Integration Settings
+            </CardTitle>
+            <CardDescription className="text-zinc-500 text-xs">
+              Configure Webhook secrets and checkout Product IDs for client hosted checkouts.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            <div>
+              <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 block mb-1.5">
+                Dodo Webhook Secret Key
+              </label>
+              <div className="relative flex items-center">
+                <span className="text-zinc-500 absolute left-3 text-xs">whsec_</span>
+                <Input 
+                  type="password"
+                  value={dodoWebhookKey.startsWith("whsec_") ? dodoWebhookKey.substring(6) : dodoWebhookKey}
+                  onChange={(e) => {
+                    const rawVal = e.target.value;
+                    setDodoWebhookKey(rawVal.startsWith("whsec_") ? rawVal : `whsec_${rawVal}`);
+                  }}
+                  placeholder="Enter webhook secret key (e.g. whsec_...)"
+                  className="bg-zinc-950 border-zinc-800 text-zinc-100 text-xs pl-16 h-9"
+                />
+              </div>
+              <span className="text-[10px] text-zinc-500 mt-1 block">
+                Found in Dodo Payments Dashboard &gt; Developer/Settings &gt; Webhooks. Note: Webhook endpoint signature verification is active only when this secret key is set.
+              </span>
+            </div>
+
+            <div className="border-t border-zinc-800/80 pt-6">
+              <label className="text-xs font-semibold text-zinc-300 block mb-4">Dodo Plan Product IDs</label>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 block mb-1">
+                    Recovery Pass Product ID
+                  </label>
+                  <Input 
+                    type="text"
+                    value={dodoRecoveryPassId}
+                    onChange={(e) => setDodoRecoveryPassId(e.target.value)}
+                    placeholder="pdt_..."
+                    className="bg-zinc-955 border-zinc-800 text-zinc-200 text-xs h-9"
+                  />
+                </div>
+                <div>
+                  <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 block mb-1">
+                    Pro Lifetime Product ID
+                  </label>
+                  <Input 
+                    type="text"
+                    value={dodoProId}
+                    onChange={(e) => setDodoProId(e.target.value)}
+                    placeholder="pdt_..."
+                    className="bg-zinc-955 border-zinc-800 text-zinc-200 text-xs h-9"
+                  />
+                </div>
+                <div>
+                  <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 block mb-1">
+                    Super Lifetime Product ID
+                  </label>
+                  <Input 
+                    type="text"
+                    value={dodoSuperId}
+                    onChange={(e) => setDodoSuperId(e.target.value)}
+                    placeholder="pdt_..."
+                    className="bg-zinc-955 border-zinc-800 text-zinc-200 text-xs h-9"
+                  />
+                </div>
+                <div>
+                  <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 block mb-1">
+                    Family License Product ID
+                  </label>
+                  <Input 
+                    type="text"
+                    value={dodoFamilyId}
+                    onChange={(e) => setDodoFamilyId(e.target.value)}
+                    placeholder="pdt_..."
+                    className="bg-zinc-955 border-zinc-800 text-zinc-200 text-xs h-9"
+                  />
+                </div>
+              </div>
+              <span className="text-[10px] text-zinc-500 mt-2.5 block">
+                Retrieve product identifiers (starts with pdt_) from your Dodo Payments Dashboard. Empty or placeholder IDs will disable redirect on checkout.
+              </span>
             </div>
           </CardContent>
         </Card>
 
+      </div>
+
+      {/* Global save footer */}
+      <div className="flex justify-end gap-3 border-t border-zinc-800 pt-6 mt-4">
+        <Button 
+          onClick={handleSaveSettings} 
+          disabled={saving}
+          className="bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white px-6 h-10 text-xs font-semibold rounded-xl"
+        >
+          {saving ? "Saving Changes..." : "Save Settings"}
+        </Button>
       </div>
     </div>
   )

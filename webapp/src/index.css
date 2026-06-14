@@ -2201,3 +2201,10 @@ html:not(.light) .btn-notification-navbar:hover svg {
   stroke: #ffffff !important;
 }
 
+
+/* Force white text in both light and dark themes */
+.text-white-force,
+html.light .text-white-force {
+  color: #ffffff !important;
+}
+

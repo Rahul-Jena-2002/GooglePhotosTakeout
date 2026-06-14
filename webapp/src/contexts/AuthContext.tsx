@@ -142,6 +142,7 @@ interface AuthContextType {
   setSelectedCountry: (code: string) => void;
   prices: PlanPrices;
   getPlanPriceValue: (planKey: string, regionKey: string) => number;
+  dodoProductIds: Record<string, string>;
 }
 
 const getPlanDeviceLimit = (plan: string): number => {
@@ -256,6 +257,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     in_family: 3999
   });
 
+  const [dodoProductIds, setDodoProductIds] = useState<Record<string, string>>({
+    recovery_pass: "pdt_recovery_pass_placeholder",
+    pro: "pdt_pro_placeholder",
+    super: "pdt_super_placeholder",
+    family: "pdt_family_placeholder"
+  });
+
   useEffect(() => {
     const unsub = onSnapshot(doc(db, "settings", "global"), (snap) => {
       if (snap.exists()) {
@@ -280,6 +288,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           in_pro: Number(data.in_pro ?? 799),
           in_super: Number(data.in_super ?? 1499),
           in_family: Number(data.in_family ?? 3999)
+        });
+
+        setDodoProductIds({
+          recovery_pass: data.dodo_recovery_pass_id || "pdt_recovery_pass_placeholder",
+          pro: data.dodo_pro_id || "pdt_pro_placeholder",
+          super: data.dodo_super_id || "pdt_super_placeholder",
+          family: data.dodo_family_id || "pdt_family_placeholder"
         });
       }
     });
@@ -893,7 +908,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       selectedCountry,
       setSelectedCountry,
       prices,
-      getPlanPriceValue
+      getPlanPriceValue,
+      dodoProductIds
     }}>
       {children}
       
@@ -959,6 +975,12 @@ export const useAuth = () => {
       setSelectedCountry: () => {},
       prices: { recovery_pass: "$4.99", pro: "$29", super: "$49", family: "$79" },
       getPlanPriceValue: () => 0,
+      dodoProductIds: {
+        recovery_pass: "pdt_recovery_pass_placeholder",
+        pro: "pdt_pro_placeholder",
+        super: "pdt_super_placeholder",
+        family: "pdt_family_placeholder"
+      }
     };
   }
   return context;
