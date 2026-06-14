@@ -85,7 +85,7 @@ import { AuthProvider } from "../contexts/AuthContext"
 import { ToastContainer } from "../components/ui/toast"
 
 function CheckoutPageContent() {
-  const { user, userData, loading, region, getPlanPriceValue, dodoProductIds } = useAuth()
+  const { user, userData, loading, region, getPlanPriceValue, dodoProductIds, login } = useAuth()
   
   if (loading) {
     return (
@@ -147,10 +147,9 @@ function CheckoutPageContent() {
   const [success, setSuccess] = useState(false)
   const [error, setError] = useState("")
 
+  // Remove automatic redirect to pricing for unauthenticated users, we will show a sign-in block instead
   useEffect(() => {
-    if (!loading && !user && typeof window !== 'undefined') {
-      window.location.href = "/pricing"
-    }
+    // No redirect logic here
   }, [user, loading])
 
   const handleDodoRedirect = () => {
@@ -249,7 +248,47 @@ function CheckoutPageContent() {
 
         {/* RIGHT PANEL: PAYMENT REDIRECTION CONTROL */}
         <div className="p-8 flex flex-col justify-center min-h-[500px] bg-background">
-          {success ? (
+          {!user ? (
+            <div className="text-center py-8 space-y-6">
+              <div className="w-12 h-12 bg-zinc-100 dark:bg-zinc-900 rounded-full flex items-center justify-center mx-auto text-zinc-505">
+                <Lock className="w-6 h-6" />
+              </div>
+              <div className="space-y-2">
+                <h2 className="text-xl font-bold tracking-tight text-foreground animate-pulse">Sign In to Continue</h2>
+                <p className="text-zinc-500 dark:text-zinc-400 text-xs leading-relaxed max-w-xs mx-auto">
+                  Please sign in to purchase your plan. Your license and recovery history will be linked to your Google Account.
+                </p>
+              </div>
+
+              {error && (
+                <div className="p-3 bg-red-500/5 border border-red-500/20 text-red-500 rounded-md text-xs flex items-center gap-2 max-w-xs mx-auto text-left">
+                  <AlertCircle className="w-4 h-4 flex-shrink-0" />
+                  <span>{error}</span>
+                </div>
+              )}
+
+              <button
+                onClick={async () => {
+                  try {
+                    setError("")
+                    await login()
+                  } catch (err: any) {
+                    console.error("Login failed on checkout:", err)
+                    setError(err?.message || "Login failed. Please try again.")
+                  }
+                }}
+                className="w-full max-w-xs mx-auto h-12 bg-zinc-950 dark:bg-zinc-50 text-white dark:text-black font-bold hover:bg-zinc-800 dark:hover:bg-zinc-200 transition-colors flex items-center justify-center gap-2 border border-transparent rounded-lg cursor-pointer text-sm"
+              >
+                Sign In with Google <ChevronRight className="w-4 h-4" />
+              </button>
+              
+              <div>
+                <a href="/pricing" className="text-xs text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-350">
+                  Cancel and return to Pricing
+                </a>
+              </div>
+            </div>
+          ) : success ? (
             <div className="text-center py-12 space-y-4">
               <div className="w-16 h-16 bg-green-500/10 border border-green-500/20 text-green-500 flex items-center justify-center rounded-full mx-auto animate-bounce">
                 <CheckCircle2 className="w-8 h-8" />
@@ -263,7 +302,7 @@ function CheckoutPageContent() {
               <div className="w-12 h-12 border-2 border-zinc-200 dark:border-zinc-800 border-t-zinc-900 dark:border-t-zinc-100 rounded-full animate-spin mx-auto"></div>
               <div className="space-y-2">
                 <h3 className="text-lg font-semibold text-foreground">Redirecting to Payment Gate</h3>
-                <p className="text-zinc-500 font-mono text-xs">{processStep}</p>
+                <p className="text-zinc-550 font-mono text-xs">{processStep}</p>
               </div>
             </div>
           ) : (
