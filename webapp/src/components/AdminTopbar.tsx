@@ -220,7 +220,7 @@ export default function AdminTopbar({ onMenuClick }: { onMenuClick?: () => void 
             {adminData?.photoURL ? (
               <img src={adminData.photoURL} alt="" className="w-7 h-7 rounded-full flex-shrink-0 border border-white/5" />
             ) : (
-              <div className="w-7 h-7 rounded-full bg-zinc-800 dark:bg-zinc-200 flex-shrink-0 flex items-center justify-center font-bold text-xs text-zinc-200 dark:text-zinc-900 border border-zinc-700 dark:border-zinc-300">
+              <div className="w-7 h-7 rounded-full bg-zinc-900 dark:bg-zinc-200 flex-shrink-0 flex items-center justify-center font-bold text-xs text-zinc-100 dark:text-zinc-900 border border-zinc-800 dark:border-zinc-300">
                 {adminData?.displayName?.charAt(0) || "A"}
               </div>
             )}

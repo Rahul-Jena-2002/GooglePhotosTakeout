@@ -14,7 +14,7 @@ import AdUnit from "../components/AdUnit"
 import { AuthProvider } from "../contexts/AuthContext"
 import { ToastContainer } from "../components/ui/toast"
 
-function SupportFaqItem({ q, a }: { q: string, a: string }) {
+function SupportFaqItem({ q, a }: { q: string, a: string | React.ReactNode }) {
   const [open, setOpen] = useState(false)
   return (
     <Card className="bg-black/45 backdrop-blur-md border-white/10 hover:border-indigo-500/20 transition-all overflow-hidden faq-dropdown-card">
@@ -30,7 +30,7 @@ function SupportFaqItem({ q, a }: { q: string, a: string }) {
       </button>
       {open && (
         <div className="px-5 pb-5 pt-2 border-t border-white/5 animate-in fade-in slide-in-from-top-1 duration-200">
-          <p className="text-white/60 text-sm leading-relaxed whitespace-pre-wrap">{a}</p>
+          <div className="text-white/60 text-sm leading-relaxed whitespace-pre-wrap">{a}</div>
         </div>
       )}
     </Card>
@@ -286,7 +286,19 @@ function SupportPageContent() {
                       { q: "Why are my photos missing dates?", a: "Google removes EXIF metadata when you download through Takeout. Instead, it places the data in separate JSON sidecar files. TakeoutFix merges these files back together." },
                       { q: "Does TakeoutFix upload my photos?", a: "No. Everything is processed 100% locally on your machine. Your photos never leave your device." },
                       { q: "Is there a limit on the free plan?", a: "Yes, the free plan processes up to 1GB or 1,000 files to let you test the tool. Upgrading removes this limit." },
-                      { q: "What is your refund policy?", a: "We want you to have a great experience with Takeout Fix. We offer a 7-day Recovery Guarantee: if you experience a genuine technical issue that prevents the software from functioning as described, and our support team is unable to resolve it, you may request a refund within 7 days of purchase. Refunds are generally not provided for changing your mind, unsupported/corrupted exports, successful recoveries, or after the 7-day period." },
+                      {
+                        q: "What is your refund policy?",
+                        a: (
+                          <>
+                            We want you to have a great experience with Takeout Fix. If you experience a genuine technical issue that prevents the software from working as described, and our support team is unable to resolve it, you may request a refund within <strong>7 days</strong> of purchase.
+                            <br /><br />
+                            For eligibility, exclusions, and the complete policy, please see our{" "}
+                            <a href="/refund" className="text-indigo-400 hover:text-indigo-300 font-bold underline">
+                              Refund Policy
+                            </a>.
+                          </>
+                        )
+                      },
                       { q: "Are my photos uploaded to your servers?", a: "No. Never. The entire application runs locally inside your web browser using HTML5 File APIs. Your photos and metadata never leave your computer." },
                       { q: "Does this work completely offline?", a: "Once the web app has loaded in your browser, you can disconnect from the internet and it will still process all your files locally." },
                       { q: "Why are my photos showing today's date or out of order after exporting from Google Takeout?", a: "When you export your photos, Google Photos separates the EXIF metadata into separate JSON sidecar files. Without this metadata, your phone or computer defaults to showing today's date (the file modification date), causing your gallery to be completely out of order. TakeoutFix fixes this by merging the JSON sidecars back into your images." },
@@ -312,7 +324,12 @@ function SupportPageContent() {
                       <CardContent className="pt-6 text-center">
                         <AlertCircle className="w-12 h-12 text-red-400 mx-auto mb-4" />
                         <h3 className="text-lg font-bold mb-2">Sign In Required</h3>
-                        <p className="text-white/60 mb-4">Please sign in to submit a support ticket.</p>
+                        <p className="text-white/60 mb-4 font-normal leading-relaxed">
+                          Please sign in to submit a support ticket. Alternatively, you can reach our team directly at{" "}
+                          <a href="mailto:takeoutfix.support@gmail.com" className="text-indigo-400 hover:text-indigo-300 font-bold underline">
+                            takeoutfix.support@gmail.com
+                          </a>.
+                        </p>
                       </CardContent>
                     </Card>
                   ) : !isPaid ? (
@@ -320,7 +337,12 @@ function SupportPageContent() {
                       <CardContent className="pt-6 text-center">
                         <LifeBuoy className="w-12 h-12 text-indigo-400 mx-auto mb-4 animate-bounce" />
                         <h3 className="text-lg font-bold mb-2">Premium Support Locked</h3>
-                        <p className="text-indigo-200/60 mb-6">Direct ticket support is available for users on paid plans.</p>
+                        <p className="text-indigo-200/60 mb-6 font-normal leading-relaxed">
+                          Direct ticket support is available for users on paid plans. For general questions or billing inquiries, you can also contact us at{" "}
+                          <a href="mailto:takeoutfix.support@gmail.com" className="text-indigo-400 hover:text-indigo-300 font-bold underline">
+                            takeoutfix.support@gmail.com
+                          </a>.
+                        </p>
                         <a href="/pricing">
                           <Button className="bg-indigo-500 hover:bg-indigo-600 text-white rounded-full px-6">Upgrade Plan</Button>
                         </a>
@@ -368,6 +390,12 @@ function SupportPageContent() {
                             >
                               {submitStatus === "submitting" ? "Submitting..." : "Submit Ticket"}
                             </Button>
+                            <p className="text-center text-[11px] text-white/30 mt-4 leading-relaxed font-normal">
+                              Need direct email support instead? Write to us at{" "}
+                              <a href="mailto:takeoutfix.support@gmail.com" className="text-indigo-400 hover:text-indigo-300 underline font-semibold">
+                                takeoutfix.support@gmail.com
+                              </a>.
+                            </p>
                           </CardContent>
                         </Card>
                       )}

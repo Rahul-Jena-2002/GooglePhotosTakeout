@@ -70,18 +70,29 @@ export default function SupportWidget() {
               
               {!user ? (
                 <div className="p-3 bg-red-500/5 border border-red-500/10 rounded-lg text-center">
-                  <p className="text-xs text-red-200">Sign in to contact support</p>
+                  <p className="text-xs text-red-200 mb-1">Sign in to contact support</p>
+                  <a href="mailto:takeoutfix.support@gmail.com" className="text-[10px] text-zinc-400 hover:text-white transition-colors underline block">
+                    takeoutfix.support@gmail.com
+                  </a>
                 </div>
               ) : !isPaid ? (
-                <Link to="/pricing" onClick={() => setIsOpen(false)} className="flex items-center gap-3 p-3 bg-indigo-500/5 hover:bg-indigo-500/10 rounded-lg transition-colors border border-indigo-500/20">
-                  <div className="bg-indigo-500/20 p-2 rounded-md">
-                    <LifeBuoy className="w-4 h-4 text-indigo-400" />
+                <div className="space-y-2">
+                  <Link to="/pricing" onClick={() => setIsOpen(false)} className="flex items-center gap-3 p-3 bg-indigo-500/5 hover:bg-indigo-500/10 rounded-lg transition-colors border border-indigo-500/20">
+                    <div className="bg-indigo-500/20 p-2 rounded-md">
+                      <LifeBuoy className="w-4 h-4 text-indigo-400" />
+                    </div>
+                    <div>
+                      <div className="text-sm font-medium text-indigo-300">Premium Support</div>
+                      <div className="text-xs text-indigo-400/50">Upgrade required</div>
+                    </div>
+                  </Link>
+                  <div className="p-2 bg-white/5 border border-white/10 rounded-lg text-center">
+                    <span className="text-[10px] text-white/40 block mb-0.5">Or email support directly:</span>
+                    <a href="mailto:takeoutfix.support@gmail.com" className="text-[10px] text-indigo-400 hover:text-indigo-300 underline font-semibold">
+                      takeoutfix.support@gmail.com
+                    </a>
                   </div>
-                  <div>
-                    <div className="text-sm font-medium text-indigo-300">Premium Support</div>
-                    <div className="text-xs text-indigo-400/50">Upgrade required</div>
-                  </div>
-                </Link>
+                </div>
               ) : (
                 <Link to="/support?tab=new" onClick={() => setIsOpen(false)} className="flex items-center gap-3 p-3 bg-white/5 hover:bg-white/10 rounded-lg transition-colors border border-white/5">
                   <div className="bg-indigo-500/20 p-2 rounded-md">

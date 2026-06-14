@@ -42,8 +42,7 @@ export default defineConfig({
         'react-router-dom',
         'lucide-react',
         'firebase',
-        'framer-motion',
-        'piexifjs'
+        'framer-motion'
       ]
     }
   }

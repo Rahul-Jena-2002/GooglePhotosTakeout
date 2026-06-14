@@ -251,7 +251,7 @@ export default function AdminDashboard() {
                           {a.photoURL ? (
                             <img src={a.photoURL} alt="" className="w-8 h-8 rounded-full" />
                           ) : (
-                            <div className="w-8 h-8 rounded-full bg-zinc-800 dark:bg-zinc-200 flex items-center justify-center font-bold text-xs text-zinc-300 dark:text-zinc-800 border border-zinc-700 dark:border-zinc-300">
+                            <div className="w-8 h-8 rounded-full bg-zinc-900 dark:bg-zinc-200 flex items-center justify-center font-bold text-xs text-zinc-100 dark:text-zinc-800 border border-zinc-800 dark:border-zinc-300">
                               {a.displayName?.charAt(0)}
                             </div>
                           )}

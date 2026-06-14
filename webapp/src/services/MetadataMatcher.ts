@@ -1,23 +1,26 @@
 /**
  * MetadataMatcher
  * ---------------
- * Port of the Java MetadataMatcher to TypeScript.
+ * Corrected and robust port of the Java MetadataMatcher to TypeScript.
  * Finds the .json sidecar for a given media file, handling all of
- * Google Takeout's naming quirks (truncation, special chars, etc.)
+ * Google Takeout's naming quirks (truncation, duplicate suffixes, extension variations, etc.)
  *
  * Security: all generated filenames are sanitized before use.
  */
 
-/** Allowed media extensions — strict allowlist for security */
+/** Allowed media extensions – strict allowlist for security */
 export const ALLOWED_EXTENSIONS = new Set([
   'jpg', 'jpeg', 'png', 'gif', 'webp', 'tiff', 'tif',
   'mp4', 'mov', 'heic', 'heif', 'm4v', 'avi', 'mkv',
 ]);
 
+const MAX_STEM = 46;
+
 /** Sanitize a filename: strip path traversal and dangerous chars */
 export function sanitizeFilename(name: string): string {
   return name
     .replace(/\.\.(\/|\\)/g, '')   // path traversal
+    // eslint-disable-next-line no-control-regex
     .replace(/[<>:"|?*\x00-\x1f]/g, '') // shell/OS dangerous chars
     .replace(/^[/\\]+/, '');        // leading slashes
 }
@@ -28,75 +31,164 @@ export function isAllowedMediaFile(name: string): boolean {
   return ALLOWED_EXTENSIONS.has(ext);
 }
 
+/** Base name normalization corresponding to Java's private String normalizeBase(String base) */
+function normalizeBase(base: string): string {
+  let s = base.trim();
+  s = s.replace(/\s*\(\d+\)$/, ''); // Strip numbered suffixes like (1)
+  s = s.replace(/(?:[\s_-]+)(copy|edited|edit)$/i, ''); // Strip copy/edited flags
+  s = s.replace(/[\s_-]+\d+$/, '');
+  s = s.replace(/[\s_]+$/, '');
+  s = s.replace(/-+$/, '');
+  return s;
+}
+
+/** Helper to generate all potential Takeout candidate names for a given media file. */
+export function getMatchingCandidates(mediaName: string): Set<string> {
+  const sanitized = sanitizeFilename(mediaName);
+  
+  const lastDot = sanitized.lastIndexOf('.');
+  const nameNoExt = lastDot > 0 ? sanitized.substring(0, lastDot) : sanitized;
+  const ext = lastDot > 0 ? sanitized.substring(lastDot) : "";
+  const normalizedBase = normalizeBase(nameNoExt);
+
+  // Java logic baseline: Sources used to generate structural combinations
+  const baseSources: string[] = [sanitized, nameNoExt];
+  if (normalizedBase !== nameNoExt && ext !== "") {
+    baseSources.push(normalizedBase + ext);
+  }
+  if (normalizedBase !== nameNoExt) {
+    baseSources.push(normalizedBase);
+  }
+
+  const stems = new Set<string>();
+
+  // 1. Generate standard configurations and length-based cuts (> 46 chars)
+  for (const base of baseSources) {
+    if (base.length > MAX_STEM) {
+      stems.add(base.substring(0, MAX_STEM));
+      stems.add(base.substring(0, 47));
+    } else {
+      // Dynamic Suffixes built dynamically to match Java configuration arrays
+      const word = "supplemental-metadata";
+      const suffixes: string[] = [];
+      for (let i = 1; i <= word.length; i++) {
+        suffixes.push(word.substring(0, i));
+      }
+      suffixes.push("metadata", "m");
+
+      const delimiters = [".", "_", "-"];
+
+      for (const suffix of suffixes) {
+        for (const delim of delimiters) {
+          stems.add(base + delim + suffix);
+        }
+      }
+    }
+  }
+
+  // 2. Handle Java's generateNumberedCandidates scenario: base + ext + suffix + numberSuffix
+  const numberedMatch = sanitized.match(/^(.+?)(\(\d+\))(\.[^.]+)$/);
+  if (numberedMatch) {
+    const [, basePart, numberSuffix, extPart] = numberedMatch;
+    const word = "supplemental-metadata";
+    const suffixes = [];
+    for (let i = 1; i <= word.length; i++) {
+      suffixes.push(word.substring(0, i));
+    }
+    suffixes.push("metadata", "m");
+    const delimiters = [".", "_"];
+
+    for (const suffix of suffixes) {
+      for (const delim of delimiters) {
+        stems.add(basePart + extPart + delim + suffix + numberSuffix);
+      }
+    }
+  }
+
+  // 3. Fallback element added explicitly by Java tracking loops
+  stems.add(nameNoExt.length > MAX_STEM ? nameNoExt.substring(0, MAX_STEM) : nameNoExt);
+
+  // 4. Incorporate Java's withFuzzyTail(stems, 42, 46) behavior for long files
+  const fuzzyStems = new Set<string>();
+  for (const stem of stems) {
+    for (let L = 42; L <= 46; L++) {
+      if (stem.length >= L) {
+        fuzzyStems.add(stem.substring(0, L));
+      }
+    }
+  }
+
+  // Combine standard stems and fuzzy slices, then append final .json flag
+  const combinedStems = new Set([...stems, ...fuzzyStems]);
+  const candidates = new Set<string>();
+  for (const stem of combinedStems) {
+    candidates.add(stem + ".json");
+  }
+
+  return candidates;
+}
+
 /**
  * Given a media FileSystemFileHandle's name and the flat map of all filenames
  * in its parent directory, try to find the matching .json sidecar.
- *
- * Search order (mirrors the Java logic):
- * 1. Exact: "photo.jpg.json"
- * 2. Google truncation: "photo.jpg.supplem…al-metadata.json" etc.
- * 3. Without extension: "photo.json"
  */
 export function findMatchingJsonName(
   mediaName: string,
   allNames: Set<string>
 ): string | null {
-  const sanitized = sanitizeFilename(mediaName);
-  const baseNameNoExt = sanitized.replace(/\.[^.]+$/, '');
-
-  // 1. Exact match: "photo.jpg.json"
-  if (allNames.has(`${sanitized}.json`)) return `${sanitized}.json`;
-
-  // 2. Extension stripped: "photo.json"
-  if (allNames.has(`${baseNameNoExt}.json`)) return `${baseNameNoExt}.json`;
-
-  // 3. Takeout duplicate conflict: "photo(1).jpg" -> "photo.jpg(1).json"
-  const collisionMatch = sanitized.match(/^(.*?)(?:\((\d+)\))?(\.[^.]+)$/);
-  if (collisionMatch) {
-    const [, base, num, extension] = collisionMatch;
-    if (num) {
-      const takeoutCollisionName = `${base}${extension}(${num}).json`;
-      if (allNames.has(takeoutCollisionName)) return takeoutCollisionName;
-      if (allNames.has(`${base}(${num}).json`)) return `${base}(${num}).json`;
-    } else {
-      // Maybe media is "photo.jpg" but JSON is "photo(1).json" or "photo.jpg(1).json" if original was lost
-      if (allNames.has(`${base}(1).json`)) return `${base}(1).json`;
-      if (allNames.has(`${base}${extension}(1).json`)) return `${base}${extension}(1).json`;
+  // Try exact lookup matches from our strict candidate list generation
+  const candidates = getMatchingCandidates(mediaName);
+  for (const candidate of candidates) {
+    if (allNames.has(candidate)) {
+      return candidate;
     }
   }
 
-  // 4. Takeout edited files: "photo-edited.jpg" -> "photo.jpg.json" or "photo.json"
-  if (sanitized.toLowerCase().includes('-edited')) {
-    const uneditedBase = sanitized.replace(/-edited/i, '');
-    if (allNames.has(`${uneditedBase}.json`)) return `${uneditedBase}.json`;
-    const uneditedNoExt = baseNameNoExt.replace(/-edited/i, '');
-    if (allNames.has(`${uneditedNoExt}.json`)) return `${uneditedNoExt}.json`;
-  }
-
-  // 5. Extreme truncation (Google Takeout limits to 46 chars)
-  const prefix = sanitized.slice(0, 46);
-  for (const name of allNames) {
-    if (name !== '.json' && name.startsWith(prefix) && name.endsWith('.json')) return name;
-  }
+  // Dynamic Regex Scanning Fallback (Mirrors Java findDynamicMatch method)
+  const sanitizedMedia = sanitizeFilename(mediaName);
+  const lastDot = sanitizedMedia.lastIndexOf('.');
+  const nameNoExt = lastDot > 0 ? sanitizedMedia.substring(0, lastDot) : sanitizedMedia;
+  const nameTruncated = nameNoExt.length > MAX_STEM ? nameNoExt.substring(0, MAX_STEM) : nameNoExt;
+  const nameTruncated47 = nameNoExt.length > 47 ? nameNoExt.substring(0, 47) : nameNoExt;
   
-  // 6. Fuzzy fallback: strip (1) and -edited and find closest match
-  const cleanBase = baseNameNoExt.replace(/\(\d+\)/g, '').replace(/-edited/i, '').trim();
-  if (cleanBase.length > 5) {
-    for (const name of allNames) {
-      if (name.startsWith(cleanBase) && name.endsWith('.json')) return name;
+  let numberedBase: string | null = null;
+  const numMatch = sanitizedMedia.match(/^(.+?)(\(\d+\))(\.[^.]+)$/);
+  if (numMatch) {
+    numberedBase = numMatch[1];
+  }
+
+  const dynamicRegexPattern = /([._])(supplemental-metadata|supplemental-metadat|supplemental-metada|supplemental-metad|supplemental-meta|supplemental-met|supplemental-me|supplemental-m|supplemental-|supplemental|supplementa|supplement|supplemen|suppleme|supplem|supple|suppl|supp|sup|su|s|metadata|met|m)(\(\d+\))?\.json$/i;
+
+  let bestMatch: string | null = null;
+  let maxScore = -1;
+
+  for (const name of allNames) {
+    if (!name.toLowerCase().endsWith('.json')) continue;
+
+    if (
+      name.startsWith(sanitizedMedia) ||
+      name.startsWith(nameNoExt) ||
+      name.startsWith(nameTruncated) ||
+      name.startsWith(nameTruncated47) ||
+      (numberedBase !== null && name.startsWith(numberedBase))
+    ) {
+      if (dynamicRegexPattern.test(name)) {
+        const score = name.length;
+        if (score > maxScore) {
+          maxScore = score;
+          bestMatch = name;
+        }
+      }
     }
   }
 
-  return null;
+  return bestMatch;
 }
 
-/**
- * Safe JSON parser — blocks prototype pollution attacks.
- */
+/** Safe JSON parser – blocks prototype pollution attacks */
 export function safeParseJson(raw: string): Record<string, unknown> | null {
   try {
     const parsed = JSON.parse(raw, (key, value) => {
-      // Block prototype pollution
       if (key === '__proto__' || key === 'constructor' || key === 'prototype') {
         return undefined;
       }
@@ -125,7 +217,6 @@ export function extractTimestamp(json: Record<string, unknown>): number | null {
 
   if (candidates.length === 0) return null;
 
-  // Prefer photoTakenTime, then creationTime, then modificationTime
   const order = ['photoTakenTime', 'creationTime', 'modificationTime'];
   candidates.sort((a, b) => order.indexOf(a[0]) - order.indexOf(b[0]));
   return candidates[0][1];

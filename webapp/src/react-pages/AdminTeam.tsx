@@ -179,7 +179,7 @@ export default function AdminTeam() {
                           {a.photoURL ? (
                             <img src={a.photoURL} alt="" className="w-9 h-9 rounded-full" />
                           ) : (
-                            <div className="w-9 h-9 rounded-full bg-zinc-800 dark:bg-zinc-200 flex items-center justify-center font-bold text-zinc-350 dark:text-zinc-800 border border-zinc-700 dark:border-zinc-350">
+                            <div className="w-9 h-9 rounded-full bg-zinc-900 dark:bg-zinc-200 flex items-center justify-center font-bold text-zinc-100 dark:text-zinc-800 border border-zinc-800 dark:border-zinc-300">
                               {a.displayName?.charAt(0) || "A"}
                             </div>
                           )}

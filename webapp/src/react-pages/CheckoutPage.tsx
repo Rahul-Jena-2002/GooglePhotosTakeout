@@ -94,8 +94,11 @@ function CheckoutPageContent() {
           <AlertCircle className="w-8 h-8" />
         </div>
         <h1 className="text-2xl font-bold tracking-tight text-foreground mb-2">Account Suspended</h1>
-        <p className="text-zinc-550 dark:text-zinc-405 max-w-md mb-8">
-          Your account has been suspended for violating our terms of service or due to an administrative hold. If you believe this is a mistake, please contact our support team.
+        <p className="text-zinc-555 dark:text-zinc-405 max-w-md mb-8">
+          Your account has been suspended for violating our terms of service or due to an administrative hold. If you believe this is a mistake, please contact our support team at{" "}
+          <a href="mailto:takeoutfix.support@gmail.com" className="text-indigo-400 hover:text-indigo-300 font-semibold underline">
+            takeoutfix.support@gmail.com
+          </a>.
         </p>
         <div className="flex gap-4">
           <a href="/support" className="px-5 py-2 rounded-lg bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-sm text-zinc-800 dark:text-zinc-200 hover:bg-zinc-200 dark:hover:bg-zinc-800 transition-all">

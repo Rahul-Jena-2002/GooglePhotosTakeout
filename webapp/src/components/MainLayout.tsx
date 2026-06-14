@@ -493,11 +493,14 @@ export default function MainLayout() {
               <span className="w-4 h-4 rounded-sm bg-gradient-to-br from-indigo-500 to-purple-600"></span>
               &copy; 2026 TakeoutFix System Core. All rights reserved.
             </div>
-            <div className="flex gap-6 text-sm text-white/40">
+            <div className="flex flex-wrap gap-6 text-sm text-white/40 items-center justify-center md:justify-end">
               <Link to="/privacy" className="hover:text-white transition-colors">Privacy Policy</Link>
               <Link to="/terms" className="hover:text-white transition-colors">Terms of Service</Link>
               <Link to="/support" className="hover:text-white transition-colors">Support Center</Link>
               <Link to="/support?tab=feedback" className="hover:text-white transition-colors">Give Feedback</Link>
+              <a href="mailto:takeoutfix.support@gmail.com" className="text-indigo-400 hover:text-indigo-300 transition-colors font-medium">
+                takeoutfix.support@gmail.com
+              </a>
             </div>
           </div>
         </footer>

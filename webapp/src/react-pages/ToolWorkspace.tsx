@@ -1,7 +1,8 @@
 import { useRef, useEffect, useState } from "react"
 import { useAuth } from "../contexts/AuthContext"
 import { useToolStore } from "../store/useToolStore"
-import { isAllowedMediaFile, sanitizeFilename, findMatchingJsonName, safeParseJson, extractTimestamp } from "../services/MetadataMatcher"
+import { sanitizeFilename, findMatchingJsonName, safeParseJson, extractTimestamp } from "../services/MetadataMatcher"
+import { findMatchingJsonNameForZip } from "../services/ZipMetadataMatcher"
 import { isJpeg } from "../services/ExifRestorer"
 import { db } from "../firebase"
 import { doc, setDoc, increment, addDoc, collection, onSnapshot } from "firebase/firestore"
@@ -10,14 +11,14 @@ import AdUnit from "../components/AdUnit"
 import { Button } from "../components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "../components/ui/card"
 import { Progress } from "../components/ui/progress"
-import { FolderUp, HardDrive, Play, Square, Pause, Activity, Database, CheckCircle2, AlertCircle, XCircle, FileText, Cpu, Eye, Layers, Copy, Lock, FileImage, FileJson, Search, Trash2 } from "lucide-react"
+import { FolderUp, HardDrive, Play, Square, Pause, Activity, Database, CheckCircle2, AlertCircle, XCircle, FileText, Cpu, Eye, Layers, Copy, Lock, FileImage, FileJson, Search } from "lucide-react"
 // No react-router-dom imports
 import { indexedDbService } from "../lib/indexedDbService"
 import piexif from "piexifjs"
 import { detectAdBlock } from "../services/AdBlockDetector"
 
 // Resilient Session & Web Worker Pipeline Imports
-import { SessionManager, type ActiveSession, type FileRecord } from "../lib/SessionManager"
+import { SessionManager, type ActiveSession } from "../lib/SessionManager"
 import { WorkerPool } from "../lib/WorkerPool"
 import { ZipReader, BlobReader, Uint8ArrayWriter } from "@zip.js/zip.js"
 
@@ -45,71 +46,34 @@ import { ToastContainer } from "../components/ui/toast"
 export function ToolWorkspaceContent() {
   const { user, userData, loading, refreshUserData, login } = useAuth()
 
-  if (loading) {
-    return (
-      <div className="min-h-[calc(100vh-64px)] bg-[#0A0A0A] flex items-center justify-center">
-        <div className="w-8 h-8 border-4 border-t-zinc-200 border-zinc-800 rounded-full animate-spin"></div>
-      </div>
-    )
-  }
-
   const plan = userData?.plan || 'free'
 
-  const getUserBytes = (u: any) => {
+  const getUserBytes = (u: Record<string, unknown> | null | undefined) => {
     if (!u) return 0;
-    return Math.max(u.usedBytes || 0, u.totalBytesProcessed || 0, u.lifetimeBytes || 0);
+    const usedBytes = typeof u.usedBytes === 'number' ? u.usedBytes : 0;
+    const totalBytesProcessed = typeof u.totalBytesProcessed === 'number' ? u.totalBytesProcessed : 0;
+    const lifetimeBytes = typeof u.lifetimeBytes === 'number' ? u.lifetimeBytes : 0;
+    return Math.max(usedBytes, totalBytesProcessed, lifetimeBytes);
   }
 
-  const getUserFiles = (u: any) => {
+  const getUserFiles = (u: Record<string, unknown> | null | undefined) => {
     if (!u) return 0;
-    const recorded = Math.max(u.totalFilesProcessed || 0, u.usedFiles || 0, u.lifetimeFiles || 0);
-    const trackedBytes = Math.max(u.totalBytesProcessed || 0, u.usedBytes || 0);
-    const legacyBytes = Math.max(0, (u.lifetimeBytes || 0) - trackedBytes);
+    const usedFiles = typeof u.usedFiles === 'number' ? u.usedFiles : 0;
+    const totalFilesProcessed = typeof u.totalFilesProcessed === 'number' ? u.totalFilesProcessed : 0;
+    const lifetimeFiles = typeof u.lifetimeFiles === 'number' ? u.lifetimeFiles : 0;
+    const totalBytesProcessed = typeof u.totalBytesProcessed === 'number' ? u.totalBytesProcessed : 0;
+    const usedBytes = typeof u.usedBytes === 'number' ? u.usedBytes : 0;
+    const lifetimeBytes = typeof u.lifetimeBytes === 'number' ? u.lifetimeBytes : 0;
+
+    const recorded = Math.max(totalFilesProcessed, usedFiles, lifetimeFiles);
+    const trackedBytes = Math.max(totalBytesProcessed, usedBytes);
+    const legacyBytes = Math.max(0, lifetimeBytes - trackedBytes);
     const legacyFiles = legacyBytes > 0 ? Math.round(legacyBytes / (1.2 * 1024 * 1024)) : 0;
     return recorded + legacyFiles;
   }
 
-  const currentUsedFiles = plan === 'free' ? getUserFiles(userData) : (userData?.usedFiles || 0)
-  const currentUsedBytes = plan === 'free' ? getUserBytes(userData) : (userData?.usedBytes || 0)
-
-  if (!user) {
-    return (
-      <div className="min-h-[calc(100vh-64px)] bg-[#0A0A0A] flex flex-col items-center justify-center p-6 text-center relative">
-        <div className="absolute top-1/4 left-1/4 w-[400px] h-[400px] bg-zinc-500/5 blur-[120px] rounded-full pointer-events-none"></div>
-        <div className="absolute bottom-1/4 right-1/4 w-[400px] h-[400px] bg-zinc-700/5 blur-[120px] rounded-full pointer-events-none"></div>
-        
-        <Card className="bg-zinc-950/50 border-white/10 p-8 rounded-3xl backdrop-blur-2xl shadow-2xl max-w-md w-full relative overflow-hidden">
-          <div className="absolute top-0 left-0 right-0 h-1 bg-zinc-800 dark:bg-zinc-200"></div>
-          <CardHeader className="text-center pb-6">
-            <div className="w-12 h-12 bg-zinc-800/20 text-zinc-400 rounded-full flex items-center justify-center mx-auto mb-4 border border-zinc-850">
-              <HardDrive className="w-6 h-6 animate-pulse" />
-            </div>
-            <CardTitle className="text-2xl font-black text-white">Unlock Recovery Center</CardTitle>
-            <CardDescription className="text-zinc-400 text-sm mt-2">
-              Please sign in to access the local metadata restoration engine, view your quotas, and manage your files.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <Button 
-              onClick={login} 
-              className="btn-monochrome-primary w-full h-12 font-bold rounded-xl flex items-center justify-center gap-2 border-0 transition-all duration-150 cursor-pointer shadow-none"
-            >
-              <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none">
-                <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
-                <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
-                <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z" fill="#FBBC05"/>
-                <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z" fill="#EA4335"/>
-              </svg>
-              Sign In with Google
-            </Button>
-            <a href="/" className="block text-center text-xs text-zinc-500 hover:text-white transition-colors mt-2">
-              Return to Home Page
-            </a>
-          </CardContent>
-        </Card>
-      </div>
-    )
-  }
+  const currentUsedFiles = plan === 'free' ? getUserFiles(userData as Record<string, unknown>) : (userData?.usedFiles || 0)
+  const currentUsedBytes = plan === 'free' ? getUserBytes(userData as Record<string, unknown>) : (userData?.usedBytes || 0)
 
   const limitFiles = plan === 'recovery_pass' ? 10000 : (plan === 'pro' || plan === 'super' || plan === 'family' ? Infinity : 1000)
   const limitBytes = plan === 'recovery_pass' ? 20 * 1024 * 1024 * 1024 : (plan === 'pro' || plan === 'super' || plan === 'family' ? Infinity : 1 * 1024 * 1024 * 1024)
@@ -144,42 +108,6 @@ export function ToolWorkspaceContent() {
   const [telemetryMem, setTelemetryMem] = useState(24.2)
   const [telemetryTabHeap, setTelemetryTabHeap] = useState(45.0)
   const [telemetryWorkers, setTelemetryWorkers] = useState(0)
-  
-  if (maintenance) {
-    return (
-      <div className="min-h-[calc(100vh-64px)] bg-black flex flex-col items-center justify-center p-6 text-center">
-        <div className="w-16 h-16 bg-amber-500/10 border border-amber-500/20 text-amber-400 rounded-full flex items-center justify-center mb-6">
-          <AlertCircle className="w-8 h-8 animate-pulse" />
-        </div>
-        <h1 className="text-2xl font-bold tracking-tight text-white mb-2">Workspace Under Maintenance</h1>
-        <p className="text-zinc-400 max-w-md mb-8">
-          The TakeoutFix restoration engine is currently undergoing system updates. Normal operations will resume shortly. Thank you for your patience!
-        </p>
-        <a href="/dashboard" className="px-6 py-2.5 rounded-full bg-zinc-900 border border-zinc-800 text-sm text-zinc-300 hover:text-white transition-all font-semibold">
-          Return to Dashboard
-        </a>
-      </div>
-    )
-  }
-
-  if (userData?.suspended) {
-    return (
-      <div className="min-h-screen bg-black flex flex-col items-center justify-center p-6 text-center">
-        <div className="w-16 h-16 bg-red-500/10 border border-red-500/20 text-red-500 rounded-full flex items-center justify-center mb-6">
-          <AlertCircle className="w-8 h-8" />
-        </div>
-        <h1 className="text-2xl font-bold tracking-tight text-white mb-2">Account Suspended</h1>
-        <p className="text-zinc-400 max-w-md mb-8">
-          Your account has been suspended for violating our terms of service or due to an administrative hold. If you believe this is a mistake, please contact our support team.
-        </p>
-        <div className="flex gap-4">
-          <a href="/support" className="px-5 py-2 rounded-full bg-zinc-900 border border-zinc-800 text-sm text-zinc-300 hover:text-white transition-all">
-            Contact Support
-          </a>
-        </div>
-      </div>
-    )
-  }
 
   const {
     takeoutFolder,
@@ -214,6 +142,8 @@ export function ToolWorkspaceContent() {
   // Quota session trackers
   const sessionBytesRef = useRef(0)
   const sessionFilesRef = useRef(0)
+  const [sessionBytes, setSessionBytes] = useState(0)
+  const [sessionFiles, setSessionFiles] = useState(0)
   
   // Buffers for batching UI updates to prevent freezing
   const statsBuffer = useRef({ scanned: 0, matched: 0, unmatched: 0, errors: 0, total: 0 })
@@ -253,8 +183,9 @@ export function ToolWorkspaceContent() {
     const item = items[0]
     try {
       if (item.kind === 'file') {
-        if (typeof (item as any).getAsFileSystemHandle === 'function') {
-          const handle = await (item as any).getAsFileSystemHandle()
+        const extendedItem = item as DataTransferItem & { getAsFileSystemHandle?: () => Promise<FileSystemHandle | null> }
+        if (typeof extendedItem.getAsFileSystemHandle === 'function') {
+          const handle = await extendedItem.getAsFileSystemHandle()
           if (handle) {
             if (handle.kind === 'directory') {
               setTakeoutFolder(handle as FileSystemDirectoryHandle)
@@ -282,25 +213,27 @@ export function ToolWorkspaceContent() {
   
   // resilient sessions
   const [pendingSession, setPendingSession] = useState<ActiveSession | null>(null)
+  const [logTab, setLogTab] = useState<'all' | 'unmatched'>('all')
   
   const sessionManagerRef = useRef<SessionManager>(new SessionManager())
   const workerPoolRef = useRef<WorkerPool | null>(null)
+  const resumeNextRef = useRef<(() => void) | null>(null)
 
   // 1. Visual EXIF Viewer state
   const [viewerFile, setViewerFile] = useState<File | null>(null)
-  const [viewerExif, setViewerExif] = useState<any | null>(null)
+  const [viewerExif, setViewerExif] = useState<Record<string, unknown> | null>(null)
   const [viewerLoading, setViewerLoading] = useState(false)
 
   // 2. Metadata Comparison state
   const [compMediaFile, setCompMediaFile] = useState<File | null>(null)
   const [compJsonFile, setCompJsonFile] = useState<File | null>(null)
-  const [compResult, setCompResult] = useState<any | null>(null)
+  const [compResult, setCompResult] = useState<Record<string, unknown> | null>(null)
 
   // 3. Duplicate Space Analyzer state
   const [dupFolder, setDupFolder] = useState<FileSystemDirectoryHandle | null>(null)
   const [dupIsScanning, setDupIsScanning] = useState(false)
   const [dupStats, setDupStats] = useState({ scanned: 0, duplicates: 0, savedBytes: 0 })
-  const [dupGroups, setDupGroups] = useState<any[]>([])
+  const [dupGroups, setDupGroups] = useState<Record<string, unknown>[]>([])
   const [dupScanStatus, setDupScanStatus] = useState("Idle")
 
   const renderSuperTierGate = (
@@ -347,21 +280,16 @@ export function ToolWorkspaceContent() {
   const getOptimalThreadCount = () => {
     const isMobile = /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent)
     const cores = navigator.hardwareConcurrency || 4
-    let optimal = cores
-    if (isMobile) {
-      optimal = Math.max(2, Math.floor(cores * 0.5)) // 50% for mobile
-    } else {
-      if (cores <= 4) {
-        optimal = Math.max(2, cores - 1); // 75% or higher for low core count
-      } else if (cores <= 12) {
-        optimal = Math.floor(cores * 0.75); // 75% for mid core count
-      } else {
-        optimal = Math.floor(cores * 0.8); // 80% for high-end systems (e.g. 22 cores -> 17 threads)
-      }
-    }
+    let optimal = isMobile
+      ? Math.max(2, Math.floor(cores * 0.5))
+      : cores <= 4
+      ? Math.max(2, cores - 1)
+      : cores <= 12
+      ? Math.floor(cores * 0.75)
+      : Math.floor(cores * 0.8)
     
     if ('deviceMemory' in navigator) {
-      const mem = (navigator as any).deviceMemory
+      const mem = (navigator as unknown as { deviceMemory: number }).deviceMemory
       if (mem >= 8) {
         return Math.min(24, optimal)
       }
@@ -370,12 +298,6 @@ export function ToolWorkspaceContent() {
       }
     }
     return Math.min(16, optimal)
-  }
-
-  // Persist and load worker selection
-  const handleMaxWorkersChange = async (val: number) => {
-    setMaxWorkers(val)
-    await indexedDbService.set('telemetry', 'takeoutfix_max_workers', val).catch(console.error)
   }
 
   useEffect(() => {
@@ -410,6 +332,7 @@ export function ToolWorkspaceContent() {
       if (flushInterval.current) window.clearInterval(flushInterval.current)
       if (workerPoolRef.current) workerPoolRef.current.terminate()
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   useEffect(() => {
@@ -424,7 +347,7 @@ export function ToolWorkspaceContent() {
     try {
       const pending = await indexedDbService.get('telemetry', 'takeoutfix_pending_usage')
       if (pending && pending.uid === user.uid) {
-        const { bytes, files, sessionId, takeoutName, historySessionId } = pending
+        const { bytes, files, takeoutName, historySessionId } = pending
         if (bytes > 0 || files > 0) {
           console.log(`Recovering pending usage from crashed session: ${files} files, ${bytes} bytes`)
           await saveUsageToFirestore(bytes, files)
@@ -474,14 +397,16 @@ export function ToolWorkspaceContent() {
     if (user) {
       recoverPendingUsage()
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user])
 
   useEffect(() => {
     const timer = setInterval(() => {
       // Tab heap memory check
       let heap = 0
-      if ((performance as any).memory) {
-        heap = (performance as any).memory.usedJSHeapSize / (1024 * 1024)
+      const perf = performance as unknown as { memory?: { usedJSHeapSize: number } }
+      if (perf.memory) {
+        heap = perf.memory.usedJSHeapSize / (1024 * 1024)
       }
       
       // Enforce a realistic base memory range for a complex React/Astro folder restoration application
@@ -525,23 +450,108 @@ export function ToolWorkspaceContent() {
     return () => clearInterval(timer)
   }, [isProcessing, isPaused, activeWorkersCount, maxWorkers])
 
+  // React Early Returns (Moved below all Hook declarations to adhere to React Hook Rules)
+  if (loading) {
+    return (
+      <div className="min-h-[calc(100vh-64px)] bg-[#0A0A0A] flex items-center justify-center">
+        <div className="w-8 h-8 border-4 border-t-zinc-200 border-zinc-800 rounded-full animate-spin"></div>
+      </div>
+    )
+  }
+
+  if (maintenance) {
+    return (
+      <div className="min-h-[calc(100vh-64px)] bg-black flex flex-col items-center justify-center p-6 text-center">
+        <div className="w-16 h-16 bg-amber-500/10 border border-amber-500/20 text-amber-400 rounded-full flex items-center justify-center mb-6">
+          <AlertCircle className="w-8 h-8 animate-pulse" />
+        </div>
+        <h1 className="text-2xl font-bold tracking-tight text-white mb-2">Workspace Under Maintenance</h1>
+        <p className="text-zinc-400 max-w-md mb-8">
+          The TakeoutFix restoration engine is currently undergoing system updates. Normal operations will resume shortly. Thank you for your patience!
+        </p>
+        <a href="/dashboard" className="px-6 py-2.5 rounded-full bg-zinc-900 border border-zinc-800 text-sm text-zinc-300 hover:text-white transition-all font-semibold">
+          Return to Dashboard
+        </a>
+      </div>
+    )
+  }
+
+  if (user && userData?.suspended) {
+    return (
+      <div className="min-h-screen bg-black flex flex-col items-center justify-center p-6 text-center">
+        <div className="w-16 h-16 bg-red-500/10 border border-red-500/20 text-red-500 rounded-full flex items-center justify-center mb-6">
+          <AlertCircle className="w-8 h-8" />
+        </div>
+        <h1 className="text-2xl font-bold tracking-tight text-white mb-2">Account Suspended</h1>
+        <p className="text-zinc-400 max-w-md mb-8">
+          Your account has been suspended for violating our terms of service or due to an administrative hold. If you believe this is a mistake, please contact our support team.
+        </p>
+        <div className="flex gap-4">
+          <a href="/support" className="px-5 py-2 rounded-full bg-zinc-900 border border-zinc-800 text-sm text-zinc-300 hover:text-white transition-all">
+            Contact Support
+          </a>
+        </div>
+      </div>
+    )
+  }
+
+  if (!user) {
+    return (
+      <div className="min-h-[calc(100vh-64px)] bg-[#0A0A0A] flex flex-col items-center justify-center p-6 text-center relative">
+        <div className="absolute top-1/4 left-1/4 w-[400px] h-[400px] bg-zinc-500/5 blur-[120px] rounded-full pointer-events-none"></div>
+        <div className="absolute bottom-1/4 right-1/4 w-[400px] h-[400px] bg-zinc-700/5 blur-[120px] rounded-full pointer-events-none"></div>
+        
+        <Card className="bg-zinc-950/50 border-white/10 p-8 rounded-3xl backdrop-blur-2xl shadow-2xl max-w-md w-full relative overflow-hidden">
+          <div className="absolute top-0 left-0 right-0 h-1 bg-zinc-800 dark:bg-zinc-200"></div>
+          <CardHeader className="text-center pb-6">
+            <div className="w-12 h-12 bg-zinc-800/20 text-zinc-400 rounded-full flex items-center justify-center mx-auto mb-4 border border-zinc-850">
+              <HardDrive className="w-6 h-6 animate-pulse" />
+            </div>
+            <CardTitle className="text-2xl font-black text-white">Unlock Recovery Center</CardTitle>
+            <CardDescription className="text-zinc-400 text-sm mt-2">
+              Please sign in to access the local metadata restoration engine, view your quotas, and manage your files.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <Button 
+              onClick={login} 
+              className="btn-monochrome-primary w-full h-12 font-bold rounded-xl flex items-center justify-center gap-2 border-0 transition-all duration-150 cursor-pointer shadow-none"
+            >
+              <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none">
+                <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
+                <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
+                <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z" fill="#FBBC05"/>
+                <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z" fill="#EA4335"/>
+              </svg>
+              Sign In with Google
+            </Button>
+            <a href="/" className="block text-center text-xs text-zinc-500 hover:text-white transition-colors mt-2">
+              Return to Home Page
+            </a>
+          </CardContent>
+        </Card>
+      </div>
+    )
+  }
+
   const handleSelectTakeout = async () => {
     if (typeof window === 'undefined' || !window.showDirectoryPicker) {
       alert("Browser Support Required:\n\nYour browser does not support the File System Access API required to select folders directly. Please use a desktop version of Google Chrome, Brave, or Microsoft Edge.")
       return
     }
     try {
-      // @ts-ignore
-      const dirHandle = await window.showDirectoryPicker()
+      const dirHandle = (await (window as unknown as { showDirectoryPicker: () => Promise<unknown> }).showDirectoryPicker()) as FileSystemDirectoryHandle
       setTakeoutFolder(dirHandle)
       window.dispatchEvent(new CustomEvent('takeoutfix-action-triggered'))
-    } catch (err: any) {
-      if (err.name === 'AbortError') {
+    } catch (err) {
+      const errorName = err instanceof Error ? err.name : '';
+      const errorMessage = err instanceof Error ? err.message : String(err);
+      if (errorName === 'AbortError') {
         console.log('User cancelled picker')
         return
       }
       console.error('Error selecting takeout folder:', err)
-      alert(`Could not open folder picker: ${err.message || err}\n\nNote: Browsers block folder access if the site is not served securely (HTTPS or localhost), or if you select a system-sensitive directory (like Downloads, Documents, or root C:/). Please try another folder or make sure you are accessing the site via localhost/HTTPS.`)
+      alert(`Could not open folder picker: ${errorMessage}\n\nNote: Browsers block folder access if the site is not served securely (HTTPS or localhost), or if you select a system-sensitive directory (like Downloads, Documents, or root C:/). Please try another folder or make sure you are accessing the site via localhost/HTTPS.`)
     }
   }
 
@@ -551,22 +561,23 @@ export function ToolWorkspaceContent() {
       return
     }
     try {
-      // @ts-ignore
-      const dirHandle = await window.showDirectoryPicker({ mode: 'readwrite' })
+      const dirHandle = (await (window as unknown as { showDirectoryPicker: (options?: { mode?: 'read' | 'readwrite' }) => Promise<unknown> }).showDirectoryPicker({ mode: 'readwrite' })) as FileSystemDirectoryHandle
       
       setOutputFolder(dirHandle)
       window.dispatchEvent(new CustomEvent('takeoutfix-action-triggered'))
-    } catch (err: any) {
-      if (err.name === 'AbortError') {
+    } catch (err) {
+      const errorName = err instanceof Error ? err.name : '';
+      const errorMessage = err instanceof Error ? err.message : String(err);
+      if (errorName === 'AbortError') {
         console.log('User cancelled picker')
         return
       }
       console.error('Error selecting output folder:', err)
-      alert(`Could not open folder picker: ${err.message || err}\n\nNote: Browsers block folder access if the site is not served securely (HTTPS or localhost), or if you select a system-sensitive directory (like Downloads, Documents, or root C:/). Please try another folder or make sure you are accessing the site via localhost/HTTPS.`)
+      alert(`Could not open folder picker: ${errorMessage}\n\nNote: Browsers block folder access if the site is not served securely (HTTPS or localhost), or if you select a system-sensitive directory (like Downloads, Documents, or root C:/). Please try another folder or make sure you are accessing the site via localhost/HTTPS.`)
     }
   }
 
-  const updateActiveSession = async (status: 'initializing' | 'processing' | 'completed' | 'failed' | 'cancelled', fields: any = {}) => {
+  const updateActiveSession = async (status: 'initializing' | 'processing' | 'completed' | 'failed' | 'cancelled', fields: Record<string, unknown> = {}) => {
     if (!user) return
     if (!sessionIdRef.current) {
       sessionIdRef.current = `${user.uid}_${Date.now()}`
@@ -608,7 +619,7 @@ export function ToolWorkspaceContent() {
     }
   }
 
-  const saveUsageToFirestore = async (bytes: number, files: number) => {
+  async function saveUsageToFirestore(bytes: number, files: number) {
     if (!user) return
     try {
       const userRef = doc(db, 'users', user.uid)
@@ -624,7 +635,7 @@ export function ToolWorkspaceContent() {
     }
   }
 
-  const commitSessionUsage = async () => {
+  async function commitSessionUsage() {
     const bytesToSave = sessionBytesRef.current
     const filesToSave = sessionFilesRef.current
     if (bytesToSave <= 0 && filesToSave <= 0) return
@@ -632,6 +643,8 @@ export function ToolWorkspaceContent() {
     // Zero out trackers immediately to prevent duplicate updates
     sessionBytesRef.current = 0
     sessionFilesRef.current = 0
+    setSessionBytes(0)
+    setSessionFiles(0)
     await indexedDbService.remove('telemetry', 'takeoutfix_pending_usage')
 
     try {
@@ -654,6 +667,8 @@ export function ToolWorkspaceContent() {
       // Restore counts on failure so they aren't lost
       sessionBytesRef.current += bytesToSave
       sessionFilesRef.current += filesToSave
+      setSessionBytes(sessionBytesRef.current)
+      setSessionFiles(sessionFilesRef.current)
       if (user) {
         await indexedDbService.set('telemetry', 'takeoutfix_pending_usage', {
           uid: user.uid,
@@ -720,9 +735,10 @@ export function ToolWorkspaceContent() {
       }
 
       proceedResume(session);
-    } catch (err: any) {
+    } catch (err) {
+      const errMsg = err instanceof Error ? err.message : String(err);
       console.error("Resumption re-grant failed:", err);
-      alert("Resumption failed: " + err.message);
+      alert("Resumption failed: " + errMsg);
     }
   };
 
@@ -757,6 +773,8 @@ export function ToolWorkspaceContent() {
       setStats({ ...statsBuffer.current });
       setProgress(progressBuffer.current);
       setCurrentFile(fileBuffer.current);
+      setSessionBytes(sessionBytesRef.current);
+      setSessionFiles(sessionFilesRef.current);
       setLogs(prev => {
         const newLogs = [...prev, ...logsBuffer.current];
         logsBuffer.current = [];
@@ -783,6 +801,7 @@ export function ToolWorkspaceContent() {
     // 2. Open ZIP Reader if ZIP source
     let zipReader: ZipReader<File> | null = null;
     let zipEntries: any[] = [];
+    const zipEntryMap = new Map<string, any>();
     // Cache map for Zip entries to group directories
     const zipDirMap = new Map<string, Set<string>>();
 
@@ -791,8 +810,10 @@ export function ToolWorkspaceContent() {
       zipEntries = await zipReader.getEntries();
 
       for (const entry of zipEntries) {
+        const normalizedFilename = entry.filename.normalize('NFC');
+        zipEntryMap.set(normalizedFilename, entry);
         if (entry.directory) continue;
-        const parts = entry.filename.split('/');
+        const parts = normalizedFilename.split('/');
         const filename = parts.pop() || '';
         const dirPath = parts.join('/');
         let set = zipDirMap.get(dirPath);
@@ -827,238 +848,269 @@ export function ToolWorkspaceContent() {
     let pending = await sessionManager.getPendingFiles();
     let fileIndex = 0;
     
-    // 6. Throttling and backpressure counter (fully utilize maximum threads)
+    // 6. Throttling and backpressure counter (cap ZIP extraction concurrency to prevent disk saturation)
     let inFlightCount = 0;
-    const inflightLimit = maxWorkers;
+    const inflightLimit = session.zipFile ? Math.max(2, Math.floor((navigator.hardwareConcurrency || 4) * 0.5)) : maxWorkers;
 
     const processNext = async () => {
       if (!isProcessingRef.current || isPausedRef.current) {
-        if (inFlightCount === 0) {
-          // Cleanup if pipeline was cancelled/paused
+        if (inFlightCount === 0 && !isProcessingRef.current) {
           if (zipReader) {
             try { await zipReader.close(); } catch {}
           }
+          resumeNextRef.current = null;
         }
         return;
       }
 
-      if (fileIndex >= pending.length) {
-        if (inFlightCount === 0) {
-          // Finished all files
-          if (zipReader) {
-            try { await zipReader.close(); } catch {}
-          }
-          await completeProcessing();
-        }
-        return;
-      }
+      const runWorker = async () => {
+        while (fileIndex < pending.length && isProcessingRef.current && !isPausedRef.current) {
+          const fileRecord = pending[fileIndex++];
+          if (!fileRecord) break;
 
-      // Check quota limits
-      const isBypass = userData?.isAdmin || import.meta.env.DEV;
-      if (!isBypass && (currentUsedBytesRef.current + sessionBytesRef.current > limitBytesRef.current || currentUsedFilesRef.current + sessionFilesRef.current > limitFilesRef.current)) {
-        if (zipReader) {
-          try { await zipReader.close(); } catch {}
-        }
-        await haltDueToQuota();
-        return;
-      }
+          inFlightCount++;
+          setActiveWorkersCount(inFlightCount);
 
-      const fileRecord = pending[fileIndex++];
-      inFlightCount++;
-      setActiveWorkersCount(inFlightCount);
-
-      // Schedule next item immediately if under backpressure cap
-      if (inFlightCount < inflightLimit) {
-        processNext();
-      }
-
-      try {
-        // Claim file (mark processing in IDB)
-        await sessionManager.claimFile(fileRecord.id);
-
-        let size = fileRecord.bytes;
-        let fileObj: File | null = null;
-        let zipEntry: any = null;
-
-        // 1. Get file metadata/reference
-        if (fileRecord.fileHandle) {
           try {
-            fileObj = await fileRecord.fileHandle.getFile();
-          } catch {
-            const freshHandle = await fileRecord.dirHandle!.getFileHandle(fileRecord.filename);
-            fileObj = await freshHandle.getFile();
-          }
-          size = fileObj.size;
-        } else if (fileRecord.zipPath && zipReader) {
-          zipEntry = zipEntries.find(e => e.filename === fileRecord.zipPath);
-          if (zipEntry) {
-            size = zipEntry.uncompressedSize;
-          }
-        }
-
-        if (!fileObj && !zipEntry) {
-          throw new Error("Source file reference not found.");
-        }
-
-        // 2. Resolve sidecar and epoch timestamp (on-demand during restoration)
-        let epochSec: number | null = null;
-        if (fileRecord.fileHandle) {
-          const pathKey = fileRecord.relativePath.join('/');
-          const allNames = await getDirNames(fileRecord.dirHandle!, pathKey);
-          const jsonName = findMatchingJsonName(fileRecord.filename, allNames);
-          if (jsonName) {
-            try {
-              const jsonHandle = await fileRecord.dirHandle!.getFileHandle(jsonName);
-              const jsonFile = await jsonHandle.getFile();
-              const parsed = safeParseJson(await jsonFile.text());
-              if (parsed) epochSec = extractTimestamp(parsed);
-            } catch {}
-          }
-        } else if (fileRecord.zipPath && zipReader) {
-          const dirPath = fileRecord.relativePath.join('/');
-          const allNames = zipDirMap.get(dirPath) || new Set<string>();
-          const jsonName = findMatchingJsonName(fileRecord.filename, allNames);
-          if (jsonName) {
-            try {
-              const jsonPath = dirPath ? `${dirPath}/${jsonName}` : jsonName;
-              const jsonEntry = zipEntries.find(e => e.filename === jsonPath);
-              if (jsonEntry) {
-                const jsonText = await jsonEntry.getData!(new TextWriter());
-                const parsed = safeParseJson(jsonText);
-                if (parsed) epochSec = extractTimestamp(parsed);
+            // Check quota limits
+            const isBypass = userData?.isAdmin || import.meta.env.DEV;
+            if (!isBypass && (currentUsedBytesRef.current + sessionBytesRef.current > limitBytesRef.current || currentUsedFilesRef.current + sessionFilesRef.current > limitFilesRef.current)) {
+              if (zipReader) {
+                try { await zipReader.close(); } catch {}
               }
-            } catch {}
-          }
-        }
+              await haltDueToQuota();
+              return;
+            }
 
-        // 3. Process buffer / inject EXIF if applicable
-        let bufferOrBlob: any = null;
-        let actionStr = 'No Metadata Found';
-        let levelStr = 'warn';
+            // Claim file (mark processing in IDB)
+            await sessionManager.claimFile(fileRecord.id);
 
-        if (epochSec && isJpeg(fileRecord.filename)) {
-          // Read buffer only when EXIF injection is needed
-          if (fileObj) {
-            bufferOrBlob = await fileObj.arrayBuffer();
-          } else if (zipEntry) {
-            const writer = new Uint8ArrayWriter();
-            const bytes = await zipEntry.getData!(writer);
-            bufferOrBlob = bytes.buffer;
-          }
+            let size = fileRecord.bytes;
+            let fileObj: File | null = null;
+            let zipEntry: any = null;
 
-          if (bufferOrBlob) {
-            // Run EXIF injection in the background Worker
-            const res = await pool.runTask('inject_exif', {
-              buffer: bufferOrBlob,
-              epochSec,
-              filename: fileRecord.filename
-            }, [bufferOrBlob]);
+            // 1. Resolve handles dynamically from root if local directory to prevent permission revocation
+            let parentDirHandle = fileRecord.dirHandle;
+            let fileHandle = fileRecord.fileHandle;
 
-            bufferOrBlob = res.buffer;
-            if (res.success) {
-              actionStr = 'Restored & Injected';
+            if (session.takeoutHandle && fileRecord.relativePath) {
+              try {
+                let current = session.takeoutHandle;
+                for (const part of fileRecord.relativePath) {
+                  current = await current.getDirectoryHandle(part);
+                }
+                parentDirHandle = current;
+                fileHandle = await current.getFileHandle(fileRecord.filename);
+              } catch (err) {
+                console.warn("Failed to resolve handles from root takeoutHandle:", err);
+              }
+            }
+
+            // 2. Get file metadata/reference
+            if (fileHandle) {
+              try {
+                fileObj = await fileHandle.getFile();
+              } catch {
+                if (parentDirHandle) {
+                  const freshHandle = await parentDirHandle.getFileHandle(fileRecord.filename);
+                  fileObj = await freshHandle.getFile();
+                } else {
+                  throw new Error("Parent directory handle not found.");
+                }
+              }
+              size = fileObj.size;
+            } else if (fileRecord.zipPath && zipReader) {
+              zipEntry = zipEntryMap.get(fileRecord.zipPath.normalize('NFC'));
+              if (zipEntry) {
+                size = zipEntry.uncompressedSize;
+              }
+            }
+
+            if (!fileObj && !zipEntry) {
+              throw new Error("Source file reference not found.");
+            }
+
+            // 3. Resolve sidecar and epoch timestamp (on-demand during restoration)
+            let epochSec: number | null = null;
+            if (fileHandle && parentDirHandle) {
+              const pathKey = fileRecord.relativePath.join('/');
+              const allNames = await getDirNames(parentDirHandle, pathKey);
+              const jsonName = findMatchingJsonName(fileRecord.filename, allNames);
+              if (jsonName) {
+                try {
+                  const jsonHandle = await parentDirHandle.getFileHandle(jsonName);
+                  const jsonFile = await jsonHandle.getFile();
+                  const parsed = safeParseJson(await jsonFile.text());
+                  if (parsed) epochSec = extractTimestamp(parsed);
+                } catch {}
+              }
+            } else if (fileRecord.zipPath && zipReader) {
+              const dirPath = fileRecord.relativePath.join('/').normalize('NFC');
+              const allNames = zipDirMap.get(dirPath) || new Set<string>();
+              const jsonName = findMatchingJsonNameForZip(fileRecord.filename, allNames);
+              if (jsonName) {
+                try {
+                  const jsonPath = dirPath ? `${dirPath}/${jsonName}` : jsonName;
+                  const jsonEntry = zipEntryMap.get(jsonPath.normalize('NFC'));
+                  if (jsonEntry) {
+                    const jsonText = await jsonEntry.getData!(new TextWriter());
+                    const parsed = safeParseJson(jsonText);
+                    if (parsed) epochSec = extractTimestamp(parsed);
+                  }
+                } catch {}
+              }
+            }
+
+            // 4. Process buffer / inject EXIF if applicable
+            let bufferOrBlob: any = null;
+            let actionStr = 'No Metadata Found';
+            let levelStr = 'warn';
+
+            if (epochSec) {
+              actionStr = 'Restored';
               levelStr = 'success';
+
+              if (isJpeg(fileRecord.filename)) {
+                // Read buffer only when EXIF injection is needed
+                if (fileObj) {
+                  bufferOrBlob = await fileObj.arrayBuffer();
+                } else if (zipEntry) {
+                  const writer = new Uint8ArrayWriter();
+                  const bytes = await zipEntry.getData!(writer);
+                  bufferOrBlob = bytes.buffer;
+                }
+
+                if (bufferOrBlob) {
+                  // Run EXIF injection in the background Worker
+                  const res = await pool.runTask('inject_exif', {
+                    buffer: bufferOrBlob,
+                    epochSec,
+                    filename: fileRecord.filename
+                  }, [bufferOrBlob]);
+
+                  bufferOrBlob = res.buffer;
+                  if (res.success) {
+                    actionStr = 'Restored & Injected';
+                  } else {
+                    actionStr = `EXIF Error: ${res.error}`;
+                    levelStr = 'error';
+                  }
+                }
+              } else {
+                // Zero-RAM copying: Stream the file / entry directly without loading it to JS heap!
+                if (fileObj) {
+                  bufferOrBlob = fileObj; // Stream the File object directly!
+                } else if (zipEntry) {
+                  // Zip extraction still needs buffer since zip.js extracts to writer
+                  const writer = new Uint8ArrayWriter();
+                  const bytes = await zipEntry.getData!(writer);
+                  bufferOrBlob = bytes.buffer;
+                }
+              }
             } else {
-              actionStr = `EXIF Error: ${res.error}`;
-              levelStr = 'error';
+              // Zero-RAM copying: Stream the file / entry directly without loading it to JS heap!
+              if (fileObj) {
+                bufferOrBlob = fileObj; // Stream the File object directly!
+              } else if (zipEntry) {
+                // Zip extraction still needs buffer since zip.js extracts to writer
+                const writer = new Uint8ArrayWriter();
+                const bytes = await zipEntry.getData!(writer);
+                bufferOrBlob = bytes.buffer;
+              }
+            }
+
+            if (!bufferOrBlob) {
+              throw new Error("Failed to read file contents.");
+            }
+
+            // 5. Write output directly
+            const baseFolder = (epochSec && actionStr !== 'EXIF Error') ? 'restored' : 'unmatched';
+            const outSubDir = await getOrCreateDir(session.outputHandle!, [baseFolder, ...fileRecord.relativePath]);
+            const outHandle = await outSubDir.getFileHandle(fileRecord.filename, { create: true });
+            
+            const writable = await outHandle.createWritable();
+            await writable.write(bufferOrBlob);
+            await writable.close();
+
+            // 6. Confirm completion (passing resolved size and epochSec)
+            await sessionManager.confirmFile(fileRecord.id, 'completed', size, epochSec);
+
+            // Update stats
+            if (levelStr === 'success') {
+              statsBuffer.current.matched += 1;
+            } else if (levelStr === 'warn') {
+              statsBuffer.current.unmatched += 1;
+            } else {
+              statsBuffer.current.errors += 1;
+            }
+            statsBuffer.current.scanned += 1;
+
+            sessionBytesRef.current += size;
+            sessionFilesRef.current += 1;
+            totalSessionBytesRef.current += size;
+
+            logsBuffer.current.push({
+              level: levelStr,
+              path: fileRecord.relativePath,
+              filename: fileRecord.filename,
+              action: actionStr
+            });
+            fileBuffer.current = fileRecord.filename;
+            progressBuffer.current = Math.floor((statsBuffer.current.scanned / statsBuffer.current.total) * 100);
+
+          } catch (err: any) {
+            console.error("Pipeline file error:", fileRecord.filename, err);
+            
+            await sessionManager.confirmFile(fileRecord.id, 'failed', fileRecord.bytes, null, err.message);
+
+            statsBuffer.current.errors += 1;
+            statsBuffer.current.scanned += 1;
+            sessionFilesRef.current += 1;
+
+            logsBuffer.current.push({
+              level: 'error',
+              path: fileRecord.relativePath,
+              filename: fileRecord.filename,
+              action: `Error: ${err.message || 'Unknown'}`
+            });
+            fileBuffer.current = fileRecord.filename;
+            progressBuffer.current = Math.floor((statsBuffer.current.scanned / statsBuffer.current.total) * 100);
+          } finally {
+            inFlightCount--;
+            setActiveWorkersCount(inFlightCount);
+
+            // V8 GC Yield: yield back event loop every 10 files
+            if (fileIndex % 10 === 0) {
+              await new Promise(resolve => setTimeout(resolve, 0));
             }
           }
-        } else {
-          // Zero-RAM copying: Stream the file / entry directly without loading it to JS heap!
-          if (fileObj) {
-            bufferOrBlob = fileObj; // Stream the File object directly!
-          } else if (zipEntry) {
-            // Zip extraction still needs buffer since zip.js extracts to writer
-            const writer = new Uint8ArrayWriter();
-            const bytes = await zipEntry.getData!(writer);
-            bufferOrBlob = bytes.buffer;
+        }
+
+        // Check if finished or cancelled
+        if (inFlightCount === 0) {
+          if (fileIndex >= pending.length || !isProcessingRef.current) {
+            if (zipReader) {
+              try { await zipReader.close(); } catch {}
+            }
+            resumeNextRef.current = null;
+            if (fileIndex >= pending.length && isProcessingRef.current) {
+              await completeProcessing();
+            }
           }
         }
+      };
 
-        if (!bufferOrBlob) {
-          throw new Error("Failed to read file contents.");
-        }
-
-        // 4. Write output directly
-        const baseFolder = (epochSec && actionStr !== 'EXIF Error') ? 'restored' : 'unmatched';
-        const outSubDir = await getOrCreateDir(session.outputHandle!, [baseFolder, ...fileRecord.relativePath]);
-        const outHandle = await outSubDir.getFileHandle(fileRecord.filename, { create: true });
-        
-        const writable = await outHandle.createWritable();
-        await writable.write(bufferOrBlob);
-        await writable.close();
-
-        // 5. Confirm completion (passing resolved size and epochSec)
-        await sessionManager.confirmFile(fileRecord.id, 'completed', size, epochSec);
-
-        // Update stats
-        if (levelStr === 'success') {
-          statsBuffer.current.matched += 1;
-        } else if (levelStr === 'warn') {
-          statsBuffer.current.unmatched += 1;
-        } else {
-          statsBuffer.current.errors += 1;
-        }
-        statsBuffer.current.scanned += 1;
-
-        sessionBytesRef.current += size;
-        sessionFilesRef.current += 1;
-        totalSessionBytesRef.current += size;
-
-        logsBuffer.current.push({
-          level: levelStr,
-          path: fileRecord.relativePath,
-          filename: fileRecord.filename,
-          action: actionStr
-        });
-        fileBuffer.current = fileRecord.filename;
-        progressBuffer.current = Math.floor((statsBuffer.current.scanned / statsBuffer.current.total) * 100);
-
-      } catch (err: any) {
-        console.error("Pipeline file error:", fileRecord.filename, err);
-        
-        await sessionManager.confirmFile(fileRecord.id, 'failed', fileRecord.bytes, null, err.message);
-
-        statsBuffer.current.errors += 1;
-        statsBuffer.current.scanned += 1;
-        sessionFilesRef.current += 1;
-
-        logsBuffer.current.push({
-          level: 'error',
-          path: fileRecord.relativePath,
-          filename: fileRecord.filename,
-          action: `Error: ${err.message || 'Unknown'}`
-        });
-        fileBuffer.current = fileRecord.filename;
-        progressBuffer.current = Math.floor((statsBuffer.current.scanned / statsBuffer.current.total) * 100);
-      } finally {
-        inFlightCount--;
-        setActiveWorkersCount(inFlightCount);
-
-        // V8 GC Yield: yield back event loop every 10 files
-        if (fileIndex % 10 === 0) {
-          await new Promise(resolve => setTimeout(resolve, 0));
-        }
-
-        // Process next item
-        if (isProcessingRef.current && !isPausedRef.current) {
-          processNext();
-        }
-
-        // Check completion
-        if (statsBuffer.current.scanned >= statsBuffer.current.total) {
-          if (zipReader) {
-            try { await zipReader.close(); } catch {}
-          }
-          await completeProcessing();
-        }
+      // Spawn worker instances to fill up the concurrency limit
+      const workersNeeded = inflightLimit - inFlightCount;
+      for (let i = 0; i < workersNeeded; i++) {
+        runWorker();
       }
     };
 
+    resumeNextRef.current = processNext;
+
     // Trigger initial batch
-    for (let w = 0; w < inflightLimit; w++) {
-      processNext();
-    }
+    processNext();
   };
 
   const haltDueToQuota = async () => {
@@ -1556,6 +1608,8 @@ export function ToolWorkspaceContent() {
     
     sessionBytesRef.current = 0
     sessionFilesRef.current = 0
+    setSessionBytes(0)
+    setSessionFiles(0)
     startTimeRef.current = Date.now()
     lastCommitTimeRef.current = Date.now()
 
@@ -1594,6 +1648,8 @@ export function ToolWorkspaceContent() {
       setStats({ ...statsBuffer.current })
       setProgress(progressBuffer.current)
       setCurrentFile(fileBuffer.current)
+      setSessionBytes(sessionBytesRef.current)
+      setSessionFiles(sessionFilesRef.current)
       setLogs(prev => {
         const newLogs = [...prev, ...logsBuffer.current]
         logsBuffer.current = []
@@ -1707,6 +1763,9 @@ export function ToolWorkspaceContent() {
       setIsPaused(false)
       isPausedRef.current = false
       setLogs(prev => [...prev, { level: 'info', msg: 'Processing resumed by user.' }])
+      if (resumeNextRef.current) {
+        resumeNextRef.current()
+      }
     }
   }
 
@@ -1827,9 +1886,17 @@ export function ToolWorkspaceContent() {
                   </CardHeader>
                   <CardContent className="pt-6">
                     {zipFile ? (
-                      <div className="p-4 bg-indigo-500/5 border border-indigo-500/15 rounded-md mb-4 flex justify-between items-center text-zinc-350">
-                        <span className="font-mono text-sm truncate">ZIP: {zipFile.name}</span>
-                        <CheckCircle2 className="w-4 h-4 text-indigo-400" />
+                      <div className="space-y-3 mb-4">
+                        <div className="p-4 bg-indigo-500/5 border border-indigo-500/15 rounded-md flex justify-between items-center text-zinc-350">
+                          <span className="font-mono text-sm truncate">ZIP: {zipFile.name}</span>
+                          <CheckCircle2 className="w-4 h-4 text-indigo-400" />
+                        </div>
+                        <div className="text-[11px] text-zinc-450 leading-relaxed bg-black/25 p-3 rounded-lg border border-white/5 flex gap-2">
+                          <span className="flex-shrink-0 mt-0.5">⚠️</span>
+                          <div>
+                            <span className="font-semibold text-zinc-300">ZIP processing is slower:</span> Extracting directly inside the browser is slower due to sandbox storage and file reading overhead. For the fastest restoration speed, unzip the archive on your device first and use <strong className="text-zinc-300">Browse Folders</strong> instead.
+                          </div>
+                        </div>
                       </div>
                     ) : takeoutFolder ? (
                       <div className="p-4 bg-zinc-800/10 border border-zinc-800/25 rounded-md mb-4 flex justify-between items-center text-zinc-400">
@@ -1962,8 +2029,11 @@ export function ToolWorkspaceContent() {
                     </div>
                     <Progress value={progress} className="h-4 bg-white/5 rounded-full overflow-hidden border border-white/5 shadow-inner" />
                     <div className="mt-3 text-xs text-white/40 flex flex-col gap-1">
-                      <div>Processed: {((currentUsedBytes + sessionBytesRef.current) / (1024 ** 3)).toFixed(2)} GB / {limitBytes === Infinity ? "Unlimited" : `${(limitBytes / (1024 ** 3)).toFixed(2)} GB`}</div>
-                      <div>Files: {(currentUsedFiles + sessionFilesRef.current).toLocaleString()} / {limitFiles === Infinity ? "Unlimited" : limitFiles.toLocaleString()} files</div>
+                      <div>Processed: {((currentUsedBytes + sessionBytes) / (1024 ** 3)).toFixed(2)} GB / {limitBytes === Infinity ? "Unlimited" : `${(limitBytes / (1024 ** 3)).toFixed(2)} GB`}</div>
+                      <div>Files: {(currentUsedFiles + sessionFiles).toLocaleString()} / {limitFiles === Infinity ? "Unlimited" : limitFiles.toLocaleString()} files</div>
+                    </div>
+                    <div className="mt-4">
+                      <AdUnit type="vertical" />
                     </div>
                   </div>
                 )}
@@ -2104,10 +2174,10 @@ export function ToolWorkspaceContent() {
                         <span>{limitBytes === Infinity ? "Unlimited" : `${(limitBytes / (1024 ** 3)).toFixed(0)} GB`}</span>
                       </div>
                       <div className="text-sm font-bold text-zinc-100 mt-0.5">
-                        {((currentUsedBytes + sessionBytesRef.current) / (1024 ** 3)).toFixed(2)} GB / {limitBytes === Infinity ? "Unlimited" : `${(limitBytes / (1024 ** 3)).toFixed(0)} GB`}
+                        {((currentUsedBytes + sessionBytes) / (1024 ** 3)).toFixed(2)} GB / {limitBytes === Infinity ? "Unlimited" : `${(limitBytes / (1024 ** 3)).toFixed(0)} GB`}
                       </div>
                       {limitBytes !== Infinity && (
-                        <Progress value={Math.min(100, ((currentUsedBytes + sessionBytesRef.current) / limitBytes) * 100)} className="h-1 bg-white/10" />
+                        <Progress value={Math.min(100, ((currentUsedBytes + sessionBytes) / limitBytes) * 100)} className="h-1 bg-white/10" />
                       )}
                     </div>
 
@@ -2117,10 +2187,10 @@ export function ToolWorkspaceContent() {
                         <span>{limitFiles === Infinity ? "Unlimited" : limitFiles.toLocaleString()}</span>
                       </div>
                       <div className="text-sm font-bold text-zinc-100 mt-0.5">
-                        {(currentUsedFiles + sessionFilesRef.current).toLocaleString()} / {limitFiles === Infinity ? "Unlimited" : limitFiles.toLocaleString()} files
+                        {(currentUsedFiles + sessionFiles).toLocaleString()} / {limitFiles === Infinity ? "Unlimited" : limitFiles.toLocaleString()} files
                       </div>
                       {limitFiles !== Infinity && (
-                        <Progress value={Math.min(100, ((currentUsedFiles + sessionFilesRef.current) / limitFiles) * 100)} className="h-1 bg-white/10" />
+                        <Progress value={Math.min(100, ((currentUsedFiles + sessionFiles) / limitFiles) * 100)} className="h-1 bg-white/10" />
                       )}
                     </div>
                   </div>
@@ -2174,41 +2244,49 @@ export function ToolWorkspaceContent() {
                     <div className="font-mono text-sm text-white/80 bg-white/5 px-3 py-2 rounded border border-white/5 truncate">{currentFile}</div>
                   </div>
                   
-                  <div className="grid grid-cols-2 gap-3 pt-2">
-                    <div className="bg-white/[0.02] border border-white/5 p-4 rounded flex items-center justify-between">
-                      <div>
-                        <div className="text-xs text-white/40 mb-1 flex items-center gap-1"><Database className="w-3 h-3"/> Scanned</div>
-                        <div className="text-xl font-bold">{stats.scanned} / {stats.total || '—'}</div>
-                      </div>
-                      <div className="text-right">
-                        <div className="text-[10px] text-white/40 uppercase tracking-widest mb-0.5">Size</div>
-                        <div className="text-base font-bold text-white/80">
-                          {(sessionBytesRef.current / (1024 ** 3)).toFixed(2)} GB
-                        </div>
-                      </div>
+                  <div className="grid grid-cols-4 gap-2 pt-2">
+                    <div className="bg-white/[0.02] border border-white/5 p-2 rounded flex flex-col justify-between h-20">
+                      <div className="text-[10px] text-white/40 flex items-center gap-1"><Database className="w-3 h-3"/> Scanned</div>
+                      <div className="text-sm font-bold truncate">{stats.scanned} / {stats.total || '—'}</div>
+                      <div className="text-[9px] text-white/30 truncate font-mono">{(sessionBytes / (1024 ** 3)).toFixed(2)} GB</div>
                     </div>
-                    <div className="bg-green-500/5 border border-green-500/10 p-4 rounded flex items-center justify-between">
-                      <div>
-                        <div className="text-xs text-green-400/60 mb-1 flex items-center gap-1"><CheckCircle2 className="w-3 h-3"/> Restored</div>
-                        <div className="text-xl font-bold text-green-400">{stats.matched} / {stats.total || '—'}</div>
-                      </div>
-                      <div className="text-right">
-                        <div className="text-[10px] text-green-400/50 uppercase tracking-widest mb-0.5">Size</div>
-                        <div className="text-base font-bold text-green-400">
-                          {(sessionBytesRef.current / (1024 ** 3)).toFixed(2)} GB
-                        </div>
-                      </div>
+                    <div className="bg-green-500/5 border border-green-500/10 p-2 rounded flex flex-col justify-between h-20">
+                      <div className="text-[10px] text-green-400/60 flex items-center gap-1"><CheckCircle2 className="w-3 h-3"/> Restored</div>
+                      <div className="text-sm font-bold text-green-400 truncate">{stats.matched} / {stats.total || '—'}</div>
+                      <div className="text-[9px] text-green-400/40 truncate font-mono">{(sessionBytes / (1024 ** 3)).toFixed(2)} GB</div>
                     </div>
-                    <div className="bg-yellow-500/5 border border-yellow-500/10 p-3 rounded">
-                      <div className="text-xs text-yellow-400/60 mb-1 flex items-center gap-1"><AlertCircle className="w-3 h-3"/> Unmatched</div>
-                      <div className="text-xl font-bold text-yellow-400">{stats.unmatched}</div>
+                    <div className="bg-yellow-500/5 border border-yellow-500/10 p-2 rounded flex flex-col justify-between h-20">
+                      <div className="text-[10px] text-yellow-400/60 flex items-center gap-1"><AlertCircle className="w-3 h-3"/> Unmatched</div>
+                      <div className="text-sm font-bold text-yellow-400 truncate">{stats.unmatched}</div>
+                      <div className="text-[9px] text-zinc-500 truncate font-mono">&nbsp;</div>
                     </div>
-                    <div className="bg-red-500/5 border border-red-500/10 p-3 rounded">
-                      <div className="text-xs text-red-400/60 mb-1 flex items-center gap-1"><XCircle className="w-3 h-3"/> Errors</div>
-                      <div className="text-xl font-bold text-red-400">{stats.errors}</div>
+                    <div className="bg-red-500/5 border border-red-500/10 p-2 rounded flex flex-col justify-between h-20">
+                      <div className="text-[10px] text-red-400/60 flex items-center gap-1"><XCircle className="w-3 h-3"/> Errors</div>
+                      <div className="text-sm font-bold text-red-400 truncate">{stats.errors}</div>
+                      <div className="text-[9px] text-zinc-500 truncate font-mono">&nbsp;</div>
                     </div>
                   </div>
                 </div>
+              </div>
+
+              {/* Log Tabs */}
+              <div className="flex border-b border-white/5 bg-black/40 px-6 py-2.5 items-center gap-6 text-xs font-bold text-zinc-500">
+                <button 
+                  onClick={() => setLogTab('all')}
+                  className={`pb-1 transition-all duration-150 relative cursor-pointer ${
+                    logTab === 'all' ? 'text-white border-b-2 border-indigo-500 pb-0.5' : 'hover:text-zinc-350'
+                  }`}
+                >
+                  All Logs ({logs.length})
+                </button>
+                <button 
+                  onClick={() => setLogTab('unmatched')}
+                  className={`pb-1 transition-all duration-150 relative cursor-pointer ${
+                    logTab === 'unmatched' ? 'text-yellow-400 border-b-2 border-yellow-500 pb-0.5' : 'hover:text-zinc-350'
+                  }`}
+                >
+                  Unmatched Only ({stats.unmatched})
+                </button>
               </div>
 
               <div ref={logContainerRef} className="flex-grow bg-black p-6 overflow-y-auto font-mono text-[11px] leading-[1.6]">
@@ -2216,45 +2294,44 @@ export function ToolWorkspaceContent() {
                   <div className="h-full flex items-center justify-center text-white/20 italic">Awaiting telemetry...</div>
                 ) : (
                   <div className="space-y-0.5">
-                    {logs.map((log, i) => {
-                      if (log.msg) {
-                        return <div key={i} className="text-zinc-400/90 border-l-2 border-zinc-700 pl-2 my-2">{log.msg}</div>
-                      }
-                      
-                      const pathStr = log.path ? `/${log.path.join('/')}/` : ''
-                      const fullFilename = `${pathStr}${log.filename}`
-                      
-                      if (log.level === 'success') {
-                        return (
-                          <div key={i} className="text-green-400/90 pl-2 border-l border-green-500/20 py-0.5 whitespace-pre-wrap">
-                            <span className="font-bold mr-2">[RESTORED] </span>
-                            <span>{fullFilename}</span>
-                          </div>
-                        )
-                      } else if (log.level === 'warn') {
-                        return (
-                          <div key={i} className="text-yellow-400/80 pl-2 border-l border-yellow-500/20 py-0.5 whitespace-pre-wrap">
-                            <span className="font-bold mr-2">[UNMATCHED]</span>
-                            <span>{fullFilename}</span>
-                          </div>
-                        )
-                      } else if (log.level === 'error') {
-                        const errorMsg = log.action ? log.action.replace(/^Error:\s*/i, '') : 'Unknown error';
-                        return (
-                          <div key={i} className="text-red-400 pl-2 border-l border-red-500/20 py-0.5 whitespace-pre-wrap">
-                            <span className="font-bold mr-2">[ERROR]    </span>
-                            <span>{fullFilename}  ➜  {errorMsg}</span>
-                          </div>
-                        )
-                      }
-                      
-                      return null;
-                    })}
+                    {logs
+                      .filter(log => logTab === 'all' || log.level === 'warn')
+                      .map((log, i) => {
+                        if (log.msg) {
+                          return <div key={i} className="text-zinc-400/90 border-l-2 border-zinc-700 pl-2 my-2">{log.msg}</div>
+                        }
+                        
+                        const pathStr = log.path ? `/${log.path.join('/')}/` : ''
+                        const fullFilename = `${pathStr}${log.filename}`
+                        
+                        if (log.level === 'success') {
+                          return (
+                            <div key={i} className="text-green-400/90 pl-2 border-l border-green-500/20 py-0.5 whitespace-pre-wrap">
+                              <span className="font-bold mr-2">[RESTORED] </span>
+                              <span>{fullFilename}</span>
+                            </div>
+                          )
+                        } else if (log.level === 'warn') {
+                          return (
+                            <div key={i} className="text-yellow-400/80 pl-2 border-l border-yellow-500/20 py-0.5 whitespace-pre-wrap">
+                              <span className="font-bold mr-2">[UNMATCHED]</span>
+                              <span>{fullFilename}</span>
+                            </div>
+                          )
+                        } else if (log.level === 'error') {
+                          const errorMsg = log.action ? log.action.replace(/^Error:\s*/i, '') : 'Unknown error';
+                          return (
+                            <div key={i} className="text-red-400 pl-2 border-l border-red-500/20 py-0.5 whitespace-pre-wrap">
+                              <span className="font-bold mr-2">[ERROR]    </span>
+                              <span>{fullFilename}  ➜  {errorMsg}</span>
+                            </div>
+                          )
+                        }
+                        
+                        return null;
+                      })}
                   </div>
                 )}
-              </div>
-              <div className="px-6 border-t border-white/5 bg-white/[0.01]">
-                <AdUnit type="horizontal" />
               </div>
             </div>
           )}
@@ -2278,7 +2355,7 @@ export function ToolWorkspaceContent() {
                         <CardTitle className="text-sm font-bold text-white uppercase tracking-wider">File Details</CardTitle>
                       </CardHeader>
                       <CardContent className="pt-4 space-y-2.5 font-mono text-xs">
-                        {Object.entries(viewerExif.fileInfo).map(([k, v]: any) => (
+                        {Object.entries(viewerExif.fileInfo).map(([k, v]) => (
                           <div key={k} className="flex justify-between border-b border-white/5 pb-2 last:border-0 last:pb-0">
                             <span className="text-zinc-500">{k}</span>
                             <span className="text-zinc-300 truncate max-w-[200px]">{v}</span>
@@ -2293,7 +2370,7 @@ export function ToolWorkspaceContent() {
                       </CardHeader>
                       <CardContent className="pt-4 space-y-2.5 font-mono text-xs">
                         {Object.keys(viewerExif.cameraInfo).length > 0 ? (
-                          Object.entries(viewerExif.cameraInfo).map(([k, v]: any) => (
+                          Object.entries(viewerExif.cameraInfo).map(([k, v]) => (
                             <div key={k} className="flex justify-between border-b border-white/5 pb-2 last:border-0 last:pb-0">
                               <span className="text-zinc-500">{k}</span>
                               <span className="text-zinc-300">{v}</span>
@@ -2311,7 +2388,7 @@ export function ToolWorkspaceContent() {
                       </CardHeader>
                       <CardContent className="pt-4 space-y-2.5 font-mono text-xs">
                         {Object.keys(viewerExif.gpsInfo).length > 0 ? (
-                          Object.entries(viewerExif.gpsInfo).map(([k, v]: any) => (
+                          Object.entries(viewerExif.gpsInfo).map(([k, v]) => (
                             <div key={k} className="flex justify-between border-b border-white/5 pb-2 last:border-0 last:pb-0">
                               <span className="text-zinc-500">{k}</span>
                               <span className="text-rose-300">{v}</span>

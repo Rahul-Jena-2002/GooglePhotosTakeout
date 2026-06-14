@@ -16,11 +16,12 @@ self.onmessage = async (e: MessageEvent) => {
         { success: true, buffer: resultBuffer, filename },
         [resultBuffer]
       );
-    } catch (err: any) {
+    } catch (err) {
+      const errMsg = err instanceof Error ? err.message : 'EXIF Injection Error';
       console.error("Worker EXIF injection failed for file:", filename, err);
       // Transfer the original buffer back on error to avoid memory duplication
       self.postMessage(
-        { success: false, error: err.message || 'EXIF Injection Error', buffer, filename },
+        { success: false, error: errMsg, buffer, filename },
         [buffer]
       );
     }

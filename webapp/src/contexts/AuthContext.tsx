@@ -588,6 +588,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
 
       // If missing profile details in the db document, merge them dynamically!
+      // Enforce photoURL to always sync to Google/Gmail profile photo if different
+      if (currentUser.photoURL && data.photoURL !== currentUser.photoURL) {
+        data.photoURL = currentUser.photoURL;
+        await setDoc(docRef, { photoURL: currentUser.photoURL }, { merge: true }).catch(console.error);
+      }
+
       if (!data.email || !data.displayName || !data.photoURL) {
         await setDoc(docRef, profileData, { merge: true }).catch(console.error);
         data.email = data.email || currentUser.email;
@@ -708,6 +714,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setAdminData(adminRecord);
     } else if (adminSnap.exists()) {
       const adminRecord = adminSnap.data() as AdminData;
+      // Sync photoURL with Google Auth profile if missing or different!
+      if (currentUser.photoURL && adminRecord.photoURL !== currentUser.photoURL) {
+        adminRecord.photoURL = currentUser.photoURL;
+        await updateDoc(adminRef, { photoURL: currentUser.photoURL }).catch(console.error);
+      }
       setAdminData(adminRecord);
     } else {
       // Check for a pending invite matching their email

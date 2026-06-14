@@ -428,10 +428,10 @@ export default function AdminRevenue() {
                       </div>
                     </td>
                     <td className="px-6 py-4">
-                      <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${
-                        tx.plan === "pro" ? "bg-zinc-800/40 text-zinc-300 dark:text-zinc-200 border border-zinc-800" :
-                        tx.plan === "super" ? "bg-zinc-800 text-zinc-150 dark:bg-zinc-200 dark:text-zinc-900 border border-zinc-700 dark:border-zinc-300" :
-                        "bg-zinc-900/20 text-zinc-400 border border-zinc-850"
+                      <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider border ${
+                        tx.plan === "pro" ? "bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20" :
+                        tx.plan === "super" ? "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20" :
+                        "bg-zinc-500/10 text-zinc-600 dark:text-zinc-400 border-zinc-500/20"
                       }`}>
                         {PLAN_LABELS[tx.plan] || tx.plan}
                       </span>
@@ -447,10 +447,16 @@ export default function AdminRevenue() {
                       })}
                     </td>
                     <td className="px-6 py-4">
-                      <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full font-semibold ${
-                        tx.status === "succeeded" ? "bg-zinc-800/80 text-zinc-200 border border-zinc-700" : "bg-zinc-950/40 text-zinc-500 border border-zinc-900"
+                      <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full font-semibold border ${
+                        tx.status === "succeeded" ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20" :
+                        tx.status === "refunded" ? "bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/20" :
+                        "bg-red-500/10 text-red-600 dark:text-red-400 border-red-500/20"
                       }`}>
-                        <span className={`w-1 h-1 rounded-full ${tx.status === "succeeded" ? "bg-emerald-400" : "bg-red-400"}`}></span>
+                        <span className={`w-1.5 h-1.5 rounded-full ${
+                          tx.status === "succeeded" ? "bg-emerald-500 dark:bg-emerald-400" :
+                          tx.status === "refunded" ? "bg-purple-500 dark:bg-purple-400" :
+                          "bg-red-500 dark:bg-red-400"
+                        }`}></span>
                         {tx.status}
                       </span>
                     </td>

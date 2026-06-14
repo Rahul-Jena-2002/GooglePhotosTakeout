@@ -155,7 +155,10 @@ function ProfilePageContent() {
         </div>
         <h1 className="text-2xl font-bold tracking-tight text-white mb-2">Account Suspended</h1>
         <p className="text-zinc-400 max-w-md mb-8">
-          Your account has been suspended. Please contact our support team.
+          Your account has been suspended. Please contact our support team at{" "}
+          <a href="mailto:takeoutfix.support@gmail.com" className="text-indigo-400 hover:text-indigo-300 font-semibold underline">
+            takeoutfix.support@gmail.com
+          </a>.
         </p>
         <div className="flex gap-4">
           <a href="/support" className="px-5 py-2 rounded-full bg-zinc-900 border border-zinc-800 text-sm text-zinc-300 hover:text-white transition-all">

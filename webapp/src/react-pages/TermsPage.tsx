@@ -59,7 +59,12 @@ export default function TermsPage() {
           </p>
         </section>
 
-
+        <section>
+          <h2 className="text-2xl font-bold text-white mb-4">8. Contact</h2>
+          <p>
+            If you have questions about these Terms of Service, please contact us via our <Link to="/support" className="text-indigo-400 hover:text-indigo-300">Support Page</Link> or directly via email at <a href="mailto:takeoutfix.support@gmail.com" className="text-indigo-400 hover:text-indigo-300 font-semibold underline">takeoutfix.support@gmail.com</a>.
+          </p>
+        </section>
 
       </div>
     </div>

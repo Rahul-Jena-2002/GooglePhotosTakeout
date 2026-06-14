@@ -180,6 +180,7 @@ export class SessionManager {
 
     await walk(root, []);
     await flushBatch();
+    onProgress(fileCount);
     return fileCount;
   }
 
@@ -232,6 +233,7 @@ export class SessionManager {
     }
 
     await flushBatch();
+    onProgress(fileCount);
     try {
       await zipReader.close();
     } catch {}

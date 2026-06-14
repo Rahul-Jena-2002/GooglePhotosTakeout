@@ -271,10 +271,12 @@ html.light button.bg-white:hover {
 }
 
 /* Color indicators contrast fixes for light mode */
-html.light .text-yellow-400 {
+html.light .text-yellow-400,
+html.light .text-amber-400 {
   color: #b45309 !important; /* Darker amber value */
 }
-html.light .text-yellow-400\/60 {
+html.light .text-yellow-400\/60,
+html.light .text-amber-400\/60 {
   color: #854d0e !important; /* Darker amber label */
 }
 html.light .text-red-400 {
@@ -283,10 +285,12 @@ html.light .text-red-400 {
 html.light .text-red-400\/60 {
   color: #991b1b !important; /* Darker red label */
 }
-html.light .text-green-400 {
+html.light .text-green-400,
+html.light .text-emerald-400 {
   color: #15803d !important; /* Darker green value */
 }
-html.light .text-green-400\/60 {
+html.light .text-green-400\/60,
+html.light .text-emerald-400\/60 {
   color: #166534 !important; /* Darker green label */
 }
 
@@ -1173,14 +1177,14 @@ html.light .pricing-badge-most-popular {
 
 /* Support closed badge colors */
 .badge-closed {
-  background-color: #6b21a8 !important; /* Rich deep purple */
-  color: #FFFFFF !important;
-  border-color: #7e22ce !important;
+  background-color: rgba(168, 85, 247, 0.08) !important; /* Translucent light purple */
+  color: #6b21a8 !important; /* Dark purple text */
+  border-color: rgba(168, 85, 247, 0.25) !important;
 }
 html:not(.light) .badge-closed {
-  background-color: #a855f7 !important; /* Bright purple */
-  color: #FFFFFF !important;
-  border-color: #c084fc !important;
+  background-color: rgba(168, 85, 247, 0.1) !important; /* Translucent dark purple */
+  color: #c084fc !important; /* Light purple text */
+  border-color: rgba(168, 85, 247, 0.2) !important;
 }
 
 /* Admin Team page: You badge & invite button overrides */
@@ -1197,13 +1201,22 @@ html:not(.light) .badge-closed {
 
 /* Audit logs: TOGGLE SUPPORT_ADS badge */
 .badge-toggle-support-ads {
-  background-color: #4f46e5 !important;
-  color: #FFFFFF !important;
-  border-color: #6366f1 !important;
+  background-color: rgba(79, 70, 229, 0.08) !important;
+  color: #4f46e5 !important;
+  border-color: rgba(79, 70, 229, 0.25) !important;
 }
 .badge-toggle-support-ads,
 .badge-toggle-support-ads * {
-  color: #FFFFFF !important;
+  color: #4f46e5 !important;
+}
+html:not(.light) .badge-toggle-support-ads {
+  background-color: rgba(99, 102, 241, 0.1) !important;
+  color: #a5b4fc !important;
+  border-color: rgba(99, 102, 241, 0.2) !important;
+}
+html:not(.light) .badge-toggle-support-ads,
+html:not(.light) .badge-toggle-support-ads * {
+  color: #a5b4fc !important;
 }
 
 /* Chart light mode contrast fixes */
@@ -2051,29 +2064,29 @@ html:not(.light) .btn-profile-trigger:hover .profile-avatar-circle {
 
 /* 2. Profile page avatar background */
 .profile-avatar-mono {
-  background-color: #000000 !important;
-  border-color: #27272a !important;
-  color: #ffffff !important;
-}
-.profile-avatar-mono svg {
-  color: #ffffff !important;
-}
-html.dark .profile-avatar-mono,
-html:not(.light) .profile-avatar-mono {
   background-color: #ffffff !important;
   border-color: #e4e4e7 !important;
   color: #000000 !important;
 }
+.profile-avatar-mono svg {
+  color: #000000 !important;
+}
+html.dark .profile-avatar-mono,
+html:not(.light) .profile-avatar-mono {
+  background-color: #000000 !important;
+  border-color: #27272a !important;
+  color: #ffffff !important;
+}
 html.dark .profile-avatar-mono svg,
 html:not(.light) .profile-avatar-mono svg {
-  color: #000000 !important;
+  color: #ffffff !important;
 }
 
 /* 3. Profile page card container background */
 .profile-card-mono {
-  background-color: #000000 !important;
-  border-color: #27272a !important;
-  color: #ffffff !important;
+  background-color: #ffffff !important;
+  border-color: #e4e4e7 !important;
+  color: #000000 !important;
 }
 .profile-card-mono *,
 .profile-card-mono div,
@@ -2082,29 +2095,29 @@ html:not(.light) .profile-avatar-mono svg {
 .profile-card-mono h2,
 .profile-card-mono h3,
 .profile-card-mono label {
-  color: #ffffff !important;
+  color: #000000 !important;
 }
 .profile-card-mono input,
 .profile-card-mono select,
 .profile-card-mono textarea {
-  background-color: #18181b !important;
-  color: #ffffff !important;
-  border-color: #27272a !important;
+  background-color: #f4f4f5 !important;
+  color: #000000 !important;
+  border-color: #e4e4e7 !important;
 }
 .profile-card-mono button:not(.btn-monochrome-secondary):not(.btn-monochrome-primary) {
-  border-color: rgba(255, 255, 255, 0.2) !important;
-  color: #ffffff !important;
+  border-color: rgba(0, 0, 0, 0.2) !important;
+  color: #000000 !important;
   background-color: transparent !important;
 }
 .profile-card-mono button:not(.btn-monochrome-secondary):not(.btn-monochrome-primary):hover {
-  background-color: rgba(255, 255, 255, 0.08) !important;
+  background-color: rgba(0, 0, 0, 0.08) !important;
 }
 
 html.dark .profile-card-mono,
 html:not(.light) .profile-card-mono {
-  background-color: #ffffff !important;
-  border-color: #e4e4e7 !important;
-  color: #000000 !important;
+  background-color: #000000 !important;
+  border-color: #27272a !important;
+  color: #ffffff !important;
 }
 html.dark .profile-card-mono *,
 html.dark .profile-card-mono div,
@@ -2120,7 +2133,7 @@ html:not(.light) .profile-card-mono p,
 html:not(.light) .profile-card-mono h2,
 html:not(.light) .profile-card-mono h3,
 html:not(.light) .profile-card-mono label {
-  color: #000000 !important;
+  color: #ffffff !important;
 }
 html.dark .profile-card-mono input,
 html.dark .profile-card-mono select,
@@ -2128,21 +2141,21 @@ html.dark .profile-card-mono textarea,
 html:not(.light) .profile-card-mono input,
 html:not(.light) .profile-card-mono select,
 html:not(.light) .profile-card-mono textarea {
-  background-color: #f4f4f5 !important;
-  color: #000000 !important;
-  border-color: #e4e4e7 !important;
+  background-color: #18181b !important;
+  color: #ffffff !important;
+  border-color: #27272a !important;
 }
 html.dark .profile-card-mono button:not(.btn-monochrome-secondary):not(.btn-monochrome-primary),
 html.dark .profile-card-mono button:not(.btn-monochrome-secondary):not(.btn-monochrome-primary):hover,
 html:not(.light) .profile-card-mono button:not(.btn-monochrome-secondary):not(.btn-monochrome-primary),
 html:not(.light) .profile-card-mono button:not(.btn-monochrome-secondary):not(.btn-monochrome-primary):hover {
-  border-color: rgba(0, 0, 0, 0.2) !important;
-  color: #000000 !important;
+  border-color: rgba(255, 255, 255, 0.2) !important;
+  color: #ffffff !important;
   background-color: transparent !important;
 }
 html.dark .profile-card-mono button:not(.btn-monochrome-secondary):not(.btn-monochrome-primary):hover,
 html:not(.light) .profile-card-mono button:not(.btn-monochrome-secondary):not(.btn-monochrome-primary):hover {
-  background-color: rgba(0, 0, 0, 0.08) !important;
+  background-color: rgba(255, 255, 255, 0.08) !important;
 }
 
 /* --- Monochromatic Navbar Control Buttons (Theme Toggle, Notifications) --- */
@@ -2174,24 +2187,24 @@ html.dark .btn-theme-toggle-navbar,
 html.dark .btn-notification-navbar,
 html:not(.light) .btn-theme-toggle-navbar,
 html:not(.light) .btn-notification-navbar {
-  background-color: #ffffff !important;
-  color: #000000 !important;
-  border: 1px solid #ffffff !important;
+  background-color: rgba(255, 255, 255, 0.08) !important;
+  color: #f3f4f6 !important;
+  border: 1px solid rgba(255, 255, 255, 0.15) !important;
 }
 html.dark .btn-theme-toggle-navbar svg,
 html.dark .btn-notification-navbar svg,
 html:not(.light) .btn-theme-toggle-navbar svg,
 html:not(.light) .btn-notification-navbar svg {
-  color: #000000 !important;
-  stroke: #000000 !important;
+  color: #f3f4f6 !important;
+  stroke: #f3f4f6 !important;
 }
 html.dark .btn-theme-toggle-navbar:hover,
 html.dark .btn-notification-navbar:hover,
 html:not(.light) .btn-theme-toggle-navbar:hover,
 html:not(.light) .btn-notification-navbar:hover {
-  background-color: #000000 !important;
+  background-color: rgba(255, 255, 255, 0.15) !important;
   color: #ffffff !important;
-  border-color: #ffffff !important;
+  border-color: rgba(255, 255, 255, 0.25) !important;
 }
 html.dark .btn-theme-toggle-navbar:hover svg,
 html.dark .btn-notification-navbar:hover svg,

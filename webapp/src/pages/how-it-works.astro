@@ -22,16 +22,16 @@ import { FolderSearch, Binary, Cpu, ArrowRight, ShieldCheck, CheckCircle2, FileT
     </div>
 
     <!-- Tab Navigation Toggler -->
-    <div class="max-w-xs mx-auto mb-20 flex bg-zinc-950 border border-zinc-900 p-1 rounded-xl relative z-30 font-sans">
+    <div class="max-w-xs mx-auto mb-20 flex tool-tab-container p-1 rounded-xl relative z-30 font-sans">
       <button 
         id="btn-tab-use"
-        class="flex-1 py-2.5 text-xs font-bold rounded-lg transition-all text-white bg-zinc-900 shadow-sm cursor-pointer"
+        class="flex-1 py-2.5 text-xs font-bold rounded-lg transition-all cursor-pointer tool-tab-btn active"
       >
         How to Use
       </button>
       <button 
         id="btn-tab-tech"
-        class="flex-1 py-2.5 text-xs font-bold rounded-lg transition-all text-zinc-400 hover:text-white cursor-pointer"
+        class="flex-1 py-2.5 text-xs font-bold rounded-lg transition-all cursor-pointer tool-tab-btn"
       >
         Under the Hood
       </button>
@@ -509,10 +509,8 @@ import { FolderSearch, Binary, Cpu, ArrowRight, ShieldCheck, CheckCircle2, FileT
 
     btnUse.addEventListener("click", () => {
       // Toggle buttons
-      btnUse.classList.add("bg-zinc-900", "text-white", "shadow-sm");
-      btnUse.classList.remove("text-zinc-450");
-      btnTech.classList.remove("bg-zinc-900", "text-white", "shadow-sm");
-      btnTech.classList.add("text-zinc-450");
+      btnUse.classList.add("active");
+      btnTech.classList.remove("active");
 
       // Toggle sections
       secUse.classList.remove("hidden");
@@ -521,10 +519,8 @@ import { FolderSearch, Binary, Cpu, ArrowRight, ShieldCheck, CheckCircle2, FileT
 
     btnTech.addEventListener("click", () => {
       // Toggle buttons
-      btnTech.classList.add("bg-zinc-900", "text-white", "shadow-sm");
-      btnTech.classList.remove("text-zinc-450");
-      btnUse.classList.remove("bg-zinc-900", "text-white", "shadow-sm");
-      btnUse.classList.add("text-zinc-450");
+      btnTech.classList.add("active");
+      btnUse.classList.remove("active");
 
       // Toggle sections
       secTech.classList.remove("hidden");
