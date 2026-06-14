@@ -760,6 +760,28 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }).catch(console.warn);
     }
 
+    const mockAuthUser = typeof window !== 'undefined' ? localStorage.getItem("takeoutfix_mock_auth_user") : null;
+    if (mockAuthUser) {
+      try {
+        const u = JSON.parse(mockAuthUser);
+        setUser(u);
+        setLoading(false);
+        const plan = localStorage.getItem("takeoutfix_mock_auth_plan") || "free";
+        setUserData({
+          uid: u.uid,
+          email: u.email,
+          displayName: u.displayName,
+          usedBytes: 0,
+          plan: plan,
+          totalFilesProcessed: 120,
+          totalBytesProcessed: 1024 * 1024 * 250
+        } as any);
+        return () => {};
+      } catch (e) {
+        console.error("Failed to parse mock user data:", e);
+      }
+    }
+
     const unsubscribe = onAuthStateChanged(auth, (u) => {
       setUser(u);
       if (u) {

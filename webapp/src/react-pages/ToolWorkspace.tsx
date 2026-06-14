@@ -234,6 +234,52 @@ export function ToolWorkspaceContent() {
   const [zipFile, setZipFile] = useState<File | null>(null)
   const [isDragOver, setIsDragOver] = useState(false)
   
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault()
+    setIsDragOver(true)
+  }
+
+  const handleDragLeave = () => {
+    setIsDragOver(false)
+  }
+
+  const handleDrop = async (e: React.DragEvent) => {
+    e.preventDefault()
+    setIsDragOver(false)
+    
+    const items = e.dataTransfer.items
+    if (!items || items.length === 0) return
+
+    const item = items[0]
+    try {
+      if (item.kind === 'file') {
+        if (typeof (item as any).getAsFileSystemHandle === 'function') {
+          const handle = await (item as any).getAsFileSystemHandle()
+          if (handle) {
+            if (handle.kind === 'directory') {
+              setTakeoutFolder(handle as FileSystemDirectoryHandle)
+              setZipFile(null)
+            } else if (handle.kind === 'file') {
+              const file = item.getAsFile()
+              if (file && file.name.endsWith('.zip')) {
+                setZipFile(file)
+                setTakeoutFolder(null)
+              }
+            }
+          }
+        } else {
+          const file = item.getAsFile()
+          if (file && file.name.endsWith('.zip')) {
+            setZipFile(file)
+            setTakeoutFolder(null)
+          }
+        }
+      }
+    } catch (err) {
+      console.error("Failed to resolve dropped item handle:", err)
+    }
+  }
+  
   // resilient sessions
   const [pendingSession, setPendingSession] = useState<ActiveSession | null>(null)
   
