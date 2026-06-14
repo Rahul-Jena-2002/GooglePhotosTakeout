@@ -41,6 +41,20 @@ class IndexedDbService {
     });
   }
 
+  async setAll(storeName: string, items: { key: string; value: any }[]): Promise<void> {
+    if (items.length === 0) return;
+    const db = await this.init();
+    return new Promise((resolve, reject) => {
+      const transaction = db.transaction(storeName, 'readwrite');
+      const store = transaction.objectStore(storeName);
+      for (const item of items) {
+        store.put(item.value, item.key);
+      }
+      transaction.oncomplete = () => resolve();
+      transaction.onerror = () => reject(transaction.error);
+    });
+  }
+
   async get(storeName: string, key: string): Promise<any> {
     const db = await this.init();
     return new Promise((resolve, reject) => {

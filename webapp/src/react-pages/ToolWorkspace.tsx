@@ -347,23 +347,29 @@ export function ToolWorkspaceContent() {
   const getOptimalThreadCount = () => {
     const isMobile = /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent)
     const cores = navigator.hardwareConcurrency || 4
-    let maxC = cores
+    let optimal = cores
     if (isMobile) {
-      maxC = Math.max(2, Math.floor(cores * 0.5))
+      optimal = Math.max(2, Math.floor(cores * 0.5)) // 50% for mobile
     } else {
-      maxC = Math.max(4, cores)
+      if (cores <= 4) {
+        optimal = Math.max(2, cores - 1); // 75% or higher for low core count
+      } else if (cores <= 12) {
+        optimal = Math.floor(cores * 0.75); // 75% for mid core count
+      } else {
+        optimal = Math.floor(cores * 0.8); // 80% for high-end systems (e.g. 22 cores -> 17 threads)
+      }
     }
     
     if ('deviceMemory' in navigator) {
       const mem = (navigator as any).deviceMemory
       if (mem >= 8) {
-        return Math.min(24, maxC)
+        return Math.min(24, optimal)
       }
       if (mem < 4) {
-        maxC = Math.max(1, Math.min(maxC, Math.floor(mem)))
+        optimal = Math.max(1, Math.min(optimal, Math.floor(mem)))
       }
     }
-    return Math.min(16, maxC)
+    return Math.min(16, optimal)
   }
 
   // Persist and load worker selection
@@ -374,13 +380,12 @@ export function ToolWorkspaceContent() {
 
   useEffect(() => {
     const initTelemetryAndSession = async () => {
-      // 1. Load worker count selection
-      const persisted = await indexedDbService.get('telemetry', 'takeoutfix_max_workers');
-      if (persisted !== undefined && typeof persisted === 'number') {
-        setMaxWorkers(persisted);
-      } else {
-        setMaxWorkers(getOptimalThreadCount());
-      }
+      // Always calculate optimal thread count dynamically to respect hardware capabilities
+      const optimal = getOptimalThreadCount();
+      setMaxWorkers(optimal);
+      
+      // Clean up any stale persisted custom selections to ensure dynamic behavior is maintained
+      await indexedDbService.remove('telemetry', 'takeoutfix_max_workers').catch(() => {});
 
       // 2. Check for pending crashed/interrupted session
       const active = await sessionManagerRef.current.getActiveSession();
@@ -778,21 +783,53 @@ export function ToolWorkspaceContent() {
     // 2. Open ZIP Reader if ZIP source
     let zipReader: ZipReader<File> | null = null;
     let zipEntries: any[] = [];
+    // Cache map for Zip entries to group directories
+    const zipDirMap = new Map<string, Set<string>>();
+
     if (session.zipFile) {
       zipReader = new ZipReader(new BlobReader(session.zipFile));
       zipEntries = await zipReader.getEntries();
+
+      for (const entry of zipEntries) {
+        if (entry.directory) continue;
+        const parts = entry.filename.split('/');
+        const filename = parts.pop() || '';
+        const dirPath = parts.join('/');
+        let set = zipDirMap.get(dirPath);
+        if (!set) {
+          set = new Set<string>();
+          zipDirMap.set(dirPath, set);
+        }
+        set.add(filename);
+      }
     }
 
-    // 3. Revert in-flight files (delete half-written and reset status to pending)
+    // 3. Directory cache for local file handle listings (resolving JSON sidecars on-demand)
+    const dirCache = new Map<string, Set<string>>();
+    const getDirNames = async (dirHandle: FileSystemDirectoryHandle, pathKey: string): Promise<Set<string>> => {
+      let cached = dirCache.get(pathKey);
+      if (!cached) {
+        cached = new Set<string>();
+        // @ts-ignore
+        for await (const [name] of dirHandle) {
+          const safe = sanitizeFilename(name);
+          if (safe) cached.add(safe);
+        }
+        dirCache.set(pathKey, cached);
+      }
+      return cached;
+    };
+
+    // 4. Revert in-flight files (delete half-written and reset status to pending)
     await sessionManager.revertInFlightFiles();
 
-    // 4. Get pending files
+    // 5. Get pending files
     let pending = await sessionManager.getPendingFiles();
     let fileIndex = 0;
     
-    // 5. Throttling and backpressure counter
+    // 6. Throttling and backpressure counter (fully utilize maximum threads)
     let inFlightCount = 0;
-    const inflightLimit = Math.min(6, maxWorkers);
+    const inflightLimit = maxWorkers;
 
     const processNext = async () => {
       if (!isProcessingRef.current || isPausedRef.current) {
@@ -828,6 +865,7 @@ export function ToolWorkspaceContent() {
 
       const fileRecord = pending[fileIndex++];
       inFlightCount++;
+      setActiveWorkersCount(inFlightCount);
 
       // Schedule next item immediately if under backpressure cap
       if (inFlightCount < inflightLimit) {
@@ -838,12 +876,12 @@ export function ToolWorkspaceContent() {
         // Claim file (mark processing in IDB)
         await sessionManager.claimFile(fileRecord.id);
 
-        let buffer: ArrayBuffer | null = null;
         let size = fileRecord.bytes;
+        let fileObj: File | null = null;
+        let zipEntry: any = null;
 
-        // Read file bytes
+        // 1. Get file metadata/reference
         if (fileRecord.fileHandle) {
-          let fileObj;
           try {
             fileObj = await fileRecord.fileHandle.getFile();
           } catch {
@@ -851,53 +889,107 @@ export function ToolWorkspaceContent() {
             fileObj = await freshHandle.getFile();
           }
           size = fileObj.size;
-          buffer = await fileObj.arrayBuffer();
         } else if (fileRecord.zipPath && zipReader) {
-          const entry = zipEntries.find(e => e.filename === fileRecord.zipPath);
-          if (entry) {
-            const writer = new Uint8ArrayWriter();
-            const bytes = await entry.getData!(writer);
-            buffer = bytes.buffer;
+          zipEntry = zipEntries.find(e => e.filename === fileRecord.zipPath);
+          if (zipEntry) {
+            size = zipEntry.uncompressedSize;
           }
         }
 
-        if (!buffer) {
-          throw new Error("Failed to read file contents.");
+        if (!fileObj && !zipEntry) {
+          throw new Error("Source file reference not found.");
         }
 
-        // EXIF injection in Worker if JPEG and metadata timestamp exists
+        // 2. Resolve sidecar and epoch timestamp (on-demand during restoration)
+        let epochSec: number | null = null;
+        if (fileRecord.fileHandle) {
+          const pathKey = fileRecord.relativePath.join('/');
+          const allNames = await getDirNames(fileRecord.dirHandle!, pathKey);
+          const jsonName = findMatchingJsonName(fileRecord.filename, allNames);
+          if (jsonName) {
+            try {
+              const jsonHandle = await fileRecord.dirHandle!.getFileHandle(jsonName);
+              const jsonFile = await jsonHandle.getFile();
+              const parsed = safeParseJson(await jsonFile.text());
+              if (parsed) epochSec = extractTimestamp(parsed);
+            } catch {}
+          }
+        } else if (fileRecord.zipPath && zipReader) {
+          const dirPath = fileRecord.relativePath.join('/');
+          const allNames = zipDirMap.get(dirPath) || new Set<string>();
+          const jsonName = findMatchingJsonName(fileRecord.filename, allNames);
+          if (jsonName) {
+            try {
+              const jsonPath = dirPath ? `${dirPath}/${jsonName}` : jsonName;
+              const jsonEntry = zipEntries.find(e => e.filename === jsonPath);
+              if (jsonEntry) {
+                const jsonText = await jsonEntry.getData!(new TextWriter());
+                const parsed = safeParseJson(jsonText);
+                if (parsed) epochSec = extractTimestamp(parsed);
+              }
+            } catch {}
+          }
+        }
+
+        // 3. Process buffer / inject EXIF if applicable
+        let bufferOrBlob: any = null;
         let actionStr = 'No Metadata Found';
         let levelStr = 'warn';
 
-        if (fileRecord.epochSec && isJpeg(fileRecord.filename)) {
-          // Transfer buffer to worker
-          const res = await pool.runTask('inject_exif', {
-            buffer,
-            epochSec: fileRecord.epochSec,
-            filename: fileRecord.filename
-          }, [buffer]);
+        if (epochSec && isJpeg(fileRecord.filename)) {
+          // Read buffer only when EXIF injection is needed
+          if (fileObj) {
+            bufferOrBlob = await fileObj.arrayBuffer();
+          } else if (zipEntry) {
+            const writer = new Uint8ArrayWriter();
+            const bytes = await zipEntry.getData!(writer);
+            bufferOrBlob = bytes.buffer;
+          }
 
-          buffer = res.buffer;
-          if (res.success) {
-            actionStr = 'Restored & Injected';
-            levelStr = 'success';
-          } else {
-            actionStr = `EXIF Error: ${res.error}`;
-            levelStr = 'error';
+          if (bufferOrBlob) {
+            // Run EXIF injection in the background Worker
+            const res = await pool.runTask('inject_exif', {
+              buffer: bufferOrBlob,
+              epochSec,
+              filename: fileRecord.filename
+            }, [bufferOrBlob]);
+
+            bufferOrBlob = res.buffer;
+            if (res.success) {
+              actionStr = 'Restored & Injected';
+              levelStr = 'success';
+            } else {
+              actionStr = `EXIF Error: ${res.error}`;
+              levelStr = 'error';
+            }
+          }
+        } else {
+          // Zero-RAM copying: Stream the file / entry directly without loading it to JS heap!
+          if (fileObj) {
+            bufferOrBlob = fileObj; // Stream the File object directly!
+          } else if (zipEntry) {
+            // Zip extraction still needs buffer since zip.js extracts to writer
+            const writer = new Uint8ArrayWriter();
+            const bytes = await zipEntry.getData!(writer);
+            bufferOrBlob = bytes.buffer;
           }
         }
 
-        // Write output directly to output folder
-        const baseFolder = (fileRecord.epochSec && actionStr !== 'EXIF Error') ? 'restored' : 'unmatched';
+        if (!bufferOrBlob) {
+          throw new Error("Failed to read file contents.");
+        }
+
+        // 4. Write output directly
+        const baseFolder = (epochSec && actionStr !== 'EXIF Error') ? 'restored' : 'unmatched';
         const outSubDir = await getOrCreateDir(session.outputHandle!, [baseFolder, ...fileRecord.relativePath]);
         const outHandle = await outSubDir.getFileHandle(fileRecord.filename, { create: true });
         
         const writable = await outHandle.createWritable();
-        await writable.write(buffer);
+        await writable.write(bufferOrBlob);
         await writable.close();
 
-        // Confirm completion
-        await sessionManager.confirmFile(fileRecord.id, 'completed', size);
+        // 5. Confirm completion (passing resolved size and epochSec)
+        await sessionManager.confirmFile(fileRecord.id, 'completed', size, epochSec);
 
         // Update stats
         if (levelStr === 'success') {
@@ -925,7 +1017,7 @@ export function ToolWorkspaceContent() {
       } catch (err: any) {
         console.error("Pipeline file error:", fileRecord.filename, err);
         
-        await sessionManager.confirmFile(fileRecord.id, 'failed', fileRecord.bytes, err.message);
+        await sessionManager.confirmFile(fileRecord.id, 'failed', fileRecord.bytes, null, err.message);
 
         statsBuffer.current.errors += 1;
         statsBuffer.current.scanned += 1;
@@ -941,6 +1033,7 @@ export function ToolWorkspaceContent() {
         progressBuffer.current = Math.floor((statsBuffer.current.scanned / statsBuffer.current.total) * 100);
       } finally {
         inFlightCount--;
+        setActiveWorkersCount(inFlightCount);
 
         // V8 GC Yield: yield back event loop every 10 files
         if (fileIndex % 10 === 0) {
@@ -1324,27 +1417,44 @@ export function ToolWorkspaceContent() {
       let count = 0
 
       async function walk(handle: FileSystemDirectoryHandle, path: string[]) {
+        const subDirs: FileSystemDirectoryHandle[] = []
+        const currentFiles: FileSystemFileHandle[] = []
+
         // @ts-ignore
         for await (const [name, entry] of handle) {
           if (entry.kind === 'file') {
-            try {
-              const file = await (entry as FileSystemFileHandle).getFile()
-              const size = file.size
-              
-              let list = fileMapByBytes.get(size)
-              if (!list) {
-                list = []
-                fileMapByBytes.set(size, list)
-              }
-              list.push({ handle: entry as FileSystemFileHandle, path: [...path, name] })
-              count++
-              if (count % 100 === 0) {
-                setDupScanStatus(`Scanned ${count} files...`)
-              }
-            } catch {}
+            currentFiles.push(entry as FileSystemFileHandle)
           } else if (entry.kind === 'directory') {
-            await walk(entry as FileSystemDirectoryHandle, [...path, name])
+            subDirs.push(entry as FileSystemDirectoryHandle)
           }
+        }
+
+        const processFile = async (fileHandle: FileSystemFileHandle) => {
+          try {
+            const file = await fileHandle.getFile()
+            const size = file.size
+            
+            let list = fileMapByBytes.get(size)
+            if (!list) {
+              list = []
+              fileMapByBytes.set(size, list)
+            }
+            list.push({ handle: fileHandle, path: [...path, fileHandle.name] })
+            count++
+            if (count % 100 === 0) {
+              setDupScanStatus(`Scanned ${count} files...`)
+            }
+          } catch {}
+        }
+
+        const limit = 50
+        for (let i = 0; i < currentFiles.length; i += limit) {
+          const chunk = currentFiles.slice(i, i + limit)
+          await Promise.all(chunk.map(processFile))
+        }
+
+        for (const subDir of subDirs) {
+          await walk(subDir, [...path, subDir.name])
         }
       }
 
@@ -2052,16 +2162,9 @@ export function ToolWorkspaceContent() {
                         <span className="text-[10px] font-bold text-zinc-400 flex items-center gap-1">
                           <Cpu className="w-3.5 h-3.5 text-zinc-450" /> Concurrency
                         </span>
-                        <select 
-                          disabled={isProcessing}
-                          value={maxWorkers} 
-                          onChange={(e) => handleMaxWorkersChange(Number(e.target.value))}
-                          className="bg-black border border-white/10 rounded px-1.5 py-0.5 text-xs text-white font-mono cursor-pointer outline-none focus:border-white/30"
-                        >
-                          {[1, 2, 4, 6, 8, 12, 16, 24].map(n => (
-                            <option key={n} value={n}>{n} Thread{n > 1 ? 's' : ''}</option>
-                          ))}
-                        </select>
+                        <span className="text-xs text-white font-mono">
+                          Auto ({maxWorkers} Threads)
+                        </span>
                       </div>
                     </div>
                   </div>

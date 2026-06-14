@@ -136,21 +136,18 @@ export class SessionManager {
 
     const flushBatch = async () => {
       if (fileBatch.length === 0) return;
-      // Write batch to IndexedDB
-      const promises = fileBatch.map(f => indexedDbService.set('files', f.id, f));
-      await Promise.all(promises);
+      // Write batch to IndexedDB in a single transaction
+      await indexedDbService.setAll('files', fileBatch.map(f => ({ key: f.id, value: f })));
       fileBatch = [];
     };
 
     const walk = async (handle: FileSystemDirectoryHandle, path: string[]) => {
       const currentFiles: FileSystemFileHandle[] = [];
-      const allNames = new Set<string>();
 
       // @ts-ignore
       for await (const [name, entry] of handle) {
         const safeName = sanitizeFilename(name);
         if (!safeName) continue;
-        allNames.add(safeName);
         if (entry.kind === 'file' && isAllowedMediaFile(safeName)) {
           currentFiles.push(entry as FileSystemFileHandle);
         } else if (entry.kind === 'directory') {
@@ -160,23 +157,6 @@ export class SessionManager {
 
       for (const fileHandle of currentFiles) {
         const safeName = sanitizeFilename(fileHandle.name);
-        let epochSec: number | null = null;
-        const jsonName = findMatchingJsonName(safeName, allNames);
-        if (jsonName) {
-          try {
-            const jsonHandle = await handle.getFileHandle(jsonName);
-            const jsonFile = await jsonHandle.getFile();
-            const parsed = safeParseJson(await jsonFile.text());
-            if (parsed) epochSec = extractTimestamp(parsed);
-          } catch {}
-        }
-
-        let size = 0;
-        try {
-          const f = await fileHandle.getFile();
-          size = f.size;
-        } catch {}
-
         const id = `${sessionId}:${path.join('/')}/${safeName}`;
         fileBatch.push({
           id,
@@ -185,9 +165,9 @@ export class SessionManager {
           relativePath: path,
           fileHandle,
           dirHandle: handle,
-          epochSec,
+          epochSec: null, // Defer sidecar/epoch resolution to processing phase
           status: 'pending',
-          bytes: size
+          bytes: 0        // Defer size query to processing phase to avoid blocking directory scan
         });
 
         fileCount++;
@@ -214,8 +194,7 @@ export class SessionManager {
 
     const flushBatch = async () => {
       if (fileBatch.length === 0) return;
-      const promises = fileBatch.map(f => indexedDbService.set('files', f.id, f));
-      await Promise.all(promises);
+      await indexedDbService.setAll('files', fileBatch.map(f => ({ key: f.id, value: f })));
       fileBatch = [];
     };
 
@@ -223,23 +202,7 @@ export class SessionManager {
     const zipReader = new ZipReader(new BlobReader(file));
     const entries = await zipReader.getEntries();
 
-    // Index zip directories: dirPath -> Set of filenames
-    const dirMap = new Map<string, Set<string>>();
-    for (const entry of entries) {
-      if (entry.directory) continue;
-      const parts = entry.filename.split('/');
-      const filename = parts.pop() || '';
-      const dirPath = parts.join('/');
-      
-      let set = dirMap.get(dirPath);
-      if (!set) {
-        set = new Set<string>();
-        dirMap.set(dirPath, set);
-      }
-      set.add(filename);
-    }
-
-    // Pair media files with sidecars
+    // Pair media files with sidecars (defer JSON sidecar/epoch lookup to processing phase)
     for (const entry of entries) {
       if (entry.directory) continue;
       const parts = entry.filename.split('/');
@@ -249,22 +212,6 @@ export class SessionManager {
 
       if (!isAllowedMediaFile(safeName)) continue;
 
-      const allNames = dirMap.get(dirPath) || new Set<string>();
-      const jsonName = findMatchingJsonName(safeName, allNames);
-      
-      let epochSec: number | null = null;
-      if (jsonName) {
-        try {
-          const jsonPath = dirPath ? `${dirPath}/${jsonName}` : jsonName;
-          const jsonEntry = entries.find(e => e.filename === jsonPath);
-          if (jsonEntry) {
-            const jsonText = await jsonEntry.getData!(new TextWriter());
-            const parsed = safeParseJson(jsonText);
-            if (parsed) epochSec = extractTimestamp(parsed);
-          }
-        } catch {}
-      }
-
       const id = `${sessionId}:${entry.filename}`;
       fileBatch.push({
         id,
@@ -272,7 +219,7 @@ export class SessionManager {
         filename: safeName,
         relativePath: dirPath ? dirPath.split('/') : [],
         zipPath: entry.filename,
-        epochSec,
+        epochSec: null, // Defer to processing phase
         status: 'pending',
         bytes: entry.uncompressedSize
       });
@@ -303,12 +250,17 @@ export class SessionManager {
     fileId: string,
     status: 'completed' | 'failed',
     bytes: number,
+    epochSec?: number | null,
     error?: string
   ): Promise<void> {
     const file = await indexedDbService.get('files', fileId) as FileRecord;
     if (!file) return;
 
     file.status = status;
+    file.bytes = bytes;
+    if (epochSec !== undefined) {
+      file.epochSec = epochSec;
+    }
     if (error) file.error = error;
     await indexedDbService.set('files', fileId, file);
 
@@ -319,7 +271,8 @@ export class SessionManager {
       };
 
       if (status === 'completed') {
-        if (file.epochSec) {
+        const hasEpoch = epochSec !== undefined ? (epochSec !== null) : (file.epochSec !== null);
+        if (hasEpoch) {
           updates.matchedCount = this.currentSession.matchedCount + 1;
         } else {
           updates.unmatchedCount = this.currentSession.unmatchedCount + 1;
