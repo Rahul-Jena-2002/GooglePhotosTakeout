@@ -85,7 +85,16 @@ import { AuthProvider } from "../contexts/AuthContext"
 import { ToastContainer } from "../components/ui/toast"
 
 function CheckoutPageContent() {
-  const { user, userData, region, getPlanPriceValue, dodoProductIds } = useAuth()
+  const { user, userData, loading, region, getPlanPriceValue, dodoProductIds } = useAuth()
+  
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-background flex flex-col items-center justify-center p-6 text-center font-sans">
+        <div className="w-10 h-10 border-2 border-zinc-200 dark:border-zinc-800 border-t-zinc-900 dark:border-t-zinc-100 rounded-full animate-spin"></div>
+        <p className="text-zinc-550 dark:text-zinc-400 text-sm mt-4">Loading checkout session...</p>
+      </div>
+    )
+  }
   
   if (userData?.suspended) {
     return (
@@ -139,10 +148,10 @@ function CheckoutPageContent() {
   const [error, setError] = useState("")
 
   useEffect(() => {
-    if (!user && typeof window !== 'undefined') {
+    if (!loading && !user && typeof window !== 'undefined') {
       window.location.href = "/pricing"
     }
-  }, [user])
+  }, [user, loading])
 
   const handleDodoRedirect = () => {
     if (!user) return
