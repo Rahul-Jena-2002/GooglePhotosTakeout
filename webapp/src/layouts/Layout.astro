@@ -708,6 +708,17 @@ const canonicalUrl = `https://takeoutfix.pages.dev${Astro.url.pathname.replace(/
           if (unsubNotifications) unsubNotifications();
           
           if (user) {
+            // Immediate local storage write and UI sync for instant reactive response
+            const previewData = {
+              uid: user.uid,
+              email: user.email,
+              displayName: user.displayName,
+              photoURL: user.photoURL,
+              plan: "free"
+            };
+            localStorage.setItem("takeoutfix_user_data", JSON.stringify(previewData));
+            syncUserUI();
+
             // Firestore snap for user
             unsubUserDoc = onSnapshot(doc(db, "users", user.uid), (snap) => {
               if (snap.exists()) {
