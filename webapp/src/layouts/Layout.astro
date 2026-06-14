@@ -9,8 +9,8 @@ interface Props {
 }
 
 const { 
-  title = "TakeoutFix — Fix Google Takeout Timestamps & Metadata Online",
-  description = "Restore missing dates, GPS locations and EXIF data from your Google Takeout photos and videos. Free, browser-based, no download needed. Your files never leave your device.",
+  title = "TakeoutFix — Google Takeout Metadata Fixer & EXIF Restorer",
+  description = "Need a Google Takeout metadata fix? Rebuild and fix missing EXIF dates, timestamps, and GPS locations in your photos and videos offline in your browser.",
   isToolPage = false 
 } = Astro.props;
 
@@ -47,7 +47,7 @@ const canonicalUrl = `https://takeoutfix.pages.dev${Astro.url.pathname.replace(/
     <title>{title}</title>
     <ClientRouter />
     <meta name="description" content={description} />
-    <meta name="keywords" content="Google Takeout, metadata merger, EXIF recovery, photo restore, GPS coordinates Google Photos, JSON sidecar fixer, restore photo date taken" />
+    <meta name="keywords" content="metadata fix, Google Takeout metadata fix, EXIF metadata fix, Google Photos metadata fixer, EXIF recovery, GPS coordinates, JSON sidecar fixer, restore photo date taken" />
     <meta name="robots" content="index, follow" />
     <meta name="google-site-verification" content="yjn_T1bJ3RfrKhKTaT4in3ciTBkK5Ngw9LfOChfRztk" />
     <link rel="canonical" href={canonicalUrl} />
@@ -64,6 +64,17 @@ const canonicalUrl = `https://takeoutfix.pages.dev${Astro.url.pathname.replace(/
     <meta property="twitter:title" content={title} />
     <meta property="twitter:description" content={description} />
     <meta property="twitter:url" content={canonicalUrl} />
+
+    <!-- Google Search Site Name Schema -->
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "WebSite",
+        "name": "TakeoutFix",
+        "alternateName": ["Takeout Fix", "Google Takeout Metadata Fixer"],
+        "url": "https://takeoutfix.pages.dev"
+      }
+    </script>
 
     <!-- Schema.org JSON-LD Structured Data for Search Engine Optimization -->
     <script type="application/ld+json">

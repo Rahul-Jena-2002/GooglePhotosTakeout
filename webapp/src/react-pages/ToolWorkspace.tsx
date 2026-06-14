@@ -2,7 +2,7 @@ import { useRef, useEffect, useState } from "react"
 import { useAuth } from "../contexts/AuthContext"
 import { useToolStore } from "../store/useToolStore"
 import { isAllowedMediaFile, sanitizeFilename, findMatchingJsonName, safeParseJson, extractTimestamp } from "../services/MetadataMatcher"
-import { injectExifDate, isJpeg } from "../services/ExifRestorer"
+import { isJpeg } from "../services/ExifRestorer"
 import { db } from "../firebase"
 import { doc, setDoc, increment, addDoc, collection, onSnapshot } from "firebase/firestore"
 import AdBlockGate from "../components/AdBlockGate"
@@ -15,6 +15,11 @@ import { FolderUp, HardDrive, Play, Square, Pause, Activity, Database, CheckCirc
 import { indexedDbService } from "../lib/indexedDbService"
 import piexif from "piexifjs"
 import { detectAdBlock } from "../services/AdBlockDetector"
+
+// Resilient Session & Web Worker Pipeline Imports
+import { SessionManager, type ActiveSession, type FileRecord } from "../lib/SessionManager"
+import { WorkerPool } from "../lib/WorkerPool"
+import { ZipReader, BlobReader, Uint8ArrayWriter } from "@zip.js/zip.js"
 
 
 
@@ -38,7 +43,15 @@ import { AuthProvider } from "../contexts/AuthContext"
 import { ToastContainer } from "../components/ui/toast"
 
 export function ToolWorkspaceContent() {
-  const { user, userData, refreshUserData, login } = useAuth()
+  const { user, userData, loading, refreshUserData, login } = useAuth()
+
+  if (loading) {
+    return (
+      <div className="min-h-[calc(100vh-64px)] bg-[#0A0A0A] flex items-center justify-center">
+        <div className="w-8 h-8 border-4 border-t-zinc-200 border-zinc-800 rounded-full animate-spin"></div>
+      </div>
+    )
+  }
 
   const plan = userData?.plan || 'free'
 
@@ -217,6 +230,16 @@ export function ToolWorkspaceContent() {
 
   const [activeToolTab, setActiveToolTab] = useState<'restore' | 'viewer' | 'comparison' | 'duplicates'>('restore')
 
+  // local drag-and-drop / zip processing states
+  const [zipFile, setZipFile] = useState<File | null>(null)
+  const [isDragOver, setIsDragOver] = useState(false)
+  
+  // resilient sessions
+  const [pendingSession, setPendingSession] = useState<ActiveSession | null>(null)
+  
+  const sessionManagerRef = useRef<SessionManager>(new SessionManager())
+  const workerPoolRef = useRef<WorkerPool | null>(null)
+
   // 1. Visual EXIF Viewer state
   const [viewerFile, setViewerFile] = useState<File | null>(null)
   const [viewerExif, setViewerExif] = useState<any | null>(null)
@@ -274,7 +297,7 @@ export function ToolWorkspaceContent() {
   }
 
 
-  // Calculate optimal threads based on hardwareConcurrency, device memory, and headroom (matching the Svelte/Firebase config)
+  // Calculate optimal threads based on hardwareConcurrency, device memory, and headroom
   const getOptimalThreadCount = () => {
     const isMobile = /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent)
     const cores = navigator.hardwareConcurrency || 4
@@ -282,15 +305,12 @@ export function ToolWorkspaceContent() {
     if (isMobile) {
       maxC = Math.max(2, Math.floor(cores * 0.5))
     } else {
-      // Desktop: Use 100% of cores up to 24 cores for maximum throughput on high-RAM systems
       maxC = Math.max(4, cores)
     }
     
-    // Check device memory to prevent OOM on lower-end systems
     if ('deviceMemory' in navigator) {
       const mem = (navigator as any).deviceMemory
       if (mem >= 8) {
-        // If memory is abundant (8GB+), let's allow full multi-threading (up to 24 cores)
         return Math.min(24, maxC)
       }
       if (mem < 4) {
@@ -300,8 +320,29 @@ export function ToolWorkspaceContent() {
     return Math.min(16, maxC)
   }
 
+  // Persist and load worker selection
+  const handleMaxWorkersChange = async (val: number) => {
+    setMaxWorkers(val)
+    await indexedDbService.set('telemetry', 'takeoutfix_max_workers', val).catch(console.error)
+  }
+
   useEffect(() => {
-    setMaxWorkers(getOptimalThreadCount())
+    const initTelemetryAndSession = async () => {
+      // 1. Load worker count selection
+      const persisted = await indexedDbService.get('telemetry', 'takeoutfix_max_workers');
+      if (persisted !== undefined && typeof persisted === 'number') {
+        setMaxWorkers(persisted);
+      } else {
+        setMaxWorkers(getOptimalThreadCount());
+      }
+
+      // 2. Check for pending crashed/interrupted session
+      const active = await sessionManagerRef.current.getActiveSession();
+      if (active) {
+        setPendingSession(active);
+      }
+    };
+    initTelemetryAndSession();
 
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {
       if (isProcessingRef.current) {
@@ -316,6 +357,7 @@ export function ToolWorkspaceContent() {
       window.removeEventListener('beforeunload', handleBeforeUnload)
       commitSessionUsage()
       if (flushInterval.current) window.clearInterval(flushInterval.current)
+      if (workerPoolRef.current) workerPoolRef.current.terminate()
     }
   }, [])
 
@@ -591,144 +633,301 @@ export function ToolWorkspaceContent() {
     return current
   }
 
-  const processFileMainThread = async (
-    fileHandle: FileSystemFileHandle,
-    dirHandle: FileSystemDirectoryHandle,
-    allNames: Set<string>,
-    relativePath: string[]
-  ) => {
-    const safeName = sanitizeFilename(fileHandle.name)
-    let fileSize = 0
+  // Re-grant folder access and resume session
+  const handleReGrantPermissions = async () => {
+    try {
+      const session = pendingSession;
+      if (!session) return;
+
+      if (session.zipFile) {
+        try {
+          // Verify if File reference in IndexedDB is still readable
+          await session.zipFile.slice(0, 10).arrayBuffer();
+        } catch {
+          // File handle is stale/expired. Ask user to re-select zip file
+          const input = document.createElement('input');
+          input.type = 'file';
+          input.accept = '.zip';
+          input.onchange = async (e) => {
+            const file = (e.target as HTMLInputElement).files?.[0];
+            if (file) {
+              session.zipFile = file;
+              await sessionManagerRef.current.updateSession({ zipFile: file });
+              proceedResume(session);
+            }
+          };
+          input.click();
+          return;
+        }
+      } else if (session.takeoutHandle) {
+        const status = await session.takeoutHandle.requestPermission({ mode: 'read' });
+        if (status !== 'granted') {
+          alert("Permission to read the source folder is required to resume.");
+          return;
+        }
+      }
+
+      if (session.outputHandle) {
+        const status = await session.outputHandle.requestPermission({ mode: 'readwrite' });
+        if (status !== 'granted') {
+          alert("Permission to write to the output folder is required to resume.");
+          return;
+        }
+      }
+
+      proceedResume(session);
+    } catch (err: any) {
+      console.error("Resumption re-grant failed:", err);
+      alert("Resumption failed: " + err.message);
+    }
+  };
+
+  const proceedResume = async (session: ActiveSession) => {
+    setPendingSession(null);
+    setTakeoutFolder(session.takeoutHandle);
+    setZipFile(session.zipFile);
+    setOutputFolder(session.outputHandle);
+
+    setIsProcessing(true);
+    isProcessingRef.current = true;
+    setIsPaused(false);
+    isPausedRef.current = false;
+
+    statsBuffer.current = {
+      scanned: session.scannedCount,
+      matched: session.matchedCount,
+      unmatched: session.unmatchedCount,
+      errors: session.errorCount,
+      total: session.totalFiles
+    };
+
+    setStats({ ...statsBuffer.current });
+    setProgress(Math.floor((session.scannedCount / session.totalFiles) * 100));
+    setCurrentFile("Resuming restoration...");
+    setLogs([]);
+    logsBuffer.current = [{ level: 'info', msg: `Resuming restoration... Re-checking in-flight files.` }];
+
+    startTimeRef.current = Date.now() - (session.lastUpdatedAt - session.startedAt);
+
+    flushInterval.current = window.setInterval(() => {
+      setStats({ ...statsBuffer.current });
+      setProgress(progressBuffer.current);
+      setCurrentFile(fileBuffer.current);
+      setLogs(prev => {
+        const newLogs = [...prev, ...logsBuffer.current];
+        logsBuffer.current = [];
+        return newLogs.slice(-1000);
+      });
+    }, 100);
 
     try {
-      let file
-      try {
-        file = await fileHandle.getFile()
-      } catch (err) {
-        const freshHandle = await dirHandle.getFileHandle(fileHandle.name)
-        file = await freshHandle.getFile()
-      }
-
-      fileSize = file.size
-
-      const jsonName = findMatchingJsonName(safeName, allNames)
-      
-      let epochSec: number | null = null
-      if (jsonName) {
-        try {
-          const jsonHandle = await dirHandle.getFileHandle(jsonName)
-          const jsonFile = await jsonHandle.getFile()
-          const parsed = safeParseJson(await jsonFile.text())
-          if (parsed) epochSec = extractTimestamp(parsed)
-        } catch {}
-      }
-
-      const baseFolder = (jsonName && epochSec) ? 'restored' : 'unmatched'
-      const outSubDir = await getOrCreateDir(outputFolder!, [baseFolder, ...relativePath])
-      const outHandle = await outSubDir.getFileHandle(safeName, { create: true })
-      
-      // @ts-ignore
-      const writable = await outHandle.createWritable()
-
-      // EXIF date injection
-      if (epochSec && isJpeg(safeName)) {
-        const rawBuffer = await file.arrayBuffer()
-        let mediaBytes: Uint8Array | null = null
-        try {
-          mediaBytes = injectExifDate(rawBuffer, epochSec)
-        } catch (err) {
-          console.error('EXIF fail on', safeName, err)
-          mediaBytes = new Uint8Array(rawBuffer)
-        }
-        await writable.write(mediaBytes as any)
-        mediaBytes = null
-      } else {
-        await writable.write(file)
-      }
-
-      await writable.close()
-      file = null // deallocate reference
-
-      // Update statistics
-      let actionStr = ''
-      let levelStr = ''
-      if (jsonName && epochSec) {
-        actionStr = 'Restored & Injected'
-        levelStr = 'success'
-        statsBuffer.current.matched += 1
-      } else {
-        actionStr = 'No Metadata Found'
-        levelStr = 'warn'
-        statsBuffer.current.unmatched += 1
-      }
-      statsBuffer.current.scanned += 1
-
-      const fileBytes = fileSize || 0
-      sessionBytesRef.current += fileBytes
-      sessionFilesRef.current += 1
-      totalSessionBytesRef.current += fileBytes
-
-      // Log the event
-      logsBuffer.current.push({
-        level: levelStr,
-        path: relativePath,
-        filename: safeName,
-        action: actionStr
-      })
-      fileBuffer.current = safeName
-
-      // Backup pending usage to IndexedDB
-      if (user) {
-        indexedDbService.set('telemetry', 'takeoutfix_pending_usage', {
-          uid: user.uid,
-          bytes: sessionBytesRef.current,
-          files: sessionFilesRef.current,
-          sessionId: sessionIdRef.current,
-          takeoutName: takeoutFolder?.name || 'Google Takeout Archive',
-          historySessionId: historySessionIdRef.current
-        }).catch(err => console.error("Failed to backup usage telemetry:", err))
-      }
-
-      progressBuffer.current = Math.floor((statsBuffer.current.scanned / statsBuffer.current.total) * 100)
-
-      updateActiveSession('processing', {
-        scanned: statsBuffer.current.scanned,
-        bytesProcessed: sessionBytesRef.current,
-        currentFile: fileBuffer.current
-      })
-
+      await processRestorePipeline(session, sessionManagerRef.current);
     } catch (err: any) {
-      let errMsg = err.message || ''
-      if (errMsg.includes("state cached") || errMsg.includes("changed since it was read")) {
-        errMsg = "File modification conflict. Ensure you are not writing output files directly inside your source folder."
-      }
-
-      statsBuffer.current.errors += 1
-      statsBuffer.current.scanned += 1
-      sessionFilesRef.current += 1
-
-      logsBuffer.current.push({
-        level: 'error',
-        path: relativePath,
-        filename: safeName,
-        action: `Error: ${errMsg}`
-      })
-      fileBuffer.current = safeName
-
-      if (user) {
-        indexedDbService.set('telemetry', 'takeoutfix_pending_usage', {
-          uid: user.uid,
-          bytes: sessionBytesRef.current,
-          files: sessionFilesRef.current,
-          sessionId: sessionIdRef.current,
-          takeoutName: takeoutFolder?.name || 'Google Takeout Archive',
-          historySessionId: historySessionIdRef.current
-        }).catch(err => console.error("Failed to backup usage telemetry:", err))
-      }
-
-      progressBuffer.current = Math.floor((statsBuffer.current.scanned / statsBuffer.current.total) * 100)
+      console.error("Resumption pipeline execution error:", err);
+      logsBuffer.current.push({ level: 'error', msg: `Resumption Error: ${err.message}` });
+      setIsProcessing(false);
+      isProcessingRef.current = false;
+      if (flushInterval.current) window.clearInterval(flushInterval.current);
     }
-  }
+  };
+
+  const processRestorePipeline = async (session: ActiveSession, sessionManager: SessionManager) => {
+    // 1. Initialize WorkerPool
+    const pool = new WorkerPool(maxWorkers);
+    workerPoolRef.current = pool;
+
+    // 2. Open ZIP Reader if ZIP source
+    let zipReader: ZipReader<File> | null = null;
+    let zipEntries: any[] = [];
+    if (session.zipFile) {
+      zipReader = new ZipReader(new BlobReader(session.zipFile));
+      zipEntries = await zipReader.getEntries();
+    }
+
+    // 3. Revert in-flight files (delete half-written and reset status to pending)
+    await sessionManager.revertInFlightFiles();
+
+    // 4. Get pending files
+    let pending = await sessionManager.getPendingFiles();
+    let fileIndex = 0;
+    
+    // 5. Throttling and backpressure counter
+    let inFlightCount = 0;
+    const inflightLimit = Math.min(6, maxWorkers);
+
+    const processNext = async () => {
+      if (!isProcessingRef.current || isPausedRef.current) {
+        if (inFlightCount === 0) {
+          // Cleanup if pipeline was cancelled/paused
+          if (zipReader) {
+            try { await zipReader.close(); } catch {}
+          }
+        }
+        return;
+      }
+
+      if (fileIndex >= pending.length) {
+        if (inFlightCount === 0) {
+          // Finished all files
+          if (zipReader) {
+            try { await zipReader.close(); } catch {}
+          }
+          await completeProcessing();
+        }
+        return;
+      }
+
+      // Check quota limits
+      const isBypass = userData?.isAdmin || import.meta.env.DEV;
+      if (!isBypass && (currentUsedBytesRef.current + sessionBytesRef.current > limitBytesRef.current || currentUsedFilesRef.current + sessionFilesRef.current > limitFilesRef.current)) {
+        if (zipReader) {
+          try { await zipReader.close(); } catch {}
+        }
+        await haltDueToQuota();
+        return;
+      }
+
+      const fileRecord = pending[fileIndex++];
+      inFlightCount++;
+
+      // Schedule next item immediately if under backpressure cap
+      if (inFlightCount < inflightLimit) {
+        processNext();
+      }
+
+      try {
+        // Claim file (mark processing in IDB)
+        await sessionManager.claimFile(fileRecord.id);
+
+        let buffer: ArrayBuffer | null = null;
+        let size = fileRecord.bytes;
+
+        // Read file bytes
+        if (fileRecord.fileHandle) {
+          let fileObj;
+          try {
+            fileObj = await fileRecord.fileHandle.getFile();
+          } catch {
+            const freshHandle = await fileRecord.dirHandle!.getFileHandle(fileRecord.filename);
+            fileObj = await freshHandle.getFile();
+          }
+          size = fileObj.size;
+          buffer = await fileObj.arrayBuffer();
+        } else if (fileRecord.zipPath && zipReader) {
+          const entry = zipEntries.find(e => e.filename === fileRecord.zipPath);
+          if (entry) {
+            const writer = new Uint8ArrayWriter();
+            const bytes = await entry.getData!(writer);
+            buffer = bytes.buffer;
+          }
+        }
+
+        if (!buffer) {
+          throw new Error("Failed to read file contents.");
+        }
+
+        // EXIF injection in Worker if JPEG and metadata timestamp exists
+        let actionStr = 'No Metadata Found';
+        let levelStr = 'warn';
+
+        if (fileRecord.epochSec && isJpeg(fileRecord.filename)) {
+          // Transfer buffer to worker
+          const res = await pool.runTask('inject_exif', {
+            buffer,
+            epochSec: fileRecord.epochSec,
+            filename: fileRecord.filename
+          }, [buffer]);
+
+          buffer = res.buffer;
+          if (res.success) {
+            actionStr = 'Restored & Injected';
+            levelStr = 'success';
+          } else {
+            actionStr = `EXIF Error: ${res.error}`;
+            levelStr = 'error';
+          }
+        }
+
+        // Write output directly to output folder
+        const baseFolder = (fileRecord.epochSec && actionStr !== 'EXIF Error') ? 'restored' : 'unmatched';
+        const outSubDir = await getOrCreateDir(session.outputHandle!, [baseFolder, ...fileRecord.relativePath]);
+        const outHandle = await outSubDir.getFileHandle(fileRecord.filename, { create: true });
+        
+        const writable = await outHandle.createWritable();
+        await writable.write(buffer);
+        await writable.close();
+
+        // Confirm completion
+        await sessionManager.confirmFile(fileRecord.id, 'completed', size);
+
+        // Update stats
+        if (levelStr === 'success') {
+          statsBuffer.current.matched += 1;
+        } else if (levelStr === 'warn') {
+          statsBuffer.current.unmatched += 1;
+        } else {
+          statsBuffer.current.errors += 1;
+        }
+        statsBuffer.current.scanned += 1;
+
+        sessionBytesRef.current += size;
+        sessionFilesRef.current += 1;
+        totalSessionBytesRef.current += size;
+
+        logsBuffer.current.push({
+          level: levelStr,
+          path: fileRecord.relativePath,
+          filename: fileRecord.filename,
+          action: actionStr
+        });
+        fileBuffer.current = fileRecord.filename;
+        progressBuffer.current = Math.floor((statsBuffer.current.scanned / statsBuffer.current.total) * 100);
+
+      } catch (err: any) {
+        console.error("Pipeline file error:", fileRecord.filename, err);
+        
+        await sessionManager.confirmFile(fileRecord.id, 'failed', fileRecord.bytes, err.message);
+
+        statsBuffer.current.errors += 1;
+        statsBuffer.current.scanned += 1;
+        sessionFilesRef.current += 1;
+
+        logsBuffer.current.push({
+          level: 'error',
+          path: fileRecord.relativePath,
+          filename: fileRecord.filename,
+          action: `Error: ${err.message || 'Unknown'}`
+        });
+        fileBuffer.current = fileRecord.filename;
+        progressBuffer.current = Math.floor((statsBuffer.current.scanned / statsBuffer.current.total) * 100);
+      } finally {
+        inFlightCount--;
+
+        // V8 GC Yield: yield back event loop every 10 files
+        if (fileIndex % 10 === 0) {
+          await new Promise(resolve => setTimeout(resolve, 0));
+        }
+
+        // Process next item
+        if (isProcessingRef.current && !isPausedRef.current) {
+          processNext();
+        }
+
+        // Check completion
+        if (statsBuffer.current.scanned >= statsBuffer.current.total) {
+          if (zipReader) {
+            try { await zipReader.close(); } catch {}
+          }
+          await completeProcessing();
+        }
+      }
+    };
+
+    // Trigger initial batch
+    for (let w = 0; w < inflightLimit; w++) {
+      processNext();
+    }
+  };
 
   const haltDueToQuota = async () => {
     setActiveWorkersCount(0)
@@ -878,43 +1077,7 @@ export function ToolWorkspaceContent() {
     }
   }
 
-  const scanDirectory = async (dirHandle: FileSystemDirectoryHandle): Promise<any[]> => {
-    const results: any[] = [];
-    let fileCount = 0;
 
-    async function walk(handle: FileSystemDirectoryHandle, path: string[]) {
-      const currentFiles: FileSystemFileHandle[] = [];
-      const allNames = new Set<string>();
-
-      // @ts-ignore
-      for await (const [name, entry] of handle) {
-        if (!isProcessingRef.current || isPausedRef.current) return;
-        const safeName = sanitizeFilename(name);
-        if (!safeName) continue;
-        allNames.add(safeName);
-        
-        if (entry.kind === 'file' && isAllowedMediaFile(safeName)) {
-          currentFiles.push(entry as FileSystemFileHandle);
-        } else if (entry.kind === 'directory') {
-          await walk(entry as FileSystemDirectoryHandle, [...path, safeName]);
-        }
-      }
-
-      if (currentFiles.length > 0) {
-        results.push({
-          mediaFiles: currentFiles,
-          dirHandle: handle,
-          allNames,
-          relativePath: path
-        });
-        fileCount += currentFiles.length;
-        fileBuffer.current = `Scanning folders... Found ${fileCount} media files`;
-      }
-    }
-
-    await walk(dirHandle, []);
-    return results;
-  }
 
   // 1. Visual EXIF Viewer logic
   const handleViewerFileChange = async (file: File) => {
@@ -1195,16 +1358,19 @@ export function ToolWorkspaceContent() {
     }
 
     window.dispatchEvent(new CustomEvent('takeoutfix-action-triggered'))
-    if (!takeoutFolder || !outputFolder) return
+    const sourceName = zipFile ? zipFile.name : (takeoutFolder ? takeoutFolder.name : '');
+    if (!sourceName || !outputFolder) return
 
     try {
-      const isSame = await takeoutFolder.isSameEntry(outputFolder)
-      if (isSame) {
-        setQuotaAlert({
-          open: true,
-          message: "The Source Folder and Output Folder cannot be the same. Please select a separate, empty output folder to prevent file modification conflicts."
-        })
-        return
+      if (takeoutFolder) {
+        const isSame = await takeoutFolder.isSameEntry(outputFolder)
+        if (isSame) {
+          setQuotaAlert({
+            open: true,
+            message: "The Source Folder and Output Folder cannot be the same. Please select a separate, empty output folder to prevent file modification conflicts."
+          })
+          return
+        }
       }
     } catch (err) {
       console.warn("Failed to check directory handles:", err)
@@ -1237,7 +1403,7 @@ export function ToolWorkspaceContent() {
     statsBuffer.current = { scanned: 0, matched: 0, unmatched: 0, errors: 0, total: 0 }
     logsBuffer.current = []
     setLogs([])
-    setCurrentFile("Scanning folders...")
+    setCurrentFile("Scanning input source...")
     
     sessionBytesRef.current = 0
     sessionFilesRef.current = 0
@@ -1247,20 +1413,21 @@ export function ToolWorkspaceContent() {
     totalSessionBytesRef.current = 0
     historySessionIdRef.current = null
 
+    const sessionId = `${user.uid}_${Date.now()}`;
+    sessionIdRef.current = sessionId;
+
     if (user) {
-      sessionIdRef.current = `${user.uid}_${Date.now()}`
       updateActiveSession('initializing', {
         startedAt: Date.now(),
         totalFiles: 0,
         scanned: 0,
         matched: 0,
         bytesProcessed: 0,
-        currentFile: 'Scanning folders...'
+        currentFile: 'Scanning input source...'
       })
 
-      // Create a session in recoveryHistory immediately so it starts updating dynamically
       addDoc(collection(db, 'recoveryHistory', user.uid, 'sessions'), {
-        archiveName: takeoutFolder?.name || 'Google Takeout Archive',
+        archiveName: sourceName,
         timestamp: Date.now(),
         filesProcessed: 0,
         matched: 0,
@@ -1286,89 +1453,45 @@ export function ToolWorkspaceContent() {
     }, 100)
 
     try {
-      const folderGroups = await scanDirectory(takeoutFolder)
-      if (!isProcessingRef.current) return // User cancelled during scanning
-      
-      let totalFiles = 0
-      for (const g of folderGroups) {
-        totalFiles += g.mediaFiles.length
-      }
+      const session = await sessionManagerRef.current.startNewSession(
+        sessionId,
+        user.uid,
+        sourceName,
+        zipFile || takeoutFolder!,
+        outputFolder
+      );
 
-      logsBuffer.current.push({ level: 'info', msg: `Scanning complete. Found ${totalFiles} media files across ${folderGroups.length} folders.` })
-      
+      const totalFiles = await sessionManagerRef.current.scanAndRegister((indexedCount) => {
+        fileBuffer.current = `Indexing Takeout source... Found ${indexedCount} media files`;
+      });
+
+      if (!isProcessingRef.current) return;
+
       if (totalFiles === 0) {
         setIsProcessing(false)
         isProcessingRef.current = false
         setCurrentFile("Finished: No files found")
         if (flushInterval.current) window.clearInterval(flushInterval.current)
+        await sessionManagerRef.current.terminateSession('completed');
         return
       }
 
-      statsBuffer.current.total = totalFiles
-
-      updateActiveSession('processing', {
+      statsBuffer.current.total = totalFiles;
+      
+      await updateActiveSession('processing', {
         totalFiles: totalFiles,
-        currentFile: 'Starting folder restoration...'
-      })
+        currentFile: 'Starting restoration pipeline...'
+      });
 
-      const runFolders = async () => {
-        for (const group of folderGroups) {
-          if (!isProcessingRef.current) break
-          
-          while (isPausedRef.current) {
-            if (!isProcessingRef.current) break
-            await new Promise(resolve => setTimeout(resolve, 200))
-          }
-
-          const { mediaFiles, dirHandle, allNames, relativePath } = group
-          
-          for (let i = 0; i < mediaFiles.length; i += maxWorkers) {
-            if (!isProcessingRef.current) break
-
-            while (isPausedRef.current) {
-              if (!isProcessingRef.current) break
-              await new Promise(resolve => setTimeout(resolve, 200))
-            }
-
-            const isBypass = userData?.isAdmin || import.meta.env.DEV;
-            if (!isBypass && (currentUsedBytesRef.current + sessionBytesRef.current > limitBytesRef.current || currentUsedFilesRef.current + sessionFilesRef.current > limitFilesRef.current)) {
-              await haltDueToQuota()
-              return
-            }
-
-            const chunk = mediaFiles.slice(i, i + maxWorkers)
-            
-            setActiveWorkersCount(chunk.length)
-
-            await Promise.all(chunk.map(async (fileHandle) => {
-              try {
-                await processFileMainThread(fileHandle, dirHandle, allNames, relativePath)
-              } catch (err) {
-                console.error("File processing error:", err)
-              }
-            }))
-
-            setActiveWorkersCount(0)
-          }
-        }
-
-        if (isProcessingRef.current) {
-          await completeProcessing()
-        }
-      }
-
-      runFolders().catch((err) => {
-        logsBuffer.current.push({ level: 'error', msg: `Processing Error: ${err.message || err}` })
-        setIsProcessing(false)
-        isProcessingRef.current = false
-        if (flushInterval.current) window.clearInterval(flushInterval.current)
-      })
+      await processRestorePipeline(session, sessionManagerRef.current);
 
     } catch (err: any) {
+      console.error("Restoration start error:", err);
       logsBuffer.current.push({ level: 'error', msg: `Scanning Error: ${err.message || err}` })
       setIsProcessing(false)
       isProcessingRef.current = false
       if (flushInterval.current) window.clearInterval(flushInterval.current)
+      await sessionManagerRef.current.terminateSession('failed');
     }
   }
 
@@ -1485,6 +1608,36 @@ export function ToolWorkspaceContent() {
             </button>
           </div>
 
+          {/* Resumption Banner */}
+          {activeToolTab === 'restore' && pendingSession && (
+            <div className="mb-6 p-5 bg-indigo-500/10 border border-indigo-500/20 rounded-2xl text-left space-y-4">
+              <div className="flex items-center gap-2 text-indigo-400 font-bold text-sm">
+                <Activity className="w-5 h-5 animate-pulse" />
+                <span>Interrupted Session Found</span>
+              </div>
+              <p className="text-xs text-zinc-350 leading-relaxed">
+                We found a pending restoration for <strong>{pendingSession.takeoutName}</strong> ({pendingSession.scannedCount} of {pendingSession.totalFiles} files processed).
+              </p>
+              <div className="flex gap-2">
+                <Button 
+                  onClick={handleReGrantPermissions} 
+                  className="btn-monochrome-primary rounded-lg px-3 py-1.5 text-xs font-bold transition-all duration-150 cursor-pointer"
+                >
+                  Resume Restoration
+                </Button>
+                <Button 
+                  onClick={async () => {
+                    await sessionManagerRef.current.terminateSession('cancelled');
+                    setPendingSession(null);
+                  }}
+                  className="btn-monochrome-secondary rounded-lg px-3 py-1.5 text-xs font-bold transition-all duration-150 cursor-pointer"
+                >
+                  Discard
+                </Button>
+              </div>
+            </div>
+          )}
+
           <div className="mb-6">
             <AdUnit type="horizontal" />
           </div>
@@ -1506,21 +1659,64 @@ export function ToolWorkspaceContent() {
           {activeToolTab === 'restore' && (
             <div className="space-y-6 max-w-3xl mb-12 flex-grow flex flex-col justify-between">
               <div className="space-y-6">
-                <Card className="bg-white/[0.02] border-white/10 shadow-2xl">
+                <Card 
+                  onDragOver={handleDragOver}
+                  onDragLeave={handleDragLeave}
+                  onDrop={handleDrop}
+                  className={`bg-white/[0.02] border-white/10 shadow-2xl transition-all duration-150 ${
+                    isDragOver ? 'border-indigo-500/40 bg-indigo-500/[0.02] scale-[1.01]' : ''
+                  }`}
+                >
                   <CardHeader className="border-b border-white/5 bg-black/20 pb-4">
-                    <CardTitle className="flex items-center gap-2"><FolderUp className="w-5 h-5 text-zinc-400"/> 1. Select Google Takeout Source</CardTitle>
-                    <CardDescription className="text-white/50">Choose the unzipped folder containing your Takeout data.</CardDescription>
+                    <CardTitle className="flex items-center gap-2">
+                      <FolderUp className="w-5 h-5 text-zinc-400"/> 
+                      1. Select Takeout Source (Folder or ZIP)
+                    </CardTitle>
+                    <CardDescription className="text-white/50">
+                      Drag & Drop your Takeout folder or ZIP archive here, or browse.
+                    </CardDescription>
                   </CardHeader>
                   <CardContent className="pt-6">
-                    {takeoutFolder ? (
+                    {zipFile ? (
+                      <div className="p-4 bg-indigo-500/5 border border-indigo-500/15 rounded-md mb-4 flex justify-between items-center text-zinc-350">
+                        <span className="font-mono text-sm truncate">ZIP: {zipFile.name}</span>
+                        <CheckCircle2 className="w-4 h-4 text-indigo-400" />
+                      </div>
+                    ) : takeoutFolder ? (
                       <div className="p-4 bg-zinc-800/10 border border-zinc-800/25 rounded-md mb-4 flex justify-between items-center text-zinc-400">
-                        <span className="font-mono text-sm truncate">{takeoutFolder.name}</span>
+                        <span className="font-mono text-sm truncate">Folder: {takeoutFolder.name}</span>
                         <CheckCircle2 className="w-4 h-4" />
                       </div>
-                    ) : null}
-                    <Button onClick={handleSelectTakeout} className="btn-monochrome-primary rounded-lg px-8 transition-all duration-150 cursor-pointer">
-                      {takeoutFolder ? "Change Source Directory" : "Browse Takeout Directory"}
-                    </Button>
+                    ) : (
+                      <div className="border border-dashed border-white/5 rounded-lg p-6 text-center text-zinc-500 text-xs mb-4">
+                        Drag & Drop Folder or ZIP file here
+                      </div>
+                    )}
+                    
+                    <div className="flex gap-2">
+                      <Button onClick={handleSelectTakeout} className="btn-monochrome-primary rounded-lg px-4 py-2 transition-all duration-150 cursor-pointer text-xs">
+                        Browse Folders
+                      </Button>
+                      <Button 
+                        onClick={() => {
+                          const input = document.createElement('input');
+                          input.type = 'file';
+                          input.accept = '.zip';
+                          input.onchange = (e) => {
+                            const file = (e.target as HTMLInputElement).files?.[0];
+                            if (file) {
+                              setZipFile(file);
+                              setTakeoutFolder(null);
+                              window.dispatchEvent(new CustomEvent('takeoutfix-action-triggered'));
+                            }
+                          };
+                          input.click();
+                        }}
+                        className="btn-monochrome-primary rounded-lg px-4 py-2 transition-all duration-150 cursor-pointer text-xs"
+                      >
+                        Select ZIP File
+                      </Button>
+                    </div>
                   </CardContent>
                 </Card>
 
@@ -1544,7 +1740,7 @@ export function ToolWorkspaceContent() {
               </div>
 
               <div className="mt-auto pt-6">
-                {takeoutFolder && outputFolder && !isProcessing && progress === 0 && (
+                {(takeoutFolder || zipFile) && outputFolder && !isProcessing && progress === 0 && (
                   <>
                     <div className="mb-6 p-5 bg-zinc-800/10 border border-zinc-800/20 rounded-2xl max-w-xl text-left space-y-4">
                       <h3 className="text-sm font-bold uppercase tracking-widest text-zinc-400">Pre-Flight Recovery Summary</h3>
@@ -1553,8 +1749,8 @@ export function ToolWorkspaceContent() {
                         <div className="flex items-start gap-2.5">
                           <span className="text-base leading-none">📂</span>
                           <div>
-                            <span className="font-semibold text-white block">Source Directory:</span>
-                            <span className="font-mono text-xs text-zinc-400 break-all">{takeoutFolder.name}</span>
+                            <span className="font-semibold text-white block">Source:</span>
+                            <span className="font-mono text-xs text-zinc-450 break-all">{zipFile ? `ZIP: ${zipFile.name}` : `Folder: ${takeoutFolder!.name}`}</span>
                             <span className="text-[10px] text-zinc-500 block mt-0.5">(Read-only: Originals are never modified)</span>
                           </div>
                         </div>
@@ -1815,9 +2011,18 @@ export function ToolWorkspaceContent() {
 
                       <div className="flex justify-between items-center bg-white/[0.01] border border-white/5 px-3 py-1.5 rounded-lg">
                         <span className="text-[10px] font-bold text-zinc-400 flex items-center gap-1">
-                          <Activity className="w-3.5 h-3.5 text-zinc-400" /> Worker Threads
+                          <Cpu className="w-3.5 h-3.5 text-zinc-450" /> Concurrency
                         </span>
-                        <span className="text-xs font-mono font-bold text-white">{telemetryWorkers} / {maxWorkers} Active</span>
+                        <select 
+                          disabled={isProcessing}
+                          value={maxWorkers} 
+                          onChange={(e) => handleMaxWorkersChange(Number(e.target.value))}
+                          className="bg-black border border-white/10 rounded px-1.5 py-0.5 text-xs text-white font-mono cursor-pointer outline-none focus:border-white/30"
+                        >
+                          {[1, 2, 4, 6, 8, 12, 16, 24].map(n => (
+                            <option key={n} value={n}>{n} Thread{n > 1 ? 's' : ''}</option>
+                          ))}
+                        </select>
                       </div>
                     </div>
                   </div>
