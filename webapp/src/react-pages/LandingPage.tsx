@@ -265,14 +265,6 @@ export default function LandingPage() {
           </div>
           <div className="flex items-center gap-2">
             <CheckCircle2 className="w-4 h-4 text-zinc-900 dark:text-zinc-100 flex-shrink-0" />
-            <span>Open Source</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <CheckCircle2 className="w-4 h-4 text-zinc-900 dark:text-zinc-100 flex-shrink-0" />
-            <span>Free Forever</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <CheckCircle2 className="w-4 h-4 text-zinc-900 dark:text-zinc-100 flex-shrink-0" />
             <span>Thousands of files supported</span>
           </div>
         </div>
