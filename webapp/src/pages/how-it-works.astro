@@ -44,11 +44,11 @@ import { FolderSearch, Binary, Cpu, ArrowRight, ShieldCheck, CheckCircle2, FileT
       <div class="space-y-12">
         
         <!-- STEP 1: Navigate to Takeout -->
-        <div class="flex flex-col md:flex-row gap-6 p-8 rounded-2xl bg-zinc-950/40 border border-zinc-900 hover:border-zinc-850 transition-all items-center md:items-start">
+        <div class="flex flex-col md:flex-row gap-6 p-8 rounded-2xl bg-zinc-950/40 border border-zinc-900 hover:border-zinc-850 transition-all">
           <div class="flex-shrink-0 flex items-center justify-center w-12 h-12 rounded-xl bg-zinc-900 border border-zinc-800 font-mono text-xs font-bold text-zinc-400">
             01
           </div>
-          <div class="space-y-2 flex-grow">
+          <div class="space-y-2">
             <h3 class="text-lg font-bold text-white flex items-center gap-2">
               Navigate to Google Takeout
               <span class="text-[10px] font-mono font-bold uppercase px-2 py-0.5 rounded bg-zinc-900 border border-zinc-800 text-zinc-500">takeout.google.com</span>
@@ -62,88 +62,57 @@ import { FolderSearch, Binary, Cpu, ArrowRight, ShieldCheck, CheckCircle2, FileT
               </a>
             </div>
           </div>
-          <div class="w-full md:w-72 flex-shrink-0 rounded-xl overflow-hidden border border-zinc-800 bg-zinc-950/60 shadow-lg">
-            <img src="/hiw-step1.png" alt="Navigate to Google Takeout selection screenshot" class="w-full h-auto object-cover" />
-          </div>
         </div>
 
         <!-- STEP 2: Filter Your Export -->
-        <div class="flex flex-col md:flex-row gap-6 p-8 rounded-2xl bg-zinc-950/40 border border-zinc-900 hover:border-zinc-850 transition-all items-center md:items-start">
+        <div class="flex flex-col md:flex-row gap-6 p-8 rounded-2xl bg-zinc-950/40 border border-zinc-900 hover:border-zinc-850 transition-all">
           <div class="flex-shrink-0 flex items-center justify-center w-12 h-12 rounded-xl bg-zinc-900 border border-zinc-800 font-mono text-xs font-bold text-zinc-400">
             02
           </div>
-          <div class="space-y-2 flex-grow">
+          <div class="space-y-2">
             <h3 class="text-lg font-bold text-white">Select Google Photos Only</h3>
             <p class="text-sm text-zinc-400 leading-relaxed">
               By default, Google selects all of your Google Account data. Click <strong class="text-white">"Deselect all"</strong> at the top of the list, then scroll down to find <strong class="text-white">Google Photos</strong> and check its box. This makes your download size significantly smaller and saves you time.
             </p>
           </div>
-          <div class="w-full md:w-72 flex-shrink-0 rounded-xl overflow-hidden border border-zinc-800 bg-zinc-950/60 shadow-lg">
-            <img src="/hiw-step2.png" alt="Select Google Photos filter check screenshot" class="w-full h-auto object-cover" />
-          </div>
         </div>
 
         <!-- STEP 3: Create Export & Download -->
-        <div class="flex flex-col md:flex-row gap-6 p-8 rounded-2xl bg-zinc-950/40 border border-zinc-900 hover:border-zinc-850 transition-all items-center md:items-start">
+        <div class="flex flex-col md:flex-row gap-6 p-8 rounded-2xl bg-zinc-950/40 border border-zinc-900 hover:border-zinc-850 transition-all">
           <div class="flex-shrink-0 flex items-center justify-center w-12 h-12 rounded-xl bg-zinc-900 border border-zinc-800 font-mono text-xs font-bold text-zinc-400">
             03
           </div>
-          <div class="space-y-2 flex-grow">
+          <div class="space-y-2">
             <h3 class="text-lg font-bold text-white">Create Export and Download ZIPs</h3>
             <p class="text-sm text-zinc-400 leading-relaxed">
               Scroll to the bottom, click <strong class="text-white">"Next step"</strong>, select your preferred archive sizes (we recommend 10GB or 50GB splits if you have a massive library to avoid downloading dozens of small files), and click <strong class="text-white">"Create export"</strong>. Google will generate your files and email you download links. Download all of these ZIP files onto your computer.
             </p>
           </div>
-          <div class="w-full md:w-72 flex-shrink-0 rounded-xl overflow-hidden border border-zinc-800 bg-zinc-950/60 shadow-lg">
-            <img src="/hiw-step3.png" alt="Create export and download split archives screenshot" class="w-full h-auto object-cover" />
-          </div>
         </div>
 
         <!-- STEP 4: Select Folder in Tool -->
-        <div class="flex flex-col md:flex-row gap-6 p-8 rounded-2xl bg-zinc-950/40 border border-zinc-900 hover:border-zinc-850 transition-all items-center md:items-start">
+        <div class="flex flex-col md:flex-row gap-6 p-8 rounded-2xl bg-zinc-950/40 border border-zinc-900 hover:border-zinc-850 transition-all">
           <div class="flex-shrink-0 flex items-center justify-center w-12 h-12 rounded-xl bg-zinc-900 border border-zinc-800 font-mono text-xs font-bold text-zinc-400">
             04
           </div>
-          <div class="space-y-2 flex-grow">
+          <div class="space-y-2">
             <h3 class="text-lg font-bold text-white">Load Archive in TakeoutFix</h3>
             <p class="text-sm text-zinc-400 leading-relaxed">
               Go to the <a href="/tool" class="text-white underline hover:text-zinc-300 font-semibold">Restore Center</a>. Click <strong class="text-white">"Select Folder"</strong> to select your extracted Google Takeout folder directly on your hard drive, or drop your downloaded ZIP archives directly into the drop zone. <strong class="text-white">TakeoutFix automatically scans your Google Takeout folder and detects photos, videos, and their matching metadata files.</strong>
             </p>
           </div>
-          <div class="w-full md:w-72 flex-shrink-0 rounded-xl overflow-hidden border border-zinc-800 bg-zinc-950/60 shadow-lg">
-            <img src="/hiw-step4.png" alt="Browse and Select your Google Takeout folder mockup" class="w-full h-auto object-cover" />
-          </div>
         </div>
 
         <!-- STEP 5: Start Restoration -->
-        <div class="flex flex-col md:flex-row gap-6 p-8 rounded-2xl bg-zinc-950/40 border border-zinc-900 hover:border-zinc-850 transition-all items-center md:items-start">
+        <div class="flex flex-col md:flex-row gap-6 p-8 rounded-2xl bg-zinc-950/40 border border-zinc-900 hover:border-zinc-850 transition-all">
           <div class="flex-shrink-0 flex items-center justify-center w-12 h-12 rounded-xl bg-zinc-900 border border-zinc-800 font-mono text-xs font-bold text-zinc-400">
             05
           </div>
-          <div class="space-y-2 flex-grow">
+          <div class="space-y-2">
             <h3 class="text-lg font-bold text-white">Rebuild EXIF Metadata Offline</h3>
             <p class="text-sm text-zinc-400 leading-relaxed">
               Click <strong class="text-white">"Start Restore."</strong> TakeoutFix automatically matches each photo and video with its corresponding metadata file and restores missing dates, GPS locations, and EXIF information. Everything happens locally in your browser, so your files never leave your device. Once completed, save your restored files.
             </p>
-          </div>
-          <div class="w-full md:w-72 flex-shrink-0 rounded-xl overflow-hidden border border-zinc-800 bg-zinc-950/60 shadow-lg">
-            <img src="/hiw-step5.png" alt="Restoration progress dashboard mockup" class="w-full h-auto object-cover" />
-          </div>
-        </div>
-
-        <!-- STEP 6: Import to Device Library -->
-        <div class="flex flex-col md:flex-row gap-6 p-8 rounded-2xl bg-zinc-950/40 border border-zinc-900 hover:border-zinc-850 transition-all items-center md:items-start">
-          <div class="flex-shrink-0 flex items-center justify-center w-12 h-12 rounded-xl bg-zinc-900 border border-zinc-800 font-mono text-xs font-bold text-zinc-400">
-            06
-          </div>
-          <div class="space-y-2 flex-grow">
-            <h3 class="text-lg font-bold text-white">Import Restored Photos to iCloud/Apple/Synology</h3>
-            <p class="text-sm text-zinc-400 leading-relaxed">
-              Import your restored photos into Apple Photos, iCloud Photos, Synology Photos, or another photo library. Your photos will appear in the correct chronological order with restored dates and GPS locations.
-            </p>
-          </div>
-          <div class="w-full md:w-72 flex-shrink-0 rounded-xl overflow-hidden border border-zinc-800 bg-zinc-950/60 shadow-lg">
-            <img src="/hiw-step6.png" alt="Imported photo library grid mockup" class="w-full h-auto object-cover" />
           </div>
         </div>
 
