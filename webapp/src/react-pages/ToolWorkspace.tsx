@@ -1988,7 +1988,7 @@ export function ToolWorkspaceContent() {
                     </div>
 
                     <Button size="lg" onClick={startProcessing} className="btn-monochrome-primary w-full max-w-xl h-16 text-xl rounded-xl font-bold border-0 shadow-none transition-all duration-150 cursor-pointer flex items-center justify-center gap-2">
-                      <Play className="w-6 h-6 mr-3 fill-current" /> Initialize Recovery Engine
+                      <Play className="w-6 h-6 mr-3 fill-current" /> Start Restore
                     </Button>
                   </>
                 )}
@@ -2242,6 +2242,11 @@ export function ToolWorkspaceContent() {
                   <div>
                     <div className="text-xs text-white/40 uppercase mb-1">Current File</div>
                     <div className="font-mono text-sm text-white/80 bg-white/5 px-3 py-2 rounded border border-white/5 truncate">{currentFile}</div>
+                    {currentFile === "Waiting to start..." && (
+                      <div className="mt-1.5 text-[10px] text-zinc-400 dark:text-zinc-500 font-sans">
+                        ⏱️ Est. restoration time: Scan (a few seconds) • Restore (1–10 mins depending on archive size)
+                      </div>
+                    )}
                   </div>
                   
                   <div className="grid grid-cols-4 gap-2 pt-2">
