@@ -1847,7 +1847,7 @@ export function ToolWorkspaceContent() {
           )}
 
           <div className="mb-6">
-            <AdUnit type="horizontal" />
+            <AdUnit type="horizontal" slot="1" />
           </div>
 
           {/* Browser compatibility check alert */}
@@ -2033,7 +2033,7 @@ export function ToolWorkspaceContent() {
                       <div>Files: {(currentUsedFiles + sessionFiles).toLocaleString()} / {limitFiles === Infinity ? "Unlimited" : limitFiles.toLocaleString()} files</div>
                     </div>
                     <div className="mt-4">
-                      <AdUnit type="vertical" />
+                      <AdUnit type="vertical" slot="2" />
                     </div>
                   </div>
                 )}
@@ -2150,7 +2150,7 @@ export function ToolWorkspaceContent() {
           )}
 
           <div className="mt-4 pt-4 border-t border-white/5">
-            <AdUnit type="vertical" />
+            <AdUnit type="vertical" slot="3" />
           </div>
         </div>
 

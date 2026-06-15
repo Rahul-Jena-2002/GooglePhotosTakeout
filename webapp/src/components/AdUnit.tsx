@@ -20,7 +20,7 @@ interface AdUnitProps {
   className?: string;
 }
 
-export default function AdUnit({ type = "auto", className = "" }: AdUnitProps) {
+export default function AdUnit({ type = "auto", slot, className = "" }: AdUnitProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [containerWidth, setContainerWidth] = useState<number>(0);
   const [adIndex, setAdIndex] = useState<number>(0);
@@ -80,36 +80,51 @@ export default function AdUnit({ type = "auto", className = "" }: AdUnitProps) {
   // List of premium internal feature promotions to rotate
   const ads: Ad[] = [
     {
-      tag: "Premium Upgrade",
-      title: "TakeoutFix Premium License",
-      description: "Unlock unlimited file sizes, priority support desk, and ad-free local processing.",
+      tag: "Upgrade to Premium",
+      title: "Upgrade to Premium",
+      description: "Faster processing • Larger archives • Priority support",
       ctaText: "Upgrade Now",
       link: "/pricing",
-      icon: <Key className="w-4 h-4 text-zinc-500 dark:text-zinc-400" />,
+      icon: <span className="text-xl">🚀</span>,
     },
     {
-      tag: "Advanced Tool",
-      title: "Interactive EXIF Inspector",
-      description: "Instantly inspect dates, camera details, and embedded GPS coordinates directly in your browser.",
-      ctaText: "Check EXIF",
-      link: "/tool",
-      icon: <ShieldCheck className="w-4 h-4 text-zinc-500 dark:text-zinc-400" />,
+      tag: "Privacy First",
+      title: "Privacy First",
+      description: "Your photos never leave your device.",
+      ctaText: "Learn More",
+      link: "/how-it-works",
+      icon: <span className="text-xl">🔒</span>,
     },
     {
-      tag: "Disk Space",
-      title: "Duplicate Space Finder",
-      description: "Detect redundant files, double takeout downloads, and optimize your local directory storage.",
-      ctaText: "Optimize Space",
-      link: "/tool",
-      icon: <RefreshCw className="w-4 h-4 text-zinc-500 dark:text-zinc-400" />,
+      tag: "Large Archives",
+      title: "Need to restore thousands of files?",
+      description: "Premium handles large Google Takeout archives.",
+      ctaText: "Upgrade Now",
+      link: "/pricing",
+      icon: <span className="text-xl">⭐</span>,
+    },
+    {
+      tag: "Did you know?",
+      title: "Did you know?",
+      description: "Google Takeout often strips metadata links during export. TakeoutFix rebuilds them locally.",
+      ctaText: "How It Works",
+      link: "/how-it-works",
+      icon: <span className="text-xl">💡</span>,
     }
   ];
 
-  // Rotate items randomly on load
+  // Rotate items randomly on load or pick based on slot
   useEffect(() => {
+    if (slot) {
+      const idx = parseInt(slot, 10);
+      if (!isNaN(idx) && idx >= 1 && idx <= ads.length) {
+        setAdIndex(idx - 1);
+        return;
+      }
+    }
     const randomIdx = Math.floor(Math.random() * ads.length);
     setAdIndex(randomIdx);
-  }, []);
+  }, [slot]);
 
   // Set up container-query style ResizeObserver for the "auto" layout mode
   useEffect(() => {
@@ -157,15 +172,9 @@ export default function AdUnit({ type = "auto", className = "" }: AdUnitProps) {
     }
   }
 
-  // Base styling for minimal card containers (adapting to light/dark themes)
-  const wrapperBaseClass = `w-full mx-auto bg-zinc-50 dark:bg-zinc-950/20 border border-zinc-200 dark:border-zinc-900 rounded-xl relative overflow-hidden group select-none transition-all duration-150 hover:border-zinc-300 dark:hover:border-zinc-800 ${className}`;
-  const sponsoredTag = (
-    <div className="absolute top-3 right-4 text-[7px] font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-[0.2em]">
-      Sponsored
-    </div>
-  );
+  // Base styling for minimal card containers (adapting to light/dark themes, dashed border)
+  const wrapperBaseClass = `w-full mx-auto bg-zinc-50/50 dark:bg-zinc-950/20 border border-dashed border-zinc-200 dark:border-zinc-800 rounded-xl relative overflow-hidden group select-none transition-all duration-150 hover:border-zinc-300 dark:hover:border-zinc-700 ${className}`;
   
-  const badgeClass = "inline-block text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 border rounded-md border-zinc-250 dark:border-zinc-800 bg-zinc-100 dark:bg-zinc-900/60 text-zinc-500 dark:text-zinc-400";
   const btnClass = "px-6 py-2 rounded-lg font-semibold text-xs border btn-outline-custom transition-all cursor-pointer flex items-center justify-center gap-1.5 shrink-0";
 
   // 1. HORIZONTAL WIDE BANNER VIEW (width >= 620px)
@@ -173,29 +182,34 @@ export default function AdUnit({ type = "auto", className = "" }: AdUnitProps) {
     return (
       <div 
         ref={containerRef} 
-        className={`${wrapperBaseClass} p-5 md:p-6 flex flex-col sm:flex-row items-center justify-between gap-6`}
+        className={`${wrapperBaseClass} p-5 md:p-6 flex flex-col gap-4`}
       >
-        <div className="absolute inset-0 bg-gradient-to-r from-transparent to-white/[0.005] pointer-events-none"></div>
-        {sponsoredTag}
-        <div className="flex items-start gap-4">
-          <div className="w-10 h-10 rounded-xl bg-zinc-900/60 border border-zinc-800/85 flex items-center justify-center shadow-inner shrink-0">
-            {activeAd.icon}
-          </div>
-          <div className="space-y-1 text-left">
-            <span className={badgeClass}>
-              {activeAd.tag}
-            </span>
-            <h4 className="text-sm font-bold text-white tracking-tight">{activeAd.title}</h4>
-            <p className="text-[11px] text-zinc-450 dark:text-zinc-400 max-w-xl leading-relaxed">{activeAd.description}</p>
-          </div>
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-dashed border-zinc-200 dark:border-zinc-800 pb-2.5 gap-2">
+          <span className="text-[9px] font-bold tracking-widest uppercase text-zinc-400 dark:text-zinc-500 bg-zinc-100 dark:bg-zinc-900/60 px-2 py-0.5 rounded border border-zinc-200 dark:border-zinc-800 w-fit">
+            Sponsor Area
+          </span>
+          <span className="text-[10px] text-zinc-450 dark:text-zinc-500 italic text-left">
+            While we're waiting for ads to appear, here's a premium feature you might like:
+          </span>
         </div>
-        <div className="shrink-0 w-full sm:w-auto">
-          <a href={activeAd.link} className="block w-full sm:w-auto">
-            <button className={btnClass}>
-              <span>{activeAd.ctaText}</span>
-              <ArrowRight className="w-3.5 h-3.5" />
-            </button>
-          </a>
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+          <div className="flex items-start gap-4">
+            <div className="w-10 h-10 rounded-xl bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 flex items-center justify-center shadow-inner shrink-0 text-xl">
+              {activeAd.icon}
+            </div>
+            <div className="space-y-1 text-left">
+              <h4 className="text-sm font-bold text-zinc-900 dark:text-zinc-100 tracking-tight">{activeAd.title}</h4>
+              <p className="text-[11px] text-zinc-500 dark:text-zinc-400 max-w-xl leading-relaxed">{activeAd.description}</p>
+            </div>
+          </div>
+          <div className="shrink-0 w-full sm:w-auto">
+            <a href={activeAd.link} className="block w-full sm:w-auto">
+              <button className={btnClass}>
+                <span>{activeAd.ctaText}</span>
+                <ArrowRight className="w-3.5 h-3.5" />
+              </button>
+            </a>
+          </div>
         </div>
       </div>
     );
@@ -206,22 +220,26 @@ export default function AdUnit({ type = "auto", className = "" }: AdUnitProps) {
     return (
       <div 
         ref={containerRef} 
-        className={`${wrapperBaseClass} p-6 flex flex-col justify-between text-center`}
+        className={`${wrapperBaseClass} p-5 flex flex-col gap-4 text-center`}
       >
-        {sponsoredTag}
-        <div className="flex flex-col items-center justify-center pt-6 pb-4 space-y-4">
-          <div className="w-12 h-12 rounded-xl bg-zinc-900/60 border border-zinc-800/85 flex items-center justify-center shadow-inner">
+        <div className="flex flex-col items-center border-b border-dashed border-zinc-200 dark:border-zinc-800 pb-2.5 gap-1.5">
+          <span className="text-[9px] font-bold tracking-widest uppercase text-zinc-400 dark:text-zinc-500 bg-zinc-100 dark:bg-zinc-900/60 px-2 py-0.5 rounded border border-zinc-200 dark:border-zinc-800 w-fit">
+            Sponsor Area
+          </span>
+          <span className="text-[10px] text-zinc-450 dark:text-zinc-500 italic leading-tight">
+            While we're waiting for ads to appear, here's a premium feature you might like:
+          </span>
+        </div>
+        <div className="flex flex-col items-center justify-center pt-2 pb-2 space-y-4">
+          <div className="w-12 h-12 rounded-xl bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 flex items-center justify-center shadow-inner text-xl">
             {activeAd.icon}
           </div>
           <div className="space-y-2">
-            <span className={badgeClass}>
-              {activeAd.tag}
-            </span>
-            <h4 className="text-sm font-bold text-white leading-snug">{activeAd.title}</h4>
-            <p className="text-[11px] text-zinc-450 dark:text-zinc-400 leading-relaxed max-w-[240px] mx-auto">{activeAd.description}</p>
+            <h4 className="text-sm font-bold text-zinc-900 dark:text-zinc-100 leading-snug">{activeAd.title}</h4>
+            <p className="text-[11px] text-zinc-500 dark:text-zinc-400 leading-relaxed max-w-[240px] mx-auto">{activeAd.description}</p>
           </div>
         </div>
-        <a href={activeAd.link} className="block w-full">
+        <a href={activeAd.link} className="block w-full mt-auto">
           <button className={btnClass}>
             <span>{activeAd.ctaText}</span>
             <ArrowRight className="w-3.5 h-3.5" />
@@ -236,22 +254,26 @@ export default function AdUnit({ type = "auto", className = "" }: AdUnitProps) {
     return (
       <div 
         ref={containerRef} 
-        className={`${wrapperBaseClass} p-6 flex flex-col justify-between text-center`}
+        className={`${wrapperBaseClass} p-5 flex flex-col justify-between text-center gap-4`}
       >
-        {sponsoredTag}
-        <div className="flex flex-col items-center justify-center pt-6 space-y-3">
-          <div className="w-11 h-11 rounded-xl bg-zinc-900/60 border border-zinc-800/85 flex items-center justify-center shadow-inner">
+        <div className="flex flex-col items-center border-b border-dashed border-zinc-200 dark:border-zinc-800 pb-2.5 gap-1.5">
+          <span className="text-[9px] font-bold tracking-widest uppercase text-zinc-400 dark:text-zinc-500 bg-zinc-100 dark:bg-zinc-900/60 px-2 py-0.5 rounded border border-zinc-200 dark:border-zinc-800 w-fit">
+            Sponsor Area
+          </span>
+          <span className="text-[10px] text-zinc-455 dark:text-zinc-500 italic leading-tight">
+            While we're waiting for ads to appear, here's a premium feature you might like:
+          </span>
+        </div>
+        <div className="flex flex-col items-center justify-center space-y-3">
+          <div className="w-11 h-11 rounded-xl bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 flex items-center justify-center shadow-inner text-xl">
             {activeAd.icon}
           </div>
           <div className="space-y-1.5">
-            <span className={badgeClass}>
-              {activeAd.tag}
-            </span>
-            <h4 className="text-sm font-bold text-white tracking-tight">{activeAd.title}</h4>
-            <p className="text-[11px] text-zinc-450 dark:text-zinc-400 leading-relaxed max-w-[260px] mx-auto">{activeAd.description}</p>
+            <h4 className="text-sm font-bold text-zinc-900 dark:text-zinc-100 tracking-tight">{activeAd.title}</h4>
+            <p className="text-[11px] text-zinc-500 dark:text-zinc-400 leading-relaxed max-w-[260px] mx-auto">{activeAd.description}</p>
           </div>
         </div>
-        <a href={activeAd.link} className="block w-full mt-4">
+        <a href={activeAd.link} className="block w-full">
           <button className={btnClass}>
             <span>{activeAd.ctaText}</span>
             <ArrowRight className="w-3.5 h-3.5" />
@@ -267,17 +289,21 @@ export default function AdUnit({ type = "auto", className = "" }: AdUnitProps) {
       ref={containerRef} 
       className={`${wrapperBaseClass} p-4 flex flex-col justify-between gap-4 text-center`}
     >
-      {sponsoredTag}
-      <div className="flex flex-col items-center space-y-2 pt-2">
-        <div className="w-10 h-10 rounded-lg bg-zinc-900 border border-zinc-800/85 flex items-center justify-center shrink-0">
+      <div className="flex flex-col items-center border-b border-dashed border-zinc-200 dark:border-zinc-800 pb-2 gap-1.5">
+        <span className="text-[9px] font-bold tracking-widest uppercase text-zinc-400 dark:text-zinc-500 bg-zinc-100 dark:bg-zinc-900/60 px-2 py-0.5 rounded border border-zinc-200 dark:border-zinc-800 w-fit">
+          Sponsor Area
+        </span>
+        <span className="text-[9px] text-zinc-455 dark:text-zinc-500 italic leading-tight">
+          While we're waiting for ads to appear, here's a premium feature you might like:
+        </span>
+      </div>
+      <div className="flex flex-col items-center space-y-2">
+        <div className="w-10 h-10 rounded-lg bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 flex items-center justify-center shrink-0 text-xl">
           {activeAd.icon}
         </div>
         <div className="space-y-1">
-          <span className={badgeClass}>
-            {activeAd.tag}
-          </span>
-          <h4 className="text-xs font-bold text-white tracking-tight">{activeAd.title}</h4>
-          <p className="text-[10px] text-zinc-450 dark:text-zinc-400 leading-normal max-w-[220px] mx-auto">{activeAd.description}</p>
+          <h4 className="text-xs font-bold text-zinc-900 dark:text-zinc-100 tracking-tight">{activeAd.title}</h4>
+          <p className="text-[10px] text-zinc-500 dark:text-zinc-400 leading-normal max-w-[220px] mx-auto">{activeAd.description}</p>
         </div>
       </div>
       <a href={activeAd.link} className="block w-full">

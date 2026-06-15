@@ -279,7 +279,7 @@ export default function LandingPage() {
       </section>
 
       <div className="w-full max-w-4xl mx-auto px-6 my-8">
-        <AdUnit type="horizontal" />
+        <AdUnit type="horizontal" slot="1" />
       </div>
 
       {/* 2. STATS SECTION */}
@@ -340,7 +340,7 @@ export default function LandingPage() {
       </section>
 
       <div className="w-full max-w-4xl mx-auto px-6 my-8">
-        <AdUnit type="horizontal" />
+        <AdUnit type="horizontal" slot="2" />
       </div>
 
       {/* 4. SOLUTION (BEFORE / AFTER - INTERACTIVE COMPARE SLIDER) */}
@@ -352,7 +352,7 @@ export default function LandingPage() {
       </section>
 
       <div className="w-full max-w-4xl mx-auto px-6 my-8">
-        <AdUnit type="horizontal" />
+        <AdUnit type="horizontal" slot="3" />
       </div>
 
       {/* 5. PRIVACY SECTION */}
@@ -383,7 +383,7 @@ export default function LandingPage() {
       </section>
 
       <div className="w-full max-w-4xl mx-auto px-6 my-8">
-        <AdUnit type="horizontal" />
+        <AdUnit type="horizontal" slot="4" />
       </div>
 
       {/* 6. HOW IT WORKS DIAGRAM */}
@@ -463,7 +463,7 @@ export default function LandingPage() {
       </section>
 
       <div className="w-full max-w-4xl mx-auto px-6 my-8">
-        <AdUnit type="horizontal" />
+        <AdUnit type="horizontal" slot="1" />
       </div>
 
       {/* 9. FAQ (INTERACTIVE EXPANDABLE FAQ DECK) */}
