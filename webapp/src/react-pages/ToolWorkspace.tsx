@@ -11,7 +11,7 @@ import AdUnit from "../components/AdUnit"
 import { Button } from "../components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "../components/ui/card"
 import { Progress } from "../components/ui/progress"
-import { FolderUp, HardDrive, Play, Square, Pause, Activity, Database, CheckCircle2, AlertCircle, XCircle, FileText, Cpu, Eye, Layers, Copy, Lock, FileImage, FileJson, Search } from "lucide-react"
+import { FolderUp, HardDrive, Play, Square, Pause, Activity, Database, CheckCircle2, AlertCircle, XCircle, FileText, Cpu, Eye, Layers, Copy, Lock, FileImage, FileJson, Search, Zap } from "lucide-react"
 // No react-router-dom imports
 import { indexedDbService } from "../lib/indexedDbService"
 import piexif from "piexifjs"
@@ -130,6 +130,9 @@ export function ToolWorkspaceContent() {
 
   const [isPaused, setIsPaused] = useState(false)
   const isPausedRef = useRef(false)
+
+  const [useDeepExif, setUseDeepExif] = useState(false)
+  const useDeepExifRef = useRef(false)
   
   // Concurrency processing pool implementation
   const [maxWorkers, setMaxWorkers] = useState(1)
@@ -147,6 +150,7 @@ export function ToolWorkspaceContent() {
   
   // Buffers for batching UI updates to prevent freezing
   const statsBuffer = useRef({ scanned: 0, matched: 0, unmatched: 0, errors: 0, total: 0 })
+  const totalBytesRef = useRef<number>(0)
   const logsBuffer = useRef<LogEntry[]>([])
   const fileBuffer = useRef<string>("Waiting to start...")
   const progressBuffer = useRef<number>(0)
@@ -761,6 +765,14 @@ export function ToolWorkspaceContent() {
       total: session.totalFiles
     };
 
+    try {
+      const allFiles = await indexedDbService.getAll('files') as FileRecord[];
+      totalBytesRef.current = allFiles.reduce((sum, f) => sum + (f.bytes || 0), 0);
+    } catch (err) {
+      console.error("Failed to sum bytes on resume:", err);
+      totalBytesRef.current = 0;
+    }
+
     setStats({ ...statsBuffer.current });
     setProgress(Math.floor((session.scannedCount / session.totalFiles) * 100));
     setCurrentFile("Resuming restoration...");
@@ -932,6 +944,9 @@ export function ToolWorkspaceContent() {
 
             // 3. Resolve sidecar and epoch timestamp (on-demand during restoration)
             let epochSec: number | null = null;
+            let lat: number | undefined = undefined;
+            let lng: number | undefined = undefined;
+
             if (fileHandle && parentDirHandle) {
               const pathKey = fileRecord.relativePath.join('/');
               const allNames = await getDirNames(parentDirHandle, pathKey);
@@ -941,7 +956,13 @@ export function ToolWorkspaceContent() {
                   const jsonHandle = await parentDirHandle.getFileHandle(jsonName);
                   const jsonFile = await jsonHandle.getFile();
                   const parsed = safeParseJson(await jsonFile.text());
-                  if (parsed) epochSec = extractTimestamp(parsed);
+                  if (parsed) {
+                    epochSec = extractTimestamp(parsed);
+                    if (useDeepExifRef.current && parsed.geoData && (parsed.geoData.latitude !== 0 || parsed.geoData.longitude !== 0)) {
+                      lat = parsed.geoData.latitude;
+                      lng = parsed.geoData.longitude;
+                    }
+                  }
                 } catch {}
               }
             } else if (fileRecord.zipPath && zipReader) {
@@ -955,7 +976,13 @@ export function ToolWorkspaceContent() {
                   if (jsonEntry) {
                     const jsonText = await jsonEntry.getData!(new TextWriter());
                     const parsed = safeParseJson(jsonText);
-                    if (parsed) epochSec = extractTimestamp(parsed);
+                    if (parsed) {
+                      epochSec = extractTimestamp(parsed);
+                      if (useDeepExifRef.current && parsed.geoData && (parsed.geoData.latitude !== 0 || parsed.geoData.longitude !== 0)) {
+                        lat = parsed.geoData.latitude;
+                        lng = parsed.geoData.longitude;
+                      }
+                    }
                   }
                 } catch {}
               }
@@ -985,12 +1012,14 @@ export function ToolWorkspaceContent() {
                   const res = await pool.runTask('inject_exif', {
                     buffer: bufferOrBlob,
                     epochSec,
+                    lat,
+                    lng,
                     filename: fileRecord.filename
                   }, [bufferOrBlob]);
 
                   bufferOrBlob = res.buffer;
                   if (res.success) {
-                    actionStr = 'Restored & Injected';
+                    actionStr = useDeepExifRef.current ? 'Deep Injected' : 'Restored & Injected';
                   } else {
                     actionStr = `EXIF Error: ${res.error}`;
                     levelStr = 'error';
@@ -1123,6 +1152,8 @@ export function ToolWorkspaceContent() {
     
     setIsProcessing(false)
     isProcessingRef.current = false
+    setUseDeepExif(false)
+    useDeepExifRef.current = false
     setCurrentFile("Halted: Quota Exceeded")
     
     const quotaErrMsg = `Quota Exceeded! Halted after processing ${statsBuffer.current.scanned} files.`
@@ -1187,6 +1218,8 @@ export function ToolWorkspaceContent() {
   const completeProcessing = async () => {
     setIsProcessing(false)
     isProcessingRef.current = false
+    setUseDeepExif(false)
+    useDeepExifRef.current = false
     setActiveWorkersCount(0)
 
     if (flushInterval.current) {
@@ -1546,7 +1579,7 @@ export function ToolWorkspaceContent() {
     }
   }
 
-  const startProcessing = async () => {
+  const startProcessing = async (deep: boolean = false) => {
     // Whitelist Enforcement: Only start restoration process if not blocked by ad blocker
     const isAdFree = userData?.plan === "super" && !userData?.supportWithAds;
     if (!isAdFree) {
@@ -1599,9 +1632,12 @@ export function ToolWorkspaceContent() {
     isProcessingRef.current = true
     setIsPaused(false)
     isPausedRef.current = false
+    setUseDeepExif(deep)
+    useDeepExifRef.current = deep
     setProgress(0)
     setStats({ scanned: 0, matched: 0, unmatched: 0, errors: 0, total: 0 })
     statsBuffer.current = { scanned: 0, matched: 0, unmatched: 0, errors: 0, total: 0 }
+    totalBytesRef.current = 0
     logsBuffer.current = []
     setLogs([])
     setCurrentFile("Scanning input source...")
@@ -1683,6 +1719,14 @@ export function ToolWorkspaceContent() {
 
       statsBuffer.current.total = totalFiles;
       
+      try {
+        const allFiles = await indexedDbService.getAll('files') as FileRecord[];
+        totalBytesRef.current = allFiles.reduce((sum, f) => sum + (f.bytes || 0), 0);
+      } catch (err) {
+        console.error("Failed to sum total bytes on start:", err);
+        totalBytesRef.current = 0;
+      }
+      
       await updateActiveSession('processing', {
         totalFiles: totalFiles,
         currentFile: 'Starting restoration pipeline...'
@@ -1708,6 +1752,8 @@ export function ToolWorkspaceContent() {
     isProcessingRef.current = false
     setIsPaused(false)
     isPausedRef.current = false
+    setUseDeepExif(false)
+    useDeepExifRef.current = false
     setCurrentFile("Cancelled")
     setLogs(prev => [...prev, { level: 'error', msg: 'Processing cancelled by user.' }])
     
@@ -1768,6 +1814,84 @@ export function ToolWorkspaceContent() {
       }
     }
   }
+
+  const getEstimatedRestoreTime = () => {
+    const totalFiles = stats.total || 0;
+    if (totalFiles <= 0) {
+      return "⏱️ Est. restoration time: Scan (a few seconds)";
+    }
+    
+    if (isPaused) {
+      return "⏱️ Est. restoration time: Paused";
+    }
+
+    const scannedFiles = stats.scanned || 0;
+    const remainingFiles = Math.max(0, totalFiles - scannedFiles);
+    
+    if (remainingFiles <= 0) {
+      return "⏱️ Est. restoration time: Complete";
+    }
+
+    // Baseline speeds
+    let filesPerSec = 50;
+    let bytesPerSec = 100 * 1024 * 1024; // 100 MB/s
+
+    // Calculate real-time speed if we have processed a few files
+    if (scannedFiles > 5 && startTimeRef.current > 0) {
+      const elapsed = (Date.now() - startTimeRef.current) / 1000;
+      if (elapsed > 1) {
+        const calculatedFilesPerSec = scannedFiles / elapsed;
+        const calculatedBytesPerSec = sessionBytes / elapsed;
+        
+        if (calculatedFilesPerSec > 2) {
+          filesPerSec = calculatedFilesPerSec;
+        }
+        if (calculatedBytesPerSec > 1024 * 1024) { // at least 1 MB/s
+          bytesPerSec = calculatedBytesPerSec;
+        }
+      }
+    }
+
+    // Determine remaining bytes (ZIP has exact size, directory is estimated dynamically)
+    let remainingBytes = 0;
+    const totalBytes = totalBytesRef.current || 0;
+    if (totalBytes > 0) {
+      remainingBytes = Math.max(0, totalBytes - sessionBytes);
+    } else if (scannedFiles > 0) {
+      const avgBytesPerFile = sessionBytes / scannedFiles;
+      remainingBytes = avgBytesPerFile * remainingFiles;
+    } else {
+      // 2MB per file average fallback
+      remainingBytes = remainingFiles * 2 * 1024 * 1024;
+    }
+
+    // Hybrid estimation formula: max of remaining files time and remaining bytes time
+    const timeFiles = remainingFiles / filesPerSec;
+    const timeBytes = remainingBytes / bytesPerSec;
+    const seconds = Math.ceil(Math.max(timeFiles, timeBytes));
+
+    // Rounding & approximations
+    let timeString = "";
+    if (seconds >= 300) { // 5 minutes or more: round to nearest minute
+      const mins = Math.round(seconds / 60);
+      timeString = `≈ ${mins} minutes`;
+    } else if (seconds >= 60) { // between 1 and 5 minutes: round to nearest 30 seconds
+      const halfMins = Math.round(seconds / 30);
+      if (halfMins % 2 === 0) {
+        const mins = halfMins / 2;
+        timeString = `≈ ${mins} minute${mins !== 1 ? 's' : ''}`;
+      } else {
+        timeString = `≈ ${Math.floor(halfMins / 2)}.5 minutes`;
+      }
+    } else if (seconds >= 15) { // between 15 seconds and 1 minute: round to nearest 5 seconds
+      const roundedSecs = Math.round(seconds / 5) * 5;
+      timeString = `≈ ${roundedSecs} seconds`;
+    } else { // under 15 seconds
+      timeString = "Less than 15 seconds";
+    }
+
+    return `⏱️ Est. restoration time: ${timeString}${scannedFiles > 0 ? ' remaining' : ''}`;
+  };
 
   return (
     <AdBlockGate>
@@ -1956,40 +2080,55 @@ export function ToolWorkspaceContent() {
               </div>
 
               <div className="mt-auto pt-6">
-                {(takeoutFolder || zipFile) && outputFolder && !isProcessing && progress === 0 && (
+                {!isProcessing && progress === 0 && (
                   <>
-                    <div className="mb-6 p-5 bg-zinc-800/10 border border-zinc-800/20 rounded-2xl max-w-xl text-left space-y-4">
-                      <h3 className="text-sm font-bold uppercase tracking-widest text-zinc-400">Pre-Flight Recovery Summary</h3>
-                      
-                      <div className="space-y-3 text-sm text-zinc-300">
-                        <div className="flex items-start gap-2.5">
-                          <span className="text-base leading-none">📂</span>
-                          <div>
-                            <span className="font-semibold text-white block">Source:</span>
-                            <span className="font-mono text-xs text-zinc-450 break-all">{zipFile ? `ZIP: ${zipFile.name}` : `Folder: ${takeoutFolder!.name}`}</span>
-                            <span className="text-[10px] text-zinc-500 block mt-0.5">(Read-only: Originals are never modified)</span>
-                          </div>
-                        </div>
+                    {(takeoutFolder || zipFile) && outputFolder && (
+                      <div className="mb-6 p-5 bg-zinc-800/10 border border-zinc-800/20 rounded-2xl max-w-xl text-left space-y-4">
+                        <h3 className="text-sm font-bold uppercase tracking-widest text-zinc-400">Pre-Flight Recovery Summary</h3>
                         
-                        <div className="flex items-start gap-2.5">
-                          <span className="text-base leading-none">💾</span>
-                          <div>
-                            <span className="font-semibold text-white block">Output Directory:</span>
-                            <span className="font-mono text-xs text-zinc-400 break-all">{outputFolder.name}</span>
-                            <span className="text-[10px] text-zinc-500 block mt-0.5">(New corrected photos and videos are saved here)</span>
+                        <div className="space-y-3 text-sm text-zinc-300">
+                          <div className="flex items-start gap-2.5">
+                            <span className="text-base leading-none">📂</span>
+                            <div>
+                              <span className="font-semibold text-white block">Source:</span>
+                              <span className="font-mono text-xs text-zinc-450 break-all">{zipFile ? `ZIP: ${zipFile.name}` : `Folder: ${takeoutFolder!.name}`}</span>
+                              <span className="text-[10px] text-zinc-500 block mt-0.5">(Read-only: Originals are never modified)</span>
+                            </div>
                           </div>
-                        </div>
-                        
-                        <div className="flex items-center gap-2.5 pt-2 border-t border-white/5 text-xs text-green-400 font-medium">
-                          <CheckCircle2 className="w-4 h-4 text-green-400 flex-shrink-0" />
-                          <span>Original files remain completely untouched and safe.</span>
+                          
+                          <div className="flex items-start gap-2.5">
+                            <span className="text-base leading-none">💾</span>
+                            <div>
+                              <span className="font-semibold text-white block">Output Directory:</span>
+                              <span className="font-mono text-xs text-zinc-400 break-all">{outputFolder.name}</span>
+                              <span className="text-[10px] text-zinc-500 block mt-0.5">(New corrected photos and videos are saved here)</span>
+                            </div>
+                          </div>
+                          
+                          <div className="flex items-center gap-2.5 pt-2 border-t border-white/5 text-xs text-green-400 font-medium">
+                            <CheckCircle2 className="w-4 h-4 text-green-400 flex-shrink-0" />
+                            <span>Original files remain completely untouched and safe.</span>
+                          </div>
                         </div>
                       </div>
-                    </div>
+                    )}
 
-                    <Button size="lg" onClick={startProcessing} className="btn-monochrome-primary w-full max-w-xl h-16 text-xl rounded-xl font-bold border-0 shadow-none transition-all duration-150 cursor-pointer flex items-center justify-center gap-2">
-                      <Play className="w-6 h-6 mr-3 fill-current" /> Start Restore
-                    </Button>
+                    <div className="flex flex-col sm:flex-row gap-4 w-full max-w-xl">
+                      <Button 
+                        disabled={!(takeoutFolder || zipFile) || !outputFolder}
+                        onClick={() => startProcessing(false)} 
+                        className="btn-monochrome-primary flex-1 h-12 text-sm rounded-xl font-bold transition-all duration-150 cursor-pointer flex items-center justify-center gap-2 disabled:opacity-40 disabled:pointer-events-none"
+                      >
+                        <Play className="w-4 h-4 fill-current" /> Start Restore
+                      </Button>
+                      <Button 
+                        disabled={!(takeoutFolder || zipFile) || !outputFolder}
+                        onClick={() => startProcessing(true)} 
+                        className="btn-monochrome-secondary flex-1 h-12 text-sm rounded-xl font-bold transition-all duration-150 cursor-pointer flex items-center justify-center gap-2 disabled:opacity-40 disabled:pointer-events-none"
+                      >
+                        <Zap className="w-4 h-4 fill-current" /> Deep Restore
+                      </Button>
+                    </div>
                   </>
                 )}
 
@@ -2207,7 +2346,7 @@ export function ToolWorkspaceContent() {
                           ? isPaused ? 'bg-zinc-850 border-zinc-750 text-zinc-300' : 'bg-white/10 border-white/20 text-white animate-pulse'
                           : 'bg-zinc-500/10 border-zinc-500/20 text-zinc-400'
                       }`}>
-                        {isProcessing ? isPaused ? 'PAUSED' : 'ACTIVE RESTORATION' : 'ENGINE IDLE'}
+                        {isProcessing ? isPaused ? 'PAUSED' : (useDeepExif ? 'DEEP RESTORATION' : 'ACTIVE RESTORATION') : 'ENGINE IDLE'}
                       </span>
                     </div>
 
@@ -2242,9 +2381,9 @@ export function ToolWorkspaceContent() {
                   <div>
                     <div className="text-xs text-white/40 uppercase mb-1">Current File</div>
                     <div className="font-mono text-sm text-white/80 bg-white/5 px-3 py-2 rounded border border-white/5 truncate">{currentFile}</div>
-                    {currentFile === "Waiting to start..." && (
+                    {(currentFile === "Waiting to start..." || currentFile === "Ready" || isProcessing) && (
                       <div className="mt-1.5 text-[10px] text-zinc-400 dark:text-zinc-500 font-sans">
-                        ⏱️ Est. restoration time: Scan (a few seconds) • Restore (1–10 mins depending on archive size)
+                        {getEstimatedRestoreTime()}
                       </div>
                     )}
                   </div>
@@ -2310,10 +2449,11 @@ export function ToolWorkspaceContent() {
                         const fullFilename = `${pathStr}${log.filename}`
                         
                         if (log.level === 'success') {
+                          const actionLabel = log.action && log.action !== 'Restored' ? ` (${log.action})` : '';
                           return (
                             <div key={i} className="text-green-400/90 pl-2 border-l border-green-500/20 py-0.5 whitespace-pre-wrap">
                               <span className="font-bold mr-2">[RESTORED] </span>
-                              <span>{fullFilename}</span>
+                              <span>{fullFilename}{actionLabel}</span>
                             </div>
                           )
                         } else if (log.level === 'warn') {

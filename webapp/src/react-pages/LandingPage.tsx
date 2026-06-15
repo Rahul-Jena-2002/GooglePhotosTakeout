@@ -227,8 +227,8 @@ export default function LandingPage() {
               Restore missing EXIF dates, GPS coordinates, timestamps, and other metadata from Google Takeout archives. Everything runs locally in your browser—your files never leave your device.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 pt-2 items-center">
-              <Link to="/how-it-works" className="text-zinc-500 hover:text-foreground transition-colors flex items-center justify-center h-14 font-bold px-6 w-full sm:w-auto">
-                How It Works
+              <Link to="/restore-data" className="text-zinc-500 hover:text-foreground transition-colors flex items-center justify-center h-14 font-bold px-6 w-full sm:w-auto">
+                Restore Guide
               </Link>
               <Link to="/tool" className="w-full sm:w-auto">
                 <button className="btn-monochrome-primary rounded-lg px-8 h-14 font-bold transition-all w-full sm:w-auto cursor-pointer flex items-center justify-center gap-2">
@@ -455,7 +455,7 @@ export default function LandingPage() {
           </div>
 
           <div className="mt-16">
-            <Link to="/how-it-works">
+            <Link to="/restore-data">
               <Button className="btn-monochrome-primary rounded-lg px-8 transition-all duration-150 cursor-pointer">See here for more details</Button>
             </Link>
           </div>

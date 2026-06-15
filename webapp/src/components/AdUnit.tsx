@@ -92,7 +92,7 @@ export default function AdUnit({ type = "auto", slot, className = "" }: AdUnitPr
       title: "Privacy First",
       description: "Your photos never leave your device.",
       ctaText: "Learn More",
-      link: "/how-it-works",
+      link: "/restore-data",
       icon: <span className="text-xl">🔒</span>,
     },
     {
@@ -108,7 +108,7 @@ export default function AdUnit({ type = "auto", slot, className = "" }: AdUnitPr
       title: "Did you know?",
       description: "Google Takeout often strips metadata links during export. TakeoutFix rebuilds them locally.",
       ctaText: "How It Works",
-      link: "/how-it-works",
+      link: "/restore-data",
       icon: <span className="text-xl">💡</span>,
     }
   ];

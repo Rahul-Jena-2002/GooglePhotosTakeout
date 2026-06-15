@@ -119,24 +119,13 @@ import { FolderSearch, Binary, Cpu, ArrowRight, ShieldCheck, CheckCircle2, FileT
       </div>
 
       <!-- Estimated Time Box -->
-      <div class="mt-16 p-6 rounded-2xl bg-zinc-950/20 border border-dashed border-zinc-800 text-left max-w-2xl mx-auto">
-        <h4 class="text-sm font-bold text-white uppercase tracking-wider mb-4 flex items-center gap-2">
-          ⏱️ Typical Restoration Time
+      <div class="mt-16 p-6 rounded-2xl bg-zinc-950/20 border border-dashed border-zinc-800 text-left max-w-2xl mx-auto space-y-2">
+        <h4 class="text-sm font-bold text-white uppercase tracking-wider mb-2 flex items-center gap-2">
+          ⏱️ Typical Restore Times
         </h4>
-        <ul class="space-y-2 text-xs text-zinc-400 font-sans">
-          <li class="flex justify-between border-b border-zinc-900 pb-2">
-            <span class="font-semibold text-zinc-300">1. Archive Export (Google)</span>
-            <span>Depends on Google Photos library size (typically 1–24 hours)</span>
-          </li>
-          <li class="flex justify-between border-b border-zinc-900 pb-2">
-            <span class="font-semibold text-zinc-300">2. Local Scan (TakeoutFix)</span>
-            <span>A few seconds (instant parsing of files in browser)</span>
-          </li>
-          <li class="flex justify-between pb-1">
-            <span class="font-semibold text-zinc-300">3. Rebuild & Restore</span>
-            <span>1–10 minutes (depending on library size and CPU speed)</span>
-          </li>
-        </ul>
+        <p class="text-xs text-zinc-400 leading-relaxed">
+          TakeoutFix scans your archive in a few seconds and restores metadata locally. Most libraries finish in <strong class="text-zinc-200">under a few minutes</strong>, while very large Google Takeout archives may take longer depending on your computer and archive size.
+        </p>
       </div>
 
     </div>
@@ -344,7 +333,7 @@ import { FolderSearch, Binary, Cpu, ArrowRight, ShieldCheck, CheckCircle2, FileT
                       <div class="relative space-y-1 bg-zinc-900/20 p-2.5 rounded border border-zinc-900/60 diagram-sub-box">
                         <div class="flex justify-between text-[8px] text-zinc-500 font-bold uppercase tracking-wider px-1">
                           <span>Source Media</span>
-                          <span class="text-zinc-450 font-bold">Copy Suffix Resolved</span>
+                          <span class="text-zinc-455 font-bold">Copy Suffix Resolved</span>
                           <span>Sidecar JSON</span>
                         </div>
                         <div class="flex items-center justify-between gap-3">
@@ -376,6 +365,7 @@ import { FolderSearch, Binary, Cpu, ArrowRight, ShieldCheck, CheckCircle2, FileT
  
         <!-- PHASE 3: Binary Injection -->
         <div class="relative flex flex-col lg:flex-row items-stretch gap-12 lg:gap-20">
+          <!-- Timeline node marker for desktop -->
           <div class="absolute left-[50%] -translate-x-1/2 top-4 w-10 h-10 rounded-full bg-zinc-950 border border-zinc-800 flex items-center justify-center shadow-[0_0_20px_rgba(0,0,0,0.8)] z-20 hidden lg:flex">
             <span class="w-3.5 h-3.5 rounded-full bg-zinc-500 animate-pulse"></span>
           </div>
@@ -455,7 +445,7 @@ import { FolderSearch, Binary, Cpu, ArrowRight, ShieldCheck, CheckCircle2, FileT
  
                       <div class="flex items-center justify-between p-2.5 rounded border border-zinc-900 bg-zinc-900/30 hover:border-zinc-850 transition-all diagram-sub-box">
                         <div class="flex items-center gap-2 text-zinc-550 text-[10px] font-bold uppercase">
-                          <span class="font-extrabold text-zinc-450 diagram-label-param">0x0004</span>
+                          <span class="font-extrabold text-zinc-455 diagram-label-param">0x0004</span>
                           <span class="text-zinc-300 font-bold diagram-nested-file">GPSLongitude</span>
                         </div>
                         <div class="flex items-center gap-2">
@@ -465,7 +455,7 @@ import { FolderSearch, Binary, Cpu, ArrowRight, ShieldCheck, CheckCircle2, FileT
                       </div>
                     </div>
  
-                    <div class="border-t border-zinc-900 pt-3 flex items-center justify-between z-10 text-[10px] text-zinc-550 font-bold uppercase tracking-wider">
+                    <div class="border-t border-zinc-900 pt-3 flex items-center justify-between z-10 text-[10px] text-zinc-555 font-bold uppercase tracking-wider">
                       <span>Binary Integrity: <span class="text-zinc-300 font-extrabold">100% Valid</span></span>
                       <span>Recomp: <span class="text-zinc-455 font-extrabold">None (Raw)</span></span>
                     </div>

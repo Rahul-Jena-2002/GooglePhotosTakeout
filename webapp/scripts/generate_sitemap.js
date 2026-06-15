@@ -18,7 +18,7 @@ let xml = `<?xml version="1.0" encoding="UTF-8"?>
     <priority>1.0</priority>
   </url>
   <url>
-    <loc>${baseUrl}/how-it-works</loc>
+    <loc>${baseUrl}/restore-data</loc>
     <lastmod>${today}</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>

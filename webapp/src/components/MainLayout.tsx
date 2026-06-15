@@ -168,7 +168,7 @@ export default function MainLayout() {
             {/* Marketing Links (Desktop only: lg:flex) */}
             <div className="hidden lg:flex gap-8 text-sm font-medium ml-4">
               {renderNavLink("/", "Home")}
-              {renderNavLink("/how-it-works", "How It Works")}
+              {renderNavLink("/restore-data", "Restore Guide")}
               {renderNavLink("/pricing", "Pricing")}
               {renderNavLink("/reviews", "Reviews")}
               {renderNavLink("/support", "Support & FAQ")}
@@ -363,7 +363,7 @@ export default function MainLayout() {
             {/* Marketing Links (visible in hamburger for mobile and tablet) */}
             <p className="text-xs font-bold text-white/30 uppercase tracking-wider px-2 mt-1 mb-1">Navigation</p>
             <Link to="/" className="py-2 px-2 text-white/70 hover:text-white hover:bg-white/5 rounded-md text-sm font-medium transition-all" onClick={() => setMobileMenuOpen(false)}>Home</Link>
-            <Link to="/how-it-works" className="py-2 px-2 text-white/70 hover:text-white hover:bg-white/5 rounded-md text-sm font-medium transition-all" onClick={() => setMobileMenuOpen(false)}>How It Works</Link>
+            <Link to="/restore-data" className="py-2 px-2 text-white/70 hover:text-white hover:bg-white/5 rounded-md text-sm font-medium transition-all" onClick={() => setMobileMenuOpen(false)}>Restore Guide</Link>
             <Link to="/pricing" className="py-2 px-2 text-white/70 hover:text-white hover:bg-white/5 rounded-md text-sm font-medium transition-all" onClick={() => setMobileMenuOpen(false)}>Pricing</Link>
             <Link to="/reviews" className="py-2 px-2 text-white/70 hover:text-white hover:bg-white/5 rounded-md text-sm font-medium transition-all" onClick={() => setMobileMenuOpen(false)}>Reviews</Link>
             <Link to="/support" className="py-2 px-2 text-white/70 hover:text-white hover:bg-white/5 rounded-md text-sm font-medium transition-all" onClick={() => setMobileMenuOpen(false)}>Support & FAQ</Link>

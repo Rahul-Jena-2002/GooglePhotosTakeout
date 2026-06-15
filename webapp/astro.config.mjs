@@ -36,14 +36,15 @@ export default defineConfig({
     },
     ssr: {
       external: ['@sentry/astro'],
-      noExternal: [
+      noExternal: process.env.NODE_ENV === 'production' ? [
         'react',
         'react-dom',
         'react-router-dom',
         'lucide-react',
         'firebase',
-        'framer-motion'
-      ]
+        'framer-motion',
+        'piexifjs'
+      ] : []
     }
   }
 });
