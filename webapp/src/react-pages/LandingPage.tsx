@@ -220,11 +220,11 @@ export default function LandingPage() {
               ✓ Privacy-First EXIF Repair
             </div>
             <h1 className="text-4xl sm:text-5xl md:text-6xl font-bold tracking-tight text-foreground leading-tight">
-              Google Takeout removed your photo metadata. <br/>
-              <span className="text-zinc-900 dark:text-zinc-100 font-bold underline decoration-zinc-400 dark:decoration-zinc-800 decoration-2 underline-offset-4">TakeoutFix puts it back.</span>
+              Missing Google Takeout metadata? <br/>
+              <span className="text-zinc-900 dark:text-zinc-100 font-bold underline decoration-zinc-400 dark:decoration-zinc-800 decoration-2 underline-offset-4">Restore photo dates, GPS locations, timestamps, and EXIF information.</span>
             </h1>
             <p className="text-lg sm:text-xl text-zinc-500 font-normal leading-relaxed max-w-2xl">
-              TakeoutFix rebuilds Google Photos metadata, timestamps, and locations locally in your browser before you import your archive.
+              Restore missing EXIF dates, GPS coordinates, timestamps, and other metadata from Google Takeout archives. Everything runs locally in your browser—your files never leave your device.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 pt-2 items-center">
               <Link to="/how-it-works" className="text-zinc-500 hover:text-foreground transition-colors flex items-center justify-center h-14 font-bold px-6 w-full sm:w-auto">
@@ -361,12 +361,12 @@ export default function LandingPage() {
         <h2 className="text-5xl font-bold tracking-tighter mb-6">Your Files Never Leave Your Device.</h2>
         <p className="text-2xl text-zinc-500 max-w-3xl mx-auto leading-relaxed mb-12">
           We built TakeoutFix to run <strong>entirely inside your web browser</strong>. When you select your Takeout folder, our engine reads the files, matches the metadata, and writes the restored files directly to your hard drive. <br/><br/>
-          <strong className="text-foreground">Zero uploads. Zero cloud processing. Ultimate privacy.</strong>
+          <strong className="text-foreground">Zero uploads. Zero cloud processing. Privacy by Design.</strong>
         </p>
         <div className="grid md:grid-cols-3 gap-8 max-w-5xl mx-auto text-left">
           <div className="bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 p-6 rounded-lg">
             <Cpu className="w-8 h-8 text-zinc-900 dark:text-zinc-100 mb-4" />
-            <h3 className="text-xl font-bold mb-2">Local Computing</h3>
+            <h3 className="text-xl font-bold mb-2">Local Processing</h3>
             <p className="text-zinc-500 text-sm leading-relaxed">Harnessing the power of HTML5 File System Access APIs, we process gigabytes of data locally utilizing your machine's CPU.</p>
           </div>
           <div className="bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 p-6 rounded-lg">
@@ -376,7 +376,7 @@ export default function LandingPage() {
           </div>
           <div className="bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 p-6 rounded-lg">
             <ShieldCheck className="w-8 h-8 text-zinc-900 dark:text-zinc-100 mb-4" />
-            <h3 className="text-xl font-bold mb-2">Cryptographic Safety</h3>
+            <h3 className="text-xl font-bold mb-2">Files stay on your device</h3>
             <p className="text-zinc-500 text-sm leading-relaxed">No tracking, no telemetry on your personal files. Your private memories remain strictly under your control.</p>
           </div>
         </div>
