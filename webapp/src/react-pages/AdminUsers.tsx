@@ -4,6 +4,7 @@ import { db } from "../firebase"
 import { Search, Trash2, ShieldAlert } from "lucide-react"
 import { useAuth } from "../contexts/AuthContext"
 import { Link } from "react-router-dom"
+import { useToastStore } from "../store/useToastStore"
 
 const PLAN_LABELS: Record<string, string> = {
   free: "Free",
@@ -95,7 +96,7 @@ export default function AdminUsers() {
       }
     } catch (err: any) {
       console.error(err)
-      alert("Failed to update user plan. Make sure you have SUPER_ADMIN or ADMIN permissions.")
+      useToastStore.getState().addToast("Failed to update user plan. Make sure you have SUPER_ADMIN or ADMIN permissions.", "error")
     }
   }
 
@@ -120,7 +121,7 @@ export default function AdminUsers() {
       })
     } catch (err: any) {
       console.error(err)
-      alert("Failed to update support-with-ads setting: " + err.message)
+      useToastStore.getState().addToast("Failed to update support-with-ads setting: " + err.message, "error")
     }
   }
 
@@ -145,7 +146,7 @@ export default function AdminUsers() {
       })
     } catch (err: any) {
       console.error(err)
-      alert("Failed to update user status: " + err.message)
+      useToastStore.getState().addToast("Failed to update user status: " + err.message, "error")
     }
   }
 
@@ -167,7 +168,7 @@ export default function AdminUsers() {
       })
     } catch (err: any) {
       console.error(err)
-      alert("Failed to delete user: " + err.message)
+      useToastStore.getState().addToast("Failed to delete user: " + err.message, "error")
     }
   }
 

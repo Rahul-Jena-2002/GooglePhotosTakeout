@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react"
 import { auth, db, googleProvider, signInWithPopup } from "../firebase"
 import { collection, addDoc, serverTimestamp } from "firebase/firestore"
 import { Star, Send } from "lucide-react"
+import { useToastStore } from "../store/useToastStore"
 
 export default function WriteReviewButton() {
   const [user, setUser] = useState<any>(null)
@@ -20,11 +21,71 @@ export default function WriteReviewButton() {
 
   const handleOpenForm = async () => {
     if (!user) {
+      let loginSuccess = false;
+      let toastShown = false;
+      let popupRef: Window | null = null;
+      let checkInterval: any = null;
+
+      const originalOpen = window.open;
+      // Override window.open to capture the popup window when Firebase opens it
+      window.open = function(...args) {
+        const win = originalOpen.apply(this, args);
+        popupRef = win;
+        // Restore window.open immediately upon capturing
+        window.open = originalOpen;
+        return win;
+      };
+
+      // Safe fallback to restore window.open if it's never called
+      const restoreTimeout = setTimeout(() => {
+        if (window.open !== originalOpen) {
+          window.open = originalOpen;
+        }
+      }, 5000);
+
       try {
-        await signInWithPopup(auth, googleProvider)
-      } catch (err) {
-        console.error("Google Auth error:", err)
-        return
+        checkInterval = setInterval(() => {
+          if (popupRef && popupRef.closed) {
+            clearInterval(checkInterval);
+            clearTimeout(restoreTimeout);
+            if (window.open !== originalOpen) {
+              window.open = originalOpen;
+            }
+            if (!loginSuccess && !toastShown) {
+              toastShown = true;
+              useToastStore.getState().addToast("Please check your credentials and try again.", "error", 4500, "Login Failed");
+            }
+          }
+        }, 100);
+
+        await signInWithPopup(auth, googleProvider);
+        loginSuccess = true;
+        clearInterval(checkInterval);
+        clearTimeout(restoreTimeout);
+        if (window.open !== originalOpen) {
+          window.open = originalOpen;
+        }
+      } catch (err: any) {
+        clearInterval(checkInterval);
+        clearTimeout(restoreTimeout);
+        if (window.open !== originalOpen) {
+          window.open = originalOpen;
+        }
+        if (loginSuccess) return;
+
+        console.error("Google Auth error:", err);
+        if (!toastShown) {
+          toastShown = true;
+          const errMsg = err?.code || err?.message || String(err);
+          const isCancelled = errMsg.includes("cancelled") || errMsg.includes("closed") || errMsg.includes("popup-closed-by-user");
+          useToastStore.getState().addToast(
+            isCancelled ? "Please check your credentials and try again." : "An error occurred during sign in. Please try again.",
+            "error",
+            4500,
+            "Login Failed"
+          );
+        }
+        return;
       }
     }
     setShowForm(true)

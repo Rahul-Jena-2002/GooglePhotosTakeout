@@ -4,6 +4,7 @@ import { db } from "../firebase"
 import { useAuth, type AdminData, type AdminRole } from "../contexts/AuthContext"
 import { Navigate } from "react-router-dom"
 import { Users2, ShieldCheck, Trash2, Plus, Wifi, WifiOff } from "lucide-react"
+import { useToastStore } from "../store/useToastStore"
 
 const ROLES: AdminRole[] = ["SUPER_ADMIN", "ADMIN", "SUPPORT", "MODERATOR"]
 
@@ -43,16 +44,16 @@ export default function AdminTeam() {
 
   const handleRoleChange = async (uid: string, newRole: AdminRole) => {
     if (uid === user?.uid) {
-      alert("You cannot change your own role.")
+      useToastStore.getState().addToast("You cannot change your own role.", "error")
       return
     }
     const targetAdmin = admins.find(a => a.uid === uid)
     if (targetAdmin?.role === "SUPER_ADMIN") {
-      alert("You cannot modify a Super Admin's role.")
+      useToastStore.getState().addToast("You cannot modify a Super Admin's role.", "error")
       return
     }
     if (newRole === "SUPER_ADMIN") {
-      alert("There can only be one Super Admin.")
+      useToastStore.getState().addToast("There can only be one Super Admin.", "error")
       return
     }
     try {
@@ -71,9 +72,12 @@ export default function AdminTeam() {
   }
 
   const handleRemove = async (admin: AdminData) => {
-    if (admin.uid === user?.uid) { alert("You cannot remove yourself."); return }
+    if (admin.uid === user?.uid) { 
+      useToastStore.getState().addToast("You cannot remove yourself.", "error")
+      return 
+    }
     if (admin.role === "SUPER_ADMIN") {
-      alert("You cannot remove a Super Admin from the team.")
+      useToastStore.getState().addToast("You cannot remove a Super Admin from the team.", "error")
       return
     }
     if (!confirm(`Remove ${admin.displayName} from the admin team?`)) return
@@ -104,10 +108,10 @@ export default function AdminTeam() {
         createdBy: user?.uid,
       })
       setInviteEmail("")
-      alert(`Invite placeholder created for ${inviteEmail}. They'll get ${inviteRole} access on next login.`)
+      useToastStore.getState().addToast(`Invite placeholder created for ${inviteEmail}. They'll get ${inviteRole} access on next login.`, "success")
     } catch (e) {
       console.error(e)
-      alert("Failed to invite admin. Check Firestore permissions.")
+      useToastStore.getState().addToast("Failed to invite admin. Check Firestore permissions.", "error")
     } finally {
       setInviting(false)
     }

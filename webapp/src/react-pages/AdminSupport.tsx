@@ -3,6 +3,7 @@ import { collection, query, orderBy, getDocs, updateDoc, doc, where, addDoc, onS
 import { db } from "../firebase"
 import { useAuth } from "../contexts/AuthContext"
 import { Search, AlertCircle, X, Mail, CheckCircle2, Clock, Inbox } from "lucide-react"
+import { useToastStore } from "../store/useToastStore"
 
 export default function AdminSupport() {
   const { adminData } = useAuth()
@@ -52,7 +53,7 @@ export default function AdminSupport() {
       return text.trim()
     } catch (err: any) {
       console.error("Gemini API Error:", err)
-      alert(`AI Assistant Error: ${err.message || 'Failed to communicate with Gemini.'}`)
+      useToastStore.getState().addToast(`AI Assistant Error: ${err.message || 'Failed to communicate with Gemini.'}`, "error")
       return ""
     } finally {
       setAiLoading(false)
@@ -228,10 +229,10 @@ Polished response:`
       })
 
       setReplyBody("")
-      alert("Reply sent and ticket resolved.")
+      useToastStore.getState().addToast("Reply sent and ticket resolved.", "success")
     } catch (err) {
       console.error(err)
-      alert("Failed to submit reply.")
+      useToastStore.getState().addToast("Failed to submit reply.", "error")
     }
   }
 

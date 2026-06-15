@@ -8,6 +8,7 @@ import { db } from "../firebase"
 import { ShieldAlert, HardDrive, History, FileText, ArrowLeft, ShieldCheck, Download, CreditCard, Trash2 } from "lucide-react"
 import { motion } from "framer-motion"
 import { useAuth } from "../contexts/AuthContext"
+import { useToastStore } from "../store/useToastStore"
 
 const PLAN_LABELS: Record<string, string> = {
   free: "Free",
@@ -89,7 +90,7 @@ export default function AdminUserDashboard() {
       }
     } catch (err: any) {
       console.error(err)
-      alert("Failed to update user plan. Make sure you have SUPER_ADMIN or ADMIN permissions.")
+      useToastStore.getState().addToast("Failed to update user plan. Make sure you have SUPER_ADMIN or ADMIN permissions.", "error")
     }
   }
 
@@ -108,7 +109,7 @@ export default function AdminUserDashboard() {
       })
     } catch (err: any) {
       console.error(err)
-      alert("Failed to update support-with-ads setting: " + err.message)
+      useToastStore.getState().addToast("Failed to update support-with-ads setting: " + err.message, "error")
     }
   }
 
@@ -127,7 +128,7 @@ export default function AdminUserDashboard() {
       })
     } catch (err: any) {
       console.error(err)
-      alert("Failed to update user status: " + err.message)
+      useToastStore.getState().addToast("Failed to update user status: " + err.message, "error")
     }
   }
 
@@ -150,7 +151,7 @@ export default function AdminUserDashboard() {
       navigate("/admin/users")
     } catch (err: any) {
       console.error(err)
-      alert("Failed to delete user: " + err.message)
+      useToastStore.getState().addToast("Failed to delete user: " + err.message, "error")
     }
   }
 

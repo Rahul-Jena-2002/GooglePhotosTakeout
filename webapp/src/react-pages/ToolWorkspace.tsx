@@ -1,6 +1,7 @@
 import { useRef, useEffect, useState } from "react"
 import { useAuth } from "../contexts/AuthContext"
 import { useToolStore } from "../store/useToolStore"
+import { useToastStore } from "../store/useToastStore"
 import { sanitizeFilename, findMatchingJsonName, safeParseJson, extractTimestamp } from "../services/MetadataMatcher"
 import { findMatchingJsonNameForZip } from "../services/ZipMetadataMatcher"
 import { isJpeg } from "../services/ExifRestorer"
@@ -137,6 +138,7 @@ export function ToolWorkspaceContent() {
   // Concurrency processing pool implementation
   const [maxWorkers, setMaxWorkers] = useState(1)
   const [activeWorkersCount, setActiveWorkersCount] = useState(0)
+  const [popupModal, setPopupModal] = useState<{ title: string; message: string; type: 'error' | 'warning' } | null>(null)
 
   const isProcessingRef = useRef(false)
   const logContainerRef = useRef<HTMLDivElement>(null)
@@ -538,46 +540,91 @@ export function ToolWorkspaceContent() {
     )
   }
 
+  const [takeoutLock, setTakeoutLock] = useState(false)
+  const [outputLock, setOutputLock] = useState(false)
+  const [takeoutFolderStructure, setTakeoutFolderStructure] = useState<any>(null)
+  const [zipFilesList, setZipFilesList] = useState<any[]>([])
+
   const handleSelectTakeout = async () => {
+    if (takeoutLock) return
     if (typeof window === 'undefined' || !window.showDirectoryPicker) {
-      alert("Browser Support Required:\n\nYour browser does not support the File System Access API required to select folders directly. Please use a desktop version of Google Chrome, Brave, or Microsoft Edge.")
+      useToastStore.getState().addToast(
+        "Your browser engine blocks local workspace streaming. Please migrate to Chromium.",
+        "error",
+        6000,
+        "Browser Incompatible"
+      )
       return
     }
+    setTakeoutLock(true)
     try {
       const dirHandle = (await (window as unknown as { showDirectoryPicker: () => Promise<unknown> }).showDirectoryPicker()) as FileSystemDirectoryHandle
       setTakeoutFolder(dirHandle)
+      setZipFile(null)
       window.dispatchEvent(new CustomEvent('takeoutfix-action-triggered'))
-    } catch (err) {
-      const errorName = err instanceof Error ? err.name : '';
-      const errorMessage = err instanceof Error ? err.message : String(err);
-      if (errorName === 'AbortError') {
-        console.log('User cancelled picker')
+    } catch (err: any) {
+      if (err.name === 'AbortError') {
+        useToastStore.getState().addToast(
+          "Oops! The selection prompt was closed by mistake. Try clicking again.",
+          "error",
+          4500,
+          "Selection Cancelled"
+        )
         return
       }
       console.error('Error selecting takeout folder:', err)
-      alert(`Could not open folder picker: ${errorMessage}\n\nNote: Browsers block folder access if the site is not served securely (HTTPS or localhost), or if you select a system-sensitive directory (like Downloads, Documents, or root C:/). Please try another folder or make sure you are accessing the site via localhost/HTTPS.`)
+      const isNotAllowed = err.name === 'NotAllowedError'
+      useToastStore.getState().addToast(
+        isNotAllowed 
+          ? "TakeoutFix requires read clearance to search for photos and sidecar metadata files." 
+          : `An internal filesystem tracking collision occurred. Please select again. (${err.message || err})`,
+        "error",
+        4500,
+        isNotAllowed ? "Permission Denied" : "Directory Failure"
+      )
+    } finally {
+      setTakeoutLock(false)
     }
   }
 
   const handleSelectOutput = async () => {
+    if (outputLock) return
     if (typeof window === 'undefined' || !window.showDirectoryPicker) {
-      alert("Browser Support Required:\n\nYour browser does not support the File System Access API required to select folders directly. Please use a desktop version of Google Chrome, Brave, or Microsoft Edge.")
+      useToastStore.getState().addToast(
+        "Your browser engine blocks local workspace streaming. Please migrate to Chromium.",
+        "error",
+        6000,
+        "Browser Incompatible"
+      )
       return
     }
+    setOutputLock(true)
     try {
       const dirHandle = (await (window as unknown as { showDirectoryPicker: (options?: { mode?: 'read' | 'readwrite' }) => Promise<unknown> }).showDirectoryPicker({ mode: 'readwrite' })) as FileSystemDirectoryHandle
-      
       setOutputFolder(dirHandle)
       window.dispatchEvent(new CustomEvent('takeoutfix-action-triggered'))
-    } catch (err) {
-      const errorName = err instanceof Error ? err.name : '';
-      const errorMessage = err instanceof Error ? err.message : String(err);
-      if (errorName === 'AbortError') {
-        console.log('User cancelled picker')
+    } catch (err: any) {
+      if (err.name === 'AbortError') {
+        useToastStore.getState().addToast(
+          "Oops! The selection prompt was closed by mistake. Try clicking again.",
+          "error",
+          4500,
+          "Selection Cancelled"
+        )
         return
       }
       console.error('Error selecting output folder:', err)
-      alert(`Could not open folder picker: ${errorMessage}\n\nNote: Browsers block folder access if the site is not served securely (HTTPS or localhost), or if you select a system-sensitive directory (like Downloads, Documents, or root C:/). Please try another folder or make sure you are accessing the site via localhost/HTTPS.`)
+      const isNotAllowed = err.name === 'NotAllowedError'
+      useToastStore.getState().addToast(
+        isNotAllowed 
+          ? "TakeoutFix requires read-write clearance to update missing EXIF time tags." 
+          : `An internal filesystem tracking collision occurred. Please select again. (${err.message || err})`,
+        "error",
+        4500,
+        isNotAllowed ? "Permission Obliteration" : "Directory Failure"
+      )
+    } finally {
+      setOutputLock(false)
     }
   }
 
@@ -725,7 +772,7 @@ export function ToolWorkspaceContent() {
       } else if (session.takeoutHandle) {
         const status = await session.takeoutHandle.requestPermission({ mode: 'read' });
         if (status !== 'granted') {
-          alert("Permission to read the source folder is required to resume.");
+          useToastStore.getState().addToast("Permission to read the source folder is required to resume.", "error");
           return;
         }
       }
@@ -733,7 +780,7 @@ export function ToolWorkspaceContent() {
       if (session.outputHandle) {
         const status = await session.outputHandle.requestPermission({ mode: 'readwrite' });
         if (status !== 'granted') {
-          alert("Permission to write to the output folder is required to resume.");
+          useToastStore.getState().addToast("Permission to write to the output folder is required to resume.", "error");
           return;
         }
       }
@@ -742,7 +789,7 @@ export function ToolWorkspaceContent() {
     } catch (err) {
       const errMsg = err instanceof Error ? err.message : String(err);
       console.error("Resumption re-grant failed:", err);
-      alert("Resumption failed: " + errMsg);
+      useToastStore.getState().addToast("Resumption failed: " + errMsg, "error");
     }
   };
 
@@ -1470,10 +1517,14 @@ export function ToolWorkspaceContent() {
     }
   }
 
-  // 3. Duplicate Space Analyzer logic
   const handleSelectDupFolder = async () => {
     if (typeof window === 'undefined' || !window.showDirectoryPicker) {
-      alert("Browser Support Required:\n\nYour browser does not support the File System Access API required to select folders directly. Please use a desktop version of Google Chrome, Brave, or Microsoft Edge.")
+      useToastStore.getState().addToast(
+        "Your browser does not support selecting folders directly. Please use a desktop version of Google Chrome, Brave, or Microsoft Edge.",
+        "error",
+        6000,
+        "Browser Support Required"
+      )
       return
     }
     try {
@@ -1486,7 +1537,12 @@ export function ToolWorkspaceContent() {
         return
       }
       console.error('Error selecting duplicate folder:', err)
-      alert(`Could not open folder picker: ${err.message || err}\n\nNote: Browsers block folder access if the site is not served securely (HTTPS or localhost), or if you select a system-sensitive directory (like Downloads, Documents, or root C:/). Please try another folder or make sure you are accessing the site via localhost/HTTPS.`)
+      useToastStore.getState().addToast(
+        `Could not open folder picker: ${err.message || err}`,
+        "error",
+        6000,
+        "Directory Access Error"
+      )
     }
   }
 
@@ -1586,7 +1642,11 @@ export function ToolWorkspaceContent() {
       const isBlocked = await detectAdBlock();
       if (isBlocked) {
         window.dispatchEvent(new CustomEvent('takeoutfix-action-triggered'));
-        alert("Ad Blocker Detected:\n\nTo start the restoration process, please disable your ad blocker or whitelist TakeoutFix. Alternatively, upgrade to Super for an ad-free experience.");
+        setPopupModal({
+          title: "Ad Blocker Detected",
+          message: "To start the restoration process, please disable your ad blocker or whitelist TakeoutFix.\n\nAlternatively, upgrade to Super for an ad-free experience.",
+          type: "warning"
+        });
         return;
       }
     }
@@ -2751,6 +2811,25 @@ export function ToolWorkspaceContent() {
               </a>
               <Button 
                 onClick={() => setQuotaAlert(null)}
+                className="btn-monochrome-primary w-full h-12 font-bold rounded-lg border-0 shadow-none transition-all duration-150 cursor-pointer"
+              >
+                Dismiss
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {popupModal && (
+        <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/85 backdrop-blur-md p-4 select-none">
+          <div className="bg-zinc-950 border border-white/10 p-8 rounded-2xl max-w-md w-full text-center relative overflow-hidden shadow-2xl animate-in fade-in zoom-in-95 duration-200">
+            <div className={`absolute top-0 left-0 right-0 h-1 ${popupModal.type === 'error' ? 'bg-red-500' : 'bg-amber-500'}`}></div>
+            <AlertCircle className={`w-12 h-12 ${popupModal.type === 'error' ? 'text-red-500/80' : 'text-amber-500/80'} mx-auto mb-4`} />
+            <h3 className="text-xl font-bold text-white mb-2">{popupModal.title}</h3>
+            <p className="text-zinc-400 text-sm mb-6 leading-relaxed whitespace-pre-line">{popupModal.message}</p>
+            <div>
+              <Button 
+                onClick={() => setPopupModal(null)}
                 className="btn-monochrome-primary w-full h-12 font-bold rounded-lg border-0 shadow-none transition-all duration-150 cursor-pointer"
               >
                 Dismiss

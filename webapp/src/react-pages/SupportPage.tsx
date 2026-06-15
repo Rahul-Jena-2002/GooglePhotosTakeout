@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card"
 import { Button } from "../components/ui/button"
 import { Input } from "../components/ui/input"
 import { Textarea } from "../components/ui/textarea"
-import { LifeBuoy, FileText, History, PlusCircle, AlertCircle, CheckCircle2, MessageSquare } from "lucide-react"
+import { LifeBuoy, FileText, History, PlusCircle, AlertCircle, CheckCircle2, MessageSquare, X } from "lucide-react"
 import { collection, query, where, getDocs, addDoc, doc, updateDoc } from "firebase/firestore"
 import { db } from "../firebase"
 import { motion, AnimatePresence } from "framer-motion"
@@ -14,28 +14,47 @@ import AdUnit from "../components/AdUnit"
 import { AuthProvider } from "../contexts/AuthContext"
 import { ToastContainer } from "../components/ui/toast"
 
-function SupportFaqItem({ q, a }: { q: string, a: string | React.ReactNode }) {
-  const [open, setOpen] = useState(false)
-  return (
-    <Card className="bg-black/45 backdrop-blur-md border-white/10 hover:border-indigo-500/20 transition-all overflow-hidden faq-dropdown-card">
-      <button 
-        type="button"
-        onClick={() => setOpen(!open)}
-        className="w-full text-left px-5 py-4 flex items-center justify-between gap-4 focus:outline-none"
-      >
-        <span className="text-base font-bold text-white">{q}</span>
-        <span className={`text-zinc-500 text-xs transition-transform duration-200 ${open ? 'rotate-180' : ''}`}>
-          ▼
-        </span>
-      </button>
-      {open && (
-        <div className="px-5 pb-5 pt-2 border-t border-white/5 animate-in fade-in slide-in-from-top-1 duration-200">
-          <div className="text-white/60 text-sm leading-relaxed whitespace-pre-wrap">{a}</div>
-        </div>
-      )}
-    </Card>
-  )
+interface SupportFaq {
+  id: string;
+  tag: string;
+  q: string;
+  a: string | React.ReactNode;
 }
+
+const supportFaqs: SupportFaq[] = [
+  { id: "download-takeout", tag: "Guide", q: "How do I download my Google Takeout?", a: "Go to takeout.google.com, select Google Photos, and create an export. Once finished, download and unzip the folder." },
+  { id: "missing-dates", tag: "Metadata", q: "Why are my photos missing dates?", a: "Google removes EXIF metadata when you download through Takeout. Instead, it places the data in separate JSON sidecar files. TakeoutFix merges these files back together." },
+  { id: "upload-privacy", tag: "Privacy", q: "Does TakeoutFix upload my photos?", a: "No. Everything is processed 100% locally on your machine. Your photos never leave your device." },
+  { id: "free-limit", tag: "Pricing", q: "Is there a limit on the free plan?", a: "Yes, the free plan processes up to 1GB or 1,000 files to let you test the tool. Upgrading removes this limit." },
+  {
+    id: "refund-policy",
+    tag: "Billing",
+    q: "What is your refund policy?",
+    a: (
+      <>
+        We want you to have a great experience with Takeout Fix. If you experience a genuine technical issue that prevents the software from working as described, and our support team is unable to resolve it, you may request a refund within <strong>7 days</strong> of purchase.
+        <br /><br />
+        For eligibility, exclusions, and the complete policy, please see our{" "}
+        <a href="/refund" className="text-indigo-400 hover:text-indigo-300 font-bold underline">
+          Refund Policy
+        </a>.
+      </>
+    )
+  },
+  { id: "server-upload", tag: "Privacy", q: "Are my photos uploaded to your servers?", a: "No. Never. The entire application runs locally inside your web browser using HTML5 File APIs. Your photos and metadata never leave your computer." },
+  { id: "offline-work", tag: "Privacy", q: "Does this work completely offline?", a: "Once the web app has loaded in your browser, you can disconnect from the internet and it will still process all your files locally." },
+  { id: "out-of-order", tag: "Metadata", q: "Why are my photos showing today's date or out of order after exporting from Google Takeout?", a: "When you export your photos, Google Photos separates the EXIF metadata into separate JSON sidecar files. Without this metadata, your phone or computer defaults to showing today's date (the file modification date), causing your gallery to be completely out of order. TakeoutFix fixes this by merging the JSON sidecars back into your images." },
+  { id: "metadata-types", tag: "Metadata", q: "What metadata can be recovered?", a: "We recover original creation dates (timestamps), GPS coordinates (latitude, longitude, altitude), and camera device information if it exists in the Google JSON sidecars." },
+  { id: "video-support", tag: "Formats", q: "Does it support videos?", a: "Yes! We support .mp4 and .mov files alongside standard image formats like .jpg, .heic, and .png." },
+  { id: "no-install", tag: "About", q: "Can I fix Google Takeout metadata online without downloading any software?", a: "Yes! TakeoutFix is a browser-based, no-install Google Takeout fixer tool. It does not require any software downloads or CLI commands like ExifTool. Everything runs directly inside your web browser 100% offline." }
+];
+
+const macOsSpring = {
+  type: "spring",
+  stiffness: 300,
+  damping: 28,
+  mass: 1
+};
 
 function SupportPageContent() {
   const { user, userData } = useAuth()
@@ -61,6 +80,28 @@ function SupportPageContent() {
 
   const [expandedTicketId, setExpandedTicketId] = useState<string | null>(null)
   const [followUpText, setFollowUpText] = useState("")
+  const [activeFaqId, setActiveFaqId] = useState<string | null>(null)
+
+  // Handle ESC key to close modal
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setActiveFaqId(null);
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, []);
+
+  // Prevent scroll when modal is open
+  useEffect(() => {
+    if (activeFaqId) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "unset";
+    }
+    return () => {
+      document.body.style.overflow = "unset";
+    };
+  }, [activeFaqId]);
 
   const toggleTicketExpand = (id: string) => {
     setExpandedTicketId(expandedTicketId === id ? null : id)
@@ -281,36 +322,100 @@ function SupportPageContent() {
                     animate="show"
                     className="space-y-4 max-h-[520px] overflow-y-auto pr-2 custom-faq-scroll"
                   >
-                    {[
-                      { q: "How do I download my Google Takeout?", a: "Go to takeout.google.com, select Google Photos, and create an export. Once finished, download and unzip the folder." },
-                      { q: "Why are my photos missing dates?", a: "Google removes EXIF metadata when you download through Takeout. Instead, it places the data in separate JSON sidecar files. TakeoutFix merges these files back together." },
-                      { q: "Does TakeoutFix upload my photos?", a: "No. Everything is processed 100% locally on your machine. Your photos never leave your device." },
-                      { q: "Is there a limit on the free plan?", a: "Yes, the free plan processes up to 1GB or 1,000 files to let you test the tool. Upgrading removes this limit." },
-                      {
-                        q: "What is your refund policy?",
-                        a: (
-                          <>
-                            We want you to have a great experience with Takeout Fix. If you experience a genuine technical issue that prevents the software from working as described, and our support team is unable to resolve it, you may request a refund within <strong>7 days</strong> of purchase.
-                            <br /><br />
-                            For eligibility, exclusions, and the complete policy, please see our{" "}
-                            <a href="/refund" className="text-indigo-400 hover:text-indigo-300 font-bold underline">
-                              Refund Policy
-                            </a>.
-                          </>
-                        )
-                      },
-                      { q: "Are my photos uploaded to your servers?", a: "No. Never. The entire application runs locally inside your web browser using HTML5 File APIs. Your photos and metadata never leave your computer." },
-                      { q: "Does this work completely offline?", a: "Once the web app has loaded in your browser, you can disconnect from the internet and it will still process all your files locally." },
-                      { q: "Why are my photos showing today's date or out of order after exporting from Google Takeout?", a: "When you export your photos, Google Photos separates the EXIF metadata into separate JSON sidecar files. Without this metadata, your phone or computer defaults to showing today's date (the file modification date), causing your gallery to be completely out of order. TakeoutFix fixes this by merging the JSON sidecars back into your images." },
-                      { q: "What metadata can be recovered?", a: "We recover original creation dates (timestamps), GPS coordinates (latitude, longitude, altitude), and camera device information if it exists in the Google JSON sidecars." },
-                      { q: "Does it support videos?", a: "Yes! We support .mp4 and .mov files alongside standard image formats like .jpg, .heic, and .png." },
-                      { q: "Can I fix Google Takeout metadata online without downloading any software?", a: "Yes! TakeoutFix is a browser-based, no-install Google Takeout fixer tool. It does not require any software downloads or CLI commands like ExifTool. Everything runs directly inside your web browser 100% offline." }
-                    ].map((faq, idx) => (
-                      <motion.div key={idx} variants={itemVariants}>
-                        <SupportFaqItem q={faq.q} a={faq.a} />
+                    {supportFaqs.map((faq) => (
+                      <motion.div
+                        key={faq.id}
+                        variants={itemVariants}
+                        layoutId={`faq-card-support-${faq.id}`}
+                        onClick={() => setActiveFaqId(faq.id)}
+                        className="flex items-center justify-between p-5 bg-white dark:bg-black/45 dark:backdrop-blur-md border border-zinc-200 dark:border-white/10 rounded-xl cursor-pointer hover:bg-zinc-50/50 dark:hover:bg-transparent hover:border-indigo-500/30 dark:hover:border-indigo-500/30 transition-colors duration-200 group text-left"
+                      >
+                        <div className="flex flex-col gap-2 pr-4">
+                          <div className="flex items-center gap-2">
+                            <span className="text-[9px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-full border border-zinc-200 dark:border-white/10 bg-zinc-100 dark:bg-white/5 text-zinc-550 dark:text-zinc-400">
+                              {faq.tag}
+                            </span>
+                          </div>
+                          <h4 className="text-base font-bold text-zinc-900 dark:text-white leading-snug group-hover:text-indigo-600 dark:group-hover:text-indigo-300 transition-colors">
+                            {faq.q}
+                          </h4>
+                        </div>
+                        
+                        <div className="flex-shrink-0 flex items-center gap-1 text-xs font-semibold text-zinc-400 dark:text-zinc-500 group-hover:text-zinc-700 dark:group-hover:text-zinc-300 transition-colors">
+                          <span>Read details ➜</span>
+                        </div>
                       </motion.div>
                     ))}
                   </motion.div>
+
+                  {/* OVERLAY POPUP MODAL ARCHITECTURE */}
+                  <AnimatePresence>
+                    {activeFaqId && (() => {
+                      const activeFaq = supportFaqs.find(f => f.id === activeFaqId);
+                      if (!activeFaq) return null;
+
+                      return (
+                        <div className="fixed inset-0 z-[999] flex items-center justify-center p-4">
+                          {/* BACKDROP */}
+                          <motion.div
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            onClick={() => setActiveFaqId(null)}
+                            className="absolute inset-0 bg-black/80 backdrop-blur-md"
+                          />
+
+                          {/* THE POPPING CONTAINER */}
+                          <motion.div
+                            layoutId={`faq-card-support-${activeFaq.id}`}
+                            transition={macOsSpring}
+                            initial={{ filter: "blur(4px)" }}
+                            animate={{ filter: "blur(0px)" }}
+                            exit={{ filter: "blur(4px)" }}
+                            className="w-full max-w-lg bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-white/10 rounded-2xl p-6 md:p-8 relative shadow-2xl overflow-hidden pointer-events-auto flex flex-col text-left text-zinc-900 dark:text-white"
+                          >
+                            {/* Native Apple close window circle button */}
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setActiveFaqId(null);
+                              }}
+                              className="absolute top-4 right-4 w-6 h-6 rounded-full bg-zinc-100 hover:bg-zinc-200 dark:bg-white/5 dark:hover:bg-white/15 text-zinc-500 dark:text-zinc-400 hover:text-zinc-700 dark:hover:text-white flex items-center justify-center transition-colors cursor-pointer"
+                            >
+                              <X className="w-3.5 h-3.5" />
+                            </button>
+
+                            {/* Wrap modal contents to fade out immediately on exit, preventing layout warp stutter */}
+                            <motion.div
+                              initial={{ opacity: 0 }}
+                              animate={{ opacity: 1 }}
+                              exit={{ opacity: 0 }}
+                              transition={{ duration: 0.15 }}
+                              className="flex flex-col h-full"
+                            >
+                              {/* Popup Badge */}
+                              <div className="flex items-center gap-2 mb-4">
+                                <span className="text-[10px] font-bold uppercase tracking-widest px-2.5 py-0.5 rounded-full border border-zinc-200 dark:border-white/10 bg-zinc-100 dark:bg-white/5 text-zinc-550 dark:text-zinc-400">
+                                  {activeFaq.tag}
+                                </span>
+                              </div>
+
+                              {/* Popup Title */}
+                              <h3 className="text-xl font-bold text-zinc-900 dark:text-white pr-8 mb-4">
+                                {activeFaq.q}
+                              </h3>
+
+                              {/* Popup Answer Payload */}
+                              <div className="mt-2 text-sm md:text-base text-zinc-650 dark:text-zinc-300 leading-relaxed whitespace-pre-wrap">
+                                {activeFaq.a}
+                              </div>
+                            </motion.div>
+                          </motion.div>
+                        </div>
+                      );
+                    })()}
+                  </AnimatePresence>
                 </div>
               )}
 

@@ -202,7 +202,7 @@ const canonicalUrl = `https://takeoutfix.pages.dev${Astro.url.pathname.replace(/
             </div>
 
             <!-- Auth Trigger Button / Dropdown -->
-            <div id="auth-section">
+            <div id="auth-section" class="relative flex flex-col items-end">
               <!-- Loading spinner or loading indicator by default -->
               <div id="auth-loading" class="w-7 h-7 border-2 border-white/10 border-t-white/80 rounded-full animate-spin"></div>
               
@@ -421,12 +421,49 @@ const canonicalUrl = `https://takeoutfix.pages.dev${Astro.url.pathname.replace(/
         </div>
       </div>
     </div>
+    
+    <div id="vanilla-toast-container" class="fixed top-[80px] right-6 z-[99999] flex flex-col gap-2.5 max-w-sm w-[calc(100%-2rem)] pointer-events-none items-end"></div>
 
     <!-- CLIENT SIDE EVENT HANDLERS AND AUTH LISTENER -->
     <script>
       import * as Sentry from "@sentry/astro";
       import { auth, db, googleProvider, signInWithPopup, signOut } from "../firebase";
       import { doc, onSnapshot, collection, query, where } from "firebase/firestore";
+
+      (window as any).showVanillaToast = (message: string, type: "error" | "success" = "error", title?: string) => {
+        const container = document.getElementById("vanilla-toast-container");
+        if (!container) return;
+        const toast = document.createElement("div");
+        const defaultTitle = title || (type === "error" ? "Login Failed" : "Success");
+        const defaultIcon = type === "error" ? "⚠️" : "✅";
+
+        toast.className = `toast-right-slide pointer-events-auto flex items-start gap-3.5 p-4 rounded-xl border text-left shadow-2xl transition-all duration-300 w-full 
+          bg-white border-[#fee2e2] shadow-[0_10px_30px_rgba(0,0,0,0.06)] 
+          dark:bg-[#18181b] dark:border-[#27272a] dark:shadow-[0_10px_30px_rgba(0,0,0,0.5)]`;
+
+        toast.innerHTML = `
+          <span class="text-base mt-0.5 flex-shrink-0 select-none ${
+            type === "error" ? "text-[#ef4444] dark:text-[#f87171]" : "text-emerald-500"
+          }">${defaultIcon}</span>
+          <div class="flex-grow min-w-0 font-sans">
+            <strong class="block text-sm font-bold text-[#111827] dark:text-white leading-tight">${defaultTitle}</strong>
+            <p class="text-xs font-medium text-[#4b5563] dark:text-[#9ca3af] mt-1 leading-relaxed">${message}</p>
+          </div>
+        `;
+        container.appendChild(toast);
+        setTimeout(() => {
+          toast.classList.add("show");
+        }, 10);
+
+        const closeToast = () => {
+          toast.classList.remove("show");
+          setTimeout(() => {
+            toast.remove();
+          }, 450);
+        };
+
+        setTimeout(closeToast, 4500);
+      };
       import { detectAdBlock } from "../services/AdBlockDetector";
 
       Sentry.init({
@@ -803,11 +840,69 @@ const canonicalUrl = `https://takeoutfix.pages.dev${Astro.url.pathname.replace(/
 
         // Auth Buttons
         loginBtn?.addEventListener("click", async () => {
+          let loginSuccess = false;
+          let toastShown = false;
+          let popupRef: Window | null = null;
+          let checkInterval: any = null;
+
+          const originalOpen = window.open;
+          // Override window.open to capture the popup window when Firebase opens it
+          window.open = function(...args) {
+            const win = originalOpen.apply(this, args);
+            popupRef = win;
+            // Restore window.open immediately upon capturing
+            window.open = originalOpen;
+            return win;
+          };
+
+          // Safe fallback to restore window.open if it's never called
+          const restoreTimeout = setTimeout(() => {
+            if (window.open !== originalOpen) {
+              window.open = originalOpen;
+            }
+          }, 5000);
+
           try {
+            checkInterval = setInterval(() => {
+              if (popupRef && popupRef.closed) {
+                clearInterval(checkInterval);
+                clearTimeout(restoreTimeout);
+                if (window.open !== originalOpen) {
+                  window.open = originalOpen;
+                }
+                if (!loginSuccess && !toastShown) {
+                  toastShown = true;
+                  (window as any).showVanillaToast("Please check your credentials and try again.", "error", "Login Failed");
+                }
+              }
+            }, 100);
+
             await signInWithPopup(auth, googleProvider);
+            loginSuccess = true;
+            clearInterval(checkInterval);
+            clearTimeout(restoreTimeout);
+            if (window.open !== originalOpen) {
+              window.open = originalOpen;
+            }
           } catch (err: any) {
+            clearInterval(checkInterval);
+            clearTimeout(restoreTimeout);
+            if (window.open !== originalOpen) {
+              window.open = originalOpen;
+            }
+            if (loginSuccess) return;
+
             console.error("Login failed:", err);
-            alert("Login failed: " + (err?.message || err));
+            if (!toastShown) {
+              toastShown = true;
+              const errMsg = err?.code || err?.message || String(err);
+              const isCancelled = errMsg.includes("cancelled") || errMsg.includes("closed") || errMsg.includes("popup-closed-by-user");
+              (window as any).showVanillaToast(
+                isCancelled ? "Please check your credentials and try again." : "An error occurred during sign in. Please try again.",
+                "error",
+                "Login Failed"
+              );
+            }
           }
         });
 
@@ -859,7 +954,7 @@ const canonicalUrl = `https://takeoutfix.pages.dev${Astro.url.pathname.replace(/
           hasUserInteracted = true;
           const isBlocked = await detectAdBlock();
           if (isBlocked && !isAdFree) {
-            alert("Ad blocker is still active. Please disable it for TakeoutFix or refresh the page.");
+            (window as any).showVanillaToast("Ad blocker is still active. Please disable it for TakeoutFix or refresh the page.", "error");
           } else {
             hideBanner();
           }

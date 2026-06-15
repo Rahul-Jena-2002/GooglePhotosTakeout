@@ -6,6 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../co
 import { Button } from "../components/ui/button"
 import { Input } from "../components/ui/input"
 import { Shield, Settings, Sliders, DollarSign, Database, Lock } from "lucide-react"
+import { useToastStore } from "../store/useToastStore"
 
 export default function AdminSettings() {
   const { adminData } = useAuth()
@@ -155,10 +156,10 @@ export default function AdminSettings() {
         timestamp: Date.now()
       })
 
-      alert("Settings updated successfully.")
+      useToastStore.getState().addToast("Settings updated successfully.", "success")
     } catch (err: any) {
       console.error(err)
-      alert("Failed to save settings: " + err.message)
+      useToastStore.getState().addToast("Failed to save settings: " + err.message, "error")
     } finally {
       setSaving(false)
     }

@@ -3,6 +3,7 @@ import { collection, query, orderBy, onSnapshot, doc, updateDoc, setDoc, addDoc,
 import { db } from "../firebase"
 import { useAuth } from "../contexts/AuthContext"
 import { DollarSign, Users, Award, TrendingUp, RotateCcw, Search } from "lucide-react"
+import { useToastStore } from "../store/useToastStore"
 
 interface Transaction {
   id: string;
@@ -94,7 +95,7 @@ export default function AdminRevenue() {
 
   const handleRefund = async (tx: Transaction) => {
     if (!isSuperAdminOrAdmin) {
-      alert("Unauthorized: Only Admins or Super Admins can refund transactions.")
+      useToastStore.getState().addToast("Unauthorized: Only Admins or Super Admins can refund transactions.", "error")
       return
     }
     
@@ -169,10 +170,10 @@ export default function AdminRevenue() {
         timestamp: Date.now()
       })
 
-      alert(`Transaction refunded successfully (Amount: ₹${(tx.amount * pct / 100).toFixed(2)}). User has been downgraded.`)
+      useToastStore.getState().addToast(`Transaction refunded successfully (Amount: ₹${(tx.amount * pct / 100).toFixed(2)}). User has been downgraded.`, "success")
     } catch (err: any) {
       console.error(err)
-      alert("Failed to refund transaction: " + err.message)
+      useToastStore.getState().addToast("Failed to refund transaction: " + err.message, "error")
     }
   }
 

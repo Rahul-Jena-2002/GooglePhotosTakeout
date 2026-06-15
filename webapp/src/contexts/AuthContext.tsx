@@ -3,6 +3,7 @@ import { type User, onAuthStateChanged, signInWithPopup, GoogleAuthProvider, sig
 import { doc, getDoc, setDoc, getDocs, collection, query, where, deleteDoc, onSnapshot, increment, addDoc } from 'firebase/firestore';
 import { auth, db } from '../firebase';
 import { indexedDbService } from '../lib/indexedDbService';
+import { useToastStore } from '../store/useToastStore';
 
 export type PlanType = 'free' | 'recovery_pass' | 'pro' | 'super' | 'family';
 export type AdminRole = 'SUPER_ADMIN' | 'ADMIN' | 'SUPPORT' | 'MODERATOR';
@@ -917,7 +918,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setPendingSessionData(null);
     } catch (err) {
       console.error("Failed to disconnect other sessions:", err);
-      alert("Failed to confirm connection. Please try again.");
+      useToastStore.getState().addToast("Failed to confirm connection. Please try again.", "error");
     }
   };
 

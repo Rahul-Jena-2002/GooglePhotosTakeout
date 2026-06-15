@@ -6,10 +6,79 @@ import { Menu, X, Bell, Sun, Moon } from "lucide-react"
 import { db } from "../firebase"
 import { collection, query, where, onSnapshot } from "firebase/firestore"
 import { useTelemetrySync } from "../hooks/useTelemetrySync"
+import { useToastStore } from "../store/useToastStore"
 
 export default function MainLayout() {
   const { user, userData, adminData, login, logout, loading } = useAuth()
   const location = useLocation()
+
+  const handleLogin = async () => {
+    let loginSuccess = false;
+    let toastShown = false;
+    let popupRef: Window | null = null;
+    let checkInterval: any = null;
+
+    const originalOpen = window.open;
+    // Override window.open to capture the popup window when Firebase opens it
+    window.open = function(...args) {
+      const win = originalOpen.apply(this, args);
+      popupRef = win;
+      // Restore window.open immediately upon capturing
+      window.open = originalOpen;
+      return win;
+    };
+
+    // Safe fallback to restore window.open if it's never called
+    const restoreTimeout = setTimeout(() => {
+      if (window.open !== originalOpen) {
+        window.open = originalOpen;
+      }
+    }, 5000);
+
+    try {
+      checkInterval = setInterval(() => {
+        if (popupRef && popupRef.closed) {
+          clearInterval(checkInterval);
+          clearTimeout(restoreTimeout);
+          if (window.open !== originalOpen) {
+            window.open = originalOpen;
+          }
+          if (!loginSuccess && !toastShown) {
+            toastShown = true;
+            useToastStore.getState().addToast("Please check your credentials and try again.", "error", 4500, "Login Failed");
+          }
+        }
+      }, 100);
+
+      await login();
+      loginSuccess = true;
+      clearInterval(checkInterval);
+      clearTimeout(restoreTimeout);
+      if (window.open !== originalOpen) {
+        window.open = originalOpen;
+      }
+    } catch (err: any) {
+      clearInterval(checkInterval);
+      clearTimeout(restoreTimeout);
+      if (window.open !== originalOpen) {
+        window.open = originalOpen;
+      }
+      if (loginSuccess) return;
+
+      console.error("Login failed:", err);
+      if (!toastShown) {
+        toastShown = true;
+        const errMsg = err?.code || err?.message || String(err);
+        const isCancelled = errMsg.includes("cancelled") || errMsg.includes("closed") || errMsg.includes("popup-closed-by-user");
+        useToastStore.getState().addToast(
+          isCancelled ? "Please check your credentials and try again." : "An error occurred during sign in. Please try again.",
+          "error",
+          4500,
+          "Login Failed"
+        );
+      }
+    }
+  }
   
   // Keep platform stats in sync in the background when admin is logged in
   useTelemetrySync()
@@ -343,14 +412,14 @@ export default function MainLayout() {
                     </div>
                   </>
                 ) : (
-                  <>
+                  <div className="relative flex flex-col items-end">
                     <button 
-                      onClick={login} 
+                      onClick={handleLogin} 
                       className="rounded-lg bg-white hover:bg-white/90 text-black border-none px-4 py-2 font-semibold text-xs md:text-sm transition-all shadow-sm"
                     >
                       Get Started
                     </button>
-                  </>
+                  </div>
                 )}
               </>
             )}
@@ -383,11 +452,10 @@ export default function MainLayout() {
             )}
             
             {!user && (
-              <div className="border-t border-white/5 pt-4">
+              <div className="border-t border-white/5 pt-4 flex flex-col items-center gap-1.5 w-full">
                 <button 
-                  onClick={() => {
-                    login()
-                    setMobileMenuOpen(false)
+                  onClick={async () => {
+                    await handleLogin()
                   }}
                   className="w-full py-2.5 rounded-full bg-gradient-to-r from-indigo-500 to-purple-600 hover:opacity-90 text-white border-0 shadow-[0_0_20px_rgba(99,102,241,0.4)] font-semibold text-sm transition-all"
                 >
