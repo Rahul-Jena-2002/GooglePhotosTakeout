@@ -12,7 +12,7 @@ import AdUnit from "../components/AdUnit"
 import { Button } from "../components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "../components/ui/card"
 import { Progress } from "../components/ui/progress"
-import { FolderUp, HardDrive, Play, Square, Pause, Activity, Database, CheckCircle2, AlertCircle, XCircle, FileText, Cpu, Eye, Layers, Copy, Lock, FileImage, FileJson, Search, Zap } from "lucide-react"
+import { FolderUp, HardDrive, Play, Square, Pause, Activity, Database, CheckCircle2, AlertCircle, XCircle, FileText, Cpu, Eye, Layers, Copy, Lock, FileImage, FileJson, Search, Zap, X } from "lucide-react"
 // No react-router-dom imports
 import { indexedDbService } from "../lib/indexedDbService"
 import piexif from "piexifjs"
@@ -169,6 +169,13 @@ export function ToolWorkspaceContent() {
   // local drag-and-drop / zip processing states
   const [zipFile, setZipFile] = useState<File | null>(null)
   const [isDragOver, setIsDragOver] = useState(false)
+  const [takeoutLock, setTakeoutLock] = useState(false)
+  const [outputLock, setOutputLock] = useState(false)
+  const [takeoutFolderStructure, setTakeoutFolderStructure] = useState<any>(null)
+  const [zipFilesList, setZipFilesList] = useState<any[]>([])
+  const [showCompareModal, setShowCompareModal] = useState(false)
+  const [modalContext, setModalContext] = useState<'source' | 'destination' | null>(null)
+  const [pendingFolderHandle, setPendingFolderHandle] = useState<FileSystemDirectoryHandle | null>(null)
   
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault()
@@ -540,11 +547,6 @@ export function ToolWorkspaceContent() {
     )
   }
 
-  const [takeoutLock, setTakeoutLock] = useState(false)
-  const [outputLock, setOutputLock] = useState(false)
-  const [takeoutFolderStructure, setTakeoutFolderStructure] = useState<any>(null)
-  const [zipFilesList, setZipFilesList] = useState<any[]>([])
-
   const handleSelectTakeout = async () => {
     if (takeoutLock) return
     if (typeof window === 'undefined' || !window.showDirectoryPicker) {
@@ -559,9 +561,16 @@ export function ToolWorkspaceContent() {
     setTakeoutLock(true)
     try {
       const dirHandle = (await (window as unknown as { showDirectoryPicker: () => Promise<unknown> }).showDirectoryPicker()) as FileSystemDirectoryHandle
-      setTakeoutFolder(dirHandle)
-      setZipFile(null)
-      window.dispatchEvent(new CustomEvent('takeoutfix-action-triggered'))
+      
+      const status = await dirHandle.queryPermission({ mode: 'read' })
+      if (status === 'prompt') {
+        setPendingFolderHandle(dirHandle)
+        setModalContext('source')
+      } else {
+        setTakeoutFolder(dirHandle)
+        setZipFile(null)
+        window.dispatchEvent(new CustomEvent('takeoutfix-action-triggered'))
+      }
     } catch (err: any) {
       if (err.name === 'AbortError') {
         useToastStore.getState().addToast(
@@ -600,9 +609,16 @@ export function ToolWorkspaceContent() {
     }
     setOutputLock(true)
     try {
-      const dirHandle = (await (window as unknown as { showDirectoryPicker: (options?: { mode?: 'read' | 'readwrite' }) => Promise<unknown> }).showDirectoryPicker({ mode: 'readwrite' })) as FileSystemDirectoryHandle
-      setOutputFolder(dirHandle)
-      window.dispatchEvent(new CustomEvent('takeoutfix-action-triggered'))
+      const dirHandle = (await (window as unknown as { showDirectoryPicker: (options?: { mode?: 'read' | 'readwrite' }) => Promise<unknown> }).showDirectoryPicker()) as FileSystemDirectoryHandle
+      
+      const status = await dirHandle.queryPermission({ mode: 'readwrite' })
+      if (status === 'prompt') {
+        setPendingFolderHandle(dirHandle)
+        setModalContext('destination')
+      } else if (status === 'granted') {
+        setOutputFolder(dirHandle)
+        window.dispatchEvent(new CustomEvent('takeoutfix-action-triggered'))
+      }
     } catch (err: any) {
       if (err.name === 'AbortError') {
         useToastStore.getState().addToast(
@@ -625,6 +641,36 @@ export function ToolWorkspaceContent() {
       )
     } finally {
       setOutputLock(false)
+    }
+  }
+
+  const handleModalConfirm = async () => {
+    if (!pendingFolderHandle || !modalContext) return
+    const targetMode = modalContext === 'source' ? 'read' : 'readwrite'
+    try {
+      const updatedStatus = await pendingFolderHandle.requestPermission({ mode: targetMode })
+      if (updatedStatus === 'granted') {
+        if (modalContext === 'source') {
+          setTakeoutFolder(pendingFolderHandle)
+          setZipFile(null)
+        } else {
+          setOutputFolder(pendingFolderHandle)
+        }
+        window.dispatchEvent(new CustomEvent('takeoutfix-action-triggered'))
+      } else {
+        useToastStore.getState().addToast(
+          modalContext === 'source'
+            ? "Read permission is required to scan Google Takeout files."
+            : "Write permission is required to save restored files in this folder.",
+          "warning"
+        )
+      }
+    } catch (err) {
+      console.error("Native authorization request failed", err)
+      useToastStore.getState().addToast("Native authorization request failed", "error")
+    } finally {
+      setPendingFolderHandle(null)
+      setModalContext(null)
     }
   }
 
@@ -1957,18 +2003,17 @@ export function ToolWorkspaceContent() {
     <AdBlockGate>
       <div className="w-full md:h-[calc(100vh-64px)] h-auto flex flex-col md:flex-row bg-[#0A0A0A] md:overflow-hidden overflow-y-auto">
         
-        {/* 30% LEFT PANEL: CONFIGURATION */}
-        <div className="w-full md:w-[30%] md:min-w-[400px] p-8 border-r border-white/5 flex flex-col md:h-full h-auto md:overflow-y-auto overflow-visible">
-          <div className="mb-8">
-            <h1 className="text-3xl font-bold tracking-tight mb-2">Recovery Center</h1>
-            <p className="text-white/50 text-xs">Configure your source directories or access advanced metadata tools.</p>
+        {/* 28% LEFT PANEL: CONFIGURATION */}
+        <div className="w-full md:w-[28%] md:min-w-[340px] p-3 border-r border-white/5 flex flex-col md:h-full h-auto md:overflow-hidden overflow-visible">
+          <div className="mb-1.5">
+            <h1 className="text-base font-bold tracking-tight">Recovery Center</h1>
           </div>
 
           {/* Quick Tab Selector */}
-          <div className="grid grid-cols-2 gap-2 mb-8 tool-tab-container p-1 rounded-xl">
+          <div className="grid grid-cols-2 gap-1 mb-2 tool-tab-container p-0.5 rounded-lg">
             <button
               onClick={() => setActiveToolTab('restore')}
-              className={`py-2 px-3 text-xs font-bold rounded-lg transition-all tool-tab-btn ${
+              className={`py-0.5 px-1.5 text-[10px] font-bold rounded-md transition-all tool-tab-btn ${
                 activeToolTab === 'restore' ? 'active' : ''
               }`}
             >
@@ -1976,7 +2021,7 @@ export function ToolWorkspaceContent() {
             </button>
             <button
               onClick={() => setActiveToolTab('viewer')}
-              className={`py-2 px-3 text-xs font-bold rounded-lg transition-all tool-tab-btn ${
+              className={`py-0.5 px-1.5 text-[10px] font-bold rounded-md transition-all tool-tab-btn ${
                 activeToolTab === 'viewer' ? 'active' : ''
               }`}
             >
@@ -1984,7 +2029,7 @@ export function ToolWorkspaceContent() {
             </button>
             <button
               onClick={() => setActiveToolTab('comparison')}
-              className={`py-2 px-3 text-xs font-bold rounded-lg transition-all tool-tab-btn ${
+              className={`py-0.5 px-1.5 text-[10px] font-bold rounded-md transition-all tool-tab-btn ${
                 activeToolTab === 'comparison' ? 'active' : ''
               }`}
             >
@@ -1992,7 +2037,7 @@ export function ToolWorkspaceContent() {
             </button>
             <button
               onClick={() => setActiveToolTab('duplicates')}
-              className={`py-2 px-3 text-xs font-bold rounded-lg transition-all tool-tab-btn ${
+              className={`py-0.5 px-1.5 text-[10px] font-bold rounded-md transition-all tool-tab-btn ${
                 activeToolTab === 'duplicates' ? 'active' : ''
               }`}
             >
@@ -2002,18 +2047,18 @@ export function ToolWorkspaceContent() {
 
           {/* Resumption Banner */}
           {activeToolTab === 'restore' && pendingSession && (
-            <div className="mb-6 p-5 bg-indigo-500/10 border border-indigo-500/20 rounded-2xl text-left space-y-4">
-              <div className="flex items-center gap-2 text-indigo-400 font-bold text-sm">
-                <Activity className="w-5 h-5 animate-pulse" />
+            <div className="mb-4 p-3 bg-indigo-500/10 border border-indigo-500/20 rounded-xl text-left space-y-2">
+              <div className="flex items-center gap-1.5 text-indigo-400 font-bold text-xs">
+                <Activity className="w-4 h-4 animate-pulse" />
                 <span>Interrupted Session Found</span>
               </div>
-              <p className="text-xs text-zinc-350 leading-relaxed">
+              <p className="text-[10px] text-zinc-350 leading-relaxed">
                 We found a pending restoration for <strong>{pendingSession.takeoutName}</strong> ({pendingSession.scannedCount} of {pendingSession.totalFiles} files processed).
               </p>
-              <div className="flex gap-2">
+              <div className="flex gap-1.5">
                 <Button 
                   onClick={handleReGrantPermissions} 
-                  className="btn-monochrome-primary rounded-lg px-3 py-1.5 text-xs font-bold transition-all duration-150 cursor-pointer"
+                  className="btn-monochrome-primary rounded-md px-2.5 py-1 text-[10px] font-bold transition-all duration-150 cursor-pointer"
                 >
                   Resume Restoration
                 </Button>
@@ -2022,7 +2067,7 @@ export function ToolWorkspaceContent() {
                     await sessionManagerRef.current.terminateSession('cancelled');
                     setPendingSession(null);
                   }}
-                  className="btn-monochrome-secondary rounded-lg px-3 py-1.5 text-xs font-bold transition-all duration-150 cursor-pointer"
+                  className="btn-monochrome-secondary rounded-md px-2.5 py-1 text-[10px] font-bold transition-all duration-150 cursor-pointer"
                 >
                   Discard
                 </Button>
@@ -2030,17 +2075,17 @@ export function ToolWorkspaceContent() {
             </div>
           )}
 
-          <div className="mb-6">
+          <div className="mb-1.5">
             <AdUnit type="horizontal" slot="1" />
           </div>
 
           {/* Browser compatibility check alert */}
           {typeof window !== 'undefined' && !window.showDirectoryPicker && (
-            <div className="p-4 bg-amber-500/10 border border-amber-500/20 text-amber-400 rounded-xl text-xs mb-6 flex items-start gap-3">
-              <AlertCircle className="w-5 h-5 flex-shrink-0 mt-0.5" />
+            <div className="p-3 bg-amber-500/10 border border-amber-500/20 text-amber-400 rounded-lg text-[10px] mb-4 flex items-start gap-2">
+              <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />
               <div>
                 <div className="font-bold">Browser Support Warning</div>
-                <div className="text-[11px] text-amber-500/70 mt-0.5 leading-relaxed">
+                <div className="text-[9px] text-amber-500/70 mt-0.5 leading-relaxed">
                   Your browser does not support native local directory access APIs. To restore Google Takeout folders directly on your device, please use a modern Chromium-based desktop browser (e.g., <strong>Google Chrome, Microsoft Edge, or Brave</strong>). Safari, Firefox, and mobile browsers are currently not supported for direct local directory operations.
                 </div>
               </div>
@@ -2049,189 +2094,174 @@ export function ToolWorkspaceContent() {
 
           {/* Tool specific Left Panel render */}
           {activeToolTab === 'restore' && (
-            <div className="space-y-6 max-w-3xl mb-12 flex-grow flex flex-col justify-between">
-              <div className="space-y-6">
+            <div className="space-y-2 max-w-3xl mb-3 flex-grow flex flex-col justify-between">
+              <div className="space-y-2">
                 <Card 
                   onDragOver={handleDragOver}
                   onDragLeave={handleDragLeave}
                   onDrop={handleDrop}
-                  className={`bg-white/[0.02] border-white/10 shadow-2xl transition-all duration-150 ${
+                  className={`bg-white/[0.02] border-white/10 shadow-lg transition-all duration-150 ${
                     isDragOver ? 'border-indigo-500/40 bg-indigo-500/[0.02] scale-[1.01]' : ''
                   }`}
                 >
-                  <CardHeader className="border-b border-white/5 bg-black/20 pb-4">
-                    <CardTitle className="flex items-center gap-2">
-                      <FolderUp className="w-5 h-5 text-zinc-400"/> 
-                      1. Select Takeout Source (Folder or ZIP)
+                  <CardHeader className="border-b border-white/5 bg-black/20 py-1.5 px-3">
+                    <CardTitle className="flex items-center justify-between text-[11px] font-bold uppercase tracking-wider text-zinc-350">
+                      <span className="flex items-center gap-1.5">
+                        <FolderUp className="w-3.5 h-3.5 text-zinc-400"/> 
+                        1. Source
+                      </span>
+                      {(takeoutFolder || zipFile) && (
+                        <button 
+                          onClick={handleSelectTakeout}
+                          className="text-[9px] text-zinc-400 hover:text-white font-bold transition-all px-1.5 py-0.5 rounded border border-white/10 hover:border-white/20 bg-white/[0.02] cursor-pointer"
+                        >
+                          Change
+                        </button>
+                      )}
                     </CardTitle>
-                    <CardDescription className="text-white/50">
-                      Drag & Drop your Takeout folder or ZIP archive here, or browse.
-                    </CardDescription>
                   </CardHeader>
-                  <CardContent className="pt-6">
+                  <CardContent className="p-2">
                     {zipFile ? (
-                      <div className="space-y-3 mb-4">
-                        <div className="p-4 bg-indigo-500/5 border border-indigo-500/15 rounded-md flex justify-between items-center text-zinc-350">
-                          <span className="font-mono text-sm truncate">ZIP: {zipFile.name}</span>
-                          <CheckCircle2 className="w-4 h-4 text-indigo-400" />
-                        </div>
-                        <div className="text-[11px] text-zinc-450 leading-relaxed bg-black/25 p-3 rounded-lg border border-white/5 flex gap-2">
-                          <span className="flex-shrink-0 mt-0.5">⚠️</span>
-                          <div>
-                            <span className="font-semibold text-zinc-300">ZIP processing is slower:</span> Extracting directly inside the browser is slower due to sandbox storage and file reading overhead. For the fastest restoration speed, unzip the archive on your device first and use <strong className="text-zinc-300">Browse Folders</strong> instead.
-                          </div>
-                        </div>
+                      <div className="p-1.5 bg-indigo-500/5 border border-indigo-500/15 rounded flex justify-between items-center text-zinc-350 text-[10px]">
+                        <span className="font-mono truncate mr-2">ZIP: {zipFile.name}</span>
+                        <CheckCircle2 className="w-3.5 h-3.5 text-indigo-400 flex-shrink-0" />
                       </div>
                     ) : takeoutFolder ? (
-                      <div className="p-4 bg-zinc-800/10 border border-zinc-800/25 rounded-md mb-4 flex justify-between items-center text-zinc-400">
-                        <span className="font-mono text-sm truncate">Folder: {takeoutFolder.name}</span>
-                        <CheckCircle2 className="w-4 h-4" />
+                      <div className="p-1.5 bg-zinc-800/10 border border-zinc-800/25 rounded flex justify-between items-center text-zinc-400 text-[10px]">
+                        <span className="font-mono truncate mr-2">{takeoutFolder.name}</span>
+                        <CheckCircle2 className="w-3.5 h-3.5 text-green-400 flex-shrink-0" />
                       </div>
                     ) : (
-                      <div className="border border-dashed border-white/5 rounded-lg p-6 text-center text-zinc-500 text-xs mb-4">
-                        Drag & Drop Folder or ZIP file here
+                      <div className="flex gap-1.5">
+                        <Button onClick={handleSelectTakeout} className="btn-monochrome-primary rounded px-2 py-1 transition-all duration-150 cursor-pointer text-[9px] h-7 flex-1">
+                          Browse Folder
+                        </Button>
+                        <Button 
+                          onClick={() => {
+                            const input = document.createElement('input');
+                            input.type = 'file';
+                            input.accept = '.zip';
+                            input.onchange = (e) => {
+                              const file = (e.target as HTMLInputElement).files?.[0];
+                              if (file) {
+                                setZipFile(file);
+                                setTakeoutFolder(null);
+                                window.dispatchEvent(new CustomEvent('takeoutfix-action-triggered'));
+                              }
+                            };
+                            input.click();
+                          }}
+                          className="btn-monochrome-primary rounded px-2 py-1 transition-all duration-150 cursor-pointer text-[9px] h-7 flex-1"
+                        >
+                          Select ZIP File
+                        </Button>
                       </div>
                     )}
-                    
-                    <div className="flex gap-2">
-                      <Button onClick={handleSelectTakeout} className="btn-monochrome-primary rounded-lg px-4 py-2 transition-all duration-150 cursor-pointer text-xs">
-                        Browse Folders
-                      </Button>
-                      <Button 
-                        onClick={() => {
-                          const input = document.createElement('input');
-                          input.type = 'file';
-                          input.accept = '.zip';
-                          input.onchange = (e) => {
-                            const file = (e.target as HTMLInputElement).files?.[0];
-                            if (file) {
-                              setZipFile(file);
-                              setTakeoutFolder(null);
-                              window.dispatchEvent(new CustomEvent('takeoutfix-action-triggered'));
-                            }
-                          };
-                          input.click();
-                        }}
-                        className="btn-monochrome-primary rounded-lg px-4 py-2 transition-all duration-150 cursor-pointer text-xs"
-                      >
-                        Select ZIP File
-                      </Button>
-                    </div>
                   </CardContent>
                 </Card>
 
-                <Card className="bg-white/[0.02] border-white/10 shadow-2xl">
-                  <CardHeader className="border-b border-white/5 bg-black/20 pb-4">
-                    <CardTitle className="flex items-center gap-2"><HardDrive className="w-5 h-5 text-zinc-400"/> 2. Select Output Destination</CardTitle>
-                    <CardDescription className="text-white/50">Choose an empty folder where restored files will be saved.</CardDescription>
+                <Card className="bg-white/[0.02] border-white/10 shadow-lg">
+                  <CardHeader className="border-b border-white/5 bg-black/20 py-1.5 px-3">
+                    <CardTitle className="flex items-center justify-between text-[11px] font-bold uppercase tracking-wider text-zinc-350">
+                      <span className="flex items-center gap-1.5">
+                        <HardDrive className="w-3.5 h-3.5 text-zinc-400"/> 
+                        2. Destination
+                      </span>
+                      {outputFolder && (
+                        <button 
+                          onClick={handleSelectOutput}
+                          className="text-[9px] text-zinc-400 hover:text-white font-bold transition-all px-1.5 py-0.5 rounded border border-white/10 hover:border-white/20 bg-white/[0.02] cursor-pointer"
+                        >
+                          Change
+                        </button>
+                      )}
+                    </CardTitle>
                   </CardHeader>
-                  <CardContent className="pt-6">
+                  <CardContent className="p-2">
                     {outputFolder ? (
-                      <div className="p-4 bg-zinc-800/10 border border-zinc-800/25 rounded-md mb-4 flex justify-between items-center text-zinc-400">
-                        <span className="font-mono text-sm truncate">{outputFolder.name}</span>
-                        <CheckCircle2 className="w-4 h-4" />
+                      <div className="p-1.5 bg-zinc-800/10 border border-zinc-800/25 rounded flex justify-between items-center text-zinc-400 text-[10px]">
+                        <span className="font-mono truncate mr-2">{outputFolder.name}</span>
+                        <CheckCircle2 className="w-3.5 h-3.5 text-green-400 flex-shrink-0" />
                       </div>
-                    ) : null}
-                    <Button onClick={handleSelectOutput} className="btn-monochrome-primary rounded-lg px-8 transition-all duration-150 cursor-pointer">
-                      {outputFolder ? "Change Output Directory" : "Browse Output Directory"}
-                    </Button>
+                    ) : (
+                      <Button onClick={handleSelectOutput} className="btn-monochrome-primary w-full rounded px-2 py-1 transition-all duration-150 cursor-pointer text-[9px] h-7">
+                        Browse Output Directory
+                      </Button>
+                    )}
                   </CardContent>
                 </Card>
               </div>
 
-              <div className="mt-auto pt-6">
+              <div className="mt-auto pt-2">
                 {!isProcessing && progress === 0 && (
                   <>
-                    {(takeoutFolder || zipFile) && outputFolder && (
-                      <div className="mb-6 p-5 bg-zinc-800/10 border border-zinc-800/20 rounded-2xl max-w-xl text-left space-y-4">
-                        <h3 className="text-sm font-bold uppercase tracking-widest text-zinc-400">Pre-Flight Recovery Summary</h3>
-                        
-                        <div className="space-y-3 text-sm text-zinc-300">
-                          <div className="flex items-start gap-2.5">
-                            <span className="text-base leading-none">📂</span>
-                            <div>
-                              <span className="font-semibold text-white block">Source:</span>
-                              <span className="font-mono text-xs text-zinc-450 break-all">{zipFile ? `ZIP: ${zipFile.name}` : `Folder: ${takeoutFolder!.name}`}</span>
-                              <span className="text-[10px] text-zinc-500 block mt-0.5">(Read-only: Originals are never modified)</span>
-                            </div>
-                          </div>
-                          
-                          <div className="flex items-start gap-2.5">
-                            <span className="text-base leading-none">💾</span>
-                            <div>
-                              <span className="font-semibold text-white block">Output Directory:</span>
-                              <span className="font-mono text-xs text-zinc-400 break-all">{outputFolder.name}</span>
-                              <span className="text-[10px] text-zinc-500 block mt-0.5">(New corrected photos and videos are saved here)</span>
-                            </div>
-                          </div>
-                          
-                          <div className="flex items-center gap-2.5 pt-2 border-t border-white/5 text-xs text-green-400 font-medium">
-                            <CheckCircle2 className="w-4 h-4 text-green-400 flex-shrink-0" />
-                            <span>Original files remain completely untouched and safe.</span>
-                          </div>
-                        </div>
-                      </div>
-                    )}
-
-                    <div className="flex flex-col sm:flex-row gap-4 w-full max-w-xl">
+                    <div className="flex gap-1.5 w-full max-w-xl mb-1.5">
                       <Button 
                         disabled={!(takeoutFolder || zipFile) || !outputFolder}
                         onClick={() => startProcessing(false)} 
-                        className="btn-monochrome-primary flex-1 h-12 text-sm rounded-xl font-bold transition-all duration-150 cursor-pointer flex items-center justify-center gap-2 disabled:opacity-40 disabled:pointer-events-none"
+                        className="btn-monochrome-primary flex-1 h-8.5 text-[11px] rounded-md font-bold transition-all duration-150 cursor-pointer flex items-center justify-center gap-1.5 disabled:opacity-40 disabled:pointer-events-none"
                       >
-                        <Play className="w-4 h-4 fill-current" /> Start Restore
+                        <Play className="w-3 h-3 fill-current" /> Start Restore
                       </Button>
                       <Button 
                         disabled={!(takeoutFolder || zipFile) || !outputFolder}
                         onClick={() => startProcessing(true)} 
-                        className="btn-monochrome-secondary flex-1 h-12 text-sm rounded-xl font-bold transition-all duration-150 cursor-pointer flex items-center justify-center gap-2 disabled:opacity-40 disabled:pointer-events-none"
+                        className="btn-monochrome-secondary flex-1 h-8.5 text-[11px] rounded-md font-bold transition-all duration-150 cursor-pointer flex items-center justify-center gap-1.5 disabled:opacity-40 disabled:pointer-events-none"
                       >
-                        <Zap className="w-4 h-4 fill-current" /> Deep Restore
+                        <Zap className="w-3 h-3 fill-current" /> Deep Restore
                       </Button>
+                    </div>
+                    <div className="text-center w-full max-w-xl">
+                      <button 
+                        onClick={() => setShowCompareModal(true)}
+                        className="text-[9px] text-zinc-500 hover:text-white underline transition-colors focus:outline-none"
+                      >
+                        How do these two restore options differ?
+                      </button>
                     </div>
                   </>
                 )}
 
                 {(isProcessing || progress > 0) && (
                   <div className="max-w-3xl">
-                    <div className="flex justify-between items-end mb-4">
+                    <div className="flex justify-between items-end mb-2">
                       <div>
-                        <div className="text-sm text-white/50 font-bold uppercase tracking-widest mb-2">Overall Progress</div>
-                        <div className="text-4xl font-black">{progress}%</div>
+                        <div className="text-[10px] text-white/50 font-bold uppercase tracking-widest mb-0.5">Overall Progress</div>
+                        <div className="text-2xl font-black">{progress}%</div>
                       </div>
                       {isProcessing && (
-                        <div className="flex gap-2">
+                        <div className="flex gap-1.5">
                           {isPaused ? (
                             <Button 
                               onClick={resumeProcessing}
-                              className="btn-monochrome-primary transition-all duration-150 cursor-pointer"
+                              className="btn-monochrome-primary h-7 text-[10px] px-2.5 rounded-md transition-all duration-150 cursor-pointer flex items-center gap-1"
                             >
-                              <Play className="w-4 h-4 mr-2 fill-current" /> Resume
+                              <Play className="w-3 h-3 fill-current" /> Resume
                             </Button>
                           ) : (
                             <Button 
                               onClick={pauseProcessing}
-                              className="btn-monochrome-primary transition-all duration-150 cursor-pointer"
+                              className="btn-monochrome-primary h-7 text-[10px] px-2.5 rounded-md transition-all duration-150 cursor-pointer flex items-center gap-1"
                             >
-                              <Pause className="w-4 h-4 mr-2 fill-current" /> Pause
+                              <Pause className="w-3 h-3 fill-current" /> Pause
                             </Button>
                           )}
                           
                           <Button 
                             onClick={cancelProcessing}
-                            className="btn-monochrome-primary transition-all duration-150 cursor-pointer"
+                            className="btn-monochrome-primary h-7 text-[10px] px-2.5 rounded-md transition-all duration-150 cursor-pointer flex items-center gap-1"
                           >
-                            <Square className="w-4 h-4 mr-2 fill-current" /> Cancel
+                            <Square className="w-3 h-3 fill-current" /> Cancel
                           </Button>
                         </div>
                       )}
                     </div>
-                    <Progress value={progress} className="h-4 bg-white/5 rounded-full overflow-hidden border border-white/5 shadow-inner" />
-                    <div className="mt-3 text-xs text-white/40 flex flex-col gap-1">
+                    <Progress value={progress} className="h-2.5 bg-white/5 rounded-full overflow-hidden border border-white/5 shadow-inner" />
+                    <div className="mt-2 text-[10px] text-white/40 flex flex-col gap-0.5">
                       <div>Processed: {((currentUsedBytes + sessionBytes) / (1024 ** 3)).toFixed(2)} GB / {limitBytes === Infinity ? "Unlimited" : `${(limitBytes / (1024 ** 3)).toFixed(2)} GB`}</div>
                       <div>Files: {(currentUsedFiles + sessionFiles).toLocaleString()} / {limitFiles === Infinity ? "Unlimited" : limitFiles.toLocaleString()} files</div>
                     </div>
-                    <div className="mt-4">
+                    <div className="mt-2">
                       <AdUnit type="vertical" slot="2" />
                     </div>
                   </div>
@@ -2833,6 +2863,165 @@ export function ToolWorkspaceContent() {
                 className="btn-monochrome-primary w-full h-12 font-bold rounded-lg border-0 shadow-none transition-all duration-150 cursor-pointer"
               >
                 Dismiss
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showCompareModal && (
+        <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/85 backdrop-blur-md p-4 select-none animate-in fade-in duration-200">
+          <div className="bg-zinc-950 border border-white/10 p-6 sm:p-8 rounded-3xl max-w-2xl w-full relative overflow-hidden shadow-2xl animate-in fade-in zoom-in-95 duration-350">
+            <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500"></div>
+
+            <button
+              onClick={() => setShowCompareModal(false)}
+              className="absolute top-4 right-4 text-zinc-400 hover:text-white transition-colors"
+              aria-label="Close modal"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            <h3 className="text-xl font-black text-white mb-2 flex items-center gap-2">
+              <span>Comparing Restore Methods</span>
+            </h3>
+            <p className="text-zinc-400 text-xs mb-6">
+              Google Takeout separates original metadata into standalone <code className="bg-white/5 px-1 py-0.5 rounded text-[10px] text-indigo-300 font-mono">.json</code> sidecar records. Here is how our engine handles them:
+            </p>
+
+            <div className="space-y-4 mb-6 text-left">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
+                <div className="bg-white/[0.01] border border-white/5 p-4 rounded-xl space-y-1.5">
+                  <h4 className="font-bold text-zinc-200 flex items-center gap-1.5">
+                    <span className="text-emerald-400">⚡</span> Regular Restore (External Link)
+                  </h4>
+                  <p className="text-zinc-450 leading-relaxed">
+                    Keeps the photo and JSON separate but pairs them side-by-side in your restored directory. It streams files instantly without loading media bytes into heap memory.
+                  </p>
+                  <p className="text-[10px] text-emerald-450 font-bold">Fastest processing speed.</p>
+                </div>
+                <div className="bg-white/[0.01] border border-white/5 p-4 rounded-xl space-y-1.5">
+                  <h4 className="font-bold text-zinc-200 flex items-center gap-1.5">
+                    <span className="text-indigo-400">🌀</span> Deep Restore (Internal Injection)
+                  </h4>
+                  <p className="text-zinc-450 leading-relaxed">
+                    Reads, decodes, and forces dates and GPS coordinates directly inside the image EXIF binary headers. Photos become self-contained, repair is permanent.
+                  </p>
+                  <p className="text-[10px] text-indigo-400 font-bold">Universal compatibility across all devices and drives.</p>
+                </div>
+              </div>
+
+              <div className="overflow-x-auto border border-white/5 rounded-xl bg-black/20">
+                <table className="w-full text-[11px] text-zinc-400 border-collapse">
+                  <thead>
+                    <tr className="border-b border-white/5 bg-white/[0.02] text-left text-zinc-300 font-bold">
+                      <th className="p-3">Feature</th>
+                      <th className="p-3">Regular Restore</th>
+                      <th className="p-3 text-indigo-300">Deep Restore</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-white/5 font-medium">
+                    <tr>
+                      <td className="p-3 font-semibold text-white">Date & Time</td>
+                      <td className="p-3">Yes (Updates file system)</td>
+                      <td className="p-3 text-zinc-350">Yes (Injects EXIF)</td>
+                    </tr>
+                    <tr>
+                      <td className="p-3 font-semibold text-white">GPS Locations</td>
+                      <td className="p-3">Yes (Pairs companion JSON)</td>
+                      <td className="p-3 text-zinc-350">Yes (Injects EXIF)</td>
+                    </tr>
+                    <tr>
+                      <td className="p-3 font-semibold text-white">Portability</td>
+                      <td className="p-3 text-red-400/80">Low (Moving can lose tags)</td>
+                      <td className="p-3 text-emerald-400/80">Universal (Embedded)</td>
+                    </tr>
+                    <tr>
+                      <td className="p-3 font-semibold text-white">Processing Speed</td>
+                      <td className="p-3 text-emerald-400/80 font-bold">Extremely Fast</td>
+                      <td className="p-3 text-amber-500/80">Slower (Rewrites Files)</td>
+                    </tr>
+                    <tr>
+                      <td className="p-3 font-semibold text-white">Log Indicator</td>
+                      <td className="p-3 font-mono text-[10px]">`[RESTORED] (Linked)`</td>
+                      <td className="p-3 font-mono text-[10px] text-indigo-300">`[DEEP INJECTED] (Embedded)`</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <div className="flex justify-end">
+              <Button
+                onClick={() => setShowCompareModal(false)}
+                className="btn-monochrome-primary w-24 h-10 font-bold rounded-lg border-0 shadow-none transition-all duration-150 cursor-pointer"
+              >
+                Dismiss
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {modalContext && (
+        <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/85 backdrop-blur-md p-4 select-none animate-in fade-in duration-200">
+          <div className="bg-zinc-950 border border-white/10 p-6 sm:p-8 rounded-2xl max-w-md w-full text-left relative overflow-hidden shadow-2xl animate-in fade-in zoom-in-95 duration-200">
+            <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-indigo-500 to-purple-600"></div>
+
+            <button
+              onClick={() => setModalContext(null)}
+              className="absolute top-4 right-4 text-zinc-400 hover:text-white transition-colors"
+              aria-label="Close modal"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-10 h-10 rounded-full bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400">
+                {modalContext === 'source' ? (
+                  <FolderUp className="w-5 h-5" />
+                ) : (
+                  <HardDrive className="w-5 h-5" />
+                )}
+              </div>
+              <h3 className="text-lg font-bold text-white">
+                {modalContext === 'source' ? 'Grant Folder Read Access' : 'Grant Folder Write Access'}
+              </h3>
+            </div>
+
+            <p className="text-zinc-300 text-xs leading-relaxed mb-4">
+              {modalContext === 'source' 
+                ? "To start scanning, TakeoutFix needs permission to view and parse the files inside your Google Takeout folder."
+                : "TakeoutFix needs permission to write, create, and save your newly restored photos directly into this destination folder."
+              }
+            </p>
+
+            <div className="bg-white/[0.02] border border-white/5 p-3 rounded-xl text-[10px] text-zinc-400 leading-relaxed mb-6">
+              {modalContext === 'source' ? (
+                <>
+                  <span className="font-bold text-zinc-300 block mb-0.5">Read-Only Safety</span>
+                  Your original Google Takeout files will not be changed, modified, or deleted in any way.
+                </>
+              ) : (
+                <>
+                  <span className="font-bold text-amber-500 block mb-0.5">Overwrite Protection</span>
+                  Please select an empty folder to keep your restored library clean and prevent overwriting existing files.
+                </>
+              )}
+            </div>
+
+            <div className="flex justify-end gap-3">
+              <Button
+                onClick={() => setModalContext(null)}
+                className="btn-monochrome-secondary h-9 text-xs px-4 font-bold rounded-lg transition-all border border-white/10 hover:bg-white/5 hover:text-white"
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={handleModalConfirm}
+                className="btn-monochrome-primary h-9 text-xs px-4 font-bold rounded-lg transition-all border-0"
+              >
+                Grant Access
               </Button>
             </div>
           </div>

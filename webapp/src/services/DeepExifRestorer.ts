@@ -55,7 +55,7 @@ export async function injectImageExif(
   // Strip the data URL prefix and decode base64
   const base64 = newDataUrl.replace(/^data:image\/jpeg;base64,/, '');
   const resultBytes = binaryStringToUint8Array(atob(base64));
-  return resultBytes.buffer;
+  return resultBytes.buffer as ArrayBuffer;
 }
 
 /**

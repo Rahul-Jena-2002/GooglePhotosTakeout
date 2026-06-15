@@ -554,8 +554,7 @@ export default function MainLayout() {
       {/* SupportWidget ONLY on public pages */}
       <SupportWidget />
 
-      {!isToolPage && (
-        <footer className="w-full border-t border-white/5 py-12 bg-black/40 backdrop-blur-md mt-auto">
+      <footer className="w-full border-t border-white/5 py-12 bg-black/40 backdrop-blur-md mt-auto">
           <div className="max-w-7xl mx-auto px-6 flex flex-col md:flex-row items-center justify-between gap-4">
             <div className="flex items-center gap-2 text-white/50 text-sm">
               <span className="w-4 h-4 rounded-sm bg-gradient-to-br from-indigo-500 to-purple-600"></span>
@@ -572,7 +571,6 @@ export default function MainLayout() {
             </div>
           </div>
         </footer>
-      )}
     </div>
   )
 }

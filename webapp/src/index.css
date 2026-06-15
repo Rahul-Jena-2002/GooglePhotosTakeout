@@ -2311,4 +2311,18 @@ html.dark .interactive-drop-zone p {
   color: #9ca3af;
 }
 
+/* Disable global/layout footer when a card modal is open */
+footer {
+  transition: opacity 0.2s cubic-bezier(0.4, 0, 0.2, 1), 
+              visibility 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  opacity: 1;
+  visibility: visible;
+}
+
+html.faq-modal-open footer {
+  opacity: 0 !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
+}
+
 

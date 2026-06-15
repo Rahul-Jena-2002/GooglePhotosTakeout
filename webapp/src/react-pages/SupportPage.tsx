@@ -91,15 +91,19 @@ function SupportPageContent() {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, []);
 
-  // Prevent scroll when modal is open
+  // Prevent scroll and hide footer when modal is open
   useEffect(() => {
+    const root = document.documentElement;
     if (activeFaqId) {
       document.body.style.overflow = "hidden";
+      root.classList.add("faq-modal-open");
     } else {
       document.body.style.overflow = "unset";
+      root.classList.remove("faq-modal-open");
     }
     return () => {
       document.body.style.overflow = "unset";
+      root.classList.remove("faq-modal-open");
     };
   }, [activeFaqId]);
 

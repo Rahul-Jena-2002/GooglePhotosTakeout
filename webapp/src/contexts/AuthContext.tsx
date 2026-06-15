@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { type User, onAuthStateChanged, signInWithPopup, GoogleAuthProvider, signOut } from 'firebase/auth';
-import { doc, getDoc, setDoc, getDocs, collection, query, where, deleteDoc, onSnapshot, increment, addDoc } from 'firebase/firestore';
+import { doc, getDoc, setDoc, getDocs, collection, query, where, deleteDoc, onSnapshot, increment, addDoc, updateDoc } from 'firebase/firestore';
 import { auth, db } from '../firebase';
 import { indexedDbService } from '../lib/indexedDbService';
 import { useToastStore } from '../store/useToastStore';
@@ -116,6 +116,7 @@ export interface UserData {
   firstName?: string;
   lastName?: string;
   sessionIds?: string[];
+  supportWithAds?: boolean;
 }
 
 export interface AdminData {
