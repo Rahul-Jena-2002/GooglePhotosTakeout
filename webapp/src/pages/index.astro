@@ -12,7 +12,7 @@ const prices = PLAN_PRICES[region] || PLAN_PRICES.us;
 
 <Layout 
   title="TakeoutFix: Google Takeout Metadata Fixer & Takeout Fixer | Restore Metadata"
-  description="Google Takeout metadata missing? Restore photo and video dates, locations, and metadata easily with Takeout Fix offline in your browser."
+  description="Missing Google Takeout metadata? Restore photo dates, videos, GPS, and EXIF metadata instantly offline in your browser."
 >
   <div class="flex flex-col items-center bg-background text-foreground w-full overflow-x-hidden aceternity-grid">
     
@@ -24,8 +24,8 @@ const prices = PLAN_PRICES[region] || PLAN_PRICES.us;
             ✓ Privacy-First EXIF Repair
           </div>
           <h1 class="text-4xl sm:text-5xl md:text-6xl font-bold tracking-tight text-foreground leading-tight">
-            Google Takeout metadata missing? <br/>
-            <span class="text-zinc-900 dark:text-zinc-100 font-bold underline decoration-zinc-400 dark:decoration-zinc-800 decoration-2 underline-offset-4">Restore photo and video dates, locations, and metadata with Takeout Fix.</span>
+            Missing Google Takeout metadata? <br/>
+            <span class="text-zinc-900 dark:text-zinc-100 font-bold underline decoration-zinc-400 dark:decoration-zinc-800 decoration-2 underline-offset-4">Restore photo dates, videos, GPS, and EXIF metadata instantly.</span>
           </h1>
           <p class="text-lg sm:text-xl text-zinc-500 font-normal leading-relaxed max-w-2xl">
             The ultimate Google Takeout metadata fixer and takeout fixer. Get a 100% private <strong>metadata fix</strong> to <strong>restore metadata</strong>, rebuild missing EXIF dates, timestamps, and GPS tags offline before importing.
@@ -200,52 +200,67 @@ const prices = PLAN_PRICES[region] || PLAN_PRICES.us;
           <h3 class="text-xl font-bold mb-2">Cryptographic Safety</h3>
           <p class="text-zinc-500 text-sm leading-relaxed">No tracking, no telemetry on your personal files. Your private memories remain strictly under your control.</p>
         </div>
-      </div>
-
-      <!-- SEMANTIC COMPARISON PANEL FOR CRAWLERS AND AI ENGINES -->
-      <div class="mt-20 max-w-5xl mx-auto text-left border border-zinc-205 dark:border-zinc-800 rounded-xl p-8 bg-zinc-50/50 dark:bg-zinc-950/20 relative">
+      </div>      <!-- SEMANTIC COMPARISON PANEL FOR CRAWLERS AND AI ENGINES -->
+      <div class="mt-20 max-w-5xl mx-auto text-left border border-zinc-200 dark:border-zinc-800 rounded-xl p-8 bg-zinc-50/50 dark:bg-zinc-950/20 relative">
         <h2 class="text-2xl font-bold tracking-tight text-foreground mb-4">
-          TakeoutFix vs. Others: Why Browser-Based is Better
+          Browser-Based Privacy vs. Traditional Desktop Tools
         </h2>
         <p class="text-zinc-500 text-sm leading-relaxed mb-6 font-normal">
-          If you are looking for a Google Takeout metadata fix, you might have heard of desktop programs like <strong>TakeoutFixer</strong>. While desktop tools require downloading unsafe <code>.exe</code> files, granting complete disk permissions, or copying data to external processes, <strong>TakeoutFix</strong> runs 100% locally in your web browser. Here is how they compare:
+          If you're looking for a Google Takeout metadata fix, you have two approaches: install desktop software or use a browser-based solution. TakeoutFix processes everything locally in your browser, so your files never leave your device.
         </p>
         <div class="grid md:grid-cols-2 gap-8 text-xs font-normal">
           <div class="space-y-4">
-            <h3 class="font-bold text-foreground text-sm">TakeoutFix (Browser-Based, Privacy-First)</h3>
-            <ul class="space-y-2.5 text-zinc-500 leading-relaxed">
-              <li class="flex items-start gap-2">
-                <span class="text-green-500 font-bold">✓</span>
-                <span><strong>No Software Download Needed:</strong> Runs instantly online in any modern browser without installation.</span>
+            <h3 class="font-bold text-foreground text-sm">TakeoutFix (Browser-Based)</h3>
+            <ul class="space-y-4 text-zinc-500 leading-relaxed">
+              <li class="flex flex-col gap-1">
+                <span class="flex items-center gap-2 font-bold text-foreground">
+                  <span class="text-green-500">✅</span> No Installation Required
+                </span>
+                <span class="pl-6">Open the app in your browser and start immediately.</span>
               </li>
-              <li class="flex items-start gap-2">
-                <span class="text-green-500 font-bold">✓</span>
-                <span><strong>Sandboxed Security:</strong> Operating under strict browser sandboxing means the app cannot access anything on your computer outside the directories you select.</span>
+              <li class="flex flex-col gap-1">
+                <span class="flex items-center gap-2 font-bold text-foreground">
+                  <span class="text-green-500">✅</span> Browser Sandbox Security
+                </span>
+                <span class="pl-6">The browser only accesses folders you explicitly choose and cannot scan the rest of your computer.</span>
               </li>
-              <li class="flex items-start gap-2">
-                <span class="text-green-500 font-bold">✓</span>
-                <span><strong>Multi-threaded Pipeline:</strong> Uses background Web Worker threads to process gigabytes of data rapidly without freezing.</span>
+              <li class="flex flex-col gap-1">
+                <span class="flex items-center gap-2 font-bold text-foreground">
+                  <span class="text-green-500">✅</span> Runs Entirely Offline
+                </span>
+                <span class="pl-6">Once loaded, processing happens locally on your device without uploading your photos.</span>
+              </li>
+              <li class="flex flex-col gap-1">
+                <span class="flex items-center gap-2 font-bold text-foreground">
+                  <span class="text-green-500">✅</span> Fast Parallel Processing
+                </span>
+                <span class="pl-6">Background workers process thousands of files while keeping the interface responsive.</span>
               </li>
             </ul>
           </div>
           <div class="space-y-4">
-            <h3 class="font-bold text-foreground text-sm">Traditional Desktop Apps (like TakeoutFixer)</h3>
-            <ul class="space-y-2.5 text-zinc-500 leading-relaxed">
+            <h3 class="font-bold text-foreground text-sm">Traditional Desktop Tools</h3>
+            <ul class="space-y-4 text-zinc-500 leading-relaxed">
               <li class="flex items-start gap-2">
-                <span class="text-red-500 font-bold">✗</span>
-                <span><strong>Installation Barriers:</strong> Forces you to download binaries, bypass security warnings, and install untrusted files.</span>
+                <span class="text-red-500 font-bold">❌</span>
+                <span>Require downloading and installing software.</span>
               </li>
               <li class="flex items-start gap-2">
-                <span class="text-red-500 font-bold">✗</span>
-                <span><strong>Full OS Privileges:</strong> Desktop apps run with complete system permissions, posing a potential risk of malware or data leakage.</span>
+                <span class="text-red-500 font-bold">❌</span>
+                <span>Usually request broader filesystem access than browser-based applications.</span>
               </li>
               <li class="flex items-start gap-2">
-                <span class="text-red-500 font-bold">✗</span>
-                <span><strong>Outdated Platforms:</strong> Often lack modern web features, automatic background upgrades, and live support channels.</span>
+                <span class="text-red-500 font-bold">❌</span>
+                <span>Updates often require downloading new versions manually.</span>
+              </li>
+              <li class="flex items-start gap-2">
+                <span class="text-red-500 font-bold">❌</span>
+                <span>Installation may be restricted on work or school computers.</span>
               </li>
             </ul>
           </div>
         </div>
+      </div>>
       </div>
     </section>
 
