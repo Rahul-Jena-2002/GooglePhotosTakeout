@@ -189,13 +189,27 @@ app.post("/sync-coupon", async (req, res) => {
         continue;
       }
 
+      if (discountType !== "PERCENTAGE") {
+        const errorMsg = "Only percentage-based discounts are supported by Dodo Payments currently.";
+        await db.collection("coupons").doc(couponId).collection("sync_log").add({
+          couponId, targetId, regionCode, planCode,
+          dodoCouponId: null, syncStatus: "FAILED",
+          errorMessage: errorMsg,
+          syncedAt: Date.now()
+        });
+        results.push({ regionCode, planCode, status: "FAILED", error: errorMsg });
+        continue;
+      }
+
       const dodoPayload = JSON.stringify({
         code: couponCode,
-        discount_type: discountType === "PERCENTAGE" ? "percentage" : "fixed",
-        discount_value: discountValue,
-        product_id: productId,
-        max_redemptions: usageLimit,
-        expires_at: validUntil
+        type: "percentage",
+        amount: Math.round(Number(discountValue || 0) * 100), // convert percentage to basis points (e.g. 15% -> 1500)
+        restricted_to: [productId],
+        usage_limit: usageLimit ? Number(usageLimit) : null,
+        expires_at: validUntil,
+        name: coupon.title || couponCode,
+        metadata: { couponId }
       });
 
       try {
