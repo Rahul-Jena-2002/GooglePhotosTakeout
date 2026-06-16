@@ -7,7 +7,7 @@ import { doc, getDoc } from "firebase/firestore";
 import { useToastStore } from "../store/useToastStore";
 
 function PricingPageContent() {
-  const { region, campaigns, getPlanPriceValue, pricingTiers, featuresConfig } = useAuth();
+  const { region, campaigns, activeCampaignDiscounts, getPlanPriceValue, pricingTiers, featuresConfig } = useAuth();
 
   const [isPromoActiveLocal, setIsPromoActiveLocal] = useState(false);
   const [timeLeftStr, setTimeLeftStr] = useState("");
@@ -15,39 +15,39 @@ function PricingPageContent() {
 
   useEffect(() => {
     const checkPromoActive = () => {
-      if (!campaigns || !campaigns.visibility_toggle) {
+      if (!campaigns || !campaigns.isEnabled || campaigns.status !== 'ACTIVE') {
         setIsPromoActiveLocal(false);
         return;
       }
       
-      const condition = campaigns.condition_type;
+      const condition = campaigns.expirationType || 'NONE';
       const now = Date.now();
       
       let timeConditionMet = true;
       let diff = 0;
-      if (campaigns.expiration_at) {
-        const expiryTime = campaigns.expiration_at.seconds 
-          ? campaigns.expiration_at.seconds * 1000 
-          : new Date(campaigns.expiration_at).getTime();
+      if (campaigns.expirationDateTime) {
+        const expiryTime = campaigns.expirationDateTime.seconds 
+          ? campaigns.expirationDateTime.seconds * 1000 
+          : new Date(campaigns.expirationDateTime).getTime();
         timeConditionMet = now < expiryTime;
         diff = expiryTime - now;
       }
       
       let capConditionMet = true;
-      if (campaigns.max_purchase_limit !== null && campaigns.max_purchase_limit !== undefined) {
-        const current = campaigns.current_purchase_count ?? 0;
-        capConditionMet = current < campaigns.max_purchase_limit;
+      if (campaigns.maxPurchaseLimit !== null && campaigns.maxPurchaseLimit !== undefined) {
+        const current = campaigns.currentPurchaseCount ?? 0;
+        capConditionMet = current < campaigns.maxPurchaseLimit;
       }
       
       let active = false;
-      if (condition === 'none') active = true;
-      else if (condition === 'time') active = timeConditionMet;
-      else if (condition === 'cap') active = capConditionMet;
-      else if (condition === 'both') active = timeConditionMet && capConditionMet;
+      if (condition === 'NONE') active = true;
+      else if (condition === 'TIME_ONLY') active = timeConditionMet;
+      else if (condition === 'PURCHASE_LIMIT_ONLY') active = capConditionMet;
+      else if (condition === 'BOTH') active = timeConditionMet && capConditionMet;
       
       setIsPromoActiveLocal(active);
 
-      if (active && (condition === 'time' || condition === 'both') && diff > 0) {
+      if (active && (condition === 'TIME_ONLY' || condition === 'BOTH') && diff > 0) {
         const totalSecs = Math.floor(diff / 1000);
         const hours = Math.floor(totalSecs / 3600);
         const mins = Math.floor((totalSecs % 3600) / 60);
@@ -88,10 +88,19 @@ function PricingPageContent() {
   const recoveryPassBase = firestoreConfig?.recovery_pass?.current ?? staticConfig.recoveryPass;
   const proBase = firestoreConfig?.pro_lifetime?.current ?? staticConfig.finalPro;
   const superBase = firestoreConfig?.super_lifetime?.current ?? staticConfig.finalSuper;
+  const priceIncludesTax = firestoreConfig?.price_includes_tax ?? false;
 
-  const recoveryDisc = isPromoActiveLocal ? (campaigns?.recovery_discount_percentage ?? 0) : 0;
-  const proDisc = isPromoActiveLocal ? (campaigns?.pro_discount_percentage ?? 0) : 0;
-  const superDisc = isPromoActiveLocal ? (campaigns?.super_discount_percentage ?? 0) : 0;
+  const getDiscountPct = (planKey: string) => {
+    if (!isPromoActiveLocal) return 0;
+    const disc = activeCampaignDiscounts?.[planKey];
+    if (!disc || disc.discountValue <= 0) return 0;
+    if (disc.discountType === 'PERCENTAGE') return disc.discountValue;
+    return 0;
+  };
+
+  const recoveryDisc = getDiscountPct('recovery_pass');
+  const proDisc = getDiscountPct('pro');
+  const superDisc = getDiscountPct('super');
 
   // Recovery prices
   const recoveryCurrentVal = recoveryPassBase * (1 - recoveryDisc / 100);
@@ -111,11 +120,7 @@ function PricingPageContent() {
   const formattedSuperWas = formatPrice(symbol, superBase, currency);
   const showSuperDiscount = superDisc > 0;
 
-  const bannerText = campaigns?.banner_template
-    ? campaigns.banner_template
-        .replace("{slots_taken}", String(campaigns.current_purchase_count ?? 0))
-        .replace("{max_slots}", String(campaigns.max_purchase_limit ?? 200))
-    : `🎉 ${campaigns?.campaign_name || "Founding Member Pricing"} — ${campaigns?.current_purchase_count ?? 0} / ${campaigns?.max_purchase_limit ?? 200} slots taken. Lock in your lifetime price before slots are gone!`;
+  const bannerText = `🎉 ${campaigns?.campaignName || "Founding Member Pricing"} — ${campaigns?.currentPurchaseCount ?? 0} / ${campaigns?.maxPurchaseLimit ?? 200} slots claimed. Lock in your lifetime price before slots are gone!`;
 
   return (
     <div className="w-full max-w-7xl mx-auto px-6 py-16 font-sans select-none">
@@ -189,6 +194,11 @@ function PricingPageContent() {
                   )}
                 </div>
                 <p className="text-[11px] text-zinc-400 mt-2.5 leading-relaxed">Fix one folder of photos without any subscription details.</p>
+                {priceIncludesTax && (
+                  <span className="inline-flex items-center gap-1 mt-1.5 text-[9px] font-bold text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-1.5 py-0.5 rounded-md">
+                    ✓ incl. tax
+                  </span>
+                )}
               </div>
               <div className="space-y-2.5">
                 <div className="text-[10px] text-zinc-400 uppercase tracking-widest font-bold mb-1">Everything in Free plus:</div>
@@ -234,9 +244,9 @@ function PricingPageContent() {
                 
                 {isPromoActiveLocal && proDisc > 0 && (
                   <div className="mt-2 flex flex-col gap-1.5">
-                    {campaigns.max_purchase_limit && (
+                    {campaigns?.maxPurchaseLimit && (
                       <div className="text-[10px] text-blue-400 font-bold bg-blue-500/10 border border-blue-500/20 rounded-lg p-1.5 inline-block">
-                        🔥 Claims: {campaigns.current_purchase_count ?? 0} / {campaigns.max_purchase_limit} claimed
+                        🔥 Claims: {campaigns?.currentPurchaseCount ?? 0} / {campaigns?.maxPurchaseLimit} claimed
                       </div>
                     )}
                     {timeLeftStr && (
@@ -248,6 +258,11 @@ function PricingPageContent() {
                 )}
                 
                 <p className="text-[11px] text-blue-500 dark:text-blue-300 mt-2.5 leading-relaxed">Use forever · On up to 2 devices</p>
+                {priceIncludesTax && (
+                  <span className="inline-flex items-center gap-1 mt-1.5 text-[9px] font-bold text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-1.5 py-0.5 rounded-md">
+                    ✓ incl. tax
+                  </span>
+                )}
               </div>
               <div className="space-y-2.5">
                 <div className="text-[10px] text-zinc-400 uppercase tracking-widest font-bold mb-1">Everything in Pass plus:</div>
@@ -290,9 +305,9 @@ function PricingPageContent() {
                 
                 {isPromoActiveLocal && superDisc > 0 && (
                   <div className="mt-2 flex flex-col gap-1.5">
-                    {campaigns.max_purchase_limit && (
+                    {campaigns?.maxPurchaseLimit && (
                       <div className="text-[10px] text-amber-400 font-bold bg-amber-500/10 border border-amber-500/20 rounded-lg p-1.5 inline-block">
-                        🔥 Claims: {campaigns.current_purchase_count ?? 0} / {campaigns.max_purchase_limit} claimed
+                        🔥 Claims: {campaigns?.currentPurchaseCount ?? 0} / {campaigns?.maxPurchaseLimit} claimed
                       </div>
                     )}
                     {timeLeftStr && (
@@ -304,6 +319,11 @@ function PricingPageContent() {
                 )}
                 
                 <p className="text-[11px] text-amber-400 mt-2.5 leading-relaxed">Use forever · On up to 3 devices</p>
+                {priceIncludesTax && (
+                  <span className="inline-flex items-center gap-1 mt-1.5 text-[9px] font-bold text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-1.5 py-0.5 rounded-md">
+                    ✓ incl. tax
+                  </span>
+                )}
               </div>
               <div className="space-y-2.5">
                 <div className="text-[10px] text-zinc-400 uppercase tracking-widest font-bold mb-1">Everything in Pro plus:</div>

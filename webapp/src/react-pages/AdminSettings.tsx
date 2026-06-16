@@ -50,6 +50,7 @@ export default function AdminSettings() {
   const [recoveryPassCurrent, setRecoveryPassCurrent] = useState("4.99")
   const [proLifetimeCurrent, setProLifetimeCurrent] = useState("29.00")
   const [superLifetimeCurrent, setSuperLifetimeCurrent] = useState("49.00")
+  const [priceIncludesTax, setPriceIncludesTax] = useState(false)
 
   // ─── Campaign Manager state ───────────────────────────────────────────────
   const [campaigns, setCampaigns] = useState<any[]>([])
@@ -135,8 +136,9 @@ export default function AdminSettings() {
     DODO_REGIONS.map(r => [r.key, Object.fromEntries(DODO_PLANS.map(p => [p, '']))])
   )
   const [dodoProducts, setDodoProducts] = useState<Record<string, Record<string, string>>>(buildEmptyDodoProducts())
-  const [activeDodoRegion, setActiveDodoRegion] = useState('in')
   const [dodoWebhookKey, setDodoWebhookKey] = useState("")
+  const [dodoLiveApiKey, setDodoLiveApiKey] = useState("")
+  const [showDodoApiKey, setShowDodoApiKey] = useState(false)
 
   const [savingPricing, setSavingPricing] = useState(false)
   const [savingCampaignNew, setSavingCampaignNew] = useState(false)
@@ -259,6 +261,7 @@ export default function AdminSettings() {
       setRecoveryPassCurrent(String(tierData.recovery_pass?.current ?? ""))
       setProLifetimeCurrent(String(tierData.pro_lifetime?.current ?? ""))
       setSuperLifetimeCurrent(String(tierData.super_lifetime?.current ?? ""))
+      setPriceIncludesTax(tierData.price_includes_tax ?? false)
     } else {
       // Fallback
       const staticConfig = REGION_PRICING_CONFIGS[selectedConfigTier] || REGION_PRICING_CONFIGS.t3
@@ -267,10 +270,11 @@ export default function AdminSettings() {
       setRecoveryPassCurrent(String(staticConfig.recoveryPass))
       setProLifetimeCurrent(String(staticConfig.finalPro))
       setSuperLifetimeCurrent(String(staticConfig.finalSuper))
+      setPriceIncludesTax(false)
     }
   }, [selectedConfigTier, pricingTiers])
 
-  // Load secure settings on mount
+  // Load secure + system settings on mount
   useEffect(() => {
     const loadSecureSettings = async () => {
       try {
@@ -281,47 +285,99 @@ export default function AdminSettings() {
       } catch (err) {
         console.error("Failed to load secure settings:", err)
       }
+      try {
+        const systemDoc = await getDoc(doc(db, "settings", "system"))
+        if (systemDoc.exists()) {
+          setDodoLiveApiKey(systemDoc.data().dodo_api_key || "")
+        }
+      } catch (err) {
+        console.error("Failed to load system settings:", err)
+      }
     }
     loadSecureSettings()
   }, [])
 
-  const handleSavePricing = async () => {
+  const handleSaveRegionConfig = async () => {
     const docId = REGION_DOC_IDS[selectedConfigTier];
     if (!docId) return;
 
     setSavingPricing(true);
     try {
+      // 1. Save pricing tier details
       await setDoc(doc(db, "pricing_tiers", docId), {
         currency_code: currencyCode,
         currency_symbol: currencySymbol,
+        price_includes_tax: priceIncludesTax,
         recovery_pass: {
-          current: Number(recoveryPassCurrent)
+          current: Number(recoveryPassCurrent),
         },
         pro_lifetime: {
-          current: Number(proLifetimeCurrent)
+          current: Number(proLifetimeCurrent),
         },
         super_lifetime: {
-          current: Number(superLifetimeCurrent)
+          current: Number(superLifetimeCurrent),
         }
       }, { merge: true });
 
-      // Log action to audit activity logs
+      // 2. Prepare and save Dodo products map
+      const activeProductsMap: Record<string, Record<string, string>> = {};
+      DODO_REGIONS.forEach(r => {
+        const regionProducts = dodoProducts[r.key] || {};
+        activeProductsMap[r.key] = {
+          recovery_pass: regionProducts.recovery_pass || '',
+          pro: regionProducts.pro || '',
+          super: regionProducts.super || ''
+        };
+      });
+
+      await setDoc(doc(db, "settings", "global"), {
+        dodo_products: activeProductsMap
+      }, { merge: true });
+
+      // 3. Save secure settings (webhook key)
+      await setDoc(doc(db, "settings", "secure"), {
+        dodo_webhook_key: dodoWebhookKey
+      }, { merge: true });
+
+      // 4. Save system settings (Live API key — read by Cloud Functions at runtime)
+      if (dodoLiveApiKey.trim()) {
+        await setDoc(doc(db, "settings", "system"), {
+          dodo_api_key: dodoLiveApiKey.trim()
+        }, { merge: true });
+      }
+
+      // 4. Log action to audit activity logs
       await addDoc(collection(db, "admin_activity"), {
         actorUid: adminData?.uid || "system",
         actorName: adminData?.displayName || "Admin",
         actorRole: role,
-        action: "PRICING_CHANGE",
-        description: `Updated regional pricing for ${docId}: currency=${currencyCode}, recovery=${recoveryPassCurrent}, pro=${proLifetimeCurrent}, super=${superLifetimeCurrent}.`,
+        action: "REGION_CONFIG_CHANGE",
+        description: `Updated regional config for ${docId}: currency=${currencyCode}, rates=[recov:${recoveryPassCurrent}, pro:${proLifetimeCurrent}, super:${superLifetimeCurrent}], WebhookKeyUpdated=${!!dodoWebhookKey}.`,
         timestamp: Date.now()
       });
 
-      useToastStore.getState().addToast(`Pricing for ${docId} updated successfully.`, "success");
+      useToastStore.getState().addToast(`Pricing & Dodo configuration for ${docId} saved successfully.`, "success");
     } catch (err: any) {
       console.error(err);
-      useToastStore.getState().addToast("Failed to save pricing: " + err.message, "error");
+      useToastStore.getState().addToast("Failed to save region configuration: " + err.message, "error");
     } finally {
       setSavingPricing(false);
     }
+  };
+
+  const getCouponInheritedFields = (coup: any) => {
+    if (!coup.campaignId) return null;
+    const camp = campaigns.find(c => c.id === coup.campaignId);
+    if (!camp) return null;
+    return {
+      expirationType: camp.expirationType,
+      expirationDateTime: camp.expirationDateTime,
+      maxPurchaseLimit: camp.maxPurchaseLimit,
+      currentPurchaseCount: camp.currentPurchaseCount ?? 0,
+      campaignName: camp.campaignName,
+      isEnabled: camp.isEnabled,
+      status: camp.status
+    };
   };
 
   // ─── Campaign Manager helpers ──────────────────────────────────────────────
@@ -506,6 +562,20 @@ export default function AdminSettings() {
     setShowCouponForm(false)
   }
 
+  // Build a couponTargets map with every region×plan cell that has a Dodo product ID pre-checked.
+  // Used to auto-populate new coupons so the admin doesn't have to manually tick every box.
+  const buildAutoTargets = (): Record<string, boolean> => {
+    const targets: Record<string, boolean> = {}
+    COUPON_REGIONS.forEach(r => {
+      COUPON_PLANS.forEach(plan => {
+        if (dodoProducts[r.key]?.[plan]) {
+          targets[`${r.key}_${plan}`] = true
+        }
+      })
+    })
+    return targets
+  }
+
   const handleEditCoupon = async (coup: any) => {
     setEditingCoupon(coup)
     setShowCouponForm(true)
@@ -555,9 +625,9 @@ export default function AdminSettings() {
         discountValue: Number(couponForm.discountValue),
         stackable: couponForm.stackable,
         active: couponForm.active,
-        validFrom: couponForm.validFrom ? Timestamp.fromDate(new Date(couponForm.validFrom)) : null,
-        validUntil: couponForm.validUntil ? Timestamp.fromDate(new Date(couponForm.validUntil)) : null,
-        usageLimit: couponForm.usageLimit ? Number(couponForm.usageLimit) : null,
+        validFrom: (!couponForm.campaignId && couponForm.validFrom) ? Timestamp.fromDate(new Date(couponForm.validFrom)) : null,
+        validUntil: (!couponForm.campaignId && couponForm.validUntil) ? Timestamp.fromDate(new Date(couponForm.validUntil)) : null,
+        usageLimit: (!couponForm.campaignId && couponForm.usageLimit) ? Number(couponForm.usageLimit) : null,
         updatedAt: serverTimestamp(),
       }
       let couponId: string
@@ -575,7 +645,11 @@ export default function AdminSettings() {
       for (const d of existingTargSnap.docs) await deleteDoc(d.ref)
       for (const key of Object.keys(couponTargets)) {
         if (!couponTargets[key]) continue
-        const [regionCode, planCode] = key.split('_', 2)
+        // Use indexOf to correctly split "t3_recovery_pass" → regionCode="t3", planCode="recovery_pass"
+        const sepIdx = key.indexOf('_')
+        if (sepIdx === -1) continue
+        const regionCode = key.slice(0, sepIdx)
+        const planCode = key.slice(sepIdx + 1)
         await addDoc(collection(db, 'coupons', couponId, 'targets'), { regionCode, planCode })
       }
       await addDoc(collection(db, 'admin_activity'), {
@@ -627,18 +701,40 @@ export default function AdminSettings() {
     setSyncingCoupon(true)
     try {
       // Read cloud function URL from settings/system or fallback
-      let cfUrl = `https://us-central1-unknown.cloudfunctions.net/geminiToolGateway/sync-coupon`
-      try {
-        const sysDoc = await getDoc(doc(db, 'settings', 'system'))
-        if (sysDoc.exists() && sysDoc.data().cloud_function_url) {
-          cfUrl = sysDoc.data().cloud_function_url.replace(/\/$/, '') + '/sync-coupon'
+      let cfUrl = `https://us-central1-gt-metadata-merger.cloudfunctions.net/geminiToolGateway/sync-coupon`
+      if (typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')) {
+        cfUrl = 'http://localhost:3001/sync-coupon'
+      } else {
+        try {
+          const sysDoc = await getDoc(doc(db, 'settings', 'system'))
+          if (sysDoc.exists() && sysDoc.data().cloud_function_url) {
+            cfUrl = sysDoc.data().cloud_function_url.replace(/\/$/, '') + '/sync-coupon'
+          }
+        } catch (e) { /* use fallback */ }
+      }
+
+      // Build the productIds map from dodoProducts so the cloud function
+      // knows which Dodo product IDs correspond to each region×plan target.
+      // Shape: { t3: { recovery_pass: "pdt_...", pro: "pdt_...", super: "pdt_..." }, ... }
+      const productIdsPayload: Record<string, Record<string, string>> = {}
+      DODO_REGIONS.forEach(r => {
+        const rp = dodoProducts[r.key] || {}
+        if (rp.recovery_pass || rp.pro || rp.super) {
+          productIdsPayload[r.key] = {
+            recovery_pass: rp.recovery_pass || '',
+            pro: rp.pro || '',
+            super: rp.super || ''
+          }
         }
-      } catch (e) { /* use fallback */ }
+      })
 
       const resp = await fetch(cfUrl, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ couponId })
+        headers: { 
+          'Content-Type': 'application/json',
+          'x-api-key': 'takeoutfix-gemini-secret-2026'
+        },
+        body: JSON.stringify({ couponId, productIds: productIdsPayload })
       })
       const result = await resp.json()
       // Reload sync log
@@ -661,9 +757,9 @@ export default function AdminSettings() {
     setSavingFaqs(true);
     try {
       await setDoc(doc(db, "settings", "faqs"), { items: faqItems }, { merge: true });
-      addToast("FAQs saved successfully!", "success");
+      useToastStore.getState().addToast("FAQs saved successfully!", "success");
     } catch (e: any) {
-      addToast("Failed to save FAQs: " + e.message, "error");
+      useToastStore.getState().addToast("Failed to save FAQs: " + e.message, "error");
     } finally {
       setSavingFaqs(false);
     }
@@ -745,6 +841,13 @@ export default function AdminSettings() {
       await setDoc(doc(db, "settings", "secure"), {
         dodo_webhook_key: dodoWebhookKey
       }, { merge: true });
+
+      // 3. Save system settings (Live API key — read by Cloud Functions at runtime)
+      if (dodoLiveApiKey.trim()) {
+        await setDoc(doc(db, "settings", "system"), {
+          dodo_api_key: dodoLiveApiKey.trim()
+        }, { merge: true });
+      }
 
       // Log action to audit activity logs
       await addDoc(collection(db, "admin_activity"), {
@@ -874,7 +977,7 @@ export default function AdminSettings() {
                         placeholder="e.g. 500"
                       />
                     </div>
-                    <p className="text-[10px] text-zinc-600 mt-1">
+                    <p className="text-[10px] text-zinc-655 mt-1">
                       ≈ {(Number(tierThresholds[tierKey].maxSizeMB) / 1024).toFixed(1)} GB
                     </p>
                   </div>
@@ -884,36 +987,41 @@ export default function AdminSettings() {
           </CardContent>
         </Card>
 
-        {/* Global Pricing Config */}
+        {/* Global Tier Pricing & Dodo Payments Integration */}
         <Card className="bg-zinc-900 border-zinc-800 shadow-none md:col-span-2">
           <CardHeader>
             <CardTitle className="text-sm font-semibold flex items-center gap-2 text-zinc-200">
-              <DollarSign className="w-4 h-4 text-emerald-400" /> Global Tier Pricing Configuration
+              <DollarSign className="w-4 h-4 text-emerald-400" /> 💰 Global Tier Pricing & Dodo Payments Integration
             </CardTitle>
-            <CardDescription className="text-zinc-500 text-xs">Adjust pricing values directly for each region tier. Local visitors see these exact currencies/amounts.</CardDescription>
+            <CardDescription className="text-zinc-500 text-xs font-medium">
+              Adjust pricing values and sync payment identifiers directly for each region tier.
+            </CardDescription>
           </CardHeader>
-          <CardContent>
-            {/* Tier Select Dropdown */}
-            <div className="mb-6">
+          <CardContent className="space-y-6">
+            
+            {/* Horizontal Tabs for Region Selection */}
+            <div>
               <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 block mb-1.5">Select Configuration Region</label>
-              <select
-                value={selectedConfigTier}
-                onChange={(e) => setSelectedConfigTier(e.target.value)}
-                className="bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-2 text-sm text-white focus:outline-none focus:border-indigo-500 cursor-pointer w-full md:w-96"
-              >
-                <option value="in">India (INR Localized Tier)</option>
-                <option value="cn">China (CNY Localized Tier)</option>
-                <option value="jp">Japan (JPY Localized Tier)</option>
-                <option value="eu">Europe (EUR Localized Tier)</option>
-                <option value="t1">Tier 1 (Low-Income Countries / USD)</option>
-                <option value="t2">Tier 2 (Mid-Income Countries / USD)</option>
-                <option value="t3">US (Tier 3) (Baseline USD)</option>
-                <option value="t4">Tier 4 (Premium Tier / USD)</option>
-              </select>
+              <div className="flex flex-wrap gap-2 mb-4">
+                {DODO_REGIONS.map(r => (
+                  <button
+                    type="button"
+                    key={r.key}
+                    onClick={() => setSelectedConfigTier(r.key)}
+                    className={`px-3 py-1.5 rounded-lg text-[11px] font-semibold border transition-all ${
+                      selectedConfigTier === r.key
+                        ? 'bg-indigo-600 border-indigo-500 text-white'
+                        : 'bg-zinc-950 border-zinc-800 text-zinc-400 hover:border-zinc-650'
+                    }`}
+                  >
+                    {r.currency} {r.label}
+                  </button>
+                ))}
+              </div>
             </div>
 
-            {/* Currency Inputs */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6 border-b border-zinc-800/85 pb-6">
+            {/* Currency Code & Currency Symbol & Webhook secret key */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 border-b border-zinc-800/85 pb-6">
               <div>
                 <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 block mb-1">Currency Code</label>
                 <Input 
@@ -921,7 +1029,7 @@ export default function AdminSettings() {
                   value={currencyCode} 
                   onChange={(e) => setCurrencyCode(e.target.value.toUpperCase())}
                   placeholder="USD"
-                  className="bg-zinc-950 border-zinc-800 text-zinc-100 text-xs h-9 font-mono" 
+                  className="bg-zinc-955 border-zinc-800 text-zinc-100 text-xs h-9 font-mono" 
                 />
               </div>
               <div>
@@ -931,83 +1039,238 @@ export default function AdminSettings() {
                   value={currencySymbol} 
                   onChange={(e) => setCurrencySymbol(e.target.value)}
                   placeholder="$"
-                  className="bg-zinc-950 border-zinc-800 text-zinc-100 text-xs h-9 font-mono" 
+                  className="bg-zinc-955 border-zinc-800 text-zinc-100 text-xs h-9 font-mono" 
                 />
+                {/* Tax inclusion toggle */}
+                <button
+                  type="button"
+                  id="toggle-price-includes-tax"
+                  onClick={() => setPriceIncludesTax(v => !v)}
+                  className={`mt-2.5 flex items-center gap-2 w-full group`}
+                >
+                  <span className={`relative inline-flex h-4 w-7 shrink-0 rounded-full border-2 border-transparent transition-colors duration-200 focus:outline-none ${
+                    priceIncludesTax ? 'bg-emerald-500' : 'bg-zinc-700'
+                  }`}>
+                    <span className={`pointer-events-none inline-block h-3 w-3 transform rounded-full bg-white shadow ring-0 transition duration-200 ${
+                      priceIncludesTax ? 'translate-x-3' : 'translate-x-0'
+                    }`} />
+                  </span>
+                  <span className={`text-[10px] font-semibold transition-colors ${
+                    priceIncludesTax ? 'text-emerald-400' : 'text-zinc-500'
+                  }`}>
+                    {priceIncludesTax ? 'Prices incl. tax' : 'Prices excl. tax'}
+                  </span>
+                  {priceIncludesTax && (
+                    <span className="ml-auto text-[9px] font-bold bg-emerald-500/15 text-emerald-400 border border-emerald-500/25 px-1.5 py-0.5 rounded">
+                      TAX INCLUDED
+                    </span>
+                  )}
+                </button>
+              </div>
+              <div>
+                <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 block mb-1">
+                  Dodo Webhook Secret Key
+                </label>
+                <div className="relative flex items-center">
+                  <span className="text-zinc-500 absolute left-3 text-xs">whsec_</span>
+                  <Input 
+                    type="password"
+                    value={dodoWebhookKey.startsWith("whsec_") ? dodoWebhookKey.substring(6) : dodoWebhookKey}
+                    onChange={(e) => {
+                      const rawVal = e.target.value;
+                      setDodoWebhookKey(rawVal.startsWith("whsec_") ? rawVal : `whsec_${rawVal}`);
+                    }}
+                    placeholder="Enter webhook secret key"
+                    className="bg-zinc-955 border-zinc-800 text-zinc-100 text-xs pl-16 h-9"
+                  />
+                </div>
+              </div>
+
+              {/* Dodo Live API Key */}
+              <div>
+                <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 block mb-1">
+                  Dodo Live API Key
+                  <span className="ml-2 text-[9px] font-normal text-amber-400/70 normal-case">⚡ used by Cloud Functions at runtime — no redeploy needed</span>
+                </label>
+                <div className="relative flex items-center gap-2">
+                  <div className="relative flex-1">
+                    <span className="text-zinc-500 absolute left-3 top-1/2 -translate-y-1/2 text-xs pointer-events-none select-none">sk_live_</span>
+                    <Input
+                      type={showDodoApiKey ? "text" : "password"}
+                      value={dodoLiveApiKey.startsWith("sk_live_") ? dodoLiveApiKey.substring(8) : dodoLiveApiKey}
+                      onChange={(e) => {
+                        const raw = e.target.value;
+                        setDodoLiveApiKey(raw.startsWith("sk_live_") ? raw : `sk_live_${raw}`);
+                      }}
+                      placeholder="Paste your sk_live_... key here"
+                      className="bg-zinc-955 border-zinc-800 text-zinc-100 text-xs pl-16 h-9 pr-10"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowDodoApiKey(p => !p)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-zinc-300 transition-colors"
+                      title={showDodoApiKey ? "Hide key" : "Reveal key"}
+                    >
+                      {showDodoApiKey
+                        ? <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 4.411m0 0L21 21" /></svg>
+                        : <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
+                      }
+                    </button>
+                  </div>
+                  {dodoLiveApiKey.trim().replace("sk_live_", "").length > 8 && (
+                    <span className="flex items-center gap-1 text-[9px] font-bold text-emerald-400 whitespace-nowrap">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse inline-block"></span>
+                      KEY SET
+                    </span>
+                  )}
+                </div>
+                <p className="text-[9px] text-zinc-600 mt-1">Stored in <code className="text-zinc-500">settings/system.dodo_api_key</code> — never exposed to users.</p>
               </div>
             </div>
 
-            {/* Prices Inputs — Clean Single-Value Baseline Model */}
-            <div className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                
-                {/* Recovery Pass Base */}
-                <div className="bg-zinc-950/30 p-4 border border-zinc-800/60 rounded-xl space-y-3">
-                  <div className="text-xs font-semibold text-zinc-300 border-b border-zinc-800/80 pb-2">Recovery Pass Base Price</div>
-                  <div>
-                    <label className="text-[9px] font-bold uppercase tracking-wider text-zinc-500 block mb-1">Standard Rate</label>
-                    <div className="relative flex items-center">
-                      <span className="text-zinc-600 absolute left-3 text-xs">{currencySymbol}</span>
-                      <Input 
-                        type="number" 
-                        step="any"
-                        value={recoveryPassCurrent} 
-                        onChange={(e) => setRecoveryPassCurrent(e.target.value)}
-                        className="bg-zinc-950 border-zinc-800 text-zinc-100 text-xs pl-6 h-9" 
-                      />
-                    </div>
+            {/* Pricing Config + Product IDs Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              
+              {/* Recovery Pass Config */}
+              <div className="bg-zinc-950/30 p-4 border border-zinc-800/60 rounded-xl space-y-4">
+                <div className="text-xs font-semibold text-zinc-300 border-b border-zinc-800/80 pb-2">Recovery Pass</div>
+                <div>
+                  <label className="text-[9px] font-bold uppercase tracking-wider text-zinc-500 block mb-1">Standard Rate</label>
+                  <div className="relative flex items-center">
+                    <span className="text-zinc-650 absolute left-3 text-xs">{currencySymbol}</span>
+                    <Input 
+                      type="number" 
+                      step="any"
+                      value={recoveryPassCurrent} 
+                      onChange={(e) => setRecoveryPassCurrent(e.target.value)}
+                      className="bg-zinc-950 border-zinc-800 text-zinc-100 text-xs pl-6 h-9" 
+                    />
                   </div>
                 </div>
+                <div>
+                  <label className="text-[9px] font-bold uppercase tracking-wider text-zinc-500 block mb-1">Dodo Product ID</label>
+                  <Input
+                    type="text"
+                    value={dodoProducts[selectedConfigTier]?.recovery_pass || ''}
+                    onChange={e => {
+                      const val = e.target.value
+                      setDodoProducts(prev => ({
+                        ...prev,
+                        [selectedConfigTier]: { ...prev[selectedConfigTier], recovery_pass: val }
+                      }))
+                    }}
+                    placeholder="pdt_..."
+                    className="bg-zinc-950 border-zinc-800 text-zinc-100 text-xs h-9 font-mono"
+                  />
+                </div>
+              </div>
 
-                {/* Pro Lifetime Base */}
-                <div className="bg-zinc-950/30 p-4 border border-zinc-800/60 rounded-xl space-y-3">
-                  <div className="text-xs font-semibold text-zinc-300 border-b border-zinc-800/80 pb-2">Pro Lifetime Base Price</div>
-                  <div>
-                    <label className="text-[9px] font-bold uppercase tracking-wider text-zinc-500 block mb-1">Standard Rate</label>
-                    <div className="relative flex items-center">
-                      <span className="text-zinc-600 absolute left-3 text-xs">{currencySymbol}</span>
-                      <Input 
-                        type="number" 
-                        step="any"
-                        value={proLifetimeCurrent} 
-                        onChange={(e) => setProLifetimeCurrent(e.target.value)}
-                        className="bg-zinc-950 border-zinc-800 text-zinc-100 text-xs pl-6 h-9" 
-                      />
-                    </div>
+              {/* Pro Lifetime Config */}
+              <div className="bg-zinc-950/30 p-4 border border-zinc-800/60 rounded-xl space-y-4">
+                <div className="text-xs font-semibold text-zinc-300 border-b border-zinc-800/80 pb-2">Pro Lifetime</div>
+                <div>
+                  <label className="text-[9px] font-bold uppercase tracking-wider text-zinc-500 block mb-1">Standard Rate</label>
+                  <div className="relative flex items-center">
+                    <span className="text-zinc-650 absolute left-3 text-xs">{currencySymbol}</span>
+                    <Input 
+                      type="number" 
+                      step="any"
+                      value={proLifetimeCurrent} 
+                      onChange={(e) => setProLifetimeCurrent(e.target.value)}
+                      className="bg-zinc-950 border-zinc-800 text-zinc-100 text-xs pl-6 h-9" 
+                    />
                   </div>
                 </div>
+                <div>
+                  <label className="text-[9px] font-bold uppercase tracking-wider text-zinc-500 block mb-1">Dodo Product ID</label>
+                  <Input
+                    type="text"
+                    value={dodoProducts[selectedConfigTier]?.pro || ''}
+                    onChange={e => {
+                      const val = e.target.value
+                      setDodoProducts(prev => ({
+                        ...prev,
+                        [selectedConfigTier]: { ...prev[selectedConfigTier], pro: val }
+                      }))
+                    }}
+                    placeholder="pdt_..."
+                    className="bg-zinc-950 border-zinc-800 text-zinc-100 text-xs h-9 font-mono"
+                  />
+                </div>
+              </div>
 
-                {/* Super Lifetime Base */}
-                <div className="bg-zinc-950/30 p-4 border border-zinc-800/60 rounded-xl space-y-3">
-                  <div className="text-xs font-semibold text-zinc-300 border-b border-zinc-800/80 pb-2">Super Lifetime Base Price</div>
-                  <div>
-                    <label className="text-[9px] font-bold uppercase tracking-wider text-zinc-500 block mb-1">Standard Rate</label>
-                    <div className="relative flex items-center">
-                      <span className="text-zinc-600 absolute left-3 text-xs">{currencySymbol}</span>
-                      <Input 
-                        type="number" 
-                        step="any"
-                        value={superLifetimeCurrent} 
-                        onChange={(e) => setSuperLifetimeCurrent(e.target.value)}
-                        className="bg-zinc-950 border-zinc-800 text-zinc-100 text-xs pl-6 h-9" 
-                      />
-                    </div>
+              {/* Super Lifetime Config */}
+              <div className="bg-zinc-950/30 p-4 border border-zinc-800/60 rounded-xl space-y-4">
+                <div className="text-xs font-semibold text-zinc-300 border-b border-zinc-800/80 pb-2">Super Lifetime</div>
+                <div>
+                  <label className="text-[9px] font-bold uppercase tracking-wider text-zinc-500 block mb-1">Standard Rate</label>
+                  <div className="relative flex items-center">
+                    <span className="text-zinc-650 absolute left-3 text-xs">{currencySymbol}</span>
+                    <Input 
+                      type="number" 
+                      step="any"
+                      value={superLifetimeCurrent} 
+                      onChange={(e) => setSuperLifetimeCurrent(e.target.value)}
+                      className="bg-zinc-950 border-zinc-800 text-zinc-100 text-xs pl-6 h-9" 
+                    />
                   </div>
                 </div>
+                <div>
+                  <label className="text-[9px] font-bold uppercase tracking-wider text-zinc-500 block mb-1">Dodo Product ID</label>
+                  <Input
+                    type="text"
+                    value={dodoProducts[selectedConfigTier]?.super || ''}
+                    onChange={e => {
+                      const val = e.target.value
+                      setDodoProducts(prev => ({
+                        ...prev,
+                        [selectedConfigTier]: { ...prev[selectedConfigTier], super: val }
+                      }))
+                    }}
+                    placeholder="pdt_..."
+                    className="bg-zinc-950 border-zinc-800 text-zinc-100 text-xs h-9 font-mono"
+                  />
+                </div>
+              </div>
 
+            </div>
+
+            {/* Configured IDs Overview Summary Grid */}
+            <div className="p-4 bg-zinc-950/60 border border-zinc-800/60 rounded-xl">
+              <div className="text-[10px] font-bold uppercase tracking-wider text-zinc-500 mb-3">All Configured IDs Overview</div>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                {DODO_REGIONS.map(r => {
+                  const filled = DODO_PLANS.filter(p => dodoProducts[r.key]?.[p]).length
+                  return (
+                    <div key={r.key} className="text-[10px] space-y-0.5">
+                      <div className={`font-semibold ${
+                        filled === 3 ? 'text-emerald-400' : filled > 0 ? 'text-amber-400' : 'text-zinc-600'
+                      }`}>
+                        {r.currency} {r.label} {filled === 3 ? '✓' : filled > 0 ? `(${filled}/3)` : '—'}
+                      </div>
+                      {DODO_PLANS.map(p => (
+                        <div key={p} className="text-zinc-650 truncate">
+                          {dodoProducts[r.key]?.[p] ? `${dodoProducts[r.key][p].substring(0, 14)}…` : `${PLAN_LABELS[p].split(' ')[0]}: empty`}
+                        </div>
+                      ))}
+                    </div>
+                  )
+                })}
               </div>
             </div>
-            
-            {/* Save region pricing button */}
-            <div className="flex justify-end pt-6 border-t border-zinc-800/80 mt-6">
+
+            {/* Save Region Config Button */}
+            <div className="flex justify-end pt-6 border-t border-zinc-800/80">
               <Button 
                 type="button"
-                onClick={handleSavePricing} 
+                onClick={handleSaveRegionConfig} 
                 disabled={savingPricing}
                 className="bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white px-5 h-9 text-xs font-semibold rounded-lg"
               >
-                {savingPricing ? "Saving Region Pricing..." : "Save Region Pricing"}
+                {savingPricing ? "Saving Region Config..." : "Save Region Config"}
               </Button>
             </div>
+
           </CardContent>
         </Card>
 
@@ -1305,6 +1568,7 @@ export default function AdminSettings() {
             <div className="space-y-2">
               {coupons.map((coup) => {
                 const isEditing = editingCoupon?.id === coup.id && showCouponForm
+                const inherited = getCouponInheritedFields(coup)
                 return (
                   <div key={coup.id} className="bg-zinc-950/40 border border-zinc-800/80 rounded-xl overflow-hidden">
                     <div className="flex items-center gap-3 p-3 flex-wrap">
@@ -1314,8 +1578,18 @@ export default function AdminSettings() {
                       <div className="flex-1 min-w-0">
                         <div className="text-xs font-semibold text-zinc-200 truncate">{coup.title || '(no title)'}</div>
                         <div className="text-[10px] text-zinc-500 mt-0.5">
-                          Used: {coup.usedCount ?? 0}{coup.usageLimit ? ` / ${coup.usageLimit}` : ' / ∞'}
-                          {coup.validUntil && <> · Expires: {tsToDatetimeLocal(coup.validUntil).substring(0, 10)}</>}
+                          {inherited ? (
+                            <>
+                              {inherited.campaignName} (Linked) · 
+                              {inherited.maxPurchaseLimit != null ? ` Claims: ${inherited.currentPurchaseCount} / ${inherited.maxPurchaseLimit}` : ' Claims: ∞'}
+                              {inherited.expirationDateTime && <> · Expires: {tsToDatetimeLocal(inherited.expirationDateTime).substring(0, 10)}</>}
+                            </>
+                          ) : (
+                            <>
+                              Used: {coup.usedCount ?? 0}{coup.usageLimit ? ` / ${coup.usageLimit}` : ' / ∞'}
+                              {coup.validUntil && <> · Expires: {tsToDatetimeLocal(coup.validUntil).substring(0, 10)}</>}
+                            </>
+                          )}
                         </div>
                       </div>
                       {/* active toggle */}
@@ -1393,22 +1667,53 @@ export default function AdminSettings() {
                               <span className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow ring-0 transition duration-200 ${couponForm.active ? 'translate-x-4' : 'translate-x-0'}`} />
                             </button>
                           </div>
-                          <div>
-                            <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 block mb-1">Valid From</label>
-                            <Input type="datetime-local" value={couponForm.validFrom} onChange={e => setCouponForm(p => ({ ...p, validFrom: e.target.value }))} className="bg-zinc-950 border-zinc-800 text-zinc-100 text-xs h-9" />
-                          </div>
-                          <div>
-                            <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 block mb-1">Valid Until</label>
-                            <Input type="datetime-local" value={couponForm.validUntil} onChange={e => setCouponForm(p => ({ ...p, validUntil: e.target.value }))} className="bg-zinc-950 border-zinc-800 text-zinc-100 text-xs h-9" />
-                          </div>
+                          {couponForm.campaignId ? (
+                            <div className="md:col-span-2 flex items-center p-3 bg-zinc-950/40 border border-zinc-800/80 rounded-xl text-zinc-400 text-xs font-semibold">
+                              <span>ℹ️ Validity timing is dynamically inherited from the linked campaign.</span>
+                            </div>
+                          ) : (
+                            <>
+                              <div>
+                                <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 block mb-1">Valid From</label>
+                                <Input type="datetime-local" value={couponForm.validFrom} onChange={e => setCouponForm(p => ({ ...p, validFrom: e.target.value }))} className="bg-zinc-950 border-zinc-800 text-zinc-100 text-xs h-9" />
+                              </div>
+                              <div>
+                                <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 block mb-1">Valid Until</label>
+                                <Input type="datetime-local" value={couponForm.validUntil} onChange={e => setCouponForm(p => ({ ...p, validUntil: e.target.value }))} className="bg-zinc-950 border-zinc-800 text-zinc-100 text-xs h-9" />
+                              </div>
+                            </>
+                          )}
                         </div>
-                        <div>
-                          <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 block mb-1">Usage Limit (blank = unlimited)</label>
-                          <Input type="number" min="0" value={couponForm.usageLimit} onChange={e => setCouponForm(p => ({ ...p, usageLimit: e.target.value }))} placeholder="Leave blank for unlimited" className="bg-zinc-950 border-zinc-800 text-zinc-100 text-xs h-9 w-48" />
-                        </div>
+                        {couponForm.campaignId ? (
+                          <div className="p-3 bg-zinc-950/40 border border-zinc-800/80 rounded-xl text-zinc-400 text-xs max-w-md font-semibold">
+                            <span>ℹ️ Usage limit is dynamically inherited from the linked campaign.</span>
+                          </div>
+                        ) : (
+                          <div>
+                            <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 block mb-1">Usage Limit (blank = unlimited)</label>
+                            <Input type="number" min="0" value={couponForm.usageLimit} onChange={e => setCouponForm(p => ({ ...p, usageLimit: e.target.value }))} placeholder="Leave blank for unlimited" className="bg-zinc-950 border-zinc-800 text-zinc-100 text-xs h-9 w-48" />
+                          </div>
+                        )}
                         {/* Target Selector: Region × Plan grid */}
                         <div>
-                          <div className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 mb-2">Target Selector — Region × Plan</div>
+                          <div className="flex items-center justify-between mb-2 flex-wrap gap-2">
+                            <div className="text-[10px] font-bold uppercase tracking-wider text-zinc-400">Target Selector — Region × Plan</div>
+                            <div className="flex items-center gap-2">
+                              {/* Auto-select button */}
+                              <button
+                                type="button"
+                                onClick={() => setCouponTargets(prev => ({ ...prev, ...buildAutoTargets() }))}
+                                className="flex items-center gap-1.5 px-2.5 py-1 text-[10px] font-bold rounded-lg bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/25 transition-all"
+                              >
+                                <Check className="w-3 h-3" />
+                                Auto-select by product ID ({Object.values(buildAutoTargets()).filter(Boolean).length} configured)
+                              </button>
+                              <div className="flex items-center gap-2 text-[9px] text-zinc-500">
+                                <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-emerald-500 inline-block"></span>has ID</span>
+                                <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-zinc-700 inline-block"></span>no ID</span>
+                              </div>
+                            </div>
+                          </div>
                           <div className="border border-zinc-800/60 rounded-xl overflow-hidden">
                             <table className="w-full text-xs">
                               <thead className="bg-zinc-950/60">
@@ -1423,9 +1728,21 @@ export default function AdminSettings() {
                                     <td className="px-3 py-2 font-semibold text-zinc-300 text-[11px]">{region.label}</td>
                                     {COUPON_PLANS.map(plan => {
                                       const key = `${region.key}_${plan}`
+                                      const hasProdId = !!dodoProducts[region.key]?.[plan]
                                       return (
                                         <td key={plan} className="px-3 py-2 text-center">
-                                          <input type="checkbox" checked={!!couponTargets[key]} onChange={e => setCouponTargets(p => ({ ...p, [key]: e.target.checked }))} className="w-4 h-4 rounded border-zinc-600 bg-zinc-900 text-cyan-500 cursor-pointer accent-cyan-500" />
+                                          <div className="flex flex-col items-center gap-1">
+                                            <input
+                                              type="checkbox"
+                                              checked={!!couponTargets[key]}
+                                              onChange={e => setCouponTargets(p => ({ ...p, [key]: e.target.checked }))}
+                                              className="w-4 h-4 rounded border-zinc-600 bg-zinc-900 text-cyan-500 cursor-pointer accent-cyan-500"
+                                            />
+                                            <span
+                                              title={hasProdId ? `Dodo ID: ${dodoProducts[region.key][plan]}` : 'No product ID configured'}
+                                              className={`w-1.5 h-1.5 rounded-full ${hasProdId ? 'bg-emerald-500' : 'bg-zinc-700'}`}
+                                            />
+                                          </div>
                                         </td>
                                       )
                                     })}
@@ -1539,22 +1856,53 @@ export default function AdminSettings() {
                       <span className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow ring-0 transition duration-200 ${couponForm.active ? 'translate-x-4' : 'translate-x-0'}`} />
                     </button>
                   </div>
-                  <div>
-                    <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 block mb-1">Valid From</label>
-                    <Input type="datetime-local" value={couponForm.validFrom} onChange={e => setCouponForm(p => ({ ...p, validFrom: e.target.value }))} className="bg-zinc-950 border-zinc-800 text-zinc-100 text-xs h-9" />
-                  </div>
-                  <div>
-                    <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 block mb-1">Valid Until</label>
-                    <Input type="datetime-local" value={couponForm.validUntil} onChange={e => setCouponForm(p => ({ ...p, validUntil: e.target.value }))} className="bg-zinc-950 border-zinc-800 text-zinc-100 text-xs h-9" />
-                  </div>
+                  {couponForm.campaignId ? (
+                    <div className="md:col-span-2 flex items-center p-3 bg-zinc-950/40 border border-zinc-800/80 rounded-xl text-zinc-400 text-xs font-semibold">
+                      <span>ℹ️ Validity timing is dynamically inherited from the linked campaign.</span>
+                    </div>
+                  ) : (
+                    <>
+                      <div>
+                        <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 block mb-1">Valid From</label>
+                        <Input type="datetime-local" value={couponForm.validFrom} onChange={e => setCouponForm(p => ({ ...p, validFrom: e.target.value }))} className="bg-zinc-950 border-zinc-800 text-zinc-100 text-xs h-9" />
+                      </div>
+                      <div>
+                        <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 block mb-1">Valid Until</label>
+                        <Input type="datetime-local" value={couponForm.validUntil} onChange={e => setCouponForm(p => ({ ...p, validUntil: e.target.value }))} className="bg-zinc-950 border-zinc-800 text-zinc-100 text-xs h-9" />
+                      </div>
+                    </>
+                  )}
                 </div>
-                <div>
-                  <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 block mb-1">Usage Limit (blank = unlimited)</label>
-                  <Input type="number" min="0" value={couponForm.usageLimit} onChange={e => setCouponForm(p => ({ ...p, usageLimit: e.target.value }))} placeholder="Leave blank for unlimited" className="bg-zinc-950 border-zinc-800 text-zinc-100 text-xs h-9 w-48" />
-                </div>
+                {couponForm.campaignId ? (
+                  <div className="p-3 bg-zinc-950/40 border border-zinc-800/80 rounded-xl text-zinc-400 text-xs max-w-md font-semibold">
+                    <span>ℹ️ Usage limit is dynamically inherited from the linked campaign.</span>
+                  </div>
+                ) : (
+                  <div>
+                    <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 block mb-1">Usage Limit (blank = unlimited)</label>
+                    <Input type="number" min="0" value={couponForm.usageLimit} onChange={e => setCouponForm(p => ({ ...p, usageLimit: e.target.value }))} placeholder="Leave blank for unlimited" className="bg-zinc-950 border-zinc-800 text-zinc-100 text-xs h-9 w-48" />
+                  </div>
+                )}
                 {/* Target Selector */}
                 <div>
-                  <div className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 mb-2">Target Selector — Region × Plan</div>
+                  <div className="flex items-center justify-between mb-2 flex-wrap gap-2">
+                    <div className="text-[10px] font-bold uppercase tracking-wider text-zinc-400">Target Selector — Region × Plan</div>
+                    <div className="flex items-center gap-2">
+                      {/* Auto-select button */}
+                      <button
+                        type="button"
+                        onClick={() => setCouponTargets(prev => ({ ...prev, ...buildAutoTargets() }))}
+                        className="flex items-center gap-1.5 px-2.5 py-1 text-[10px] font-bold rounded-lg bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/25 transition-all"
+                      >
+                        <Check className="w-3 h-3" />
+                        Auto-select by product ID ({Object.values(buildAutoTargets()).filter(Boolean).length} configured)
+                      </button>
+                      <div className="flex items-center gap-2 text-[9px] text-zinc-500">
+                        <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-emerald-500 inline-block"></span>has ID</span>
+                        <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-zinc-700 inline-block"></span>no ID</span>
+                      </div>
+                    </div>
+                  </div>
                   <div className="border border-zinc-800/60 rounded-xl overflow-hidden">
                     <table className="w-full text-xs">
                       <thead className="bg-zinc-950/60">
@@ -1569,9 +1917,21 @@ export default function AdminSettings() {
                             <td className="px-3 py-2 font-semibold text-zinc-300 text-[11px]">{region.label}</td>
                             {COUPON_PLANS.map(plan => {
                               const key = `${region.key}_${plan}`
+                              const hasProdId = !!dodoProducts[region.key]?.[plan]
                               return (
                                 <td key={plan} className="px-3 py-2 text-center">
-                                  <input type="checkbox" checked={!!couponTargets[key]} onChange={e => setCouponTargets(p => ({ ...p, [key]: e.target.checked }))} className="w-4 h-4 rounded border-zinc-600 bg-zinc-900 text-cyan-500 cursor-pointer accent-cyan-500" />
+                                  <div className="flex flex-col items-center gap-1">
+                                    <input
+                                      type="checkbox"
+                                      checked={!!couponTargets[key]}
+                                      onChange={e => setCouponTargets(p => ({ ...p, [key]: e.target.checked }))}
+                                      className="w-4 h-4 rounded border-zinc-600 bg-zinc-900 text-cyan-500 cursor-pointer accent-cyan-500"
+                                    />
+                                    <span
+                                      title={hasProdId ? `Dodo ID: ${dodoProducts[region.key][plan]}` : 'No product ID configured'}
+                                      className={`w-1.5 h-1.5 rounded-full ${hasProdId ? 'bg-emerald-500' : 'bg-zinc-700'}`}
+                                    />
+                                  </div>
                                 </td>
                               )
                             })}
@@ -1593,7 +1953,12 @@ export default function AdminSettings() {
             {/* New Coupon button */}
             {!showCouponForm && (
               <div className="flex justify-end">
-                <Button type="button" onClick={() => { resetCouponForm(); setShowCouponForm(true) }} className="bg-cyan-700 hover:bg-cyan-600 text-white px-4 h-8 text-xs font-semibold rounded-lg flex items-center gap-1.5">
+                <Button type="button" onClick={() => {
+                  resetCouponForm()
+                  // Auto-check all cells that already have a Dodo product ID configured
+                  setCouponTargets(buildAutoTargets())
+                  setShowCouponForm(true)
+                }} className="bg-cyan-700 hover:bg-cyan-600 text-white px-4 h-8 text-xs font-semibold rounded-lg flex items-center gap-1.5">
                   <Plus className="w-3.5 h-3.5" /> New Coupon
                 </Button>
               </div>
@@ -1601,117 +1966,7 @@ export default function AdminSettings() {
           </CardContent>
         </Card>
 
-        {/* Dodo Payments Configuration Card */}
-        <Card className="bg-zinc-900 border-zinc-800 shadow-none md:col-span-2">
-          <CardHeader>
-            <CardTitle className="text-sm font-semibold flex items-center gap-2 text-zinc-200">
-              <Lock className="w-4 h-4 text-indigo-400" /> Dodo Payments Integration Settings
-            </CardTitle>
-            <CardDescription className="text-zinc-500 text-xs">
-              Configure Webhook secrets and checkout Product IDs for client hosted checkouts.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-6">
-            <div>
-              <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 block mb-1.5">
-                Dodo Webhook Secret Key
-              </label>
-              <div className="relative flex items-center">
-                <span className="text-zinc-500 absolute left-3 text-xs">whsec_</span>
-                <Input 
-                  type="password"
-                  value={dodoWebhookKey.startsWith("whsec_") ? dodoWebhookKey.substring(6) : dodoWebhookKey}
-                  onChange={(e) => {
-                    const rawVal = e.target.value;
-                    setDodoWebhookKey(rawVal.startsWith("whsec_") ? rawVal : `whsec_${rawVal}`);
-                  }}
-                  placeholder="Enter webhook secret key (e.g. whsec_...)"
-                  className="bg-zinc-950 border-zinc-800 text-zinc-100 text-xs pl-16 h-9"
-                />
-              </div>
-              <span className="text-[10px] text-zinc-500 mt-1 block">
-                Found in Dodo Payments Dashboard &gt; Developer/Settings &gt; Webhooks. Note: Webhook endpoint signature verification is active only when this secret key is set.
-              </span>
-            </div>
-
-            <div className="border-t border-zinc-800/80 pt-6">
-              <div className="flex items-center justify-between mb-4">
-                <label className="text-xs font-semibold text-zinc-300">Dodo Plan Product IDs — Per Region</label>
-                <span className="text-[10px] text-zinc-500">Select a region, paste its 3 product IDs</span>
-              </div>
-
-              {/* Region tab selector */}
-              <div className="flex flex-wrap gap-2 mb-5">
-                {DODO_REGIONS.map(r => (
-                  <button
-                    type="button"
-                    key={r.key}
-                    onClick={() => setActiveDodoRegion(r.key)}
-                    className={`px-3 py-1.5 rounded-lg text-[11px] font-semibold border transition-all ${
-                      activeDodoRegion === r.key
-                        ? 'bg-indigo-600 border-indigo-500 text-white'
-                        : 'bg-zinc-950 border-zinc-800 text-zinc-400 hover:border-zinc-600'
-                    }`}
-                  >
-                    {r.currency} {r.label}
-                  </button>
-                ))}
-              </div>
-
-              {/* 3 inputs for the active region */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                {DODO_PLANS.map(plan => (
-                  <div key={plan}>
-                    <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 block mb-1">
-                      {PLAN_LABELS[plan]}
-                    </label>
-                    <Input
-                      type="text"
-                      value={dodoProducts[activeDodoRegion]?.[plan] || ''}
-                      onChange={e => {
-                        const val = e.target.value
-                        setDodoProducts(prev => ({
-                          ...prev,
-                          [activeDodoRegion]: { ...prev[activeDodoRegion], [plan]: val }
-                        }))
-                      }}
-                      placeholder="pdt_..."
-                      className="bg-zinc-955 border-zinc-800 text-zinc-205 text-xs h-9 font-mono"
-                    />
-                  </div>
-                ))}
-              </div>
-
-              {/* Summary overview of all filled IDs */}
-              <div className="mt-5 p-4 bg-zinc-950/60 border border-zinc-800/60 rounded-xl">
-                <div className="text-[10px] font-bold uppercase tracking-wider text-zinc-500 mb-3">All Configured IDs Overview</div>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                  {DODO_REGIONS.map(r => {
-                    const filled = DODO_PLANS.filter(p => dodoProducts[r.key]?.[p]).length
-                    return (
-                      <div key={r.key} className="text-[10px]">
-                        <div className={`font-semibold mb-1 ${
-                          filled === 3 ? 'text-emerald-400' : filled > 0 ? 'text-amber-400' : 'text-zinc-600'
-                        }`}>
-                          {r.currency} {r.label} {filled === 3 ? '✓' : filled > 0 ? `(${filled}/3)` : '—'}
-                        </div>
-                        {DODO_PLANS.map(p => (
-                          <div key={p} className="text-zinc-650 truncate">
-                            {dodoProducts[r.key]?.[p] ? `${dodoProducts[r.key][p].substring(0, 14)}…` : `${PLAN_LABELS[p]}: empty`}
-                          </div>
-                        ))}
-                      </div>
-                    )
-                  })}
-                </div>
-              </div>
-
-              <span className="text-[10px] text-zinc-500 mt-2.5 block">
-                Retrieve product identifiers (starts with pdt_) from your Dodo Payments Dashboard → Products. Leave empty to skip checkout for that region.
-              </span>
-            </div>
-          </CardContent>
-        </Card>
+        {/* Dodo Payments Configuration Card replaced by Unified Pricing & Payments Card */}
 
       {/* Tier Features List Customizer */}
         <Card className="bg-zinc-900 border-zinc-800 shadow-none md:col-span-2">

@@ -1,6 +1,6 @@
 import { useAuth } from "../contexts/AuthContext"
 import { db } from "../firebase"
-import { collection, query, where, getDocs } from "firebase/firestore"
+import { collection, query, where, getDocs, doc, getDoc } from "firebase/firestore"
 
 import { Button } from "../components/ui/button"
 import { Card } from "../components/ui/card"
@@ -17,38 +17,10 @@ interface PlanDetails {
   features: string[];
 }
 
-const isPromoActive = (campaign: any) => {
-  if (!campaign || !campaign.isEnabled) return false;
-  if (campaign.status !== 'ACTIVE') return false;
-
-  const expType = campaign.expirationType || 'NONE';
-  const now = Date.now();
-
-  let timeOk = true;
-  if ((expType === 'TIME_ONLY' || expType === 'BOTH') && campaign.expirationDateTime) {
-    const expiryMs = campaign.expirationDateTime.seconds
-      ? campaign.expirationDateTime.seconds * 1000
-      : new Date(campaign.expirationDateTime).getTime();
-    timeOk = now < expiryMs;
-  }
-
-  let capOk = true;
-  if ((expType === 'PURCHASE_LIMIT_ONLY' || expType === 'BOTH') && campaign.maxPurchaseLimit != null) {
-    capOk = (campaign.currentPurchaseCount ?? 0) < campaign.maxPurchaseLimit;
-  }
-
-  if (expType === 'NONE') return true;
-  if (expType === 'TIME_ONLY') return timeOk;
-  if (expType === 'PURCHASE_LIMIT_ONLY') return capOk;
-  if (expType === 'BOTH') return timeOk && capOk;
-  return false;
-};
-
 const getPlanDetails = (
   planKey: string, 
   region: string, 
-  getPlanPriceValue: (p: string, r: string) => number,
-  campaigns: any
+  getPlanPriceValue: (p: string, r: string) => number
 ): PlanDetails | null => {
   const r = region.toLowerCase();
   let currency = "USD";
@@ -71,17 +43,6 @@ const getPlanDetails = (
   const regionConf = { currency, symbol };
 
   let priceVal = getPlanPriceValue(planKey, region);
-  if (priceVal !== undefined && priceVal !== null) {
-    let discountPct = 0;
-    if (isPromoActive(campaigns)) {
-      if (planKey === 'recovery_pass') discountPct = campaigns.recovery_discount_percentage ?? 0;
-      else if (planKey === 'pro') discountPct = campaigns.pro_discount_percentage ?? 0;
-      else if (planKey === 'super') discountPct = campaigns.super_discount_percentage ?? 0;
-    }
-    if (discountPct > 0) {
-      priceVal = Number((priceVal * (1 - discountPct / 100)).toFixed(2));
-    }
-  }
   
   const details: Record<string, { name: string; description: string; features: string[] }> = {
     recovery_pass: {
@@ -185,7 +146,7 @@ function CheckoutPageContent() {
     return 't3'; // Fallback for us/eu/jp etc.
   })()
 
-  const plan = getPlanDetails(planKey, normalizedRegion, getPlanPriceValue, campaigns)
+  const plan = getPlanDetails(planKey, normalizedRegion, getPlanPriceValue)
 
   const [isProcessing, setIsProcessing] = useState(false)
   const [processStep, setProcessStep] = useState("")
@@ -250,17 +211,56 @@ function CheckoutPageContent() {
       let appliedCoupon = "";
       for (const couponDoc of couponsSnap.docs) {
         const couponData = couponDoc.data();
-        // Check validity window
-        const now = Date.now();
-        if (couponData.validFrom) {
-          const fromMs = couponData.validFrom.seconds ? couponData.validFrom.seconds * 1000 : new Date(couponData.validFrom).getTime();
-          if (now < fromMs) continue;
+        
+        // 1. Enforce live campaign conditions if coupon is linked to a campaign
+        if (couponData.campaignId) {
+          const campaignDoc = await getDoc(doc(db, "campaigns", couponData.campaignId));
+          if (!campaignDoc.exists()) continue;
+          const campaignData = campaignDoc.data();
+          
+          if (campaignData.status !== "ACTIVE" || !campaignData.isEnabled) continue;
+          
+          const now = Date.now();
+          const expType = campaignData.expirationType || "NONE";
+          
+          let timeOk = true;
+          if ((expType === "TIME_ONLY" || expType === "BOTH") && campaignData.expirationDateTime) {
+            const expMs = campaignData.expirationDateTime.seconds 
+              ? campaignData.expirationDateTime.seconds * 1000 
+              : new Date(campaignData.expirationDateTime).getTime();
+            timeOk = now < expMs;
+          }
+          if (!timeOk) continue;
+          
+          let capOk = true;
+          if ((expType === "PURCHASE_LIMIT_ONLY" || expType === "BOTH") && campaignData.maxPurchaseLimit != null) {
+            capOk = (campaignData.currentPurchaseCount ?? 0) < campaignData.maxPurchaseLimit;
+          }
+          if (!capOk) continue;
+        } else {
+          // If coupon is not linked to a campaign, check its own timing and limits
+          const now = Date.now();
+          if (couponData.validFrom) {
+            const fromMs = couponData.validFrom.seconds ? couponData.validFrom.seconds * 1000 : new Date(couponData.validFrom).getTime();
+            if (now < fromMs) continue;
+          }
+          if (couponData.validUntil) {
+            const untilMs = couponData.validUntil.seconds ? couponData.validUntil.seconds * 1000 : new Date(couponData.validUntil).getTime();
+            if (now > untilMs) continue;
+          }
+          if (couponData.usageLimit != null && (couponData.usedCount ?? 0) >= couponData.usageLimit) continue;
         }
-        if (couponData.validUntil) {
-          const untilMs = couponData.validUntil.seconds ? couponData.validUntil.seconds * 1000 : new Date(couponData.validUntil).getTime();
-          if (now > untilMs) continue;
-        }
-        if (couponData.usageLimit != null && (couponData.usedCount ?? 0) >= couponData.usageLimit) continue;
+
+        // 2. Enforce the "1 use per user account" check against the purchase_logs collection
+        const logsSnap = await getDocs(
+          query(collection(db, "purchase_logs"), where("userId", "==", user.uid))
+        );
+        const alreadyUsed = logsSnap.docs.some(logDoc => {
+          const logData = logDoc.data();
+          return logData.couponId === couponDoc.id || logData.couponCode === couponData.couponCode;
+        });
+        if (alreadyUsed) continue;
+
         // Check targets subcollection for this plan+region
         const targetsSnap = await getDocs(collection(db, "coupons", couponDoc.id, "targets"));
         const matchesTarget = targetsSnap.docs.some(t => {

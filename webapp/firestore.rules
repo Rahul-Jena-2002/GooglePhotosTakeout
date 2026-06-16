@@ -135,5 +135,37 @@ service cloud.firestore {
       allow update: if isAdmin() && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['current_purchase_count']);
       allow delete: if isAdmin();
     }
+
+    // ─── Campaigns Collection ───────────────────────────────────────────────────
+    match /campaigns/{campaignId} {
+      allow read: if true;
+      allow write: if isAdmin();
+
+      match /discounts/{planCode} {
+        allow read: if true;
+        allow write: if isAdmin();
+      }
+    }
+
+    // ─── Coupons Collection ─────────────────────────────────────────────────────
+    match /coupons/{couponId} {
+      allow read: if true;
+      allow write: if isAdmin();
+
+      match /targets/{targetId} {
+        allow read: if true;
+        allow write: if isAdmin();
+      }
+
+      match /sync_log/{syncId} {
+        allow read, write: if isAdmin();
+      }
+    }
+
+    // ─── Purchase Logs Collection ───────────────────────────────────────────────
+    match /purchase_logs/{logId} {
+      allow read: if request.auth != null && resource.data.userId == request.auth.uid;
+      allow read, write: if isAdmin();
+    }
   }
 }
