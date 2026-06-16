@@ -186,6 +186,7 @@ function CheckoutPageContent() {
       email: user.email || "",
       customer_email: user.email || "", // Fallback
       redirect_url: returnUrl,
+      cancel_url: `${window.location.origin}/pricing`,
       metadata_userId: user.uid,
       metadata_plan: planKey,
       metadata_region: normalizedRegion,
@@ -210,7 +211,7 @@ function CheckoutPageContent() {
       params.set("currency", plan.currency)
     }
 
-    window.location.href = `${dodoBaseUrl}/${productId}?${params.toString()}`
+    window.location.replace(`${dodoBaseUrl}/${productId}?${params.toString()}`)
   }
 
   // Automatic redirect trigger: when user and plan are ready, immediately redirect
