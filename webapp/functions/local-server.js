@@ -448,6 +448,51 @@ app.post("/execute", async (req, res) => {
   }
 });
 
+/**
+ * Helper: Fetch USD exchange rates from open.er-api.com
+ */
+const fetchUsdExchangeRates = () => {
+  return new Promise((resolve) => {
+    const https = require("https");
+    const fallback = { JPY: 150.0, CNY: 7.2 };
+    
+    const req = https.get("https://open.er-api.com/v6/latest/USD", (res) => {
+      if (res.statusCode !== 200) {
+        console.warn(`Exchange rate API returned status ${res.statusCode}. Using fallback.`);
+        return resolve(fallback);
+      }
+      
+      let data = "";
+      res.on("data", (chunk) => { data += chunk; });
+      res.on("end", () => {
+        try {
+          const parsed = JSON.parse(data);
+          if (parsed && parsed.result === "success" && parsed.rates) {
+            const jpy = parsed.rates.JPY ? Number(parsed.rates.JPY) : fallback.JPY;
+            const cny = parsed.rates.CNY ? Number(parsed.rates.CNY) : fallback.CNY;
+            console.log(`Successfully fetched dynamic USD rates: JPY=${jpy}, CNY=${cny}`);
+            return resolve({ JPY: jpy, CNY: cny });
+          }
+        } catch (e) {
+          console.warn("Failed to parse exchange rate response:", e);
+        }
+        resolve(fallback);
+      });
+    });
+    
+    req.on("error", (err) => {
+      console.warn("Error fetching exchange rates:", err.message);
+      resolve(fallback);
+    });
+    
+    req.setTimeout(5000, () => {
+      req.destroy();
+      console.warn("Exchange rate API request timed out. Using fallback.");
+      resolve(fallback);
+    });
+  });
+};
+
 app.post("/sync-dodo-prices", async (req, res) => {
   const { regionCode, prices, currency } = req.body || {};
   let currencyCode = (currency || "INR").toUpperCase();
@@ -458,30 +503,20 @@ app.post("/sync-dodo-prices", async (req, res) => {
 
   // Auto-calculate to USD for JPY and CNY regions since Dodo doesn't support JPY/CNY
   let finalPrices = { ...prices };
-  if (regionCode === "jp") {
+  if (regionCode === "jp" || regionCode === "cn") {
     currencyCode = "USD";
+    const rates = await fetchUsdExchangeRates();
+    const rate = regionCode === "jp" ? rates.JPY : rates.CNY;
+    console.log(`Auto-converting ${regionCode === "jp" ? "JPY" : "CNY"} to USD using dynamic rate: ${rate}`);
     for (const plan of Object.keys(finalPrices)) {
       const val = finalPrices[plan];
       if (val !== null && typeof val === "object") {
         finalPrices[plan] = {
           ...val,
-          amount: Number((Number(val.amount) / 150).toFixed(2))
+          amount: Number((Number(val.amount) / rate).toFixed(2))
         };
       } else {
-        finalPrices[plan] = Number((Number(val) / 150).toFixed(2));
-      }
-    }
-  } else if (regionCode === "cn") {
-    currencyCode = "USD";
-    for (const plan of Object.keys(finalPrices)) {
-      const val = finalPrices[plan];
-      if (val !== null && typeof val === "object") {
-        finalPrices[plan] = {
-          ...val,
-          amount: Number((Number(val.amount) / 7.2).toFixed(2))
-        };
-      } else {
-        finalPrices[plan] = Number((Number(val) / 7.2).toFixed(2));
+        finalPrices[plan] = Number((Number(val) / rate).toFixed(2));
       }
     }
   }
