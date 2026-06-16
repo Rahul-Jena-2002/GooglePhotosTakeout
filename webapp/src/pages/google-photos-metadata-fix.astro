@@ -1,0 +1,158 @@
+---
+export const prerender = true;
+import Layout from "../layouts/Layout.astro";
+---
+
+<Layout
+  title="Google Photos Metadata Fix – Restore Missing Dates & GPS | TakeoutFix"
+  description="Fix missing metadata from Google Photos exports. TakeoutFix restores photo dates, GPS coordinates, and EXIF data lost during Google Takeout — free, browser-based, no upload needed."
+>
+  <div class="bg-black text-zinc-100 min-h-screen py-24 px-4 sm:px-6 lg:px-8 relative overflow-hidden font-sans">
+
+    <div class="absolute top-0 left-1/4 w-[500px] h-[500px] bg-blue-900/10 blur-[150px] rounded-full pointer-events-none"></div>
+    <div class="absolute bottom-20 right-1/4 w-[600px] h-[600px] bg-indigo-900/10 blur-[150px] rounded-full pointer-events-none"></div>
+
+    <!-- Hero -->
+    <div class="max-w-4xl mx-auto text-center mb-20 relative z-10">
+      <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-zinc-900 border border-zinc-800 text-xs font-semibold text-blue-400 mb-6 font-mono">
+        🖼️ Google Photos Metadata Fix · Free · Private · Browser-Based
+      </div>
+
+      <h1 class="text-4xl md:text-6xl font-extrabold tracking-tight text-white mb-6 leading-tight">
+        <span class="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-indigo-400 to-violet-500">Google Photos Metadata Fix</span>
+        — Restore Missing Dates & GPS
+      </h1>
+
+      <p class="text-lg md:text-xl text-zinc-400 max-w-3xl mx-auto leading-relaxed mb-8">
+        Downloaded your <strong class="text-white">Google Photos</strong> via Google Takeout and found all dates are wrong?
+        TakeoutFix performs a complete <strong class="text-white">Google Photos metadata fix</strong> — restoring original dates,
+        GPS coordinates, and EXIF info — entirely in your browser without uploading anything.
+      </p>
+
+      <div class="flex flex-col sm:flex-row gap-4 justify-center mb-12">
+        <a href="/tool">
+          <button id="gp-meta-fix-cta-primary" class="glass-capsule interactive px-10 h-14 font-semibold text-white flex items-center gap-2">
+            Fix Google Photos Metadata →
+          </button>
+        </a>
+        <a href="/restore-data">
+          <button id="gp-meta-fix-cta-guide" class="glass-capsule interactive px-8 h-14 font-semibold text-zinc-300 hover:text-white">
+            How It Works
+          </button>
+        </a>
+      </div>
+    </div>
+
+    <!-- The Problem -->
+    <div class="max-w-5xl mx-auto mb-20 relative z-10">
+      <h2 class="text-3xl font-bold text-white text-center mb-10">The Google Photos Metadata Problem</h2>
+      <div class="grid md:grid-cols-2 gap-8">
+        <div class="bg-red-950/20 border border-red-500/20 rounded-2xl p-8">
+          <div class="text-2xl mb-3">❌</div>
+          <h3 class="text-lg font-bold text-red-400 mb-3">Before Google Photos Metadata Fix</h3>
+          <ul class="space-y-3 text-sm text-zinc-400">
+            <li>📅 All photos show today's date (the Takeout download date)</li>
+            <li>📍 GPS location shows 0,0 or is completely missing</li>
+            <li>📸 Camera model, aperture, ISO are all blank</li>
+            <li>🗂️ Gallery timeline is completely scrambled</li>
+            <li>🗺️ Map view in Photos apps shows no locations</li>
+          </ul>
+        </div>
+        <div class="bg-emerald-950/20 border border-emerald-500/20 rounded-2xl p-8">
+          <div class="text-2xl mb-3">✅</div>
+          <h3 class="text-lg font-bold text-emerald-400 mb-3">After TakeoutFix Metadata Fix</h3>
+          <ul class="space-y-3 text-sm text-zinc-400">
+            <li>📅 All photos show their original date taken</li>
+            <li>📍 GPS coordinates fully restored from JSON sidecars</li>
+            <li>📸 Camera, lens, aperture, ISO all correctly restored</li>
+            <li>🗂️ Gallery timeline sorted perfectly by actual date</li>
+            <li>🗺️ Map view shows all your photo locations correctly</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <!-- Supported Google Photos Export Types -->
+    <div class="max-w-4xl mx-auto mb-20 relative z-10">
+      <div class="bg-zinc-950/40 border border-white/5 backdrop-blur-md rounded-2xl p-8">
+        <h2 class="text-2xl font-bold text-white mb-6">Supported Google Photos Export Types</h2>
+        <div class="grid md:grid-cols-2 gap-4 text-sm text-zinc-400">
+          <div class="space-y-3">
+            <div class="flex items-center gap-3 p-3 bg-zinc-900/50 rounded-lg border border-zinc-800">
+              <span class="text-blue-400">✓</span>
+              <div>
+                <div class="text-zinc-200 font-semibold">Google Takeout ZIP archives</div>
+                <div class="text-xs text-zinc-500">Downloaded from takeout.google.com</div>
+              </div>
+            </div>
+            <div class="flex items-center gap-3 p-3 bg-zinc-900/50 rounded-lg border border-zinc-800">
+              <span class="text-blue-400">✓</span>
+              <div>
+                <div class="text-zinc-200 font-semibold">Extracted Takeout folders</div>
+                <div class="text-xs text-zinc-500">Photos/ folders with JSON sidecars</div>
+              </div>
+            </div>
+            <div class="flex items-center gap-3 p-3 bg-zinc-900/50 rounded-lg border border-zinc-800">
+              <span class="text-blue-400">✓</span>
+              <div>
+                <div class="text-zinc-200 font-semibold">JPEG & PNG photos</div>
+                <div class="text-xs text-zinc-500">.jpg, .jpeg, .png, .heic</div>
+              </div>
+            </div>
+          </div>
+          <div class="space-y-3">
+            <div class="flex items-center gap-3 p-3 bg-zinc-900/50 rounded-lg border border-zinc-800">
+              <span class="text-blue-400">✓</span>
+              <div>
+                <div class="text-zinc-200 font-semibold">MP4 & MOV videos</div>
+                <div class="text-xs text-zinc-500">.mp4, .mov, .avi, .mkv</div>
+              </div>
+            </div>
+            <div class="flex items-center gap-3 p-3 bg-zinc-900/50 rounded-lg border border-zinc-800">
+              <span class="text-blue-400">✓</span>
+              <div>
+                <div class="text-zinc-200 font-semibold">Edited &amp; filtered copies</div>
+                <div class="text-xs text-zinc-500">photo(1).jpg, photo-edited.jpg, etc.</div>
+              </div>
+            </div>
+            <div class="flex items-center gap-3 p-3 bg-zinc-900/50 rounded-lg border border-zinc-800">
+              <span class="text-blue-400">✓</span>
+              <div>
+                <div class="text-zinc-200 font-semibold">Nested album subfolders</div>
+                <div class="text-xs text-zinc-500">Vacation 2019/, Family/, etc.</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- FAQ -->
+    <div class="max-w-4xl mx-auto mb-20 relative z-10 space-y-4">
+      <h2 class="text-3xl font-bold text-white text-center mb-8">Google Photos Metadata Fix — FAQ</h2>
+      <div class="bg-zinc-950/40 border border-white/5 rounded-xl p-6">
+        <h3 class="text-white font-semibold mb-2">Why do my Google Photos have wrong dates after Takeout?</h3>
+        <p class="text-zinc-400 text-sm leading-relaxed">Google Takeout exports photo files and metadata separately. The image files themselves have no embedded dates — only the .json sidecar files contain the original date taken. Most apps only read the image file, so they show the wrong date. A Google Photos metadata fix tool like TakeoutFix reads both files and merges them.</p>
+      </div>
+      <div class="bg-zinc-950/40 border border-white/5 rounded-xl p-6">
+        <h3 class="text-white font-semibold mb-2">Can I fix Google Photos metadata without command line?</h3>
+        <p class="text-zinc-400 text-sm leading-relaxed">Yes. TakeoutFix is entirely browser-based. You don't need to use the command line, install Python, ExifTool, or any other software. Just open TakeoutFix in Chrome, select your folder, and the Google Photos metadata fix runs automatically.</p>
+      </div>
+      <div class="bg-zinc-950/40 border border-white/5 rounded-xl p-6">
+        <h3 class="text-white font-semibold mb-2">Will TakeoutFix fix my Google Photos for import into Apple Photos?</h3>
+        <p class="text-zinc-400 text-sm leading-relaxed">Yes. After TakeoutFix performs the metadata fix, all your photos will have the correct date taken and GPS embedded in their EXIF headers. Apple Photos, Windows Photos, and every other gallery app will correctly sort and display them.</p>
+      </div>
+    </div>
+
+    <!-- CTA -->
+    <div class="max-w-4xl mx-auto text-center py-16 border-t border-zinc-900 relative z-10">
+      <h2 class="text-3xl font-bold tracking-tight mb-4 text-white">Fix Your Google Photos Metadata Now</h2>
+      <p class="text-zinc-500 mb-8 max-w-md mx-auto">Restore original dates and GPS locations from your Google Photos Takeout export. Free and private.</p>
+      <a href="/tool">
+        <button id="gp-meta-fix-cta-bottom" class="glass-capsule interactive px-12 h-14 font-semibold text-white">
+          Start Google Photos Metadata Fix →
+        </button>
+      </a>
+    </div>
+  </div>
+</Layout>

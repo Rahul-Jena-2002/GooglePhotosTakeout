@@ -1,0 +1,122 @@
+---
+export const prerender = true;
+import Layout from "../layouts/Layout.astro";
+---
+
+<Layout
+  title="TakeoutFixer – Google Takeout Fixer for Photos & Videos | TakeoutFix"
+  description="TakeoutFixer by TakeoutFix. The #1 Google Takeout fixer that restores photo dates, GPS locations, and EXIF metadata lost during Google Photos export. Free, private, runs in your browser."
+>
+  <div class="bg-black text-zinc-100 min-h-screen py-24 px-4 sm:px-6 lg:px-8 relative overflow-hidden font-sans">
+
+    <div class="absolute top-0 left-1/4 w-[500px] h-[500px] bg-violet-900/10 blur-[150px] rounded-full pointer-events-none"></div>
+    <div class="absolute bottom-20 right-1/4 w-[600px] h-[600px] bg-blue-900/10 blur-[150px] rounded-full pointer-events-none"></div>
+
+    <!-- Hero -->
+    <div class="max-w-4xl mx-auto text-center mb-20 relative z-10">
+      <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-zinc-900 border border-zinc-800 text-xs font-semibold text-violet-400 mb-6 font-mono">
+        ⚡ TakeoutFixer · Google Takeout Fixer · 100% Local
+      </div>
+
+      <h1 class="text-4xl md:text-6xl font-extrabold tracking-tight text-white mb-6 leading-tight">
+        <span class="text-transparent bg-clip-text bg-gradient-to-r from-violet-400 via-blue-400 to-cyan-500">TakeoutFixer</span>
+        — The Google Takeout Fixer
+      </h1>
+
+      <p class="text-lg md:text-xl text-zinc-400 max-w-3xl mx-auto leading-relaxed mb-8">
+        <strong class="text-white">TakeoutFixer</strong> is the official name of the TakeoutFix engine. It is a specialized
+        <strong class="text-white">Google Takeout fixer</strong> that merges JSON metadata sidecars back into your exported photos and videos,
+        restoring correct dates, GPS coordinates, and EXIF information — all locally in your browser.
+      </p>
+
+      <a href="/tool">
+        <button id="takeout-fixer-cta-hero" class="glass-capsule interactive px-12 h-14 font-semibold text-white flex items-center gap-2 mx-auto">
+          Launch TakeoutFixer →
+        </button>
+      </a>
+    </div>
+
+    <!-- Why TakeoutFixer Exists -->
+    <div class="max-w-4xl mx-auto mb-20 relative z-10">
+      <div class="bg-zinc-950/40 border border-white/5 backdrop-blur-md rounded-2xl p-8">
+        <h2 class="text-2xl font-bold text-white mb-4">Why Do You Need a Google Takeout Fixer?</h2>
+        <p class="text-zinc-400 text-sm leading-relaxed mb-4">
+          Google Takeout is Google's official data export tool. When you download your Google Photos library, it creates an archive of your photos. However, it has a critical flaw: it exports metadata (dates, locations, camera info) into separate <code class="text-violet-400">.json</code> files instead of keeping them inside the photo headers.
+        </p>
+        <p class="text-zinc-400 text-sm leading-relaxed mb-4">
+          The result: every photo from your archive appears to have been taken <strong class="text-red-400">today</strong>. GPS shows <strong class="text-red-400">no location</strong>. Years of memories are out of order.
+        </p>
+        <p class="text-zinc-400 text-sm leading-relaxed">
+          A <strong class="text-white">Google Takeout fixer</strong> like TakeoutFixer (TakeoutFix) solves this by reading the JSON files and writing the metadata back into the EXIF headers of the original image and video files.
+        </p>
+      </div>
+    </div>
+
+    <!-- Features of TakeoutFixer -->
+    <div class="max-w-5xl mx-auto mb-20 relative z-10">
+      <h2 class="text-3xl font-bold text-white text-center mb-10">TakeoutFixer Features</h2>
+      <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {[
+          { icon: "📅", title: "Date Restoration", desc: "Writes the original 'Date Taken' back into the EXIF header, fixing gallery sorting in all photo apps." },
+          { icon: "📍", title: "GPS & Location Fix", desc: "Restores GPS latitude, longitude, and altitude from the Takeout JSON sidecar files." },
+          { icon: "📸", title: "Camera Info Restored", desc: "Brings back camera make, model, lens, aperture, ISO, and shutter speed." },
+          { icon: "⚡", title: "Multi-Core Processing", desc: "Uses Web Workers to process thousands of files simultaneously using all CPU cores." },
+          { icon: "🔒", title: "100% Private", desc: "Zero uploads. TakeoutFixer runs entirely in your browser sandbox. Your photos stay on your device." },
+          { icon: "🆓", title: "Free Tier Available", desc: "Start fixing your Takeout for free. Upgrade to Pro for unlimited file processing." },
+        ].map(({ icon, title, desc }) => (
+          <div class="bg-zinc-950/40 border border-white/5 rounded-xl p-6">
+            <div class="text-2xl mb-3">{icon}</div>
+            <h3 class="font-bold text-white mb-2">{title}</h3>
+            <p class="text-zinc-400 text-xs leading-relaxed">{desc}</p>
+          </div>
+        ))}
+      </div>
+    </div>
+
+    <!-- Common Searches -->
+    <div class="max-w-4xl mx-auto mb-20 relative z-10">
+      <div class="bg-zinc-950/40 border border-white/5 backdrop-blur-md rounded-2xl p-8">
+        <h2 class="text-xl font-bold text-white mb-4">People Also Search For</h2>
+        <p class="text-zinc-400 text-sm mb-4">TakeoutFixer is the answer to all these common searches:</p>
+        <div class="flex flex-wrap gap-2">
+          {[
+            "takeoutfixer", "takeout fixer", "google takeout fixer", "google photos fixer",
+            "fix google takeout dates", "google takeout metadata fix", "google photos metadata fixer",
+            "takeout metadata repair", "fix exif google takeout", "google takeout date fix",
+            "google photos export metadata", "fix photo dates google photos"
+          ].map((kw) => (
+            <span class="px-3 py-1 rounded-full text-xs font-mono bg-zinc-900 border border-zinc-800 text-violet-300">{kw}</span>
+          ))}
+        </div>
+      </div>
+    </div>
+
+    <!-- FAQ -->
+    <div class="max-w-4xl mx-auto mb-20 relative z-10 space-y-4">
+      <h2 class="text-3xl font-bold text-white text-center mb-8">TakeoutFixer FAQ</h2>
+      <div class="bg-zinc-950/40 border border-white/5 rounded-xl p-6">
+        <h3 class="text-white font-semibold mb-2">Is TakeoutFixer the same as TakeoutFix?</h3>
+        <p class="text-zinc-400 text-sm leading-relaxed">Yes. TakeoutFixer and TakeoutFix refer to the same tool at takeoutfix.pages.dev. "TakeoutFixer" is the common shorthand people use when searching for a Google Takeout fixer.</p>
+      </div>
+      <div class="bg-zinc-950/40 border border-white/5 rounded-xl p-6">
+        <h3 class="text-white font-semibold mb-2">Does TakeoutFixer work for Google Photos migration?</h3>
+        <p class="text-zinc-400 text-sm leading-relaxed">Yes. TakeoutFixer is specifically designed for users migrating from Google Photos to other platforms like Apple Photos, Windows, Synology NAS, or Amazon Photos. It fixes the metadata before you import.</p>
+      </div>
+      <div class="bg-zinc-950/40 border border-white/5 rounded-xl p-6">
+        <h3 class="text-white font-semibold mb-2">How long does TakeoutFixer take for a large library?</h3>
+        <p class="text-zinc-400 text-sm leading-relaxed">TakeoutFixer uses multi-core Web Workers. A library of 10,000 photos typically takes 5–15 minutes depending on your computer's speed. Files are processed in parallel.</p>
+      </div>
+    </div>
+
+    <!-- CTA -->
+    <div class="max-w-4xl mx-auto text-center py-16 border-t border-zinc-900 relative z-10">
+      <h2 class="text-3xl font-bold tracking-tight mb-4 text-white">Open TakeoutFixer</h2>
+      <p class="text-zinc-500 mb-8 max-w-md mx-auto">The fastest Google Takeout fixer. Free, private, and no installation required.</p>
+      <a href="/tool">
+        <button id="takeout-fixer-cta-bottom" class="glass-capsule interactive px-12 h-14 font-semibold text-white">
+          Launch TakeoutFixer →
+        </button>
+      </a>
+    </div>
+  </div>
+</Layout>

@@ -1,0 +1,63 @@
+/*
+  Cache-Control: public, max-age=3600, s-maxage=86400, stale-while-revalidate=604800
+  X-Content-Type-Options: nosniff
+  X-Frame-Options: DENY
+  Referrer-Policy: strict-origin-when-cross-origin
+  Permissions-Policy: camera=(), microphone=(), geolocation=()
+
+/*.html
+  Cache-Control: public, max-age=0, s-maxage=86400, stale-while-revalidate=604800
+
+/
+  Cache-Control: public, max-age=0, s-maxage=86400, stale-while-revalidate=604800
+
+/takeout-fix
+  Cache-Control: public, max-age=0, s-maxage=86400, stale-while-revalidate=604800
+
+/takeout-fixer
+  Cache-Control: public, max-age=0, s-maxage=86400, stale-while-revalidate=604800
+
+/metadata-fixer
+  Cache-Control: public, max-age=0, s-maxage=86400, stale-while-revalidate=604800
+
+/google-photos-metadata-fix
+  Cache-Control: public, max-age=0, s-maxage=86400, stale-while-revalidate=604800
+
+/google-takeout-merger
+  Cache-Control: public, max-age=0, s-maxage=86400, stale-while-revalidate=604800
+
+/restore-data
+  Cache-Control: public, max-age=0, s-maxage=86400, stale-while-revalidate=604800
+
+/pricing
+  Cache-Control: public, max-age=0, s-maxage=86400, stale-while-revalidate=604800
+
+/reviews
+  Cache-Control: public, max-age=0, s-maxage=86400, stale-while-revalidate=604800
+
+/how-to-*
+  Cache-Control: public, max-age=0, s-maxage=86400, stale-while-revalidate=604800
+
+/*.js
+  Cache-Control: public, max-age=31536000, immutable
+
+/*.css
+  Cache-Control: public, max-age=31536000, immutable
+
+/*.woff2
+  Cache-Control: public, max-age=31536000, immutable
+
+/*.webp
+  Cache-Control: public, max-age=604800, s-maxage=2592000
+
+/*.png
+  Cache-Control: public, max-age=604800, s-maxage=2592000
+
+/*.ico
+  Cache-Control: public, max-age=604800
+
+/sitemap.xml
+  Cache-Control: public, max-age=3600, s-maxage=86400
+
+/robots.txt
+  Cache-Control: public, max-age=3600

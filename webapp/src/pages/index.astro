@@ -11,8 +11,8 @@ const prices = PLAN_PRICES[region] || PLAN_PRICES.us;
 ---
 
 <Layout 
-  title="TakeoutFix - Google Takeout Photo & Video Metadata Fixer"
-  description="Need a take out fix? TakeoutFixer is the ultimate metadata fixer to restore photo dates, GPS locations, and EXIF tags. Learn how to fix metadata locally in your browser."
+  title="TakeoutFix – Take Out Fix, Takeout Fixer & Metadata Fixer for Google Photos"
+  description="The #1 take out fix tool. TakeoutFixer restores photo dates, GPS, and EXIF tags stripped by Google Takeout. Works as a metadata fixer, meta data fix tool, and Google Takeout merger — entirely in your browser."
 >
   <div class="flex flex-col items-center bg-background text-foreground w-full overflow-x-hidden aceternity-grid">
     
@@ -198,6 +198,41 @@ const prices = PLAN_PRICES[region] || PLAN_PRICES.us;
         <p class="text-zinc-400 text-sm leading-relaxed mb-6 font-normal">
           If you are searching for how to fix metadata or how to fix meta data after exporting from Google Photos, you need a reliable take out fix. TakeoutFixer matches your photo and video files with their separate JSON sidecars to perform a complete meta data fix locally in your web browser. Your files never leave your device.
         </p>
+
+        <!-- Keyword alias cloud for SEO crawlers -->
+        <div class="mb-8 flex flex-wrap gap-2">
+          {[
+            "Takeout Fix", "Takeout Fixer", "TakeoutFixer", "Take Out Fix",
+            "Metadata Fixer", "Metadata Fix", "Meta Data Fix", "Meta Data Fixer",
+            "How to Fix Metadata", "How to Fix Meta Data",
+            "Google Takeout Fixer", "Google Takeout Metadata Fix",
+            "Google Photos Metadata Fixer", "Google Takeout Merger",
+            "EXIF Fixer", "EXIF Metadata Restore", "Fix Photo Dates"
+          ].map((kw) => (
+            <span class="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-zinc-500 dark:text-zinc-500 select-none" key={kw}>{kw}</span>
+          ))}
+        </div>
+
+        <!-- FAQ Section for rich snippets -->
+        <div class="space-y-5 mb-8">
+          <div>
+            <h3 class="text-sm font-bold text-white mb-1">What is a "take out fix" or "takeout fix"?</h3>
+            <p class="text-xs text-zinc-400 leading-relaxed">A "take out fix" or "takeout fix" refers to the process of repairing missing EXIF metadata — like photo dates, GPS coordinates, and camera info — after downloading your photos using Google Takeout. Google Takeout stores metadata separately in JSON sidecar files, which most photo apps cannot read. TakeoutFix (also called TakeoutFixer) solves this automatically.</p>
+          </div>
+          <div>
+            <h3 class="text-sm font-bold text-white mb-1">How do I fix metadata after Google Takeout?</h3>
+            <p class="text-xs text-zinc-400 leading-relaxed">To fix metadata from Google Takeout: (1) Open TakeoutFix in your browser, (2) Select your Takeout folder containing both the image files and their .json sidecar files, (3) Click "Restore My Data" — the tool automatically matches each photo to its JSON and writes the date, GPS, and EXIF data back into the file header. No installation or upload required.</p>
+          </div>
+          <div>
+            <h3 class="text-sm font-bold text-white mb-1">What is a metadata fixer for Google Photos?</h3>
+            <p class="text-xs text-zinc-400 leading-relaxed">A metadata fixer for Google Photos is a tool that reads the separate .json sidecar files created during a Google Takeout export, and writes the stored metadata (date taken, GPS location, camera model) back into the photo's EXIF header. TakeoutFix is a free metadata fixer and meta data fix tool that does this entirely in your web browser using the File System Access API.</p>
+          </div>
+          <div>
+            <h3 class="text-sm font-bold text-white mb-1">What is a Google Takeout merger?</h3>
+            <p class="text-xs text-zinc-400 leading-relaxed">A Google Takeout merger is a tool that merges (reunites) the photo/video binary files with their detached JSON metadata sidecar files produced by a Google Takeout export. TakeoutFix performs this merge locally on your device — no server, no upload, no privacy risk.</p>
+          </div>
+        </div>
+
         <div class="grid md:grid-cols-2 gap-8 text-xs font-normal">
           <div class="space-y-4">
             <h3 class="font-bold text-white text-sm">TakeoutFixer (Local Web App)</h3>

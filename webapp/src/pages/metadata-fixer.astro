@@ -1,0 +1,172 @@
+---
+export const prerender = true;
+import Layout from "../layouts/Layout.astro";
+---
+
+<Layout
+  title="Metadata Fixer – Fix Google Takeout Photo Metadata Online | TakeoutFix"
+  description="Free online metadata fixer for Google Takeout photos. Restore missing dates, GPS locations and EXIF data with TakeoutFix — the best meta data fix tool. Works 100% in your browser, no upload needed."
+>
+  <div class="bg-black text-zinc-100 min-h-screen py-24 px-4 sm:px-6 lg:px-8 relative overflow-hidden font-sans">
+
+    <div class="absolute top-0 left-1/4 w-[500px] h-[500px] bg-emerald-900/10 blur-[150px] rounded-full pointer-events-none"></div>
+    <div class="absolute bottom-20 right-1/4 w-[600px] h-[600px] bg-teal-900/10 blur-[150px] rounded-full pointer-events-none"></div>
+
+    <!-- Hero -->
+    <div class="max-w-4xl mx-auto text-center mb-20 relative z-10">
+      <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-zinc-900 border border-zinc-800 text-xs font-semibold text-emerald-400 mb-6 font-mono">
+        🔧 Free Metadata Fixer · Browser-Based · No Installation
+      </div>
+
+      <h1 class="text-4xl md:text-6xl font-extrabold tracking-tight text-white mb-6 leading-tight">
+        The Free Online <span class="text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 via-teal-400 to-cyan-500">Metadata Fixer</span> for Google Photos
+      </h1>
+
+      <p class="text-lg md:text-xl text-zinc-400 max-w-3xl mx-auto leading-relaxed mb-8">
+        Searching for a <strong class="text-white">metadata fixer</strong> or <strong class="text-white">meta data fix</strong> tool after a Google Takeout export?
+        TakeoutFix automatically repairs missing dates, GPS coordinates, and camera information from your photo and video files — entirely in your browser.
+      </p>
+
+      <div class="flex flex-col sm:flex-row gap-4 justify-center mb-12">
+        <a href="/tool">
+          <button id="metadata-fixer-cta-primary" class="glass-capsule interactive px-10 h-14 font-semibold text-white flex items-center gap-2">
+            Fix My Metadata Now →
+          </button>
+        </a>
+        <a href="/restore-data">
+          <button id="metadata-fixer-cta-guide" class="glass-capsule interactive px-8 h-14 font-semibold text-zinc-300 hover:text-white">
+            See Full Guide
+          </button>
+        </a>
+      </div>
+    </div>
+
+    <!-- What is Metadata + Why It Gets Broken -->
+    <div class="max-w-5xl mx-auto mb-20 relative z-10 grid md:grid-cols-2 gap-8">
+      <div class="bg-zinc-950/40 border border-white/5 backdrop-blur-md rounded-2xl p-8">
+        <h2 class="text-xl font-bold text-white mb-4">What is Photo Metadata?</h2>
+        <p class="text-zinc-400 text-sm leading-relaxed mb-3">
+          Photo <strong class="text-white">metadata</strong> (also called <strong class="text-white">meta data</strong> or EXIF data) is the hidden information embedded inside every photo file. It includes:
+        </p>
+        <ul class="space-y-2 text-zinc-400 text-sm">
+          <li class="flex items-center gap-2"><span class="text-emerald-400">→</span> <strong class="text-zinc-300">Date &amp; Time Taken</strong> — when the photo was actually shot</li>
+          <li class="flex items-center gap-2"><span class="text-emerald-400">→</span> <strong class="text-zinc-300">GPS Coordinates</strong> — exact location where photo was taken</li>
+          <li class="flex items-center gap-2"><span class="text-emerald-400">→</span> <strong class="text-zinc-300">Camera Model</strong> — iPhone 15, Samsung S24, etc.</li>
+          <li class="flex items-center gap-2"><span class="text-emerald-400">→</span> <strong class="text-zinc-300">Lens &amp; Aperture</strong> — photographic settings</li>
+        </ul>
+      </div>
+      <div class="bg-zinc-950/40 border border-white/5 backdrop-blur-md rounded-2xl p-8">
+        <h2 class="text-xl font-bold text-white mb-4">Why Does Google Takeout Break Metadata?</h2>
+        <p class="text-zinc-400 text-sm leading-relaxed mb-3">
+          Google Takeout intentionally separates your photo files from their metadata. Instead of keeping the EXIF data inside the image, it writes it into a separate <code class="text-emerald-400">.json</code> sidecar file.
+        </p>
+        <p class="text-zinc-400 text-sm leading-relaxed">
+          When you import these photos into any other app, the app reads only the image file — not the sidecar — so all metadata appears missing or wrong. You need a <strong class="text-white">metadata fixer</strong> to merge them back together.
+        </p>
+      </div>
+    </div>
+
+    <!-- How to Fix Metadata — Step by Step -->
+    <div class="max-w-4xl mx-auto mb-20 relative z-10">
+      <h2 class="text-3xl font-bold text-white text-center mb-10">How to Fix Metadata from Google Takeout</h2>
+      <div class="space-y-4">
+        {[
+          { n: "1", title: "Go to TakeoutFix", body: "Open takeoutfix.pages.dev in Chrome, Edge, or Brave. No download or installation needed — the metadata fixer runs entirely in your browser." },
+          { n: "2", title: "Select Your Takeout Folder", body: "Click 'Restore My Data' and select the folder you downloaded from Google Takeout. It should contain both your photo files (.jpg, .mp4) and the JSON sidecar files (.jpg.json)." },
+          { n: "3", title: "Automatic Metadata Fix", body: "TakeoutFix scans all files, matches each photo to its JSON sidecar, and performs the meta data fix automatically. This works for thousands of files simultaneously." },
+          { n: "4", title: "Photos Saved with Correct Metadata", body: "Your photos are saved locally with the correct date taken, GPS location, and camera information written into their EXIF headers. No quality loss, no recompression." }
+        ].map(({ n, title, body }) => (
+          <div class="bg-zinc-950/40 border border-white/5 rounded-xl p-6 flex gap-4">
+            <div class="w-10 h-10 rounded-full bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400 font-black text-sm flex-shrink-0 mt-0.5">{n}</div>
+            <div>
+              <h3 class="font-bold text-white mb-1">{title}</h3>
+              <p class="text-zinc-400 text-sm leading-relaxed">{body}</p>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+
+    <!-- Metadata Fixer Comparison -->
+    <div class="max-w-4xl mx-auto mb-20 relative z-10">
+      <h2 class="text-2xl font-bold text-white mb-6 text-center">TakeoutFix vs Other Metadata Fix Tools</h2>
+      <div class="overflow-x-auto rounded-xl border border-white/5">
+        <table class="w-full text-sm">
+          <thead>
+            <tr class="bg-zinc-950/60 border-b border-white/5">
+              <th class="text-left p-4 text-zinc-400 font-semibold">Feature</th>
+              <th class="text-center p-4 text-emerald-400 font-semibold">TakeoutFix</th>
+              <th class="text-center p-4 text-zinc-500 font-semibold">ExifTool (CLI)</th>
+              <th class="text-center p-4 text-zinc-500 font-semibold">Other Web Tools</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-white/5">
+            {[
+              ["No Installation", "✅", "❌ CLI Required", "✅"],
+              ["Processes Entire Takeout Folder", "✅", "⚠️ Scripts needed", "❌"],
+              ["Handles Google's JSON Format", "✅", "⚠️ Manual config", "❌"],
+              ["Files Stay on Your Device", "✅", "✅", "❌ Upload needed"],
+              ["Works on 10,000+ Files", "✅", "✅", "❌"],
+              ["Free to Use", "✅", "✅", "⚠️ Often paid"],
+            ].map(([feat, tf, ex, other]) => (
+              <tr class="bg-zinc-950/20 hover:bg-zinc-950/40 transition-colors">
+                <td class="p-4 text-zinc-300">{feat}</td>
+                <td class="p-4 text-center text-emerald-400">{tf}</td>
+                <td class="p-4 text-center text-zinc-500">{ex}</td>
+                <td class="p-4 text-center text-zinc-500">{other}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- FAQ -->
+    <div class="max-w-4xl mx-auto mb-20 relative z-10 space-y-4">
+      <h2 class="text-3xl font-bold text-white text-center mb-8">Metadata Fixer — FAQ</h2>
+      <div class="bg-zinc-950/40 border border-white/5 rounded-xl p-6">
+        <h3 class="text-white font-semibold mb-2">What is the difference between metadata and meta data?</h3>
+        <p class="text-zinc-400 text-sm leading-relaxed">There is no difference — "metadata" and "meta data" refer to the same thing: descriptive information about a file, such as the date a photo was taken or the GPS location. Both spellings are accepted. A metadata fixer and a meta data fixer do the same job.</p>
+      </div>
+      <div class="bg-zinc-950/40 border border-white/5 rounded-xl p-6">
+        <h3 class="text-white font-semibold mb-2">Can TakeoutFix fix metadata on videos too?</h3>
+        <p class="text-zinc-400 text-sm leading-relaxed">Yes. TakeoutFix fixes metadata on both photos (JPEG, PNG, HEIC) and videos (MP4, MOV) exported from Google Takeout. The date taken and GPS coordinates are restored on all supported formats.</p>
+      </div>
+      <div class="bg-zinc-950/40 border border-white/5 rounded-xl p-6">
+        <h3 class="text-white font-semibold mb-2">Does fixing metadata change the photo quality?</h3>
+        <p class="text-zinc-400 text-sm leading-relaxed">No. TakeoutFix writes metadata directly into the EXIF header of the file without recompressing or altering the image data. Your photo quality is completely unchanged.</p>
+      </div>
+      <div class="bg-zinc-950/40 border border-white/5 rounded-xl p-6">
+        <h3 class="text-white font-semibold mb-2">How do I know if my photos need a metadata fix?</h3>
+        <p class="text-zinc-400 text-sm leading-relaxed">If your Google Takeout photos all show the same date (the date you downloaded them), have no GPS data, or sort incorrectly by date in your gallery app, they need a metadata fix. TakeoutFix will automatically detect and repair all affected files.</p>
+      </div>
+    </div>
+
+    <!-- CTA -->
+    <div class="max-w-4xl mx-auto text-center py-16 border-t border-zinc-900 relative z-10">
+      <h2 class="text-3xl font-bold tracking-tight mb-4 text-white">Fix Your Photo Metadata Now</h2>
+      <p class="text-zinc-500 mb-8 max-w-md mx-auto">The fastest metadata fixer for Google Takeout. Free, private, and no installation required.</p>
+      <a href="/tool">
+        <button id="metadata-fixer-cta-bottom" class="glass-capsule interactive px-12 h-14 font-semibold text-white">
+          Open Metadata Fixer →
+        </button>
+      </a>
+    </div>
+  </div>
+
+  <script type="application/ld+json" is:inline>
+  {
+    "@context": "https://schema.org",
+    "@type": "HowTo",
+    "name": "How to Fix Metadata from Google Takeout",
+    "description": "Step-by-step guide on how to fix photo metadata after a Google Takeout export using TakeoutFix — the free online metadata fixer.",
+    "totalTime": "PT3M",
+    "step": [
+      { "@type": "HowToStep", "name": "Open TakeoutFix", "text": "Visit takeoutfix.pages.dev in Chrome, Edge, or Brave." },
+      { "@type": "HowToStep", "name": "Select Takeout Folder", "text": "Click Restore My Data and select your Google Takeout folder." },
+      { "@type": "HowToStep", "name": "Automatic Meta Data Fix", "text": "TakeoutFix matches photos to JSON sidecars and fixes all metadata automatically." },
+      { "@type": "HowToStep", "name": "Save Restored Photos", "text": "Photos are saved locally with correct EXIF dates, GPS, and camera info." }
+    ]
+  }
+  </script>
+</Layout>
