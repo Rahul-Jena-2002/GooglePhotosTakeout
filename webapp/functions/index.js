@@ -509,10 +509,40 @@ app.post("/sync-dodo-prices", async (req, res) => {
   }
 
   const { regionCode, prices, currency } = req.body || {};
-  const currencyCode = (currency || "INR").toUpperCase();
+  let currencyCode = (currency || "INR").toUpperCase();
 
   if (!regionCode || !prices || typeof prices !== "object") {
     return res.status(400).json({ error: "regionCode and prices object are required." });
+  }
+
+  // Auto-calculate to USD for JPY and CNY regions since Dodo doesn't support JPY/CNY
+  let finalPrices = { ...prices };
+  if (regionCode === "jp") {
+    currencyCode = "USD";
+    for (const plan of Object.keys(finalPrices)) {
+      const val = finalPrices[plan];
+      if (val !== null && typeof val === "object") {
+        finalPrices[plan] = {
+          ...val,
+          amount: Number((Number(val.amount) / 150).toFixed(2))
+        };
+      } else {
+        finalPrices[plan] = Number((Number(val) / 150).toFixed(2));
+      }
+    }
+  } else if (regionCode === "cn") {
+    currencyCode = "USD";
+    for (const plan of Object.keys(finalPrices)) {
+      const val = finalPrices[plan];
+      if (val !== null && typeof val === "object") {
+        finalPrices[plan] = {
+          ...val,
+          amount: Number((Number(val.amount) / 7.2).toFixed(2))
+        };
+      } else {
+        finalPrices[plan] = Number((Number(val) / 7.2).toFixed(2));
+      }
+    }
   }
 
   // Resolve Dodo API Key
@@ -586,7 +616,7 @@ app.post("/sync-dodo-prices", async (req, res) => {
   };
 
   // Update provided plans
-  for (const [planCode, priceVal] of Object.entries(prices)) {
+  for (const [planCode, priceVal] of Object.entries(finalPrices)) {
     try {
       const productId = dodoProductsMap?.[regionCode]?.[planCode] || null;
       if (!productId) {
@@ -632,7 +662,7 @@ app.post("/sync-dodo-prices", async (req, res) => {
       regionCode,
       currency: currencyCode,
       envMode,
-      prices,
+      prices: finalPrices,
       results,
       syncedAt: now
     });

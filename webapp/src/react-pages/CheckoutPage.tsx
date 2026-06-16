@@ -299,9 +299,10 @@ function CheckoutPageContent() {
       }
     }
 
-    // Pass currency to Dodo so it matches what user saw on pricing page
+    // Pass currency to Dodo (override to USD for JPY and CNY since Dodo doesn't support JPY/CNY)
     if (plan?.currency) {
-      params.set("currency", plan.currency)
+      const isUnsupported = plan.currency.toUpperCase() === "JPY" || plan.currency.toUpperCase() === "CNY";
+      params.set("currency", isUnsupported ? "USD" : plan.currency);
     }
 
     if (detectedCoupon) {
