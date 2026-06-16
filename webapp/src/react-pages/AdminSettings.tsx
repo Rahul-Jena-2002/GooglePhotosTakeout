@@ -141,6 +141,8 @@ export default function AdminSettings() {
   const [showDodoApiKey, setShowDodoApiKey] = useState(false)
 
   const [savingPricing, setSavingPricing] = useState(false)
+  const [syncingPrices, setSyncingPrices] = useState(false)
+  const [priceSyncResults, setPriceSyncResults] = useState<Array<{planCode:string; status:string; error?:string; amountMinor?:number}>>([]) 
   const [savingCampaignNew, setSavingCampaignNew] = useState(false)
   const [savingGlobal, setSavingGlobal] = useState(false)
   const role = adminData?.role || "ADMIN"
@@ -296,6 +298,62 @@ export default function AdminSettings() {
     }
     loadSecureSettings()
   }, [])
+
+  // ─── Sync current region prices to Dodo Payments ─────────────────────────
+  const handleSyncPricesToDodo = async () => {
+    setSyncingPrices(true)
+    setPriceSyncResults([])
+    try {
+      // Map selectedConfigTier → region code key used by Dodo product map
+      // (selectedConfigTier is already the region code: 'in', 't1', etc.)
+      const regionCode = selectedConfigTier
+
+      // Build prices object from current form state
+      const prices: Record<string, number> = {
+        recovery_pass: Number(recoveryPassCurrent),
+        pro: Number(proLifetimeCurrent),
+        super: Number(superLifetimeCurrent),
+      }
+
+      // Currency from current region config
+      const currency = currencyCode
+
+      // URL: localhost in dev, Cloud Function in prod
+      let cfUrl = `https://us-central1-gt-metadata-merger.cloudfunctions.net/geminiToolGateway/sync-dodo-prices`
+      if (typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')) {
+        cfUrl = 'http://localhost:3001/sync-dodo-prices'
+      } else {
+        try {
+          const sysDoc = await getDoc(doc(db, 'settings', 'system'))
+          if (sysDoc.exists() && sysDoc.data().cloud_function_url) {
+            cfUrl = sysDoc.data().cloud_function_url.replace(/\/$/, '') + '/sync-dodo-prices'
+          }
+        } catch (_) { /* use default */ }
+      }
+
+      const resp = await fetch(cfUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-api-key': 'takeoutfix-gemini-secret-2026' },
+        body: JSON.stringify({ regionCode, prices, currency })
+      })
+
+      const data = await resp.json()
+      if (resp.ok && data.results) {
+        setPriceSyncResults(data.results)
+        const allOk = data.results.every((r: any) => r.status === 'SUCCESS')
+        useToastStore.getState().addToast(
+          allOk ? `✅ All prices synced to Dodo for ${regionCode}!` : `⚠️ Partial sync — check results below.`,
+          allOk ? 'success' : 'error'
+        )
+      } else {
+        useToastStore.getState().addToast('Sync failed: ' + (data.error || resp.status), 'error')
+      }
+    } catch (err: any) {
+      useToastStore.getState().addToast('Price sync error: ' + err.message, 'error')
+    } finally {
+      setSyncingPrices(false)
+    }
+  }
 
   const handleSaveRegionConfig = async () => {
     const docId = REGION_DOC_IDS[selectedConfigTier];
@@ -1259,16 +1317,53 @@ export default function AdminSettings() {
               </div>
             </div>
 
-            {/* Save Region Config Button */}
-            <div className="flex justify-end pt-6 border-t border-zinc-800/80">
-              <Button 
-                type="button"
-                onClick={handleSaveRegionConfig} 
-                disabled={savingPricing}
-                className="bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white px-5 h-9 text-xs font-semibold rounded-lg"
-              >
-                {savingPricing ? "Saving Region Config..." : "Save Region Config"}
-              </Button>
+            {/* Save Region Config + Sync Prices to Dodo */}
+            <div className="pt-6 border-t border-zinc-800/80 space-y-3">
+              <div className="flex items-center justify-between gap-3 flex-wrap">
+                <div className="flex items-center gap-2">
+                  {/* Sync results badges */}
+                  {priceSyncResults.length > 0 && (
+                    <div className="flex items-center gap-1.5">
+                      {priceSyncResults.map((r) => (
+                        <span key={r.planCode} className={`inline-flex items-center gap-1 text-[9px] font-bold px-2 py-0.5 rounded border ${
+                          r.status === 'SUCCESS'
+                            ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400'
+                            : 'bg-red-500/10 border-red-500/30 text-red-400'
+                        }`}>
+                          {r.status === 'SUCCESS' ? '✓' : '✗'}
+                          {r.planCode === 'recovery_pass' ? 'Recovery' : r.planCode === 'pro' ? 'Pro' : 'Super'}
+                          {r.status === 'SUCCESS' && r.amountMinor ? ` ${currencyCode} ${(r.amountMinor/100).toFixed(0)}` : ''}
+                          {r.status !== 'SUCCESS' && r.error ? ` — ${String(r.error).substring(0, 30)}` : ''}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </div>
+                <div className="flex items-center gap-2 ml-auto">
+                  <Button
+                    type="button"
+                    onClick={handleSyncPricesToDodo}
+                    disabled={syncingPrices || savingPricing}
+                    className="bg-amber-600 hover:bg-amber-500 disabled:opacity-50 text-white px-4 h-9 text-xs font-semibold rounded-lg flex items-center gap-1.5"
+                    title="Push current prices to Dodo Payments product catalog"
+                  >
+                    {syncingPrices
+                      ? <><span className="animate-spin inline-block w-3 h-3 border-2 border-white/30 border-t-white rounded-full"></span> Syncing to Dodo...</>
+                      : <>🔄 Sync Prices → Dodo</>}
+                  </Button>
+                  <Button 
+                    type="button"
+                    onClick={handleSaveRegionConfig} 
+                    disabled={savingPricing}
+                    className="bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white px-5 h-9 text-xs font-semibold rounded-lg"
+                  >
+                    {savingPricing ? "Saving..." : "Save Region Config"}
+                  </Button>
+                </div>
+              </div>
+              {priceSyncResults.length === 0 && (
+                <p className="text-[9px] text-zinc-600 text-right">"Sync Prices → Dodo" pushes these prices to the actual Dodo product catalog. Requires local server running (dev) or Firebase Blaze plan (prod).</p>
+              )}
             </div>
 
           </CardContent>

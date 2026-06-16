@@ -117,6 +117,7 @@ const logAdminActivity = async (action, targetUid, description) => {
 };
 
 // Route: POST /sync-coupon
+// Rewritten to use Firebase Admin SDK (db) directly — no getFirebaseCLIToken() needed.
 app.post("/sync-coupon", async (req, res) => {
   const { couponId } = req.body;
   if (!couponId) {
@@ -124,98 +125,58 @@ app.post("/sync-coupon", async (req, res) => {
   }
 
   try {
-    const { accessToken, refreshToken, refreshAccessToken } = await getFirebaseCLIToken();
-
-    // Helper for authenticated fetch
-    const firestoreFetch = async (url, options = {}) => {
-      let headers = {
-        'Authorization': `Bearer ${accessToken}`,
-        'Content-Type': 'application/json',
-        ...options.headers
-      };
-      let response = await fetch(url, { ...options, headers });
-      if (response.status === 401 && refreshToken) {
-        const newToken = await refreshAccessToken(refreshToken);
-        headers['Authorization'] = `Bearer ${newToken}`;
-        response = await fetch(url, { ...options, headers });
-      }
-      return response;
-    };
-
-    // 1. Get coupon doc
-    const couponUrl = `https://firestore.googleapis.com/v1/projects/gt-metadata-merger/databases/(default)/documents/coupons/${couponId}`;
-    const couponResp = await firestoreFetch(couponUrl);
-    if (couponResp.status === 404) {
+    // 1. Get coupon doc via Admin SDK
+    const couponSnap = await db.collection("coupons").doc(couponId).get();
+    if (!couponSnap.exists) {
       return res.status(404).json({ error: "Coupon not found." });
     }
-    const couponDoc = await couponResp.json();
-    const couponFields = couponDoc.fields || {};
-
-    const couponCode = couponFields.couponCode?.stringValue || "";
-    const discountType = couponFields.discountType?.stringValue || "PERCENTAGE";
-    const discountValue = Number(couponFields.discountValue?.integerValue || couponFields.discountValue?.doubleValue || 0);
-    const usageLimit = couponFields.usageLimit?.integerValue ? Number(couponFields.usageLimit.integerValue) : null;
-    const validUntil = couponFields.validUntil?.timestampValue || null;
+    const coupon = couponSnap.data();
+    const couponCode = coupon.couponCode || "";
+    const discountType = coupon.discountType || "PERCENTAGE";
+    const discountValue = Number(coupon.discountValue || 0);
+    const usageLimit = coupon.usageLimit || null;
+    const validUntil = coupon.validUntil
+      ? (coupon.validUntil.seconds ? new Date(coupon.validUntil.seconds * 1000).toISOString() : new Date(coupon.validUntil).toISOString())
+      : null;
 
     // 2. Get targets
-    const targetsUrl = `https://firestore.googleapis.com/v1/projects/gt-metadata-merger/databases/(default)/documents/coupons/${couponId}/targets`;
-    const targetsResp = await firestoreFetch(targetsUrl);
-    const targetsDoc = await targetsResp.json();
-    const targetDocs = targetsDoc.documents || [];
-
-    if (targetDocs.length === 0) {
+    const targetsSnap = await db.collection("coupons").doc(couponId).collection("targets").get();
+    if (targetsSnap.empty) {
       return res.status(400).json({ error: "No targets defined for this coupon." });
     }
 
-    // 3. Get global doc
-    const globalUrl = `https://firestore.googleapis.com/v1/projects/gt-metadata-merger/databases/(default)/documents/settings/global`;
-    const globalResp = await firestoreFetch(globalUrl);
-    const globalDoc = await globalResp.json();
-    const globalFields = globalDoc.fields || {};
-    const dodoProductsMap = {};
+    // 3. Get Dodo product map from settings/global
+    const globalSnap = await db.collection("settings").doc("global").get();
+    const dodoProductsMap = globalSnap.exists ? (globalSnap.data().dodo_products || {}) : {};
 
-    if (globalFields.dodo_products?.mapValue?.fields) {
-      const regionFields = globalFields.dodo_products.mapValue.fields;
-      for (const [rCode, rVal] of Object.entries(regionFields)) {
-        dodoProductsMap[rCode] = {};
-        if (rVal.mapValue?.fields) {
-          for (const [pCode, pVal] of Object.entries(rVal.mapValue.fields)) {
-            dodoProductsMap[rCode][pCode] = pVal.stringValue || "";
-          }
-        }
-      }
+    // 4. Resolve Dodo API key
+    let dodoApiKey = process.env.DODO_API_KEY;
+    if (!dodoApiKey) {
+      try {
+        const sysSnap = await db.collection("settings").doc("system").get();
+        if (sysSnap.exists) dodoApiKey = sysSnap.data().dodo_api_key;
+      } catch (e) { /* ignore */ }
+    }
+    if (!dodoApiKey) {
+      return res.status(500).json({ error: "DODO_API_KEY not configured. Set env var or save in Admin Settings → Dodo Live API Key field." });
     }
 
-    // Read Dodo API key
-    let dodoApiKey = process.env.DODO_API_KEY || "7RM41OfN1w8XWVR2.DcyoI7MMlg5Ydc_EMOlG_om2QE8hGxOHsgpa9-gdpZAaapWO";
-
     const dodoHost = "live.dodopayments.com";
+    const https = require("https");
     const results = [];
 
-    for (const tDoc of targetDocs) {
-      const tFields = tDoc.fields || {};
-      const regionCode = tFields.regionCode?.stringValue || "";
-      const planCode = tFields.planCode?.stringValue || "";
-      const targetId = tDoc.name.split("/").pop();
-
+    for (const targetDoc of targetsSnap.docs) {
+      const { regionCode, planCode } = targetDoc.data();
+      const targetId = targetDoc.id;
       const productId = dodoProductsMap[regionCode]?.[planCode] || null;
 
-      const syncLogUrl = `https://firestore.googleapis.com/v1/projects/gt-metadata-merger/databases/(default)/documents/coupons/${couponId}/sync_log`;
-
       if (!productId) {
-        const payload = {
-          fields: {
-            couponId: { stringValue: couponId },
-            targetId: { stringValue: targetId },
-            regionCode: { stringValue: regionCode },
-            planCode: { stringValue: planCode },
-            dodoCouponId: { nullValue: null },
-            syncStatus: { stringValue: "FAILED" },
-            errorMessage: { stringValue: `No dodo_product found for region=${regionCode} plan=${planCode}` },
-            syncedAt: { integerValue: String(Date.now()) }
-          }
-        };
-        await firestoreFetch(syncLogUrl, { method: "POST", body: payload });
+        await db.collection("coupons").doc(couponId).collection("sync_log").add({
+          couponId, targetId, regionCode, planCode,
+          dodoCouponId: null, syncStatus: "FAILED",
+          errorMessage: `No dodo_product found for region=${regionCode} plan=${planCode} in settings/global.dodo_products`,
+          syncedAt: Date.now()
+        });
         results.push({ regionCode, planCode, status: "FAILED", error: "No product found" });
         continue;
       }
@@ -226,12 +187,11 @@ app.post("/sync-coupon", async (req, res) => {
         discount_value: discountValue,
         product_id: productId,
         max_redemptions: usageLimit,
-        expires_at: validUntil ? new Date(validUntil).toISOString() : null
+        expires_at: validUntil
       });
 
       try {
         const dodoResponse = await new Promise((resolve, reject) => {
-          const https = require("https");
           const options = {
             hostname: dodoHost,
             path: "/discounts",
@@ -257,36 +217,19 @@ app.post("/sync-coupon", async (req, res) => {
         const dodoCouponId = parsed.id || parsed.discount_id || null;
         const isSuccess = dodoResponse.statusCode < 300;
 
-        const payload = {
-          fields: {
-            couponId: { stringValue: couponId },
-            targetId: { stringValue: targetId },
-            regionCode: { stringValue: regionCode },
-            planCode: { stringValue: planCode },
-            productId: { stringValue: productId },
-            dodoCouponId: dodoCouponId ? { stringValue: dodoCouponId } : { nullValue: null },
-            syncStatus: { stringValue: isSuccess ? "SUCCESS" : "FAILED" },
-            errorMessage: isSuccess ? { nullValue: null } : { stringValue: dodoResponse.body },
-            syncedAt: { integerValue: String(Date.now()) }
-          }
-        };
-        await firestoreFetch(syncLogUrl, { method: "POST", body: payload });
+        await db.collection("coupons").doc(couponId).collection("sync_log").add({
+          couponId, targetId, regionCode, planCode, productId, dodoCouponId,
+          syncStatus: isSuccess ? "SUCCESS" : "FAILED",
+          errorMessage: isSuccess ? null : dodoResponse.body,
+          syncedAt: Date.now()
+        });
         results.push({ regionCode, planCode, productId, dodoCouponId, status: isSuccess ? "SUCCESS" : "FAILED" });
       } catch (apiErr) {
-        const payload = {
-          fields: {
-            couponId: { stringValue: couponId },
-            targetId: { stringValue: targetId },
-            regionCode: { stringValue: regionCode },
-            planCode: { stringValue: planCode },
-            productId: { stringValue: productId },
-            dodoCouponId: { nullValue: null },
-            syncStatus: { stringValue: "FAILED" },
-            errorMessage: { stringValue: apiErr.message },
-            syncedAt: { integerValue: String(Date.now()) }
-          }
-        };
-        await firestoreFetch(syncLogUrl, { method: "POST", body: payload });
+        await db.collection("coupons").doc(couponId).collection("sync_log").add({
+          couponId, targetId, regionCode, planCode, productId,
+          dodoCouponId: null, syncStatus: "FAILED",
+          errorMessage: apiErr.message, syncedAt: Date.now()
+        });
         results.push({ regionCode, planCode, productId, status: "FAILED", error: apiErr.message });
       }
     }
@@ -481,6 +424,108 @@ app.post("/execute", async (req, res) => {
     console.error("Error executing action:", error);
     return res.status(500).json({ error: error.message });
   }
+});
+
+app.post("/sync-dodo-prices", async (req, res) => {
+  const { regionCode, prices, currency } = req.body || {};
+  const currencyCode = (currency || "INR").toUpperCase();
+
+  if (!regionCode || !prices || typeof prices !== "object") {
+    return res.status(400).json({ error: "regionCode and prices object are required." });
+  }
+
+  // Resolve Dodo API Key from env or Firestore settings/system
+  let dodoApiKey = process.env.DODO_API_KEY;
+  if (!dodoApiKey) {
+    try {
+      const sysDoc = await db.collection("settings").doc("system").get();
+      if (sysDoc.exists) dodoApiKey = sysDoc.data().dodo_api_key;
+    } catch (e) {
+      console.error("Failed to read Dodo API key from Firestore:", e);
+    }
+  }
+  if (!dodoApiKey) {
+    return res.status(500).json({ error: "DODO_API_KEY not found. Set env variable or save it in Admin Settings → Dodo Live API Key field." });
+  }
+
+  // Always live for local server (pinned per Dodo Sentra agent recommendation)
+  const dodoHost = "live.dodopayments.com";
+
+  // Load product ID map from Firestore
+  let dodoProductsMap = {};
+  try {
+    const globalDoc = await db.collection("settings").doc("global").get();
+    dodoProductsMap = globalDoc.exists ? (globalDoc.data().dodo_products || {}) : {};
+  } catch (e) {
+    return res.status(500).json({ error: "Failed to read settings/global: " + e.message });
+  }
+
+  const https = require("https");
+  const results = [];
+  const now = Date.now();
+
+  const patchProductPrice = (productId, amountMinor) => {
+    const payload = JSON.stringify({
+      price: { type: "one_time_price", currency: currencyCode, price: amountMinor }
+    });
+    return new Promise((resolve, reject) => {
+      const options = {
+        hostname: dodoHost,
+        path: `/products/${productId}`,
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${dodoApiKey}`,
+          "Content-Length": Buffer.byteLength(payload)
+        }
+      };
+      const request = https.request(options, (response) => {
+        let body = "";
+        response.on("data", (chunk) => { body += chunk; });
+        response.on("end", () => resolve({ statusCode: response.statusCode, body }));
+      });
+      request.on("error", reject);
+      request.write(payload);
+      request.end();
+    });
+  };
+
+  for (const [planCode, rupeesVal] of Object.entries(prices)) {
+    try {
+      const productId = dodoProductsMap?.[regionCode]?.[planCode] || null;
+      if (!productId) {
+        results.push({ planCode, status: "FAILED", error: `No productId for region=${regionCode} plan=${planCode}` });
+        continue;
+      }
+      const rupees = Number(rupeesVal);
+      if (!isFinite(rupees) || rupees <= 0) {
+        results.push({ planCode, productId, status: "FAILED", error: `Invalid amount: ${rupeesVal}` });
+        continue;
+      }
+      // INR → paise (smallest unit per Dodo docs)
+      const amountMinor = Math.round(rupees * 100);
+      const apiResp = await patchProductPrice(productId, amountMinor);
+      let parsed = {};
+      try { parsed = JSON.parse(apiResp.body); } catch (_) {}
+      const isSuccess = apiResp.statusCode && apiResp.statusCode < 300;
+      results.push({
+        planCode, productId, currency: currencyCode, amountMinor,
+        status: isSuccess ? "SUCCESS" : "FAILED",
+        response: isSuccess ? parsed : apiResp.body
+      });
+    } catch (e) {
+      results.push({ planCode, status: "FAILED", error: e.message });
+    }
+  }
+
+  // Log to Firestore
+  try {
+    await db.collection("price_sync_logs").add({ regionCode, currency: currencyCode, prices, results, syncedAt: now });
+  } catch (e) {
+    console.warn("Failed to write price_sync_logs:", e);
+  }
+
+  return res.json({ success: true, regionCode, currency: currencyCode, results });
 });
 
 app.listen(PORT, () => {
