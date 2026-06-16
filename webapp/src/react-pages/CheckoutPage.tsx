@@ -1,6 +1,7 @@
 import { useAuth } from "../contexts/AuthContext"
 import { db } from "../firebase"
 import { collection, query, where, getDocs, doc, getDoc } from "firebase/firestore"
+import { useToastStore } from "../store/useToastStore"
 
 import { Button } from "../components/ui/button"
 import { Card } from "../components/ui/card"
@@ -99,6 +100,108 @@ import { ToastContainer } from "../components/ui/toast"
 function CheckoutPageContent() {
   const { user, userData, loading, region, getPlanPriceValue, dodoProductIds, dodoTestMode, login, selectedCountry, campaigns, pricingTiers } = useAuth()
   
+  const planKey = (() => {
+    if (typeof window !== 'undefined') {
+      return new URLSearchParams(window.location.search).get("plan") || "";
+    }
+    return "";
+  })()
+  const regionParam = (() => {
+    if (typeof window !== 'undefined') {
+      return new URLSearchParams(window.location.search).get("region") || region || "us";
+    }
+    return region || "us";
+  })()
+
+  // Normalize region parameter to one of: in, t1, t2, t3, eu, jp, cn, t4
+  const normalizedRegion = (() => {
+    const r = regionParam.toLowerCase();
+    const valid = ['in', 't1', 't2', 't3', 'eu', 'jp', 'cn', 't4'];
+    if (valid.includes(r)) return r;
+    if (r === 'us') return 't3';
+    return 't3'; // Fallback for us/eu/jp etc.
+  })()
+
+  const [detectedCoupon, setDetectedCoupon] = useState("")
+  const [couponLookupDone, setCouponLookupDone] = useState(false)
+
+  useEffect(() => {
+    const lookupCoupon = async () => {
+      if (!user) {
+        setCouponLookupDone(true);
+        return;
+      }
+      try {
+        const couponsSnap = await getDocs(
+          query(collection(db, "coupons"), where("active", "==", true))
+        );
+        for (const couponDoc of couponsSnap.docs) {
+          const couponData = couponDoc.data();
+          
+          if (couponData.campaignId) {
+            const campaignDoc = await getDoc(doc(db, "campaigns", couponData.campaignId));
+            if (!campaignDoc.exists()) continue;
+            const campaignData = campaignDoc.data();
+            if (campaignData.status !== "ACTIVE" || !campaignData.isEnabled) continue;
+            
+            const now = Date.now();
+            const expType = campaignData.expirationType || "NONE";
+            
+            let timeOk = true;
+            if ((expType === "TIME_ONLY" || expType === "BOTH") && campaignData.expirationDateTime) {
+              const expMs = campaignData.expirationDateTime.seconds 
+                ? campaignData.expirationDateTime.seconds * 1000 
+                : new Date(campaignData.expirationDateTime).getTime();
+              timeOk = now < expMs;
+            }
+            if (!timeOk) continue;
+            
+            let capOk = true;
+            if ((expType === "PURCHASE_LIMIT_ONLY" || expType === "BOTH") && campaignData.maxPurchaseLimit != null) {
+              capOk = (campaignData.currentPurchaseCount ?? 0) < campaignData.maxPurchaseLimit;
+            }
+            if (!capOk) continue;
+          } else {
+            const now = Date.now();
+            if (couponData.validFrom) {
+              const fromMs = couponData.validFrom.seconds ? couponData.validFrom.seconds * 1000 : new Date(couponData.validFrom).getTime();
+              if (now < fromMs) continue;
+            }
+            if (couponData.validUntil) {
+              const untilMs = couponData.validUntil.seconds ? couponData.validUntil.seconds * 1000 : new Date(couponData.validUntil).getTime();
+              if (now > untilMs) continue;
+            }
+            if (couponData.usageLimit != null && (couponData.usedCount ?? 0) >= couponData.usageLimit) continue;
+          }
+
+          const logsSnap = await getDocs(
+            query(collection(db, "purchase_logs"), where("userId", "==", user.uid))
+          );
+          const alreadyUsed = logsSnap.docs.some(logDoc => {
+            const logData = logDoc.data();
+            return logData.couponId === couponDoc.id || logData.couponCode === couponData.couponCode;
+          });
+          if (alreadyUsed) continue;
+
+          const targetsSnap = await getDocs(collection(db, "coupons", couponDoc.id, "targets"));
+          const matchesTarget = targetsSnap.docs.some(t => {
+            const td = t.data();
+            return td.regionCode === normalizedRegion && td.planCode === planKey;
+          });
+          if (matchesTarget) {
+            setDetectedCoupon(couponData.couponCode);
+            break;
+          }
+        }
+      } catch (err) {
+        console.warn("Coupon lookup failed:", err);
+      } finally {
+        setCouponLookupDone(true);
+      }
+    };
+    lookupCoupon();
+  }, [user, normalizedRegion, planKey]);
+  
   if (loading) {
     return (
       <div className="min-h-screen bg-background flex flex-col items-center justify-center p-6 text-center font-sans">
@@ -130,27 +233,7 @@ function CheckoutPageContent() {
     )
   }
   
-  const planKey = (() => {
-    if (typeof window !== 'undefined') {
-      return new URLSearchParams(window.location.search).get("plan") || "";
-    }
-    return "";
-  })()
-  const regionParam = (() => {
-    if (typeof window !== 'undefined') {
-      return new URLSearchParams(window.location.search).get("region") || region || "us";
-    }
-    return region || "us";
-  })()
-
-  // Normalize region parameter to one of: in, t1, t2, t3, eu, jp, cn, t4
-  const normalizedRegion = (() => {
-    const r = regionParam.toLowerCase();
-    const valid = ['in', 't1', 't2', 't3', 'eu', 'jp', 'cn', 't4'];
-    if (valid.includes(r)) return r;
-    if (r === 'us') return 't3';
-    return 't3'; // Fallback for us/eu/jp etc.
-  })()
+  // planKey, regionParam, and normalizedRegion are declared at the top of CheckoutPageContent
 
   const REGION_DOC_IDS: Record<string, string> = {
     in: "India",
@@ -221,89 +304,21 @@ function CheckoutPageContent() {
       params.set("currency", plan.currency)
     }
 
-    // Auto-apply Dodo coupon: look up active coupons from new coupons collection
-    // matching this plan + region combination
-    try {
-      const couponsSnap = await getDocs(
-        query(collection(db, "coupons"), where("active", "==", true))
-      );
-      let appliedCoupon = "";
-      for (const couponDoc of couponsSnap.docs) {
-        const couponData = couponDoc.data();
-        
-        // 1. Enforce live campaign conditions if coupon is linked to a campaign
-        if (couponData.campaignId) {
-          const campaignDoc = await getDoc(doc(db, "campaigns", couponData.campaignId));
-          if (!campaignDoc.exists()) continue;
-          const campaignData = campaignDoc.data();
-          
-          if (campaignData.status !== "ACTIVE" || !campaignData.isEnabled) continue;
-          
-          const now = Date.now();
-          const expType = campaignData.expirationType || "NONE";
-          
-          let timeOk = true;
-          if ((expType === "TIME_ONLY" || expType === "BOTH") && campaignData.expirationDateTime) {
-            const expMs = campaignData.expirationDateTime.seconds 
-              ? campaignData.expirationDateTime.seconds * 1000 
-              : new Date(campaignData.expirationDateTime).getTime();
-            timeOk = now < expMs;
-          }
-          if (!timeOk) continue;
-          
-          let capOk = true;
-          if ((expType === "PURCHASE_LIMIT_ONLY" || expType === "BOTH") && campaignData.maxPurchaseLimit != null) {
-            capOk = (campaignData.currentPurchaseCount ?? 0) < campaignData.maxPurchaseLimit;
-          }
-          if (!capOk) continue;
-        } else {
-          // If coupon is not linked to a campaign, check its own timing and limits
-          const now = Date.now();
-          if (couponData.validFrom) {
-            const fromMs = couponData.validFrom.seconds ? couponData.validFrom.seconds * 1000 : new Date(couponData.validFrom).getTime();
-            if (now < fromMs) continue;
-          }
-          if (couponData.validUntil) {
-            const untilMs = couponData.validUntil.seconds ? couponData.validUntil.seconds * 1000 : new Date(couponData.validUntil).getTime();
-            if (now > untilMs) continue;
-          }
-          if (couponData.usageLimit != null && (couponData.usedCount ?? 0) >= couponData.usageLimit) continue;
-        }
-
-        // 2. Enforce the "1 use per user account" check against the purchase_logs collection
-        const logsSnap = await getDocs(
-          query(collection(db, "purchase_logs"), where("userId", "==", user.uid))
-        );
-        const alreadyUsed = logsSnap.docs.some(logDoc => {
-          const logData = logDoc.data();
-          return logData.couponId === couponDoc.id || logData.couponCode === couponData.couponCode;
-        });
-        if (alreadyUsed) continue;
-
-        // Check targets subcollection for this plan+region
-        const targetsSnap = await getDocs(collection(db, "coupons", couponDoc.id, "targets"));
-        const matchesTarget = targetsSnap.docs.some(t => {
-          const td = t.data();
-          return td.regionCode === normalizedRegion && td.planCode === planKey;
-        });
-        if (matchesTarget) {
-          appliedCoupon = couponData.couponCode;
-          break; // use first matching coupon
-        }
-      }
-      if (appliedCoupon) {
-        params.set("discount_code", appliedCoupon);
-      }
-    } catch (err) {
-      console.warn("Coupon lookup failed, proceeding without coupon:", err);
+    if (detectedCoupon) {
+      params.set("discount_code", detectedCoupon);
     }
 
     window.location.replace(`${dodoBaseUrl}/${productId}?${params.toString()}`)
   }
 
-  // Automatic redirect trigger: when user and plan are ready, immediately redirect
+  // Automatic redirect trigger: when user, plan and coupon lookup are ready, immediately redirect
   useEffect(() => {
     if (user && plan) {
+      if (!couponLookupDone) {
+        setIsProcessing(true)
+        setProcessStep("Checking for eligible promotions and coupons...")
+        return
+      }
       setIsProcessing(true)
       setProcessStep("Opening secure checkout portal...")
       const timer = setTimeout(() => {
@@ -311,7 +326,7 @@ function CheckoutPageContent() {
       }, 1500)
       return () => clearTimeout(timer)
     }
-  }, [user, plan, dodoProductIds])
+  }, [user, plan, dodoProductIds, couponLookupDone, detectedCoupon])
 
   if (!plan) {
     return (
@@ -344,8 +359,27 @@ function CheckoutPageContent() {
 
             <div className="flex items-baseline gap-1.5 mb-8">
               <span className="text-5xl font-black text-foreground">{plan.symbol}{plan.priceVal}</span>
-              <span className="text-zinc-500 text-sm font-semibold">{planKey === "recovery_pass" ? "/ one-time" : "/ lifetime"}</span>
+              <span className="text-zinc-550 text-sm font-semibold">{planKey === "recovery_pass" ? "/ one-time" : "/ lifetime"}</span>
             </div>
+
+            {detectedCoupon && (
+              <div className="mb-8 p-3.5 bg-indigo-500/10 border border-indigo-500/20 rounded-xl flex items-center justify-between gap-3">
+                <div className="flex flex-col gap-0.5">
+                  <span className="text-[10px] font-bold text-indigo-400 uppercase tracking-wider">Active Promotion Coupon</span>
+                  <span className="text-sm font-extrabold text-foreground font-mono">{detectedCoupon}</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    navigator.clipboard.writeText(detectedCoupon);
+                    useToastStore.getState().addToast("Coupon code copied to clipboard!", "success", 3000, "Copied");
+                  }}
+                  className="px-3 py-1.5 text-[10px] font-bold text-white bg-indigo-600 hover:bg-indigo-500 rounded-lg transition-colors cursor-pointer"
+                >
+                  Copy Code
+                </button>
+              </div>
+            )}
 
             <div className="space-y-4">
               {plan.features.map((feat, i) => (

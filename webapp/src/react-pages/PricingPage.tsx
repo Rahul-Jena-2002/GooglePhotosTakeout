@@ -3,7 +3,7 @@ import { useAuth, AuthProvider, REGION_PRICING_CONFIGS, formatPrice } from "../c
 import { ArrowRight, Key, ShieldCheck, RefreshCw, Sparkles } from "lucide-react";
 import AdUnit from "../components/AdUnit";
 import { db } from "../firebase";
-import { doc, getDoc } from "firebase/firestore";
+import { doc, getDoc, collection, query, where, getDocs } from "firebase/firestore";
 import { useToastStore } from "../store/useToastStore";
 
 function PricingPageContent() {
@@ -12,6 +12,7 @@ function PricingPageContent() {
   const [isPromoActiveLocal, setIsPromoActiveLocal] = useState(false);
   const [timeLeftStr, setTimeLeftStr] = useState("");
   const [checkoutLoading, setCheckoutLoading] = useState(false);
+  const [activeCoupons, setActiveCoupons] = useState<Record<string, string>>({});
 
   useEffect(() => {
     const checkPromoActive = () => {
@@ -66,6 +67,71 @@ function PricingPageContent() {
     const interval = setInterval(checkPromoActive, 1000);
     return () => clearInterval(interval);
   }, [campaigns]);
+
+  useEffect(() => {
+    const lookupCoupons = async () => {
+      try {
+        const couponsSnap = await getDocs(
+          query(collection(db, "coupons"), where("active", "==", true))
+        );
+        const activeMap: Record<string, string> = {};
+        
+        for (const couponDoc of couponsSnap.docs) {
+          const couponData = couponDoc.data();
+          
+          if (couponData.campaignId) {
+            const campaignDoc = await getDoc(doc(db, "campaigns", couponData.campaignId));
+            if (!campaignDoc.exists()) continue;
+            const campaignData = campaignDoc.data();
+            if (campaignData.status !== "ACTIVE" || !campaignData.isEnabled) continue;
+            
+            const now = Date.now();
+            const expType = campaignData.expirationType || "NONE";
+            
+            let timeOk = true;
+            if ((expType === "TIME_ONLY" || expType === "BOTH") && campaignData.expirationDateTime) {
+              const expMs = campaignData.expirationDateTime.seconds 
+                ? campaignData.expirationDateTime.seconds * 1000 
+                : new Date(campaignData.expirationDateTime).getTime();
+              timeOk = now < expMs;
+            }
+            if (!timeOk) continue;
+            
+            let capOk = true;
+            if ((expType === "PURCHASE_LIMIT_ONLY" || expType === "BOTH") && campaignData.maxPurchaseLimit != null) {
+              capOk = (campaignData.currentPurchaseCount ?? 0) < campaignData.maxPurchaseLimit;
+            }
+            if (!capOk) continue;
+          } else {
+            const now = Date.now();
+            if (couponData.validFrom) {
+              const fromMs = couponData.validFrom.seconds ? couponData.validFrom.seconds * 1000 : new Date(couponData.validFrom).getTime();
+              if (now < fromMs) continue;
+            }
+            if (couponData.validUntil) {
+              const untilMs = couponData.validUntil.seconds ? couponData.validUntil.seconds * 1000 : new Date(couponData.validUntil).getTime();
+              if (now > untilMs) continue;
+            }
+            if (couponData.usageLimit != null && (couponData.usedCount ?? 0) >= couponData.usageLimit) continue;
+          }
+
+          const targetsSnap = await getDocs(collection(db, "coupons", couponDoc.id, "targets"));
+          targetsSnap.docs.forEach(t => {
+            const td = t.data();
+            if (td.regionCode === region) {
+              activeMap[td.planCode] = couponData.couponCode;
+            }
+          });
+        }
+        
+        setActiveCoupons(activeMap);
+      } catch (err) {
+        console.warn("Pricing coupons lookup failed:", err);
+      }
+    };
+    
+    lookupCoupons();
+  }, [region, campaigns]);
 
   const REGION_DOC_IDS: Record<string, string> = {
     in: "India",
@@ -139,9 +205,7 @@ function PricingPageContent() {
             {bannerText}
           </span>
         </div>
-      )}
-
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-16 items-stretch">
+           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-16 items-stretch">
         
         {/* FREE PLAN */}
         <div className="flex flex-col bg-zinc-950/45 border border-zinc-900 rounded-2xl p-6 h-full justify-between hover:border-zinc-800 transition-all">
@@ -186,13 +250,51 @@ function PricingPageContent() {
               <div>
                 <div className="flex items-baseline flex-wrap gap-2">
                   <span className="text-4xl font-bold text-white">{formattedRecoveryCurrent}</span>
-                  {showRecoveryDiscount && (
-                    <div className="flex items-center gap-1.5">
-                      <span className="text-sm text-zinc-500 line-through font-medium">{formattedRecoveryWas}</span>
-                      <span className="text-[10px] font-bold text-green-400 bg-green-500/10 border border-green-500/20 px-1.5 py-0.5 rounded-md">{recoveryDisc}% OFF</span>
+                  {(showRecoveryDiscount || activeCoupons['recovery_pass']) && (
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      {showRecoveryDiscount && <span className="text-sm text-zinc-500 line-through font-medium">{formattedRecoveryWas}</span>}
+                      {showRecoveryDiscount && <span className="text-[10px] font-bold text-green-400 bg-green-500/10 border border-green-500/20 px-1.5 py-0.5 rounded-md">{recoveryDisc}% OFF</span>}
+                      {activeCoupons['recovery_pass'] && (
+                        <span 
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            navigator.clipboard.writeText(activeCoupons['recovery_pass']);
+                            useToastStore.getState().addToast(`Coupon code ${activeCoupons['recovery_pass']} copied!`, "success", 3000, "Copied");
+                          }}
+                          className="text-[10px] font-bold text-indigo-400 bg-indigo-500/10 border border-indigo-500/20 px-1.5 py-0.5 rounded-md cursor-pointer hover:bg-indigo-500/20 transition-all select-none inline-flex items-center gap-1"
+                          title="Click to copy coupon code"
+                        >
+                          Code: {activeCoupons['recovery_pass']}
+                          <svg className="w-2.5 h-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" />
+                          </svg>
+                        </span>
+                      )}
                     </div>
                   )}
                 </div>
+
+                {activeCoupons['recovery_pass'] && (
+                  <div className="mt-2">
+                    <div 
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        navigator.clipboard.writeText(activeCoupons['recovery_pass']);
+                        useToastStore.getState().addToast(`Coupon code ${activeCoupons['recovery_pass']} copied!`, "success", 3000, "Copied");
+                      }}
+                      className="text-[10px] text-indigo-400 font-bold bg-indigo-500/10 border border-indigo-500/20 rounded-lg p-1.5 cursor-pointer hover:bg-indigo-500/20 transition-all select-none inline-flex items-center justify-between gap-1 w-full"
+                      title="Click to copy coupon code"
+                    >
+                      <span className="flex items-center gap-1">
+                        🎟️ Coupon: <span className="font-mono underline">{activeCoupons['recovery_pass']}</span>
+                      </span>
+                      <span className="text-[9px] text-indigo-400/80 bg-indigo-500/20 px-1 py-0.5 rounded">Copy</span>
+                    </div>
+                  </div>
+                )}
+
                 <p className="text-[11px] text-zinc-400 mt-2.5 leading-relaxed">Fix one folder of photos without any subscription details.</p>
                 {priceIncludesTax && (
                   <span className="inline-flex items-center gap-1 mt-1.5 text-[9px] font-bold text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-1.5 py-0.5 rounded-md">
@@ -231,32 +333,66 @@ function PricingPageContent() {
               <p className="text-blue-400 dark:text-blue-350 text-xs mt-1">{featuresConfig?.subheadings?.pro || 'Unlimited photos and videos. 2 devices. Lifetime.'}</p>
             </div>
             <div className="space-y-6">
-              <div className="space-y-1">
+              <div>
                 <div className="flex items-baseline flex-wrap gap-2">
                   <span className="text-4xl font-bold text-white">{formattedProCurrent}</span>
-                  {showProDiscount && (
-                    <div className="flex items-center gap-1.5">
-                      <span className="text-sm text-zinc-500 line-through font-medium">{formattedProWas}</span>
-                      <span className="text-[10px] font-bold text-green-400 bg-green-500/10 border border-green-500/20 px-1.5 py-0.5 rounded-md">{proDisc}% OFF</span>
+                  {(showProDiscount || activeCoupons['pro']) && (
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      {showProDiscount && <span className="text-sm text-zinc-500 line-through font-medium">{formattedProWas}</span>}
+                      {showProDiscount && <span className="text-[10px] font-bold text-green-400 bg-green-500/10 border border-green-500/20 px-1.5 py-0.5 rounded-md">{proDisc}% OFF</span>}
+                      {activeCoupons['pro'] && (
+                        <span 
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            navigator.clipboard.writeText(activeCoupons['pro']);
+                            useToastStore.getState().addToast(`Coupon code ${activeCoupons['pro']} copied!`, "success", 3000, "Copied");
+                          }}
+                          className="text-[10px] font-bold text-indigo-400 bg-indigo-500/10 border border-indigo-500/20 px-1.5 py-0.5 rounded-md cursor-pointer hover:bg-indigo-500/20 transition-all select-none inline-flex items-center gap-1"
+                          title="Click to copy coupon code"
+                        >
+                          Code: {activeCoupons['pro']}
+                          <svg className="w-2.5 h-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" />
+                          </svg>
+                        </span>
+                      )}
                     </div>
                   )}
                 </div>
-                
-                {isPromoActiveLocal && proDisc > 0 && (
+
+                {( (isPromoActiveLocal && proDisc > 0) || activeCoupons['pro'] ) && (
                   <div className="mt-2 flex flex-col gap-1.5">
-                    {campaigns?.maxPurchaseLimit && (
+                    {isPromoActiveLocal && proDisc > 0 && campaigns?.maxPurchaseLimit && (
                       <div className="text-[10px] text-blue-400 font-bold bg-blue-500/10 border border-blue-500/20 rounded-lg p-1.5 inline-block">
                         🔥 Claims: {campaigns?.currentPurchaseCount ?? 0} / {campaigns?.maxPurchaseLimit} claimed
                       </div>
                     )}
-                    {timeLeftStr && (
+                    {isPromoActiveLocal && proDisc > 0 && timeLeftStr && (
                       <div className="text-[10px] text-blue-400 font-bold bg-blue-500/10 border border-blue-500/20 rounded-lg p-1.5 inline-block">
                         ⏳ Expires in: {timeLeftStr}
                       </div>
                     )}
+                    {activeCoupons['pro'] && (
+                      <div 
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          navigator.clipboard.writeText(activeCoupons['pro']);
+                          useToastStore.getState().addToast(`Coupon code ${activeCoupons['pro']} copied!`, "success", 3000, "Copied");
+                        }}
+                        className="text-[10px] text-indigo-400 font-bold bg-indigo-500/10 border border-indigo-500/20 rounded-lg p-1.5 cursor-pointer hover:bg-indigo-500/20 transition-all select-none inline-flex items-center justify-between gap-1 w-full"
+                        title="Click to copy coupon code"
+                      >
+                        <span className="flex items-center gap-1">
+                          🎟️ Coupon: <span className="font-mono underline">{activeCoupons['pro']}</span>
+                        </span>
+                        <span className="text-[9px] text-indigo-400/80 bg-indigo-500/20 px-1 py-0.5 rounded">Copy</span>
+                      </div>
+                    )}
                   </div>
                 )}
-                
+
                 <p className="text-[11px] text-blue-500 dark:text-blue-300 mt-2.5 leading-relaxed">Use forever · On up to 2 devices</p>
                 {priceIncludesTax && (
                   <span className="inline-flex items-center gap-1 mt-1.5 text-[9px] font-bold text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-1.5 py-0.5 rounded-md">
@@ -292,32 +428,66 @@ function PricingPageContent() {
               <p className="text-amber-300 text-xs mt-1">{featuresConfig?.subheadings?.super || 'Unlimited + duplicate finder, before/after logs, ad-free. 3 devices. Lifetime.'}</p>
             </div>
             <div className="space-y-6">
-              <div className="space-y-1">
+              <div>
                 <div className="flex items-baseline flex-wrap gap-2">
                   <span className="text-4xl font-bold text-white">{formattedSuperCurrent}</span>
-                  {showSuperDiscount && (
-                    <div className="flex items-center gap-1.5">
-                      <span className="text-sm text-zinc-500 line-through font-medium">{formattedSuperWas}</span>
-                      <span className="text-[10px] font-bold text-green-400 bg-green-500/10 border border-green-500/20 px-1.5 py-0.5 rounded-md">{superDisc}% OFF</span>
+                  {(showSuperDiscount || activeCoupons['super']) && (
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      {showSuperDiscount && <span className="text-sm text-zinc-500 line-through font-medium">{formattedSuperWas}</span>}
+                      {showSuperDiscount && <span className="text-[10px] font-bold text-green-400 bg-green-500/10 border border-green-500/20 px-1.5 py-0.5 rounded-md">{superDisc}% OFF</span>}
+                      {activeCoupons['super'] && (
+                        <span 
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            navigator.clipboard.writeText(activeCoupons['super']);
+                            useToastStore.getState().addToast(`Coupon code ${activeCoupons['super']} copied!`, "success", 3000, "Copied");
+                          }}
+                          className="text-[10px] font-bold text-indigo-400 bg-indigo-500/10 border border-indigo-500/20 px-1.5 py-0.5 rounded-md cursor-pointer hover:bg-indigo-500/20 transition-all select-none inline-flex items-center gap-1"
+                          title="Click to copy coupon code"
+                        >
+                          Code: {activeCoupons['super']}
+                          <svg className="w-2.5 h-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" />
+                          </svg>
+                        </span>
+                      )}
                     </div>
                   )}
                 </div>
-                
-                {isPromoActiveLocal && superDisc > 0 && (
+
+                {( (isPromoActiveLocal && superDisc > 0) || activeCoupons['super'] ) && (
                   <div className="mt-2 flex flex-col gap-1.5">
-                    {campaigns?.maxPurchaseLimit && (
+                    {isPromoActiveLocal && superDisc > 0 && campaigns?.maxPurchaseLimit && (
                       <div className="text-[10px] text-amber-400 font-bold bg-amber-500/10 border border-amber-500/20 rounded-lg p-1.5 inline-block">
                         🔥 Claims: {campaigns?.currentPurchaseCount ?? 0} / {campaigns?.maxPurchaseLimit} claimed
                       </div>
                     )}
-                    {timeLeftStr && (
+                    {isPromoActiveLocal && superDisc > 0 && timeLeftStr && (
                       <div className="text-[10px] text-amber-400 font-bold bg-amber-500/10 border border-amber-500/20 rounded-lg p-1.5 inline-block">
                         ⏳ Expires in: {timeLeftStr}
                       </div>
                     )}
+                    {activeCoupons['super'] && (
+                      <div 
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          navigator.clipboard.writeText(activeCoupons['super']);
+                          useToastStore.getState().addToast(`Coupon code ${activeCoupons['super']} copied!`, "success", 3000, "Copied");
+                        }}
+                        className="text-[10px] text-indigo-400 font-bold bg-indigo-500/10 border border-indigo-500/20 rounded-lg p-1.5 cursor-pointer hover:bg-indigo-500/20 transition-all select-none inline-flex items-center justify-between gap-1 w-full"
+                        title="Click to copy coupon code"
+                      >
+                        <span className="flex items-center gap-1">
+                          🎟️ Coupon: <span className="font-mono underline">{activeCoupons['super']}</span>
+                        </span>
+                        <span className="text-[9px] text-indigo-400/80 bg-indigo-500/20 px-1 py-0.5 rounded">Copy</span>
+                      </div>
+                    )}
                   </div>
                 )}
-                
+
                 <p className="text-[11px] text-amber-400 mt-2.5 leading-relaxed">Use forever · On up to 3 devices</p>
                 {priceIncludesTax && (
                   <span className="inline-flex items-center gap-1 mt-1.5 text-[9px] font-bold text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-1.5 py-0.5 rounded-md">
@@ -344,7 +514,6 @@ function PricingPageContent() {
             </a>
           </div>
         </div>
-
 
       </div>
 
