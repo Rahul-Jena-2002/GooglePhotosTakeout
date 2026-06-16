@@ -124,6 +124,30 @@ const logAdminActivity = async (action, targetUid, description) => {
   }
 };
 
+/**
+ * Helper: Query Dodo Payments discounts list by code
+ */
+const fetchDiscountByCode = (dodoHost, dodoApiKey, code) => {
+  const https = require("https");
+  return new Promise((resolve, reject) => {
+    const options = {
+      hostname: dodoHost,
+      path: `/discounts?code=${encodeURIComponent(code)}`,
+      method: "GET",
+      headers: {
+        "Authorization": `Bearer ${dodoApiKey}`
+      }
+    };
+    const request = https.request(options, (response) => {
+      let body = "";
+      response.on("data", (chunk) => { body += chunk; });
+      response.on("end", () => resolve({ statusCode: response.statusCode, body }));
+    });
+    request.on("error", reject);
+    request.end();
+  });
+};
+
 // Route: POST /sync-coupon
 // Rewritten to use Firebase Admin SDK (db) directly — no getFirebaseCLIToken() needed.
 app.post("/sync-coupon", async (req, res) => {
@@ -236,13 +260,38 @@ app.post("/sync-coupon", async (req, res) => {
 
         let parsed = {};
         try { parsed = JSON.parse(dodoResponse.body); } catch (_) { }
-        const dodoCouponId = parsed.id || parsed.discount_id || null;
-        const isSuccess = dodoResponse.statusCode < 300;
+        let dodoCouponId = parsed.id || parsed.discount_id || null;
+        let isSuccess = dodoResponse.statusCode < 300;
+        let errorMessage = isSuccess ? null : dodoResponse.body;
+
+        // Fallback: If coupon code already exists, fetch its existing ID
+        if (!isSuccess && parsed.code === "DISCOUNT_CODE_ALREADY_EXISTS") {
+          try {
+            console.log(`Coupon code ${couponCode} already exists. Querying existing discount ID from Dodo...`);
+            const lookupResp = await fetchDiscountByCode(dodoHost, dodoApiKey, couponCode);
+            if (lookupResp.statusCode < 300) {
+              let lookupData = {};
+              try { lookupData = JSON.parse(lookupResp.body); } catch (_) {}
+              const list = Array.isArray(lookupData) ? lookupData : (lookupData.data || []);
+              const match = list.find(item => String(item.code).toUpperCase() === String(couponCode).toUpperCase());
+              if (match) {
+                dodoCouponId = match.id || match.discount_id || null;
+                if (dodoCouponId) {
+                  isSuccess = true;
+                  errorMessage = null;
+                  console.log(`Successfully retrieved existing Dodo discount ID for ${couponCode}: ${dodoCouponId}`);
+                }
+              }
+            }
+          } catch (lookupErr) {
+            console.error("Failed to query existing discount ID:", lookupErr);
+          }
+        }
 
         await db.collection("coupons").doc(couponId).collection("sync_log").add({
           couponId, targetId, regionCode, planCode, productId, dodoCouponId,
           syncStatus: isSuccess ? "SUCCESS" : "FAILED",
-          errorMessage: isSuccess ? null : dodoResponse.body,
+          errorMessage,
           syncedAt: Date.now()
         });
         results.push({ regionCode, planCode, productId, dodoCouponId, status: isSuccess ? "SUCCESS" : "FAILED" });
