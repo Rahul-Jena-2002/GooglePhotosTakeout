@@ -52,6 +52,17 @@ export default function AdminSettings() {
   const [superLifetimeCurrent, setSuperLifetimeCurrent] = useState("49.00")
   const [priceIncludesTax, setPriceIncludesTax] = useState(false)
 
+  // Per-plan Dodo price config (all fields Dodo requires on PATCH /products/{id})
+  type DodoPlanCfg = { taxInclusive: boolean; discount: number; ppp: boolean; pwyw: boolean; suggestedPrice: string }
+  const defaultDodoPlanCfg = (): DodoPlanCfg => ({ taxInclusive: true, discount: 0, ppp: false, pwyw: false, suggestedPrice: '' })
+  const [dodoPriceCfg, setDodoPriceCfg] = useState<Record<string, DodoPlanCfg>>({
+    recovery_pass: defaultDodoPlanCfg(),
+    pro: defaultDodoPlanCfg(),
+    super: defaultDodoPlanCfg(),
+  })
+  const updatePlanCfg = (plan: string, field: keyof DodoPlanCfg, value: any) =>
+    setDodoPriceCfg(prev => ({ ...prev, [plan]: { ...prev[plan], [field]: value } }))
+
   // ─── Campaign Manager state ───────────────────────────────────────────────
   const [campaigns, setCampaigns] = useState<any[]>([])
   const [showCampaignForm, setShowCampaignForm] = useState(false)
@@ -264,6 +275,12 @@ export default function AdminSettings() {
       setProLifetimeCurrent(String(tierData.pro_lifetime?.current ?? ""))
       setSuperLifetimeCurrent(String(tierData.super_lifetime?.current ?? ""))
       setPriceIncludesTax(tierData.price_includes_tax ?? false)
+      // Load per-plan Dodo config
+      const loadPlanCfg = (planKey: string): DodoPlanCfg => {
+        const d = tierData[planKey]?.dodo_cfg || {}
+        return { taxInclusive: d.tax_inclusive ?? true, discount: d.discount ?? 0, ppp: d.purchasing_power_parity ?? false, pwyw: d.pay_what_you_want ?? false, suggestedPrice: String(d.suggested_price ?? '') }
+      }
+      setDodoPriceCfg({ recovery_pass: loadPlanCfg('recovery_pass'), pro: loadPlanCfg('pro_lifetime'), super: loadPlanCfg('super_lifetime') })
     } else {
       // Fallback
       const staticConfig = REGION_PRICING_CONFIGS[selectedConfigTier] || REGION_PRICING_CONFIGS.t3
@@ -273,6 +290,7 @@ export default function AdminSettings() {
       setProLifetimeCurrent(String(staticConfig.finalPro))
       setSuperLifetimeCurrent(String(staticConfig.finalSuper))
       setPriceIncludesTax(false)
+      setDodoPriceCfg({ recovery_pass: defaultDodoPlanCfg(), pro: defaultDodoPlanCfg(), super: defaultDodoPlanCfg() })
     }
   }, [selectedConfigTier, pricingTiers])
 
@@ -309,10 +327,11 @@ export default function AdminSettings() {
       const regionCode = selectedConfigTier
 
       // Build prices object from current form state
-      const prices: Record<string, number> = {
-        recovery_pass: Number(recoveryPassCurrent),
-        pro: Number(proLifetimeCurrent),
-        super: Number(superLifetimeCurrent),
+      // Build per-plan prices with Dodo config fields
+      const prices: Record<string, { amount: number; tax_inclusive: boolean; discount: number; purchasing_power_parity: boolean; pay_what_you_want: boolean; suggested_price: number | null }> = {
+        recovery_pass: { amount: Number(recoveryPassCurrent), ...{ tax_inclusive: dodoPriceCfg.recovery_pass.taxInclusive, discount: Number(dodoPriceCfg.recovery_pass.discount), purchasing_power_parity: dodoPriceCfg.recovery_pass.ppp, pay_what_you_want: dodoPriceCfg.recovery_pass.pwyw, suggested_price: dodoPriceCfg.recovery_pass.suggestedPrice ? Number(dodoPriceCfg.recovery_pass.suggestedPrice) : null } },
+        pro:           { amount: Number(proLifetimeCurrent),  ...{ tax_inclusive: dodoPriceCfg.pro.taxInclusive, discount: Number(dodoPriceCfg.pro.discount), purchasing_power_parity: dodoPriceCfg.pro.ppp, pay_what_you_want: dodoPriceCfg.pro.pwyw, suggested_price: dodoPriceCfg.pro.suggestedPrice ? Number(dodoPriceCfg.pro.suggestedPrice) : null } },
+        super:         { amount: Number(superLifetimeCurrent), ...{ tax_inclusive: dodoPriceCfg.super.taxInclusive, discount: Number(dodoPriceCfg.super.discount), purchasing_power_parity: dodoPriceCfg.super.ppp, pay_what_you_want: dodoPriceCfg.super.pwyw, suggested_price: dodoPriceCfg.super.suggestedPrice ? Number(dodoPriceCfg.super.suggestedPrice) : null } },
       }
 
       // Currency from current region config
@@ -362,19 +381,20 @@ export default function AdminSettings() {
     setSavingPricing(true);
     try {
       // 1. Save pricing tier details
+      const buildDodoCfg = (plan: string) => ({
+        tax_inclusive: dodoPriceCfg[plan]?.taxInclusive ?? true,
+        discount: Number(dodoPriceCfg[plan]?.discount ?? 0),
+        purchasing_power_parity: dodoPriceCfg[plan]?.ppp ?? false,
+        pay_what_you_want: dodoPriceCfg[plan]?.pwyw ?? false,
+        suggested_price: dodoPriceCfg[plan]?.suggestedPrice ? Number(dodoPriceCfg[plan].suggestedPrice) : null,
+      })
       await setDoc(doc(db, "pricing_tiers", docId), {
         currency_code: currencyCode,
         currency_symbol: currencySymbol,
         price_includes_tax: priceIncludesTax,
-        recovery_pass: {
-          current: Number(recoveryPassCurrent),
-        },
-        pro_lifetime: {
-          current: Number(proLifetimeCurrent),
-        },
-        super_lifetime: {
-          current: Number(superLifetimeCurrent),
-        }
+        recovery_pass: { current: Number(recoveryPassCurrent), dodo_cfg: buildDodoCfg('recovery_pass') },
+        pro_lifetime:   { current: Number(proLifetimeCurrent),  dodo_cfg: buildDodoCfg('pro') },
+        super_lifetime: { current: Number(superLifetimeCurrent), dodo_cfg: buildDodoCfg('super') },
       }, { merge: true });
 
       // 2. Prepare and save Dodo products map
@@ -1189,107 +1209,94 @@ export default function AdminSettings() {
             {/* Pricing Config + Product IDs Grid */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               
-              {/* Recovery Pass Config */}
-              <div className="bg-zinc-950/30 p-4 border border-zinc-800/60 rounded-xl space-y-4">
-                <div className="text-xs font-semibold text-zinc-300 border-b border-zinc-800/80 pb-2">Recovery Pass</div>
-                <div>
-                  <label className="text-[9px] font-bold uppercase tracking-wider text-zinc-500 block mb-1">Standard Rate</label>
-                  <div className="relative flex items-center">
-                    <span className="text-zinc-650 absolute left-3 text-xs">{currencySymbol}</span>
-                    <Input 
-                      type="number" 
-                      step="any"
-                      value={recoveryPassCurrent} 
-                      onChange={(e) => setRecoveryPassCurrent(e.target.value)}
-                      className="bg-zinc-950 border-zinc-800 text-zinc-100 text-xs pl-6 h-9" 
-                    />
-                  </div>
-                </div>
-                <div>
-                  <label className="text-[9px] font-bold uppercase tracking-wider text-zinc-500 block mb-1">Dodo Product ID</label>
-                  <Input
-                    type="text"
-                    value={dodoProducts[selectedConfigTier]?.recovery_pass || ''}
-                    onChange={e => {
-                      const val = e.target.value
-                      setDodoProducts(prev => ({
-                        ...prev,
-                        [selectedConfigTier]: { ...prev[selectedConfigTier], recovery_pass: val }
-                      }))
-                    }}
-                    placeholder="pdt_..."
-                    className="bg-zinc-950 border-zinc-800 text-zinc-100 text-xs h-9 font-mono"
-                  />
-                </div>
-              </div>
+              {/* Helper: renders full Dodo price config for one plan */}
+              {([
+                { label: 'Recovery Pass', planKey: 'recovery_pass', rateVal: recoveryPassCurrent, setRate: setRecoveryPassCurrent, dodoPlanKey: 'recovery_pass', accentColor: 'text-cyan-400' },
+                { label: 'Pro Lifetime',   planKey: 'pro',           rateVal: proLifetimeCurrent,  setRate: setProLifetimeCurrent,  dodoPlanKey: 'pro',           accentColor: 'text-violet-400' },
+                { label: 'Super Lifetime', planKey: 'super',         rateVal: superLifetimeCurrent,setRate: setSuperLifetimeCurrent, dodoPlanKey: 'super',         accentColor: 'text-amber-400' },
+              ] as Array<{label:string;planKey:string;rateVal:string;setRate:(v:string)=>void;dodoPlanKey:string;accentColor:string}>).map(({ label, planKey, rateVal, setRate, dodoPlanKey, accentColor }) => {
+                const cfg = dodoPriceCfg[dodoPlanKey] || defaultDodoPlanCfg()
+                return (
+                  <div key={planKey} className="bg-zinc-950/30 p-4 border border-zinc-800/60 rounded-xl space-y-3">
+                    {/* Header */}
+                    <div className={`text-xs font-bold border-b border-zinc-800/80 pb-2 ${accentColor}`}>{label}</div>
 
-              {/* Pro Lifetime Config */}
-              <div className="bg-zinc-950/30 p-4 border border-zinc-800/60 rounded-xl space-y-4">
-                <div className="text-xs font-semibold text-zinc-300 border-b border-zinc-800/80 pb-2">Pro Lifetime</div>
-                <div>
-                  <label className="text-[9px] font-bold uppercase tracking-wider text-zinc-500 block mb-1">Standard Rate</label>
-                  <div className="relative flex items-center">
-                    <span className="text-zinc-650 absolute left-3 text-xs">{currencySymbol}</span>
-                    <Input 
-                      type="number" 
-                      step="any"
-                      value={proLifetimeCurrent} 
-                      onChange={(e) => setProLifetimeCurrent(e.target.value)}
-                      className="bg-zinc-950 border-zinc-800 text-zinc-100 text-xs pl-6 h-9" 
-                    />
-                  </div>
-                </div>
-                <div>
-                  <label className="text-[9px] font-bold uppercase tracking-wider text-zinc-500 block mb-1">Dodo Product ID</label>
-                  <Input
-                    type="text"
-                    value={dodoProducts[selectedConfigTier]?.pro || ''}
-                    onChange={e => {
-                      const val = e.target.value
-                      setDodoProducts(prev => ({
-                        ...prev,
-                        [selectedConfigTier]: { ...prev[selectedConfigTier], pro: val }
-                      }))
-                    }}
-                    placeholder="pdt_..."
-                    className="bg-zinc-950 border-zinc-800 text-zinc-100 text-xs h-9 font-mono"
-                  />
-                </div>
-              </div>
+                    {/* Standard Rate */}
+                    <div>
+                      <label className="text-[9px] font-bold uppercase tracking-wider text-zinc-500 block mb-1">Standard Rate</label>
+                      <div className="relative flex items-center">
+                        <span className="text-zinc-500 absolute left-3 text-xs">{currencySymbol}</span>
+                        <Input type="number" step="any" value={rateVal} onChange={e => setRate(e.target.value)}
+                          className="bg-zinc-950 border-zinc-800 text-zinc-100 text-xs pl-6 h-9" />
+                      </div>
+                    </div>
 
-              {/* Super Lifetime Config */}
-              <div className="bg-zinc-950/30 p-4 border border-zinc-800/60 rounded-xl space-y-4">
-                <div className="text-xs font-semibold text-zinc-300 border-b border-zinc-800/80 pb-2">Super Lifetime</div>
-                <div>
-                  <label className="text-[9px] font-bold uppercase tracking-wider text-zinc-500 block mb-1">Standard Rate</label>
-                  <div className="relative flex items-center">
-                    <span className="text-zinc-650 absolute left-3 text-xs">{currencySymbol}</span>
-                    <Input 
-                      type="number" 
-                      step="any"
-                      value={superLifetimeCurrent} 
-                      onChange={(e) => setSuperLifetimeCurrent(e.target.value)}
-                      className="bg-zinc-950 border-zinc-800 text-zinc-100 text-xs pl-6 h-9" 
-                    />
+                    {/* Dodo Product ID */}
+                    <div>
+                      <label className="text-[9px] font-bold uppercase tracking-wider text-zinc-500 block mb-1">Dodo Product ID</label>
+                      <Input type="text" value={dodoProducts[selectedConfigTier]?.[planKey] || ''}
+                        onChange={e => { const val = e.target.value; setDodoProducts(prev => ({ ...prev, [selectedConfigTier]: { ...prev[selectedConfigTier], [planKey]: val } })) }}
+                        placeholder="pdt_..." className="bg-zinc-950 border-zinc-800 text-zinc-100 text-xs h-9 font-mono" />
+                    </div>
+
+                    {/* Dodo Price Config — separator */}
+                    <div className="pt-1 border-t border-zinc-800/50">
+                      <div className="text-[9px] font-bold uppercase tracking-wider text-zinc-600 mb-2">Dodo Price Config</div>
+
+                      {/* Tax Inclusive */}
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-[10px] text-zinc-400">Tax Inclusive</span>
+                        <button type="button" onClick={() => updatePlanCfg(dodoPlanKey, 'taxInclusive', !cfg.taxInclusive)}
+                          className={`relative inline-flex h-4 w-7 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors ${cfg.taxInclusive ? 'bg-emerald-500' : 'bg-zinc-700'}`}>
+                          <span className={`pointer-events-none inline-block h-3 w-3 rounded-full bg-white shadow transform transition-transform ${cfg.taxInclusive ? 'translate-x-3' : 'translate-x-0'}`} />
+                        </button>
+                      </div>
+
+                      {/* Discount */}
+                      <div className="flex items-center justify-between gap-2 mb-2">
+                        <span className="text-[10px] text-zinc-400">Discount</span>
+                        <div className="relative w-20">
+                          <Input type="number" min="0" step="1" value={String(cfg.discount)}
+                            onChange={e => updatePlanCfg(dodoPlanKey, 'discount', Number(e.target.value))}
+                            className="bg-zinc-950 border-zinc-800 text-zinc-100 text-[10px] h-7 pr-5 text-right" />
+                          <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[9px] text-zinc-500">%</span>
+                        </div>
+                      </div>
+
+                      {/* Purchasing Power Parity */}
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-[10px] text-zinc-400">PPP Pricing</span>
+                        <button type="button" onClick={() => updatePlanCfg(dodoPlanKey, 'ppp', !cfg.ppp)}
+                          className={`relative inline-flex h-4 w-7 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors ${cfg.ppp ? 'bg-indigo-500' : 'bg-zinc-700'}`}>
+                          <span className={`pointer-events-none inline-block h-3 w-3 rounded-full bg-white shadow transform transition-transform ${cfg.ppp ? 'translate-x-3' : 'translate-x-0'}`} />
+                        </button>
+                      </div>
+
+                      {/* Pay What You Want */}
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-[10px] text-zinc-400">Pay What You Want</span>
+                        <button type="button" onClick={() => updatePlanCfg(dodoPlanKey, 'pwyw', !cfg.pwyw)}
+                          className={`relative inline-flex h-4 w-7 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors ${cfg.pwyw ? 'bg-purple-500' : 'bg-zinc-700'}`}>
+                          <span className={`pointer-events-none inline-block h-3 w-3 rounded-full bg-white shadow transform transition-transform ${cfg.pwyw ? 'translate-x-3' : 'translate-x-0'}`} />
+                        </button>
+                      </div>
+
+                      {/* Suggested Price — only if PWYW */}
+                      {cfg.pwyw && (
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="text-[10px] text-zinc-400">Suggested Price</span>
+                          <div className="relative w-20">
+                            <span className="absolute left-2 top-1/2 -translate-y-1/2 text-[9px] text-zinc-500">{currencySymbol}</span>
+                            <Input type="number" min="0" step="any" value={cfg.suggestedPrice}
+                              onChange={e => updatePlanCfg(dodoPlanKey, 'suggestedPrice', e.target.value)}
+                              className="bg-zinc-950 border-zinc-800 text-zinc-100 text-[10px] h-7 pl-5" />
+                          </div>
+                        </div>
+                      )}
+                    </div>
                   </div>
-                </div>
-                <div>
-                  <label className="text-[9px] font-bold uppercase tracking-wider text-zinc-500 block mb-1">Dodo Product ID</label>
-                  <Input
-                    type="text"
-                    value={dodoProducts[selectedConfigTier]?.super || ''}
-                    onChange={e => {
-                      const val = e.target.value
-                      setDodoProducts(prev => ({
-                        ...prev,
-                        [selectedConfigTier]: { ...prev[selectedConfigTier], super: val }
-                      }))
-                    }}
-                    placeholder="pdt_..."
-                    className="bg-zinc-950 border-zinc-800 text-zinc-100 text-xs h-9 font-mono"
-                  />
-                </div>
-              </div>
+                )
+              })}
 
             </div>
 

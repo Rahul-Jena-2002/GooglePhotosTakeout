@@ -540,7 +540,12 @@ app.post("/sync-dodo-prices", async (req, res) => {
       price: {
         type: "one_time_price",
         currency: currencyCode,
-        price: amountMinor
+        price: amountMinor,
+        tax_inclusive: true,
+        discount: 0,
+        purchasing_power_parity: false,
+        pay_what_you_want: false,
+        suggested_price: null
       }
     });
 

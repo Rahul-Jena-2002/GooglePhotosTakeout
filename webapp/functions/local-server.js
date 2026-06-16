@@ -474,7 +474,16 @@ app.post("/sync-dodo-prices", async (req, res) => {
 
   const patchProductPrice = (productId, amountMinor) => {
     const payload = JSON.stringify({
-      price: { type: "one_time_price", currency: currencyCode, price: amountMinor }
+      price: {
+        type: "one_time_price",
+        currency: currencyCode,
+        price: amountMinor,
+        tax_inclusive: true,
+        discount: 0,
+        purchasing_power_parity: false,
+        pay_what_you_want: false,
+        suggested_price: null
+      }
     });
     return new Promise((resolve, reject) => {
       const options = {

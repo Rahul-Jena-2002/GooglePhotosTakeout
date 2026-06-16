@@ -75,8 +75,20 @@ export function ToolWorkspaceContent() {
   const currentUsedFiles = plan === 'free' ? getUserFiles(userData as Record<string, unknown>) : (userData?.usedFiles || 0)
   const currentUsedBytes = plan === 'free' ? getUserBytes(userData as Record<string, unknown>) : (userData?.usedBytes || 0)
 
-  const limitFiles = plan === 'recovery_pass' ? 3000 : (plan === 'pro' || plan === 'super' ? Infinity : 250)
-  const limitBytes = plan === 'recovery_pass' ? 3 * 1024 * 1024 * 1024 : (plan === 'pro' || plan === 'super' ? Infinity : 500 * 1024 * 1024)
+  // Plan thresholds — loaded dynamically from Firestore settings/global.tierThresholds
+  const [tierThresholds, setTierThresholds] = useState({
+    free:          { maxFiles: 250,    maxSizeMB: 500    },
+    recovery_pass: { maxFiles: 3000,   maxSizeMB: 3072   },
+    pro:           { maxFiles: Infinity, maxSizeMB: Infinity },
+    super:         { maxFiles: Infinity, maxSizeMB: Infinity },
+  })
+
+  const limitFiles = plan === 'pro' || plan === 'super'
+    ? Infinity
+    : (tierThresholds[plan as keyof typeof tierThresholds]?.maxFiles ?? 250)
+  const limitBytes = plan === 'pro' || plan === 'super'
+    ? Infinity
+    : (tierThresholds[plan as keyof typeof tierThresholds]?.maxSizeMB ?? 500) * 1024 * 1024
 
   const limitFilesRef = useRef(limitFiles)
   const limitBytesRef = useRef(limitBytes)
@@ -104,7 +116,18 @@ export function ToolWorkspaceContent() {
   useEffect(() => {
     const unsub = onSnapshot(doc(db, "settings", "global"), (snap) => {
       if (snap.exists()) {
-        setMaintenance(snap.data().maintenance ?? false)
+        const data = snap.data()
+        setMaintenance(data.maintenance ?? false)
+        // Sync tool thresholds from admin settings
+        const stored = data.tierThresholds
+        if (stored) {
+          setTierThresholds({
+            free:          { maxFiles: stored.free?.maxFiles ?? 250,         maxSizeMB: stored.free?.maxSizeMB ?? 500    },
+            recovery_pass: { maxFiles: stored.recovery_pass?.maxFiles ?? 3000, maxSizeMB: stored.recovery_pass?.maxSizeMB ?? 3072 },
+            pro:           { maxFiles: Infinity,                               maxSizeMB: Infinity },
+            super:         { maxFiles: Infinity,                               maxSizeMB: Infinity },
+          })
+        }
       }
     }, (err) => {
       console.error("Global settings query error:", err)
