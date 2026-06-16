@@ -122,7 +122,7 @@ app.post("/execute", async (req, res) => {
         const { emailOrUid, newPlan } = args || {};
         if (!emailOrUid || !newPlan) return res.status(400).json({ error: "Arguments required." });
         
-        const validPlans = ["free", "single_pass", "pro", "super", "family"];
+        const validPlans = ["free", "single_pass", "pro", "super"];
         if (!validPlans.includes(newPlan.toLowerCase())) {
           return res.status(400).json({ error: "Invalid plan." });
         }

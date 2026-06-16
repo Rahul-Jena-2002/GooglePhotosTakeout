@@ -383,7 +383,7 @@ export default function MainLayout() {
                               <p className="text-xs text-indigo-400 font-semibold font-mono truncate max-w-full">@{userData.username}</p>
                             )}
                             <p className="text-[11px] text-indigo-400/80 font-bold uppercase tracking-wider mt-0.5">
-                              {userData?.plan === 'pro' ? 'Pro Tier' : userData?.plan === 'super' ? 'Super Tier' : userData?.plan === 'recovery_pass' ? 'Single Pass' : userData?.plan === 'family' ? 'Family Tier' : 'Free Tier'}
+                              {userData?.plan === 'pro' ? 'Pro Tier' : userData?.plan === 'super' ? 'Super Tier' : userData?.plan === 'recovery_pass' ? 'Single Pass' : 'Free Tier'}
                             </p>
                           </div>
 
@@ -503,7 +503,7 @@ export default function MainLayout() {
                   <p className="text-[10px] text-indigo-400 font-semibold font-mono truncate">@{userData.username}</p>
                 )}
                 <p className="text-[10px] text-indigo-400 font-bold uppercase tracking-wider mt-0.5">
-                  {userData?.plan === 'pro' ? 'Pro Tier' : userData?.plan === 'super' ? 'Super Tier' : userData?.plan === 'recovery_pass' ? 'Single Pass' : userData?.plan === 'family' ? 'Family Tier' : 'Free Tier'}
+                  {userData?.plan === 'pro' ? 'Pro Tier' : userData?.plan === 'super' ? 'Super Tier' : userData?.plan === 'recovery_pass' ? 'Single Pass' : 'Free Tier'}
                 </p>
               </div>
             </div>

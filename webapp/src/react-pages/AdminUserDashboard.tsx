@@ -15,7 +15,6 @@ const PLAN_LABELS: Record<string, string> = {
   recovery_pass: "Single Time",
   pro: "Pro",
   super: "Super",
-  family: "Family",
 }
 
 const formatBytes = (bytes: number) => {

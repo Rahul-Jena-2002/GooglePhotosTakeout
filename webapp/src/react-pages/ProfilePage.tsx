@@ -13,7 +13,6 @@ const PLAN_LABELS: Record<string, string> = {
   recovery_pass: "Single Pass",
   pro: "Pro Tier",
   super: "Super Tier",
-  family: "Family Tier",
 }
 
 import { AuthProvider } from "../contexts/AuthContext"

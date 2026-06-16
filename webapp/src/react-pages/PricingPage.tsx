@@ -1,12 +1,14 @@
 import React from "react";
-import { Link } from "react-router-dom";
-import { useAuth, PLAN_PRICES } from "../contexts/AuthContext";
+import { useAuth, AuthProvider, REGION_PRICING_CONFIGS } from "../contexts/AuthContext";
 import { ArrowRight, Key, ShieldCheck, RefreshCw } from "lucide-react";
 import AdUnit from "../components/AdUnit";
 
-export default function PricingPage() {
-  const { region, userData } = useAuth();
-  const prices = PLAN_PRICES[region] || PLAN_PRICES.us;
+function PricingPageContent() {
+  const { prices, finalPrices, isFounding, slotsRemaining, region } = useAuth();
+  console.log("PricingPage render:", { prices, finalPrices, isFounding, slotsRemaining, region });
+
+  const config = REGION_PRICING_CONFIGS[region] || REGION_PRICING_CONFIGS.t3;
+  const symbol = config.symbol;
 
   return (
     <div className="w-full max-w-7xl mx-auto px-6 py-16 font-sans select-none">
@@ -19,6 +21,14 @@ export default function PricingPage() {
         </p>
       </div>
 
+      {isFounding && (
+        <div className="mb-12 max-w-lg mx-auto bg-gradient-to-r from-indigo-500/10 via-purple-500/10 to-indigo-500/10 border border-indigo-500/20 backdrop-blur-md rounded-2xl p-4 text-center">
+          <span className="text-sm font-semibold text-indigo-400">
+            🎉 Founding Member Pricing — {200 - slotsRemaining} / 200 slots taken. Lock in your lifetime price before slots are gone!
+          </span>
+        </div>
+      )}
+
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-16 items-stretch">
         
         {/* FREE PLAN */}
@@ -26,17 +36,17 @@ export default function PricingPage() {
           <div>
             <div className="mb-6">
               <h2 className="text-2xl font-bold text-white font-semibold">Free</h2>
-              <p className="text-zinc-500 text-xs mt-1">Try before you buy</p>
+              <p className="text-zinc-500 text-xs mt-1">Free up to 250 files or 500MB</p>
             </div>
             <div className="space-y-6">
               <div>
-                <div className="text-4xl font-bold text-white">$0</div>
+                <div className="text-4xl font-bold text-white">{symbol}0</div>
                 <p className="text-[11px] text-zinc-400 mt-1 leading-relaxed">Test with a small set of photos to see how easy it is.</p>
               </div>
               <div className="space-y-2.5">
                 <div className="text-[10px] text-zinc-400 uppercase tracking-widest font-bold mb-1">Includes</div>
                 <ul className="space-y-2 text-xs text-zinc-300">
-                  <li className="flex items-center gap-1.5"><span className="text-green-400 font-bold">✓</span> Up to 1,000 photos (1 GB max)</li>
+                  <li className="flex items-center gap-1.5"><span className="text-green-400 font-bold">✓</span> Free up to 250 files or 500MB</li>
                   <li className="flex items-center gap-1.5"><span className="text-green-400 font-bold">✓</span> Restores original dates & times</li>
                   <li className="flex items-center gap-1.5"><span className="text-green-400 font-bold">✓</span> Works directly in your browser</li>
                   <li className="flex items-center gap-1.5"><span className="text-green-400 font-bold">✓</span> Photos stay 100% private</li>
@@ -45,9 +55,9 @@ export default function PricingPage() {
             </div>
           </div>
           <div className="mt-8">
-            <Link to="/tool" className="w-full">
+            <a href="/tool" className="w-full">
               <button className="btn-monochrome-primary w-full py-3 rounded-xl font-bold text-xs cursor-pointer transition-all">Start Free Fix</button>
-            </Link>
+            </a>
           </div>
         </div>
 
@@ -56,17 +66,17 @@ export default function PricingPage() {
           <div>
             <div className="mb-6">
               <h2 className="text-2xl font-bold text-white font-semibold">Recovery Pass</h2>
-              <p className="text-zinc-500 text-xs mt-1">Best for a single takeout download</p>
+              <p className="text-zinc-500 text-xs mt-1">Single takeout batch up to 3,000 files or 3GB</p>
             </div>
             <div className="space-y-6">
               <div>
                 <div className="text-4xl font-bold text-white">{prices.recovery_pass}</div>
-                <p className="text-[11px] text-zinc-400 mt-1 leading-relaxed">Fix one large folder of photos without any subscription details.</p>
+                <p className="text-[11px] text-zinc-400 mt-1 leading-relaxed">Fix one folder of photos without any subscription details.</p>
               </div>
               <div className="space-y-2.5">
                 <div className="text-[10px] text-zinc-400 uppercase tracking-widest font-bold mb-1">Everything in Free plus:</div>
                 <ul className="space-y-2 text-xs text-zinc-350 dark:text-zinc-300">
-                  <li className="flex items-center gap-1.5 recovery-pass-highlight"><span className="font-bold">✓</span> Up to 10,000 photos (20 GB max)</li>
+                  <li className="flex items-center gap-1.5 recovery-pass-highlight"><span className="font-bold">✓</span> Single takeout batch up to 3,000 files or 3GB</li>
                   <li className="flex items-center gap-1.5"><span className="text-zinc-600 dark:text-zinc-400 font-bold">✓</span> Friendly support help desk</li>
                   <li className="flex items-center gap-1.5"><span className="text-zinc-600 dark:text-zinc-400 font-bold">✓</span> Download clean file update logs</li>
                 </ul>
@@ -74,9 +84,9 @@ export default function PricingPage() {
             </div>
           </div>
           <div className="mt-8">
-            <Link to={`/checkout?plan=recovery_pass&region=${region}`} className="w-full">
+            <a href={`/checkout?plan=recovery_pass&region=${region}`} className="w-full">
               <button className="btn-monochrome-primary w-full py-3 rounded-xl font-bold text-xs cursor-pointer transition-all">Get Recovery Pass</button>
-            </Link>
+            </a>
           </div>
         </div>
 
@@ -88,11 +98,19 @@ export default function PricingPage() {
           <div>
             <div className="mb-6">
               <h2 className="text-2xl font-bold text-blue-500 dark:text-blue-400 font-semibold">Pro Lifetime</h2>
-              <p className="text-blue-400 dark:text-blue-350 text-xs mt-1">For large photo collections</p>
+              <p className="text-blue-400 dark:text-blue-350 text-xs mt-1">Unlimited photos and videos. 2 devices. Lifetime.</p>
             </div>
             <div className="space-y-6">
-              <div>
-                <div className="text-4xl font-bold text-white">{prices.pro}</div>
+              <div className="space-y-1">
+                <div className="flex items-baseline flex-wrap gap-2">
+                  <span className="text-4xl font-bold text-white">{prices.pro}</span>
+                  {isFounding && (
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-sm text-zinc-500 line-through font-medium">{finalPrices.pro}</span>
+                      <span className="text-[10px] font-bold text-green-400 bg-green-500/10 border border-green-500/20 px-1.5 py-0.5 rounded-md">15% OFF</span>
+                    </div>
+                  )}
+                </div>
                 <p className="text-[11px] text-blue-500 dark:text-blue-300 mt-1 leading-relaxed">Use forever · On up to 2 devices</p>
               </div>
               <div className="space-y-2.5">
@@ -106,9 +124,9 @@ export default function PricingPage() {
             </div>
           </div>
           <div className="mt-8">
-            <Link to={`/checkout?plan=pro&region=${region}`} className="w-full">
+            <a href={`/checkout?plan=pro&region=${region}`} className="w-full">
               <button className="btn-pro-blue w-full py-3 rounded-xl font-bold text-xs cursor-pointer transition-all">Go Pro</button>
-            </Link>
+            </a>
           </div>
         </div>
 
@@ -117,11 +135,19 @@ export default function PricingPage() {
           <div>
             <div className="mb-6">
               <h2 className="text-2xl font-bold text-amber-500 font-semibold">Super Lifetime</h2>
-              <p className="text-amber-300 text-xs mt-1">Advanced tools for photographers</p>
+              <p className="text-amber-300 text-xs mt-1">Unlimited + duplicate finder, before/after logs, ad-free. 3 devices. Lifetime.</p>
             </div>
             <div className="space-y-6">
-              <div>
-                <div className="text-4xl font-bold text-white">{prices.super}</div>
+              <div className="space-y-1">
+                <div className="flex items-baseline flex-wrap gap-2">
+                  <span className="text-4xl font-bold text-white">{prices.super}</span>
+                  {isFounding && (
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-sm text-zinc-500 line-through font-medium">{finalPrices.super}</span>
+                      <span className="text-[10px] font-bold text-green-400 bg-green-500/10 border border-green-500/20 px-1.5 py-0.5 rounded-md">10% OFF</span>
+                    </div>
+                  )}
+                </div>
                 <p className="text-[11px] text-amber-400 mt-1 leading-relaxed">Use forever · On up to 3 devices</p>
               </div>
               <div className="space-y-2.5">
@@ -136,9 +162,9 @@ export default function PricingPage() {
             </div>
           </div>
           <div className="mt-8">
-            <Link to={`/checkout?plan=super&region=${region}`} className="w-full">
+            <a href={`/checkout?plan=super&region=${region}`} className="w-full">
               <button className="btn-super-orange w-full py-3 rounded-xl font-bold text-xs cursor-pointer transition-all">Go Super</button>
-            </Link>
+            </a>
           </div>
         </div>
 
@@ -172,8 +198,8 @@ export default function PricingPage() {
               </tr>
               <tr className="border-b border-zinc-900 hover:bg-white/[0.01]">
                 <td className="py-4 px-6 font-medium text-white">Processing Limit</td>
-                <td className="py-4 px-6 text-center text-zinc-300">1 GB (1,000 files)</td>
-                <td className="py-4 px-6 text-center text-zinc-300">20 GB (10,000 files)</td>
+                <td className="py-4 px-6 text-center text-zinc-300">500 MB (250 files)</td>
+                <td className="py-4 px-6 text-center text-zinc-300">3 GB (3,000 files)</td>
                 <td className="py-4 px-6 text-center text-green-400 font-bold">Unlimited</td>
                 <td className="py-4 px-6 text-center text-green-400 font-bold">Unlimited</td>
               </tr>
@@ -210,7 +236,7 @@ export default function PricingPage() {
           <div>
             <h3 className="text-sm font-bold text-white uppercase tracking-wider mb-3">Enforcement of Limits</h3>
             <p className="text-xs text-zinc-300 leading-relaxed max-w-md mx-auto">
-              Limits on <strong>Free</strong> (1,000 files/1 GB) and <strong>Recovery Pass</strong> (10,000 files/20 GB) are enforced on a <strong>"whichever comes first"</strong> basis. Device limits are tied to your browser installation environment. Paid lifetime licenses allow activation on up to 2 or 3 separate devices simultaneously.
+              Limits on <strong>Free</strong> (250 files/500 MB) and <strong>Recovery Pass</strong> (3,000 files/3 GB) are enforced on a <strong>"whichever comes first"</strong> basis. Device limits are tied to your browser installation environment. Paid lifetime licenses allow activation on up to 2 or 3 separate devices simultaneously.
             </p>
           </div>
           
@@ -223,5 +249,13 @@ export default function PricingPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function PricingPage() {
+  return (
+    <AuthProvider>
+      <PricingPageContent />
+    </AuthProvider>
   );
 }

@@ -551,8 +551,19 @@ const canonicalUrl = `https://takeoutfix.pages.dev${Astro.url.pathname.replace(/
 
       // 1.5 Country Detection & Storage
       const detectAndStoreCountry = async () => {
-        let countryCode = localStorage.getItem("takeoutfix_selected_country") || "";
-        if (countryCode) return;
+        // Clear any old manual selection keys to avoid polluting state
+        localStorage.removeItem("takeoutfix_selected_country");
+        localStorage.removeItem("takeoutfix_country_manually_set");
+
+        const isLocalhost = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1";
+        let countryCode = "";
+        if (!isLocalhost) {
+          countryCode = localStorage.getItem("takeoutfix_detected_country") || "";
+          if (countryCode) {
+            window.dispatchEvent(new CustomEvent("takeoutfix-country-detected", { detail: countryCode }));
+            return;
+          }
+        }
 
         // 1. Try Cloudflare cdn-cgi trace first
         try {
@@ -595,12 +606,34 @@ const canonicalUrl = `https://takeoutfix.pages.dev${Astro.url.pathname.replace(/
           } catch (e) {}
         }
 
+        // 4. Fallback based on browser languages
+        if (!countryCode) {
+          try {
+            const languages = navigator.languages || [navigator.language];
+            for (const lang of languages) {
+              const lowerLang = lang.toLowerCase();
+              if (lowerLang.endsWith("-in") || lowerLang === "hi" || lowerLang.startsWith("hi-")) {
+                countryCode = "IN";
+                break;
+              }
+              if (lowerLang.endsWith("-jp") || lowerLang === "ja") {
+                countryCode = "JP";
+                break;
+              }
+              if (lowerLang.endsWith("-cn") || lowerLang === "zh") {
+                countryCode = "CN";
+                break;
+              }
+            }
+          } catch (e) {}
+        }
+
         if (!countryCode) {
           countryCode = "US";
         }
 
         countryCode = countryCode.toUpperCase();
-        localStorage.setItem("takeoutfix_selected_country", countryCode);
+        localStorage.setItem("takeoutfix_detected_country", countryCode);
         window.dispatchEvent(new CustomEvent("takeoutfix-country-detected", { detail: countryCode }));
       };
 
@@ -700,7 +733,6 @@ const canonicalUrl = `https://takeoutfix.pages.dev${Astro.url.pathname.replace(/
             if (cachedUser.plan === "pro") planLabel = "Pro Tier";
             else if (cachedUser.plan === "super") planLabel = "Super Tier";
             else if (cachedUser.plan === "recovery_pass") planLabel = "Single Pass";
-            else if (cachedUser.plan === "family") planLabel = "Family Tier";
             if (dropdownPlan) dropdownPlan.innerText = planLabel;
             
             const isAdmin = cachedUser.isAdmin === true || (cachedUser.email && SUPER_ADMIN_EMAILS.includes(cachedUser.email)) || !!localStorage.getItem("takeoutfix_admin_data");

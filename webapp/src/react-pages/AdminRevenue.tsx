@@ -111,8 +111,8 @@ export default function AdminRevenue() {
       const usedFiles = userData?.usedFiles || 0
       const plan = userData?.plan || tx.plan || "free"
 
-      const isWithinFreeLimit = usedBytes < 1 * 1024 * 1024 * 1024 && usedFiles < 1000
-      const isAboveRecoveryPassLimit = usedBytes > 20 * 1024 * 1024 * 1024 || usedFiles > 10000
+      const isWithinFreeLimit = usedBytes < 500 * 1024 * 1024 && usedFiles < 250
+      const isAboveRecoveryPassLimit = usedBytes > 3 * 1024 * 1024 * 1024 || usedFiles > 3000
 
       let pct = 0
       let reason = ""
@@ -124,10 +124,10 @@ export default function AdminRevenue() {
         pct = 100
         reason = `Usage is within Free tier limits (${(usedBytes / (1024 ** 3)).toFixed(3)} GB / ${usedFiles} files processed).`
       } else {
-        // Usage is between 1 GB/1,000 files and 20 GB/10,000 files
+        // Usage is between 500 MB/250 files and 3 GB/3,000 files
         if (plan === "recovery_pass") {
           pct = 0
-          reason = `Recovery Pass plan has processed ${(usedBytes / (1024 ** 3)).toFixed(2)} GB / ${usedFiles} files (limit for refund is 1 GB / 1,000 files).`
+          reason = `Recovery Pass plan has processed ${(usedBytes / (1024 ** 3)).toFixed(2)} GB / ${usedFiles} files (limit for refund is 500 MB / 250 files).`
         } else {
           pct = 50
           reason = `Usage is within Recovery Pass boundaries (${(usedBytes / (1024 ** 3)).toFixed(2)} GB / ${usedFiles} files processed).`

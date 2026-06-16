@@ -14,7 +14,6 @@ const PLAN_LABELS: Record<string, string> = {
   recovery_pass: "Single Time",
   pro: "Pro",
   super: "Super",
-  family: "Family",
 }
 
 const formatBytes = (bytes: number) => {
@@ -133,13 +132,13 @@ function DashboardPageContent() {
   ) + legacyFiles
 
   // Storage Quota
-  const maxQuotaGB = plan === 'free' ? 1 : plan === 'recovery_pass' ? 20 : Infinity
+  const maxQuotaGB = plan === 'free' ? 0.5 : plan === 'recovery_pass' ? 3 : Infinity
   const usedBytesVal = plan === 'free' ? totalBytesVal : (userData?.usedBytes || 0)
   const usedGB = usedBytesVal / (1024 ** 3)
   const quotaPct = maxQuotaGB === Infinity ? 0 : Math.min(100, (usedGB / maxQuotaGB) * 100)
 
   // Files Quota
-  const maxQuotaFiles = plan === 'free' ? 1000 : plan === 'recovery_pass' ? 10000 : Infinity
+  const maxQuotaFiles = plan === 'free' ? 250 : plan === 'recovery_pass' ? 3000 : Infinity
   const usedFiles = plan === 'free' ? totalFilesVal : (userData?.usedFiles || 0)
   const fileQuotaPct = maxQuotaFiles === Infinity ? 0 : Math.min(100, (usedFiles / maxQuotaFiles) * 100)
 
@@ -230,14 +229,14 @@ Your EXIF metadata recovery tools are active.
                   <div className="bg-white/[0.01] border border-white/5 rounded-xl p-4 space-y-3">
                     <div className="flex justify-between text-xs text-white/60">
                       <span className="flex items-center gap-1.5 font-semibold"><HardDrive className="w-3.5 h-3.5 text-zinc-500" /> Storage Capacity</span>
-                      <span>{usedGB.toFixed(2)} GB / 1.00 GB</span>
+                      <span>{usedGB.toFixed(2)} GB / 0.50 GB</span>
                     </div>
                     <Progress value={quotaPct} className="h-1.5 bg-white/10" />
                   </div>
                   <div className="bg-white/[0.01] border border-white/5 rounded-xl p-4 space-y-3">
                     <div className="flex justify-between text-xs text-white/60">
                       <span className="flex items-center gap-1.5 font-semibold"><FileText className="w-3.5 h-3.5 text-zinc-500" /> Processed Files</span>
-                      <span>{usedFiles} / 1,000 files</span>
+                      <span>{usedFiles} / 250 files</span>
                     </div>
                     <Progress value={fileQuotaPct} className="h-1.5 bg-white/10" />
                   </div>
@@ -249,14 +248,14 @@ Your EXIF metadata recovery tools are active.
                   <div className="bg-white/[0.01] border border-white/5 rounded-xl p-4 space-y-3">
                     <div className="flex justify-between text-xs text-white/60">
                       <span className="flex items-center gap-1.5 font-semibold"><HardDrive className="w-3.5 h-3.5 text-zinc-500" /> Remaining Capacity</span>
-                      <span>{(20 - usedGB).toFixed(2)} GB / 20.00 GB</span>
+                      <span>{(3 - usedGB).toFixed(2)} GB / 3.00 GB</span>
                     </div>
                     <Progress value={quotaPct} className="h-1.5 bg-white/10" />
                   </div>
                   <div className="bg-white/[0.01] border border-white/5 rounded-xl p-4 space-y-3">
                     <div className="flex justify-between text-xs text-white/60">
                       <span className="flex items-center gap-1.5 font-semibold"><FileText className="w-3.5 h-3.5 text-zinc-500" /> Remaining Files</span>
-                      <span>{10000 - usedFiles} / 10,000 files</span>
+                      <span>{3000 - usedFiles} / 3,000 files</span>
                     </div>
                     <Progress value={fileQuotaPct} className="h-1.5 bg-white/10" />
                   </div>

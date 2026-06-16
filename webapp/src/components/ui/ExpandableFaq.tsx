@@ -29,7 +29,7 @@ export default function ExpandableFaq() {
       id: "archive-limits",
       tag: "Limits",
       question: "Is there a limit on archive sizes?",
-      answer: "Free accounts have a 1,000 files (1 GB) limit. Upgrading to Recovery Pass or Pro/Super Lifetime unlocks unlimited files and sizes, enabling you to fix hundreds of gigabytes at once."
+      answer: "Free accounts have a 250 files (500 MB) limit. Upgrading to Recovery Pass (up to 3,000 files / 3 GB) or Pro/Super Lifetime unlocks unlimited files and sizes, enabling you to fix your entire library."
     },
     {
       id: "refund-policy",

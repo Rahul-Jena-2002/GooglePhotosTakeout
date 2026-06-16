@@ -25,7 +25,7 @@ const supportFaqs: SupportFaq[] = [
   { id: "download-takeout", tag: "Guide", q: "How do I download my Google Takeout?", a: "Go to takeout.google.com, select Google Photos, and create an export. Once finished, download and unzip the folder." },
   { id: "missing-dates", tag: "Metadata", q: "Why are my photos missing dates?", a: "Google removes EXIF metadata when you download through Takeout. Instead, it places the data in separate JSON sidecar files. TakeoutFix merges these files back together." },
   { id: "upload-privacy", tag: "Privacy", q: "Does TakeoutFix upload my photos?", a: "No. Everything is processed 100% locally on your machine. Your photos never leave your device." },
-  { id: "free-limit", tag: "Pricing", q: "Is there a limit on the free plan?", a: "Yes, the free plan processes up to 1GB or 1,000 files to let you test the tool. Upgrading removes this limit." },
+  { id: "free-limit", tag: "Pricing", q: "Is there a limit on the free plan?", a: "Yes, the free plan processes up to 500 MB or 250 files to let you test the tool. Upgrading removes this limit." },
   {
     id: "refund-policy",
     tag: "Billing",

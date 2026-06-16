@@ -38,7 +38,6 @@ const PLAN_LABELS: Record<string, string> = {
   recovery_pass: "Single Time",
   pro: "Pro",
   super: "Super",
-  family: "Family",
 }
 
 import { AuthProvider } from "../contexts/AuthContext"
@@ -76,8 +75,8 @@ export function ToolWorkspaceContent() {
   const currentUsedFiles = plan === 'free' ? getUserFiles(userData as Record<string, unknown>) : (userData?.usedFiles || 0)
   const currentUsedBytes = plan === 'free' ? getUserBytes(userData as Record<string, unknown>) : (userData?.usedBytes || 0)
 
-  const limitFiles = plan === 'recovery_pass' ? 10000 : (plan === 'pro' || plan === 'super' || plan === 'family' ? Infinity : 1000)
-  const limitBytes = plan === 'recovery_pass' ? 20 * 1024 * 1024 * 1024 : (plan === 'pro' || plan === 'super' || plan === 'family' ? Infinity : 1 * 1024 * 1024 * 1024)
+  const limitFiles = plan === 'recovery_pass' ? 3000 : (plan === 'pro' || plan === 'super' ? Infinity : 250)
+  const limitBytes = plan === 'recovery_pass' ? 3 * 1024 * 1024 * 1024 : (plan === 'pro' || plan === 'super' ? Infinity : 500 * 1024 * 1024)
 
   const limitFilesRef = useRef(limitFiles)
   const limitBytesRef = useRef(limitBytes)
@@ -90,6 +89,15 @@ export function ToolWorkspaceContent() {
     currentUsedFilesRef.current = currentUsedFiles
     currentUsedBytesRef.current = currentUsedBytes
   }, [limitFiles, limitBytes, currentUsedFiles, currentUsedBytes])
+
+  const formatByteSize = (bytes: number) => {
+    if (bytes === Infinity) return "Unlimited";
+    if (bytes >= 1024 * 1024 * 1024) {
+      const gb = bytes / (1024 * 1024 * 1024);
+      return gb % 1 === 0 ? `${gb.toFixed(0)} GB` : `${gb.toFixed(2)} GB`;
+    }
+    return `${(bytes / (1024 * 1024)).toFixed(0)} MB`;
+  };
 
   // Maintenance State
   const [maintenance, setMaintenance] = useState(false)
@@ -1297,9 +1305,9 @@ export function ToolWorkspaceContent() {
     if (storageExceeded && filesExceeded) {
       limitReason = "both your storage and file count limits"
     } else if (storageExceeded) {
-      limitReason = `your storage limit of ${plan === 'free' ? '1 GB' : '20 GB'}`
+      limitReason = `your storage limit of ${plan === 'free' ? '500 MB' : '3 GB'}`
     } else {
-      limitReason = `your file count limit of ${plan === 'free' ? '1,000 files' : '10,000 files'}`
+      limitReason = `your file count limit of ${plan === 'free' ? '250 files' : '3,000 files'}`
     }
 
     setQuotaAlert({
@@ -1722,9 +1730,9 @@ export function ToolWorkspaceContent() {
       if (currentUsedFiles >= limitFiles && currentUsedBytes >= limitBytes) {
         limitReason = "both your storage and file count limits"
       } else if (currentUsedBytes >= limitBytes) {
-        limitReason = `your storage limit of ${plan === 'free' ? '1 GB' : '20 GB'}`
+        limitReason = `your storage limit of ${plan === 'free' ? '500 MB' : '3 GB'}`
       } else {
-        limitReason = `your file count limit of ${plan === 'free' ? '1,000 files' : '10,000 files'}`
+        limitReason = `your file count limit of ${plan === 'free' ? '250 files' : '3,000 files'}`
       }
 
       setQuotaAlert({
@@ -2258,7 +2266,7 @@ export function ToolWorkspaceContent() {
                     </div>
                     <Progress value={progress} className="h-2.5 bg-white/5 rounded-full overflow-hidden border border-white/5 shadow-inner" />
                     <div className="mt-2 text-[10px] text-white/40 flex flex-col gap-0.5">
-                      <div>Processed: {((currentUsedBytes + sessionBytes) / (1024 ** 3)).toFixed(2)} GB / {limitBytes === Infinity ? "Unlimited" : `${(limitBytes / (1024 ** 3)).toFixed(2)} GB`}</div>
+                      <div>Processed: {formatByteSize(currentUsedBytes + sessionBytes)} / {formatByteSize(limitBytes)}</div>
                       <div>Files: {(currentUsedFiles + sessionFiles).toLocaleString()} / {limitFiles === Infinity ? "Unlimited" : limitFiles.toLocaleString()} files</div>
                     </div>
                     <div className="mt-2">
@@ -2400,10 +2408,10 @@ export function ToolWorkspaceContent() {
                     <div className="bg-white/[0.02] border border-white/5 p-3 rounded-lg flex flex-col gap-1.5">
                       <div className="flex justify-between items-center text-[10px] text-white/40 font-bold uppercase tracking-wider">
                         <span className="flex items-center gap-1"><HardDrive className="w-3 h-3 text-zinc-500" /> Storage Limit Progress</span>
-                        <span>{limitBytes === Infinity ? "Unlimited" : `${(limitBytes / (1024 ** 3)).toFixed(0)} GB`}</span>
+                        <span>{formatByteSize(limitBytes)}</span>
                       </div>
                       <div className="text-sm font-bold text-zinc-100 mt-0.5">
-                        {((currentUsedBytes + sessionBytes) / (1024 ** 3)).toFixed(2)} GB / {limitBytes === Infinity ? "Unlimited" : `${(limitBytes / (1024 ** 3)).toFixed(0)} GB`}
+                        {formatByteSize(currentUsedBytes + sessionBytes)} / {formatByteSize(limitBytes)}
                       </div>
                       {limitBytes !== Infinity && (
                         <Progress value={Math.min(100, ((currentUsedBytes + sessionBytes) / limitBytes) * 100)} className="h-1 bg-white/10" />

@@ -19,31 +19,40 @@ export default function AdminSettings() {
   const [t3RecoveryPass, setT3RecoveryPass] = useState("4.99")
   const [t3Pro, setT3Pro] = useState("29.00")
   const [t3Super, setT3Super] = useState("49.00")
-  const [t3Family, setT3Family] = useState("79.00")
 
   // T2 prices
   const [t2RecoveryPass, setT2RecoveryPass] = useState("3.99")
   const [t2Pro, setT2Pro] = useState("19.00")
   const [t2Super, setT2Super] = useState("39.00")
-  const [t2Family, setT2Family] = useState("49.00")
 
   // T1 prices
   const [t1RecoveryPass, setT1RecoveryPass] = useState("1.49")
   const [t1Pro, setT1Pro] = useState("9.99")
   const [t1Super, setT1Super] = useState("19.99")
-  const [t1Family, setT1Family] = useState("49.99")
 
   // India local prices
   const [inRecoveryPass, setInRecoveryPass] = useState("99")
   const [inPro, setInPro] = useState("799")
   const [inSuper, setInSuper] = useState("1499")
-  const [inFamily, setInFamily] = useState("3999")
 
-  // Dodo Product IDs
-  const [dodoRecoveryPassId, setDodoRecoveryPassId] = useState("pdt_recovery_pass_placeholder")
-  const [dodoProId, setDodoProId] = useState("pdt_pro_placeholder")
-  const [dodoSuperId, setDodoSuperId] = useState("pdt_super_placeholder")
-  const [dodoFamilyId, setDodoFamilyId] = useState("pdt_family_placeholder")
+  // Dodo Product IDs — nested region → plan map
+  const DODO_REGIONS = [
+    { key: 'in',  label: 'India',    currency: '₹' },
+    { key: 't1',  label: 'Tier 1',   currency: '$' },
+    { key: 't2',  label: 'Tier 2',   currency: '$' },
+    { key: 't3',  label: 'Tier 3',   currency: '$' },
+    { key: 't4',  label: 'Tier 4',   currency: '$' },
+    { key: 'eu',  label: 'Europe',   currency: '€' },
+    { key: 'jp',  label: 'Japan',    currency: '¥' },
+    { key: 'cn',  label: 'China',    currency: '¥' },
+  ]
+  const DODO_PLANS = ['recovery_pass', 'pro', 'super'] as const
+  const PLAN_LABELS: Record<string, string> = { recovery_pass: 'Recovery Pass', pro: 'Pro Lifetime', super: 'Super Lifetime' }
+  const buildEmptyDodoProducts = () => Object.fromEntries(
+    DODO_REGIONS.map(r => [r.key, Object.fromEntries(DODO_PLANS.map(p => [p, '']))])
+  )
+  const [dodoProducts, setDodoProducts] = useState<Record<string, Record<string, string>>>(buildEmptyDodoProducts())
+  const [activeDodoRegion, setActiveDodoRegion] = useState('in')
   const [dodoWebhookKey, setDodoWebhookKey] = useState("")
 
   const [selectedConfigTier, setSelectedConfigTier] = useState("t3")
@@ -64,27 +73,31 @@ export default function AdminSettings() {
         setT3RecoveryPass(String(data.t3_recovery_pass ?? "4.99"))
         setT3Pro(String(data.t3_pro ?? "29.00"))
         setT3Super(String(data.t3_super ?? "49.00"))
-        setT3Family(String(data.t3_family ?? "79.00"))
 
         setT2RecoveryPass(String(data.t2_recovery_pass ?? "3.99"))
         setT2Pro(String(data.t2_pro ?? "19.00"))
         setT2Super(String(data.t2_super ?? "39.00"))
-        setT2Family(String(data.t2_family ?? "49.00"))
 
         setT1RecoveryPass(String(data.t1_recovery_pass ?? "1.49"))
         setT1Pro(String(data.t1_pro ?? "9.99"))
         setT1Super(String(data.t1_super ?? "19.99"))
-        setT1Family(String(data.t1_family ?? "49.99"))
 
         setInRecoveryPass(String(data.in_recovery_pass ?? "99"))
         setInPro(String(data.in_pro ?? "799"))
         setInSuper(String(data.in_super ?? "1499"))
-        setInFamily(String(data.in_family ?? "3999"))
 
-        setDodoRecoveryPassId(data.dodo_recovery_pass_id ?? "pdt_recovery_pass_placeholder")
-        setDodoProId(data.dodo_pro_id ?? "pdt_pro_placeholder")
-        setDodoSuperId(data.dodo_super_id ?? "pdt_super_placeholder")
-        setDodoFamilyId(data.dodo_family_id ?? "pdt_family_placeholder")
+        setDodoProducts(prev => {
+          const merged = buildEmptyDodoProducts()
+          const stored = data.dodo_products as Record<string, Record<string, string>> | undefined
+          if (stored) {
+            DODO_REGIONS.forEach(r => {
+              if (stored[r.key]) {
+                DODO_PLANS.forEach(p => { merged[r.key][p] = stored[r.key][p] || '' })
+              }
+            })
+          }
+          return merged
+        })
       }
     }, (err) => {
       console.error("Settings listener error:", err)
@@ -119,27 +132,20 @@ export default function AdminSettings() {
         t3_recovery_pass: Number(t3RecoveryPass),
         t3_pro: Number(t3Pro),
         t3_super: Number(t3Super),
-        t3_family: Number(t3Family),
 
         t2_recovery_pass: Number(t2RecoveryPass),
         t2_pro: Number(t2Pro),
         t2_super: Number(t2Super),
-        t2_family: Number(t2Family),
 
         t1_recovery_pass: Number(t1RecoveryPass),
         t1_pro: Number(t1Pro),
         t1_super: Number(t1Super),
-        t1_family: Number(t1Family),
 
         in_recovery_pass: Number(inRecoveryPass),
         in_pro: Number(inPro),
         in_super: Number(inSuper),
-        in_family: Number(inFamily),
 
-        dodo_recovery_pass_id: dodoRecoveryPassId,
-        dodo_pro_id: dodoProId,
-        dodo_super_id: dodoSuperId,
-        dodo_family_id: dodoFamilyId
+        dodo_products: dodoProducts,
       }, { merge: true })
 
       await setDoc(doc(db, "settings", "secure"), {
@@ -278,7 +284,7 @@ export default function AdminSettings() {
 
             {/* Dynamic Inputs based on active tier */}
             <div className="space-y-4 mb-6">
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                 <div>
                   <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 block mb-1">Recovery Pass Price</label>
                   <div className="relative flex items-center">
@@ -351,30 +357,6 @@ export default function AdminSettings() {
                     />
                   </div>
                 </div>
-                <div>
-                  <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 block mb-1">Family Lifetime Price</label>
-                  <div className="relative flex items-center">
-                    <span className="text-zinc-500 absolute left-3 text-xs">{selectedConfigTier === "in" ? "₹" : "$"}</span>
-                    <Input 
-                      type="number"
-                      step={selectedConfigTier === "in" ? "1" : "0.01"}
-                      value={
-                        selectedConfigTier === "t3" ? t3Family :
-                        selectedConfigTier === "t2" ? t2Family :
-                        selectedConfigTier === "t1" ? t1Family :
-                        inFamily
-                      } 
-                      onChange={(e) => {
-                        const val = e.target.value;
-                        if (selectedConfigTier === "t3") setT3Family(val);
-                        else if (selectedConfigTier === "t2") setT2Family(val);
-                        else if (selectedConfigTier === "t1") setT1Family(val);
-                        else setInFamily(val);
-                      }}
-                      className="bg-zinc-950 border-zinc-800 text-zinc-100 text-xs pl-6 h-9" 
-                    />
-                  </div>
-                </div>
               </div>
             </div>
 
@@ -416,59 +398,78 @@ export default function AdminSettings() {
             </div>
 
             <div className="border-t border-zinc-800/80 pt-6">
-              <label className="text-xs font-semibold text-zinc-300 block mb-4">Dodo Plan Product IDs</label>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 block mb-1">
-                    Recovery Pass Product ID
-                  </label>
-                  <Input 
-                    type="text"
-                    value={dodoRecoveryPassId}
-                    onChange={(e) => setDodoRecoveryPassId(e.target.value)}
-                    placeholder="pdt_..."
-                    className="bg-zinc-955 border-zinc-800 text-zinc-200 text-xs h-9"
-                  />
-                </div>
-                <div>
-                  <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 block mb-1">
-                    Pro Lifetime Product ID
-                  </label>
-                  <Input 
-                    type="text"
-                    value={dodoProId}
-                    onChange={(e) => setDodoProId(e.target.value)}
-                    placeholder="pdt_..."
-                    className="bg-zinc-955 border-zinc-800 text-zinc-200 text-xs h-9"
-                  />
-                </div>
-                <div>
-                  <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 block mb-1">
-                    Super Lifetime Product ID
-                  </label>
-                  <Input 
-                    type="text"
-                    value={dodoSuperId}
-                    onChange={(e) => setDodoSuperId(e.target.value)}
-                    placeholder="pdt_..."
-                    className="bg-zinc-955 border-zinc-800 text-zinc-200 text-xs h-9"
-                  />
-                </div>
-                <div>
-                  <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 block mb-1">
-                    Family License Product ID
-                  </label>
-                  <Input 
-                    type="text"
-                    value={dodoFamilyId}
-                    onChange={(e) => setDodoFamilyId(e.target.value)}
-                    placeholder="pdt_..."
-                    className="bg-zinc-955 border-zinc-800 text-zinc-200 text-xs h-9"
-                  />
+              <div className="flex items-center justify-between mb-4">
+                <label className="text-xs font-semibold text-zinc-300">Dodo Plan Product IDs — Per Region</label>
+                <span className="text-[10px] text-zinc-500">Select a region, paste its 3 product IDs</span>
+              </div>
+
+              {/* Region tab selector */}
+              <div className="flex flex-wrap gap-2 mb-5">
+                {DODO_REGIONS.map(r => (
+                  <button
+                    key={r.key}
+                    onClick={() => setActiveDodoRegion(r.key)}
+                    className={`px-3 py-1.5 rounded-lg text-[11px] font-semibold border transition-all ${
+                      activeDodoRegion === r.key
+                        ? 'bg-indigo-600 border-indigo-500 text-white'
+                        : 'bg-zinc-950 border-zinc-800 text-zinc-400 hover:border-zinc-600'
+                    }`}
+                  >
+                    {r.currency} {r.label}
+                  </button>
+                ))}
+              </div>
+
+              {/* 3 inputs for the active region */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {DODO_PLANS.map(plan => (
+                  <div key={plan}>
+                    <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 block mb-1">
+                      {PLAN_LABELS[plan]}
+                    </label>
+                    <Input
+                      type="text"
+                      value={dodoProducts[activeDodoRegion]?.[plan] || ''}
+                      onChange={e => {
+                        const val = e.target.value
+                        setDodoProducts(prev => ({
+                          ...prev,
+                          [activeDodoRegion]: { ...prev[activeDodoRegion], [plan]: val }
+                        }))
+                      }}
+                      placeholder="pdt_..."
+                      className="bg-zinc-955 border-zinc-800 text-zinc-200 text-xs h-9 font-mono"
+                    />
+                  </div>
+                ))}
+              </div>
+
+              {/* Summary overview of all filled IDs */}
+              <div className="mt-5 p-4 bg-zinc-950/60 border border-zinc-800/60 rounded-xl">
+                <div className="text-[10px] font-bold uppercase tracking-wider text-zinc-500 mb-3">All Configured IDs Overview</div>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                  {DODO_REGIONS.map(r => {
+                    const filled = DODO_PLANS.filter(p => dodoProducts[r.key]?.[p]).length
+                    return (
+                      <div key={r.key} className="text-[10px]">
+                        <div className={`font-semibold mb-1 ${
+                          filled === 3 ? 'text-emerald-400' : filled > 0 ? 'text-amber-400' : 'text-zinc-600'
+                        }`}>
+                          {r.currency} {r.label} {filled === 3 ? '✓' : filled > 0 ? `(${filled}/3)` : '—'}
+                        </div>
+                        {DODO_PLANS.map(p => (
+                          <div key={p} className="text-zinc-600 truncate">
+                            {dodoProducts[r.key]?.[p] ? `${dodoProducts[r.key][p].substring(0, 14)}…` : `${PLAN_LABELS[p]}: empty`}
+                          </div>
+                        ))}
+                      </div>
+                    )
+                  })}
                 </div>
               </div>
+
               <span className="text-[10px] text-zinc-500 mt-2.5 block">
-                Retrieve product identifiers (starts with pdt_) from your Dodo Payments Dashboard. Empty or placeholder IDs will disable redirect on checkout.
+                Retrieve product identifiers (starts with pdt_) from your Dodo Payments Dashboard → Products. Leave empty to skip checkout for that region.
               </span>
             </div>
           </CardContent>
