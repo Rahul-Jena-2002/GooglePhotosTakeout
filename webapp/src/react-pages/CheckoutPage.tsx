@@ -20,6 +20,7 @@ interface PlanDetails {
 const getPlanDetails = (
   planKey: string, 
   region: string, 
+  firestoreConfig: any,
   getPlanPriceValue: (p: string, r: string) => number
 ): PlanDetails | null => {
   const r = region.toLowerCase();
@@ -38,6 +39,11 @@ const getPlanDetails = (
   } else if (r === 'cn') {
     currency = "CNY";
     symbol = "¥";
+  }
+
+  if (firestoreConfig) {
+    if (firestoreConfig.currency_code) currency = firestoreConfig.currency_code;
+    if (firestoreConfig.currency_symbol) symbol = firestoreConfig.currency_symbol;
   }
 
   const regionConf = { currency, symbol };
@@ -91,7 +97,7 @@ import { AuthProvider } from "../contexts/AuthContext"
 import { ToastContainer } from "../components/ui/toast"
 
 function CheckoutPageContent() {
-  const { user, userData, loading, region, getPlanPriceValue, dodoProductIds, dodoTestMode, login, selectedCountry, campaigns } = useAuth()
+  const { user, userData, loading, region, getPlanPriceValue, dodoProductIds, dodoTestMode, login, selectedCountry, campaigns, pricingTiers } = useAuth()
   
   if (loading) {
     return (
@@ -146,7 +152,20 @@ function CheckoutPageContent() {
     return 't3'; // Fallback for us/eu/jp etc.
   })()
 
-  const plan = getPlanDetails(planKey, normalizedRegion, getPlanPriceValue)
+  const REGION_DOC_IDS: Record<string, string> = {
+    in: "India",
+    cn: "China",
+    jp: "Japan",
+    eu: "Europe",
+    t1: "Tier 1",
+    t2: "Tier 2",
+    t3: "US (Tier 3)",
+    t4: "Tier 4"
+  };
+  const docId = REGION_DOC_IDS[normalizedRegion] || REGION_DOC_IDS.t3;
+  const firestoreConfig = pricingTiers?.[docId];
+
+  const plan = getPlanDetails(planKey, normalizedRegion, firestoreConfig, getPlanPriceValue)
 
   const [isProcessing, setIsProcessing] = useState(false)
   const [processStep, setProcessStep] = useState("")
