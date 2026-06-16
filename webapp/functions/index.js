@@ -19,13 +19,6 @@ app.use(express.json({
 
 /**
  * Security Middleware: Validates API Key header to prevent abuse.
- * You should set the api key in firebase functions config:
- * firebase functions:config:set gemini.key="YOUR_CUSTOM_SECRET_KEY"
- * 
- * Or set it as an environment variable in GCP Secret Manager.
- * For ease of initial setup, it looks for:
- * 1. "x-api-key" header
- * 2. "Authorization: Bearer <key>" header
  */
 const authenticateApiKey = (req, res, next) => {
   const customSecretKey = process.env.GEMINI_API_KEY || functions.config().gemini?.key || "takeoutfix-gemini-secret-2026";
@@ -58,7 +51,6 @@ const verifyDodoWebhook = (req, webhookSecret) => {
     return false;
   }
 
-  // Remove "whsec_" prefix if present, and decode from base64
   let secretStr = webhookSecret;
   if (secretStr.startsWith("whsec_")) {
     secretStr = secretStr.substring(6);
@@ -98,7 +90,9 @@ const verifyDodoWebhook = (req, webhookSecret) => {
   return false;
 };
 
+// ─────────────────────────────────────────────────────────────────────────────
 // Dodo Payments Webhook handler
+// ─────────────────────────────────────────────────────────────────────────────
 app.post("/dodo-webhook", async (req, res) => {
   let webhookSecret = process.env.DODO_WEBHOOK_KEY || functions.config().dodo?.webhook_key;
   
@@ -117,14 +111,13 @@ app.post("/dodo-webhook", async (req, res) => {
     webhookSecret = "dodo-webhook-secret-placeholder";
   }
   
-  // Verify signature unless in placeholder test mode
   if (webhookSecret !== "dodo-webhook-secret-placeholder") {
     if (!verifyDodoWebhook(req, webhookSecret)) {
       console.warn("Invalid Dodo webhook signature received.");
       return res.status(401).json({ error: "Invalid signature" });
     }
   } else {
-    console.log("Placeholder secret detected. Skipping Dodo webhook signature verification (TEST MODE).");
+    console.log("Placeholder secret detected. Skipping signature verification (TEST MODE).");
   }
 
   const { type, data } = req.body;
@@ -137,6 +130,7 @@ app.post("/dodo-webhook", async (req, res) => {
   if (type === "payment.succeeded") {
     const userId = data.metadata?.userId || data.metadata?.userid;
     const plan = data.metadata?.plan || data.metadata?.plankey;
+    const regionCode = data.metadata?.region || data.metadata?.metadata_region || "t3";
 
     if (!userId || !plan) {
       console.error("Missing userId or plan in payment metadata:", data.metadata);
@@ -149,16 +143,17 @@ app.post("/dodo-webhook", async (req, res) => {
       const userEmail = data.customer?.email || "";
       const amount = data.total_amount || 0;
       const currency = data.currency || "USD";
+      const discountCode = (data.discount_code || data.coupon_code || "").toUpperCase();
 
-      // 1. Create Transaction Document
+      // 1. Create Transaction Document (existing behaviour preserved)
       await db.collection("transactions").doc(txId).set({
         txId,
         uid: userId,
         email: userEmail,
         displayName: userEmail.split("@")[0] || "Dodo Customer",
-        plan: plan,
-        amount: amount,
-        currency: currency,
+        plan,
+        amount,
+        currency,
         displayAmount: `${currency === "INR" ? "₹" : "$"}${amount}`,
         status: "succeeded",
         timestamp,
@@ -166,41 +161,99 @@ app.post("/dodo-webhook", async (req, res) => {
         cardLast4: null
       });
 
-      // 2. Update User Document plan details & reset usage
-      const expiresAt = null;
+      // 2. Update User Document
       await db.collection("users").doc(userId).set({
-        plan: plan,
+        plan,
         usedBytes: 0,
         usedFiles: 0,
-        expiresAt,
+        expiresAt: null,
         updatedAt: timestamp
       }, { merge: true });
 
-      // 2.5. If the plan is 'pro' or 'super', atomically increment foundingMembers counter in config/foundingMembers
-      if (plan === "pro" || plan === "super") {
+      // 3. Find active campaign → increment currentPurchaseCount → auto-expire if cap hit
+      let activeCampaignId = null;
+      try {
+        const campaignsSnap = await db.collection("campaigns")
+          .where("isEnabled", "==", true)
+          .where("status", "==", "ACTIVE")
+          .limit(1)
+          .get();
+
+        if (!campaignsSnap.empty) {
+          const campaignDoc = campaignsSnap.docs[0];
+          activeCampaignId = campaignDoc.id;
+          const campaignRef = db.collection("campaigns").doc(campaignDoc.id);
+
+          await db.runTransaction(async (tx) => {
+            const freshSnap = await tx.get(campaignRef);
+            if (freshSnap.exists) {
+              const newCount = (freshSnap.data().currentPurchaseCount || 0) + 1;
+              const maxLimit = freshSnap.data().maxPurchaseLimit;
+              const updates = { currentPurchaseCount: newCount };
+              if (maxLimit != null && newCount >= maxLimit) {
+                updates.status = "EXPIRED";
+                updates.isEnabled = false;
+                console.log(`Campaign ${campaignDoc.id} auto-expired at limit ${maxLimit}.`);
+              }
+              tx.update(campaignRef, updates);
+            }
+          });
+          console.log(`Campaign ${campaignDoc.id} purchase count incremented.`);
+        }
+      } catch (err) {
+        console.error("Failed to update campaign purchase count:", err);
+      }
+
+      // 4. Find matching coupon → increment usedCount
+      let matchedCouponId = null;
+      if (discountCode) {
         try {
-          const foundingRef = db.collection("config").doc("foundingMembers");
-          await foundingRef.set({
-            count: admin.firestore.FieldValue.increment(1)
-          }, { merge: true });
-          console.log(`Atomically incremented foundingMembers counter for plan: ${plan}`);
-        } catch (counterErr) {
-          console.error("Failed to increment foundingMembers counter:", counterErr);
+          const couponSnap = await db.collection("coupons")
+            .where("couponCode", "==", discountCode)
+            .limit(1)
+            .get();
+          if (!couponSnap.empty) {
+            const couponDoc = couponSnap.docs[0];
+            matchedCouponId = couponDoc.id;
+            await db.collection("coupons").doc(couponDoc.id).update({
+              usedCount: (couponDoc.data().usedCount || 0) + 1,
+              updatedAt: timestamp
+            });
+            console.log(`Coupon ${discountCode} usedCount incremented.`);
+          }
+        } catch (err) {
+          console.error("Failed to update coupon usedCount:", err);
         }
       }
 
-      // 3. Add Log in Admin Activity feed
+      // 5. Write to purchase_logs collection
+      await db.collection("purchase_logs").add({
+        campaignId: activeCampaignId,
+        couponId: matchedCouponId,
+        couponCode: discountCode || null,
+        productId: data.product_id || null,
+        customerEmail: userEmail,
+        userId,
+        plan,
+        regionCode,
+        amount,
+        currency,
+        purchasedAt: timestamp,
+        dodoPaymentId: txId
+      });
+
+      // 6. Admin activity log
       await db.collection("admin_activity").add({
         actorUid: userId,
         actorName: userEmail || "Dodo Customer",
         actorRole: "USER",
         action: "PURCHASE",
         target: plan,
-        description: `Purchased ${plan} via Dodo Payments for ${currency} ${amount}`,
+        description: `Purchased ${plan} via Dodo Payments for ${currency} ${amount}${discountCode ? ` using coupon ${discountCode}` : ""}`,
         timestamp
       });
 
-      console.log(`User ${userId} successfully upgraded to ${plan} plan.`);
+      console.log(`User ${userId} upgraded to ${plan}.`);
     } catch (err) {
       console.error("Failed to update user license in Firestore:", err);
       return res.status(500).json({ error: "Database update failure", message: err.message });
@@ -208,6 +261,139 @@ app.post("/dodo-webhook", async (req, res) => {
   }
 
   return res.status(200).json({ received: true });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// POST /sync-coupon — Creates Dodo discount codes for each coupon target
+// Called from Admin Panel "Sync to Dodo" button (requires API key auth below)
+// ─────────────────────────────────────────────────────────────────────────────
+app.post("/sync-coupon", async (req, res) => {
+  // Note: authenticateApiKey middleware is applied AFTER this route so we
+  // need to manually check the key here since sync-coupon is called from frontend
+  const customSecretKey = process.env.GEMINI_API_KEY || functions.config().gemini?.key || "takeoutfix-gemini-secret-2026";
+  const headerKey = req.headers["x-api-key"] || (req.headers.authorization || "").replace("Bearer ", "");
+  if (!headerKey || headerKey !== customSecretKey) {
+    return res.status(401).json({ error: "Unauthorized" });
+  }
+
+  const { couponId } = req.body;
+  if (!couponId) {
+    return res.status(400).json({ error: "couponId is required." });
+  }
+
+  // Read Dodo API key from settings/system
+  let dodoApiKey = process.env.DODO_API_KEY;
+  if (!dodoApiKey) {
+    try {
+      const sysSnap = await db.collection("settings").doc("system").get();
+      if (sysSnap.exists) dodoApiKey = sysSnap.data().dodo_api_key;
+    } catch (e) {
+      console.error("Failed to read Dodo API key:", e);
+    }
+  }
+  if (!dodoApiKey) {
+    return res.status(500).json({ error: "Dodo API key not configured in settings/system.dodo_api_key" });
+  }
+
+  try {
+    const couponDoc = await db.collection("coupons").doc(couponId).get();
+    if (!couponDoc.exists) return res.status(404).json({ error: "Coupon not found." });
+    const coupon = couponDoc.data();
+
+    const targetsSnap = await db.collection("coupons").doc(couponId).collection("targets").get();
+    if (targetsSnap.empty) return res.status(400).json({ error: "No targets defined for this coupon." });
+
+    const https = require("https");
+    const isDodoTestMode = process.env.DODO_TEST_MODE === "true";
+    const dodoHost = isDodoTestMode ? "test.api.dodopayments.com" : "api.dodopayments.com";
+    const results = [];
+
+    for (const targetDoc of targetsSnap.docs) {
+      const target = targetDoc.data();
+      const { regionCode, planCode } = target;
+
+      // Look up Dodo Product ID from dodo_products collection
+      const productQuery = await db.collection("dodo_products")
+        .where("regionCode", "==", regionCode)
+        .where("planCode", "==", planCode)
+        .limit(1)
+        .get();
+
+      if (productQuery.empty) {
+        await db.collection("coupons").doc(couponId).collection("sync_log").add({
+          couponId, targetId: targetDoc.id, regionCode, planCode,
+          dodoCouponId: null, syncStatus: "FAILED",
+          errorMessage: `No dodo_product found for ${regionCode}/${planCode}`,
+          syncedAt: Date.now()
+        });
+        results.push({ regionCode, planCode, status: "FAILED", error: "No product found" });
+        continue;
+      }
+
+      const productId = productQuery.docs[0].data().productId;
+
+      const dodoPayload = JSON.stringify({
+        code: coupon.couponCode,
+        discount_type: coupon.discountType === "PERCENTAGE" ? "percentage" : "fixed",
+        discount_value: coupon.discountValue,
+        product_id: productId,
+        max_redemptions: coupon.usageLimit || null,
+        expires_at: coupon.validUntil
+          ? new Date(coupon.validUntil.seconds ? coupon.validUntil.seconds * 1000 : coupon.validUntil).toISOString()
+          : null
+      });
+
+      try {
+        const dodoResponse = await new Promise((resolve, reject) => {
+          const options = {
+            hostname: dodoHost,
+            path: "/discounts",
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "Authorization": `Bearer ${dodoApiKey}`,
+              "Content-Length": Buffer.byteLength(dodoPayload)
+            }
+          };
+          const request = https.request(options, (response) => {
+            let body = "";
+            response.on("data", (chunk) => { body += chunk; });
+            response.on("end", () => resolve({ statusCode: response.statusCode, body }));
+          });
+          request.on("error", reject);
+          request.write(dodoPayload);
+          request.end();
+        });
+
+        let parsed = {};
+        try { parsed = JSON.parse(dodoResponse.body); } catch (_) {}
+        const dodoCouponId = parsed.id || parsed.discount_id || null;
+        const isSuccess = dodoResponse.statusCode < 300;
+
+        await db.collection("coupons").doc(couponId).collection("sync_log").add({
+          couponId, targetId: targetDoc.id, regionCode, planCode, productId,
+          dodoCouponId,
+          syncStatus: isSuccess ? "SUCCESS" : "FAILED",
+          errorMessage: isSuccess ? null : dodoResponse.body,
+          syncedAt: Date.now()
+        });
+        results.push({ regionCode, planCode, productId, dodoCouponId, status: isSuccess ? "SUCCESS" : "FAILED" });
+      } catch (apiErr) {
+        await db.collection("coupons").doc(couponId).collection("sync_log").add({
+          couponId, targetId: targetDoc.id, regionCode, planCode, productId,
+          dodoCouponId: null, syncStatus: "FAILED",
+          errorMessage: apiErr.message,
+          syncedAt: Date.now()
+        });
+        results.push({ regionCode, planCode, productId, status: "FAILED", error: apiErr.message });
+      }
+    }
+
+    return res.json({ success: true, couponId, results });
+  } catch (err) {
+    console.error("sync-coupon error:", err);
+    return res.status(500).json({ error: err.message });
+  }
 });
 
 app.use(authenticateApiKey);
@@ -218,13 +404,11 @@ app.use(authenticateApiKey);
 const findUser = async (identifier) => {
   if (!identifier) return null;
   
-  // Try finding by UID first
   const userDoc = await db.collection("users").doc(identifier).get();
   if (userDoc.exists) {
     return { id: userDoc.id, data: userDoc.data() };
   }
   
-  // Fallback: search by email
   const userQuery = await db.collection("users")
     .where("email", "==", identifier)
     .limit(1)
@@ -283,7 +467,6 @@ app.post("/execute", async (req, res) => {
           return res.status(404).json({ error: `User with identifier '${emailOrUid}' not found.` });
         }
         
-        // Calculate cumulative limits
         const usedBytes = Math.max(user.data.usedBytes || 0, user.data.totalBytesProcessed || 0, user.data.lifetimeBytes || 0);
         const usedFiles = Math.max(user.data.totalFilesProcessed || 0, user.data.usedFiles || 0, user.data.lifetimeFiles || 0);
         
@@ -293,8 +476,8 @@ app.post("/execute", async (req, res) => {
           displayName: user.data.displayName || "Unknown",
           plan: user.data.plan || "free",
           suspended: !!user.data.suspended,
-          usedBytes: usedBytes,
-          usedFiles: usedFiles,
+          usedBytes,
+          usedFiles,
           rawTelemetry: {
             usedBytes: user.data.usedBytes || 0,
             usedFiles: user.data.usedFiles || 0,
@@ -327,14 +510,12 @@ app.post("/execute", async (req, res) => {
         
         const planNormalized = newPlan.toLowerCase();
         
-        // Update user record and reset active sessions counters
         await db.collection("users").doc(user.id).update({
           plan: planNormalized,
           usedBytes: 0,
           usedFiles: 0
         });
         
-        // Generate ₹0 Admin Grant transaction receipt
         const transactionId = `TXN-ADM-${Date.now()}`;
         await db.collection("transactions").doc(transactionId).set({
           uid: user.id,
@@ -356,7 +537,7 @@ app.post("/execute", async (req, res) => {
         return res.json({
           success: true,
           message: `User '${user.data.email}' updated to '${planNormalized}' plan. Usage counters reset to 0.`,
-          transactionId: transactionId
+          transactionId
         });
       }
       
@@ -405,7 +586,7 @@ app.post("/execute", async (req, res) => {
           tickets.push({ id: doc.id, ...doc.data() });
         });
         
-        return res.json({ count: tickets.length, tickets: tickets });
+        return res.json({ count: tickets.length, tickets });
       }
       
       // 5. Reply & Close Ticket
@@ -424,7 +605,7 @@ app.post("/execute", async (req, res) => {
         
         await db.collection("tickets").doc(ticketId).update({
           response: replyText,
-          status: status,
+          status,
           repliedAt: Date.now()
         });
         
@@ -456,81 +637,3 @@ app.post("/execute", async (req, res) => {
 
 // Expose HTTPS Cloud Function
 exports.geminiToolGateway = functions.https.onRequest(app);
-
-// Firestore trigger to auto-swap product IDs when founding members limit is reached
-exports.onFoundingMembersUpdate = functions.firestore
-  .document("config/foundingMembers")
-  .onUpdate(async (change, context) => {
-    const beforeData = change.before.data() || {};
-    const afterData = change.after.data() || {};
-
-    const oldCount = beforeData.count || 0;
-    const newCount = afterData.count || 0;
-
-    console.log(`[onFoundingMembersUpdate] Founding members count updated from ${oldCount} to ${newCount}`);
-
-    if (newCount >= 200 && oldCount < 200) {
-      console.log("[onFoundingMembersUpdate] Founding slot limit of 200 reached! Initiating product ID swap...");
-
-      try {
-        await db.runTransaction(async (transaction) => {
-          const globalRef = db.collection("settings").doc("global");
-          const globalSnap = await transaction.get(globalRef);
-
-          if (!globalSnap.exists) {
-            console.error("[onFoundingMembersUpdate] settings/global document not found!");
-            return;
-          }
-
-          const globalData = globalSnap.data();
-          const activeProducts = globalData.dodo_products || {};
-          const fullProducts = globalData.dodo_products_full || {};
-
-          // Deep copy of active products
-          const newActiveProducts = JSON.parse(JSON.stringify(activeProducts));
-
-          let swapCount = 0;
-          for (const region of Object.keys(fullProducts)) {
-            if (!newActiveProducts[region]) {
-              newActiveProducts[region] = {};
-            }
-
-            // Swap Pro full price ID
-            if (fullProducts[region].pro) {
-              newActiveProducts[region].pro = fullProducts[region].pro;
-              swapCount++;
-            }
-
-            // Swap Super full price ID
-            if (fullProducts[region].super) {
-              newActiveProducts[region].super = fullProducts[region].super;
-              swapCount++;
-            }
-          }
-
-          if (swapCount > 0) {
-            transaction.update(globalRef, {
-              dodo_products: newActiveProducts
-            });
-            console.log(`[onFoundingMembersUpdate] Successfully swapped ${swapCount} active product IDs to full price!`);
-          } else {
-            console.warn("[onFoundingMembersUpdate] No full-price product IDs found in settings/global.dodo_products_full to swap.");
-          }
-        });
-
-        // Add log in Admin Activity feed
-        await db.collection("admin_activity").add({
-          actorUid: "SYSTEM_TRIGGER",
-          actorName: "System Auto-Swap Trigger",
-          actorRole: "SYSTEM",
-          action: "AUTO_SWAP_PRICES",
-          target: "settings/global",
-          description: `Founding member slots limit (200) reached. Automatically swapped active Dodo product IDs to full-price ones.`,
-          timestamp: Date.now()
-        });
-
-      } catch (error) {
-        console.error("[onFoundingMembersUpdate] Transaction failed:", error);
-      }
-    }
-  });

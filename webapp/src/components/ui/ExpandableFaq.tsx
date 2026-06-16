@@ -1,58 +1,75 @@
 import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { X } from "lucide-react";
+import { db } from "../../firebase";
+import { doc, onSnapshot } from "firebase/firestore";
 
 interface FaqItem {
   id: string;
   question: string;
-  answer: string | React.ReactNode;
+  answer: string;
   tag: string;
 }
 
+const DEFAULT_FAQS: FaqItem[] = [
+  {
+    id: "metadata-why",
+    tag: "Problem",
+    question: "Why do my Google Takeout photos lose their dates & GPS?",
+    answer: "When you export your library from Google Takeout, Google strips the original metadata (such as the Date Taken, Camera Model, and GPS Coordinates) from the image/video files and writes it into separate matching .json sidecar files. When you import these photos directly into iCloud, Apple Photos, or other platforms, they read the stripped files, which defaults their creation dates to the download date and loses location data. TakeoutFix reads these JSON sidecars and merges the data back into the EXIF headers."
+  },
+  {
+    id: "privacy-servers",
+    tag: "Privacy",
+    question: "Are my photos uploaded to your servers?",
+    answer: "No. Never. The entire application runs locally inside your web browser using HTML5 File APIs. Your photos, videos, and JSON files never leave your computer and are never uploaded to any server. This guarantees 100% privacy and security for your personal archives."
+  },
+  {
+    id: "archive-limits",
+    tag: "Limits",
+    question: "Is there a limit on archive sizes?",
+    answer: "Free accounts have a 250 files (500 MB) limit. Upgrading to Recovery Pass (up to 3,000 files / 3 GB) or Pro/Super Lifetime unlocks unlimited files and sizes, enabling you to fix your entire library."
+  },
+  {
+    id: "refund-policy",
+    tag: "Billing",
+    question: "What is your refund policy?",
+    answer: "We want you to have a great experience with Takeout Fix. If you experience a genuine technical issue that prevents the software from working as described, and our support team is unable to resolve it, you may request a refund within 7 days of purchase. See our Refund Policy page for full details."
+  }
+];
+
 export default function ExpandableFaq() {
   const [activeId, setActiveId] = useState<string | null>(null);
+  const [faqs, setFaqs] = useState<FaqItem[]>(DEFAULT_FAQS);
 
-  const faqs: FaqItem[] = [
-    {
-      id: "metadata-why",
-      tag: "Problem",
-      question: "Why do my Google Takeout photos lose their dates & GPS?",
-      answer: "When you export your library from Google Takeout, Google strips the original metadata (such as the Date Taken, Camera Model, and GPS Coordinates) from the image/video files and writes it into separate matching .json sidecar files. When you import these photos directly into iCloud, Apple Photos, or other platforms, they read the stripped files, which defaults their creation dates to the download date and loses location data. TakeoutFix reads these JSON sidecars and merges the data back into the EXIF headers."
-    },
-    {
-      id: "privacy-servers",
-      tag: "Privacy",
-      question: "Are my photos uploaded to your servers?",
-      answer: "No. Never. The entire application runs locally inside your web browser using HTML5 File APIs. Your photos, videos, and JSON files never leave your computer and are never uploaded to any server. This guarantees 100% privacy and security for your personal archives."
-    },
-    {
-      id: "archive-limits",
-      tag: "Limits",
-      question: "Is there a limit on archive sizes?",
-      answer: "Free accounts have a 250 files (500 MB) limit. Upgrading to Recovery Pass (up to 3,000 files / 3 GB) or Pro/Super Lifetime unlocks unlimited files and sizes, enabling you to fix your entire library."
-    },
-    {
-      id: "refund-policy",
-      tag: "Billing",
-      question: "What is your refund policy?",
-      answer: (
-        <>
-          We want you to have a great experience with Takeout Fix. If you experience a genuine technical issue that prevents the software from working as described, and our support team is unable to resolve it, you may request a refund within <strong>7 days</strong> of purchase.
-          <br /><br />
-          For eligibility, exclusions, and the complete policy, please see our{" "}
-          <a href="/refund" className="text-indigo-400 hover:text-indigo-300 font-bold underline">
-            Refund Policy
-          </a>.
-        </>
-      )
-    }
-  ];
+  // Load FAQs from Firestore, fall back to defaults
+  useEffect(() => {
+    const unsub = onSnapshot(doc(db, "settings", "faqs"), (snap) => {
+      if (snap.exists()) {
+        const data = snap.data();
+        if (Array.isArray(data.items) && data.items.length > 0) {
+          setFaqs(data.items);
+        }
+      }
+    }, () => {
+      // On error, keep defaults
+    });
+    return () => unsub();
+  }, []);
 
   const macOsSpring = {
     type: "spring",
     stiffness: 300,
     damping: 28,
     mass: 1
+  };
+
+  // Renders **bold** markers as <strong> spans
+  const renderBoldText = (text: string) => {
+    const parts = text.split(/\*\*(.*?)\*\*/g);
+    return parts.map((part, i) =>
+      i % 2 === 1 ? <strong key={i} className="font-semibold">{part}</strong> : part
+    );
   };
 
   // Handle ESC key to close modal
@@ -167,7 +184,7 @@ export default function ExpandableFaq() {
 
                   {/* Popup Answer Payload */}
                   <div className="mt-2 text-sm md:text-base text-zinc-650 dark:text-zinc-400 leading-relaxed">
-                    <p>{activeFaq.answer}</p>
+                    <p>{renderBoldText(activeFaq.answer)}</p>
                   </div>
                 </motion.div>
               </motion.div>

@@ -1,39 +1,118 @@
-import { useState, useEffect } from "react"
-import { useAuth } from "../contexts/AuthContext"
+import React, { useState, useEffect } from "react"
+import { useAuth, REGION_PRICING_CONFIGS, type FeatureItem, type FeaturesConfig, DEFAULT_FEATURES_CONFIG } from "../contexts/AuthContext"
 import { db } from "../firebase"
-import { doc, setDoc, getDoc, onSnapshot, collection, addDoc } from "firebase/firestore"
+import { doc, setDoc, getDoc, onSnapshot, collection, addDoc, getDocs, deleteDoc, updateDoc, serverTimestamp, Timestamp, query, where } from "firebase/firestore"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../components/ui/card"
 import { Button } from "../components/ui/button"
 import { Input } from "../components/ui/input"
-import { Shield, Settings, Sliders, DollarSign, Database, Lock } from "lucide-react"
+import { Shield, Settings, Sliders, DollarSign, Database, Lock, Plus, Trash2, Tag, Calendar, Users, MessageSquare, ChevronUp, ChevronDown, RefreshCw, ToggleLeft, ToggleRight, X, Check, Loader2 } from "lucide-react"
 import { useToastStore } from "../store/useToastStore"
 
 export default function AdminSettings() {
   const { adminData } = useAuth()
+
+  // ─── FAQ ──────────────────────────────────────────────────────────────────
+  interface FaqItem { id: string; question: string; answer: string; tag: string; }
+  const FAQ_TAGS = ["Guide","Metadata","Privacy","Pricing","Billing","Formats","About","Problem","Limits","Feature","Technical","General"] as const;
+  const DEFAULT_FAQS: FaqItem[] = [
+    { id: "download-takeout", tag: "Guide",    question: "How do I download my Google Takeout?",                                                        answer: "Go to takeout.google.com, select Google Photos, and create an export. Once finished, download and unzip the folder." },
+    { id: "missing-dates",   tag: "Metadata", question: "Why are my photos missing dates?",                                                              answer: "Google removes EXIF metadata when you download through Takeout. Instead, it places the data in separate JSON sidecar files. TakeoutFix merges these files back together." },
+    { id: "upload-privacy",  tag: "Privacy",  question: "Does TakeoutFix upload my photos?",                                                             answer: "No. Everything is processed 100% locally on your machine. Your photos never leave your device." },
+    { id: "free-limit",      tag: "Pricing",  question: "Is there a limit on the free plan?",                                                            answer: "Yes, the free plan processes up to 500 MB or 250 files to let you test the tool. Upgrading removes this limit." },
+    { id: "refund-policy",   tag: "Billing",  question: "What is your refund policy?",                                                                   answer: "We want you to have a great experience with Takeout Fix. If you experience a genuine technical issue that prevents the software from working as described, and our support team is unable to resolve it, you may request a refund within 7 days of purchase. See our Refund Policy page for full details." },
+    { id: "server-upload",   tag: "Privacy",  question: "Are my photos uploaded to your servers?",                                                       answer: "No. Never. The entire application runs locally inside your web browser using HTML5 File APIs. Your photos and metadata never leave your computer." },
+    { id: "offline-work",    tag: "Privacy",  question: "Does this work completely offline?",                                                            answer: "Once the web app has loaded in your browser, you can disconnect from the internet and it will still process all your files locally." },
+    { id: "out-of-order",    tag: "Metadata", question: "Why are my photos showing today's date or out of order after exporting from Google Takeout?",   answer: "When you export your photos, Google Photos separates the EXIF metadata into separate JSON sidecar files. Without this metadata, your phone or computer defaults to showing today's date (the file modification date), causing your gallery to be completely out of order. TakeoutFix fixes this by merging the JSON sidecars back into your images." },
+    { id: "metadata-types",  tag: "Metadata", question: "What metadata can be recovered?",                                                               answer: "We recover original creation dates (timestamps), GPS coordinates (latitude, longitude, altitude), and camera device information if it exists in the Google JSON sidecars." },
+    { id: "video-support",   tag: "Formats",  question: "Does it support videos?",                                                                       answer: "Yes! We support .mp4 and .mov files alongside standard image formats like .jpg, .heic, and .png." },
+    { id: "no-install",      tag: "About",    question: "Can I fix Google Takeout metadata online without downloading any software?",                     answer: "Yes! TakeoutFix is a browser-based, no-install Google Takeout fixer tool. It does not require any software downloads or CLI commands like ExifTool. Everything runs directly inside your web browser 100% offline." },
+  ];
+  const [faqItems, setFaqItems] = useState<FaqItem[]>(DEFAULT_FAQS);
+  const [savingFaqs, setSavingFaqs] = useState(false);
   const [maintenance, setMaintenance] = useState(false)
   const [reviewAutoApprove, setReviewAutoApprove] = useState(true)
-  const [ticketSlaHours, setTicketSlaHours] = useState("24")
-  const [freeQuotaMB, setFreeQuotaMB] = useState("1024")
+  const [ticketSlaHours, setTicketSlaHours] = useState("24")  // kept silently for legacy
+  const [freeQuotaMB, setFreeQuotaMB] = useState("500")
+
+  // Per-tier tool thresholds
+  const [tierThresholds, setTierThresholds] = useState({
+    free:          { maxFiles: "250",    maxSizeMB: "500"    },
+    recovery_pass: { maxFiles: "3000",   maxSizeMB: "3072"   },
+    pro:           { maxFiles: "50000",  maxSizeMB: "51200"  },
+    super:         { maxFiles: "100000", maxSizeMB: "102400" },
+  });
   
-  // T3 prices
-  const [t3RecoveryPass, setT3RecoveryPass] = useState("4.99")
-  const [t3Pro, setT3Pro] = useState("29.00")
-  const [t3Super, setT3Super] = useState("49.00")
+  // Regional Pricing states
+  const [pricingTiers, setPricingTiers] = useState<Record<string, any>>({})
+  const [selectedConfigTier, setSelectedConfigTier] = useState("t3")
+  const [currencyCode, setCurrencyCode] = useState("USD")
+  const [currencySymbol, setCurrencySymbol] = useState("$")
+  const [recoveryPassCurrent, setRecoveryPassCurrent] = useState("4.99")
+  const [proLifetimeCurrent, setProLifetimeCurrent] = useState("29.00")
+  const [superLifetimeCurrent, setSuperLifetimeCurrent] = useState("49.00")
 
-  // T2 prices
-  const [t2RecoveryPass, setT2RecoveryPass] = useState("3.99")
-  const [t2Pro, setT2Pro] = useState("19.00")
-  const [t2Super, setT2Super] = useState("39.00")
+  // ─── Campaign Manager state ───────────────────────────────────────────────
+  const [campaigns, setCampaigns] = useState<any[]>([])
+  const [showCampaignForm, setShowCampaignForm] = useState(false)
+  const [editingCampaign, setEditingCampaign] = useState<any | null>(null)
+  const [campaignForm, setCampaignForm] = useState({
+    campaignName: '', description: '', status: 'DRAFT', isEnabled: false,
+    expirationType: 'NONE', expirationDateTime: '', maxPurchaseLimit: '',
+  })
+  const [campaignDiscounts, setCampaignDiscounts] = useState([
+    { planCode: 'recovery_pass', discountType: 'PERCENTAGE', discountValue: 0 },
+    { planCode: 'pro', discountType: 'PERCENTAGE', discountValue: 0 },
+    { planCode: 'super', discountType: 'PERCENTAGE', discountValue: 0 },
+  ])
+  const [deletingCampaignId, setDeletingCampaignId] = useState<string | null>(null)
+  const [confirmDeleteCampaignId, setConfirmDeleteCampaignId] = useState<string | null>(null)
 
-  // T1 prices
-  const [t1RecoveryPass, setT1RecoveryPass] = useState("1.49")
-  const [t1Pro, setT1Pro] = useState("9.99")
-  const [t1Super, setT1Super] = useState("19.99")
+  // ─── Coupon Manager state ─────────────────────────────────────────────────
+  const [coupons, setCoupons] = useState<any[]>([])
+  const [showCouponForm, setShowCouponForm] = useState(false)
+  const [editingCoupon, setEditingCoupon] = useState<any | null>(null)
+  const [couponForm, setCouponForm] = useState({
+    couponCode: '', title: '', description: '', campaignId: '',
+    discountType: 'PERCENTAGE', discountValue: 0, stackable: false,
+    active: true, validFrom: '', validUntil: '', usageLimit: ''
+  })
+  const [couponTargets, setCouponTargets] = useState<Record<string, boolean>>({}) // key = "regionCode_planCode"
+  const [syncLog, setSyncLog] = useState<any[]>([])
+  const [syncingCoupon, setSyncingCoupon] = useState(false)
+  const [savingCoupon, setSavingCoupon] = useState(false)
+  const [deletingCouponId, setDeletingCouponId] = useState<string | null>(null)
+  const [confirmDeleteCouponId, setConfirmDeleteCouponId] = useState<string | null>(null)
 
-  // India local prices
-  const [inRecoveryPass, setInRecoveryPass] = useState("99")
-  const [inPro, setInPro] = useState("799")
-  const [inSuper, setInSuper] = useState("1499")
+  // Dynamic Features customizer states
+  const [freeFeatures, setFreeFeatures] = useState<FeatureItem[]>([]);
+  const [recoveryFeatures, setRecoveryFeatures] = useState<FeatureItem[]>([]);
+  const [proFeatures, setProFeatures] = useState<FeatureItem[]>([]);
+  const [superFeatures, setSuperFeatures] = useState<FeatureItem[]>([]);
+
+  // Card heading and subheading editable texts
+  const [headings, setHeadings] = useState({
+    free: DEFAULT_FEATURES_CONFIG.headings.free,
+    recovery_pass: DEFAULT_FEATURES_CONFIG.headings.recovery_pass,
+    pro: DEFAULT_FEATURES_CONFIG.headings.pro,
+    super: DEFAULT_FEATURES_CONFIG.headings.super,
+  });
+  const [subheadings, setSubheadings] = useState({
+    free: DEFAULT_FEATURES_CONFIG.subheadings.free,
+    recovery_pass: DEFAULT_FEATURES_CONFIG.subheadings.recovery_pass,
+    pro: DEFAULT_FEATURES_CONFIG.subheadings.pro,
+    super: DEFAULT_FEATURES_CONFIG.subheadings.super,
+  });
+
+  const REGION_DOC_IDS: Record<string, string> = {
+    in: "India",
+    cn: "China",
+    jp: "Japan",
+    eu: "Europe",
+    t1: "Tier 1",
+    t2: "Tier 2",
+    t3: "US (Tier 3)",
+    t4: "Tier 4"
+  }
 
   // Dodo Product IDs — nested region → plan map
   const DODO_REGIONS = [
@@ -46,13 +125,11 @@ export default function AdminSettings() {
     { key: 'jp',  label: 'Japan',    currency: '¥' },
     { key: 'cn',  label: 'China',    currency: '¥' },
   ]
-  const DODO_PLANS = ['recovery_pass', 'pro', 'super', 'pro_full', 'super_full'] as const
+  const DODO_PLANS = ['recovery_pass', 'pro', 'super'] as const
   const PLAN_LABELS: Record<string, string> = {
     recovery_pass: 'Recovery Pass',
-    pro: 'Pro Lifetime (Founding)',
-    super: 'Super Lifetime (Founding)',
-    pro_full: 'Pro Lifetime (Full Price)',
-    super_full: 'Super Lifetime (Full Price)'
+    pro: 'Pro Lifetime (Full)',
+    super: 'Super Lifetime (Full)'
   }
   const buildEmptyDodoProducts = () => Object.fromEntries(
     DODO_REGIONS.map(r => [r.key, Object.fromEntries(DODO_PLANS.map(p => [p, '']))])
@@ -61,41 +138,34 @@ export default function AdminSettings() {
   const [activeDodoRegion, setActiveDodoRegion] = useState('in')
   const [dodoWebhookKey, setDodoWebhookKey] = useState("")
 
-  const [selectedConfigTier, setSelectedConfigTier] = useState("t3")
-  const [saving, setSaving] = useState(false)
-
+  const [savingPricing, setSavingPricing] = useState(false)
+  const [savingCampaignNew, setSavingCampaignNew] = useState(false)
+  const [savingGlobal, setSavingGlobal] = useState(false)
   const role = adminData?.role || "ADMIN"
 
-  // Load global settings in real-time
+  // Load global settings, pricing tiers, and promo config in real-time
   useEffect(() => {
-    const unsub = onSnapshot(doc(db, "settings", "global"), (snap) => {
+    const unsubGlobal = onSnapshot(doc(db, "settings", "global"), (snap) => {
       if (snap.exists()) {
         const data = snap.data()
         setMaintenance(data.maintenance ?? false)
         setReviewAutoApprove(data.reviewAutoApprove ?? true)
         setTicketSlaHours(String(data.ticketSlaHours ?? "24"))
-        setFreeQuotaMB(String(data.freeQuotaMB ?? "1024"))
-        
-        setT3RecoveryPass(String(data.t3_recovery_pass ?? "4.99"))
-        setT3Pro(String(data.t3_pro ?? "29.00"))
-        setT3Super(String(data.t3_super ?? "49.00"))
+        setFreeQuotaMB(String(data.freeQuotaMB ?? "500"))
 
-        setT2RecoveryPass(String(data.t2_recovery_pass ?? "3.99"))
-        setT2Pro(String(data.t2_pro ?? "19.00"))
-        setT2Super(String(data.t2_super ?? "39.00"))
-
-        setT1RecoveryPass(String(data.t1_recovery_pass ?? "1.49"))
-        setT1Pro(String(data.t1_pro ?? "9.99"))
-        setT1Super(String(data.t1_super ?? "19.99"))
-
-        setInRecoveryPass(String(data.in_recovery_pass ?? "99"))
-        setInPro(String(data.in_pro ?? "799"))
-        setInSuper(String(data.in_super ?? "1499"))
-
+        // Load per-tier thresholds
+        const stored = data.tierThresholds as typeof tierThresholds | undefined;
+        if (stored) {
+          setTierThresholds({
+            free:          { maxFiles: String(stored.free?.maxFiles ?? "250"),    maxSizeMB: String(stored.free?.maxSizeMB ?? "500")    },
+            recovery_pass: { maxFiles: String(stored.recovery_pass?.maxFiles ?? "3000"),   maxSizeMB: String(stored.recovery_pass?.maxSizeMB ?? "3072")   },
+            pro:           { maxFiles: String(stored.pro?.maxFiles ?? "50000"),  maxSizeMB: String(stored.pro?.maxSizeMB ?? "51200")  },
+            super:         { maxFiles: String(stored.super?.maxFiles ?? "100000"), maxSizeMB: String(stored.super?.maxSizeMB ?? "102400") },
+          });
+        }
         setDodoProducts(prev => {
           const merged = buildEmptyDodoProducts()
           const storedActive = data.dodo_products as Record<string, Record<string, string>> | undefined
-          const storedFull = data.dodo_products_full as Record<string, Record<string, string>> | undefined
           
           DODO_REGIONS.forEach(r => {
             if (storedActive && storedActive[r.key]) {
@@ -103,19 +173,102 @@ export default function AdminSettings() {
               merged[r.key]['pro'] = storedActive[r.key]['pro'] || ''
               merged[r.key]['super'] = storedActive[r.key]['super'] || ''
             }
-            if (storedFull && storedFull[r.key]) {
-              merged[r.key]['pro_full'] = storedFull[r.key]['pro'] || ''
-              merged[r.key]['super_full'] = storedFull[r.key]['super'] || ''
-            }
           })
           return merged
         })
+
+        const storedFeatures = data.features_config as FeaturesConfig | undefined;
+        if (storedFeatures) {
+          setFreeFeatures(storedFeatures.free || DEFAULT_FEATURES_CONFIG.free);
+          setRecoveryFeatures(storedFeatures.recovery_pass || DEFAULT_FEATURES_CONFIG.recovery_pass);
+          setProFeatures(storedFeatures.pro || DEFAULT_FEATURES_CONFIG.pro);
+          setSuperFeatures(storedFeatures.super || DEFAULT_FEATURES_CONFIG.super);
+          setHeadings({
+            free: storedFeatures.headings?.free ?? DEFAULT_FEATURES_CONFIG.headings.free,
+            recovery_pass: storedFeatures.headings?.recovery_pass ?? DEFAULT_FEATURES_CONFIG.headings.recovery_pass,
+            pro: storedFeatures.headings?.pro ?? DEFAULT_FEATURES_CONFIG.headings.pro,
+            super: storedFeatures.headings?.super ?? DEFAULT_FEATURES_CONFIG.headings.super,
+          });
+          setSubheadings({
+            free: storedFeatures.subheadings?.free ?? DEFAULT_FEATURES_CONFIG.subheadings.free,
+            recovery_pass: storedFeatures.subheadings?.recovery_pass ?? DEFAULT_FEATURES_CONFIG.subheadings.recovery_pass,
+            pro: storedFeatures.subheadings?.pro ?? DEFAULT_FEATURES_CONFIG.subheadings.pro,
+            super: storedFeatures.subheadings?.super ?? DEFAULT_FEATURES_CONFIG.subheadings.super,
+          });
+        } else {
+          setFreeFeatures(DEFAULT_FEATURES_CONFIG.free);
+          setRecoveryFeatures(DEFAULT_FEATURES_CONFIG.recovery_pass);
+          setProFeatures(DEFAULT_FEATURES_CONFIG.pro);
+          setSuperFeatures(DEFAULT_FEATURES_CONFIG.super);
+          setHeadings({ ...DEFAULT_FEATURES_CONFIG.headings });
+          setSubheadings({ ...DEFAULT_FEATURES_CONFIG.subheadings });
+        }
       }
     }, (err) => {
       console.error("Settings listener error:", err)
     })
-    return unsub
+
+    const unsubTiers = onSnapshot(collection(db, "pricing_tiers"), (snap) => {
+      const data: Record<string, any> = {}
+      snap.forEach((doc) => {
+        data[doc.id] = doc.data()
+      })
+      setPricingTiers(data)
+    }, (err) => {
+      console.error("Pricing tiers listener error:", err)
+    })
+
+    const unsubCampaigns = onSnapshot(collection(db, 'campaigns'), (snap) => {
+      setCampaigns(snap.docs.map(d => ({ id: d.id, ...d.data() })))
+    }, (err) => {
+      console.error("Campaigns listener error:", err)
+    })
+
+    const unsubCoupons = onSnapshot(collection(db, 'coupons'), (snap) => {
+      setCoupons(snap.docs.map(d => ({ id: d.id, ...d.data() })))
+    }, (err) => {
+      console.error("Coupons listener error:", err)
+    })
+
+    // FAQ listener
+    const unsubFaqs = onSnapshot(doc(db, "settings", "faqs"), (snap) => {
+      if (snap.exists()) {
+        const data = snap.data();
+        if (Array.isArray(data.items) && data.items.length > 0) {
+          setFaqItems(data.items);
+        }
+      }
+    });
+
+    return () => {
+      unsubGlobal()
+      unsubTiers()
+      unsubCampaigns()
+      unsubCoupons()
+      unsubFaqs()
+    }
   }, [])
+
+  // Sync inputs with selected region pricing tier
+  useEffect(() => {
+    const docId = REGION_DOC_IDS[selectedConfigTier]
+    if (docId && pricingTiers[docId]) {
+      const tierData = pricingTiers[docId]
+      setCurrencyCode(tierData.currency_code ?? "")
+      setCurrencySymbol(tierData.currency_symbol ?? "")
+      setRecoveryPassCurrent(String(tierData.recovery_pass?.current ?? ""))
+      setProLifetimeCurrent(String(tierData.pro_lifetime?.current ?? ""))
+      setSuperLifetimeCurrent(String(tierData.super_lifetime?.current ?? ""))
+    } else {
+      // Fallback
+      const staticConfig = REGION_PRICING_CONFIGS[selectedConfigTier] || REGION_PRICING_CONFIGS.t3
+      setCurrencyCode(staticConfig.currency)
+      setCurrencySymbol(staticConfig.symbol)
+      setRecoveryPassCurrent(String(staticConfig.recoveryPass))
+      setProLifetimeCurrent(String(staticConfig.finalPro))
+      setSuperLifetimeCurrent(String(staticConfig.finalSuper))
+    }
+  }, [selectedConfigTier, pricingTiers])
 
   // Load secure settings on mount
   useEffect(() => {
@@ -132,73 +285,485 @@ export default function AdminSettings() {
     loadSecureSettings()
   }, [])
 
-  const handleSaveSettings = async () => {
-    setSaving(true)
+  const handleSavePricing = async () => {
+    const docId = REGION_DOC_IDS[selectedConfigTier];
+    if (!docId) return;
+
+    setSavingPricing(true);
     try {
-      const activeProductsMap: Record<string, Record<string, string>> = {}
-      const fullProductsMap: Record<string, Record<string, string>> = {}
-
-      DODO_REGIONS.forEach(r => {
-        const regionProducts = dodoProducts[r.key] || {}
-        activeProductsMap[r.key] = {
-          recovery_pass: regionProducts.recovery_pass || '',
-          pro: regionProducts.pro || '',
-          super: regionProducts.super || ''
+      await setDoc(doc(db, "pricing_tiers", docId), {
+        currency_code: currencyCode,
+        currency_symbol: currencySymbol,
+        recovery_pass: {
+          current: Number(recoveryPassCurrent)
+        },
+        pro_lifetime: {
+          current: Number(proLifetimeCurrent)
+        },
+        super_lifetime: {
+          current: Number(superLifetimeCurrent)
         }
-        fullProductsMap[r.key] = {
-          pro: regionProducts.pro_full || '',
-          super: regionProducts.super_full || ''
-        }
-      })
-
-      await setDoc(doc(db, "settings", "global"), {
-        maintenance,
-        reviewAutoApprove,
-        ticketSlaHours: Number(ticketSlaHours),
-        freeQuotaMB: Number(freeQuotaMB),
-        
-        t3_recovery_pass: Number(t3RecoveryPass),
-        t3_pro: Number(t3Pro),
-        t3_super: Number(t3Super),
-
-        t2_recovery_pass: Number(t2RecoveryPass),
-        t2_pro: Number(t2Pro),
-        t2_super: Number(t2Super),
-
-        t1_recovery_pass: Number(t1RecoveryPass),
-        t1_pro: Number(t1Pro),
-        t1_super: Number(t1Super),
-
-        in_recovery_pass: Number(inRecoveryPass),
-        in_pro: Number(inPro),
-        in_super: Number(inSuper),
-
-        dodo_products: activeProductsMap,
-        dodo_products_full: fullProductsMap,
-      }, { merge: true })
-
-      await setDoc(doc(db, "settings", "secure"), {
-        dodo_webhook_key: dodoWebhookKey
-      }, { merge: true })
+      }, { merge: true });
 
       // Log action to audit activity logs
       await addDoc(collection(db, "admin_activity"), {
         actorUid: adminData?.uid || "system",
         actorName: adminData?.displayName || "Admin",
         actorRole: role,
-        action: "SETTINGS_CHANGE",
-        description: `Updated platform settings: Maintenance=${maintenance}, AutoApprove=${reviewAutoApprove}, SLA=${ticketSlaHours}h, FreeQuota=${freeQuotaMB}MB. Saved custom tier prices and updated Dodo Payments Product IDs/Webhook Key.`,
+        action: "PRICING_CHANGE",
+        description: `Updated regional pricing for ${docId}: currency=${currencyCode}, recovery=${recoveryPassCurrent}, pro=${proLifetimeCurrent}, super=${superLifetimeCurrent}.`,
+        timestamp: Date.now()
+      });
+
+      useToastStore.getState().addToast(`Pricing for ${docId} updated successfully.`, "success");
+    } catch (err: any) {
+      console.error(err);
+      useToastStore.getState().addToast("Failed to save pricing: " + err.message, "error");
+    } finally {
+      setSavingPricing(false);
+    }
+  };
+
+  // ─── Campaign Manager helpers ──────────────────────────────────────────────
+  const PLAN_LABELS_CM: Record<string, string> = {
+    recovery_pass: 'Recovery Pass',
+    pro: 'Pro',
+    super: 'Super',
+  }
+
+  const resetCampaignForm = () => {
+    setCampaignForm({ campaignName: '', description: '', status: 'DRAFT', isEnabled: false, expirationType: 'NONE', expirationDateTime: '', maxPurchaseLimit: '' })
+    setCampaignDiscounts([
+      { planCode: 'recovery_pass', discountType: 'PERCENTAGE', discountValue: 0 },
+      { planCode: 'pro', discountType: 'PERCENTAGE', discountValue: 0 },
+      { planCode: 'super', discountType: 'PERCENTAGE', discountValue: 0 },
+    ])
+    setEditingCampaign(null)
+    setShowCampaignForm(false)
+  }
+
+  const tsToDatetimeLocal = (ts: any): string => {
+    if (!ts) return ''
+    const d = ts.seconds ? new Date(ts.seconds * 1000) : new Date(ts)
+    if (isNaN(d.getTime())) return ''
+    const pad = (n: number) => String(n).padStart(2, '0')
+    return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
+  }
+
+  const handleEditCampaign = async (camp: any) => {
+    setEditingCampaign(camp)
+    setShowCampaignForm(true)
+    setCampaignForm({
+      campaignName: camp.campaignName || '',
+      description: camp.description || '',
+      status: camp.status || 'DRAFT',
+      isEnabled: camp.isEnabled ?? false,
+      expirationType: camp.expirationType || 'NONE',
+      expirationDateTime: tsToDatetimeLocal(camp.expirationDateTime),
+      maxPurchaseLimit: camp.maxPurchaseLimit != null ? String(camp.maxPurchaseLimit) : '',
+    })
+    // Load discounts subcollection
+    try {
+      const discSnap = await getDocs(collection(db, 'campaigns', camp.id, 'discounts'))
+      if (!discSnap.empty) {
+        const loaded = discSnap.docs.map(d => ({ planCode: d.data().planCode, discountType: d.data().discountType || 'PERCENTAGE', discountValue: d.data().discountValue || 0 }))
+        const merged = ['recovery_pass', 'pro', 'super'].map(pc => {
+          const found = loaded.find(l => l.planCode === pc)
+          return found || { planCode: pc, discountType: 'PERCENTAGE', discountValue: 0 }
+        })
+        setCampaignDiscounts(merged)
+      } else {
+        setCampaignDiscounts([
+          { planCode: 'recovery_pass', discountType: 'PERCENTAGE', discountValue: 0 },
+          { planCode: 'pro', discountType: 'PERCENTAGE', discountValue: 0 },
+          { planCode: 'super', discountType: 'PERCENTAGE', discountValue: 0 },
+        ])
+      }
+    } catch (e) {
+      console.error('Failed to load campaign discounts:', e)
+    }
+  }
+
+  const handleSaveCampaignNew = async () => {
+    if (!campaignForm.campaignName.trim()) {
+      useToastStore.getState().addToast('Campaign name is required.', 'error')
+      return
+    }
+    setSavingCampaignNew(true)
+    try {
+      const isActivating = campaignForm.status === 'ACTIVE' && campaignForm.isEnabled
+
+      // One-active-at-a-time: pause all other ACTIVE campaigns
+      if (isActivating) {
+        const activeCamps = campaigns.filter(c => c.status === 'ACTIVE' && c.isEnabled && c.id !== editingCampaign?.id)
+        for (const ac of activeCamps) {
+          await updateDoc(doc(db, 'campaigns', ac.id), { status: 'PAUSED', updatedAt: serverTimestamp() })
+        }
+      }
+
+      const payload: any = {
+        campaignName: campaignForm.campaignName.trim(),
+        description: campaignForm.description.trim(),
+        status: campaignForm.status,
+        isEnabled: campaignForm.isEnabled,
+        expirationType: campaignForm.expirationType,
+        expirationDateTime: (campaignForm.expirationType === 'TIME_ONLY' || campaignForm.expirationType === 'BOTH') && campaignForm.expirationDateTime
+          ? Timestamp.fromDate(new Date(campaignForm.expirationDateTime))
+          : null,
+        maxPurchaseLimit: (campaignForm.expirationType === 'PURCHASE_LIMIT_ONLY' || campaignForm.expirationType === 'BOTH') && campaignForm.maxPurchaseLimit
+          ? Number(campaignForm.maxPurchaseLimit)
+          : null,
+        updatedAt: serverTimestamp(),
+      }
+
+      let campaignId: string
+      if (editingCampaign) {
+        await updateDoc(doc(db, 'campaigns', editingCampaign.id), payload)
+        campaignId = editingCampaign.id
+      } else {
+        payload.currentPurchaseCount = 0
+        payload.createdBy = adminData?.uid || 'system'
+        payload.createdAt = serverTimestamp()
+        const ref = await addDoc(collection(db, 'campaigns'), payload)
+        campaignId = ref.id
+      }
+
+      // Save discounts subcollection
+      for (const disc of campaignDiscounts) {
+        const discRef = doc(db, 'campaigns', campaignId, 'discounts', disc.planCode)
+        await setDoc(discRef, { planCode: disc.planCode, discountType: disc.discountType, discountValue: Number(disc.discountValue) }, { merge: true })
+      }
+
+      await addDoc(collection(db, 'admin_activity'), {
+        actorUid: adminData?.uid || 'system',
+        actorName: adminData?.displayName || 'Admin',
+        actorRole: role,
+        action: editingCampaign ? 'CAMPAIGN_UPDATE' : 'CAMPAIGN_CREATE',
+        description: `${editingCampaign ? 'Updated' : 'Created'} campaign "${payload.campaignName}" status=${payload.status}`,
         timestamp: Date.now()
       })
 
-      useToastStore.getState().addToast("Settings updated successfully.", "success")
+      useToastStore.getState().addToast(`Campaign ${editingCampaign ? 'updated' : 'created'} successfully.`, 'success')
+      resetCampaignForm()
     } catch (err: any) {
       console.error(err)
-      useToastStore.getState().addToast("Failed to save settings: " + err.message, "error")
+      useToastStore.getState().addToast('Failed to save campaign: ' + err.message, 'error')
     } finally {
-      setSaving(false)
+      setSavingCampaignNew(false)
     }
   }
+
+  const handleDeleteCampaign = async (campaignId: string) => {
+    setDeletingCampaignId(campaignId)
+    try {
+      // Delete discounts subcollection docs
+      const discSnap = await getDocs(collection(db, 'campaigns', campaignId, 'discounts'))
+      for (const d of discSnap.docs) await deleteDoc(d.ref)
+      await deleteDoc(doc(db, 'campaigns', campaignId))
+      await addDoc(collection(db, 'admin_activity'), {
+        actorUid: adminData?.uid || 'system', actorName: adminData?.displayName || 'Admin',
+        actorRole: role, action: 'CAMPAIGN_DELETE',
+        description: `Deleted campaign ${campaignId}`, timestamp: Date.now()
+      })
+      useToastStore.getState().addToast('Campaign deleted.', 'success')
+    } catch (err: any) {
+      useToastStore.getState().addToast('Failed to delete campaign: ' + err.message, 'error')
+    } finally {
+      setDeletingCampaignId(null)
+      setConfirmDeleteCampaignId(null)
+    }
+  }
+
+  const handleToggleCampaignEnabled = async (camp: any) => {
+    try {
+      const newEnabled = !camp.isEnabled
+      // If enabling+ACTIVE, pause others
+      if (newEnabled && camp.status === 'ACTIVE') {
+        const activeCamps = campaigns.filter(c => c.status === 'ACTIVE' && c.isEnabled && c.id !== camp.id)
+        for (const ac of activeCamps) {
+          await updateDoc(doc(db, 'campaigns', ac.id), { status: 'PAUSED', updatedAt: serverTimestamp() })
+        }
+      }
+      await updateDoc(doc(db, 'campaigns', camp.id), { isEnabled: newEnabled, updatedAt: serverTimestamp() })
+    } catch (err: any) {
+      useToastStore.getState().addToast('Failed to toggle campaign: ' + err.message, 'error')
+    }
+  }
+
+  // ─── Coupon Manager helpers ────────────────────────────────────────────────
+  const COUPON_REGIONS = [
+    { key: 'in', label: 'India' }, { key: 't1', label: 'Tier 1' }, { key: 't2', label: 'Tier 2' },
+    { key: 't3', label: 'Tier 3' }, { key: 't4', label: 'Tier 4' },
+    { key: 'eu', label: 'Europe' }, { key: 'jp', label: 'Japan' }, { key: 'cn', label: 'China' },
+  ]
+  const COUPON_PLANS = ['recovery_pass', 'pro', 'super']
+
+  const resetCouponForm = () => {
+    setCouponForm({ couponCode: '', title: '', description: '', campaignId: '', discountType: 'PERCENTAGE', discountValue: 0, stackable: false, active: true, validFrom: '', validUntil: '', usageLimit: '' })
+    setCouponTargets({})
+    setSyncLog([])
+    setEditingCoupon(null)
+    setShowCouponForm(false)
+  }
+
+  const handleEditCoupon = async (coup: any) => {
+    setEditingCoupon(coup)
+    setShowCouponForm(true)
+    setCouponForm({
+      couponCode: coup.couponCode || '',
+      title: coup.title || '',
+      description: coup.description || '',
+      campaignId: coup.campaignId || '',
+      discountType: coup.discountType || 'PERCENTAGE',
+      discountValue: coup.discountValue || 0,
+      stackable: coup.stackable ?? false,
+      active: coup.active ?? true,
+      validFrom: tsToDatetimeLocal(coup.validFrom),
+      validUntil: tsToDatetimeLocal(coup.validUntil),
+      usageLimit: coup.usageLimit != null ? String(coup.usageLimit) : '',
+    })
+    // Load targets subcollection
+    try {
+      const targSnap = await getDocs(collection(db, 'coupons', coup.id, 'targets'))
+      const newTargets: Record<string, boolean> = {}
+      targSnap.docs.forEach(d => {
+        const data = d.data()
+        if (data.regionCode && data.planCode) newTargets[`${data.regionCode}_${data.planCode}`] = true
+      })
+      setCouponTargets(newTargets)
+    } catch (e) { console.error('Failed to load coupon targets:', e) }
+    // Load sync_log subcollection
+    try {
+      const logSnap = await getDocs(collection(db, 'coupons', coup.id, 'sync_log'))
+      setSyncLog(logSnap.docs.map(d => ({ id: d.id, ...d.data() })))
+    } catch (e) { console.error('Failed to load sync log:', e) }
+  }
+
+  const handleSaveCoupon = async () => {
+    if (!couponForm.couponCode.trim()) {
+      useToastStore.getState().addToast('Coupon code is required.', 'error')
+      return
+    }
+    setSavingCoupon(true)
+    try {
+      const payload: any = {
+        couponCode: couponForm.couponCode.trim().toUpperCase(),
+        title: couponForm.title.trim(),
+        description: couponForm.description.trim(),
+        campaignId: couponForm.campaignId || null,
+        discountType: couponForm.discountType,
+        discountValue: Number(couponForm.discountValue),
+        stackable: couponForm.stackable,
+        active: couponForm.active,
+        validFrom: couponForm.validFrom ? Timestamp.fromDate(new Date(couponForm.validFrom)) : null,
+        validUntil: couponForm.validUntil ? Timestamp.fromDate(new Date(couponForm.validUntil)) : null,
+        usageLimit: couponForm.usageLimit ? Number(couponForm.usageLimit) : null,
+        updatedAt: serverTimestamp(),
+      }
+      let couponId: string
+      if (editingCoupon) {
+        await updateDoc(doc(db, 'coupons', editingCoupon.id), payload)
+        couponId = editingCoupon.id
+      } else {
+        payload.usedCount = 0
+        payload.createdAt = serverTimestamp()
+        const ref = await addDoc(collection(db, 'coupons'), payload)
+        couponId = ref.id
+      }
+      // Save targets: delete all existing then re-create from checkbox state
+      const existingTargSnap = await getDocs(collection(db, 'coupons', couponId, 'targets'))
+      for (const d of existingTargSnap.docs) await deleteDoc(d.ref)
+      for (const key of Object.keys(couponTargets)) {
+        if (!couponTargets[key]) continue
+        const [regionCode, planCode] = key.split('_', 2)
+        await addDoc(collection(db, 'coupons', couponId, 'targets'), { regionCode, planCode })
+      }
+      await addDoc(collection(db, 'admin_activity'), {
+        actorUid: adminData?.uid || 'system', actorName: adminData?.displayName || 'Admin',
+        actorRole: role, action: editingCoupon ? 'COUPON_UPDATE' : 'COUPON_CREATE',
+        description: `${editingCoupon ? 'Updated' : 'Created'} coupon "${payload.couponCode}"`, timestamp: Date.now()
+      })
+      useToastStore.getState().addToast(`Coupon ${editingCoupon ? 'updated' : 'created'} successfully.`, 'success')
+      resetCouponForm()
+    } catch (err: any) {
+      console.error(err)
+      useToastStore.getState().addToast('Failed to save coupon: ' + err.message, 'error')
+    } finally {
+      setSavingCoupon(false)
+    }
+  }
+
+  const handleDeleteCoupon = async (couponId: string) => {
+    setDeletingCouponId(couponId)
+    try {
+      const targSnap = await getDocs(collection(db, 'coupons', couponId, 'targets'))
+      for (const d of targSnap.docs) await deleteDoc(d.ref)
+      const logSnap = await getDocs(collection(db, 'coupons', couponId, 'sync_log'))
+      for (const d of logSnap.docs) await deleteDoc(d.ref)
+      await deleteDoc(doc(db, 'coupons', couponId))
+      await addDoc(collection(db, 'admin_activity'), {
+        actorUid: adminData?.uid || 'system', actorName: adminData?.displayName || 'Admin',
+        actorRole: role, action: 'COUPON_DELETE',
+        description: `Deleted coupon ${couponId}`, timestamp: Date.now()
+      })
+      useToastStore.getState().addToast('Coupon deleted.', 'success')
+    } catch (err: any) {
+      useToastStore.getState().addToast('Failed to delete coupon: ' + err.message, 'error')
+    } finally {
+      setDeletingCouponId(null)
+      setConfirmDeleteCouponId(null)
+    }
+  }
+
+  const handleToggleCouponActive = async (coup: any) => {
+    try {
+      await updateDoc(doc(db, 'coupons', coup.id), { active: !coup.active, updatedAt: serverTimestamp() })
+    } catch (err: any) {
+      useToastStore.getState().addToast('Failed to toggle coupon: ' + err.message, 'error')
+    }
+  }
+
+  const handleSyncCoupon = async (couponId: string) => {
+    setSyncingCoupon(true)
+    try {
+      // Read cloud function URL from settings/system or fallback
+      let cfUrl = `https://us-central1-unknown.cloudfunctions.net/geminiToolGateway/sync-coupon`
+      try {
+        const sysDoc = await getDoc(doc(db, 'settings', 'system'))
+        if (sysDoc.exists() && sysDoc.data().cloud_function_url) {
+          cfUrl = sysDoc.data().cloud_function_url.replace(/\/$/, '') + '/sync-coupon'
+        }
+      } catch (e) { /* use fallback */ }
+
+      const resp = await fetch(cfUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ couponId })
+      })
+      const result = await resp.json()
+      // Reload sync log
+      const logSnap = await getDocs(collection(db, 'coupons', couponId, 'sync_log'))
+      setSyncLog(logSnap.docs.map(d => ({ id: d.id, ...d.data() })))
+      if (resp.ok) {
+        useToastStore.getState().addToast('Sync completed successfully.', 'success')
+      } else {
+        useToastStore.getState().addToast('Sync returned an error: ' + (result.error || resp.status), 'error')
+      }
+    } catch (err: any) {
+      useToastStore.getState().addToast('Sync failed: ' + err.message, 'error')
+    } finally {
+      setSyncingCoupon(false)
+    }
+  }
+
+  // ─── FAQ handlers ─────────────────────────────────────────────────────────
+  const handleSaveFaqs = async () => {
+    setSavingFaqs(true);
+    try {
+      await setDoc(doc(db, "settings", "faqs"), { items: faqItems }, { merge: true });
+      addToast("FAQs saved successfully!", "success");
+    } catch (e: any) {
+      addToast("Failed to save FAQs: " + e.message, "error");
+    } finally {
+      setSavingFaqs(false);
+    }
+  };
+
+  const moveFaq = (idx: number, dir: -1 | 1) => {
+    const next = idx + dir;
+    if (next < 0 || next >= faqItems.length) return;
+    setFaqItems(prev => { const a = [...prev]; [a[idx], a[next]] = [a[next], a[idx]]; return a; });
+  };
+
+  const updateFaq = (idx: number, field: keyof { id:string; question:string; answer:string; tag:string }, value: string) =>
+    setFaqItems(prev => prev.map((f, i) => i === idx ? { ...f, [field]: value } : f));
+
+  const deleteFaq = (idx: number) =>
+    setFaqItems(prev => prev.filter((_, i) => i !== idx));
+
+  const addFaq = () =>
+    setFaqItems(prev => [...prev, { id: `faq-${Date.now()}`, tag: "General", question: "", answer: "" }]);
+
+  // Ctrl+B / Cmd+B → wrap selected text in **bold**
+  const handleAnswerKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>, idx: number) => {
+    if ((e.ctrlKey || e.metaKey) && e.key === 'b') {
+      e.preventDefault();
+      const el = e.currentTarget;
+      const start = el.selectionStart ?? 0;
+      const end   = el.selectionEnd   ?? 0;
+      if (start === end) return; // nothing selected
+      const val      = el.value;
+      const newValue = val.slice(0, start) + '**' + val.slice(start, end) + '**' + val.slice(end);
+      updateFaq(idx, 'answer', newValue);
+      // restore cursor position after React re-render
+      setTimeout(() => {
+        el.selectionStart = start + 2;
+        el.selectionEnd   = end   + 2;
+        el.focus();
+      }, 0);
+    }
+  };
+
+  const handleSaveGlobalSettings = async () => {
+    setSavingGlobal(true);
+    try {
+      const activeProductsMap: Record<string, Record<string, string>> = {};
+
+      DODO_REGIONS.forEach(r => {
+        const regionProducts = dodoProducts[r.key] || {};
+        activeProductsMap[r.key] = {
+          recovery_pass: regionProducts.recovery_pass || '',
+          pro: regionProducts.pro || '',
+          super: regionProducts.super || ''
+        };
+      });
+
+      // 1. Save global settings
+      await setDoc(doc(db, "settings", "global"), {
+        maintenance,
+        reviewAutoApprove,
+        ticketSlaHours: Number(ticketSlaHours),
+        freeQuotaMB: Number(tierThresholds.free.maxSizeMB), // mirror from free tier
+        dodo_products: activeProductsMap,
+        tierThresholds: {
+          free:          { maxFiles: Number(tierThresholds.free.maxFiles),          maxSizeMB: Number(tierThresholds.free.maxSizeMB)          },
+          recovery_pass: { maxFiles: Number(tierThresholds.recovery_pass.maxFiles), maxSizeMB: Number(tierThresholds.recovery_pass.maxSizeMB) },
+          pro:           { maxFiles: Number(tierThresholds.pro.maxFiles),           maxSizeMB: Number(tierThresholds.pro.maxSizeMB)           },
+          super:         { maxFiles: Number(tierThresholds.super.maxFiles),         maxSizeMB: Number(tierThresholds.super.maxSizeMB)         },
+        },
+        features_config: {
+          free: freeFeatures,
+          recovery_pass: recoveryFeatures,
+          pro: proFeatures,
+          super: superFeatures,
+          headings,
+          subheadings,
+        }
+      }, { merge: true });
+
+      // 2. Save secure settings
+      await setDoc(doc(db, "settings", "secure"), {
+        dodo_webhook_key: dodoWebhookKey
+      }, { merge: true });
+
+      // Log action to audit activity logs
+      await addDoc(collection(db, "admin_activity"), {
+        actorUid: adminData?.uid || "system",
+        actorName: adminData?.displayName || "Admin",
+        actorRole: role,
+        action: "GLOBAL_SETTINGS_CHANGE",
+        description: `Updated global/Dodo settings: Maintenance=${maintenance}, AutoApprove=${reviewAutoApprove}, SLA=${ticketSlaHours}h, FreeQuota=${freeQuotaMB}MB, WebhookKeyUpdated=${!!dodoWebhookKey}.`,
+        timestamp: Date.now()
+      });
+
+      useToastStore.getState().addToast("System settings updated successfully.", "success");
+    } catch (err: any) {
+      console.error(err);
+      useToastStore.getState().addToast("Failed to save system settings: " + err.message, "error");
+    } finally {
+      setSavingGlobal(false);
+    }
+  };
 
   return (
     <div className="space-y-8 font-sans text-zinc-100">
@@ -250,39 +815,71 @@ export default function AdminSettings() {
           </CardContent>
         </Card>
 
-        {/* Gated Thresholds */}
+        {/* Tool Thresholds */}
         <Card className="bg-zinc-900 border-zinc-800 shadow-none">
           <CardHeader>
             <CardTitle className="text-sm font-semibold flex items-center gap-2 text-zinc-200">
-              <Sliders className="w-4 h-4 text-purple-400" /> Platform Thresholds
+              <Sliders className="w-4 h-4 text-purple-400" /> Plan Tool Thresholds
             </CardTitle>
-            <CardDescription className="text-zinc-500 text-xs">Define dynamic constraints for tiers and responses.</CardDescription>
+            <CardDescription className="text-zinc-500 text-xs">
+              Set the max files and max size (MB) allowed per plan. Pro and Super are unlimited — only Free and Recovery Pass have capped thresholds.
+            </CardDescription>
           </CardHeader>
-          <CardContent className="space-y-4">
-            <div>
-              <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 block mb-1.5">Free Plan Max Quota (MB)</label>
-              <div className="relative flex items-center">
-                <Database className="w-4 h-4 text-zinc-600 absolute left-3" />
-                <Input 
-                  type="number"
-                  value={freeQuotaMB}
-                  onChange={(e) => setFreeQuotaMB(e.target.value)}
-                  className="bg-zinc-950 border-zinc-800 text-zinc-100 text-xs pl-9 h-9"
-                />
-              </div>
-            </div>
+          <CardContent>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+              {([
+                { tierKey: 'free'          as const, label: 'Free',          color: 'text-green-400',  border: 'border-green-500/20',  bg: 'bg-green-500/5'  },
+                { tierKey: 'recovery_pass' as const, label: 'Recovery Pass', color: 'text-zinc-300',   border: 'border-zinc-600/30',   bg: 'bg-zinc-800/20'  },
+              ]).map(({ tierKey, label, color, border, bg }) => (
+                <div key={tierKey} className={`rounded-xl border ${border} ${bg} p-4 space-y-4`}>
+                  <div className={`text-xs font-bold ${color} border-b border-zinc-800/60 pb-2`}>{label}</div>
 
-            <div>
-              <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 block mb-1.5">Support SLA Response Goal (Hours)</label>
-              <div className="relative flex items-center">
-                <Sliders className="w-4 h-4 text-zinc-600 absolute left-3" />
-                <Input 
-                  type="number"
-                  value={ticketSlaHours}
-                  onChange={(e) => setTicketSlaHours(e.target.value)}
-                  className="bg-zinc-950 border-zinc-800 text-zinc-100 text-xs pl-9 h-9"
-                />
-              </div>
+                  {/* Max Files */}
+                  <div>
+                    <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-500 block mb-1.5">
+                      Max No. of Files
+                    </label>
+                    <div className="relative flex items-center">
+                      <Database className="w-3.5 h-3.5 text-zinc-600 absolute left-3" />
+                      <Input
+                        type="number"
+                        min="0"
+                        value={tierThresholds[tierKey].maxFiles}
+                        onChange={(e) => setTierThresholds(prev => ({
+                          ...prev,
+                          [tierKey]: { ...prev[tierKey], maxFiles: e.target.value }
+                        }))}
+                        className="bg-zinc-950 border-zinc-800 text-zinc-100 text-xs pl-9 h-9"
+                        placeholder="e.g. 250"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Max Size MB */}
+                  <div>
+                    <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-500 block mb-1.5">
+                      Max Quota Size (MB)
+                    </label>
+                    <div className="relative flex items-center">
+                      <Sliders className="w-3.5 h-3.5 text-zinc-600 absolute left-3" />
+                      <Input
+                        type="number"
+                        min="0"
+                        value={tierThresholds[tierKey].maxSizeMB}
+                        onChange={(e) => setTierThresholds(prev => ({
+                          ...prev,
+                          [tierKey]: { ...prev[tierKey], maxSizeMB: e.target.value }
+                        }))}
+                        className="bg-zinc-950 border-zinc-800 text-zinc-100 text-xs pl-9 h-9"
+                        placeholder="e.g. 500"
+                      />
+                    </div>
+                    <p className="text-[10px] text-zinc-600 mt-1">
+                      ≈ {(Number(tierThresholds[tierKey].maxSizeMB) / 1024).toFixed(1)} GB
+                    </p>
+                  </div>
+                </div>
+              ))}
             </div>
           </CardContent>
         </Card>
@@ -298,98 +895,709 @@ export default function AdminSettings() {
           <CardContent>
             {/* Tier Select Dropdown */}
             <div className="mb-6">
-              <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 block mb-1.5">Select Configuration Tier</label>
+              <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 block mb-1.5">Select Configuration Region</label>
               <select
                 value={selectedConfigTier}
                 onChange={(e) => setSelectedConfigTier(e.target.value)}
                 className="bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-2 text-sm text-white focus:outline-none focus:border-indigo-500 cursor-pointer w-full md:w-96"
               >
-                <option value="t3">Tier 3 (High-Income Countries / USD Baseline)</option>
-                <option value="t2">Tier 2 (Mid-Income Countries / USD)</option>
-                <option value="t1">Tier 1 (Low-Income Countries / USD)</option>
                 <option value="in">India (INR Localized Tier)</option>
+                <option value="cn">China (CNY Localized Tier)</option>
+                <option value="jp">Japan (JPY Localized Tier)</option>
+                <option value="eu">Europe (EUR Localized Tier)</option>
+                <option value="t1">Tier 1 (Low-Income Countries / USD)</option>
+                <option value="t2">Tier 2 (Mid-Income Countries / USD)</option>
+                <option value="t3">US (Tier 3) (Baseline USD)</option>
+                <option value="t4">Tier 4 (Premium Tier / USD)</option>
               </select>
             </div>
 
-            {/* Dynamic Inputs based on active tier */}
-            <div className="space-y-4 mb-6">
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                <div>
-                  <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 block mb-1">Recovery Pass Price</label>
-                  <div className="relative flex items-center">
-                    <span className="text-zinc-500 absolute left-3 text-xs">{selectedConfigTier === "in" ? "₹" : "$"}</span>
-                    <Input 
-                      type="number" 
-                      step={selectedConfigTier === "in" ? "1" : "0.01"}
-                      value={
-                        selectedConfigTier === "t3" ? t3RecoveryPass :
-                        selectedConfigTier === "t2" ? t2RecoveryPass :
-                        selectedConfigTier === "t1" ? t1RecoveryPass :
-                        inRecoveryPass
-                      } 
-                      onChange={(e) => {
-                        const val = e.target.value;
-                        if (selectedConfigTier === "t3") setT3RecoveryPass(val);
-                        else if (selectedConfigTier === "t2") setT2RecoveryPass(val);
-                        else if (selectedConfigTier === "t1") setT1RecoveryPass(val);
-                        else setInRecoveryPass(val);
-                      }}
-                      className="bg-zinc-950 border-zinc-800 text-zinc-100 text-xs pl-6 h-9" 
-                    />
-                  </div>
-                </div>
-                <div>
-                  <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 block mb-1">Pro Lifetime Price</label>
-                  <div className="relative flex items-center">
-                    <span className="text-zinc-500 absolute left-3 text-xs">{selectedConfigTier === "in" ? "₹" : "$"}</span>
-                    <Input 
-                      type="number"
-                      step={selectedConfigTier === "in" ? "1" : "0.01"}
-                      value={
-                        selectedConfigTier === "t3" ? t3Pro :
-                        selectedConfigTier === "t2" ? t2Pro :
-                        selectedConfigTier === "t1" ? t1Pro :
-                        inPro
-                      } 
-                      onChange={(e) => {
-                        const val = e.target.value;
-                        if (selectedConfigTier === "t3") setT3Pro(val);
-                        else if (selectedConfigTier === "t2") setT2Pro(val);
-                        else if (selectedConfigTier === "t1") setT1Pro(val);
-                        else setInPro(val);
-                      }}
-                      className="bg-zinc-950 border-zinc-800 text-zinc-100 text-xs pl-6 h-9" 
-                    />
-                  </div>
-                </div>
-                <div>
-                  <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 block mb-1">Super Lifetime Price</label>
-                  <div className="relative flex items-center">
-                    <span className="text-zinc-500 absolute left-3 text-xs">{selectedConfigTier === "in" ? "₹" : "$"}</span>
-                    <Input 
-                      type="number"
-                      step={selectedConfigTier === "in" ? "1" : "0.01"}
-                      value={
-                        selectedConfigTier === "t3" ? t3Super :
-                        selectedConfigTier === "t2" ? t2Super :
-                        selectedConfigTier === "t1" ? t1Super :
-                        inSuper
-                      } 
-                      onChange={(e) => {
-                        const val = e.target.value;
-                        if (selectedConfigTier === "t3") setT3Super(val);
-                        else if (selectedConfigTier === "t2") setT2Super(val);
-                        else if (selectedConfigTier === "t1") setT1Super(val);
-                        else setInSuper(val);
-                      }}
-                      className="bg-zinc-950 border-zinc-800 text-zinc-100 text-xs pl-6 h-9" 
-                    />
-                  </div>
-                </div>
+            {/* Currency Inputs */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6 border-b border-zinc-800/85 pb-6">
+              <div>
+                <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 block mb-1">Currency Code</label>
+                <Input 
+                  type="text" 
+                  value={currencyCode} 
+                  onChange={(e) => setCurrencyCode(e.target.value.toUpperCase())}
+                  placeholder="USD"
+                  className="bg-zinc-950 border-zinc-800 text-zinc-100 text-xs h-9 font-mono" 
+                />
+              </div>
+              <div>
+                <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 block mb-1">Currency Symbol</label>
+                <Input 
+                  type="text" 
+                  value={currencySymbol} 
+                  onChange={(e) => setCurrencySymbol(e.target.value)}
+                  placeholder="$"
+                  className="bg-zinc-950 border-zinc-800 text-zinc-100 text-xs h-9 font-mono" 
+                />
               </div>
             </div>
 
-            {/* Removed internal Save button to use page footer */}
+            {/* Prices Inputs — Clean Single-Value Baseline Model */}
+            <div className="space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                
+                {/* Recovery Pass Base */}
+                <div className="bg-zinc-950/30 p-4 border border-zinc-800/60 rounded-xl space-y-3">
+                  <div className="text-xs font-semibold text-zinc-300 border-b border-zinc-800/80 pb-2">Recovery Pass Base Price</div>
+                  <div>
+                    <label className="text-[9px] font-bold uppercase tracking-wider text-zinc-500 block mb-1">Standard Rate</label>
+                    <div className="relative flex items-center">
+                      <span className="text-zinc-600 absolute left-3 text-xs">{currencySymbol}</span>
+                      <Input 
+                        type="number" 
+                        step="any"
+                        value={recoveryPassCurrent} 
+                        onChange={(e) => setRecoveryPassCurrent(e.target.value)}
+                        className="bg-zinc-950 border-zinc-800 text-zinc-100 text-xs pl-6 h-9" 
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Pro Lifetime Base */}
+                <div className="bg-zinc-950/30 p-4 border border-zinc-800/60 rounded-xl space-y-3">
+                  <div className="text-xs font-semibold text-zinc-300 border-b border-zinc-800/80 pb-2">Pro Lifetime Base Price</div>
+                  <div>
+                    <label className="text-[9px] font-bold uppercase tracking-wider text-zinc-500 block mb-1">Standard Rate</label>
+                    <div className="relative flex items-center">
+                      <span className="text-zinc-600 absolute left-3 text-xs">{currencySymbol}</span>
+                      <Input 
+                        type="number" 
+                        step="any"
+                        value={proLifetimeCurrent} 
+                        onChange={(e) => setProLifetimeCurrent(e.target.value)}
+                        className="bg-zinc-950 border-zinc-800 text-zinc-100 text-xs pl-6 h-9" 
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Super Lifetime Base */}
+                <div className="bg-zinc-950/30 p-4 border border-zinc-800/60 rounded-xl space-y-3">
+                  <div className="text-xs font-semibold text-zinc-300 border-b border-zinc-800/80 pb-2">Super Lifetime Base Price</div>
+                  <div>
+                    <label className="text-[9px] font-bold uppercase tracking-wider text-zinc-500 block mb-1">Standard Rate</label>
+                    <div className="relative flex items-center">
+                      <span className="text-zinc-600 absolute left-3 text-xs">{currencySymbol}</span>
+                      <Input 
+                        type="number" 
+                        step="any"
+                        value={superLifetimeCurrent} 
+                        onChange={(e) => setSuperLifetimeCurrent(e.target.value)}
+                        className="bg-zinc-950 border-zinc-800 text-zinc-100 text-xs pl-6 h-9" 
+                      />
+                    </div>
+                  </div>
+                </div>
+
+              </div>
+            </div>
+            
+            {/* Save region pricing button */}
+            <div className="flex justify-end pt-6 border-t border-zinc-800/80 mt-6">
+              <Button 
+                type="button"
+                onClick={handleSavePricing} 
+                disabled={savingPricing}
+                className="bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white px-5 h-9 text-xs font-semibold rounded-lg"
+              >
+                {savingPricing ? "Saving Region Pricing..." : "Save Region Pricing"}
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* ═══════════════════════════════════════════════════════════════════ */}
+        {/* Campaign Manager */}
+        {/* ═══════════════════════════════════════════════════════════════════ */}
+        <Card className="bg-zinc-900 border-zinc-800 shadow-none md:col-span-2">
+          <CardHeader>
+            <CardTitle className="text-sm font-semibold flex items-center gap-2 text-zinc-200">
+              <Tag className="w-4 h-4 text-purple-400" /> Campaign Manager
+            </CardTitle>
+            <CardDescription className="text-zinc-500 text-xs">
+              Create and manage promotional campaigns backed by Firestore. Only one campaign can be ACTIVE+enabled at a time.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+
+            {/* Campaign List */}
+            {campaigns.length === 0 && !showCampaignForm && (
+              <div className="text-center py-8 text-zinc-600 text-xs">No campaigns yet. Click "New Campaign" to create one.</div>
+            )}
+            <div className="space-y-2">
+              {campaigns.map((camp) => {
+                const statusColors: Record<string, string> = {
+                  DRAFT: 'bg-zinc-700/40 text-zinc-400 border-zinc-700/40',
+                  ACTIVE: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20',
+                  PAUSED: 'bg-amber-500/10 text-amber-400 border-amber-500/20',
+                  EXPIRED: 'bg-red-500/10 text-red-400 border-red-500/20',
+                }
+                const statusColor = statusColors[camp.status] || statusColors.DRAFT
+                const isEditing = editingCampaign?.id === camp.id && showCampaignForm
+                return (
+                  <div key={camp.id} className="bg-zinc-950/40 border border-zinc-800/80 rounded-xl overflow-hidden">
+                    <div className="flex items-center gap-3 p-3 flex-wrap">
+                      {/* Status badge */}
+                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded border ${statusColor} flex items-center gap-1 shrink-0`}>
+                        {camp.status === 'ACTIVE' && <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />}
+                        {camp.status}
+                      </span>
+                      {/* Name & desc */}
+                      <div className="flex-1 min-w-0">
+                        <div className="text-xs font-semibold text-zinc-200 truncate">{camp.campaignName}</div>
+                        {camp.description && <div className="text-[10px] text-zinc-500 truncate mt-0.5">{camp.description}</div>}
+                      </div>
+                      {/* isEnabled toggle */}
+                      <button
+                        type="button"
+                        title={camp.isEnabled ? 'Enabled' : 'Disabled'}
+                        onClick={() => handleToggleCampaignEnabled(camp)}
+                        className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 focus:outline-none ${camp.isEnabled ? 'bg-indigo-500' : 'bg-zinc-800'}`}
+                      >
+                        <span className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow ring-0 transition duration-200 ${camp.isEnabled ? 'translate-x-4' : 'translate-x-0'}`} />
+                      </button>
+                      {/* Edit button */}
+                      <button
+                        type="button"
+                        onClick={() => isEditing ? resetCampaignForm() : handleEditCampaign(camp)}
+                        className="text-[11px] font-semibold px-2.5 py-1 rounded-lg border border-zinc-700 text-zinc-300 hover:border-indigo-500 hover:text-indigo-400 transition-all"
+                      >
+                        {isEditing ? 'Close' : 'Edit'}
+                      </button>
+                      {/* Delete button */}
+                      {confirmDeleteCampaignId === camp.id ? (
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-[10px] text-red-400">Confirm?</span>
+                          <button type="button" onClick={() => handleDeleteCampaign(camp.id)} disabled={deletingCampaignId === camp.id}
+                            className="text-[10px] font-bold px-2 py-0.5 rounded bg-red-600 hover:bg-red-500 text-white disabled:opacity-50">
+                            {deletingCampaignId === camp.id ? '...' : 'Yes'}
+                          </button>
+                          <button type="button" onClick={() => setConfirmDeleteCampaignId(null)}
+                            className="text-[10px] font-bold px-2 py-0.5 rounded bg-zinc-700 hover:bg-zinc-600 text-zinc-300">No</button>
+                        </div>
+                      ) : (
+                        <button type="button" onClick={() => setConfirmDeleteCampaignId(camp.id)}
+                          className="w-7 h-7 rounded-lg flex items-center justify-center text-red-400 hover:bg-red-500/10 border border-transparent hover:border-red-500/20 transition-all">
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      )}
+                    </div>
+
+                    {/* Inline Edit Form */}
+                    {isEditing && (
+                      <div className="border-t border-zinc-800/80 p-4 space-y-4 bg-zinc-950/60">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div>
+                            <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 block mb-1">Campaign Name *</label>
+                            <Input type="text" value={campaignForm.campaignName} onChange={e => setCampaignForm(p => ({ ...p, campaignName: e.target.value }))} placeholder="e.g. Summer Sale" className="bg-zinc-950 border-zinc-800 text-zinc-100 text-xs h-9" />
+                          </div>
+                          <div>
+                            <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 block mb-1">Status</label>
+                            <select value={campaignForm.status} onChange={e => setCampaignForm(p => ({ ...p, status: e.target.value }))} className="bg-zinc-950 border border-zinc-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-indigo-500 w-full h-9">
+                              <option value="DRAFT">DRAFT</option>
+                              <option value="ACTIVE">ACTIVE</option>
+                              <option value="PAUSED">PAUSED</option>
+                            </select>
+                          </div>
+                        </div>
+                        <div>
+                          <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 block mb-1">Description</label>
+                          <textarea value={campaignForm.description} onChange={e => setCampaignForm(p => ({ ...p, description: e.target.value }))} rows={2} placeholder="Optional description…" className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-3 py-2 text-xs text-zinc-300 focus:outline-none focus:border-indigo-500 resize-none" />
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                          <div className="flex items-center justify-between p-3 bg-zinc-950/40 border border-zinc-800/80 rounded-xl">
+                            <div className="text-xs font-bold text-zinc-300">Enabled</div>
+                            <button type="button" onClick={() => setCampaignForm(p => ({ ...p, isEnabled: !p.isEnabled }))} className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors ${campaignForm.isEnabled ? 'bg-indigo-500' : 'bg-zinc-800'}`}>
+                              <span className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow ring-0 transition duration-200 ${campaignForm.isEnabled ? 'translate-x-4' : 'translate-x-0'}`} />
+                            </button>
+                          </div>
+                          <div>
+                            <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 block mb-1">Expiration Type</label>
+                            <select value={campaignForm.expirationType} onChange={e => setCampaignForm(p => ({ ...p, expirationType: e.target.value }))} className="bg-zinc-950 border border-zinc-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-indigo-500 w-full h-9">
+                              <option value="NONE">NONE</option>
+                              <option value="TIME_ONLY">TIME_ONLY</option>
+                              <option value="PURCHASE_LIMIT_ONLY">PURCHASE_LIMIT_ONLY</option>
+                              <option value="BOTH">BOTH</option>
+                            </select>
+                          </div>
+                          <div className="flex items-center gap-2 p-3 bg-zinc-950/40 border border-zinc-800/80 rounded-xl">
+                            <div className="text-xs text-zinc-400">Claims so far:</div>
+                            <span className="text-sm font-bold text-indigo-400">{camp.currentPurchaseCount ?? 0}</span>
+                          </div>
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div>
+                            <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 block mb-1">Expiration Date/Time</label>
+                            <Input type="datetime-local" value={campaignForm.expirationDateTime} onChange={e => setCampaignForm(p => ({ ...p, expirationDateTime: e.target.value }))} disabled={campaignForm.expirationType !== 'TIME_ONLY' && campaignForm.expirationType !== 'BOTH'} className="bg-zinc-950 border-zinc-800 text-zinc-100 text-xs h-9 disabled:opacity-40" />
+                          </div>
+                          <div>
+                            <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 block mb-1">Max Purchase Limit</label>
+                            <Input type="number" value={campaignForm.maxPurchaseLimit} onChange={e => setCampaignForm(p => ({ ...p, maxPurchaseLimit: e.target.value }))} disabled={campaignForm.expirationType !== 'PURCHASE_LIMIT_ONLY' && campaignForm.expirationType !== 'BOTH'} placeholder="e.g. 200" className="bg-zinc-950 border-zinc-800 text-zinc-100 text-xs h-9 disabled:opacity-40" />
+                          </div>
+                        </div>
+                        {/* Per-plan discounts table */}
+                        <div>
+                          <div className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 mb-2">Per-Plan Discounts</div>
+                          <div className="border border-zinc-800/60 rounded-xl overflow-hidden">
+                            <table className="w-full text-xs">
+                              <thead className="bg-zinc-950/60">
+                                <tr>
+                                  <th className="px-3 py-2 text-left text-[10px] font-bold text-zinc-500 uppercase tracking-wider">Plan</th>
+                                  <th className="px-3 py-2 text-left text-[10px] font-bold text-zinc-500 uppercase tracking-wider">Type</th>
+                                  <th className="px-3 py-2 text-left text-[10px] font-bold text-zinc-500 uppercase tracking-wider">Value</th>
+                                </tr>
+                              </thead>
+                              <tbody className="divide-y divide-zinc-800/40">
+                                {campaignDiscounts.map((disc, idx) => (
+                                  <tr key={disc.planCode}>
+                                    <td className="px-3 py-2 font-semibold text-zinc-300">{PLAN_LABELS_CM[disc.planCode]}</td>
+                                    <td className="px-3 py-2">
+                                      <select value={disc.discountType} onChange={e => setCampaignDiscounts(p => p.map((d, i) => i === idx ? { ...d, discountType: e.target.value } : d))} className="bg-zinc-950 border border-zinc-800 rounded-lg px-2 py-1 text-[11px] text-white focus:outline-none focus:border-indigo-500 w-full">
+                                        <option value="PERCENTAGE">PERCENTAGE</option>
+                                        <option value="FIXED">FIXED</option>
+                                      </select>
+                                    </td>
+                                    <td className="px-3 py-2">
+                                      <Input type="number" min="0" value={disc.discountValue} onChange={e => setCampaignDiscounts(p => p.map((d, i) => i === idx ? { ...d, discountValue: Number(e.target.value) } : d))} className="bg-zinc-950 border-zinc-800 text-zinc-100 text-xs h-7 w-24" />
+                                    </td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                        </div>
+                        <div className="flex justify-end gap-2 pt-2 border-t border-zinc-800/60">
+                          <Button type="button" onClick={resetCampaignForm} className="bg-zinc-800 hover:bg-zinc-700 text-zinc-300 px-4 h-8 text-xs font-semibold rounded-lg">Cancel</Button>
+                          <Button type="button" onClick={handleSaveCampaignNew} disabled={savingCampaignNew} className="bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white px-4 h-8 text-xs font-semibold rounded-lg">
+                            {savingCampaignNew ? 'Saving…' : 'Save Campaign'}
+                          </Button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+
+            {/* New Campaign Form (when not editing an existing one) */}
+            {showCampaignForm && !editingCampaign && (
+              <div className="border border-indigo-500/20 rounded-xl p-4 space-y-4 bg-indigo-500/5">
+                <div className="text-xs font-bold text-indigo-400 mb-2">New Campaign</div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 block mb-1">Campaign Name *</label>
+                    <Input type="text" value={campaignForm.campaignName} onChange={e => setCampaignForm(p => ({ ...p, campaignName: e.target.value }))} placeholder="e.g. Summer Sale" className="bg-zinc-950 border-zinc-800 text-zinc-100 text-xs h-9" />
+                  </div>
+                  <div>
+                    <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 block mb-1">Status</label>
+                    <select value={campaignForm.status} onChange={e => setCampaignForm(p => ({ ...p, status: e.target.value }))} className="bg-zinc-950 border border-zinc-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-indigo-500 w-full h-9">
+                      <option value="DRAFT">DRAFT</option>
+                      <option value="ACTIVE">ACTIVE</option>
+                      <option value="PAUSED">PAUSED</option>
+                    </select>
+                  </div>
+                </div>
+                <div>
+                  <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 block mb-1">Description</label>
+                  <textarea value={campaignForm.description} onChange={e => setCampaignForm(p => ({ ...p, description: e.target.value }))} rows={2} placeholder="Optional description…" className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-3 py-2 text-xs text-zinc-300 focus:outline-none focus:border-indigo-500 resize-none" />
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="flex items-center justify-between p-3 bg-zinc-950/40 border border-zinc-800/80 rounded-xl">
+                    <div className="text-xs font-bold text-zinc-300">Enabled</div>
+                    <button type="button" onClick={() => setCampaignForm(p => ({ ...p, isEnabled: !p.isEnabled }))} className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors ${campaignForm.isEnabled ? 'bg-indigo-500' : 'bg-zinc-800'}`}>
+                      <span className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow ring-0 transition duration-200 ${campaignForm.isEnabled ? 'translate-x-4' : 'translate-x-0'}`} />
+                    </button>
+                  </div>
+                  <div>
+                    <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 block mb-1">Expiration Type</label>
+                    <select value={campaignForm.expirationType} onChange={e => setCampaignForm(p => ({ ...p, expirationType: e.target.value }))} className="bg-zinc-950 border border-zinc-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-indigo-500 w-full h-9">
+                      <option value="NONE">NONE</option>
+                      <option value="TIME_ONLY">TIME_ONLY</option>
+                      <option value="PURCHASE_LIMIT_ONLY">PURCHASE_LIMIT_ONLY</option>
+                      <option value="BOTH">BOTH</option>
+                    </select>
+                  </div>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 block mb-1">Expiration Date/Time</label>
+                    <Input type="datetime-local" value={campaignForm.expirationDateTime} onChange={e => setCampaignForm(p => ({ ...p, expirationDateTime: e.target.value }))} disabled={campaignForm.expirationType !== 'TIME_ONLY' && campaignForm.expirationType !== 'BOTH'} className="bg-zinc-950 border-zinc-800 text-zinc-100 text-xs h-9 disabled:opacity-40" />
+                  </div>
+                  <div>
+                    <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 block mb-1">Max Purchase Limit</label>
+                    <Input type="number" value={campaignForm.maxPurchaseLimit} onChange={e => setCampaignForm(p => ({ ...p, maxPurchaseLimit: e.target.value }))} disabled={campaignForm.expirationType !== 'PURCHASE_LIMIT_ONLY' && campaignForm.expirationType !== 'BOTH'} placeholder="e.g. 200" className="bg-zinc-950 border-zinc-800 text-zinc-100 text-xs h-9 disabled:opacity-40" />
+                  </div>
+                </div>
+                {/* Per-plan discounts table */}
+                <div>
+                  <div className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 mb-2">Per-Plan Discounts</div>
+                  <div className="border border-zinc-800/60 rounded-xl overflow-hidden">
+                    <table className="w-full text-xs">
+                      <thead className="bg-zinc-950/60">
+                        <tr>
+                          <th className="px-3 py-2 text-left text-[10px] font-bold text-zinc-500 uppercase tracking-wider">Plan</th>
+                          <th className="px-3 py-2 text-left text-[10px] font-bold text-zinc-500 uppercase tracking-wider">Type</th>
+                          <th className="px-3 py-2 text-left text-[10px] font-bold text-zinc-500 uppercase tracking-wider">Value</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-zinc-800/40">
+                        {campaignDiscounts.map((disc, idx) => (
+                          <tr key={disc.planCode}>
+                            <td className="px-3 py-2 font-semibold text-zinc-300">{PLAN_LABELS_CM[disc.planCode]}</td>
+                            <td className="px-3 py-2">
+                              <select value={disc.discountType} onChange={e => setCampaignDiscounts(p => p.map((d, i) => i === idx ? { ...d, discountType: e.target.value } : d))} className="bg-zinc-950 border border-zinc-800 rounded-lg px-2 py-1 text-[11px] text-white focus:outline-none focus:border-indigo-500 w-full">
+                                <option value="PERCENTAGE">PERCENTAGE</option>
+                                <option value="FIXED">FIXED</option>
+                              </select>
+                            </td>
+                            <td className="px-3 py-2">
+                              <Input type="number" min="0" value={disc.discountValue} onChange={e => setCampaignDiscounts(p => p.map((d, i) => i === idx ? { ...d, discountValue: Number(e.target.value) } : d))} className="bg-zinc-950 border-zinc-800 text-zinc-100 text-xs h-7 w-24" />
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+                <div className="flex justify-end gap-2 pt-2 border-t border-zinc-800/60">
+                  <Button type="button" onClick={resetCampaignForm} className="bg-zinc-800 hover:bg-zinc-700 text-zinc-300 px-4 h-8 text-xs font-semibold rounded-lg">Cancel</Button>
+                  <Button type="button" onClick={handleSaveCampaignNew} disabled={savingCampaignNew} className="bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white px-4 h-8 text-xs font-semibold rounded-lg">
+                    {savingCampaignNew ? 'Saving…' : 'Save Campaign'}
+                  </Button>
+                </div>
+              </div>
+            )}
+
+            {/* New Campaign button */}
+            {!showCampaignForm && (
+              <div className="flex justify-end">
+                <Button type="button" onClick={() => { resetCampaignForm(); setShowCampaignForm(true) }} className="bg-purple-700 hover:bg-purple-600 text-white px-4 h-8 text-xs font-semibold rounded-lg flex items-center gap-1.5">
+                  <Plus className="w-3.5 h-3.5" /> New Campaign
+                </Button>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* ═══════════════════════════════════════════════════════════════════ */}
+        {/* Coupon Manager */}
+        {/* ═══════════════════════════════════════════════════════════════════ */}
+        <Card className="bg-zinc-900 border-zinc-800 shadow-none md:col-span-2">
+          <CardHeader>
+            <CardTitle className="text-sm font-semibold flex items-center gap-2 text-zinc-200">
+              <Tag className="w-4 h-4 text-cyan-400" /> Coupon Manager
+            </CardTitle>
+            <CardDescription className="text-zinc-500 text-xs">
+              Create and manage discount coupons with region × plan targeting and Dodo Payments sync.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+
+            {/* Coupon List */}
+            {coupons.length === 0 && !showCouponForm && (
+              <div className="text-center py-8 text-zinc-600 text-xs">No coupons yet. Click "New Coupon" to create one.</div>
+            )}
+            <div className="space-y-2">
+              {coupons.map((coup) => {
+                const isEditing = editingCoupon?.id === coup.id && showCouponForm
+                return (
+                  <div key={coup.id} className="bg-zinc-950/40 border border-zinc-800/80 rounded-xl overflow-hidden">
+                    <div className="flex items-center gap-3 p-3 flex-wrap">
+                      {/* Code badge */}
+                      <span className="font-mono text-[11px] font-bold px-2 py-0.5 rounded bg-zinc-800 border border-zinc-700 text-cyan-300 shrink-0">{coup.couponCode}</span>
+                      {/* Title + usage */}
+                      <div className="flex-1 min-w-0">
+                        <div className="text-xs font-semibold text-zinc-200 truncate">{coup.title || '(no title)'}</div>
+                        <div className="text-[10px] text-zinc-500 mt-0.5">
+                          Used: {coup.usedCount ?? 0}{coup.usageLimit ? ` / ${coup.usageLimit}` : ' / ∞'}
+                          {coup.validUntil && <> · Expires: {tsToDatetimeLocal(coup.validUntil).substring(0, 10)}</>}
+                        </div>
+                      </div>
+                      {/* active toggle */}
+                      <button type="button" title={coup.active ? 'Active' : 'Inactive'} onClick={() => handleToggleCouponActive(coup)}
+                        className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 focus:outline-none ${coup.active ? 'bg-emerald-500' : 'bg-zinc-800'}`}>
+                        <span className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow ring-0 transition duration-200 ${coup.active ? 'translate-x-4' : 'translate-x-0'}`} />
+                      </button>
+                      {/* Edit */}
+                      <button type="button" onClick={() => isEditing ? resetCouponForm() : handleEditCoupon(coup)} className="text-[11px] font-semibold px-2.5 py-1 rounded-lg border border-zinc-700 text-zinc-300 hover:border-cyan-500 hover:text-cyan-400 transition-all">
+                        {isEditing ? 'Close' : 'Edit'}
+                      </button>
+                      {/* Delete */}
+                      {confirmDeleteCouponId === coup.id ? (
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-[10px] text-red-400">Confirm?</span>
+                          <button type="button" onClick={() => handleDeleteCoupon(coup.id)} disabled={deletingCouponId === coup.id} className="text-[10px] font-bold px-2 py-0.5 rounded bg-red-600 hover:bg-red-500 text-white disabled:opacity-50">
+                            {deletingCouponId === coup.id ? '...' : 'Yes'}
+                          </button>
+                          <button type="button" onClick={() => setConfirmDeleteCouponId(null)} className="text-[10px] font-bold px-2 py-0.5 rounded bg-zinc-700 hover:bg-zinc-600 text-zinc-300">No</button>
+                        </div>
+                      ) : (
+                        <button type="button" onClick={() => setConfirmDeleteCouponId(coup.id)} className="w-7 h-7 rounded-lg flex items-center justify-center text-red-400 hover:bg-red-500/10 border border-transparent hover:border-red-500/20 transition-all">
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      )}
+                    </div>
+
+                    {/* Inline Edit Form */}
+                    {isEditing && (
+                      <div className="border-t border-zinc-800/80 p-4 space-y-4 bg-zinc-950/60">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div>
+                            <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 block mb-1">Coupon Code *</label>
+                            <Input type="text" value={couponForm.couponCode} onChange={e => setCouponForm(p => ({ ...p, couponCode: e.target.value.toUpperCase() }))} placeholder="e.g. SUMMER20" className="bg-zinc-950 border-zinc-800 text-cyan-300 font-mono text-xs h-9" />
+                          </div>
+                          <div>
+                            <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 block mb-1">Title</label>
+                            <Input type="text" value={couponForm.title} onChange={e => setCouponForm(p => ({ ...p, title: e.target.value }))} placeholder="e.g. Summer Sale 20% off" className="bg-zinc-950 border-zinc-800 text-zinc-100 text-xs h-9" />
+                          </div>
+                        </div>
+                        <div>
+                          <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 block mb-1">Description</label>
+                          <textarea value={couponForm.description} onChange={e => setCouponForm(p => ({ ...p, description: e.target.value }))} rows={2} placeholder="Optional…" className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-3 py-2 text-xs text-zinc-300 focus:outline-none focus:border-cyan-500 resize-none" />
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                          <div>
+                            <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 block mb-1">Link to Campaign</label>
+                            <select value={couponForm.campaignId} onChange={e => setCouponForm(p => ({ ...p, campaignId: e.target.value }))} className="bg-zinc-950 border border-zinc-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-cyan-500 w-full h-9">
+                              <option value="">None</option>
+                              {campaigns.map(c => <option key={c.id} value={c.id}>{c.campaignName}</option>)}
+                            </select>
+                          </div>
+                          <div>
+                            <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 block mb-1">Discount Type</label>
+                            <select value={couponForm.discountType} onChange={e => setCouponForm(p => ({ ...p, discountType: e.target.value }))} className="bg-zinc-950 border border-zinc-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-cyan-500 w-full h-9">
+                              <option value="PERCENTAGE">PERCENTAGE</option>
+                              <option value="FIXED">FIXED</option>
+                            </select>
+                          </div>
+                          <div>
+                            <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 block mb-1">Discount Value</label>
+                            <Input type="number" min="0" value={couponForm.discountValue} onChange={e => setCouponForm(p => ({ ...p, discountValue: Number(e.target.value) }))} className="bg-zinc-950 border-zinc-800 text-zinc-100 text-xs h-9" />
+                          </div>
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                          <div className="flex items-center justify-between p-3 bg-zinc-950/40 border border-zinc-800/80 rounded-xl">
+                            <div className="text-xs font-bold text-zinc-300">Stackable</div>
+                            <button type="button" onClick={() => setCouponForm(p => ({ ...p, stackable: !p.stackable }))} className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors ${couponForm.stackable ? 'bg-indigo-500' : 'bg-zinc-800'}`}>
+                              <span className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow ring-0 transition duration-200 ${couponForm.stackable ? 'translate-x-4' : 'translate-x-0'}`} />
+                            </button>
+                          </div>
+                          <div className="flex items-center justify-between p-3 bg-zinc-950/40 border border-zinc-800/80 rounded-xl">
+                            <div className="text-xs font-bold text-zinc-300">Active</div>
+                            <button type="button" onClick={() => setCouponForm(p => ({ ...p, active: !p.active }))} className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors ${couponForm.active ? 'bg-emerald-500' : 'bg-zinc-800'}`}>
+                              <span className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow ring-0 transition duration-200 ${couponForm.active ? 'translate-x-4' : 'translate-x-0'}`} />
+                            </button>
+                          </div>
+                          <div>
+                            <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 block mb-1">Valid From</label>
+                            <Input type="datetime-local" value={couponForm.validFrom} onChange={e => setCouponForm(p => ({ ...p, validFrom: e.target.value }))} className="bg-zinc-950 border-zinc-800 text-zinc-100 text-xs h-9" />
+                          </div>
+                          <div>
+                            <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 block mb-1">Valid Until</label>
+                            <Input type="datetime-local" value={couponForm.validUntil} onChange={e => setCouponForm(p => ({ ...p, validUntil: e.target.value }))} className="bg-zinc-950 border-zinc-800 text-zinc-100 text-xs h-9" />
+                          </div>
+                        </div>
+                        <div>
+                          <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 block mb-1">Usage Limit (blank = unlimited)</label>
+                          <Input type="number" min="0" value={couponForm.usageLimit} onChange={e => setCouponForm(p => ({ ...p, usageLimit: e.target.value }))} placeholder="Leave blank for unlimited" className="bg-zinc-950 border-zinc-800 text-zinc-100 text-xs h-9 w-48" />
+                        </div>
+                        {/* Target Selector: Region × Plan grid */}
+                        <div>
+                          <div className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 mb-2">Target Selector — Region × Plan</div>
+                          <div className="border border-zinc-800/60 rounded-xl overflow-hidden">
+                            <table className="w-full text-xs">
+                              <thead className="bg-zinc-950/60">
+                                <tr>
+                                  <th className="px-3 py-2 text-left text-[10px] font-bold text-zinc-500 uppercase tracking-wider">Region</th>
+                                  {COUPON_PLANS.map(plan => <th key={plan} className="px-3 py-2 text-center text-[10px] font-bold text-zinc-500 uppercase tracking-wider">{PLAN_LABELS_CM[plan]}</th>)}
+                                </tr>
+                              </thead>
+                              <tbody className="divide-y divide-zinc-800/40">
+                                {COUPON_REGIONS.map(region => (
+                                  <tr key={region.key}>
+                                    <td className="px-3 py-2 font-semibold text-zinc-300 text-[11px]">{region.label}</td>
+                                    {COUPON_PLANS.map(plan => {
+                                      const key = `${region.key}_${plan}`
+                                      return (
+                                        <td key={plan} className="px-3 py-2 text-center">
+                                          <input type="checkbox" checked={!!couponTargets[key]} onChange={e => setCouponTargets(p => ({ ...p, [key]: e.target.checked }))} className="w-4 h-4 rounded border-zinc-600 bg-zinc-900 text-cyan-500 cursor-pointer accent-cyan-500" />
+                                        </td>
+                                      )
+                                    })}
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                        </div>
+                        {/* Sync to Dodo */}
+                        <div className="border-t border-zinc-800/60 pt-4">
+                          <div className="flex items-center gap-3 mb-3">
+                            <button type="button" onClick={() => handleSyncCoupon(coup.id)} disabled={syncingCoupon}
+                              className="flex items-center gap-2 px-4 h-8 text-xs font-semibold rounded-lg bg-amber-600 hover:bg-amber-500 disabled:opacity-50 text-white transition-all">
+                              {syncingCoupon ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5" />}
+                              {syncingCoupon ? 'Syncing…' : 'Sync to Dodo'}
+                            </button>
+                            <span className="text-[10px] text-zinc-500">POSTs couponId to Cloud Function /sync-coupon</span>
+                          </div>
+                          {syncLog.length > 0 && (
+                            <div className="border border-zinc-800/60 rounded-xl overflow-hidden">
+                              <table className="w-full text-[10px]">
+                                <thead className="bg-zinc-950/60">
+                                  <tr>
+                                    <th className="px-3 py-2 text-left text-zinc-500 uppercase tracking-wider font-bold">Product ID</th>
+                                    <th className="px-3 py-2 text-left text-zinc-500 uppercase tracking-wider font-bold">Dodo Coupon ID</th>
+                                    <th className="px-3 py-2 text-left text-zinc-500 uppercase tracking-wider font-bold">Status</th>
+                                    <th className="px-3 py-2 text-left text-zinc-500 uppercase tracking-wider font-bold">Note</th>
+                                  </tr>
+                                </thead>
+                                <tbody className="divide-y divide-zinc-800/40">
+                                  {syncLog.map(log => (
+                                    <tr key={log.id}>
+                                      <td className="px-3 py-1.5 font-mono text-zinc-400">{log.productId || '—'}</td>
+                                      <td className="px-3 py-1.5 font-mono text-zinc-400">{log.dodoCouponId || '—'}</td>
+                                      <td className="px-3 py-1.5">
+                                        <span className={`px-1.5 py-0.5 rounded font-bold ${
+                                          log.syncStatus === 'SUCCESS' ? 'bg-emerald-500/10 text-emerald-400' :
+                                          log.syncStatus === 'FAILED' ? 'bg-red-500/10 text-red-400' : 'bg-zinc-700/40 text-zinc-400'
+                                        }`}>{log.syncStatus}</span>
+                                      </td>
+                                      <td className="px-3 py-1.5 text-zinc-500 truncate max-w-[160px]">{log.errorMessage || ''}</td>
+                                    </tr>
+                                  ))}
+                                </tbody>
+                              </table>
+                            </div>
+                          )}
+                        </div>
+                        <div className="flex justify-end gap-2 pt-2 border-t border-zinc-800/60">
+                          <Button type="button" onClick={resetCouponForm} className="bg-zinc-800 hover:bg-zinc-700 text-zinc-300 px-4 h-8 text-xs font-semibold rounded-lg">Cancel</Button>
+                          <Button type="button" onClick={handleSaveCoupon} disabled={savingCoupon} className="bg-cyan-700 hover:bg-cyan-600 disabled:opacity-50 text-white px-4 h-8 text-xs font-semibold rounded-lg">
+                            {savingCoupon ? 'Saving…' : 'Save Coupon'}
+                          </Button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+
+            {/* New Coupon Form */}
+            {showCouponForm && !editingCoupon && (
+              <div className="border border-cyan-500/20 rounded-xl p-4 space-y-4 bg-cyan-500/5">
+                <div className="text-xs font-bold text-cyan-400 mb-2">New Coupon</div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 block mb-1">Coupon Code *</label>
+                    <Input type="text" value={couponForm.couponCode} onChange={e => setCouponForm(p => ({ ...p, couponCode: e.target.value.toUpperCase() }))} placeholder="e.g. SUMMER20" className="bg-zinc-950 border-zinc-800 text-cyan-300 font-mono text-xs h-9" />
+                  </div>
+                  <div>
+                    <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 block mb-1">Title</label>
+                    <Input type="text" value={couponForm.title} onChange={e => setCouponForm(p => ({ ...p, title: e.target.value }))} placeholder="e.g. Summer Sale 20% off" className="bg-zinc-950 border-zinc-800 text-zinc-100 text-xs h-9" />
+                  </div>
+                </div>
+                <div>
+                  <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 block mb-1">Description</label>
+                  <textarea value={couponForm.description} onChange={e => setCouponForm(p => ({ ...p, description: e.target.value }))} rows={2} placeholder="Optional…" className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-3 py-2 text-xs text-zinc-300 focus:outline-none focus:border-cyan-500 resize-none" />
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div>
+                    <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 block mb-1">Link to Campaign</label>
+                    <select value={couponForm.campaignId} onChange={e => setCouponForm(p => ({ ...p, campaignId: e.target.value }))} className="bg-zinc-950 border border-zinc-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-cyan-500 w-full h-9">
+                      <option value="">None</option>
+                      {campaigns.map(c => <option key={c.id} value={c.id}>{c.campaignName}</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 block mb-1">Discount Type</label>
+                    <select value={couponForm.discountType} onChange={e => setCouponForm(p => ({ ...p, discountType: e.target.value }))} className="bg-zinc-950 border border-zinc-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-cyan-500 w-full h-9">
+                      <option value="PERCENTAGE">PERCENTAGE</option>
+                      <option value="FIXED">FIXED</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 block mb-1">Discount Value</label>
+                    <Input type="number" min="0" value={couponForm.discountValue} onChange={e => setCouponForm(p => ({ ...p, discountValue: Number(e.target.value) }))} className="bg-zinc-950 border-zinc-800 text-zinc-100 text-xs h-9" />
+                  </div>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                  <div className="flex items-center justify-between p-3 bg-zinc-950/40 border border-zinc-800/80 rounded-xl">
+                    <div className="text-xs font-bold text-zinc-300">Stackable</div>
+                    <button type="button" onClick={() => setCouponForm(p => ({ ...p, stackable: !p.stackable }))} className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors ${couponForm.stackable ? 'bg-indigo-500' : 'bg-zinc-800'}`}>
+                      <span className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow ring-0 transition duration-200 ${couponForm.stackable ? 'translate-x-4' : 'translate-x-0'}`} />
+                    </button>
+                  </div>
+                  <div className="flex items-center justify-between p-3 bg-zinc-950/40 border border-zinc-800/80 rounded-xl">
+                    <div className="text-xs font-bold text-zinc-300">Active</div>
+                    <button type="button" onClick={() => setCouponForm(p => ({ ...p, active: !p.active }))} className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors ${couponForm.active ? 'bg-emerald-500' : 'bg-zinc-800'}`}>
+                      <span className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow ring-0 transition duration-200 ${couponForm.active ? 'translate-x-4' : 'translate-x-0'}`} />
+                    </button>
+                  </div>
+                  <div>
+                    <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 block mb-1">Valid From</label>
+                    <Input type="datetime-local" value={couponForm.validFrom} onChange={e => setCouponForm(p => ({ ...p, validFrom: e.target.value }))} className="bg-zinc-950 border-zinc-800 text-zinc-100 text-xs h-9" />
+                  </div>
+                  <div>
+                    <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 block mb-1">Valid Until</label>
+                    <Input type="datetime-local" value={couponForm.validUntil} onChange={e => setCouponForm(p => ({ ...p, validUntil: e.target.value }))} className="bg-zinc-950 border-zinc-800 text-zinc-100 text-xs h-9" />
+                  </div>
+                </div>
+                <div>
+                  <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 block mb-1">Usage Limit (blank = unlimited)</label>
+                  <Input type="number" min="0" value={couponForm.usageLimit} onChange={e => setCouponForm(p => ({ ...p, usageLimit: e.target.value }))} placeholder="Leave blank for unlimited" className="bg-zinc-950 border-zinc-800 text-zinc-100 text-xs h-9 w-48" />
+                </div>
+                {/* Target Selector */}
+                <div>
+                  <div className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 mb-2">Target Selector — Region × Plan</div>
+                  <div className="border border-zinc-800/60 rounded-xl overflow-hidden">
+                    <table className="w-full text-xs">
+                      <thead className="bg-zinc-950/60">
+                        <tr>
+                          <th className="px-3 py-2 text-left text-[10px] font-bold text-zinc-500 uppercase tracking-wider">Region</th>
+                          {COUPON_PLANS.map(plan => <th key={plan} className="px-3 py-2 text-center text-[10px] font-bold text-zinc-500 uppercase tracking-wider">{PLAN_LABELS_CM[plan]}</th>)}
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-zinc-800/40">
+                        {COUPON_REGIONS.map(region => (
+                          <tr key={region.key}>
+                            <td className="px-3 py-2 font-semibold text-zinc-300 text-[11px]">{region.label}</td>
+                            {COUPON_PLANS.map(plan => {
+                              const key = `${region.key}_${plan}`
+                              return (
+                                <td key={plan} className="px-3 py-2 text-center">
+                                  <input type="checkbox" checked={!!couponTargets[key]} onChange={e => setCouponTargets(p => ({ ...p, [key]: e.target.checked }))} className="w-4 h-4 rounded border-zinc-600 bg-zinc-900 text-cyan-500 cursor-pointer accent-cyan-500" />
+                                </td>
+                              )
+                            })}
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+                <div className="flex justify-end gap-2 pt-2 border-t border-zinc-800/60">
+                  <Button type="button" onClick={resetCouponForm} className="bg-zinc-800 hover:bg-zinc-700 text-zinc-300 px-4 h-8 text-xs font-semibold rounded-lg">Cancel</Button>
+                  <Button type="button" onClick={handleSaveCoupon} disabled={savingCoupon} className="bg-cyan-700 hover:bg-cyan-600 disabled:opacity-50 text-white px-4 h-8 text-xs font-semibold rounded-lg">
+                    {savingCoupon ? 'Saving…' : 'Save Coupon'}
+                  </Button>
+                </div>
+              </div>
+            )}
+
+            {/* New Coupon button */}
+            {!showCouponForm && (
+              <div className="flex justify-end">
+                <Button type="button" onClick={() => { resetCouponForm(); setShowCouponForm(true) }} className="bg-cyan-700 hover:bg-cyan-600 text-white px-4 h-8 text-xs font-semibold rounded-lg flex items-center gap-1.5">
+                  <Plus className="w-3.5 h-3.5" /> New Coupon
+                </Button>
+              </div>
+            )}
           </CardContent>
         </Card>
 
@@ -429,13 +1637,14 @@ export default function AdminSettings() {
             <div className="border-t border-zinc-800/80 pt-6">
               <div className="flex items-center justify-between mb-4">
                 <label className="text-xs font-semibold text-zinc-300">Dodo Plan Product IDs — Per Region</label>
-                <span className="text-[10px] text-zinc-500">Select a region, paste its 5 product IDs</span>
+                <span className="text-[10px] text-zinc-500">Select a region, paste its 3 product IDs</span>
               </div>
 
               {/* Region tab selector */}
               <div className="flex flex-wrap gap-2 mb-5">
                 {DODO_REGIONS.map(r => (
                   <button
+                    type="button"
                     key={r.key}
                     onClick={() => setActiveDodoRegion(r.key)}
                     className={`px-3 py-1.5 rounded-lg text-[11px] font-semibold border transition-all ${
@@ -449,8 +1658,8 @@ export default function AdminSettings() {
                 ))}
               </div>
 
-              {/* 5 inputs for the active region */}
-              <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+              {/* 3 inputs for the active region */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 {DODO_PLANS.map(plan => (
                   <div key={plan}>
                     <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 block mb-1">
@@ -467,7 +1676,7 @@ export default function AdminSettings() {
                         }))
                       }}
                       placeholder="pdt_..."
-                      className="bg-zinc-955 border-zinc-800 text-zinc-200 text-xs h-9 font-mono"
+                      className="bg-zinc-955 border-zinc-800 text-zinc-205 text-xs h-9 font-mono"
                     />
                   </div>
                 ))}
@@ -482,12 +1691,12 @@ export default function AdminSettings() {
                     return (
                       <div key={r.key} className="text-[10px]">
                         <div className={`font-semibold mb-1 ${
-                          filled === 4 ? 'text-emerald-400' : filled > 0 ? 'text-amber-400' : 'text-zinc-600'
+                          filled === 3 ? 'text-emerald-400' : filled > 0 ? 'text-amber-400' : 'text-zinc-600'
                         }`}>
-                          {r.currency} {r.label} {filled === 4 ? '✓' : filled > 0 ? `(${filled}/4)` : '—'}
+                          {r.currency} {r.label} {filled === 3 ? '✓' : filled > 0 ? `(${filled}/3)` : '—'}
                         </div>
                         {DODO_PLANS.map(p => (
-                          <div key={p} className="text-zinc-600 truncate">
+                          <div key={p} className="text-zinc-650 truncate">
                             {dodoProducts[r.key]?.[p] ? `${dodoProducts[r.key][p].substring(0, 14)}…` : `${PLAN_LABELS[p]}: empty`}
                           </div>
                         ))}
@@ -504,16 +1713,202 @@ export default function AdminSettings() {
           </CardContent>
         </Card>
 
+      {/* Tier Features List Customizer */}
+        <Card className="bg-zinc-900 border-zinc-800 shadow-none md:col-span-2">
+          <CardHeader>
+            <CardTitle className="text-sm font-semibold flex items-center gap-2 text-zinc-200">
+              <Settings className="w-4 h-4 text-teal-400" /> Tier Features List Customizer
+            </CardTitle>
+            <CardDescription className="text-zinc-500 text-xs">
+              Customize the feature bullet points shown on each pricing card. Bold items appear highlighted. Changes are saved with "Save System Settings".
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
+              {([
+                { planKey: 'free'          as const, label: 'Free',          color: 'text-green-400',  items: freeFeatures,     setItems: setFreeFeatures },
+                { planKey: 'recovery_pass' as const, label: 'Recovery Pass', color: 'text-zinc-300',   items: recoveryFeatures, setItems: setRecoveryFeatures },
+                { planKey: 'pro'           as const, label: 'Pro Lifetime',  color: 'text-blue-400',   items: proFeatures,      setItems: setProFeatures },
+                { planKey: 'super'         as const, label: 'Super Lifetime',color: 'text-amber-400',  items: superFeatures,    setItems: setSuperFeatures },
+              ]).map(({ planKey, label, color, items, setItems }) => (
+                <div key={planKey} className="bg-zinc-950/30 border border-zinc-800/60 rounded-xl p-4 space-y-3">
+                  {/* Column accent header */}
+                  <div className={`text-xs font-bold ${color} border-b border-zinc-800/80 pb-2`}>{label}</div>
+
+                  {/* Heading input */}
+                  <div className="space-y-1">
+                    <label className="text-[10px] text-zinc-500 uppercase tracking-widest font-semibold">Heading</label>
+                    <input
+                      type="text"
+                      value={headings[planKey]}
+                      onChange={(e) => setHeadings(prev => ({ ...prev, [planKey]: e.target.value }))}
+                      placeholder="Card heading…"
+                      className={`w-full bg-zinc-950 border border-zinc-800 rounded-lg px-2 py-1.5 text-[12px] font-bold focus:outline-none focus:border-indigo-500 ${color} transition-colors`}
+                    />
+                  </div>
+
+                  {/* Subheading input */}
+                  <div className="space-y-1">
+                    <label className="text-[10px] text-zinc-500 uppercase tracking-widest font-semibold">Sub-heading</label>
+                    <input
+                      type="text"
+                      value={subheadings[planKey]}
+                      onChange={(e) => setSubheadings(prev => ({ ...prev, [planKey]: e.target.value }))}
+                      placeholder="Card sub-heading…"
+                      className="w-full bg-zinc-950 border border-zinc-800 rounded-lg px-2 py-1.5 text-[11px] text-zinc-400 focus:outline-none focus:border-indigo-500 transition-colors"
+                    />
+                  </div>
+
+                  {/* Feature bullet list divider */}
+                  <div className="text-[10px] text-zinc-600 uppercase tracking-widest font-semibold pt-1 border-t border-zinc-800/60">Feature Bullets</div>
+                  <div className="space-y-2">
+                    {(items as FeatureItem[]).map((feat, idx) => (
+                      <div key={idx} className="flex items-center gap-1.5">
+                        <button
+                          type="button"
+                          title={feat.isBold ? "Bold: ON" : "Bold: OFF"}
+                          onClick={() => {
+                            const updated = (items as FeatureItem[]).map((f, i) => i === idx ? { ...f, isBold: !f.isBold } : f);
+                            (setItems as React.Dispatch<React.SetStateAction<FeatureItem[]>>)(updated);
+                          }}
+                          className={`shrink-0 w-6 h-6 rounded text-[10px] font-black border transition-all ${
+                            feat.isBold
+                              ? 'bg-indigo-600 border-indigo-500 text-white'
+                              : 'bg-zinc-800 border-zinc-700 text-zinc-500 hover:border-zinc-500'
+                          }`}
+                        >B</button>
+                        <input
+                          type="text"
+                          value={feat.text}
+                          onChange={(e) => {
+                            const updated = (items as FeatureItem[]).map((f, i) => i === idx ? { ...f, text: e.target.value } : f);
+                            (setItems as React.Dispatch<React.SetStateAction<FeatureItem[]>>)(updated);
+                          }}
+                          className={`flex-1 min-w-0 bg-zinc-950 border border-zinc-800 rounded-lg px-2 py-1 text-[11px] focus:outline-none focus:border-indigo-500 ${feat.isBold ? 'font-bold text-white' : 'text-zinc-300'}`}
+                        />
+                        <button
+                          type="button"
+                          title="Delete"
+                          onClick={() => {
+                            (setItems as React.Dispatch<React.SetStateAction<FeatureItem[]>>)((items as FeatureItem[]).filter((_, i) => i !== idx));
+                          }}
+                          className="shrink-0 w-6 h-6 rounded text-red-400 hover:bg-red-500/10 border border-transparent hover:border-red-500/20 flex items-center justify-center transition-all"
+                        >
+                          <Trash2 className="w-3 h-3" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      (setItems as React.Dispatch<React.SetStateAction<FeatureItem[]>>)([...(items as FeatureItem[]), { text: '', isBold: false }]);
+                    }}
+                    className="flex items-center gap-1.5 text-[11px] text-indigo-400 hover:text-indigo-300 transition-colors mt-1"
+                  >
+                    <Plus className="w-3.5 h-3.5" /> Add Feature
+                  </button>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+
+      </div>
+
+      {/* ─── FAQ Manager ────────────────────────────────────────────────── */}
+      <Card className="bg-zinc-900 border-zinc-800 shadow-none">
+        <CardHeader>
+          <CardTitle className="text-sm font-semibold flex items-center gap-2 text-zinc-200">
+            <MessageSquare className="w-4 h-4 text-cyan-400" /> FAQ Manager
+          </CardTitle>
+          <CardDescription className="text-zinc-500 text-xs">
+            Add, edit, reorder, or remove FAQ cards shown on the landing page. Saved independently — click <strong className="text-zinc-400">Save FAQs</strong> below.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <div className="space-y-3 max-h-[560px] overflow-y-auto pr-1 custom-faq-scroll">
+          {faqItems.map((faq, idx) => (
+            <div key={faq.id} className="bg-zinc-950/40 border border-zinc-800/70 rounded-xl p-4 space-y-3">
+
+              {/* Row header: reorder + index + tag + delete */}
+              <div className="flex items-center gap-2 flex-wrap">
+                <div className="flex flex-col gap-0.5 shrink-0">
+                  <button type="button" onClick={() => moveFaq(idx, -1)} disabled={idx === 0}
+                    className="w-5 h-5 rounded flex items-center justify-center text-zinc-500 hover:text-zinc-200 hover:bg-zinc-800 disabled:opacity-20 transition-all">
+                    <ChevronUp className="w-3 h-3" />
+                  </button>
+                  <button type="button" onClick={() => moveFaq(idx, 1)} disabled={idx === faqItems.length - 1}
+                    className="w-5 h-5 rounded flex items-center justify-center text-zinc-500 hover:text-zinc-200 hover:bg-zinc-800 disabled:opacity-20 transition-all">
+                    <ChevronDown className="w-3 h-3" />
+                  </button>
+                </div>
+
+                <span className="text-[10px] text-zinc-600 font-mono w-5 shrink-0 text-center">#{idx + 1}</span>
+
+                <select value={faq.tag} onChange={(e) => updateFaq(idx, 'tag', e.target.value)}
+                  className="bg-zinc-900 border border-zinc-800 text-zinc-300 text-[11px] rounded-lg px-2 py-1 focus:outline-none focus:border-cyan-500 cursor-pointer">
+                  {FAQ_TAGS.map(t => <option key={t} value={t}>{t}</option>)}
+                </select>
+
+                <button type="button" onClick={() => deleteFaq(idx)}
+                  className="ml-auto w-7 h-7 rounded-lg flex items-center justify-center text-red-400 hover:bg-red-500/10 border border-transparent hover:border-red-500/20 transition-all shrink-0">
+                  <Trash2 className="w-3.5 h-3.5" />
+                </button>
+              </div>
+
+              {/* Question */}
+              <div>
+                <label className="text-[10px] text-zinc-500 uppercase tracking-widest font-semibold block mb-1">Question</label>
+                <input type="text" value={faq.question}
+                  onChange={(e) => updateFaq(idx, 'question', e.target.value)}
+                  placeholder="e.g. Why are my JSON metadata files missing?"
+                  className="w-full bg-zinc-950 border border-zinc-800 rounded-lg px-3 py-1.5 text-[12px] font-semibold text-zinc-100 focus:outline-none focus:border-cyan-500 transition-colors" />
+              </div>
+
+              {/* Answer */}
+              <div>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="text-[10px] text-zinc-500 uppercase tracking-widest font-semibold">Answer</label>
+                  <span className="text-[9px] text-zinc-600 bg-zinc-900 border border-zinc-800 rounded px-1.5 py-0.5 font-mono select-none">
+                    Ctrl+B = <strong className="text-zinc-400">bold</strong>
+                  </span>
+                </div>
+                <textarea value={faq.answer}
+                  onChange={(e) => updateFaq(idx, 'answer', e.target.value)}
+                  onKeyDown={(e) => handleAnswerKeyDown(e, idx)}
+                  placeholder="Write the full answer here… select text then Ctrl+B to bold"
+                  rows={3}
+                  className="w-full bg-zinc-950 border border-zinc-800 rounded-lg px-3 py-2 text-[11px] text-zinc-300 leading-relaxed focus:outline-none focus:border-cyan-500 transition-colors resize-y" />
+              </div>
+            </div>
+          ))}
+          </div>
+
+          <button type="button" onClick={addFaq}
+            className="flex items-center gap-2 text-[11px] text-cyan-400 hover:text-cyan-300 font-semibold transition-colors mt-1">
+            <Plus className="w-3.5 h-3.5" /> Add FAQ
+          </button>
+        </CardContent>
+      </Card>
+
+      {/* FAQ save footer */}
+      <div className="flex justify-end gap-3 border-t border-cyan-900/30 pt-4">
+        <Button type="button" onClick={handleSaveFaqs} disabled={savingFaqs}
+          className="bg-cyan-700 hover:bg-cyan-600 disabled:opacity-50 text-white px-6 h-10 text-xs font-semibold rounded-xl">
+          {savingFaqs ? "Saving FAQs…" : "Save FAQs"}
+        </Button>
       </div>
 
       {/* Global save footer */}
       <div className="flex justify-end gap-3 border-t border-zinc-800 pt-6 mt-4">
         <Button 
-          onClick={handleSaveSettings} 
-          disabled={saving}
+          type="button"
+          onClick={handleSaveGlobalSettings} 
+          disabled={savingGlobal}
           className="bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white px-6 h-10 text-xs font-semibold rounded-xl"
         >
-          {saving ? "Saving Changes..." : "Save Settings"}
+          {savingGlobal ? "Saving System Settings..." : "Save System Settings"}
         </Button>
       </div>
     </div>

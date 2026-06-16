@@ -1,5 +1,6 @@
-// No react-router-dom imports
 import { useAuth } from "../contexts/AuthContext"
+import { db } from "../firebase"
+import { collection, query, where, getDocs } from "firebase/firestore"
 
 import { Button } from "../components/ui/button"
 import { Card } from "../components/ui/card"
@@ -16,10 +17,38 @@ interface PlanDetails {
   features: string[];
 }
 
+const isPromoActive = (campaign: any) => {
+  if (!campaign || !campaign.isEnabled) return false;
+  if (campaign.status !== 'ACTIVE') return false;
+
+  const expType = campaign.expirationType || 'NONE';
+  const now = Date.now();
+
+  let timeOk = true;
+  if ((expType === 'TIME_ONLY' || expType === 'BOTH') && campaign.expirationDateTime) {
+    const expiryMs = campaign.expirationDateTime.seconds
+      ? campaign.expirationDateTime.seconds * 1000
+      : new Date(campaign.expirationDateTime).getTime();
+    timeOk = now < expiryMs;
+  }
+
+  let capOk = true;
+  if ((expType === 'PURCHASE_LIMIT_ONLY' || expType === 'BOTH') && campaign.maxPurchaseLimit != null) {
+    capOk = (campaign.currentPurchaseCount ?? 0) < campaign.maxPurchaseLimit;
+  }
+
+  if (expType === 'NONE') return true;
+  if (expType === 'TIME_ONLY') return timeOk;
+  if (expType === 'PURCHASE_LIMIT_ONLY') return capOk;
+  if (expType === 'BOTH') return timeOk && capOk;
+  return false;
+};
+
 const getPlanDetails = (
   planKey: string, 
   region: string, 
-  getPlanPriceValue: (p: string, r: string) => number
+  getPlanPriceValue: (p: string, r: string) => number,
+  campaigns: any
 ): PlanDetails | null => {
   const r = region.toLowerCase();
   let currency = "USD";
@@ -41,7 +70,18 @@ const getPlanDetails = (
 
   const regionConf = { currency, symbol };
 
-  const priceVal = getPlanPriceValue(planKey, region)
+  let priceVal = getPlanPriceValue(planKey, region);
+  if (priceVal !== undefined && priceVal !== null) {
+    let discountPct = 0;
+    if (isPromoActive(campaigns)) {
+      if (planKey === 'recovery_pass') discountPct = campaigns.recovery_discount_percentage ?? 0;
+      else if (planKey === 'pro') discountPct = campaigns.pro_discount_percentage ?? 0;
+      else if (planKey === 'super') discountPct = campaigns.super_discount_percentage ?? 0;
+    }
+    if (discountPct > 0) {
+      priceVal = Number((priceVal * (1 - discountPct / 100)).toFixed(2));
+    }
+  }
   
   const details: Record<string, { name: string; description: string; features: string[] }> = {
     recovery_pass: {
@@ -73,16 +113,6 @@ const getPlanDetails = (
         "Local duplicate-image space scanner",
         "Highest priority dedicated support"
       ]
-    },
-    family: {
-      name: "Family License",
-      description: "Complete Super features for up to 5 family members simultaneously",
-      features: [
-        "Everything in Super Lifetime",
-        "Share access with up to 5 family members",
-        "Separate individual history logs",
-        "VIP customer support response SLA"
-      ]
     }
   }
 
@@ -100,7 +130,7 @@ import { AuthProvider } from "../contexts/AuthContext"
 import { ToastContainer } from "../components/ui/toast"
 
 function CheckoutPageContent() {
-  const { user, userData, loading, region, getPlanPriceValue, dodoProductIds, dodoTestMode, login, selectedCountry } = useAuth()
+  const { user, userData, loading, region, getPlanPriceValue, dodoProductIds, dodoTestMode, login, selectedCountry, campaigns } = useAuth()
   
   if (loading) {
     return (
@@ -155,7 +185,7 @@ function CheckoutPageContent() {
     return 't3'; // Fallback for us/eu/jp etc.
   })()
 
-  const plan = getPlanDetails(planKey, normalizedRegion, getPlanPriceValue)
+  const plan = getPlanDetails(planKey, normalizedRegion, getPlanPriceValue, campaigns)
 
   const [isProcessing, setIsProcessing] = useState(false)
   const [processStep, setProcessStep] = useState("")
@@ -167,7 +197,7 @@ function CheckoutPageContent() {
     // No redirect logic here
   }, [user, loading])
 
-  const handleDodoRedirect = () => {
+  const handleDodoRedirect = async () => {
     if (!user) return
     setError("")
     setIsProcessing(true)
@@ -209,6 +239,44 @@ function CheckoutPageContent() {
     // Pass currency to Dodo so it matches what user saw on pricing page
     if (plan?.currency) {
       params.set("currency", plan.currency)
+    }
+
+    // Auto-apply Dodo coupon: look up active coupons from new coupons collection
+    // matching this plan + region combination
+    try {
+      const couponsSnap = await getDocs(
+        query(collection(db, "coupons"), where("active", "==", true))
+      );
+      let appliedCoupon = "";
+      for (const couponDoc of couponsSnap.docs) {
+        const couponData = couponDoc.data();
+        // Check validity window
+        const now = Date.now();
+        if (couponData.validFrom) {
+          const fromMs = couponData.validFrom.seconds ? couponData.validFrom.seconds * 1000 : new Date(couponData.validFrom).getTime();
+          if (now < fromMs) continue;
+        }
+        if (couponData.validUntil) {
+          const untilMs = couponData.validUntil.seconds ? couponData.validUntil.seconds * 1000 : new Date(couponData.validUntil).getTime();
+          if (now > untilMs) continue;
+        }
+        if (couponData.usageLimit != null && (couponData.usedCount ?? 0) >= couponData.usageLimit) continue;
+        // Check targets subcollection for this plan+region
+        const targetsSnap = await getDocs(collection(db, "coupons", couponDoc.id, "targets"));
+        const matchesTarget = targetsSnap.docs.some(t => {
+          const td = t.data();
+          return td.regionCode === normalizedRegion && td.planCode === planKey;
+        });
+        if (matchesTarget) {
+          appliedCoupon = couponData.couponCode;
+          break; // use first matching coupon
+        }
+      }
+      if (appliedCoupon) {
+        params.set("discount_code", appliedCoupon);
+      }
+    } catch (err) {
+      console.warn("Coupon lookup failed, proceeding without coupon:", err);
     }
 
     window.location.replace(`${dodoBaseUrl}/${productId}?${params.toString()}`)

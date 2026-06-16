@@ -6,7 +6,7 @@ import { Button } from "../components/ui/button"
 import { Input } from "../components/ui/input"
 import { Textarea } from "../components/ui/textarea"
 import { LifeBuoy, FileText, History, PlusCircle, AlertCircle, CheckCircle2, MessageSquare, X } from "lucide-react"
-import { collection, query, where, getDocs, addDoc, doc, updateDoc } from "firebase/firestore"
+import { collection, query, where, getDocs, addDoc, doc, updateDoc, onSnapshot } from "firebase/firestore"
 import { db } from "../firebase"
 import { motion, AnimatePresence } from "framer-motion"
 import AdUnit from "../components/AdUnit"
@@ -18,35 +18,21 @@ interface SupportFaq {
   id: string;
   tag: string;
   q: string;
-  a: string | React.ReactNode;
+  a: string;
 }
 
-const supportFaqs: SupportFaq[] = [
-  { id: "download-takeout", tag: "Guide", q: "How do I download my Google Takeout?", a: "Go to takeout.google.com, select Google Photos, and create an export. Once finished, download and unzip the folder." },
-  { id: "missing-dates", tag: "Metadata", q: "Why are my photos missing dates?", a: "Google removes EXIF metadata when you download through Takeout. Instead, it places the data in separate JSON sidecar files. TakeoutFix merges these files back together." },
-  { id: "upload-privacy", tag: "Privacy", q: "Does TakeoutFix upload my photos?", a: "No. Everything is processed 100% locally on your machine. Your photos never leave your device." },
-  { id: "free-limit", tag: "Pricing", q: "Is there a limit on the free plan?", a: "Yes, the free plan processes up to 500 MB or 250 files to let you test the tool. Upgrading removes this limit." },
-  {
-    id: "refund-policy",
-    tag: "Billing",
-    q: "What is your refund policy?",
-    a: (
-      <>
-        We want you to have a great experience with Takeout Fix. If you experience a genuine technical issue that prevents the software from working as described, and our support team is unable to resolve it, you may request a refund within <strong>7 days</strong> of purchase.
-        <br /><br />
-        For eligibility, exclusions, and the complete policy, please see our{" "}
-        <a href="/refund" className="text-indigo-400 hover:text-indigo-300 font-bold underline">
-          Refund Policy
-        </a>.
-      </>
-    )
-  },
-  { id: "server-upload", tag: "Privacy", q: "Are my photos uploaded to your servers?", a: "No. Never. The entire application runs locally inside your web browser using HTML5 File APIs. Your photos and metadata never leave your computer." },
-  { id: "offline-work", tag: "Privacy", q: "Does this work completely offline?", a: "Once the web app has loaded in your browser, you can disconnect from the internet and it will still process all your files locally." },
-  { id: "out-of-order", tag: "Metadata", q: "Why are my photos showing today's date or out of order after exporting from Google Takeout?", a: "When you export your photos, Google Photos separates the EXIF metadata into separate JSON sidecar files. Without this metadata, your phone or computer defaults to showing today's date (the file modification date), causing your gallery to be completely out of order. TakeoutFix fixes this by merging the JSON sidecars back into your images." },
-  { id: "metadata-types", tag: "Metadata", q: "What metadata can be recovered?", a: "We recover original creation dates (timestamps), GPS coordinates (latitude, longitude, altitude), and camera device information if it exists in the Google JSON sidecars." },
-  { id: "video-support", tag: "Formats", q: "Does it support videos?", a: "Yes! We support .mp4 and .mov files alongside standard image formats like .jpg, .heic, and .png." },
-  { id: "no-install", tag: "About", q: "Can I fix Google Takeout metadata online without downloading any software?", a: "Yes! TakeoutFix is a browser-based, no-install Google Takeout fixer tool. It does not require any software downloads or CLI commands like ExifTool. Everything runs directly inside your web browser 100% offline." }
+const DEFAULT_SUPPORT_FAQS: SupportFaq[] = [
+  { id: "download-takeout", tag: "Guide",    q: "How do I download my Google Takeout?",                                                        a: "Go to takeout.google.com, select Google Photos, and create an export. Once finished, download and unzip the folder." },
+  { id: "missing-dates",   tag: "Metadata", q: "Why are my photos missing dates?",                                                              a: "Google removes EXIF metadata when you download through Takeout. Instead, it places the data in separate JSON sidecar files. TakeoutFix merges these files back together." },
+  { id: "upload-privacy",  tag: "Privacy",  q: "Does TakeoutFix upload my photos?",                                                             a: "No. Everything is processed 100% locally on your machine. Your photos never leave your device." },
+  { id: "free-limit",      tag: "Pricing",  q: "Is there a limit on the free plan?",                                                            a: "Yes, the free plan processes up to 500 MB or 250 files to let you test the tool. Upgrading removes this limit." },
+  { id: "refund-policy",   tag: "Billing",  q: "What is your refund policy?",                                                                   a: "We want you to have a great experience with Takeout Fix. If you experience a genuine technical issue that prevents the software from working as described, and our support team is unable to resolve it, you may request a refund within 7 days of purchase. See our Refund Policy page for full details." },
+  { id: "server-upload",   tag: "Privacy",  q: "Are my photos uploaded to your servers?",                                                       a: "No. Never. The entire application runs locally inside your web browser using HTML5 File APIs. Your photos and metadata never leave your computer." },
+  { id: "offline-work",    tag: "Privacy",  q: "Does this work completely offline?",                                                            a: "Once the web app has loaded in your browser, you can disconnect from the internet and it will still process all your files locally." },
+  { id: "out-of-order",    tag: "Metadata", q: "Why are my photos showing today's date or out of order after exporting from Google Takeout?",    a: "When you export your photos, Google Photos separates the EXIF metadata into separate JSON sidecar files. Without this metadata, your phone or computer defaults to showing today's date (the file modification date), causing your gallery to be completely out of order. TakeoutFix fixes this by merging the JSON sidecars back into your images." },
+  { id: "metadata-types",  tag: "Metadata", q: "What metadata can be recovered?",                                                               a: "We recover original creation dates (timestamps), GPS coordinates (latitude, longitude, altitude), and camera device information if it exists in the Google JSON sidecars." },
+  { id: "video-support",   tag: "Formats",  q: "Does it support videos?",                                                                       a: "Yes! We support .mp4 and .mov files alongside standard image formats like .jpg, .heic, and .png." },
+  { id: "no-install",      tag: "About",    q: "Can I fix Google Takeout metadata online without downloading any software?",                     a: "Yes! TakeoutFix is a browser-based, no-install Google Takeout fixer tool. It does not require any software downloads or CLI commands like ExifTool. Everything runs directly inside your web browser 100% offline." }
 ];
 
 const macOsSpring = {
@@ -55,6 +41,14 @@ const macOsSpring = {
   damping: 28,
   mass: 1
 };
+
+// Renders **bold** markers as <strong> spans
+function renderBoldText(text: string) {
+  const parts = text.split(/\*\*(.*?)\*\*/g);
+  return parts.map((part, i) =>
+    i % 2 === 1 ? <strong key={i} className="font-semibold text-white">{part}</strong> : part
+  );
+}
 
 function SupportPageContent() {
   const { user, userData } = useAuth()
@@ -81,6 +75,26 @@ function SupportPageContent() {
   const [expandedTicketId, setExpandedTicketId] = useState<string | null>(null)
   const [followUpText, setFollowUpText] = useState("")
   const [activeFaqId, setActiveFaqId] = useState<string | null>(null)
+  const [faqItems, setFaqItems] = useState<SupportFaq[]>(DEFAULT_SUPPORT_FAQS)
+
+  // Load FAQs from Firestore (same doc the admin saves to)
+  useEffect(() => {
+    const unsub = onSnapshot(doc(db, "settings", "faqs"), (snap) => {
+      if (snap.exists()) {
+        const data = snap.data();
+        if (Array.isArray(data.items) && data.items.length > 0) {
+          // Admin saves {id, question, answer, tag} — map to {id, q, a, tag}
+          setFaqItems(data.items.map((item: any) => ({
+            id:  item.id  || String(Math.random()),
+            tag: item.tag || "General",
+            q:   item.question || item.q || "",
+            a:   item.answer   || item.a || "",
+          })));
+        }
+      }
+    }, () => { /* keep defaults on error */ });
+    return () => unsub();
+  }, []);
 
   // Handle ESC key to close modal
   useEffect(() => {
@@ -326,7 +340,7 @@ function SupportPageContent() {
                     animate="show"
                     className="space-y-4 max-h-[520px] overflow-y-auto pr-2 custom-faq-scroll"
                   >
-                    {supportFaqs.map((faq) => (
+                    {faqItems.map((faq) => (
                       <motion.div
                         key={faq.id}
                         variants={itemVariants}
@@ -355,7 +369,7 @@ function SupportPageContent() {
                   {/* OVERLAY POPUP MODAL ARCHITECTURE */}
                   <AnimatePresence>
                     {activeFaqId && (() => {
-                      const activeFaq = supportFaqs.find(f => f.id === activeFaqId);
+                      const activeFaq = faqItems.find(f => f.id === activeFaqId);
                       if (!activeFaq) return null;
 
                       return (
@@ -412,7 +426,7 @@ function SupportPageContent() {
 
                               {/* Popup Answer Payload */}
                               <div className="mt-2 text-sm md:text-base text-zinc-650 dark:text-zinc-300 leading-relaxed whitespace-pre-wrap">
-                                {activeFaq.a}
+                                {renderBoldText(String(activeFaq.a))}
                               </div>
                             </motion.div>
                           </motion.div>

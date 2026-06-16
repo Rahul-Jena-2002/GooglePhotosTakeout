@@ -1,14 +1,121 @@
-import React from "react";
-import { useAuth, AuthProvider, REGION_PRICING_CONFIGS } from "../contexts/AuthContext";
-import { ArrowRight, Key, ShieldCheck, RefreshCw } from "lucide-react";
+import React, { useState, useEffect } from "react";
+import { useAuth, AuthProvider, REGION_PRICING_CONFIGS, formatPrice } from "../contexts/AuthContext";
+import { ArrowRight, Key, ShieldCheck, RefreshCw, Sparkles } from "lucide-react";
 import AdUnit from "../components/AdUnit";
+import { db } from "../firebase";
+import { doc, getDoc } from "firebase/firestore";
+import { useToastStore } from "../store/useToastStore";
 
 function PricingPageContent() {
-  const { prices, finalPrices, isFounding, slotsRemaining, region } = useAuth();
-  console.log("PricingPage render:", { prices, finalPrices, isFounding, slotsRemaining, region });
+  const { region, campaigns, getPlanPriceValue, pricingTiers, featuresConfig } = useAuth();
 
-  const config = REGION_PRICING_CONFIGS[region] || REGION_PRICING_CONFIGS.t3;
-  const symbol = config.symbol;
+  const [isPromoActiveLocal, setIsPromoActiveLocal] = useState(false);
+  const [timeLeftStr, setTimeLeftStr] = useState("");
+  const [checkoutLoading, setCheckoutLoading] = useState(false);
+
+  useEffect(() => {
+    const checkPromoActive = () => {
+      if (!campaigns || !campaigns.visibility_toggle) {
+        setIsPromoActiveLocal(false);
+        return;
+      }
+      
+      const condition = campaigns.condition_type;
+      const now = Date.now();
+      
+      let timeConditionMet = true;
+      let diff = 0;
+      if (campaigns.expiration_at) {
+        const expiryTime = campaigns.expiration_at.seconds 
+          ? campaigns.expiration_at.seconds * 1000 
+          : new Date(campaigns.expiration_at).getTime();
+        timeConditionMet = now < expiryTime;
+        diff = expiryTime - now;
+      }
+      
+      let capConditionMet = true;
+      if (campaigns.max_purchase_limit !== null && campaigns.max_purchase_limit !== undefined) {
+        const current = campaigns.current_purchase_count ?? 0;
+        capConditionMet = current < campaigns.max_purchase_limit;
+      }
+      
+      let active = false;
+      if (condition === 'none') active = true;
+      else if (condition === 'time') active = timeConditionMet;
+      else if (condition === 'cap') active = capConditionMet;
+      else if (condition === 'both') active = timeConditionMet && capConditionMet;
+      
+      setIsPromoActiveLocal(active);
+
+      if (active && (condition === 'time' || condition === 'both') && diff > 0) {
+        const totalSecs = Math.floor(diff / 1000);
+        const hours = Math.floor(totalSecs / 3600);
+        const mins = Math.floor((totalSecs % 3600) / 60);
+        const secs = totalSecs % 60;
+        
+        let str = "";
+        if (hours > 0) str += `${hours}h `;
+        str += `${mins}m ${secs}s`;
+        setTimeLeftStr(str);
+      } else {
+        setTimeLeftStr("");
+      }
+    };
+
+    checkPromoActive();
+    const interval = setInterval(checkPromoActive, 1000);
+    return () => clearInterval(interval);
+  }, [campaigns]);
+
+  const REGION_DOC_IDS: Record<string, string> = {
+    in: "India",
+    cn: "China",
+    jp: "Japan",
+    eu: "Europe",
+    t1: "Tier 1",
+    t2: "Tier 2",
+    t3: "US (Tier 3)",
+    t4: "Tier 4"
+  };
+
+  const docId = REGION_DOC_IDS[region] || REGION_DOC_IDS.t3;
+  const firestoreConfig = pricingTiers[docId];
+  const staticConfig = REGION_PRICING_CONFIGS[region] || REGION_PRICING_CONFIGS.t3;
+  
+  const currency = firestoreConfig?.currency_code || staticConfig.currency;
+  const symbol = firestoreConfig?.currency_symbol || staticConfig.symbol;
+
+  const recoveryPassBase = firestoreConfig?.recovery_pass?.current ?? staticConfig.recoveryPass;
+  const proBase = firestoreConfig?.pro_lifetime?.current ?? staticConfig.finalPro;
+  const superBase = firestoreConfig?.super_lifetime?.current ?? staticConfig.finalSuper;
+
+  const recoveryDisc = isPromoActiveLocal ? (campaigns?.recovery_discount_percentage ?? 0) : 0;
+  const proDisc = isPromoActiveLocal ? (campaigns?.pro_discount_percentage ?? 0) : 0;
+  const superDisc = isPromoActiveLocal ? (campaigns?.super_discount_percentage ?? 0) : 0;
+
+  // Recovery prices
+  const recoveryCurrentVal = recoveryPassBase * (1 - recoveryDisc / 100);
+  const formattedRecoveryCurrent = formatPrice(symbol, recoveryCurrentVal, currency);
+  const formattedRecoveryWas = formatPrice(symbol, recoveryPassBase, currency);
+  const showRecoveryDiscount = recoveryDisc > 0;
+
+  // Pro prices
+  const proCurrentVal = proBase * (1 - proDisc / 100);
+  const formattedProCurrent = formatPrice(symbol, proCurrentVal, currency);
+  const formattedProWas = formatPrice(symbol, proBase, currency);
+  const showProDiscount = proDisc > 0;
+
+  // Super prices
+  const superCurrentVal = superBase * (1 - superDisc / 100);
+  const formattedSuperCurrent = formatPrice(symbol, superCurrentVal, currency);
+  const formattedSuperWas = formatPrice(symbol, superBase, currency);
+  const showSuperDiscount = superDisc > 0;
+
+  const bannerText = campaigns?.banner_template
+    ? campaigns.banner_template
+        .replace("{slots_taken}", String(campaigns.current_purchase_count ?? 0))
+        .replace("{max_slots}", String(campaigns.max_purchase_limit ?? 200))
+    : `🎉 ${campaigns?.campaign_name || "Founding Member Pricing"} — ${campaigns?.current_purchase_count ?? 0} / ${campaigns?.max_purchase_limit ?? 200} slots taken. Lock in your lifetime price before slots are gone!`;
 
   return (
     <div className="w-full max-w-7xl mx-auto px-6 py-16 font-sans select-none">
@@ -21,10 +128,10 @@ function PricingPageContent() {
         </p>
       </div>
 
-      {isFounding && (
+      {isPromoActiveLocal && (
         <div className="mb-12 max-w-lg mx-auto bg-gradient-to-r from-indigo-500/10 via-purple-500/10 to-indigo-500/10 border border-indigo-500/20 backdrop-blur-md rounded-2xl p-4 text-center">
           <span className="text-sm font-semibold text-indigo-400">
-            🎉 Founding Member Pricing — {200 - slotsRemaining} / 200 slots taken. Lock in your lifetime price before slots are gone!
+            {bannerText}
           </span>
         </div>
       )}
@@ -35,21 +142,23 @@ function PricingPageContent() {
         <div className="flex flex-col bg-zinc-950/45 border border-zinc-900 rounded-2xl p-6 h-full justify-between hover:border-zinc-800 transition-all">
           <div>
             <div className="mb-6">
-              <h2 className="text-2xl font-bold text-white font-semibold">Free</h2>
-              <p className="text-zinc-500 text-xs mt-1">Free up to 250 files or 500MB</p>
+              <h2 className="text-2xl font-bold text-white font-semibold">{featuresConfig?.headings?.free || 'Free'}</h2>
+              <p className="text-zinc-550 text-xs mt-1">{featuresConfig?.subheadings?.free || 'Free up to 250 files or 500MB'}</p>
             </div>
             <div className="space-y-6">
               <div>
                 <div className="text-4xl font-bold text-white">{symbol}0</div>
-                <p className="text-[11px] text-zinc-400 mt-1 leading-relaxed">Test with a small set of photos to see how easy it is.</p>
+                <p className="text-[11px] text-zinc-400 mt-1 leading-relaxed">Test with a small set of photos to see how it works.</p>
               </div>
               <div className="space-y-2.5">
                 <div className="text-[10px] text-zinc-400 uppercase tracking-widest font-bold mb-1">Includes</div>
                 <ul className="space-y-2 text-xs text-zinc-300">
-                  <li className="flex items-center gap-1.5"><span className="text-green-400 font-bold">✓</span> Free up to 250 files or 500MB</li>
-                  <li className="flex items-center gap-1.5"><span className="text-green-400 font-bold">✓</span> Restores original dates & times</li>
-                  <li className="flex items-center gap-1.5"><span className="text-green-400 font-bold">✓</span> Works directly in your browser</li>
-                  <li className="flex items-center gap-1.5"><span className="text-green-400 font-bold">✓</span> Photos stay 100% private</li>
+                  {(featuresConfig?.free || []).map((feat, idx) => (
+                    <li key={idx} className="flex items-center gap-1.5">
+                      <span className="text-green-400 font-bold">✓</span>
+                      <span className={feat.isBold ? 'font-bold text-white' : ''}>{feat.text}</span>
+                    </li>
+                  ))}
                 </ul>
               </div>
             </div>
@@ -65,21 +174,31 @@ function PricingPageContent() {
         <div className="flex flex-col bg-zinc-950/45 border border-zinc-900 rounded-2xl p-6 h-full justify-between hover:border-zinc-800 transition-all">
           <div>
             <div className="mb-6">
-              <h2 className="text-2xl font-bold text-white font-semibold">Recovery Pass</h2>
-              <p className="text-zinc-500 text-xs mt-1">Single takeout batch up to 3,000 files or 3GB</p>
+              <h2 className="text-2xl font-bold text-white font-semibold">{featuresConfig?.headings?.recovery_pass || 'Recovery Pass'}</h2>
+              <p className="text-zinc-550 text-xs mt-1">{featuresConfig?.subheadings?.recovery_pass || 'Single takeout batch up to 3,000 files or 3GB'}</p>
             </div>
             <div className="space-y-6">
               <div>
-                <div className="text-4xl font-bold text-white">{prices.recovery_pass}</div>
-                <div className="text-[10px] text-zinc-500 font-semibold mt-1">+ local taxes / GST</div>
+                <div className="flex items-baseline flex-wrap gap-2">
+                  <span className="text-4xl font-bold text-white">{formattedRecoveryCurrent}</span>
+                  {showRecoveryDiscount && (
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-sm text-zinc-500 line-through font-medium">{formattedRecoveryWas}</span>
+                      <span className="text-[10px] font-bold text-green-400 bg-green-500/10 border border-green-500/20 px-1.5 py-0.5 rounded-md">{recoveryDisc}% OFF</span>
+                    </div>
+                  )}
+                </div>
                 <p className="text-[11px] text-zinc-400 mt-2.5 leading-relaxed">Fix one folder of photos without any subscription details.</p>
               </div>
               <div className="space-y-2.5">
                 <div className="text-[10px] text-zinc-400 uppercase tracking-widest font-bold mb-1">Everything in Free plus:</div>
                 <ul className="space-y-2 text-xs text-zinc-350 dark:text-zinc-300">
-                  <li className="flex items-center gap-1.5 recovery-pass-highlight"><span className="font-bold">✓</span> Single takeout batch up to 3,000 files or 3GB</li>
-                  <li className="flex items-center gap-1.5"><span className="text-zinc-600 dark:text-zinc-400 font-bold">✓</span> Friendly support help desk</li>
-                  <li className="flex items-center gap-1.5"><span className="text-zinc-600 dark:text-zinc-400 font-bold">✓</span> Download clean file update logs</li>
+                  {(featuresConfig?.recovery_pass || []).map((feat, idx) => (
+                    <li key={idx} className={`flex items-center gap-1.5${idx === 0 ? ' recovery-pass-highlight' : ''}`}>
+                      <span className={idx === 0 ? 'font-bold' : 'text-zinc-600 dark:text-zinc-400 font-bold'}>✓</span>
+                      <span className={feat.isBold ? 'font-bold' : ''}>{feat.text}</span>
+                    </li>
+                  ))}
                 </ul>
               </div>
             </div>
@@ -98,29 +217,47 @@ function PricingPageContent() {
           </div>
           <div>
             <div className="mb-6">
-              <h2 className="text-2xl font-bold text-blue-500 dark:text-blue-400 font-semibold">Pro Lifetime</h2>
-              <p className="text-blue-400 dark:text-blue-350 text-xs mt-1">Unlimited photos and videos. 2 devices. Lifetime.</p>
+              <h2 className="text-2xl font-bold text-blue-500 dark:text-blue-400 font-semibold">{featuresConfig?.headings?.pro || 'Pro Lifetime'}</h2>
+              <p className="text-blue-400 dark:text-blue-350 text-xs mt-1">{featuresConfig?.subheadings?.pro || 'Unlimited photos and videos. 2 devices. Lifetime.'}</p>
             </div>
             <div className="space-y-6">
               <div className="space-y-1">
                 <div className="flex items-baseline flex-wrap gap-2">
-                  <span className="text-4xl font-bold text-white">{prices.pro}</span>
-                  {isFounding && (
+                  <span className="text-4xl font-bold text-white">{formattedProCurrent}</span>
+                  {showProDiscount && (
                     <div className="flex items-center gap-1.5">
-                      <span className="text-sm text-zinc-500 line-through font-medium">{finalPrices.pro}</span>
-                      <span className="text-[10px] font-bold text-green-400 bg-green-500/10 border border-green-500/20 px-1.5 py-0.5 rounded-md">15% OFF</span>
+                      <span className="text-sm text-zinc-500 line-through font-medium">{formattedProWas}</span>
+                      <span className="text-[10px] font-bold text-green-400 bg-green-500/10 border border-green-500/20 px-1.5 py-0.5 rounded-md">{proDisc}% OFF</span>
                     </div>
                   )}
                 </div>
-                <div className="text-[10px] text-zinc-550 dark:text-zinc-500 font-semibold mt-1">+ local taxes / GST</div>
+                
+                {isPromoActiveLocal && proDisc > 0 && (
+                  <div className="mt-2 flex flex-col gap-1.5">
+                    {campaigns.max_purchase_limit && (
+                      <div className="text-[10px] text-blue-400 font-bold bg-blue-500/10 border border-blue-500/20 rounded-lg p-1.5 inline-block">
+                        🔥 Claims: {campaigns.current_purchase_count ?? 0} / {campaigns.max_purchase_limit} claimed
+                      </div>
+                    )}
+                    {timeLeftStr && (
+                      <div className="text-[10px] text-blue-400 font-bold bg-blue-500/10 border border-blue-500/20 rounded-lg p-1.5 inline-block">
+                        ⏳ Expires in: {timeLeftStr}
+                      </div>
+                    )}
+                  </div>
+                )}
+                
                 <p className="text-[11px] text-blue-500 dark:text-blue-300 mt-2.5 leading-relaxed">Use forever · On up to 2 devices</p>
               </div>
               <div className="space-y-2.5">
                 <div className="text-[10px] text-zinc-400 uppercase tracking-widest font-bold mb-1">Everything in Pass plus:</div>
                 <ul className="space-y-2 text-xs text-zinc-350 dark:text-zinc-300">
-                  <li className="flex items-center gap-1.5 font-semibold text-blue-500 dark:text-blue-400"><span className="text-blue-500 dark:text-blue-400 font-bold">✓</span> Unlimited photos & videos</li>
-                  <li className="flex items-center gap-1.5 font-semibold"><span className="text-blue-500 dark:text-blue-400 font-bold">✓</span> Keep history of your runs</li>
-                  <li className="flex items-center gap-1.5 font-semibold"><span className="text-blue-500 dark:text-blue-400 font-bold">✓</span> Priority support messages</li>
+                  {(featuresConfig?.pro || []).map((feat, idx) => (
+                    <li key={idx} className={`flex items-center gap-1.5 font-semibold${idx === 0 ? ' text-blue-500 dark:text-blue-400' : ''}`}>
+                      <span className="text-blue-500 dark:text-blue-400 font-bold">✓</span>
+                      <span className={feat.isBold ? 'font-bold text-blue-500 dark:text-blue-400' : ''}>{feat.text}</span>
+                    </li>
+                  ))}
                 </ul>
               </div>
             </div>
@@ -136,30 +273,47 @@ function PricingPageContent() {
         <div className="flex flex-col bg-zinc-950/45 border border-amber-500/30 rounded-2xl p-6 h-full justify-between hover:border-amber-500/50 transition-all">
           <div>
             <div className="mb-6">
-              <h2 className="text-2xl font-bold text-amber-500 font-semibold">Super Lifetime</h2>
-              <p className="text-amber-300 text-xs mt-1">Unlimited + duplicate finder, before/after logs, ad-free. 3 devices. Lifetime.</p>
+              <h2 className="text-2xl font-bold text-amber-500 font-semibold">{featuresConfig?.headings?.super || 'Super Lifetime'}</h2>
+              <p className="text-amber-300 text-xs mt-1">{featuresConfig?.subheadings?.super || 'Unlimited + duplicate finder, before/after logs, ad-free. 3 devices. Lifetime.'}</p>
             </div>
             <div className="space-y-6">
               <div className="space-y-1">
                 <div className="flex items-baseline flex-wrap gap-2">
-                  <span className="text-4xl font-bold text-white">{prices.super}</span>
-                  {isFounding && (
+                  <span className="text-4xl font-bold text-white">{formattedSuperCurrent}</span>
+                  {showSuperDiscount && (
                     <div className="flex items-center gap-1.5">
-                      <span className="text-sm text-zinc-500 line-through font-medium">{finalPrices.super}</span>
-                      <span className="text-[10px] font-bold text-green-400 bg-green-500/10 border border-green-500/20 px-1.5 py-0.5 rounded-md">10% OFF</span>
+                      <span className="text-sm text-zinc-500 line-through font-medium">{formattedSuperWas}</span>
+                      <span className="text-[10px] font-bold text-green-400 bg-green-500/10 border border-green-500/20 px-1.5 py-0.5 rounded-md">{superDisc}% OFF</span>
                     </div>
                   )}
                 </div>
-                <div className="text-[10px] text-zinc-550 dark:text-zinc-500 font-semibold mt-1">+ local taxes / GST</div>
+                
+                {isPromoActiveLocal && superDisc > 0 && (
+                  <div className="mt-2 flex flex-col gap-1.5">
+                    {campaigns.max_purchase_limit && (
+                      <div className="text-[10px] text-amber-400 font-bold bg-amber-500/10 border border-amber-500/20 rounded-lg p-1.5 inline-block">
+                        🔥 Claims: {campaigns.current_purchase_count ?? 0} / {campaigns.max_purchase_limit} claimed
+                      </div>
+                    )}
+                    {timeLeftStr && (
+                      <div className="text-[10px] text-amber-400 font-bold bg-amber-500/10 border border-amber-500/20 rounded-lg p-1.5 inline-block">
+                        ⏳ Expires in: {timeLeftStr}
+                      </div>
+                    )}
+                  </div>
+                )}
+                
                 <p className="text-[11px] text-amber-400 mt-2.5 leading-relaxed">Use forever · On up to 3 devices</p>
               </div>
               <div className="space-y-2.5">
                 <div className="text-[10px] text-zinc-400 uppercase tracking-widest font-bold mb-1">Everything in Pro plus:</div>
-                <ul className="space-y-2 text-xs text-zinc-300">
-                  <li className="flex items-center gap-1.5 font-semibold text-amber-500"><span className="text-amber-500 font-bold">✓</span> Complete ad-free experience</li>
-                  <li className="flex items-center gap-1.5 font-semibold"><span className="text-amber-500 font-bold">✓</span> View hidden photo details</li>
-                  <li className="flex items-center gap-1.5 font-semibold"><span className="text-amber-500 font-bold">✓</span> Find and clean duplicates</li>
-                  <li className="flex items-center gap-1.5 font-semibold"><span className="text-amber-500 font-bold">✓</span> Compare before & after logs</li>
+                <ul className="space-y-2 text-xs text-zinc-350 dark:text-zinc-300">
+                  {(featuresConfig?.super || []).map((feat, idx) => (
+                    <li key={idx} className={`flex items-center gap-1.5 font-semibold${idx === 0 ? ' text-amber-500' : ''}`}>
+                      <span className="text-amber-500 font-bold">✓</span>
+                      <span className={feat.isBold ? 'font-bold text-amber-500' : ''}>{feat.text}</span>
+                    </li>
+                  ))}
                 </ul>
               </div>
             </div>
@@ -170,6 +324,7 @@ function PricingPageContent() {
             </a>
           </div>
         </div>
+
 
       </div>
 

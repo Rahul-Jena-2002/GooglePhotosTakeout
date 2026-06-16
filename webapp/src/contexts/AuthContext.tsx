@@ -8,6 +8,67 @@ import { useToastStore } from '../store/useToastStore';
 export type PlanType = 'free' | 'recovery_pass' | 'pro' | 'super';
 export type AdminRole = 'SUPER_ADMIN' | 'ADMIN' | 'SUPPORT' | 'MODERATOR';
 
+export interface FeatureItem {
+  text: string;
+  isBold: boolean;
+}
+
+export interface FeaturesConfig {
+  free: FeatureItem[];
+  recovery_pass: FeatureItem[];
+  pro: FeatureItem[];
+  super: FeatureItem[];
+  headings: {
+    free: string;
+    recovery_pass: string;
+    pro: string;
+    super: string;
+  };
+  subheadings: {
+    free: string;
+    recovery_pass: string;
+    pro: string;
+    super: string;
+  };
+}
+
+export const DEFAULT_FEATURES_CONFIG: FeaturesConfig = {
+  headings: {
+    free: "Free",
+    recovery_pass: "Recovery Pass",
+    pro: "Pro Lifetime",
+    super: "Super Lifetime"
+  },
+  subheadings: {
+    free: "Free up to 250 files or 500MB",
+    recovery_pass: "Single takeout batch up to 3,000 files or 3GB",
+    pro: "Unlimited photos and videos. 2 devices. Lifetime.",
+    super: "Unlimited + duplicate finder, before/after logs, ad-free. 3 devices. Lifetime."
+  },
+  free: [
+    { text: "Free up to 250 files or 500MB", isBold: false },
+    { text: "Restores original dates & times", isBold: false },
+    { text: "Works directly in your browser", isBold: false },
+    { text: "Photos stay 100% private", isBold: false }
+  ],
+  recovery_pass: [
+    { text: "Single takeout batch up to 3,000 files or 3GB", isBold: true },
+    { text: "Friendly support help desk", isBold: false },
+    { text: "Download clean file update logs", isBold: false }
+  ],
+  pro: [
+    { text: "Unlimited photos & videos", isBold: true },
+    { text: "Keep history of your runs", isBold: false },
+    { text: "Priority support messages", isBold: false }
+  ],
+  super: [
+    { text: "Complete ad-free experience", isBold: true },
+    { text: "View hidden photo details", isBold: false },
+    { text: "Find and clean duplicates", isBold: false },
+    { text: "Compare before & after logs", isBold: false }
+  ]
+};
+
 export interface PlanPrices {
   recovery_pass: string;
   pro: string;
@@ -83,7 +144,7 @@ export const REGION_PRICING_CONFIGS: Record<string, RegionPricingConfig> = {
 };
 
 // Helper utility to safely format currency
-const formatPrice = (symbol: string, val: number, currency: string): string => {
+export const formatPrice = (symbol: string, val: number, currency: string): string => {
   return `${symbol}${val.toFixed(2)}`;
 };
 
@@ -249,12 +310,20 @@ interface AuthContextType {
   setSelectedCountry: (code: string) => void;
   prices: PlanPrices;
   finalPrices: PlanPrices;
+  wasPrices: PlanPrices;
   foundingCount: number;
   isFounding: boolean;
   slotsRemaining: number;
   getPlanPriceValue: (planKey: string, regionKey: string) => number;
   dodoProductIds: Record<string, Record<string, string>>;
   dodoTestMode: boolean;
+  pricingTiers: Record<string, any>;
+  campaigns: any;          // active campaign doc (or null)
+  activeCampaignDiscounts: Record<string, { discountType: string; discountValue: number }>; // planCode -> discount
+  isPromoCardVisible: boolean;
+  promoCardDetails: any;
+  bannerText: string;
+  featuresConfig: FeaturesConfig;
 }
 
 const getPlanDeviceLimit = (plan: string): number => {
@@ -344,10 +413,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     } catch (_) {}
   };
-
   // Nested region → plan → productId map
   const REGIONS = ['in', 't1', 't2', 't3', 't4', 'eu', 'jp', 'cn'];
-  const PLANS = ['recovery_pass', 'pro', 'super', 'family'];
+  const PLANS = ['recovery_pass', 'pro', 'super']; // Permanently removed family plan
   const buildEmptyProductIds = () => Object.fromEntries(
     REGIONS.map(r => [r, Object.fromEntries(PLANS.map(p => [p, ""]))])
   );
@@ -357,14 +425,29 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   );
 
   const [dodoTestMode, setDodoTestMode] = useState<boolean>(false);
-
   const [foundingCount, setFoundingCount] = useState<number>(0);
+
+  // New pricing & campaigns states
+  const REGION_DOC_IDS: Record<string, string> = {
+    in: "India",
+    cn: "China",
+    jp: "Japan",
+    eu: "Europe",
+    t1: "Tier 1",
+    t2: "Tier 2",
+    t3: "US (Tier 3)",
+    t4: "Tier 4"
+  };
+
+  const [pricingTiers, setPricingTiers] = useState<Record<string, any>>({});
+  const [campaigns, setCampaigns] = useState<any>(null);
+  const [activeCampaignDiscounts, setActiveCampaignDiscounts] = useState<Record<string, { discountType: string; discountValue: number }>>({});
+  const [featuresConfig, setFeaturesConfig] = useState<FeaturesConfig>(DEFAULT_FEATURES_CONFIG);
 
   useEffect(() => {
     const unsub = onSnapshot(doc(db, "settings", "global"), (snap) => {
       if (snap.exists()) {
         const data = snap.data();
-        // Read nested dodo_products map: { in: { recovery_pass: "pdt_x", pro: "pdt_y", super: "pdt_z" }, t1: {...}, ... }
         const stored = data.dodo_products as Record<string, Record<string, string>> | undefined;
         if (stored) {
           setDodoProductIds(prev => {
@@ -380,6 +463,30 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           });
         }
         setDodoTestMode(data.dodo_test_mode ?? false);
+
+        const storedFeatures = data.features_config as FeaturesConfig | undefined;
+        if (storedFeatures) {
+          setFeaturesConfig({
+            free: storedFeatures.free || DEFAULT_FEATURES_CONFIG.free,
+            recovery_pass: storedFeatures.recovery_pass || DEFAULT_FEATURES_CONFIG.recovery_pass,
+            pro: storedFeatures.pro || DEFAULT_FEATURES_CONFIG.pro,
+            super: storedFeatures.super || DEFAULT_FEATURES_CONFIG.super,
+            headings: {
+              free: storedFeatures.headings?.free ?? DEFAULT_FEATURES_CONFIG.headings.free,
+              recovery_pass: storedFeatures.headings?.recovery_pass ?? DEFAULT_FEATURES_CONFIG.headings.recovery_pass,
+              pro: storedFeatures.headings?.pro ?? DEFAULT_FEATURES_CONFIG.headings.pro,
+              super: storedFeatures.headings?.super ?? DEFAULT_FEATURES_CONFIG.headings.super,
+            },
+            subheadings: {
+              free: storedFeatures.subheadings?.free ?? DEFAULT_FEATURES_CONFIG.subheadings.free,
+              recovery_pass: storedFeatures.subheadings?.recovery_pass ?? DEFAULT_FEATURES_CONFIG.subheadings.recovery_pass,
+              pro: storedFeatures.subheadings?.pro ?? DEFAULT_FEATURES_CONFIG.subheadings.pro,
+              super: storedFeatures.subheadings?.super ?? DEFAULT_FEATURES_CONFIG.subheadings.super,
+            },
+          });
+        } else {
+          setFeaturesConfig(DEFAULT_FEATURES_CONFIG);
+        }
       }
     });
     return unsub;
@@ -394,6 +501,73 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return unsubFounding;
   }, []);
 
+  useEffect(() => {
+    const unsubTiers = onSnapshot(collection(db, "pricing_tiers"), (snap) => {
+      const data: Record<string, any> = {};
+      snap.forEach((doc) => {
+        data[doc.id] = doc.data();
+      });
+      setPricingTiers(data);
+    }, (err) => {
+      console.error("Pricing tiers listener error:", err);
+    });
+    return unsubTiers;
+  }, []);
+
+  useEffect(() => {
+    // Listen to the campaigns collection; pick the single ACTIVE+enabled campaign
+    const unsubCampaigns = onSnapshot(collection(db, "campaigns"), (snap) => {
+      const activeCampaign = snap.docs
+        .map(d => ({ id: d.id, ...d.data() }))
+        .find((c: any) => c.isEnabled === true && c.status === 'ACTIVE') || null;
+      setCampaigns(activeCampaign);
+
+      // If we have an active campaign, load its per-plan discounts
+      if (activeCampaign?.id) {
+        getDocs(collection(db, "campaigns", activeCampaign.id, "discounts")).then((discSnap) => {
+          const discounts: Record<string, { discountType: string; discountValue: number }> = {};
+          discSnap.forEach(d => {
+            const data = d.data();
+            discounts[data.planCode] = { discountType: data.discountType, discountValue: data.discountValue };
+          });
+          setActiveCampaignDiscounts(discounts);
+        }).catch(err => console.error("Failed to load campaign discounts:", err));
+      } else {
+        setActiveCampaignDiscounts({});
+      }
+    }, (err) => {
+      console.error("Campaigns collection listener error:", err);
+    });
+    return unsubCampaigns;
+  }, []);
+
+  // Auto-register developer as superadmin on Firestore when on localhost
+  useEffect(() => {
+    if (import.meta.env.DEV && user) {
+      const registerLocalAdmin = async () => {
+        try {
+          await setDoc(doc(db, "admins", user.uid), {
+            uid: user.uid,
+            email: user.email || "local-admin@takeoutfix.com",
+            displayName: user.displayName || "Local Admin",
+            role: "SUPER_ADMIN",
+            status: "online",
+            lastSeen: Date.now(),
+            createdAt: Date.now()
+          }, { merge: true });
+          
+          await setDoc(doc(db, "users", user.uid), {
+            isAdmin: true
+          }, { merge: true });
+          
+          console.log("🚀 Registered current developer user as Super Admin in Firestore.");
+        } catch (e) {
+          console.warn("Auto-register admin failed:", e);
+        }
+      };
+      registerLocalAdmin();
+    }
+  }, [user]);
   const [selectedCountry, setSelectedCountryState] = useState<string>(() => {
     try {
       const isLocalhost = typeof window !== 'undefined' && (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1");
@@ -443,36 +617,133 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   // DYNAMIC CALCULATIONS: Replaced all old hardcoded switch lookups
   const getDynamicPrices = (regionKey: string, useLaunchIfFounding: boolean): PlanPrices => {
-    const config = REGION_PRICING_CONFIGS[regionKey] || REGION_PRICING_CONFIGS.t3;
-    const isLaunch = useLaunchIfFounding && foundingCount < 200;
-    
-    const proPrice = isLaunch ? (config.finalPro * 0.85) : config.finalPro;      // Dynamic 15% off
-    const superPrice = isLaunch ? (config.finalSuper * 0.90) : config.finalSuper;  // Dynamic 10% off
-    const recoveryPassPrice = config.recoveryPass;
-    const symbol = config.symbol;
-    
+    const docId = REGION_DOC_IDS[regionKey] || REGION_DOC_IDS.t3;
+    const firestoreConfig = pricingTiers[docId];
+    const staticConfig = REGION_PRICING_CONFIGS[regionKey] || REGION_PRICING_CONFIGS.t3;
+
+    const currency = firestoreConfig?.currency_code || staticConfig.currency;
+    const symbol = firestoreConfig?.currency_symbol || staticConfig.symbol;
+
+    const recoveryPassPrice = firestoreConfig?.recovery_pass?.current ?? staticConfig.recoveryPass;
+    const finalPro = firestoreConfig?.pro_lifetime?.current ?? staticConfig.finalPro;
+    const finalSuper = firestoreConfig?.super_lifetime?.current ?? staticConfig.finalSuper;
+
+    const proDisc = getCampaignDiscount('pro');
+    const superDisc = getCampaignDiscount('super');
+    const recovDisc = getCampaignDiscount('recovery_pass');
+
+    const proPrice = proDisc > 0 ? Number((finalPro * (1 - proDisc / 100)).toFixed(2)) : finalPro;
+    const superPrice = superDisc > 0 ? Number((finalSuper * (1 - superDisc / 100)).toFixed(2)) : finalSuper;
+    const recovPrice = recovDisc > 0 ? Number((recoveryPassPrice * (1 - recovDisc / 100)).toFixed(2)) : recoveryPassPrice;
+
     return {
-      recovery_pass: formatPrice(symbol, recoveryPassPrice, config.currency),
-      pro: formatPrice(symbol, proPrice, config.currency),
-      super: formatPrice(symbol, superPrice, config.currency)
+      recovery_pass: formatPrice(symbol, recovPrice, currency),
+      pro: formatPrice(symbol, proPrice, currency),
+      super: formatPrice(symbol, superPrice, currency)
     };
   };
 
-  const getPlanPriceValue = (planKey: string, regionKey: string): number => {
-    const r = regionKey.toLowerCase();
-    const config = REGION_PRICING_CONFIGS[r] || REGION_PRICING_CONFIGS.t3;
-    
-    if (planKey === 'recovery_pass') return config.recoveryPass;
-    const isLaunch = foundingCount < 200;
-    if (planKey === 'pro') return isLaunch ? (config.finalPro * 0.85) : config.finalPro;
-    if (planKey === 'super') return isLaunch ? (config.finalSuper * 0.90) : config.finalSuper;
+  // Helper: get discount value for a plan from active campaign discounts
+  const getCampaignDiscount = (planKey: string): number => {
+    if (!campaigns || !campaigns.isEnabled) return 0;
+    const disc = activeCampaignDiscounts[planKey];
+    if (!disc || disc.discountValue <= 0) return 0;
+    // Only PERCENTAGE supported for price display
+    if (disc.discountType === 'PERCENTAGE') return disc.discountValue;
     return 0;
+  };
+
+  const getPlanPriceValue = (planKey: string, regionKey: string): number => {
+    const docId = REGION_DOC_IDS[regionKey] || REGION_DOC_IDS.t3;
+    const firestoreConfig = pricingTiers[docId];
+    const staticConfig = REGION_PRICING_CONFIGS[regionKey] || REGION_PRICING_CONFIGS.t3;
+
+    const recoveryPassPrice = firestoreConfig?.recovery_pass?.current ?? staticConfig.recoveryPass;
+    const finalPro = firestoreConfig?.pro_lifetime?.current ?? staticConfig.finalPro;
+    const finalSuper = firestoreConfig?.super_lifetime?.current ?? staticConfig.finalSuper;
+
+    if (planKey === 'recovery_pass') {
+      const disc = getCampaignDiscount('recovery_pass');
+      return disc > 0 ? Number((recoveryPassPrice * (1 - disc / 100)).toFixed(2)) : recoveryPassPrice;
+    }
+    if (planKey === 'pro') {
+      const disc = getCampaignDiscount('pro');
+      return disc > 0 ? Number((finalPro * (1 - disc / 100)).toFixed(2)) : finalPro;
+    }
+    if (planKey === 'super') {
+      const disc = getCampaignDiscount('super');
+      return disc > 0 ? Number((finalSuper * (1 - disc / 100)).toFixed(2)) : finalSuper;
+    }
+    return 0;
+  };
+
+  const getWasPrices = (regionKey: string): PlanPrices => {
+    const docId = REGION_DOC_IDS[regionKey] || REGION_DOC_IDS.t3;
+    const firestoreConfig = pricingTiers[docId];
+    const staticConfig = REGION_PRICING_CONFIGS[regionKey] || REGION_PRICING_CONFIGS.t3;
+
+    const currency = firestoreConfig?.currency_code || staticConfig.currency;
+    const symbol = firestoreConfig?.currency_symbol || staticConfig.symbol;
+
+    const recoveryPassWas = firestoreConfig?.recovery_pass?.was ?? (staticConfig.recoveryPass * 2);
+    const proWas = firestoreConfig?.pro_lifetime?.was ?? (staticConfig.finalPro * 1.5);
+    const superWas = firestoreConfig?.super_lifetime?.was ?? (staticConfig.finalSuper * 1.5);
+
+    return {
+      recovery_pass: formatPrice(symbol, recoveryPassWas, currency),
+      pro: formatPrice(symbol, proWas, currency),
+      super: formatPrice(symbol, superWas, currency)
+    };
   };
 
   const prices = getDynamicPrices(region, true);
   const finalPrices = getDynamicPrices(region, false);
+  const wasPrices = getWasPrices(region);
   const isFounding = foundingCount < 200;
   const slotsRemaining = Math.max(0, 200 - foundingCount);
+
+  // Expose Promo Card state — driven by new campaigns collection
+  const isPromoCardVisible = (() => {
+    if (!campaigns) return false;
+    if (!campaigns.isEnabled) return false;
+    if (campaigns.status !== 'ACTIVE') return false;
+
+    const expType = campaigns.expirationType || 'NONE';
+    const now = Date.now();
+
+    let timeOk = true;
+    if ((expType === 'TIME_ONLY' || expType === 'BOTH') && campaigns.expirationDateTime) {
+      const expiryMs = campaigns.expirationDateTime.seconds
+        ? campaigns.expirationDateTime.seconds * 1000
+        : new Date(campaigns.expirationDateTime).getTime();
+      timeOk = now < expiryMs;
+    }
+
+    let capOk = true;
+    if ((expType === 'PURCHASE_LIMIT_ONLY' || expType === 'BOTH') && campaigns.maxPurchaseLimit != null) {
+      capOk = (campaigns.currentPurchaseCount ?? 0) < campaigns.maxPurchaseLimit;
+    }
+
+    if (expType === 'NONE') return true;
+    if (expType === 'TIME_ONLY') return timeOk;
+    if (expType === 'PURCHASE_LIMIT_ONLY') return capOk;
+    if (expType === 'BOTH') return timeOk && capOk;
+    return false;
+  })();
+
+  const promoCardDetails = campaigns ? {
+    title: campaigns.campaignName,
+    description: campaigns.description,
+    expirationAt: campaigns.expirationDateTime,
+    maxPurchaseLimit: campaigns.maxPurchaseLimit,
+    currentPurchaseCount: campaigns.currentPurchaseCount ?? 0,
+    conditionType: campaigns.expirationType,
+    visibilityToggle: campaigns.isEnabled,
+    status: campaigns.status,
+    discounts: activeCampaignDiscounts,
+  } : null;
+
+  const bannerText = `🎉 ${promoCardDetails?.title || 'Launch Promo'} — ${promoCardDetails?.currentPurchaseCount ?? 0} / ${promoCardDetails?.maxPurchaseLimit ?? '∞'} slots taken. Lock in your lifetime price before slots are gone!`;
 
   useEffect(() => {
     const regions = ['in', 't1', 't2', 't3', 'eu', 'jp', 'cn', 't4'];
@@ -486,7 +757,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         PLAN_PRICES[r] = computed;
       }
     });
-  }, [foundingCount, region]);
+  }, [pricingTiers, foundingCount, region]);
 
   useEffect(() => {
     const handleCountryDetected = (e: Event) => {
@@ -917,12 +1188,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setSelectedCountry,
       prices,
       finalPrices,
+      wasPrices,
       foundingCount,
       isFounding,
       slotsRemaining,
       getPlanPriceValue,
       dodoProductIds,
-      dodoTestMode
+      dodoTestMode,
+      pricingTiers,
+      campaigns,
+      activeCampaignDiscounts,
+      isPromoCardVisible,
+      promoCardDetails,
+      bannerText,
+      featuresConfig
     }}>
       {children}
       
@@ -988,6 +1267,7 @@ export const useAuth = () => {
       setSelectedCountry: () => {},
       prices: { recovery_pass: "$4.99", pro: "$24.65", super: "$44.10" },
       finalPrices: { recovery_pass: "$4.99", pro: "$29.00", super: "$49.00" },
+      wasPrices: { recovery_pass: "$9.99", pro: "$44.10", super: "$79.00" },
       foundingCount: 0,
       isFounding: true,
       slotsRemaining: 200,
@@ -995,9 +1275,16 @@ export const useAuth = () => {
       dodoProductIds: {
         recovery_pass: "pdt_recovery_pass_placeholder",
         pro: "pdt_pro_placeholder",
-        super: "pdt_super_placeholder",
-        family: "pdt_family_placeholder"
-      }
+        super: "pdt_super_placeholder"
+      },
+      dodoTestMode: false,
+      pricingTiers: {},
+      campaigns: null,
+      activeCampaignDiscounts: {},
+      isPromoCardVisible: false,
+      promoCardDetails: null,
+      bannerText: "Launch Promo — 0 / 200 slots taken. Lock in your lifetime price before slots are gone!",
+      featuresConfig: DEFAULT_FEATURES_CONFIG
     };
   }
   return context;
