@@ -46,8 +46,8 @@ export default function AdminSettings() {
     { key: 'jp',  label: 'Japan',    currency: '¥' },
     { key: 'cn',  label: 'China',    currency: '¥' },
   ]
-  const DODO_PLANS = ['recovery_pass', 'pro', 'super'] as const
-  const PLAN_LABELS: Record<string, string> = { recovery_pass: 'Recovery Pass', pro: 'Pro Lifetime', super: 'Super Lifetime' }
+  const DODO_PLANS = ['recovery_pass', 'pro', 'super', 'family'] as const
+  const PLAN_LABELS: Record<string, string> = { recovery_pass: 'Recovery Pass', pro: 'Pro Lifetime', super: 'Super Lifetime', family: 'Family License' }
   const buildEmptyDodoProducts = () => Object.fromEntries(
     DODO_REGIONS.map(r => [r.key, Object.fromEntries(DODO_PLANS.map(p => [p, '']))])
   )
@@ -453,9 +453,9 @@ export default function AdminSettings() {
                     return (
                       <div key={r.key} className="text-[10px]">
                         <div className={`font-semibold mb-1 ${
-                          filled === 3 ? 'text-emerald-400' : filled > 0 ? 'text-amber-400' : 'text-zinc-600'
+                          filled === 4 ? 'text-emerald-400' : filled > 0 ? 'text-amber-400' : 'text-zinc-600'
                         }`}>
-                          {r.currency} {r.label} {filled === 3 ? '✓' : filled > 0 ? `(${filled}/3)` : '—'}
+                          {r.currency} {r.label} {filled === 4 ? '✓' : filled > 0 ? `(${filled}/4)` : '—'}
                         </div>
                         {DODO_PLANS.map(p => (
                           <div key={p} className="text-zinc-600 truncate">

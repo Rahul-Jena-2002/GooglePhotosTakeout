@@ -71,7 +71,8 @@ function PricingPageContent() {
             <div className="space-y-6">
               <div>
                 <div className="text-4xl font-bold text-white">{prices.recovery_pass}</div>
-                <p className="text-[11px] text-zinc-400 mt-1 leading-relaxed">Fix one folder of photos without any subscription details.</p>
+                <div className="text-[10px] text-zinc-500 font-semibold mt-1">+ local taxes / GST</div>
+                <p className="text-[11px] text-zinc-400 mt-2.5 leading-relaxed">Fix one folder of photos without any subscription details.</p>
               </div>
               <div className="space-y-2.5">
                 <div className="text-[10px] text-zinc-400 uppercase tracking-widest font-bold mb-1">Everything in Free plus:</div>
@@ -111,7 +112,8 @@ function PricingPageContent() {
                     </div>
                   )}
                 </div>
-                <p className="text-[11px] text-blue-500 dark:text-blue-300 mt-1 leading-relaxed">Use forever · On up to 2 devices</p>
+                <div className="text-[10px] text-zinc-550 dark:text-zinc-500 font-semibold mt-1">+ local taxes / GST</div>
+                <p className="text-[11px] text-blue-500 dark:text-blue-300 mt-2.5 leading-relaxed">Use forever · On up to 2 devices</p>
               </div>
               <div className="space-y-2.5">
                 <div className="text-[10px] text-zinc-400 uppercase tracking-widest font-bold mb-1">Everything in Pass plus:</div>
@@ -148,7 +150,8 @@ function PricingPageContent() {
                     </div>
                   )}
                 </div>
-                <p className="text-[11px] text-amber-400 mt-1 leading-relaxed">Use forever · On up to 3 devices</p>
+                <div className="text-[10px] text-zinc-550 dark:text-zinc-500 font-semibold mt-1">+ local taxes / GST</div>
+                <p className="text-[11px] text-amber-400 mt-2.5 leading-relaxed">Use forever · On up to 3 devices</p>
               </div>
               <div className="space-y-2.5">
                 <div className="text-[10px] text-zinc-400 uppercase tracking-widest font-bold mb-1">Everything in Pro plus:</div>

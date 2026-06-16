@@ -347,7 +347,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   // Nested region → plan → productId map
   const REGIONS = ['in', 't1', 't2', 't3', 't4', 'eu', 'jp', 'cn'];
-  const PLANS = ['recovery_pass', 'pro', 'super'];
+  const PLANS = ['recovery_pass', 'pro', 'super', 'family'];
   const buildEmptyProductIds = () => Object.fromEntries(
     REGIONS.map(r => [r, Object.fromEntries(PLANS.map(p => [p, ""]))])
   );
@@ -995,7 +995,8 @@ export const useAuth = () => {
       dodoProductIds: {
         recovery_pass: "pdt_recovery_pass_placeholder",
         pro: "pdt_pro_placeholder",
-        super: "pdt_super_placeholder"
+        super: "pdt_super_placeholder",
+        family: "pdt_family_placeholder"
       }
     };
   }

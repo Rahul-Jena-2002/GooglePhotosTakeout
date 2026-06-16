@@ -73,6 +73,16 @@ const getPlanDetails = (
         "Local duplicate-image space scanner",
         "Highest priority dedicated support"
       ]
+    },
+    family: {
+      name: "Family License",
+      description: "Complete Super features for up to 5 family members simultaneously",
+      features: [
+        "Everything in Super Lifetime",
+        "Share access with up to 5 family members",
+        "Separate individual history logs",
+        "VIP customer support response SLA"
+      ]
     }
   }
 
@@ -90,7 +100,7 @@ import { AuthProvider } from "../contexts/AuthContext"
 import { ToastContainer } from "../components/ui/toast"
 
 function CheckoutPageContent() {
-  const { user, userData, loading, region, getPlanPriceValue, dodoProductIds, dodoTestMode, login } = useAuth()
+  const { user, userData, loading, region, getPlanPriceValue, dodoProductIds, dodoTestMode, login, selectedCountry } = useAuth()
   
   if (loading) {
     return (
@@ -170,15 +180,30 @@ function CheckoutPageContent() {
       : "https://checkout.dodopayments.com/buy"
     const returnUrl = `${window.location.origin}/dashboard?checkout_status=success&plan=${planKey}`
 
-    // Build URL params — pass currency so Dodo charges in local currency,
+    // Build URL params — pass email and country so Dodo pre-fills them,
     // and pass region + plan as metadata so the webhook can process correctly
     const params = new URLSearchParams({
-      customer_email: user.email || "",
+      email: user.email || "",
+      customer_email: user.email || "", // Fallback
       redirect_url: returnUrl,
       metadata_userId: user.uid,
       metadata_plan: planKey,
       metadata_region: normalizedRegion,
     })
+
+    if (selectedCountry) {
+      params.set("country", selectedCountry)
+    }
+
+    if (user.displayName) {
+      const nameParts = user.displayName.trim().split(/\s+/)
+      if (nameParts.length > 0) {
+        params.set("firstName", nameParts[0])
+        if (nameParts.length > 1) {
+          params.set("lastName", nameParts.slice(1).join(" "))
+        }
+      }
+    }
 
     // Pass currency to Dodo so it matches what user saw on pricing page
     if (plan?.currency) {
