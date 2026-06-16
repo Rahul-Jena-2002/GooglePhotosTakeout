@@ -49,12 +49,18 @@ const prices = PLAN_PRICES[region] || PLAN_PRICES.us;
             alt="TakeoutFix local workspace metadata restoration tool interface screenshot" 
             class="relative rounded-lg border border-zinc-200 dark:border-zinc-800 shadow-none w-full object-cover max-h-[450px] block dark:hidden"
             fetchpriority="high"
+            width="1024"
+            height="1024"
+            decoding="sync"
           />
           <img 
             src="/hero-graphic-dark.webp" 
             alt="TakeoutFix local workspace metadata restoration tool interface screenshot" 
             class="relative rounded-lg border border-zinc-200 dark:border-zinc-800 shadow-none w-full object-cover max-h-[450px] hidden dark:block"
             fetchpriority="high"
+            width="1024"
+            height="1024"
+            decoding="async"
           />
         </div>
       </div>
@@ -357,8 +363,8 @@ const prices = PLAN_PRICES[region] || PLAN_PRICES.us;
       <h2 class="text-4xl font-bold tracking-tighter mb-12 text-center">Frequently Asked Questions</h2>
       <ExpandableFaq client:load />
       <div class="mt-12 text-center">
-        <a href="/support">
-          <button class="text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 font-semibold text-sm transition-colors cursor-pointer">View all frequently asked questions &rarr;</button>
+        <a href="/support" class="inline-flex items-center justify-center min-h-[44px] min-w-[44px] px-4">
+          <button class="text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 font-semibold text-sm transition-colors cursor-pointer" aria-label="View all frequently asked questions on support page">View all frequently asked questions &rarr;</button>
         </a>
       </div>
     </section>
@@ -505,12 +511,10 @@ const prices = PLAN_PRICES[region] || PLAN_PRICES.us;
         const htmlCard = card as HTMLDivElement;
         htmlCard.style.transform = `scale(${scale})`;
         htmlCard.style.opacity = `${opacity}`;
-
+        // Use box-shadow instead of border-color — composited property, no layout shift
         if (distance < 140) {
-          htmlCard.style.borderColor = "var(--border)";
-          htmlCard.style.boxShadow = "none";
+          htmlCard.style.boxShadow = "0 0 0 1.5px var(--color-indigo-400, #818cf8)";
         } else {
-          htmlCard.style.borderColor = "var(--border)";
           htmlCard.style.boxShadow = "none";
         }
       });

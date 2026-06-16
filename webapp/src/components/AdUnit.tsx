@@ -91,7 +91,7 @@ export default function AdUnit({ type = "auto", slot, className = "" }: AdUnitPr
       tag: "Privacy First",
       title: "Privacy First",
       description: "Your photos never leave your device.",
-      ctaText: "Learn More",
+      ctaText: "Explore Privacy Details",
       link: "/restore-data",
       icon: <span className="text-xl">🔒</span>,
     },
@@ -198,7 +198,7 @@ export default function AdUnit({ type = "auto", slot, className = "" }: AdUnitPr
               {activeAd.icon}
             </div>
             <div className="space-y-1 text-left">
-              <h4 className="text-sm font-bold text-zinc-900 dark:text-zinc-100 tracking-tight">{activeAd.title}</h4>
+              <p className="text-sm font-bold text-zinc-900 dark:text-zinc-100 tracking-tight">{activeAd.title}</p>
               <p className="text-[11px] text-zinc-500 dark:text-zinc-400 max-w-xl leading-relaxed">{activeAd.description}</p>
             </div>
           </div>
@@ -235,7 +235,7 @@ export default function AdUnit({ type = "auto", slot, className = "" }: AdUnitPr
             {activeAd.icon}
           </div>
           <div className="space-y-2">
-            <h4 className="text-sm font-bold text-zinc-900 dark:text-zinc-100 leading-snug">{activeAd.title}</h4>
+            <p className="text-sm font-bold text-zinc-900 dark:text-zinc-100 leading-snug">{activeAd.title}</p>
             <p className="text-[11px] text-zinc-500 dark:text-zinc-400 leading-relaxed max-w-[240px] mx-auto">{activeAd.description}</p>
           </div>
         </div>
@@ -302,7 +302,7 @@ export default function AdUnit({ type = "auto", slot, className = "" }: AdUnitPr
           {activeAd.icon}
         </div>
         <div className="space-y-1">
-          <h4 className="text-xs font-bold text-zinc-900 dark:text-zinc-100 tracking-tight">{activeAd.title}</h4>
+          <p className="text-xs font-bold text-zinc-900 dark:text-zinc-100 tracking-tight">{activeAd.title}</p>
           <p className="text-[10px] text-zinc-500 dark:text-zinc-400 leading-normal max-w-[220px] mx-auto">{activeAd.description}</p>
         </div>
       </div>
