@@ -5,21 +5,29 @@ const path = require("path");
 const fs = require("fs");
 
 // Initialize Firebase Admin SDK
-// It checks for 'serviceAccountKey.json' in the same folder.
-// If not found, it falls back to default credentials (e.g., set via GOOGLE_APPLICATION_CREDENTIALS)
+// Priority: serviceAccountKey.json → Application Default Credentials (ADC)
+// ADC works when:
+//   - GOOGLE_APPLICATION_CREDENTIALS env points to a key file
+//   - gcloud auth application-default login has been run
+// Explicit projectId prevents "Unable to detect Project Id" error.
+const PROJECT_ID = process.env.GCLOUD_PROJECT || process.env.FIREBASE_PROJECT_ID || "gt-metadata-merger";
 const serviceAccountPath = path.join(__dirname, "serviceAccountKey.json");
 
 if (fs.existsSync(serviceAccountPath)) {
   const serviceAccount = require(serviceAccountPath);
-  admin.initializeApp({
-    credential: admin.credential.cert(serviceAccount)
-  });
-  console.log("Firebase Admin SDK initialized using serviceAccountKey.json");
+  admin.initializeApp({ credential: admin.credential.cert(serviceAccount), projectId: PROJECT_ID });
+  console.log("✅ Firebase Admin SDK: serviceAccountKey.json");
 } else {
-  admin.initializeApp();
-  console.log("Firebase Admin SDK initialized using default environment credentials.");
-  console.warn("WARNING: If Firestore operations fail, make sure to download serviceAccountKey.json from your Firebase Console and place it in this directory.");
+  // Falls back to GOOGLE_APPLICATION_CREDENTIALS or gcloud ADC
+  admin.initializeApp({ projectId: PROJECT_ID });
+  console.log("✅ Firebase Admin SDK: Application Default Credentials (projectId: " + PROJECT_ID + ")");
+  if (!process.env.GOOGLE_APPLICATION_CREDENTIALS) {
+    console.warn("⚠️  No GOOGLE_APPLICATION_CREDENTIALS set. If Firestore fails, either:");
+    console.warn("   1. Download serviceAccountKey.json from Firebase Console → Project Settings → Service Accounts");
+    console.warn("   2. Run: gcloud auth application-default login");
+  }
 }
+
 
 const db = admin.firestore();
 const app = express();
