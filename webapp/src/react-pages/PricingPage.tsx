@@ -308,25 +308,7 @@ function PricingPageContent() {
                   )}
                 </div>
 
-                {activeCoupons['recovery_pass'] && (
-                  <div className="mt-2">
-                    <div 
-                      onClick={(e) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        navigator.clipboard.writeText(activeCoupons['recovery_pass']);
-                        useToastStore.getState().addToast(`Coupon code ${activeCoupons['recovery_pass']} copied!`, "success", 3000, "Copied");
-                      }}
-                      className="text-[10px] text-indigo-400 font-bold bg-indigo-500/10 border border-indigo-500/20 rounded-lg p-1.5 cursor-pointer hover:bg-indigo-500/20 transition-all select-none inline-flex items-center justify-between gap-1 w-full"
-                      title="Click to copy coupon code"
-                    >
-                      <span className="flex items-center gap-1">
-                        🎟️ Coupon: <span className="font-mono underline">{activeCoupons['recovery_pass']}</span>
-                      </span>
-                      <span className="text-[9px] text-indigo-400/80 bg-indigo-500/20 px-1 py-0.5 rounded">Copy</span>
-                    </div>
-                  </div>
-                )}
+
 
                 <p className="text-[11px] text-zinc-400 mt-2.5 leading-relaxed">Fix one folder of photos without any subscription details.</p>
                 {priceIncludesTax && (
@@ -406,23 +388,7 @@ function PricingPageContent() {
                         ⏳ Expires in: {timeLeftStr}
                       </div>
                     )}
-                    {activeCoupons['pro'] && (
-                      <div 
-                        onClick={(e) => {
-                          e.preventDefault();
-                          e.stopPropagation();
-                          navigator.clipboard.writeText(activeCoupons['pro']);
-                          useToastStore.getState().addToast(`Coupon code ${activeCoupons['pro']} copied!`, "success", 3000, "Copied");
-                        }}
-                        className="text-[10px] text-indigo-400 font-bold bg-indigo-500/10 border border-indigo-500/20 rounded-lg p-1.5 cursor-pointer hover:bg-indigo-500/20 transition-all select-none inline-flex items-center justify-between gap-1 w-full"
-                        title="Click to copy coupon code"
-                      >
-                        <span className="flex items-center gap-1">
-                          🎟️ Coupon: <span className="font-mono underline">{activeCoupons['pro']}</span>
-                        </span>
-                        <span className="text-[9px] text-indigo-400/80 bg-indigo-500/20 px-1 py-0.5 rounded">Copy</span>
-                      </div>
-                    )}
+
                   </div>
                 )}
 
@@ -501,23 +467,7 @@ function PricingPageContent() {
                         ⏳ Expires in: {timeLeftStr}
                       </div>
                     )}
-                    {activeCoupons['super'] && (
-                      <div 
-                        onClick={(e) => {
-                          e.preventDefault();
-                          e.stopPropagation();
-                          navigator.clipboard.writeText(activeCoupons['super']);
-                          useToastStore.getState().addToast(`Coupon code ${activeCoupons['super']} copied!`, "success", 3000, "Copied");
-                        }}
-                        className="text-[10px] text-indigo-400 font-bold bg-indigo-500/10 border border-indigo-500/20 rounded-lg p-1.5 cursor-pointer hover:bg-indigo-500/20 transition-all select-none inline-flex items-center justify-between gap-1 w-full"
-                        title="Click to copy coupon code"
-                      >
-                        <span className="flex items-center gap-1">
-                          🎟️ Coupon: <span className="font-mono underline">{activeCoupons['super']}</span>
-                        </span>
-                        <span className="text-[9px] text-indigo-400/80 bg-indigo-500/20 px-1 py-0.5 rounded">Copy</span>
-                      </div>
-                    )}
+
                   </div>
                 )}
 
