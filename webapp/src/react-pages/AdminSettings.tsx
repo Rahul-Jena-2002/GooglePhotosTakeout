@@ -46,8 +46,14 @@ export default function AdminSettings() {
     { key: 'jp',  label: 'Japan',    currency: '¥' },
     { key: 'cn',  label: 'China',    currency: '¥' },
   ]
-  const DODO_PLANS = ['recovery_pass', 'pro', 'super', 'family'] as const
-  const PLAN_LABELS: Record<string, string> = { recovery_pass: 'Recovery Pass', pro: 'Pro Lifetime', super: 'Super Lifetime', family: 'Family License' }
+  const DODO_PLANS = ['recovery_pass', 'pro', 'super', 'pro_full', 'super_full'] as const
+  const PLAN_LABELS: Record<string, string> = {
+    recovery_pass: 'Recovery Pass',
+    pro: 'Pro Lifetime (Founding)',
+    super: 'Super Lifetime (Founding)',
+    pro_full: 'Pro Lifetime (Full Price)',
+    super_full: 'Super Lifetime (Full Price)'
+  }
   const buildEmptyDodoProducts = () => Object.fromEntries(
     DODO_REGIONS.map(r => [r.key, Object.fromEntries(DODO_PLANS.map(p => [p, '']))])
   )
@@ -88,14 +94,20 @@ export default function AdminSettings() {
 
         setDodoProducts(prev => {
           const merged = buildEmptyDodoProducts()
-          const stored = data.dodo_products as Record<string, Record<string, string>> | undefined
-          if (stored) {
-            DODO_REGIONS.forEach(r => {
-              if (stored[r.key]) {
-                DODO_PLANS.forEach(p => { merged[r.key][p] = stored[r.key][p] || '' })
-              }
-            })
-          }
+          const storedActive = data.dodo_products as Record<string, Record<string, string>> | undefined
+          const storedFull = data.dodo_products_full as Record<string, Record<string, string>> | undefined
+          
+          DODO_REGIONS.forEach(r => {
+            if (storedActive && storedActive[r.key]) {
+              merged[r.key]['recovery_pass'] = storedActive[r.key]['recovery_pass'] || ''
+              merged[r.key]['pro'] = storedActive[r.key]['pro'] || ''
+              merged[r.key]['super'] = storedActive[r.key]['super'] || ''
+            }
+            if (storedFull && storedFull[r.key]) {
+              merged[r.key]['pro_full'] = storedFull[r.key]['pro'] || ''
+              merged[r.key]['super_full'] = storedFull[r.key]['super'] || ''
+            }
+          })
           return merged
         })
       }
@@ -123,6 +135,22 @@ export default function AdminSettings() {
   const handleSaveSettings = async () => {
     setSaving(true)
     try {
+      const activeProductsMap: Record<string, Record<string, string>> = {}
+      const fullProductsMap: Record<string, Record<string, string>> = {}
+
+      DODO_REGIONS.forEach(r => {
+        const regionProducts = dodoProducts[r.key] || {}
+        activeProductsMap[r.key] = {
+          recovery_pass: regionProducts.recovery_pass || '',
+          pro: regionProducts.pro || '',
+          super: regionProducts.super || ''
+        }
+        fullProductsMap[r.key] = {
+          pro: regionProducts.pro_full || '',
+          super: regionProducts.super_full || ''
+        }
+      })
+
       await setDoc(doc(db, "settings", "global"), {
         maintenance,
         reviewAutoApprove,
@@ -145,7 +173,8 @@ export default function AdminSettings() {
         in_pro: Number(inPro),
         in_super: Number(inSuper),
 
-        dodo_products: dodoProducts,
+        dodo_products: activeProductsMap,
+        dodo_products_full: fullProductsMap,
       }, { merge: true })
 
       await setDoc(doc(db, "settings", "secure"), {
@@ -400,7 +429,7 @@ export default function AdminSettings() {
             <div className="border-t border-zinc-800/80 pt-6">
               <div className="flex items-center justify-between mb-4">
                 <label className="text-xs font-semibold text-zinc-300">Dodo Plan Product IDs — Per Region</label>
-                <span className="text-[10px] text-zinc-500">Select a region, paste its 3 product IDs</span>
+                <span className="text-[10px] text-zinc-500">Select a region, paste its 5 product IDs</span>
               </div>
 
               {/* Region tab selector */}
@@ -420,8 +449,8 @@ export default function AdminSettings() {
                 ))}
               </div>
 
-              {/* 3 inputs for the active region */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {/* 5 inputs for the active region */}
+              <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
                 {DODO_PLANS.map(plan => (
                   <div key={plan}>
                     <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 block mb-1">
