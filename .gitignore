@@ -45,4 +45,5 @@ node/
 
 ### Metadata App Output ###
 metadata_not_found/
-dist/webapp_svelte_backup/node_modules/
+dist/
+webapp_svelte_backup/node_modules/
