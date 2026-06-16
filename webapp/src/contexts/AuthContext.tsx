@@ -5,36 +5,121 @@ import { auth, db } from '../firebase';
 import { indexedDbService } from '../lib/indexedDbService';
 import { useToastStore } from '../store/useToastStore';
 
-export type PlanType = 'free' | 'recovery_pass' | 'pro' | 'super' | 'family';
+export type PlanType = 'free' | 'recovery_pass' | 'pro' | 'super';
 export type AdminRole = 'SUPER_ADMIN' | 'ADMIN' | 'SUPPORT' | 'MODERATOR';
 
 export interface PlanPrices {
   recovery_pass: string;
   pro: string;
   super: string;
-  family: string;
 }
 
+export interface RegionPricingConfig {
+  currency: string;
+  symbol: string;
+  recoveryPass: number;
+  finalPro: number;
+  finalSuper: number;
+}
+
+// Cleaned up config: Removed hardcoded launch prices entirely
+export const REGION_PRICING_CONFIGS: Record<string, RegionPricingConfig> = {
+  in: {
+    currency: "INR",
+    symbol: "₹",
+    recoveryPass: 249,
+    finalPro: 799,
+    finalSuper: 1499
+  },
+  t3: {
+    currency: "USD",
+    symbol: "$",
+    recoveryPass: 4.99,
+    finalPro: 29.00,
+    finalSuper: 49.00
+  },
+  eu: {
+    currency: "EUR",
+    symbol: "€",
+    recoveryPass: 4.99,
+    finalPro: 29.00,
+    finalSuper: 49.00
+  },
+  jp: {
+    currency: "JPY",
+    symbol: "¥",
+    recoveryPass: 899,
+    finalPro: 5900,
+    finalSuper: 9900
+  },
+  cn: {
+    currency: "CNY",
+    symbol: "¥",
+    recoveryPass: 49,
+    finalPro: 199,
+    finalSuper: 399
+  },
+  t1: {
+    currency: "USD",
+    symbol: "$",
+    recoveryPass: 1.99,
+    finalPro: 9.99,
+    finalSuper: 19.99
+  },
+  t2: {
+    currency: "USD",
+    symbol: "$",
+    recoveryPass: 3.99,
+    finalPro: 19.00,
+    finalSuper: 39.00
+  },
+  t4: {
+    currency: "USD",
+    symbol: "$",
+    recoveryPass: 5.99,
+    finalPro: 39.00,
+    finalSuper: 69.00
+  }
+};
+
+// Helper utility to safely format currency
+const formatPrice = (symbol: string, val: number, currency: string): string => {
+  return `${symbol}${val.toFixed(2)}`;
+};
+
+export const getActivePrice = (tier: string, plan: string, foundingCount: number): number => {
+  const config = REGION_PRICING_CONFIGS[tier] || REGION_PRICING_CONFIGS.t3;
+  if (plan === 'recovery_pass') return config.recoveryPass;
+  
+  const isLaunch = foundingCount < 200;
+  if (plan === 'pro') {
+    return isLaunch ? config.finalPro * 0.85 : config.finalPro; // Dynamic 15% Off
+  }
+  if (plan === 'super') {
+    return isLaunch ? config.finalSuper * 0.90 : config.finalSuper; // Dynamic 10% Off
+  }
+  return 0;
+};
+
+// Fallback initial cache dictionary string mappings
 export const PLAN_PRICES: Record<string, PlanPrices> = {
-  in: { recovery_pass: "₹99", pro: "₹799", super: "₹1499", family: "₹3999" },
-  us: { recovery_pass: "$4.99", pro: "$29", super: "$49", family: "$79" },
-  eu: { recovery_pass: "€4.99", pro: "€29", super: "€49", family: "€79" },
-  jp: { recovery_pass: "¥899", pro: "¥5900", super: "¥9900", family: "¥14900" },
-  cn: { recovery_pass: "¥29", pro: "¥199", super: "¥399", family: "¥999" },
-  t1: { recovery_pass: "$1.49", pro: "$9.99", super: "$19.99", family: "$49.99" },
-  t2: { recovery_pass: "$3.99", pro: "$19", super: "$39", family: "$49" },
-  t3: { recovery_pass: "$4.99", pro: "$29", super: "$49", family: "$79" },
-  t4: { recovery_pass: "$5.99", pro: "$39", super: "$69", family: "$99" },
+  in: { recovery_pass: "₹249", pro: "₹799", super: "₹1499" },
+  t3: { recovery_pass: "$4.99", pro: "$29.00", super: "$49.00" },
+  eu: { recovery_pass: "€4.99", pro: "€29.00", super: "€49.00" },
+  jp: { recovery_pass: "¥899", pro: "¥5900", super: "¥9900" },
+  cn: { recovery_pass: "¥49", pro: "¥199", super: "¥399" },
+  t1: { recovery_pass: "$1.99", pro: "$9.99", super: "$19.99" },
+  t2: { recovery_pass: "$3.99", pro: "$19.00", super: "$39.00" },
+  t4: { recovery_pass: "$5.99", pro: "$39.00", super: "$69.00" },
 };
 
 export interface CountryOption {
   code: string;
   name: string;
-  tier: 't1' | 't2' | 't3' | 'in';
+  tier: string;
 }
 
 export const COUNTRIES: CountryOption[] = [
-  // Tier 1 (India & Similar)
   { code: "IN", name: "India", tier: "in" },
   { code: "PK", name: "Pakistan", tier: "t1" },
   { code: "BD", name: "Bangladesh", tier: "t1" },
@@ -46,9 +131,7 @@ export const COUNTRIES: CountryOption[] = [
   { code: "NG", name: "Nigeria", tier: "t1" },
   { code: "KE", name: "Kenya", tier: "t1" },
   { code: "EG", name: "Egypt", tier: "t1" },
-  { code: "CN", name: "China", tier: "t1" },
-
-  // Tier 2 (Mid USD)
+  { code: "CN", name: "China", tier: "cn" },
   { code: "MY", name: "Malaysia", tier: "t2" },
   { code: "TH", name: "Thailand", tier: "t2" },
   { code: "MX", name: "Mexico", tier: "t2" },
@@ -59,8 +142,6 @@ export const COUNTRIES: CountryOption[] = [
   { code: "CL", name: "Chile", tier: "t2" },
   { code: "PL", name: "Poland", tier: "t2" },
   { code: "RO", name: "Romania", tier: "t2" },
-
-  // Tier 3 (High USD)
   { code: "US", name: "United States", tier: "t3" },
   { code: "GB", name: "United Kingdom", tier: "t3" },
   { code: "DE", name: "Germany", tier: "t3" },
@@ -76,7 +157,7 @@ export const COUNTRIES: CountryOption[] = [
   { code: "NZ", name: "New Zealand", tier: "t3" },
   { code: "AU", name: "Australia", tier: "t3" },
   { code: "CA", name: "Canada", tier: "t3" },
-  { code: "JP", name: "Japan", tier: "t3" },
+  { code: "JP", name: "Japan", tier: "jp" },
   { code: "CH", name: "Switzerland", tier: "t3" },
   { code: "LU", name: "Luxembourg", tier: "t3" },
   { code: "IS", name: "Iceland", tier: "t3" },
@@ -85,17 +166,41 @@ export const COUNTRIES: CountryOption[] = [
   { code: "HK", name: "Hong Kong", tier: "t3" }
 ];
 
-// Hardcoded super admin emails — always granted SUPER_ADMIN regardless of DB
 const SUPER_ADMIN_EMAILS = ['rahuljena.dev@gmail.com'];
 
-const COUNTRY_TO_REGION: Record<string, string> = {
-  // Tier 1
-  IN: "in", PK: "t1", BD: "t1", NP: "t1", LK: "t1", ID: "t1", VN: "t1", PH: "t1", NG: "t1", KE: "t1", EG: "t1", CN: "t1",
-  // Tier 2
-  MY: "t2", TH: "t2", MX: "t2", BR: "t2", TR: "t2", ZA: "t2", AR: "t2", CL: "t2", PL: "t2", RO: "t2",
-  // Tier 3
-  US: "t3", GB: "t3", DE: "t3", FR: "t3", NL: "t3", BE: "t3", AT: "t3", SE: "t3", NO: "t3", DK: "t3", FI: "t3", IE: "t3", NZ: "t3", AU: "t3", CA: "t3",
-  JP: "t3", CH: "t3", LU: "t3", IS: "t3", SG: "t3", KR: "t3", HK: "t3",
+export const getRegionFromCountry = (countryCode: string): string => {
+  const country = countryCode.toUpperCase();
+  
+  if (country === 'IN') return 'in';
+  if (country === 'CN') return 'cn';
+  if (country === 'JP') return 'jp';
+  
+  const eurozone = [
+    'AT', 'BE', 'CY', 'EE', 'FI', 'FR', 'DE', 'GR', 'IE', 'IT', 
+    'LV', 'LT', 'LU', 'MT', 'NL', 'PT', 'SK', 'SI', 'ES'
+  ];
+  if (eurozone.includes(country)) return 'eu';
+  
+  const t1 = [
+    'AF','BD','BF','KH','CM','TD','CD','EG','ET','GH','GT','HN',
+    'ID','KE','MA','MM','NP','NG','PK','PH','SN','LK','TZ','UG',
+    'VN','ZM','ZW'
+  ];
+  if (t1.includes(country)) return 't1';
+
+  const t2 = [
+    'DZ','AR','BO','BA','BR','BG','CO','CR','DO','EC','SV','GE',
+    'IR','IQ','JM','JO','KZ','LY','MY','MX','MD','MN','ME','NA',
+    'PY','PE','RO','RS','ZA','TH','TN','TR','UA','VE'
+  ];
+  if (t2.includes(country)) return 't2';
+
+  const t4 = [
+    'AD','BN','KY','KW','LI','MC','SM'
+  ];
+  if (t4.includes(country)) return 't4';
+
+  return 't3';
 };
 
 export interface UserData {
@@ -143,14 +248,18 @@ interface AuthContextType {
   selectedCountry: string;
   setSelectedCountry: (code: string) => void;
   prices: PlanPrices;
+  finalPrices: PlanPrices;
+  foundingCount: number;
+  isFounding: boolean;
+  slotsRemaining: number;
   getPlanPriceValue: (planKey: string, regionKey: string) => number;
-  dodoProductIds: Record<string, string>;
+  dodoProductIds: Record<string, Record<string, string>>;
+  dodoTestMode: boolean;
 }
 
 const getPlanDeviceLimit = (plan: string): number => {
   if (plan === 'pro') return 2;
   if (plan === 'super') return 3;
-  if (plan === 'family') return 5;
   return 1;
 };
 
@@ -236,77 +345,62 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } catch (_) {}
   };
 
-  // Load global settings in real-time
-  const [globalSettings, setGlobalSettings] = useState({
-    t3_recovery_pass: 4.99,
-    t3_pro: 29.00,
-    t3_super: 49.00,
-    t3_family: 79.00,
-    
-    t2_recovery_pass: 3.99,
-    t2_pro: 19.00,
-    t2_super: 39.00,
-    t2_family: 49.00,
-    
-    t1_recovery_pass: 1.49,
-    t1_pro: 9.99,
-    t1_super: 19.99,
-    t1_family: 49.99,
-    
-    in_recovery_pass: 99,
-    in_pro: 799,
-    in_super: 1499,
-    in_family: 3999
-  });
+  // Nested region → plan → productId map
+  const REGIONS = ['in', 't1', 't2', 't3', 't4', 'eu', 'jp', 'cn'];
+  const PLANS = ['recovery_pass', 'pro', 'super'];
+  const buildEmptyProductIds = () => Object.fromEntries(
+    REGIONS.map(r => [r, Object.fromEntries(PLANS.map(p => [p, ""]))])
+  );
 
-  const [dodoProductIds, setDodoProductIds] = useState<Record<string, string>>({
-    recovery_pass: "pdt_recovery_pass_placeholder",
-    pro: "pdt_pro_placeholder",
-    super: "pdt_super_placeholder",
-    family: "pdt_family_placeholder"
-  });
+  const [dodoProductIds, setDodoProductIds] = useState<Record<string, Record<string, string>>>(
+    buildEmptyProductIds()
+  );
+
+  const [dodoTestMode, setDodoTestMode] = useState<boolean>(false);
+
+  const [foundingCount, setFoundingCount] = useState<number>(0);
 
   useEffect(() => {
     const unsub = onSnapshot(doc(db, "settings", "global"), (snap) => {
       if (snap.exists()) {
         const data = snap.data();
-        setGlobalSettings({
-          t3_recovery_pass: Number(data.t3_recovery_pass ?? 4.99),
-          t3_pro: Number(data.t3_pro ?? 29.00),
-          t3_super: Number(data.t3_super ?? 49.00),
-          t3_family: Number(data.t3_family ?? 79.00),
-          
-          t2_recovery_pass: Number(data.t2_recovery_pass ?? 3.99),
-          t2_pro: Number(data.t2_pro ?? 19.00),
-          t2_super: Number(data.t2_super ?? 39.00),
-          t2_family: Number(data.t2_family ?? 49.00),
-          
-          t1_recovery_pass: Number(data.t1_recovery_pass ?? 1.49),
-          t1_pro: Number(data.t1_pro ?? 9.99),
-          t1_super: Number(data.t1_super ?? 19.99),
-          t1_family: Number(data.t1_family ?? 49.99),
-          
-          in_recovery_pass: Number(data.in_recovery_pass ?? 99),
-          in_pro: Number(data.in_pro ?? 799),
-          in_super: Number(data.in_super ?? 1499),
-          in_family: Number(data.in_family ?? 3999)
-        });
-
-        setDodoProductIds({
-          recovery_pass: data.dodo_recovery_pass_id || "pdt_recovery_pass_placeholder",
-          pro: data.dodo_pro_id || "pdt_pro_placeholder",
-          super: data.dodo_super_id || "pdt_super_placeholder",
-          family: data.dodo_family_id || "pdt_family_placeholder"
-        });
+        // Read nested dodo_products map: { in: { recovery_pass: "pdt_x", pro: "pdt_y", super: "pdt_z" }, t1: {...}, ... }
+        const stored = data.dodo_products as Record<string, Record<string, string>> | undefined;
+        if (stored) {
+          setDodoProductIds(prev => {
+            const merged = buildEmptyProductIds();
+            REGIONS.forEach(r => {
+              if (stored[r]) {
+                PLANS.forEach(p => {
+                  merged[r][p] = stored[r][p] || "";
+                });
+              }
+            });
+            return merged;
+          });
+        }
+        setDodoTestMode(data.dodo_test_mode ?? false);
       }
     });
     return unsub;
   }, []);
 
+  useEffect(() => {
+    const unsubFounding = onSnapshot(doc(db, "config", "foundingMembers"), (snap) => {
+      if (snap.exists()) {
+        setFoundingCount(snap.data().count ?? 0);
+      }
+    });
+    return unsubFounding;
+  }, []);
+
   const [selectedCountry, setSelectedCountryState] = useState<string>(() => {
     try {
-      const saved = localStorage.getItem("takeoutfix_selected_country");
-      if (saved) return saved.toUpperCase();
+      const isLocalhost = typeof window !== 'undefined' && (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1");
+      if (!isLocalhost) {
+        const saved = localStorage.getItem("takeoutfix_detected_country");
+        if (saved) return saved.toUpperCase();
+      }
       
       const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
       if (tz) {
@@ -314,7 +408,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         if (lowerTz.includes("kolkata") || lowerTz.includes("calcutta") || lowerTz.includes("india")) return "IN";
         if (lowerTz.includes("tokyo") || lowerTz.includes("japan")) return "JP";
         if (lowerTz.includes("shanghai") || lowerTz.includes("beijing") || lowerTz.includes("china")) return "CN";
-        if (lowerTz.includes("europe") || lowerTz.includes("london") || lowerTz.includes("paris") || lowerTz.includes("berlin") || lowerTz.includes("rose") || lowerTz.includes("madrid")) return "GB";
+        if (lowerTz.includes("europe") || lowerTz.includes("london") || lowerTz.includes("paris") || lowerTz.includes("berlin") || lowerTz.includes("madrid")) return "GB";
       }
       const lang = (navigator.language || "").toLowerCase();
       if (lang.startsWith("en-in") || lang.startsWith("hi")) return "IN";
@@ -325,226 +419,136 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return "US";
   });
 
-  useEffect(() => {
-    const detectCountry = async () => {
-      const saved = localStorage.getItem("takeoutfix_selected_country");
-      if (saved) return; // Already manually chosen
-
-      let countryCode = "";
-      // 1. Try Cloudflare cdn-cgi trace first
-      try {
-        const res = await fetch("/cdn-cgi/trace");
-        if (res.ok) {
-          const text = await res.text();
-          const lines = text.split("\n");
-          for (const line of lines) {
-            const parts = line.split("=");
-            if (parts[0] === "loc" && parts[1]) {
-              countryCode = parts[1].trim().toUpperCase();
-              break;
-            }
-          }
-        }
-      } catch (e) {}
-
-      // 2. Try freeipapi
-      if (!countryCode) {
-        try {
-          const res = await fetch("https://freeipapi.com/api/json");
-          if (res.ok) {
-            const data = await res.json();
-            countryCode = data.countryCode || "";
-          }
-        } catch (e) {}
-      }
-
-      if (countryCode) {
-        setSelectedCountryState(countryCode.toUpperCase());
-      }
-    };
-    detectCountry();
-  }, []);
-
-  const getRegionFromCountry = (countryCode: string): string => {
-    const country = countryCode.toUpperCase();
-    if (country === 'IN') return 'in';
-    const lowTiers = ["PK", "BD", "NP", "LK", "ID", "VN", "PH", "NG", "KE", "EG", "CN"];
-    const midTiers = ["MY", "TH", "MX", "BR", "TR", "ZA", "AR", "CL", "PL", "RO"];
-    if (lowTiers.includes(country)) return 't1';
-    if (midTiers.includes(country)) return 't2';
-    return 't3'; // Default high tier
-  };
-
   const region = getRegionFromCountry(selectedCountry);
 
   const setSelectedCountry = (code: string) => {
     const upper = code.toUpperCase();
     setSelectedCountryState(upper);
     try {
-      localStorage.setItem("takeoutfix_selected_country", upper);
+      localStorage.setItem("takeoutfix_detected_country", upper);
     } catch (_) {}
   };
 
   const setRegion = (newRegion: string) => {
-    if (newRegion === 'in') setSelectedCountry('IN');
-    else if (newRegion === 't1') setSelectedCountry('PK');
-    else if (newRegion === 't2') setSelectedCountry('MY');
+    const r = newRegion.toLowerCase();
+    if (r === 'in') setSelectedCountry('IN');
+    else if (r === 'cn') setSelectedCountry('CN');
+    else if (r === 'jp') setSelectedCountry('JP');
+    else if (r === 'eu') setSelectedCountry('DE'); 
+    else if (r === 't1') setSelectedCountry('PK');
+    else if (r === 't2') setSelectedCountry('MY');
+    else if (r === 't4') setSelectedCountry('AD');
     else setSelectedCountry('US');
   };
 
-  const getDynamicPrices = (regionKey: string): PlanPrices => {
-    if (regionKey === 'in') {
-      return {
-        recovery_pass: `₹${globalSettings.in_recovery_pass}`,
-        pro: `₹${globalSettings.in_pro}`,
-        super: `₹${globalSettings.in_super}`,
-        family: `₹${globalSettings.in_family}`
-      };
-    }
-    if (regionKey === 't1') {
-      return {
-        recovery_pass: `$${globalSettings.t1_recovery_pass}`,
-        pro: `$${globalSettings.t1_pro}`,
-        super: `$${globalSettings.t1_super}`,
-        family: `$${globalSettings.t1_family}`
-      };
-    }
-    if (regionKey === 't2') {
-      return {
-        recovery_pass: `$${globalSettings.t2_recovery_pass}`,
-        pro: `$${globalSettings.t2_pro}`,
-        super: `$${globalSettings.t2_super}`,
-        family: `$${globalSettings.t2_family}`
-      };
-    }
+  // DYNAMIC CALCULATIONS: Replaced all old hardcoded switch lookups
+  const getDynamicPrices = (regionKey: string, useLaunchIfFounding: boolean): PlanPrices => {
+    const config = REGION_PRICING_CONFIGS[regionKey] || REGION_PRICING_CONFIGS.t3;
+    const isLaunch = useLaunchIfFounding && foundingCount < 200;
+    
+    const proPrice = isLaunch ? (config.finalPro * 0.85) : config.finalPro;      // Dynamic 15% off
+    const superPrice = isLaunch ? (config.finalSuper * 0.90) : config.finalSuper;  // Dynamic 10% off
+    const recoveryPassPrice = config.recoveryPass;
+    const symbol = config.symbol;
+    
     return {
-      recovery_pass: `$${globalSettings.t3_recovery_pass}`,
-      pro: `$${globalSettings.t3_pro}`,
-      super: `$${globalSettings.t3_super}`,
-      family: `$${globalSettings.t3_family}`
+      recovery_pass: formatPrice(symbol, recoveryPassPrice, config.currency),
+      pro: formatPrice(symbol, proPrice, config.currency),
+      super: formatPrice(symbol, superPrice, config.currency)
     };
   };
 
   const getPlanPriceValue = (planKey: string, regionKey: string): number => {
-    let key = 't3';
-    if (regionKey === 'in' || regionKey === 't1' || regionKey === 't2') {
-      key = regionKey;
-    }
-    const settingsKey = `${key}_${planKey === 'recovery_pass' ? 'recovery_pass' : planKey === 'pro' ? 'pro' : planKey === 'super' ? 'super' : 'family'}` as keyof typeof globalSettings;
-    return globalSettings[settingsKey] || 0;
+    const r = regionKey.toLowerCase();
+    const config = REGION_PRICING_CONFIGS[r] || REGION_PRICING_CONFIGS.t3;
+    
+    if (planKey === 'recovery_pass') return config.recoveryPass;
+    const isLaunch = foundingCount < 200;
+    if (planKey === 'pro') return isLaunch ? (config.finalPro * 0.85) : config.finalPro;
+    if (planKey === 'super') return isLaunch ? (config.finalSuper * 0.90) : config.finalSuper;
+    return 0;
   };
 
-  const prices = getDynamicPrices(region);
+  const prices = getDynamicPrices(region, true);
+  const finalPrices = getDynamicPrices(region, false);
+  const isFounding = foundingCount < 200;
+  const slotsRemaining = Math.max(0, 200 - foundingCount);
 
   useEffect(() => {
-    // In-place update the static PLAN_PRICES dictionary properties!
-    const regions = ['in', 't1', 't2', 't3'];
+    const regions = ['in', 't1', 't2', 't3', 'eu', 'jp', 'cn', 't4'];
     regions.forEach(r => {
-      const computed = getDynamicPrices(r);
+      const computed = getDynamicPrices(r, true);
       if (PLAN_PRICES[r]) {
         PLAN_PRICES[r].recovery_pass = computed.recovery_pass;
         PLAN_PRICES[r].pro = computed.pro;
         PLAN_PRICES[r].super = computed.super;
-        PLAN_PRICES[r].family = computed.family;
       } else {
         PLAN_PRICES[r] = computed;
       }
     });
-    PLAN_PRICES.us = PLAN_PRICES.t3;
-    PLAN_PRICES.eu = PLAN_PRICES.t3;
-    PLAN_PRICES.jp = PLAN_PRICES.t3;
-    PLAN_PRICES.cn = PLAN_PRICES.t1;
-  }, [globalSettings]);
+  }, [foundingCount, region]);
 
   useEffect(() => {
-    const detectRegion = async () => {
-      if (localStorage.getItem("takeoutfix_selected_country")) return;
-      let countryCode = "";
-
-      // 1. Try Cloudflare cdn-cgi trace first (extremely fast, same-origin, bypasses adblockers)
-      try {
-        const res = await fetch("/cdn-cgi/trace");
-        if (res.ok) {
-          const text = await res.text();
-          const lines = text.split("\n");
-          for (const line of lines) {
-            const parts = line.split("=");
-            if (parts[0] === "loc" && parts[1]) {
-              countryCode = parts[1].trim().toUpperCase();
-              break;
-            }
-          }
-        }
-      } catch (e) {
-        console.warn("Cloudflare cdn-cgi/trace check failed:", e);
-      }
-
-      // 2. Try freeipapi as fallback (e.g. on localhost)
-      if (!countryCode) {
-        try {
-          const res = await fetch("https://freeipapi.com/api/json");
-          if (res.ok) {
-            const data = await res.json();
-            countryCode = data.countryCode || "";
-          }
-        } catch (err) {
-          console.warn("GeoIP detection failed, using browser language/timezone fallback:", err);
-        }
-      }
-
-      // 3. Map country code
-      if (countryCode) {
-        setSelectedCountryState(countryCode.toUpperCase());
+    const handleCountryDetected = (e: Event) => {
+      const customEvent = e as CustomEvent<string>;
+      if (customEvent.detail) {
+        setSelectedCountryState(customEvent.detail.toUpperCase());
       }
     };
-    detectRegion();
+    window.addEventListener("takeoutfix-country-detected", handleCountryDetected);
+    
+    const isLocalhost = typeof window !== 'undefined' && (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1");
+    if (!isLocalhost) {
+      const saved = localStorage.getItem("takeoutfix_detected_country");
+      if (saved) {
+        setSelectedCountryState(saved.toUpperCase());
+      }
+    }
+
+    return () => {
+      window.removeEventListener("takeoutfix-country-detected", handleCountryDetected);
+    };
   }, []);
 
   const refreshUserData = async (currentUser: User) => {
-    // Generate or fetch local device session ID
     let deviceSessionId = localStorage.getItem("takeoutfix_device_session_id");
     if (!deviceSessionId) {
       deviceSessionId = `${currentUser.uid}_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
       localStorage.setItem("takeoutfix_device_session_id", deviceSessionId);
     }
 
-    // Sync any pending uncommitted telemetry/usage from previous crash/refresh
     try {
       const pending = await indexedDbService.get("telemetry", "takeoutfix_pending_usage");
-      if (pending) {
-        if (pending.uid === currentUser.uid && (pending.bytes > 0 || pending.files > 0)) {
-          const userRef = doc(db, 'users', currentUser.uid);
-          await setDoc(userRef, {
-            usedBytes: increment(pending.bytes),
-            usedFiles: increment(pending.files),
-            totalBytesProcessed: increment(pending.bytes),
-            totalFilesProcessed: increment(pending.files),
-          }, { merge: true });
+      if (pending && pending.uid === currentUser.uid && (pending.bytes > 0 || pending.files > 0)) {
+        const userRef = doc(db, 'users', currentUser.uid);
+        await setDoc(userRef, {
+          usedBytes: increment(pending.bytes),
+          usedFiles: increment(pending.files),
+          totalBytesProcessed: increment(pending.bytes),
+          totalFilesProcessed: increment(pending.files),
+        }, { merge: true });
 
-          // Also mark the dangling session document in active_sessions as interrupted
-          if (pending.sessionId) {
-            await setDoc(doc(db, 'active_sessions', pending.sessionId), {
-              status: 'failed',
-              currentFile: 'Restoration interrupted (page closed or reloaded)',
-              lastUpdated: Date.now()
-            }, { merge: true }).catch(() => {});
-          }
-
-          // Save detailed run record as a failed/interrupted session to recovery history
-          await addDoc(collection(db, 'recoveryHistory', currentUser.uid, 'sessions'), {
-            archiveName: pending.takeoutName || 'Google Takeout Archive',
-            timestamp: Date.now(),
-            filesProcessed: pending.files,
-            matched: 0,
-            recovered: 0,
-            failed: pending.files,
-            bytesProcessed: pending.bytes,
-            duration: 0,
-            status: 'failed'
-          }).catch((err) => console.error("Failed to write healed history:", err));
-
-          await indexedDbService.remove("telemetry", "takeoutfix_pending_usage");
+        if (pending.sessionId) {
+          await setDoc(doc(db, 'active_sessions', pending.sessionId), {
+            status: 'failed',
+            currentFile: 'Restoration interrupted (page closed or reloaded)',
+            lastUpdated: Date.now()
+          }, { merge: true }).catch(() => {});
         }
+
+        await addDoc(collection(db, 'recoveryHistory', currentUser.uid, 'sessions'), {
+          archiveName: pending.takeoutName || 'Google Takeout Archive',
+          timestamp: Date.now(),
+          filesProcessed: pending.files,
+          matched: 0,
+          recovered: 0,
+          failed: pending.files,
+          bytesProcessed: pending.bytes,
+          duration: 0,
+          status: 'failed'
+        }).catch((err) => console.error("Failed to write healed history:", err));
+
+        await indexedDbService.remove("telemetry", "takeoutfix_pending_usage");
       }
     } catch (e) {
       console.warn("Failed to heal pending session usage:", e);
@@ -555,7 +559,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const isDev = import.meta.env.DEV;
     const isSuperAdmin = SUPER_ADMIN_EMAILS.includes(currentUser.email || '');
 
-    // Fetch admin record first to dynamically check client-side admin privileges
     const adminRef = doc(db, 'admins', currentUser.uid);
     const adminSnap = await getDoc(adminRef);
     const isAdminUser = adminSnap.exists() || isSuperAdmin || isDev;
@@ -568,29 +571,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     if (snap.exists()) {
       const data = snap.data() as UserData & { sessionIds?: string[] };
-      // Force isAdmin for hardcoded super admin emails or registered admins
       if (isAdminUser) {
         data.isAdmin = true;
-        // Self-heal/sync user document if isAdmin is missing/false in DB
         if (!snap.data().isAdmin && !isDev) {
           await setDoc(docRef, { isAdmin: true }, { merge: true }).catch(console.error);
         }
       }
 
-      // Migrate legacy licenseType to new plan model
       if (!data.plan) {
-        if (data.licenseType === 'lifetime') {
-          data.plan = 'pro';
-        } else if (data.licenseType === '24hour' || data.licenseType === '15gb') {
-          data.plan = 'recovery_pass';
-        } else {
-          data.plan = 'free';
-        }
+        if (data.licenseType === 'lifetime') data.plan = 'pro';
+        else if (data.licenseType === '24hour' || data.licenseType === '15gb') data.plan = 'recovery_pass';
+        else data.plan = 'free';
         await setDoc(docRef, { plan: data.plan }, { merge: true }).catch(console.error);
       }
 
-      // If missing profile details in the db document, merge them dynamically!
-      // Enforce photoURL to always sync to Google/Gmail profile photo if different
+
+
       if (currentUser.photoURL && data.photoURL !== currentUser.photoURL) {
         data.photoURL = currentUser.photoURL;
         await setDoc(docRef, { photoURL: currentUser.photoURL }, { merge: true }).catch(console.error);
@@ -603,7 +599,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         data.photoURL = data.photoURL || currentUser.photoURL;
       }
 
-      // Bootstrap missing name/username fields for existing users
       let needsNameUpdate = false;
       const nameUpdates: any = {};
 
@@ -629,7 +624,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         await setDoc(docRef, nameUpdates, { merge: true }).catch(console.error);
       }
 
-      // Manage slot limits for concurrent session IDs
       const currentPlan = data.plan || 'free';
       const maxDevices = getPlanDeviceLimit(currentPlan);
       
@@ -641,7 +635,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       } else {
         const bypassDeviceLimit = isAdminUser || import.meta.env.DEV;
         if (!bypassDeviceLimit && updatedSessions.length >= maxDevices) {
-          // Exceeds limits! Wait for user input (Hotstar-style)
           setPendingSessionData({
             docRef,
             profileData,
@@ -662,13 +655,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } else {
       const displayName = currentUser.displayName || '';
       const email = currentUser.email || '';
-      
-      // Extract first name and last name
       const nameParts = displayName.trim().split(/\s+/);
       const extractedFirstName = nameParts[0] || '';
       const extractedLastName = nameParts.slice(1).join(' ') || '';
-
-      // Generate a default random unique username
       const defaultUsername = await generateUniqueUsername(email, displayName, currentUser.uid);
 
       const newData = {
@@ -677,7 +666,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         usedFiles: 0,
         totalBytesProcessed: 0,
         totalFilesProcessed: 0,
-        expiresAt: null as number | null,
+        expiresAt: null,
         isAdmin: isAdminUser,
         ...profileData,
         firstName: extractedFirstName,
@@ -691,14 +680,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setUserData(newData as any);
       setSessionRegistered(true);
 
-      // Increment usersCount in platform_stats/global
       const globalRef = doc(db, 'platform_stats', 'global');
-      await setDoc(globalRef, {
-        usersCount: increment(1)
-      }, { merge: true }).catch(console.error);
+      await setDoc(globalRef, { usersCount: increment(1) }, { merge: true }).catch(console.error);
     }
 
-    // Check / bootstrap admin record
     if (isSuperAdmin || isDev) {
       const adminRecord: AdminData = {
         uid: currentUser.uid,
@@ -716,14 +701,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setAdminData(adminRecord);
     } else if (adminSnap.exists()) {
       const adminRecord = adminSnap.data() as AdminData;
-      // Sync photoURL with Google Auth profile if missing or different!
       if (currentUser.photoURL && adminRecord.photoURL !== currentUser.photoURL) {
         adminRecord.photoURL = currentUser.photoURL;
         await updateDoc(adminRef, { photoURL: currentUser.photoURL }).catch(console.error);
       }
       setAdminData(adminRecord);
     } else {
-      // Check for a pending invite matching their email
       if (!currentUser.email) {
         setAdminData(null);
       } else {
@@ -734,7 +717,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           
           if (pendingInvite) {
             const inviteDoc = pendingInvite;
-            const inviteData = inviteDoc.ref ? inviteDoc.data() : null;
+            const inviteData = inviteDoc.data();
             if (inviteData) {
               const adminRecord: AdminData = {
                 uid: currentUser.uid,
@@ -764,13 +747,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   useEffect(() => {
-    // Request persistent storage permission from browser to protect local storage from eviction
     if (navigator.storage && navigator.storage.persist) {
-      navigator.storage.persist().then((persistent) => {
-        if (persistent) {
-          console.log("Storage is configured as persistent and will not be cleared by the OS.");
-        }
-      }).catch(console.warn);
+      navigator.storage.persist().catch(console.warn);
     }
 
     const mockAuthUser = typeof window !== 'undefined' ? localStorage.getItem("takeoutfix_mock_auth_user") : null;
@@ -813,7 +791,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return unsubscribe;
   }, []);
 
-  // Strict Concurrent Session listener
   useEffect(() => {
     if (!user) return;
 
@@ -821,15 +798,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const unsubscribe = onSnapshot(userDocRef, (snap) => {
       if (snap.exists()) {
         const data = snap.data() as UserData;
+        
+
+
         const sessionIds = data.sessionIds || [];
         const localSessionId = localStorage.getItem("takeoutfix_device_session_id");
         
-        // Track if we have seen our own session ID in the active sessions list
         if (localSessionId && sessionIds.includes(localSessionId)) {
           setHasSeenSelfInSessions(true);
         }
         
-        // Evict session if our local device session ID is not in active list (only after session registration completes)
         const isBypass = data.isAdmin || import.meta.env.DEV;
         if (!isBypass && sessionRegistered && hasSeenSelfInSessions && localSessionId && sessionIds.length > 0 && !sessionIds.includes(localSessionId)) {
           setPendingSessionData({
@@ -855,7 +833,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           return;
         }
 
-        // Keep userData in sync in real-time
         setUserData(data);
       }
     }, (err) => {
@@ -871,13 +848,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const logout = async () => {
-    // Mark offline before sign out
     if (user) {
       try {
         await setDoc(doc(db, 'admins', user.uid), { status: 'offline', lastSeen: Date.now() }, { merge: true });
       } catch (_) {}
 
-      // Clean up Firestore active sessions array on explicit logout
       try {
         const localSessionId = localStorage.getItem("takeoutfix_device_session_id");
         if (localSessionId) {
@@ -908,8 +883,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (!pendingSessionData) return;
     try {
       const { docRef, profileData, nameUpdates, data, deviceSessionId } = pendingSessionData;
-      
-      // Clear older device sessions and replace with only this new session ID
       const updatedSessions = [deviceSessionId];
       await setDoc(docRef, { ...profileData, ...nameUpdates, sessionIds: updatedSessions }, { merge: true });
       
@@ -943,8 +916,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       selectedCountry,
       setSelectedCountry,
       prices,
+      finalPrices,
+      foundingCount,
+      isFounding,
+      slotsRemaining,
       getPlanPriceValue,
-      dodoProductIds
+      dodoProductIds,
+      dodoTestMode
     }}>
       {children}
       
@@ -1008,13 +986,16 @@ export const useAuth = () => {
       setRegion: () => {},
       selectedCountry: 'US',
       setSelectedCountry: () => {},
-      prices: { recovery_pass: "$4.99", pro: "$29", super: "$49", family: "$79" },
+      prices: { recovery_pass: "$4.99", pro: "$24.65", super: "$44.10" },
+      finalPrices: { recovery_pass: "$4.99", pro: "$29.00", super: "$49.00" },
+      foundingCount: 0,
+      isFounding: true,
+      slotsRemaining: 200,
       getPlanPriceValue: () => 0,
       dodoProductIds: {
         recovery_pass: "pdt_recovery_pass_placeholder",
         pro: "pdt_pro_placeholder",
-        super: "pdt_super_placeholder",
-        family: "pdt_family_placeholder"
+        super: "pdt_super_placeholder"
       }
     };
   }

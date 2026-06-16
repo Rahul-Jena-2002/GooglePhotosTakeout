@@ -1,7 +1,6 @@
 // No react-router-dom imports
 import { useAuth } from "../contexts/AuthContext"
-import { db } from "../firebase"
-import { doc, setDoc, addDoc, collection } from "firebase/firestore"
+
 import { Button } from "../components/ui/button"
 import { Card } from "../components/ui/card"
 import { ShieldCheck, Lock, CreditCard, ChevronRight, AlertCircle, Sparkles, CheckCircle2 } from "lucide-react"
@@ -22,18 +21,34 @@ const getPlanDetails = (
   region: string, 
   getPlanPriceValue: (p: string, r: string) => number
 ): PlanDetails | null => {
-  const regionConf = region === 'in'
-    ? { currency: "INR", symbol: "₹" }
-    : { currency: "USD", symbol: "$" }
+  const r = region.toLowerCase();
+  let currency = "USD";
+  let symbol = "$";
+  
+  if (r === 'in') {
+    currency = "INR";
+    symbol = "₹";
+  } else if (r === 'eu') {
+    currency = "EUR";
+    symbol = "€";
+  } else if (r === 'jp') {
+    currency = "JPY";
+    symbol = "¥";
+  } else if (r === 'cn') {
+    currency = "CNY";
+    symbol = "¥";
+  }
+
+  const regionConf = { currency, symbol };
 
   const priceVal = getPlanPriceValue(planKey, region)
   
   const details: Record<string, { name: string; description: string; features: string[] }> = {
     recovery_pass: {
       name: "Recovery Pass",
-      description: "One-time metadata recovery for up to 10,005 files (20 GB)",
+      description: "One-time metadata recovery for up to 3,000 files (3 GB)",
       features: [
-        "20 GB or 10,000 Files limit (whichever comes first)",
+        "3 GB or 3,000 Files limit (whichever comes first)",
         "Full folder organization structure",
         "Standard support access (24-48 business hours)",
         "Uses identical high-precision EXIF injection engine"
@@ -56,17 +71,7 @@ const getPlanDetails = (
         "Ad-Free restoration experience",
         "Visual metadata viewer & inspector",
         "Local duplicate-image space scanner",
-        "Highest priority live chat support"
-      ]
-    },
-    family: {
-      name: "Family License",
-      description: "All Super benefits for up to 5 devices in your household",
-      features: [
-        "5 Devices installation license",
-        "Unlimited file and storage processing",
-        "Ad-Free restoration & metadata viewer",
-        "Highest priority queue support"
+        "Highest priority dedicated support"
       ]
     }
   }
@@ -85,7 +90,7 @@ import { AuthProvider } from "../contexts/AuthContext"
 import { ToastContainer } from "../components/ui/toast"
 
 function CheckoutPageContent() {
-  const { user, userData, loading, region, getPlanPriceValue, dodoProductIds, login } = useAuth()
+  const { user, userData, loading, region, getPlanPriceValue, dodoProductIds, dodoTestMode, login } = useAuth()
   
   if (loading) {
     return (
@@ -131,12 +136,12 @@ function CheckoutPageContent() {
     return region || "us";
   })()
 
-  // Normalize region parameter to one of: in, t1, t2, t3
+  // Normalize region parameter to one of: in, t1, t2, t3, eu, jp, cn, t4
   const normalizedRegion = (() => {
     const r = regionParam.toLowerCase();
-    if (r === 'in') return 'in';
-    if (r === 't1') return 't1';
-    if (r === 't2') return 't2';
+    const valid = ['in', 't1', 't2', 't3', 'eu', 'jp', 'cn', 't4'];
+    if (valid.includes(r)) return r;
+    if (r === 'us') return 't3';
     return 't3'; // Fallback for us/eu/jp etc.
   })()
 
@@ -155,38 +160,43 @@ function CheckoutPageContent() {
   const handleDodoRedirect = () => {
     if (!user) return
     setError("")
-    
-    const productId = dodoProductIds[planKey]
-    if (!productId || productId.includes("placeholder") || productId === "") {
-      setError("Payment link setup in progress. Please configure actual Product IDs in the Admin Settings panel.")
-      setIsProcessing(false)
-      return
-    }
-
     setIsProcessing(true)
     setProcessStep("Redirecting to Dodo Payments secure checkout...")
 
-    const dodoBaseUrl = "https://checkout.dodopayments.com/buy"
+    // Look up product ID by region first, then plan
+    const productId = dodoProductIds[normalizedRegion]?.[planKey] || ""
+    const dodoBaseUrl = dodoTestMode
+      ? "https://test.checkout.dodopayments.com/buy"
+      : "https://checkout.dodopayments.com/buy"
     const returnUrl = `${window.location.origin}/dashboard?checkout_status=success&plan=${planKey}`
-    
-    // Append customer email, custom userId metadata, and callback return url
-    const dodoUrl = `${dodoBaseUrl}/${productId}?customer_email=${encodeURIComponent(user.email || "")}&metadata_userId=${encodeURIComponent(user.uid)}&redirect_url=${encodeURIComponent(returnUrl)}`
-    
-    window.location.href = dodoUrl
+
+    // Build URL params — pass currency so Dodo charges in local currency,
+    // and pass region + plan as metadata so the webhook can process correctly
+    const params = new URLSearchParams({
+      customer_email: user.email || "",
+      redirect_url: returnUrl,
+      metadata_userId: user.uid,
+      metadata_plan: planKey,
+      metadata_region: normalizedRegion,
+    })
+
+    // Pass currency to Dodo so it matches what user saw on pricing page
+    if (plan?.currency) {
+      params.set("currency", plan.currency)
+    }
+
+    window.location.href = `${dodoBaseUrl}/${productId}?${params.toString()}`
   }
 
-  // Automatic redirect trigger
+  // Automatic redirect trigger: when user and plan are ready, immediately redirect
   useEffect(() => {
     if (user && plan) {
-      const productId = dodoProductIds[planKey]
-      if (productId && !productId.includes("placeholder") && productId !== "") {
-        setIsProcessing(true)
-        setProcessStep("Opening secure checkout portal...")
-        const timer = setTimeout(() => {
-          handleDodoRedirect()
-        }, 1500)
-        return () => clearTimeout(timer)
-      }
+      setIsProcessing(true)
+      setProcessStep("Opening secure checkout portal...")
+      const timer = setTimeout(() => {
+        handleDodoRedirect()
+      }, 1500)
+      return () => clearTimeout(timer)
     }
   }, [user, plan, dodoProductIds])
 
@@ -330,6 +340,8 @@ function CheckoutPageContent() {
               >
                 Proceed to Checkout <ChevronRight className="w-4 h-4" />
               </button>
+
+
               
               <div>
                 <a href="/pricing" className="text-xs text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-350">

@@ -167,7 +167,7 @@ app.post("/dodo-webhook", async (req, res) => {
       });
 
       // 2. Update User Document plan details & reset usage
-      const expiresAt = plan === "recovery_pass" ? timestamp + (24 * 60 * 60 * 1000) : null;
+      const expiresAt = null;
       await db.collection("users").doc(userId).set({
         plan: plan,
         usedBytes: 0,
@@ -175,6 +175,19 @@ app.post("/dodo-webhook", async (req, res) => {
         expiresAt,
         updatedAt: timestamp
       }, { merge: true });
+
+      // 2.5. If the plan is 'pro' or 'super', atomically increment foundingMembers counter in config/foundingMembers
+      if (plan === "pro" || plan === "super") {
+        try {
+          const foundingRef = db.collection("config").doc("foundingMembers");
+          await foundingRef.set({
+            count: admin.firestore.FieldValue.increment(1)
+          }, { merge: true });
+          console.log(`Atomically incremented foundingMembers counter for plan: ${plan}`);
+        } catch (counterErr) {
+          console.error("Failed to increment foundingMembers counter:", counterErr);
+        }
+      }
 
       // 3. Add Log in Admin Activity feed
       await db.collection("admin_activity").add({
@@ -302,7 +315,7 @@ app.post("/execute", async (req, res) => {
           return res.status(400).json({ error: "Arguments 'emailOrUid' and 'newPlan' are required." });
         }
         
-        const validPlans = ["free", "single_pass", "pro", "super", "family"];
+        const validPlans = ["free", "single_pass", "pro", "super"];
         if (!validPlans.includes(newPlan.toLowerCase())) {
           return res.status(400).json({ error: `Invalid plan. Must be one of: ${validPlans.join(", ")}` });
         }
@@ -443,3 +456,81 @@ app.post("/execute", async (req, res) => {
 
 // Expose HTTPS Cloud Function
 exports.geminiToolGateway = functions.https.onRequest(app);
+
+// Firestore trigger to auto-swap product IDs when founding members limit is reached
+exports.onFoundingMembersUpdate = functions.firestore
+  .document("config/foundingMembers")
+  .onUpdate(async (change, context) => {
+    const beforeData = change.before.data() || {};
+    const afterData = change.after.data() || {};
+
+    const oldCount = beforeData.count || 0;
+    const newCount = afterData.count || 0;
+
+    console.log(`[onFoundingMembersUpdate] Founding members count updated from ${oldCount} to ${newCount}`);
+
+    if (newCount >= 200 && oldCount < 200) {
+      console.log("[onFoundingMembersUpdate] Founding slot limit of 200 reached! Initiating product ID swap...");
+
+      try {
+        await db.runTransaction(async (transaction) => {
+          const globalRef = db.collection("settings").doc("global");
+          const globalSnap = await transaction.get(globalRef);
+
+          if (!globalSnap.exists) {
+            console.error("[onFoundingMembersUpdate] settings/global document not found!");
+            return;
+          }
+
+          const globalData = globalSnap.data();
+          const activeProducts = globalData.dodo_products || {};
+          const fullProducts = globalData.dodo_products_full || {};
+
+          // Deep copy of active products
+          const newActiveProducts = JSON.parse(JSON.stringify(activeProducts));
+
+          let swapCount = 0;
+          for (const region of Object.keys(fullProducts)) {
+            if (!newActiveProducts[region]) {
+              newActiveProducts[region] = {};
+            }
+
+            // Swap Pro full price ID
+            if (fullProducts[region].pro) {
+              newActiveProducts[region].pro = fullProducts[region].pro;
+              swapCount++;
+            }
+
+            // Swap Super full price ID
+            if (fullProducts[region].super) {
+              newActiveProducts[region].super = fullProducts[region].super;
+              swapCount++;
+            }
+          }
+
+          if (swapCount > 0) {
+            transaction.update(globalRef, {
+              dodo_products: newActiveProducts
+            });
+            console.log(`[onFoundingMembersUpdate] Successfully swapped ${swapCount} active product IDs to full price!`);
+          } else {
+            console.warn("[onFoundingMembersUpdate] No full-price product IDs found in settings/global.dodo_products_full to swap.");
+          }
+        });
+
+        // Add log in Admin Activity feed
+        await db.collection("admin_activity").add({
+          actorUid: "SYSTEM_TRIGGER",
+          actorName: "System Auto-Swap Trigger",
+          actorRole: "SYSTEM",
+          action: "AUTO_SWAP_PRICES",
+          target: "settings/global",
+          description: `Founding member slots limit (200) reached. Automatically swapped active Dodo product IDs to full-price ones.`,
+          timestamp: Date.now()
+        });
+
+      } catch (error) {
+        console.error("[onFoundingMembersUpdate] Transaction failed:", error);
+      }
+    }
+  });
