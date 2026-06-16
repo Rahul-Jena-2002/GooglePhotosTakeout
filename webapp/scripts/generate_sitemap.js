@@ -2,7 +2,7 @@ import fs from 'fs';
 import path from 'path';
 
 const actionKeys = ["restore", "recover", "fix", "repair", "merge", "sync", "rebuild", "reconstruct", "retrieve", "preserve", "extract", "convert", "transfer"];
-const targetKeys = ["metadata", "exif", "gps", "location", "timestamp", "date-taken", "creation-date", "albums", "people-tags", "camera-data", "photo-information", "video-information"];
+const targetKeys = ["metadata", "meta-data", "exif", "gps", "location", "timestamp", "date-taken", "creation-date", "albums", "people-tags", "camera-data", "photo-information", "video-information"];
 const sourceKeys = ["takeout", "photos", "export"];
 
 const baseUrl = "https://takeoutfix.pages.dev";

@@ -3,7 +3,7 @@ export const prerender = true;
 
 export function getStaticPaths() {
   const actionKeys = ["restore", "recover", "fix", "repair", "merge", "sync", "rebuild", "reconstruct", "retrieve", "preserve", "extract", "convert", "transfer"];
-  const targetKeys = ["metadata", "exif", "gps", "location", "timestamp", "date-taken", "creation-date", "albums", "people-tags", "camera-data", "photo-information", "video-information"];
+  const targetKeys = ["metadata", "meta-data", "exif", "gps", "location", "timestamp", "date-taken", "creation-date", "albums", "people-tags", "camera-data", "photo-information", "video-information"];
   const sourceKeys = ["takeout", "photos", "export"];
   const paths = [];
   for (const action of actionKeys) {
@@ -40,6 +40,7 @@ const actionMap = {
 
 const targetMap = {
   "metadata": "EXIF Metadata",
+  "meta-data": "EXIF Meta Data",
   "exif": "EXIF Header Tags",
   "gps": "GPS Coordinates",
   "location": "GPS Locations",

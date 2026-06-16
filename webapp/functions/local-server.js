@@ -272,7 +272,7 @@ app.post("/sync-coupon", async (req, res) => {
             if (lookupResp.statusCode < 300) {
               let lookupData = {};
               try { lookupData = JSON.parse(lookupResp.body); } catch (_) {}
-              const list = Array.isArray(lookupData) ? lookupData : (lookupData.data || []);
+              const list = Array.isArray(lookupData) ? lookupData : (lookupData.items || lookupData.data || []);
               const match = list.find(item => String(item.code).toUpperCase() === String(couponCode).toUpperCase());
               if (match) {
                 dodoCouponId = match.id || match.discount_id || null;
