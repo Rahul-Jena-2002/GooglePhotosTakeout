@@ -76,7 +76,7 @@ export default function AdminLayout() {
       items: [
         { label: "Admin Team", path: "/admin/team", icon: Users2, show: true },
         { label: "Audit Logs", path: "/admin/audit", icon: ShieldCheck, show: isAdminOrAbove },
-        { label: "Settings", path: "/admin/settings", icon: Settings, show: isSuperAdmin },
+        { label: "Settings", path: "/admin/settings", icon: Settings, show: isSuperAdmin || isDev },
       ],
     },
   ]

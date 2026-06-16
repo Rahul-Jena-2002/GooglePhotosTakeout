@@ -31,7 +31,9 @@ function AdminRouterContent() {
           <Route path="settings" element={<AdminSettings />} />
           <Route path="statistics" element={<AdminStatistics />} />
           <Route path="audit" element={<AdminAudit />} />
+          <Route path="*" element={<div className="text-red-500 font-bold p-8">Nested Route Not Found: {window.location.pathname}</div>} />
         </Route>
+        <Route path="*" element={<div className="text-red-500 font-bold p-8">Top-level Route Not Found: {window.location.pathname}</div>} />
       </Routes>
       <ToastContainer />
     </BrowserRouter>
