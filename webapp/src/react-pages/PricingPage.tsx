@@ -200,12 +200,45 @@ function PricingPageContent() {
       </div>
 
       {isPromoActiveLocal && (
-        <div className="mb-12 max-w-lg mx-auto bg-gradient-to-r from-indigo-500/10 via-purple-500/10 to-indigo-500/10 border border-indigo-500/20 backdrop-blur-md rounded-2xl p-4 text-center">
+        <div className="mb-12 max-w-xl mx-auto bg-gradient-to-r from-indigo-500/10 via-purple-500/10 to-indigo-500/10 border border-indigo-500/20 backdrop-blur-md rounded-2xl p-5 text-center flex flex-col gap-3.5 items-center">
           <span className="text-sm font-semibold text-indigo-400">
             {bannerText}
           </span>
+          {Object.keys(activeCoupons).length > 0 && (
+            <div className="flex flex-wrap items-center justify-center gap-2 text-xs">
+              <span className="text-zinc-400 font-medium">Active Coupons (click to copy):</span>
+              {Object.entries(activeCoupons).map(([planKey, code]) => {
+                const planLabel = planKey === 'recovery_pass' ? 'Recovery' : planKey === 'pro' ? 'Pro' : 'Super';
+                const colorClass = planKey === 'recovery_pass' 
+                  ? 'text-zinc-300 bg-zinc-800 border-zinc-700 hover:bg-zinc-750' 
+                  : planKey === 'pro'
+                    ? 'text-blue-400 bg-blue-500/10 border-blue-500/20 hover:bg-blue-500/25'
+                    : 'text-amber-400 bg-amber-500/10 border-amber-500/20 hover:bg-amber-500/25';
+                return (
+                  <button
+                    key={planKey}
+                    type="button"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      navigator.clipboard.writeText(code);
+                      useToastStore.getState().addToast(`Coupon code ${code} copied!`, "success", 3000, "Copied");
+                    }}
+                    className={`px-2.5 py-1 rounded-lg font-mono font-bold border ${colorClass} transition-colors cursor-pointer select-none inline-flex items-center gap-1`}
+                    title={`Copy ${planLabel} coupon code`}
+                  >
+                    <span>{planLabel}: {code}</span>
+                    <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" />
+                    </svg>
+                  </button>
+                );
+              })}
+            </div>
+          )}
         </div>
-           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-16 items-stretch">
+      )}
+
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-16 items-stretch">
         
         {/* FREE PLAN */}
         <div className="flex flex-col bg-zinc-950/45 border border-zinc-900 rounded-2xl p-6 h-full justify-between hover:border-zinc-800 transition-all">
