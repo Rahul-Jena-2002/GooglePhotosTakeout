@@ -362,13 +362,15 @@ export default function AdminSettings() {
         const allOk = data.results.every((r: any) => r.status === 'SUCCESS')
         useToastStore.getState().addToast(
           allOk ? `✅ All prices synced to Dodo for ${regionCode}!` : `⚠️ Partial sync — check results below.`,
-          allOk ? 'success' : 'error'
+          allOk ? 'success' : 'error',
+          4500,
+          allOk ? 'Sync Success' : 'Sync Status'
         )
       } else {
-        useToastStore.getState().addToast('Sync failed: ' + (data.error || resp.status), 'error')
+        useToastStore.getState().addToast('Sync failed: ' + (data.error || resp.status), 'error', 4500, 'Sync Error')
       }
     } catch (err: any) {
-      useToastStore.getState().addToast('Price sync error: ' + err.message, 'error')
+      useToastStore.getState().addToast('Price sync error: ' + err.message, 'error', 4500, 'Sync Error')
     } finally {
       setSyncingPrices(false)
     }

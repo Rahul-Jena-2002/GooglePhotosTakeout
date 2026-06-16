@@ -535,17 +535,17 @@ app.post("/sync-dodo-prices", async (req, res) => {
   const now = Date.now();
 
   // Helper to PATCH /products/{product_id}
-  const patchProductPrice = (productId, amountMinor) => {
+  const patchProductPrice = (productId, amountMinor, dodoCfg = {}) => {
     const payload = JSON.stringify({
       price: {
         type: "one_time_price",
         currency: currencyCode,
         price: amountMinor,
-        tax_inclusive: true,
-        discount: 0,
-        purchasing_power_parity: false,
-        pay_what_you_want: false,
-        suggested_price: null
+        tax_inclusive:            dodoCfg.tax_inclusive            ?? true,
+        discount:                 dodoCfg.discount                 ?? 0,
+        purchasing_power_parity:  dodoCfg.purchasing_power_parity  ?? false,
+        pay_what_you_want:        dodoCfg.pay_what_you_want        ?? false,
+        suggested_price:          dodoCfg.suggested_price          ?? null
       }
     });
 
@@ -572,7 +572,7 @@ app.post("/sync-dodo-prices", async (req, res) => {
   };
 
   // Update provided plans
-  for (const [planCode, rupeesVal] of Object.entries(prices)) {
+  for (const [planCode, priceVal] of Object.entries(prices)) {
     try {
       const productId = dodoProductsMap?.[regionCode]?.[planCode] || null;
       if (!productId) {
@@ -580,17 +580,20 @@ app.post("/sync-dodo-prices", async (req, res) => {
         continue;
       }
 
-      const rupees = Number(rupeesVal);
+      // priceVal is either a plain number OR { amount, tax_inclusive, discount, ppp, pwyw, suggested_price }
+      const isObj = priceVal !== null && typeof priceVal === "object";
+      const rupees = Number(isObj ? priceVal.amount : priceVal);
       if (!isFinite(rupees) || rupees <= 0) {
-        results.push({ planCode, productId, status: "FAILED", error: `Invalid amount for ${planCode}: ${rupeesVal}` });
+        results.push({ planCode, productId, status: "FAILED", error: `Invalid amount for ${planCode}: ${rupees}` });
         continue;
       }
 
       // Convert to smallest unit per docs (INR → paise)
       // Ref currency smallest unit rule in Dodo: API responses use smallest units
       const amountMinor = Math.round(rupees * 100);
+      const dodoCfg = isObj ? priceVal : {};
 
-      const apiResp = await patchProductPrice(productId, amountMinor);
+      const apiResp = await patchProductPrice(productId, amountMinor, dodoCfg);
       let parsed = {};
       try { parsed = JSON.parse(apiResp.body); } catch (_) { }
 
