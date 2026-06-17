@@ -50,7 +50,13 @@ export function injectExifDate(jpegBuffer: ArrayBuffer, epochSec: number): Uint8
   const binary = arrayBufferToBinaryString(jpegBuffer);
   const dataUrl = `data:image/jpeg;base64,${btoa(binary)}`;
 
-  // Load existing EXIF or create empty object
+  const dateStr = toExifDate(epochSec);
+
+  // Load existing EXIF or create empty object.
+  // piexifjs has a known bug where certain Snapchat / non-standard JPEGs cause
+  // "Cannot set property writable of #<cA> which has only a getter" — we catch
+  // ALL errors from load() and fall back to a fresh EXIF object so the file is
+  // still copied with the correct date rather than being logged as an error.
   let exifObj: ReturnType<typeof piexif.load>;
   try {
     exifObj = piexif.load(dataUrl);
@@ -58,19 +64,24 @@ export function injectExifDate(jpegBuffer: ArrayBuffer, epochSec: number): Uint8
     exifObj = { '0th': {}, 'Exif': {}, 'GPS': {}, '1st': {}, thumbnail: null };
   }
 
-  const dateStr = toExifDate(epochSec);
-
   // Inject into both '0th' (DateTime) and 'Exif' (DateTimeOriginal + DateTimeDigitized)
-  exifObj['0th'][piexif.ImageIFD.DateTime] = dateStr;
-  exifObj['Exif'][piexif.ExifIFD.DateTimeOriginal]  = dateStr;
-  exifObj['Exif'][piexif.ExifIFD.DateTimeDigitized] = dateStr;
+  try {
+    exifObj['0th'][piexif.ImageIFD.DateTime] = dateStr;
+    exifObj['Exif'][piexif.ExifIFD.DateTimeOriginal]  = dateStr;
+    exifObj['Exif'][piexif.ExifIFD.DateTimeDigitized] = dateStr;
 
-  const exifBytes  = piexif.dump(exifObj);
-  const newDataUrl = piexif.insert(exifBytes, dataUrl);
+    const exifBytes  = piexif.dump(exifObj);
+    const newDataUrl = piexif.insert(exifBytes, dataUrl);
 
-  // Strip the data URL prefix and decode base64
-  const base64 = newDataUrl.replace(/^data:image\/jpeg;base64,/, '');
-  return binaryStringToUint8Array(atob(base64));
+    // Strip the data URL prefix and decode base64
+    const base64 = newDataUrl.replace(/^data:image\/jpeg;base64,/, '');
+    return binaryStringToUint8Array(atob(base64));
+  } catch {
+    // If piexif.dump/insert also fails (e.g. malformed IFD on Snapchat images),
+    // fall back to writing original bytes unchanged — metadata won't be injected
+    // but the file is still saved rather than being lost as an error.
+    return new Uint8Array(jpegBuffer);
+  }
 }
 
 /** Is this file a JPEG that we can inject into? */

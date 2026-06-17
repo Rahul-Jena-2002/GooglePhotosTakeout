@@ -93,6 +93,29 @@ export default function AdminUserDashboard() {
     }
   }
 
+  const handleResetQuota = async (userId: string) => {
+    if (!window.confirm(`Reset usage quota for this user? This will set usedBytes and usedFiles to 0. Their plan and lifetime stats will not change.`)) return
+    try {
+      await updateDoc(doc(db, "users", userId), {
+        usedBytes: 0,
+        usedFiles: 0,
+      })
+      await addDoc(collection(db, "admin_activity"), {
+        actorUid: adminData?.uid || "system",
+        actorName: adminData?.displayName || "Admin",
+        actorRole: role,
+        action: "RESET_QUOTA",
+        target: userId,
+        description: `Reset usage quota (usedBytes + usedFiles) for ${targetUser?.email || userId}`,
+        timestamp: Date.now()
+      })
+      useToastStore.getState().addToast("User quota reset successfully.", "success")
+    } catch (err: any) {
+      console.error(err)
+      useToastStore.getState().addToast("Failed to reset quota: " + err.message, "error")
+    }
+  }
+
   const handleToggleSupportWithAds = async (userId: string, enable: boolean) => {
     try {
       await updateDoc(doc(db, "users", userId), { supportWithAds: enable })
@@ -417,6 +440,13 @@ Your EXIF metadata recovery tools are active.
                   )}
 
 
+
+                  <button
+                    onClick={() => handleResetQuota(targetUser.id)}
+                    className="w-full py-2 mt-1 rounded-md text-xs font-semibold border transition-all bg-amber-500/10 text-amber-400 border-amber-500/20 hover:bg-amber-500/20"
+                  >
+                    ↺ Reset Usage Quota (usedBytes + usedFiles)
+                  </button>
 
                   <div className="flex gap-3 pt-3 border-t border-zinc-800/60">
                     <button

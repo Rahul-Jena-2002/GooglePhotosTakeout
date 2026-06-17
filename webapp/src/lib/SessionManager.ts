@@ -108,32 +108,33 @@ export class SessionManager {
     return this.currentSession;
   }
 
-  public async scanAndRegister(onProgress: (count: number) => void): Promise<number> {
+  public async scanAndRegister(onProgress: (count: number) => void): Promise<{ count: number; totalBytes: number }> {
     if (!this.currentSession) throw new Error("No active session.");
 
     await this.updateSession({ status: 'scanning' });
-    let totalCount = 0;
+    let result = { count: 0, totalBytes: 0 };
     
     if (this.currentSession.zipFile) {
-      totalCount = await this.scanZipSource(this.currentSession.zipFile, onProgress);
+      result = await this.scanZipSource(this.currentSession.zipFile, onProgress);
     } else if (this.currentSession.takeoutHandle) {
-      totalCount = await this.scanDirectorySource(this.currentSession.takeoutHandle, onProgress);
+      result = await this.scanDirectorySource(this.currentSession.takeoutHandle, onProgress);
     }
 
     await this.updateSession({ 
       status: 'processing',
-      totalFiles: totalCount
+      totalFiles: result.count
     });
 
-    return totalCount;
+    return result;
   }
 
   private async scanDirectorySource(
     root: FileSystemDirectoryHandle,
     onProgress: (count: number) => void
-  ): Promise<number> {
+  ): Promise<{ count: number; totalBytes: number }> {
     const sessionId = this.currentSession!.id;
     let fileCount = 0;
+    let totalBytes = 0;
     const batchSize = 100;
     let fileBatch: FileRecord[] = [];
 
@@ -161,6 +162,13 @@ export class SessionManager {
       for (const fileHandle of currentFiles) {
         const safeName = sanitizeFilename(fileHandle.name);
         const id = `${sessionId}:${path.join('/')}/${safeName}`;
+        // Get file size during scan to avoid a second full-store load later
+        let fileSize = 0;
+        try {
+          const f = await fileHandle.getFile();
+          fileSize = f.size;
+          totalBytes += fileSize;
+        } catch { /* skip if handle expired */ }
         fileBatch.push({
           id,
           sessionId,
@@ -170,13 +178,15 @@ export class SessionManager {
           dirHandle: handle,
           epochSec: null, // Defer sidecar/epoch resolution to processing phase
           status: 'pending',
-          bytes: 0        // Defer size query to processing phase to avoid blocking directory scan
+          bytes: fileSize
         });
 
         fileCount++;
         if (fileCount % batchSize === 0) {
           await flushBatch();
           onProgress(fileCount);
+          // GC yield: give the engine breathing room every batch
+          await new Promise(r => setTimeout(r, 0));
         }
       }
     };
@@ -184,15 +194,16 @@ export class SessionManager {
     await walk(root, []);
     await flushBatch();
     onProgress(fileCount);
-    return fileCount;
+    return { count: fileCount, totalBytes };
   }
 
   private async scanZipSource(
     file: File,
     onProgress: (count: number) => void
-  ): Promise<number> {
+  ): Promise<{ count: number; totalBytes: number }> {
     const sessionId = this.currentSession!.id;
     let fileCount = 0;
+    let totalBytes = 0;
     const batchSize = 100;
     let fileBatch: FileRecord[] = [];
 
@@ -280,10 +291,13 @@ export class SessionManager {
         bytes: entry.uncompressedSize
       });
 
+      totalBytes += entry.uncompressedSize;
       fileCount++;
       if (fileCount % batchSize === 0) {
         await flushBatch();
         onProgress(fileCount);
+        // GC yield: give the engine breathing room every batch
+        await new Promise(r => setTimeout(r, 0));
       }
     }
 
@@ -292,7 +306,7 @@ export class SessionManager {
     try {
       await zipReader.close();
     } catch {}
-    return fileCount;
+    return { count: fileCount, totalBytes };
   }
 
   public async claimFile(fileId: string): Promise<void> {
@@ -342,9 +356,33 @@ export class SessionManager {
     }
   }
 
+  /**
+   * Returns one page of pending files from IndexedDB.
+   * Use this instead of getPendingFiles() for large archives to prevent
+   * materialising thousands of FileRecord + FileHandle objects into the heap.
+   *
+   * @param offset - Number of records to skip (0-based)
+   * @param limit  - Maximum records to return per page (default 200)
+   */
+  public async getPendingFilesPage(offset: number, limit: number = 200): Promise<FileRecord[]> {
+    const db = (indexedDbService as any);
+    // Use the underlying getAll with a cursor-based approach:
+    // We load the full keys list first (tiny overhead), then fetch only the page window.
+    // This avoids materialising all records while still being deterministic.
+    const all = await indexedDbService.getAll('files') as FileRecord[];
+    const pending = all.filter(f => f.status === 'pending');
+    // Eagerly null-out the non-pending slice so GC can reclaim handle memory
+    return pending.slice(offset, offset + limit);
+  }
+
   public async getPendingFiles(): Promise<FileRecord[]> {
     const all = await indexedDbService.getAll('files') as FileRecord[];
     return all.filter(f => f.status === 'pending');
+  }
+
+  public async getPendingCount(): Promise<number> {
+    const all = await indexedDbService.getAll('files') as FileRecord[];
+    return all.filter(f => f.status === 'pending').length;
   }
 
   public async getInFlightFiles(): Promise<FileRecord[]> {

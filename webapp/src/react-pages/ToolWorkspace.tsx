@@ -891,10 +891,10 @@ export function ToolWorkspaceContent() {
     };
 
     try {
-      const allFiles = await indexedDbService.getAll('files') as FileRecord[];
-      totalBytesRef.current = allFiles.reduce((sum, f) => sum + (f.bytes || 0), 0);
+      // Byte sum is stored in session; no need to reload all files into heap
+      totalBytesRef.current = session.bytesProcessed > 0 ? session.bytesProcessed : 0;
     } catch (err) {
-      console.error("Failed to sum bytes on resume:", err);
+      console.error("Failed to get bytes on resume:", err);
       totalBytesRef.current = 0;
     }
 
@@ -917,7 +917,7 @@ export function ToolWorkspaceContent() {
         logsBuffer.current = [];
         return newLogs.slice(-300);
       });
-    }, 100);
+    }, 250);
 
     try {
       await processRestorePipeline(session, sessionManagerRef.current);
@@ -952,10 +952,17 @@ export function ToolWorkspaceContent() {
     }
 
     // 3. Directory cache for local file handle listings (resolving JSON sidecars on-demand)
+    // Cap at 500 entries to prevent unbounded growth on archives with many subdirectories.
+    const DIR_CACHE_MAX = 500;
     const dirCache = new Map<string, Set<string>>();
     const getDirNames = async (dirHandle: FileSystemDirectoryHandle, pathKey: string): Promise<Set<string>> => {
       let cached = dirCache.get(pathKey);
       if (!cached) {
+        // Evict oldest entries if we've hit the cap (simple FIFO eviction)
+        if (dirCache.size >= DIR_CACHE_MAX) {
+          const firstKey = dirCache.keys().next().value;
+          if (firstKey !== undefined) dirCache.delete(firstKey);
+        }
         cached = new Set<string>();
         // @ts-ignore
         for await (const [name] of dirHandle) {
@@ -970,9 +977,13 @@ export function ToolWorkspaceContent() {
     // 4. Revert in-flight files (delete half-written and reset status to pending)
     await sessionManager.revertInFlightFiles();
 
-    // 5. Get pending files
-    let pending = await sessionManager.getPendingFiles();
-    let fileIndex = 0;
+    // 5. Get total pending count (lightweight — no FileRecord materialisation)
+    const totalPending = await sessionManager.getPendingCount();
+    const PAGE_SIZE = 200; // process files in pages to keep heap flat
+    let globalFileIndex = 0;  // absolute index across all pages
+    let pageOffset = 0;       // offset for next page fetch
+    let currentPage: FileRecord[] = []; // current in-memory page
+    let pageIndex = 0;        // index within current page
     
     // 6. Throttling and backpressure counter
     // For ZIP: sequential processing (1 at a time) avoids ZipReader lock contention and is actually faster.
@@ -992,8 +1003,33 @@ export function ToolWorkspaceContent() {
       }
 
       const runWorker = async () => {
-        while (fileIndex < pending.length && isProcessingRef.current && !isPausedRef.current) {
-          const fileRecord = pending[fileIndex++];
+        // eslint-disable-next-line no-constant-condition
+        while (true) {
+          if (!isProcessingRef.current || isPausedRef.current) break;
+
+          // Advance within the current page
+          if (pageIndex >= currentPage.length) {
+            // Current page exhausted — null it out to allow GC to reclaim handles
+            currentPage = [];
+            pageIndex = 0;
+
+            // Check if there are more files to process
+            if (globalFileIndex >= totalPending) break;
+
+            // Fetch the next page
+            try {
+              currentPage = await sessionManager.getPendingFilesPage(pageOffset, PAGE_SIZE);
+              pageOffset += PAGE_SIZE;
+            } catch (err) {
+              console.error("Failed to load next page of pending files:", err);
+              break;
+            }
+
+            if (currentPage.length === 0) break;
+          }
+
+          const fileRecord = currentPage[pageIndex++];
+          globalFileIndex++;
           if (!fileRecord) break;
 
           inFlightCount++;
@@ -1219,20 +1255,20 @@ export function ToolWorkspaceContent() {
             setActiveWorkersCount(inFlightCount);
 
             // V8 GC Yield: yield back event loop every 5 files to give GC idle time
-            if (fileIndex % 5 === 0) {
+            if (globalFileIndex % 5 === 0) {
               await new Promise(resolve => setTimeout(resolve, 10));
             }
           }
         }
 
-        // Check if finished or cancelled
+        // Check if all pages exhausted or cancelled
         if (inFlightCount === 0) {
-          if (fileIndex >= pending.length || !isProcessingRef.current) {
+          if (globalFileIndex >= totalPending || !isProcessingRef.current) {
             if (zipReader) {
               try { await zipReader.close(); } catch {}
             }
             resumeNextRef.current = null;
-            if (fileIndex >= pending.length && isProcessingRef.current) {
+            if (globalFileIndex >= totalPending && isProcessingRef.current) {
               await completeProcessing();
             }
           }
@@ -1812,9 +1848,9 @@ export function ToolWorkspaceContent() {
       setLogs(prev => {
         const newLogs = [...prev, ...logsBuffer.current]
         logsBuffer.current = []
-        return newLogs.slice(-1000)
+        return newLogs.slice(-300)
       })
-    }, 100)
+    }, 250)
 
     try {
       const session = await sessionManagerRef.current.startNewSession(
@@ -1825,7 +1861,7 @@ export function ToolWorkspaceContent() {
         outputFolder
       );
 
-      const totalFiles = await sessionManagerRef.current.scanAndRegister((indexedCount) => {
+      const { count: totalFiles, totalBytes: scannedTotalBytes } = await sessionManagerRef.current.scanAndRegister((indexedCount) => {
         fileBuffer.current = `Indexing Takeout source... Found ${indexedCount} media files`;
       });
 
@@ -1842,13 +1878,8 @@ export function ToolWorkspaceContent() {
 
       statsBuffer.current.total = totalFiles;
       
-      try {
-        const allFiles = await indexedDbService.getAll('files') as FileRecord[];
-        totalBytesRef.current = allFiles.reduce((sum, f) => sum + (f.bytes || 0), 0);
-      } catch (err) {
-        console.error("Failed to sum total bytes on start:", err);
-        totalBytesRef.current = 0;
-      }
+      // Use the byte sum collected during scan — no second getAll() needed
+      totalBytesRef.current = scannedTotalBytes;
       
       await updateActiveSession('processing', {
         totalFiles: totalFiles,

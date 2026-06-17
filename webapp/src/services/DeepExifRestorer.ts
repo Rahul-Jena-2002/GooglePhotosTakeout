@@ -33,29 +33,37 @@ export async function injectImageExif(
                   `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
 
   // Inject Time Tags
-  exifObj['Exif'][piexif.ExifIFD.DateTimeOriginal] = dateStr;
-  exifObj['Exif'][piexif.ExifIFD.DateTimeDigitized] = dateStr;
-  exifObj['0th'][piexif.ImageIFD.DateTime] = dateStr;
+  try {
+    exifObj['Exif'][piexif.ExifIFD.DateTimeOriginal] = dateStr;
+    exifObj['Exif'][piexif.ExifIFD.DateTimeDigitized] = dateStr;
+    exifObj['0th'][piexif.ImageIFD.DateTime] = dateStr;
 
-  // Inject GPS Tags if available
-  if (lat !== undefined && lng !== undefined) {
-    const absLat = Math.abs(lat);
-    const absLng = Math.abs(lng);
+    // Inject GPS Tags if available
+    if (lat !== undefined && lng !== undefined) {
+      const absLat = Math.abs(lat);
+      const absLng = Math.abs(lng);
 
-    exifObj['GPS'][piexif.GPSIFD.GPSLatitudeRef] = lat >= 0 ? 'N' : 'S';
-    exifObj['GPS'][piexif.GPSIFD.GPSLatitude] = DegToDMS(absLat);
-    exifObj['GPS'][piexif.GPSIFD.GPSLongitudeRef] = lng >= 0 ? 'E' : 'W';
-    exifObj['GPS'][piexif.GPSIFD.GPSLongitude] = DegToDMS(absLng);
-    exifObj['GPS'][piexif.GPSIFD.GPSVersionID] = [2, 3, 0, 0];
+      exifObj['GPS'][piexif.GPSIFD.GPSLatitudeRef] = lat >= 0 ? 'N' : 'S';
+      exifObj['GPS'][piexif.GPSIFD.GPSLatitude] = DegToDMS(absLat);
+      exifObj['GPS'][piexif.GPSIFD.GPSLongitudeRef] = lng >= 0 ? 'E' : 'W';
+      exifObj['GPS'][piexif.GPSIFD.GPSLongitude] = DegToDMS(absLng);
+      exifObj['GPS'][piexif.GPSIFD.GPSVersionID] = [2, 3, 0, 0];
+    }
+
+    const exifBytes = piexif.dump(exifObj);
+    const newDataUrl = piexif.insert(exifBytes, dataUrl);
+
+    // Strip the data URL prefix and decode base64
+    const base64 = newDataUrl.replace(/^data:image\/jpeg;base64,/, '');
+    const resultBytes = binaryStringToUint8Array(atob(base64));
+    return resultBytes.buffer as ArrayBuffer;
+  } catch {
+    // piexifjs throws "Cannot set property writable of #<cA> which has only a
+    // getter" on certain Snapchat / non-standard JPEG files whose EXIF IFD is
+    // read-only at the JS engine level. Fall back to returning original bytes
+    // unchanged so the file is still saved rather than counted as an error.
+    return imageBuffer;
   }
-
-  const exifBytes = piexif.dump(exifObj);
-  const newDataUrl = piexif.insert(exifBytes, dataUrl);
-
-  // Strip the data URL prefix and decode base64
-  const base64 = newDataUrl.replace(/^data:image\/jpeg;base64,/, '');
-  const resultBytes = binaryStringToUint8Array(atob(base64));
-  return resultBytes.buffer as ArrayBuffer;
 }
 
 /**

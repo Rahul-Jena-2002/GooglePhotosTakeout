@@ -150,6 +150,33 @@ export default function AdminUsers() {
     }
   }
 
+  const handleResetQuota = async (userId: string) => {
+    if (!window.confirm(`Reset usage quota for this user? This will set usedBytes and usedFiles to 0. Their plan and lifetime stats will not change.`)) return
+    try {
+      await updateDoc(doc(db, "users", userId), {
+        usedBytes: 0,
+        usedFiles: 0,
+      })
+      const userDoc = users.find(u => u.id === userId)
+      if (selectedUser && selectedUser.id === userId) {
+        setSelectedUser({ ...selectedUser, usedBytes: 0, usedFiles: 0 })
+      }
+      await addDoc(collection(db, "admin_activity"), {
+        actorUid: adminData?.uid || "system",
+        actorName: adminData?.displayName || "Admin",
+        actorRole: role,
+        action: "RESET_QUOTA",
+        target: userId,
+        description: `Reset usage quota (usedBytes + usedFiles) for ${userDoc?.email || userId}`,
+        timestamp: Date.now()
+      })
+      useToastStore.getState().addToast("User quota reset successfully.", "success")
+    } catch (err: any) {
+      console.error(err)
+      useToastStore.getState().addToast("Failed to reset quota: " + err.message, "error")
+    }
+  }
+
   const handleDeleteUser = async (userId: string, email: string) => {
     if (!window.confirm(`Are you sure you want to permanently delete the user document for ${email || userId}? This cannot be undone.`)) {
       return
@@ -466,6 +493,12 @@ export default function AdminUsers() {
                     </div>
                   )}
                   <div className="flex flex-col gap-3 pt-2">
+                    <button
+                      onClick={() => handleResetQuota(selectedUser.id)}
+                      className="w-full py-2 rounded-md text-xs font-semibold border transition-all bg-amber-500/10 text-amber-400 border-amber-500/20 hover:bg-amber-500/20"
+                    >
+                      ↺ Reset Usage Quota (usedBytes + usedFiles)
+                    </button>
                     <Link to={`/admin/users/dashboard?uid=${selectedUser.id}`}>
                       <button className="w-full py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold rounded-md transition-colors flex items-center justify-center gap-1.5 shadow-md shadow-indigo-500/10">
                         View Complete User Dashboard &rarr;
