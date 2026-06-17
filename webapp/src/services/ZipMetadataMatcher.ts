@@ -8,6 +8,13 @@ export function normalizeNfc(val: string): string {
 }
 
 /**
+ * Normalizes a ZIP entry path: converts Windows backslashes to forward slashes.
+ */
+export function normalizeZipPath(path: string): string {
+  return path.replace(/\\/g, '/');
+}
+
+/**
  * Strips 13-character hex hash conflict suffix (e.g. _6012fa4d4ddec) from a stem.
  */
 export function stripHexHash(nameNoExt: string): string {
@@ -119,26 +126,31 @@ export function getZipMatchingCandidates(mediaName: string): Set<string> {
 
 /**
  * Searches for a matching JSON sidecar in the set of ZIP entry filenames.
+ * Both mediaName and allNames entries are sanitized before comparison to fix
+ * the mismatch when ZIP was created on Windows (backslashes, special chars).
  */
 export function findMatchingJsonNameForZip(
   mediaName: string,
   allNames: Set<string>
 ): string | null {
-  // 1. Normalize all inputs to NFC
+  // 1. Normalize all inputs to NFC and sanitize entry names for comparison
   const normalizedMediaName = normalizeNfc(mediaName);
-  const normalizedAllNames = new Set(Array.from(allNames).map(normalizeNfc));
 
-  // 2. Try exact and generated candidates lookup
+  // Build a map from sanitized+normalized entry name → original entry name
+  const sanitizedToOrig = new Map<string, string>();
+  for (const orig of allNames) {
+    const key = normalizeNfc(sanitizeFilename(orig));
+    if (!sanitizedToOrig.has(key)) {
+      sanitizedToOrig.set(key, orig);
+    }
+  }
+
+  // 2. Try exact and generated candidates lookup (candidates are already sanitized)
   const candidates = getZipMatchingCandidates(normalizedMediaName);
   for (const candidate of candidates) {
     const normCandidate = normalizeNfc(candidate);
-    if (normalizedAllNames.has(normCandidate)) {
-      // Return the original matched name from the input allNames
-      for (const orig of allNames) {
-        if (normalizeNfc(orig) === normCandidate) {
-          return orig;
-        }
-      }
+    if (sanitizedToOrig.has(normCandidate)) {
+      return sanitizedToOrig.get(normCandidate)!;
     }
   }
 
@@ -161,23 +173,22 @@ export function findMatchingJsonNameForZip(
   let bestMatch: string | null = null;
   let maxScore = -1;
 
-  for (const name of allNames) {
-    const normName = normalizeNfc(name);
-    if (!normName.toLowerCase().endsWith(".json")) continue;
+  for (const [sanitizedName, origName] of sanitizedToOrig) {
+    if (!sanitizedName.toLowerCase().endsWith(".json")) continue;
 
     if (
-      normName.startsWith(sanitizedMedia) ||
-      normName.startsWith(nameNoExt) ||
-      normName.startsWith(cleanNameNoExt) ||
-      normName.startsWith(nameTruncated) ||
-      normName.startsWith(cleanNameTruncated) ||
-      (numberedBase !== null && normName.startsWith(normalizeNfc(numberedBase)))
+      sanitizedName.startsWith(sanitizedMedia) ||
+      sanitizedName.startsWith(nameNoExt) ||
+      sanitizedName.startsWith(cleanNameNoExt) ||
+      sanitizedName.startsWith(nameTruncated) ||
+      sanitizedName.startsWith(cleanNameTruncated) ||
+      (numberedBase !== null && sanitizedName.startsWith(normalizeNfc(numberedBase)))
     ) {
-      if (dynamicRegexPattern.test(normName)) {
-        const score = normName.length;
+      if (dynamicRegexPattern.test(sanitizedName)) {
+        const score = sanitizedName.length;
         if (score > maxScore) {
           maxScore = score;
-          bestMatch = name;
+          bestMatch = origName;
         }
       }
     }
@@ -186,12 +197,11 @@ export function findMatchingJsonNameForZip(
   if (bestMatch) return bestMatch;
 
   // 4. Case-Insensitive Fallback:
-  // Compare lowercase version of candidates against lowercase version of allNames
+  // Compare lowercase version of candidates against sanitized lowercase entry names
   const candidatesLower = new Set(Array.from(candidates).map(c => normalizeNfc(c).toLowerCase()));
-  for (const name of allNames) {
-    const normNameLower = normalizeNfc(name).toLowerCase();
-    if (candidatesLower.has(normNameLower)) {
-      return name;
+  for (const [sanitizedName, origName] of sanitizedToOrig) {
+    if (candidatesLower.has(sanitizedName.toLowerCase())) {
+      return origName;
     }
   }
 

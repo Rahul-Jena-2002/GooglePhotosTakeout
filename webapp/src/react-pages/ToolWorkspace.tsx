@@ -21,7 +21,8 @@ import { detectAdBlock } from "../services/AdBlockDetector"
 // Resilient Session & Web Worker Pipeline Imports
 import { SessionManager, type ActiveSession } from "../lib/SessionManager"
 import { WorkerPool } from "../lib/WorkerPool"
-import { ZipReader, BlobReader, Uint8ArrayWriter } from "@zip.js/zip.js"
+import { ZipReader, BlobReader, BlobWriter, Uint8ArrayWriter } from "@zip.js/zip.js"
+import { normalizeZipPath } from "../services/ZipMetadataMatcher"
 
 
 
@@ -914,7 +915,7 @@ export function ToolWorkspaceContent() {
       setLogs(prev => {
         const newLogs = [...prev, ...logsBuffer.current];
         logsBuffer.current = [];
-        return newLogs.slice(-1000);
+        return newLogs.slice(-300);
       });
     }, 100);
 
@@ -938,26 +939,15 @@ export function ToolWorkspaceContent() {
     let zipReader: ZipReader<File> | null = null;
     let zipEntries: any[] = [];
     const zipEntryMap = new Map<string, any>();
-    // Cache map for Zip entries to group directories
-    const zipDirMap = new Map<string, Set<string>>();
 
     if (session.zipFile) {
       zipReader = new ZipReader(new BlobReader(session.zipFile));
       zipEntries = await zipReader.getEntries();
 
       for (const entry of zipEntries) {
-        const normalizedFilename = entry.filename.normalize('NFC');
+        // Normalize Windows backslashes and apply NFC so lookups are consistent
+        const normalizedFilename = normalizeZipPath(entry.filename).normalize('NFC');
         zipEntryMap.set(normalizedFilename, entry);
-        if (entry.directory) continue;
-        const parts = normalizedFilename.split('/');
-        const filename = parts.pop() || '';
-        const dirPath = parts.join('/');
-        let set = zipDirMap.get(dirPath);
-        if (!set) {
-          set = new Set<string>();
-          zipDirMap.set(dirPath, set);
-        }
-        set.add(filename);
       }
     }
 
@@ -984,9 +974,11 @@ export function ToolWorkspaceContent() {
     let pending = await sessionManager.getPendingFiles();
     let fileIndex = 0;
     
-    // 6. Throttling and backpressure counter (cap ZIP extraction concurrency to prevent disk saturation)
+    // 6. Throttling and backpressure counter
+    // For ZIP: sequential processing (1 at a time) avoids ZipReader lock contention and is actually faster.
+    // For folder: use user-configured maxWorkers.
     let inFlightCount = 0;
-    const inflightLimit = session.zipFile ? Math.max(2, Math.floor((navigator.hardwareConcurrency || 4) * 0.5)) : maxWorkers;
+    const inflightLimit = session.zipFile ? 1 : maxWorkers;
 
     const processNext = async () => {
       if (!isProcessingRef.current || isPausedRef.current) {
@@ -1056,7 +1048,8 @@ export function ToolWorkspaceContent() {
               }
               size = fileObj.size;
             } else if (fileRecord.zipPath && zipReader) {
-              zipEntry = zipEntryMap.get(fileRecord.zipPath.normalize('NFC'));
+              // zipPath is already normalized (forward slashes, NFC) from SessionManager scan
+              zipEntry = zipEntryMap.get(normalizeZipPath(fileRecord.zipPath).normalize('NFC'));
               if (zipEntry) {
                 size = zipEntry.uncompressedSize;
               }
@@ -1072,6 +1065,7 @@ export function ToolWorkspaceContent() {
             let lng: number | undefined = undefined;
 
             if (fileHandle && parentDirHandle) {
+              // Folder source: resolve sidecar on-demand during restoration
               const pathKey = fileRecord.relativePath.join('/');
               const allNames = await getDirNames(parentDirHandle, pathKey);
               const jsonName = findMatchingJsonName(fileRecord.filename, allNames);
@@ -1089,26 +1083,13 @@ export function ToolWorkspaceContent() {
                   }
                 } catch {}
               }
-            } else if (fileRecord.zipPath && zipReader) {
-              const dirPath = fileRecord.relativePath.join('/').normalize('NFC');
-              const allNames = zipDirMap.get(dirPath) || new Set<string>();
-              const jsonName = findMatchingJsonNameForZip(fileRecord.filename, allNames);
-              if (jsonName) {
-                try {
-                  const jsonPath = dirPath ? `${dirPath}/${jsonName}` : jsonName;
-                  const jsonEntry = zipEntryMap.get(jsonPath.normalize('NFC'));
-                  if (jsonEntry) {
-                    const jsonText = await jsonEntry.getData!(new TextWriter());
-                    const parsed = safeParseJson(jsonText);
-                    if (parsed) {
-                      epochSec = extractTimestamp(parsed);
-                      if (useDeepExifRef.current && parsed.geoData && (parsed.geoData.latitude !== 0 || parsed.geoData.longitude !== 0)) {
-                        lat = parsed.geoData.latitude;
-                        lng = parsed.geoData.longitude;
-                      }
-                    }
-                  }
-                } catch {}
+            } else if (fileRecord.zipPath) {
+              // ZIP source: metadata was pre-cached during the scan phase — use it directly!
+              // This avoids re-opening the ZIP to re-read JSON sidecars during restoration.
+              epochSec = fileRecord.epochSec;
+              if (useDeepExifRef.current && fileRecord.lat != null && fileRecord.lng != null) {
+                lat = fileRecord.lat;
+                lng = fileRecord.lng;
               }
             }
 
@@ -1129,6 +1110,8 @@ export function ToolWorkspaceContent() {
                   const writer = new Uint8ArrayWriter();
                   const bytes = await zipEntry.getData!(writer);
                   bufferOrBlob = bytes.buffer;
+                  // Help GC release writer
+                  (writer as any).writable = null;
                 }
 
                 if (bufferOrBlob) {
@@ -1154,10 +1137,9 @@ export function ToolWorkspaceContent() {
                 if (fileObj) {
                   bufferOrBlob = fileObj; // Stream the File object directly!
                 } else if (zipEntry) {
-                  // Zip extraction still needs buffer since zip.js extracts to writer
-                  const writer = new Uint8ArrayWriter();
-                  const bytes = await zipEntry.getData!(writer);
-                  bufferOrBlob = bytes.buffer;
+                  // Use BlobWriter to avoid materializing entire buffer in main-thread heap
+                  const blobWriter = new BlobWriter();
+                  bufferOrBlob = await zipEntry.getData!(blobWriter);
                 }
               }
             } else {
@@ -1165,10 +1147,9 @@ export function ToolWorkspaceContent() {
               if (fileObj) {
                 bufferOrBlob = fileObj; // Stream the File object directly!
               } else if (zipEntry) {
-                // Zip extraction still needs buffer since zip.js extracts to writer
-                const writer = new Uint8ArrayWriter();
-                const bytes = await zipEntry.getData!(writer);
-                bufferOrBlob = bytes.buffer;
+                // Use BlobWriter to avoid materializing entire buffer in main-thread heap
+                const blobWriter = new BlobWriter();
+                bufferOrBlob = await zipEntry.getData!(blobWriter);
               }
             }
 
@@ -1187,6 +1168,11 @@ export function ToolWorkspaceContent() {
 
             // 6. Confirm completion (passing resolved size and epochSec)
             await sessionManager.confirmFile(fileRecord.id, 'completed', size, epochSec);
+
+            // Explicitly nullify large references so GC can reclaim heap promptly
+            bufferOrBlob = null;
+            fileObj = null;
+            zipEntry = null;
 
             // Update stats
             if (levelStr === 'success') {
@@ -1232,9 +1218,9 @@ export function ToolWorkspaceContent() {
             inFlightCount--;
             setActiveWorkersCount(inFlightCount);
 
-            // V8 GC Yield: yield back event loop every 10 files
-            if (fileIndex % 10 === 0) {
-              await new Promise(resolve => setTimeout(resolve, 0));
+            // V8 GC Yield: yield back event loop every 5 files to give GC idle time
+            if (fileIndex % 5 === 0) {
+              await new Promise(resolve => setTimeout(resolve, 10));
             }
           }
         }
@@ -1354,7 +1340,7 @@ export function ToolWorkspaceContent() {
     setStats({ ...statsBuffer.current })
     setProgress(progressBuffer.current)
     setCurrentFile("Processing Complete")
-    setLogs(prev => [...prev, ...logsBuffer.current].slice(-1000))
+    setLogs(prev => [...prev, ...logsBuffer.current].slice(-300))
     logsBuffer.current = []
 
     const finalBytes = sessionBytesRef.current

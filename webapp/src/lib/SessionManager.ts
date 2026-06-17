@@ -1,5 +1,6 @@
 import { indexedDbService } from './indexedDbService';
 import { isAllowedMediaFile, sanitizeFilename, findMatchingJsonName, safeParseJson, extractTimestamp } from '../services/MetadataMatcher';
+import { findMatchingJsonNameForZip, normalizeZipPath } from '../services/ZipMetadataMatcher';
 import { ZipReader, BlobReader, TextWriter } from '@zip.js/zip.js';
 
 export interface ActiveSession {
@@ -29,6 +30,8 @@ export interface FileRecord {
   dirHandle?: FileSystemDirectoryHandle;
   zipPath?: string;
   epochSec: number | null;
+  lat?: number | null;
+  lng?: number | null;
   status: 'pending' | 'processing' | 'completed' | 'failed';
   bytes: number;
   error?: string;
@@ -203,24 +206,76 @@ export class SessionManager {
     const zipReader = new ZipReader(new BlobReader(file));
     const entries = await zipReader.getEntries();
 
-    // Pair media files with sidecars (defer JSON sidecar/epoch lookup to processing phase)
+    // Build a lookup: normalized path → entry (for both media and JSON files)
+    // Normalize Windows backslashes → forward slashes at ingestion time
+    const allEntryMap = new Map<string, any>();
+    const dirToFilenames = new Map<string, Set<string>>();
+
     for (const entry of entries) {
       if (entry.directory) continue;
-      const parts = entry.filename.split('/');
+      const normalizedPath = normalizeZipPath(entry.filename).normalize('NFC');
+      allEntryMap.set(normalizedPath, entry);
+
+      const parts = normalizedPath.split('/');
+      const filename = parts.pop() || '';
+      const dirPath = parts.join('/');
+      let set = dirToFilenames.get(dirPath);
+      if (!set) {
+        set = new Set<string>();
+        dirToFilenames.set(dirPath, set);
+      }
+      set.add(filename);
+    }
+
+    // Single-pass: match each media file to its JSON sidecar during scan
+    for (const entry of entries) {
+      if (entry.directory) continue;
+      const normalizedPath = normalizeZipPath(entry.filename).normalize('NFC');
+      const parts = normalizedPath.split('/');
       const filename = parts.pop() || '';
       const dirPath = parts.join('/');
       const safeName = sanitizeFilename(filename);
 
       if (!isAllowedMediaFile(safeName)) continue;
 
-      const id = `${sessionId}:${entry.filename}`;
+      // Pre-resolve JSON sidecar and extract epoch/coords during scan phase
+      let epochSec: number | null = null;
+      let lat: number | null = null;
+      let lng: number | null = null;
+
+      try {
+        const dirNames = dirToFilenames.get(dirPath) || new Set<string>();
+        const jsonName = findMatchingJsonNameForZip(safeName, dirNames);
+        if (jsonName) {
+          const jsonPath = dirPath ? `${dirPath}/${jsonName}` : jsonName;
+          const jsonEntry = allEntryMap.get(jsonPath.normalize('NFC'));
+          if (jsonEntry && jsonEntry.getData) {
+            const jsonText = await jsonEntry.getData(new TextWriter());
+            const parsed = safeParseJson(jsonText);
+            if (parsed) {
+              epochSec = extractTimestamp(parsed);
+              if (parsed.geoData && (parsed.geoData.latitude !== 0 || parsed.geoData.longitude !== 0)) {
+                lat = parsed.geoData.latitude ?? null;
+                lng = parsed.geoData.longitude ?? null;
+              }
+            }
+          }
+        }
+      } catch {
+        // Silently skip if sidecar can't be read; restoration will proceed without metadata
+      }
+
+      const id = `${sessionId}:${normalizedPath}`;
       fileBatch.push({
         id,
         sessionId,
         filename: safeName,
         relativePath: dirPath ? dirPath.split('/') : [],
-        zipPath: entry.filename,
-        epochSec: null, // Defer to processing phase
+        // Store the normalized path so restoration lookup is consistent
+        zipPath: normalizedPath,
+        epochSec,
+        lat,
+        lng,
         status: 'pending',
         bytes: entry.uncompressedSize
       });
