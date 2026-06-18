@@ -307,13 +307,14 @@ function KeyCard({
 
 // ─── Main Page ─────────────────────────────────────────────────────────────────
 export default function AdminKeys() {
-  const { adminData } = useAuth()
+  const { adminData, loading: authLoading } = useAuth()
   const [entries, setEntries] = useState<KeyEntry[]>(
     KEY_DEFINITIONS.map(d => ({ ...d, value: "" }))
   )
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState<string | null>(null)
   const [activeCategory, setActiveCategory] = useState<string>("All")
+
 
   // ── Load all keys from Firestore ──
   useEffect(() => {
@@ -357,9 +358,34 @@ export default function AdminKeys() {
     }
   }, [])
 
+  const isDev = import.meta.env.DEV
+  const hasAccess = isDev || (adminData && adminData.role === "SUPER_ADMIN")
+
+  if (authLoading && !isDev) {
+    return (
+      <div className="flex items-center gap-3 text-zinc-500 py-12 justify-center">
+        <div className="w-4 h-4 border-2 border-zinc-700 border-t-zinc-400 rounded-full animate-spin" />
+        Verifying permissions...
+      </div>
+    )
+  }
+
+  if (!hasAccess) {
+    return (
+      <div className="flex flex-col items-center justify-center py-24 text-center space-y-4">
+        <Shield className="w-12 h-12 text-red-500" />
+        <h2 className="text-xl font-bold text-white">Access Denied</h2>
+        <p className="text-zinc-400 text-sm max-w-sm">
+          You do not have the required permissions to view this page. Super Admin access only.
+        </p>
+      </div>
+    )
+  }
+
   const filtered = activeCategory === "All"
     ? entries
     : entries.filter(e => e.category === activeCategory)
+
 
   const totalKeys = entries.length
   const configuredKeys = entries.filter(e => !!e.value).length
