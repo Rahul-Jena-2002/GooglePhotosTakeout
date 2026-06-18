@@ -18,6 +18,7 @@ import {
   Users2,
   Bell,
   X,
+  Key,
 } from "lucide-react"
 
 export default function AdminLayout() {
@@ -76,6 +77,7 @@ export default function AdminLayout() {
       items: [
         { label: "Admin Team", path: "/admin/team", icon: Users2, show: true },
         { label: "Audit Logs", path: "/admin/audit", icon: ShieldCheck, show: isAdminOrAbove },
+        { label: "Keys & Secrets", path: "/admin/keys", icon: Key, show: isSuperAdmin || isDev },
         { label: "Settings", path: "/admin/settings", icon: Settings, show: isSuperAdmin || isDev },
       ],
     },

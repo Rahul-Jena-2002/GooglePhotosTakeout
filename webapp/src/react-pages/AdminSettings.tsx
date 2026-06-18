@@ -150,6 +150,8 @@ export default function AdminSettings() {
   const [dodoWebhookKey, setDodoWebhookKey] = useState("")
   const [dodoLiveApiKey, setDodoLiveApiKey] = useState("")
   const [showDodoApiKey, setShowDodoApiKey] = useState(false)
+  // Gateway API key loaded from Firestore — never hardcoded in source
+  const [gatewayApiKey, setGatewayApiKey] = useState("")
 
   const [savingPricing, setSavingPricing] = useState(false)
   const [syncingPrices, setSyncingPrices] = useState(false)
@@ -309,6 +311,7 @@ export default function AdminSettings() {
         const systemDoc = await getDoc(doc(db, "settings", "system"))
         if (systemDoc.exists()) {
           setDodoLiveApiKey(systemDoc.data().dodo_api_key || "")
+          setGatewayApiKey(systemDoc.data().gateway_api_key || "")
         }
       } catch (err) {
         console.error("Failed to load system settings:", err)
@@ -352,7 +355,7 @@ export default function AdminSettings() {
 
       const resp = await fetch(cfUrl, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'x-api-key': 'takeoutfix-gemini-secret-2026' },
+        headers: { 'Content-Type': 'application/json', 'x-api-key': gatewayApiKey },
         body: JSON.stringify({ regionCode, prices, currency })
       })
 
@@ -812,7 +815,7 @@ export default function AdminSettings() {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',
-          'x-api-key': 'takeoutfix-gemini-secret-2026'
+          'x-api-key': gatewayApiKey
         },
         body: JSON.stringify({ couponId, productIds: productIdsPayload })
       })

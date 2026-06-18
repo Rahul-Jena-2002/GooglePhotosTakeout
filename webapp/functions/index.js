@@ -21,7 +21,9 @@ app.use(express.json({
  * Security Middleware: Validates API Key header to prevent abuse.
  */
 const authenticateApiKey = (req, res, next) => {
-  const customSecretKey = process.env.GEMINI_API_KEY || functions.config().gemini?.key || "takeoutfix-gemini-secret-2026";
+  // Gateway API key — set via Firebase Functions config or GATEWAY_API_KEY env var
+  // Configure in Firebase: firebase functions:config:set gateway.key="YOUR_KEY"
+  const customSecretKey = process.env.GATEWAY_API_KEY || functions.config().gateway?.key;
 
   const headerKey = req.headers["x-api-key"];
   let bearerKey = "";
@@ -265,9 +267,10 @@ app.post("/dodo-webhook", async (req, res) => {
 
 // Route: POST /get-dodo-product
 app.post("/get-dodo-product", async (req, res) => {
-  const customSecretKey = process.env.GEMINI_API_KEY || functions.config().gemini?.key || "takeoutfix-gemini-secret-2026";
+  // Gateway API key — read from env or Firebase Functions config
+  const customSecretKey = process.env.GATEWAY_API_KEY || functions.config().gateway?.key;
   const headerKey = req.headers["x-api-key"] || (req.headers.authorization || "").replace("Bearer ", "");
-  if (!headerKey || headerKey !== customSecretKey) {
+  if (!customSecretKey || !headerKey || headerKey !== customSecretKey) {
     return res.status(401).json({ error: "Unauthorized" });
   }
 
@@ -286,7 +289,7 @@ app.post("/get-dodo-product", async (req, res) => {
     }
   }
   if (!dodoApiKey) {
-    dodoApiKey = "7RM41OfN1w8XWVR2.DcyoI7MMlg5Ydc_EMOlG_om2QE8hGxOHsgpa9-gdpZAaapWO";
+    return res.status(500).json({ error: "DODO_API_KEY not configured. Set env var or save in Admin → Keys & Secrets." });
   }
 
   const envMode = process.env.DODO_ENV || process.env.DODO_MODE || (process.env.DODO_TEST_MODE === "true" ? "test" : "live");
@@ -368,18 +371,14 @@ const fetchDiscountByCode = (dodoHost, dodoApiKey, code) => {
 app.post("/sync-coupon", async (req, res) => {
   // Note: authenticateApiKey middleware is applied AFTER this route so we
   // need to manually check the key here since sync-coupon is called from frontend
-  const customSecretKey = process.env.GEMINI_API_KEY || functions.config().gemini?.key || "takeoutfix-gemini-secret-2026";
+  // Gateway API key — read from env or Firebase Functions config
+  const customSecretKey = process.env.GATEWAY_API_KEY || functions.config().gateway?.key;
   const headerKey = req.headers["x-api-key"] || (req.headers.authorization || "").replace("Bearer ", "");
-  if (!headerKey || headerKey !== customSecretKey) {
+  if (!customSecretKey || !headerKey || headerKey !== customSecretKey) {
     return res.status(401).json({ error: "Unauthorized" });
   }
 
-  const { couponId } = req.body;
-  if (!couponId) {
-    return res.status(400).json({ error: "couponId is required." });
-  }
-
-  // Read Dodo API key from settings/system
+  // Clear the hardcoded dodo key fallback — use env or Firestore only
   let dodoApiKey = process.env.DODO_API_KEY;
   if (!dodoApiKey) {
     try {
@@ -390,7 +389,7 @@ app.post("/sync-coupon", async (req, res) => {
     }
   }
   if (!dodoApiKey) {
-    dodoApiKey = "7RM41OfN1w8XWVR2.DcyoI7MMlg5Ydc_EMOlG_om2QE8hGxOHsgpa9-gdpZAaapWO";
+    return res.status(500).json({ error: "DODO_API_KEY not configured. Set env var or save in Admin → Keys & Secrets." });
   }
 
   try {
@@ -596,9 +595,10 @@ const fetchUsdExchangeRates = () => {
  *    Ref: https://docs.dodopayments.com/miscellaneous/faq#q135
  */
 app.post("/sync-dodo-prices", async (req, res) => {
-  const customSecretKey = process.env.GEMINI_API_KEY || functions.config().gemini?.key || "takeoutfix-gemini-secret-2026";
+  // Gateway API key — read from env or Firebase Functions config
+  const customSecretKey = process.env.GATEWAY_API_KEY || functions.config().gateway?.key;
   const headerKey = req.headers["x-api-key"] || (req.headers.authorization || "").replace("Bearer ", "");
-  if (!headerKey || headerKey !== customSecretKey) {
+  if (!customSecretKey || !headerKey || headerKey !== customSecretKey) {
     return res.status(401).json({ error: "Unauthorized" });
   }
 

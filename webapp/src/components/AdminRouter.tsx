@@ -10,6 +10,7 @@ import AdminRevenue from "../react-pages/AdminRevenue"
 import AdminSettings from "../react-pages/AdminSettings"
 import AdminStatistics from "../react-pages/AdminStatistics"
 import AdminAudit from "../react-pages/AdminAudit"
+import AdminKeys from "../react-pages/AdminKeys"
 import { ToolWorkspaceContent } from "../react-pages/ToolWorkspace"
 import { ToastContainer } from "./ui/toast"
 
@@ -29,6 +30,7 @@ function AdminRouterContent() {
           <Route path="team" element={<AdminTeam />} />
           <Route path="revenue" element={<AdminRevenue />} />
           <Route path="settings" element={<AdminSettings />} />
+          <Route path="keys" element={<AdminKeys />} />
           <Route path="statistics" element={<AdminStatistics />} />
           <Route path="audit" element={<AdminAudit />} />
           <Route path="*" element={<div className="text-red-500 font-bold p-8">Nested Route Not Found: {window.location.pathname}</div>} />

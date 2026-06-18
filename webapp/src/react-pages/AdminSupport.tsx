@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react"
-import { collection, query, orderBy, getDocs, updateDoc, doc, where, addDoc, onSnapshot } from "firebase/firestore"
+import { collection, query, orderBy, getDocs, updateDoc, doc, where, addDoc, onSnapshot, getDoc } from "firebase/firestore"
 import { db } from "../firebase"
 import { useAuth } from "../contexts/AuthContext"
 import { Search, AlertCircle, X, Mail, CheckCircle2, Clock, Inbox } from "lucide-react"
@@ -21,12 +21,23 @@ export default function AdminSupport() {
   // Gemini AI Helpers for Admin Support Responses
   const [aiLoading, setAiLoading] = useState(false)
   const [aiStatus, setAiStatus] = useState("")
-  const GEMINI_API_KEY = "AQ.Ab8RN6JtQeU9jqNtuDtITBy0sxzP05-uHcdxaNOWvrFSt9Bi-Q"
+  // Gemini key loaded from Firestore settings/system — never hardcoded
+  const [geminiApiKey, setGeminiApiKey] = useState("")
+
+  useEffect(() => {
+    getDoc(doc(db, "settings", "system")).then(snap => {
+      if (snap.exists()) setGeminiApiKey(snap.data().gemini_api_key || "")
+    }).catch(() => {})
+  }, [])
 
   const callGemini = async (promptText: string): Promise<string> => {
+    if (!geminiApiKey) {
+      useToastStore.getState().addToast("Gemini API key not configured. Add it in Admin → Keys & Secrets.", "error")
+      return ""
+    }
     setAiLoading(true)
     try {
-      const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`, {
+      const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiApiKey}`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json"
@@ -60,6 +71,7 @@ export default function AdminSupport() {
       setAiStatus("")
     }
   }
+
 
   const handleAIDraft = async () => {
     if (!selectedTicket) return

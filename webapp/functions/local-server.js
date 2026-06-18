@@ -73,8 +73,13 @@ const getFirebaseCLIToken = async () => {
 app.use(cors({ origin: true }));
 app.use(express.json());
 
-// API Key authentication key for AI Studio
-const GEMINI_API_KEY = process.env.GEMINI_API_KEY || "takeoutfix-gemini-secret-2026";
+// Gateway API key for authenticating local server requests
+// Set GATEWAY_API_KEY env var — this is the key you configure in Admin → Keys & Secrets → Gateway API Key
+const GATEWAY_API_KEY = process.env.GATEWAY_API_KEY;
+if (!GATEWAY_API_KEY) {
+  console.error("❌ GATEWAY_API_KEY env variable is required. Set it in your .env file or shell before starting.");
+  process.exit(1);
+}
 
 app.use((req, res, next) => {
   const headerKey = req.headers["x-api-key"];
@@ -84,7 +89,7 @@ app.use((req, res, next) => {
   }
   const providedKey = headerKey || bearerKey;
 
-  if (!providedKey || providedKey !== GEMINI_API_KEY) {
+  if (!providedKey || providedKey !== GATEWAY_API_KEY) {
     return res.status(401).json({
       error: "Unauthorized",
       message: "Invalid or missing API key. Please check headers."
@@ -319,8 +324,17 @@ app.post("/get-dodo-product", async (req, res) => {
     return res.status(400).json({ error: "productId is required." });
   }
 
-  // Read Dodo API key
-  let dodoApiKey = process.env.DODO_API_KEY || "7RM41OfN1w8XWVR2.DcyoI7MMlg5Ydc_EMOlG_om2QE8hGxOHsgpa9-gdpZAaapWO";
+  // Read Dodo API key from environment only — never hardcoded
+  let dodoApiKey = process.env.DODO_API_KEY;
+  if (!dodoApiKey) {
+    try {
+      const sysSnap = await db.collection("settings").doc("system").get();
+      if (sysSnap.exists) dodoApiKey = sysSnap.data().dodo_api_key;
+    } catch (e) { /* ignore */ }
+  }
+  if (!dodoApiKey) {
+    return res.status(500).json({ error: "DODO_API_KEY not configured. Set DODO_API_KEY env var or save it in Admin → Keys & Secrets." });
+  }
 
   const dodoHost = "live.dodopayments.com";
 
@@ -680,7 +694,8 @@ app.listen(PORT, () => {
   console.log(`\n======================================================`);
   console.log(`🚀 TakeoutFix Local Gemini Connector is running!`);
   console.log(`📡 Local server listening on http://localhost:${PORT}`);
-  console.log(`🔒 Secret API Key required: "${GEMINI_API_KEY}"`);
+  console.log(`🔒 Gateway API Key required for requests (x-api-key header).`);
+  console.log(`   → Configure this key in Admin → Keys & Secrets → Gateway API Key`);
   console.log(`======================================================\n`);
   console.log(`To expose this server to Google AI Studio for free:`);
   console.log(`1. Install ngrok (https://ngrok.com) or use localtunnel`);

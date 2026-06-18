@@ -4,13 +4,13 @@ import type { User } from 'firebase/auth';
 import { getFirestore, doc, getDoc, setDoc, updateDoc, increment } from 'firebase/firestore';
 
 const firebaseConfig = {
-  apiKey: "AIzaSyBAQFr7OeHkaLDk8yfNyGl6YD2qhdlnoXk",
-  authDomain: "gt-metadata-merger.firebaseapp.com",
-  projectId: "gt-metadata-merger",
-  storageBucket: "gt-metadata-merger.firebasestorage.app",
-  messagingSenderId: "198090983108",
-  appId: "1:198090983108:web:a90faac4214ecd91d76b91",
-  measurementId: "G-P0DY1QKD63"
+  apiKey: import.meta.env.PUBLIC_FIREBASE_API_KEY,
+  authDomain: import.meta.env.PUBLIC_FIREBASE_AUTH_DOMAIN,
+  projectId: import.meta.env.PUBLIC_FIREBASE_PROJECT_ID,
+  storageBucket: import.meta.env.PUBLIC_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: import.meta.env.PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
+  appId: import.meta.env.PUBLIC_FIREBASE_APP_ID,
+  measurementId: import.meta.env.PUBLIC_FIREBASE_MEASUREMENT_ID,
 };
 
 const app = initializeApp(firebaseConfig);
