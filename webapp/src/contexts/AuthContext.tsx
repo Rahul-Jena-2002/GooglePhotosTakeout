@@ -1242,8 +1242,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, [user, sessionRegistered, hasSeenSelfInSessions]);
 
   const login = async () => {
-    const provider = new GoogleAuthProvider();
-    await signInWithPopup(auth, provider);
+    try {
+      const provider = new GoogleAuthProvider();
+      provider.setCustomParameters({ prompt: 'select_account' });
+      await signInWithPopup(auth, provider);
+    } catch (err: any) {
+      console.error("Firebase Login Error:", err);
+      alert(`Sign-in failed!\n\nError Code: ${err.code || 'unknown'}\nMessage: ${err.message || 'No details available.'}\n\nPlease check your Firebase Authorized Domains or environment variable settings.`);
+    }
   };
 
   const logout = async () => {
