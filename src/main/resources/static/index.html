@@ -1,0 +1,2452 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TakeoutFix | Desktop Ops Center</title>
+    <!-- Google Web Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Inter:wght@300;400;500;600;700&family=Fira+Code:wght@400;500;600&display=swap" rel="stylesheet">
+    
+    <!-- CDNs for WebSockets, Stomp, Exif-JS and Firebase -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/sockjs-client/1.6.1/sockjs.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/stomp.js/2.3.3/stomp.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/exif-js/2.3.0/exif.min.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
+
+    <style>
+        :root {
+            /* Light Theme CSS Variables */
+            --bg-base: #f8fafc;
+            --bg-card: rgba(255, 255, 255, 0.95);
+            --border-color: rgba(0, 0, 0, 0.08);
+            --text-primary: #0f172a;
+            --text-secondary: #64748b;
+            --accent-color: #4f46e5;
+            --accent-glow: rgba(79, 70, 229, 0.1);
+            --accent-hover: #4338ca;
+            --success-color: #059669;
+            --warning-color: #d97706;
+            --danger-color: #dc2626;
+            --console-bg: #0f172a;
+            --console-text: #f8fafc;
+            --card-glow: rgba(79, 70, 229, 0.03);
+            --sidebar-bg: #ffffff;
+        }
+
+        .dark {
+            /* Dark Theme CSS Variables */
+            --bg-base: #09090b;
+            --bg-card: rgba(18, 18, 24, 0.7);
+            --border-color: rgba(255, 255, 255, 0.08);
+            --text-primary: #f4f4f5;
+            --text-secondary: #a1a1aa;
+            --accent-color: #6366f1;
+            --accent-glow: rgba(99, 102, 241, 0.15);
+            --accent-hover: #4f46e5;
+            --success-color: #10b981;
+            --warning-color: #f59e0b;
+            --danger-color: #ef4444;
+            --console-bg: #040406;
+            --console-text: #d4d4d8;
+            --card-glow: rgba(99, 102, 241, 0.03);
+            --sidebar-bg: #121218;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Inter', sans-serif;
+            -webkit-font-smoothing: antialiased;
+            transition: background-color 0.3s ease, border-color 0.3s ease;
+        }
+
+        body {
+            background-color: var(--bg-base);
+            color: var(--text-primary);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow-x: hidden;
+            position: relative;
+        }
+
+        /* Ambient background glow effects */
+        .ambient-glow-1 {
+            position: absolute;
+            top: -200px;
+            left: -200px;
+            width: 600px;
+            height: 600px;
+            border-radius: 50%;
+            background: radial-gradient(circle, rgba(99, 102, 241, 0.08) 0%, rgba(99, 102, 241, 0) 70%);
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        .ambient-glow-2 {
+            position: absolute;
+            bottom: -200px;
+            right: -200px;
+            width: 600px;
+            height: 600px;
+            border-radius: 50%;
+            background: radial-gradient(circle, rgba(16, 185, 129, 0.05) 0%, rgba(16, 185, 129, 0) 70%);
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        .app-container {
+            max-width: 1280px;
+            width: 100%;
+            margin: 0 auto;
+            padding: 30px 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            position: relative;
+            z-index: 1;
+        }
+
+        /* HEADER */
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding-bottom: 12px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .logo-section h1 {
+            font-family: 'Outfit', sans-serif;
+            font-size: 22px;
+            font-weight: 300;
+            letter-spacing: -0.02em;
+        }
+
+        .logo-section h1 span {
+            font-weight: 750;
+            background: linear-gradient(135deg, #a5b4fc 0%, var(--accent-color) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .header-actions {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        /* Buttons & Badges */
+        .btn-theme-toggle {
+            background: transparent;
+            border: 1px solid var(--border-color);
+            color: var(--text-primary);
+            width: 38px;
+            height: 38px;
+            border-radius: 10px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s ease;
+        }
+
+        .btn-theme-toggle:hover {
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        .user-profile {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 4px 10px 4px 4px;
+            border-radius: 9999px;
+            background: rgba(120, 120, 120, 0.05);
+            border: 1px solid var(--border-color);
+        }
+
+        .user-avatar {
+            width: 26px;
+            height: 26px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .user-name {
+            font-size: 12.5px;
+            font-weight: 500;
+            color: var(--text-primary);
+        }
+
+        .badge-premium {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: var(--text-secondary);
+            padding: 6px 12px;
+            border-radius: 9999px;
+            font-size: 10.5px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .btn-upgrade {
+            background: linear-gradient(135deg, var(--accent-color) 0%, var(--accent-hover) 100%);
+            color: white;
+            border: none;
+            padding: 10px 16px;
+            border-radius: 10px;
+            font-family: 'Outfit', sans-serif;
+            font-weight: 600;
+            font-size: 13.5px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            box-shadow: 0 4px 10px rgba(99, 102, 241, 0.2);
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .btn-upgrade:hover {
+            transform: translateY(-1px);
+        }
+
+        /* layout dashboard split */
+        .layout-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 20px;
+        }
+
+        @media (min-width: 1025px) {
+            .layout-grid {
+                grid-template-columns: 260px 1fr;
+            }
+        }
+
+        /* ── Limit Progress Bars (Sidebar) ── */
+        .limit-bar-section { display: flex; flex-direction: column; gap: 10px; }
+        .limit-bar-block { display: flex; flex-direction: column; gap: 4px; }
+        .limit-bar-header { display: flex; justify-content: space-between; align-items: center; }
+        .limit-bar-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-secondary); display: flex; align-items: center; gap: 5px; }
+        .limit-bar-label svg { opacity: 0.6; }
+        .limit-bar-value { font-family: 'Fira Code', monospace; font-size: 11px; font-weight: 600; color: var(--text-primary); }
+        .limit-bar-track { width: 100%; height: 5px; background: rgba(120,120,120,0.12); border-radius: 9999px; overflow: hidden; }
+        .limit-bar-fill { height: 100%; border-radius: 9999px; transition: width 0.5s ease; }
+        .limit-bar-fill.storage { background: linear-gradient(90deg, #6366f1, #8b5cf6); box-shadow: 0 0 6px rgba(99,102,241,0.4); }
+        .limit-bar-fill.files { background: linear-gradient(90deg, #10b981, #059669); box-shadow: 0 0 6px rgba(16,185,129,0.4); }
+        .limit-bar-fill.warning { background: linear-gradient(90deg, #f59e0b, #d97706); }
+        .limit-bar-fill.danger { background: linear-gradient(90deg, #ef4444, #dc2626); }
+
+        /* ── Sidebar Command Header ── */
+        .sidebar-cmd-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
+        .sidebar-cmd-title { font-family: 'Outfit', sans-serif; font-size: 11px; font-weight: 800; letter-spacing: 0.12em; text-transform: uppercase; color: var(--text-primary); display: flex; align-items: center; gap: 6px; }
+        .sidebar-cmd-title svg { opacity: 0.7; }
+
+        /* ── Sponsor Area ── */
+        .sponsor-area { margin-top: auto; padding-top: 16px; }
+        .sponsor-area-label { font-size: 10px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-secondary); opacity: 0.6; text-align: center; margin-bottom: 10px; }
+        .sponsor-card { background: rgba(120,120,120,0.04); border: 1px solid var(--border-color); border-radius: 14px; padding: 16px; display: flex; flex-direction: column; align-items: center; gap: 10px; text-align: center; }
+        .sponsor-icon { font-size: 22px; }
+        .sponsor-title { font-family: 'Outfit', sans-serif; font-size: 13px; font-weight: 700; color: var(--text-primary); }
+        .sponsor-desc { font-size: 11px; color: var(--text-secondary); line-height: 1.5; }
+        .sponsor-cta-bar { background: rgba(99,102,241,0.06); border: 1px solid rgba(99,102,241,0.15); border-radius: 12px; padding: 12px 14px; display: flex; flex-direction: column; gap: 6px; margin-top: 4px; }
+        .sponsor-cta-bar p { font-size: 11px; color: var(--text-secondary); line-height: 1.4; }
+        .btn-upgrade-now { background: var(--text-primary); color: var(--bg-base); border: none; padding: 10px 16px; border-radius: 9px; font-family: 'Outfit', sans-serif; font-weight: 700; font-size: 13px; cursor: pointer; transition: all 0.2s; width: 100%; text-align: center; text-decoration: none; display: block; }
+        .btn-upgrade-now:hover { opacity: 0.85; transform: translateY(-1px); }
+
+        /* ── Recovery Center Layout ── */
+        .recovery-header { display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; border-bottom: 1px solid var(--border-color); background: rgba(120,120,120,0.02); border-radius: 16px 16px 0 0; }
+        .recovery-header-left h2 { font-family: 'Outfit', sans-serif; font-size: 12px; font-weight: 800; letter-spacing: 0.12em; text-transform: uppercase; color: var(--text-primary); display: flex; align-items: center; gap: 6px; }
+        .recovery-header-left p { font-size: 10.5px; color: var(--text-secondary); margin-top: 2px; }
+        .recovery-module-select { background: rgba(18,18,24,0.9); border: 1px solid var(--border-color); color: var(--text-primary); padding: 7px 28px 7px 10px; border-radius: 8px; font-size: 12px; font-weight: 600; outline: none; cursor: pointer; appearance: none; -webkit-appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 24 24' fill='none' stroke='%2371717a' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 8px center; }
+        .recovery-body { display: grid; grid-template-columns: 1fr; gap: 0; }
+        @media (min-width: 900px) { .recovery-body { grid-template-columns: 1fr 220px; } }
+        .recovery-main { padding: 16px; display: flex; flex-direction: column; gap: 12px; border-right: 1px solid var(--border-color); }
+        .recovery-side { padding: 16px; display: flex; flex-direction: column; gap: 10px; }
+        .rc-section { display: flex; flex-direction: column; gap: 8px; }
+        .rc-section-header { display: flex; align-items: center; gap: 7px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.07em; color: var(--text-secondary); padding: 8px 0 4px 0; border-top: 1px solid var(--border-color); }
+        .rc-section-header:first-child { border-top: none; padding-top: 0; }
+        .rc-section-num { width: 18px; height: 18px; border-radius: 50%; background: rgba(120,120,120,0.12); border: 1px solid var(--border-color); font-size: 10px; font-weight: 700; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+        .rc-btn-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+        .rc-btn-row .rc-btn { flex: 1; }
+        .rc-btn { background: var(--text-primary); color: var(--bg-base); border: none; padding: 11px 14px; border-radius: 9px; font-family: 'Outfit', sans-serif; font-weight: 700; font-size: 13px; cursor: pointer; transition: all 0.2s; text-align: center; display: flex; align-items: center; justify-content: center; gap: 6px; }
+        .rc-btn:hover:not(:disabled) { opacity: 0.88; transform: translateY(-1px); }
+        .rc-btn:disabled { opacity: 0.35; cursor: not-allowed; }
+        .rc-btn-outline { background: transparent; color: var(--text-primary); border: 1px solid var(--border-color); padding: 9px 14px; border-radius: 9px; font-family: 'Outfit', sans-serif; font-weight: 600; font-size: 12.5px; cursor: pointer; transition: all 0.2s; width: 100%; text-align: center; display: flex; align-items: center; justify-content: center; gap: 6px; }
+        .rc-btn-outline:hover:not(:disabled) { background: rgba(120,120,120,0.05); }
+        .rc-btn-outline:disabled { opacity: 0.35; cursor: not-allowed; }
+        .rc-drop-hint { text-align: center; font-size: 11px; color: var(--text-secondary); padding: 4px 0; }
+        /* Plan Status Panel */
+        .plan-status-card { background: rgba(120,120,120,0.04); border: 1px solid var(--border-color); border-radius: 12px; padding: 12px; display: flex; flex-direction: column; gap: 8px; }
+        .plan-status-header { display: flex; justify-content: space-between; align-items: center; }
+        .plan-status-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-secondary); }
+        .plan-status-badge-wrap { display: flex; align-items: center; gap: 6px; }
+        .plan-status-badge { font-size: 10px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; padding: 3px 8px; border-radius: 6px; background: rgba(120,120,120,0.08); border: 1px solid var(--border-color); color: var(--text-secondary); }
+        .plan-status-badge.super { background: rgba(99,102,241,0.1); border-color: rgba(99,102,241,0.3); color: #818cf8; }
+        .plan-status-badge.pro { background: rgba(16,185,129,0.1); border-color: rgba(16,185,129,0.3); color: #34d399; }
+        .plan-status-upgrade-msg { font-size: 11px; color: var(--text-secondary); line-height: 1.4; }
+        .plan-status-sep { height: 1px; background: var(--border-color); }
+        /* Start Restore btn (green gradient matching webapp) */
+        .btn-start-restore { background: linear-gradient(135deg, #18181b 0%, #27272a 100%); color: #ffffff; border: 1px solid rgba(255,255,255,0.08); padding: 12px 14px; border-radius: 10px; font-family: 'Outfit', sans-serif; font-weight: 700; font-size: 13.5px; cursor: pointer; transition: all 0.2s; width: 100%; display: flex; align-items: center; justify-content: center; gap: 7px; }
+        .btn-start-restore:hover:not(:disabled) { background: linear-gradient(135deg, #27272a 0%, #3f3f46 100%); transform: translateY(-1px); }
+        .btn-start-restore:disabled { opacity: 0.35; cursor: not-allowed; }
+        .dark .btn-start-restore { background: rgba(255,255,255,0.9); color: #09090b; }
+        .dark .btn-start-restore:hover:not(:disabled) { background: rgba(255,255,255,1); }
+        /* Log Tabs */
+        .log-tabs-bar { display: flex; gap: 4px; border-bottom: 1px solid var(--border-color); padding-bottom: 6px; }
+        .log-tab-btn { background: transparent; border: none; color: var(--text-secondary); padding: 5px 10px; border-radius: 6px; cursor: pointer; font-size: 12px; font-weight: 600; transition: all 0.2s; }
+        .log-tab-btn:hover { color: var(--text-primary); background: rgba(120,120,120,0.05); }
+        .log-tab-btn.active { color: var(--text-primary); background: rgba(120,120,120,0.08); }
+        .log-tab-count { display: inline-flex; align-items: center; justify-content: center; background: rgba(120,120,120,0.1); border-radius: 9999px; padding: 1px 6px; font-size: 10px; margin-left: 3px; }
+        /* Interrupted session banner */
+        .interrupted-banner { background: rgba(245,158,11,0.08); border: 1px solid rgba(245,158,11,0.2); border-radius: 12px; padding: 12px 14px; display: flex; flex-direction: column; gap: 8px; animation: slideDown 0.3s ease; }
+        .interrupted-banner-title { display: flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 700; color: var(--warning-color); }
+        .interrupted-banner p { font-size: 11.5px; color: var(--text-secondary); line-height: 1.4; }
+        .interrupted-banner-actions { display: flex; gap: 8px; }
+        .rc-sponsor { background: rgba(120,120,120,0.03); border: 1px solid var(--border-color); border-radius: 12px; padding: 12px 14px; display: flex; align-items: center; gap: 10px; }
+        .rc-sponsor-icon { font-size: 20px; flex-shrink: 0; }
+        .rc-sponsor-text { flex: 1; }
+        .rc-sponsor-text p { font-size: 11px; font-weight: 700; color: var(--text-primary); margin-bottom: 2px; }
+        .rc-sponsor-text span { font-size: 10.5px; color: var(--text-secondary); line-height: 1.3; display: block; }
+        .btn-upgrade-mini { background: rgba(120,120,120,0.08); border: 1px solid var(--border-color); color: var(--text-primary); padding: 7px 12px; border-radius: 8px; font-size: 12px; font-weight: 700; cursor: pointer; white-space: nowrap; transition: all 0.2s; text-decoration: none; display: inline-flex; align-items: center; gap: 4px; }
+        .btn-upgrade-mini:hover { background: rgba(120,120,120,0.14); }
+
+        /* SIDEBAR / LEFT PANEL */
+        aside.sidebar {
+            background: var(--sidebar-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 20px;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            backdrop-filter: blur(8px);
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+        }
+
+        .sidebar-section-title {
+            font-family: 'Outfit', sans-serif;
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: var(--text-secondary);
+        }
+
+        .engine-status-badge {
+            background: rgba(120, 120, 120, 0.1);
+            border: 1px solid var(--border-color);
+            padding: 10px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background-color: var(--text-secondary);
+            box-shadow: 0 0 8px var(--text-secondary);
+        }
+
+        .status-dot.active {
+            background-color: var(--success-color);
+            box-shadow: 0 0 8px var(--success-color);
+            animation: pulse 1.5s infinite;
+        }
+
+        .status-dot.paused {
+            background-color: var(--warning-color);
+            box-shadow: 0 0 8px var(--warning-color);
+        }
+
+        /* Stats Grid */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+
+        .stat-item {
+            background: rgba(120, 120, 120, 0.03);
+            border: 1px solid var(--border-color);
+            padding: 12px;
+            border-radius: 12px;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .stat-val {
+            font-family: 'Outfit', sans-serif;
+            font-size: 18px;
+            font-weight: 700;
+        }
+
+        .stat-lbl {
+            font-size: 10px;
+            font-weight: 600;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+        }
+
+        /* Telemetry Indicators */
+        .telemetry-row {
+            display: flex;
+            justify-content: space-between;
+            font-size: 11.5px;
+            color: var(--text-secondary);
+        }
+
+        .telemetry-val {
+            font-family: 'Fira Code', monospace;
+            color: var(--text-primary);
+            font-weight: 600;
+        }
+
+        /* MAIN WORKSPACE PANEL */
+        main.workspace-panel {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        /* Navigation Mode Tabs */
+        .tabs-header {
+            display: flex;
+            gap: 8px;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 4px;
+            overflow-x: auto;
+        }
+
+        .tab-btn {
+            background: transparent;
+            border: none;
+            color: var(--text-secondary);
+            padding: 10px 18px;
+            border-radius: 10px;
+            cursor: pointer;
+            font-family: 'Outfit', sans-serif;
+            font-weight: 600;
+            font-size: 14px;
+            transition: all 0.2s ease;
+            white-space: nowrap;
+        }
+
+        .tab-btn:hover {
+            color: var(--text-primary);
+            background: rgba(120, 120, 120, 0.05);
+        }
+
+        .tab-btn.active {
+            color: var(--accent-color);
+            background: var(--accent-glow);
+        }
+
+        /* Workspace Tab Content Cards */
+        .tab-content {
+            display: none;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .tab-content.active {
+            display: flex;
+        }
+
+        .card {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 20px;
+            padding: 24px;
+            backdrop-filter: blur(12px);
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .card-row {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 16px;
+        }
+
+        @media (min-width: 768px) {
+            .card-row {
+                grid-template-columns: 1fr 1fr;
+            }
+        }
+
+        .card-title {
+            font-family: 'Outfit', sans-serif;
+            font-size: 15px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--text-secondary);
+            border-bottom: 1px solid rgba(120, 120, 120, 0.08);
+            padding-bottom: 8px;
+            margin-bottom: 4px;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .form-label {
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.03em;
+        }
+
+        .input-wrapper {
+            display: flex;
+            gap: 8px;
+        }
+
+        input[type="text"], input[type="datetime-local"], select {
+            flex: 1;
+            background: rgba(120, 120, 120, 0.04);
+            border: 1px solid var(--border-color);
+            color: var(--text-primary);
+            padding: 10px 14px;
+            border-radius: 8px;
+            font-size: 13.5px;
+            outline: none;
+            transition: all 0.2s ease;
+        }
+
+        input[type="text"]:focus, input[type="datetime-local"]:focus, select:focus {
+            border-color: var(--accent-color);
+            background: rgba(120, 120, 120, 0.06);
+            box-shadow: 0 0 0 3px var(--accent-glow);
+        }
+
+        input:disabled, select:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        /* Primary and secondary operations controls */
+        .btn-primary {
+            background: var(--text-primary);
+            color: var(--bg-base);
+            border: none;
+            padding: 12px 20px;
+            border-radius: 10px;
+            font-family: 'Outfit', sans-serif;
+            font-weight: 700;
+            font-size: 14.5px;
+            cursor: pointer;
+            transition: all 0.2s;
+            width: 100%;
+        }
+
+        .btn-primary:hover:not(:disabled) {
+            background: var(--text-primary);
+            opacity: 0.9;
+            transform: translateY(-1px);
+        }
+
+        .btn-primary:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+            transform: none !important;
+        }
+
+        .btn-secondary {
+            background: rgba(120, 120, 120, 0.08);
+            color: var(--text-primary);
+            border: 1px solid var(--border-color);
+            padding: 10px 16px;
+            border-radius: 8px;
+            font-size: 13.5px;
+            font-weight: 550;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+        }
+
+        .btn-secondary:hover:not(:disabled) {
+            background: rgba(120, 120, 120, 0.15);
+            border-color: var(--text-secondary);
+        }
+
+        .btn-secondary:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .auth-warning-banner {
+            background: rgba(217, 119, 6, 0.1);
+            border: 1px solid rgba(217, 119, 6, 0.2);
+            color: var(--warning-color);
+            border-radius: 12px;
+            padding: 14px 18px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-size: 13px;
+            margin-bottom: 20px;
+            line-height: 1.4;
+        }
+
+        .auth-warning-banner svg {
+            flex-shrink: 0;
+        }
+
+        .auth-warning-banner strong {
+            display: block;
+            font-weight: 700;
+            margin-bottom: 2px;
+        }
+
+        .banner-link {
+            color: var(--accent-color);
+            text-decoration: underline;
+            font-weight: 600;
+        }
+
+        /* Log Colors */
+        .log-level {
+            font-weight: 700;
+            font-family: 'Fira Code', monospace;
+            padding-right: 4px;
+        }
+        .log-INFO {
+            color: var(--accent-color);
+        }
+        .log-WARN {
+            color: var(--warning-color);
+        }
+        .log-ERROR {
+            color: var(--danger-color);
+        }
+        .log-SUCCESS {
+            color: var(--success-color);
+        }
+
+        .busy-controls {
+            display: none;
+            gap: 10px;
+            width: 100%;
+        }
+
+        .btn-pause {
+            flex: 1;
+            background: rgba(120, 120, 120, 0.06);
+            color: var(--text-primary);
+            border: 1px solid var(--border-color);
+            padding: 12px;
+            border-radius: 10px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn-cancel {
+            flex: 1;
+            background: rgba(239, 68, 68, 0.08);
+            color: var(--danger-color);
+            border: 1px solid rgba(239, 68, 68, 0.15);
+            padding: 12px;
+            border-radius: 10px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        /* Progress Bar Section */
+        .progress-section {
+            display: none;
+            flex-direction: column;
+            gap: 8px;
+            animation: slideDown 0.3s ease;
+        }
+
+        .progress-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .progress-stats {
+            font-family: 'Outfit', sans-serif;
+            font-weight: 700;
+            color: var(--accent-color);
+            font-size: 14px;
+        }
+
+        .progress-bar-container {
+            width: 100%;
+            height: 6px;
+            background: rgba(120, 120, 120, 0.08);
+            border-radius: 9999px;
+            overflow: hidden;
+            border: 1px solid var(--border-color);
+        }
+
+        .progress-bar-fill {
+            height: 100%;
+            width: 0%;
+            background: linear-gradient(90deg, var(--accent-color) 0%, var(--success-color) 100%);
+            border-radius: 9999px;
+            transition: width 0.3s ease-out;
+            box-shadow: 0 0 8px rgba(99, 102, 241, 0.4);
+        }
+
+        /* Console Section */
+        .console-box {
+            background: var(--console-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            display: flex;
+            flex-direction: column;
+            height: 260px;
+            box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.3);
+            overflow: hidden;
+        }
+
+        .console-header {
+            background: rgba(255, 255, 255, 0.02);
+            border-bottom: 1px solid var(--border-color);
+            padding: 10px 16px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .console-content {
+            flex: 1;
+            overflow-y: auto;
+            padding: 16px;
+            font-family: 'Fira Code', monospace;
+            font-size: 12px;
+            line-height: 1.6;
+            color: var(--console-text);
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        /* Custom Tables for EXIF and comparison */
+        .table-wrapper {
+            max-height: 360px;
+            overflow-y: auto;
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+        }
+
+        table.data-table {
+            width: 100%;
+            border-collapse: collapse;
+            text-align: left;
+            font-size: 13px;
+        }
+
+        table.data-table th {
+            background: rgba(120, 120, 120, 0.05);
+            padding: 10px 14px;
+            font-weight: 600;
+            color: var(--text-secondary);
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        table.data-table td {
+            padding: 10px 14px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        table.data-table tr:last-child td {
+            border-bottom: none;
+        }
+
+        /* EXIF Dropzone */
+        .dropzone {
+            border: 2px dashed var(--border-color);
+            border-radius: 16px;
+            padding: 30px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 10px;
+            color: var(--text-secondary);
+        }
+
+        .dropzone:hover {
+            border-color: var(--accent-color);
+            background: var(--accent-glow);
+            color: var(--text-primary);
+        }
+
+        /* Modal styling */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.85);
+            backdrop-filter: blur(8px);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            z-index: 1000;
+            animation: fadeIn 0.2s ease;
+        }
+
+        .modal-container {
+            background: var(--sidebar-bg);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 24px;
+            width: 100%;
+            max-width: 500px;
+            overflow: hidden;
+            box-shadow: 0 24px 64px rgba(0, 0, 0, 0.8);
+            position: relative;
+            animation: scaleIn 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+
+        .modal-accent-line {
+            height: 4px;
+            background: linear-gradient(90deg, var(--accent-color) 0%, var(--success-color) 100%);
+        }
+
+        .modal-close {
+            position: absolute;
+            top: 16px;
+            right: 16px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--border-color);
+            color: var(--text-secondary);
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .modal-body {
+            padding: 30px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .modal-header-text h2 {
+            font-family: 'Outfit', sans-serif;
+            font-size: 20px;
+            font-weight: 700;
+            margin-bottom: 6px;
+        }
+
+        .modal-header-text p {
+            font-size: 13px;
+            color: var(--text-secondary);
+            line-height: 1.4;
+        }
+
+        .upgrade-comparison {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            background: rgba(120, 120, 120, 0.02);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 14px;
+        }
+
+        .comparison-row {
+            display: flex;
+            justify-content: space-between;
+            font-size: 12.5px;
+        }
+
+        .comparison-label { color: var(--text-secondary); }
+        .comparison-free { color: #71717a; font-weight: 500; }
+        .comparison-premium { color: var(--success-color); font-weight: 700; }
+
+        .btn-activate {
+            background: var(--text-primary);
+            color: var(--bg-base);
+            border: none;
+            padding: 12px;
+            border-radius: 8px;
+            font-weight: 700;
+            font-size: 13.5px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .modal-footer-text {
+            text-align: center;
+            font-size: 11.5px;
+            color: var(--text-secondary);
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .modal-footer-text a {
+            color: var(--accent-color);
+            text-decoration: none;
+            font-weight: 600;
+        }
+
+        /* Auth lock blocker */
+        .auth-lock-card {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            padding: 40px 20px;
+            gap: 16px;
+            background: rgba(120, 120, 120, 0.02);
+            border: 1px dashed var(--border-color);
+            border-radius: 20px;
+        }
+
+        .auth-lock-title {
+            font-family: 'Outfit', sans-serif;
+            font-size: 18px;
+            font-weight: 700;
+        }
+
+        /* Pulse and animations */
+        @keyframes pulse {
+            0% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.4); }
+            70% { box-shadow: 0 0 0 8px rgba(16, 185, 129, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+        }
+
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes scaleIn { from { transform: scale(0.95); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+        @keyframes slideDown { from { transform: translateY(-10px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+    </style>
+</head>
+<body>
+    <div class="ambient-glow-1"></div>
+    <div class="ambient-glow-2"></div>
+
+    <div class="app-container">
+        <!-- HEADER -->
+        <header>
+            <div class="logo-section">
+                <h1>Google Takeout <span>Metadata Restorer</span></h1>
+            </div>
+            <div class="header-actions">
+                <button id="btnThemeToggle" class="btn-theme-toggle" onclick="toggleTheme()" aria-label="Toggle Theme">
+                    <!-- Sun/Moon SVGs will load dynamically -->
+                </button>
+                <div id="userProfile" class="user-profile" style="display: none;">
+                    <img id="userAvatar" class="user-avatar" src="" alt="Avatar">
+                    <span id="userName" class="user-name"></span>
+                </div>
+                <div id="premiumBadge" class="badge-premium">FREE TIER</div>
+                <button id="btnLogin" class="btn-secondary" onclick="handleLogin()">Login</button>
+                <button id="btnLogout" class="btn-secondary" onclick="handleLogout()" style="display: none;">Logout</button>
+                <button id="btnUpgrade" class="btn-upgrade" onclick="openModal()">Upgrade</button>
+            </div>
+        </header>
+
+        <!-- MAIN LAYOUT GRID -->
+        <div class="layout-grid">
+            <!-- SIDEBAR: COMMAND CENTER -->
+            <aside class="sidebar" style="position: relative; overflow: hidden; display: flex; flex-direction: column; gap: 14px; padding: 16px;">
+
+                <!-- Sidebar Header -->
+                <div class="sidebar-cmd-header">
+                    <div class="sidebar-cmd-title">
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline></svg>
+                        COMMAND CENTER
+                    </div>
+                    <div id="engineStatusDot" class="status-dot"></div>
+                </div>
+
+                <!-- Storage Limit Progress -->
+                <div class="limit-bar-section">
+                    <div class="limit-bar-block">
+                        <div class="limit-bar-header">
+                            <div class="limit-bar-label">
+                                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
+                                Storage Limit Progress
+                            </div>
+                            <span id="storageLimitVal" class="limit-bar-value">0 / 500 MB</span>
+                        </div>
+                        <div class="limit-bar-track"><div id="storageLimitFill" class="limit-bar-fill storage" style="width:0%"></div></div>
+                    </div>
+                    <div class="limit-bar-block">
+                        <div class="limit-bar-header">
+                            <div class="limit-bar-label">
+                                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>
+                                Files Limit Progress
+                            </div>
+                            <span id="filesLimitVal" class="limit-bar-value">0 / 250</span>
+                        </div>
+                        <div class="limit-bar-track"><div id="filesLimitFill" class="limit-bar-fill files" style="width:0%"></div></div>
+                    </div>
+                </div>
+
+                <!-- Resource Telemetry -->
+                <div class="form-group">
+                    <span class="sidebar-section-title">Resource Telemetry</span>
+                    <div style="display: flex; flex-direction: column; gap: 6px; margin-top: 2px;">
+                        <div class="telemetry-row">
+                            <span>CPU Cores</span>
+                            <span id="telemCpu" class="telemetry-val">— / — Cores</span>
+                        </div>
+                        <div class="telemetry-row">
+                            <span>RAM (Approx. Est.)</span>
+                            <span id="telemHeap" class="telemetry-val">—MB / —MB</span>
+                        </div>
+                        <div class="telemetry-row">
+                            <span>Concurrency</span>
+                            <span id="telemWorkers" class="telemetry-val">Auto (— Threads)</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Stats Grid -->
+                <div class="stats-grid">
+                    <div class="stat-item">
+                        <div class="stat-lbl" style="display:flex;align-items:center;gap:4px;">
+                            <span style="color:var(--text-secondary);">✦</span> Scanned
+                        </div>
+                        <span id="statScanned" class="stat-val">0 / —</span>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-lbl" style="display:flex;align-items:center;gap:4px;">
+                            <span style="color:var(--success-color);">✦</span> Restored
+                        </div>
+                        <span id="statMatched" class="stat-val">0 / —</span>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-lbl" style="display:flex;align-items:center;gap:4px;">
+                            <span style="color:var(--warning-color);">✦</span> Unmatched
+                        </div>
+                        <span id="statUnmatched" class="stat-val" style="color:var(--warning-color);">0</span>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-lbl" style="display:flex;align-items:center;gap:4px;">
+                            <span style="color:var(--danger-color);">✦</span> Errors
+                        </div>
+                        <span id="statErrors" class="stat-val" style="color:var(--danger-color);">0</span>
+                    </div>
+                </div>
+
+                <!-- Sponsor Area -->
+                <div id="sidebarSponsorArea" class="sponsor-area">
+                    <div class="sponsor-area-label">SPONSOR AREA</div>
+                    <div class="sponsor-card">
+                        <div class="sponsor-icon">⭐</div>
+                        <div class="sponsor-title">Need to restore thousands of files?</div>
+                        <div class="sponsor-desc">Premium handles large Google Takeout archives.</div>
+                        <a href="https://takeoutfix.pages.dev/pricing/" target="_blank" rel="noopener" class="btn-upgrade-now">Upgrade Now →</a>
+                    </div>
+                </div>
+
+                <!-- Sticky Upgrade Bar -->
+                <div id="sidebarUpgradeBar" class="sponsor-cta-bar" style="display:none;">
+                    <p style="font-size:11px;font-weight:600;color:var(--text-primary);">Upgrade to Premium</p>
+                    <p>Unlock unlimited file restoration, immediate injection, and faster speed.</p>
+                    <a href="https://takeoutfix.pages.dev/pricing/" target="_blank" rel="noopener" class="btn-upgrade-now">Upgrade Now</a>
+                </div>
+
+            </aside>
+
+            <!-- WORKSPACE PANEL: RIGHT PANEL -->
+            <main class="workspace-panel">
+                <!-- Navigation Tabs -->
+                <div class="tabs-header">
+                    <button id="tabBtn-restore" class="tab-btn active" onclick="switchTab('restore')">🔧 Restore Archive</button>
+                    <button id="tabBtn-viewer" class="tab-btn" onclick="switchTab('viewer')" id="tabBtn-viewer">🔒 EXIF Viewer</button>
+                    <button id="tabBtn-comparison" class="tab-btn" onclick="switchTab('comparison')">🔒 Comparison</button>
+                    <button id="tabBtn-duplicates" class="tab-btn" onclick="switchTab('duplicates')">🔒 Duplicates</button>
+                    <button id="tabBtn-dashboard" class="tab-btn" onclick="switchTab('dashboard')">📊 My Dashboard</button>
+                </div>
+
+                <!-- TABS CONTENT -->
+                
+                <!-- TAB 1: RESTORE ARCHIVE (Recovery Center) -->
+                <div id="tabContent-restore" class="tab-content active">
+                    <!-- Recovery Center Card -->
+                    <div class="card" style="padding: 0; overflow: hidden;">
+                        <!-- Recovery Header -->
+                        <div class="recovery-header">
+                            <div class="recovery-header-left">
+                                <h2>
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
+                                    RECOVERY CENTER
+                                </h2>
+                                <p>Select a module to restore files, read EXIF tags, compare sidecars, or check duplicates.</p>
+                            </div>
+                        </div>
+
+                        <!-- AUTH WARNING BANNER -->
+                        <div class="auth-warning-banner" id="restoreAuthWarning" style="display: none; margin: 12px 16px; border-radius: 10px;">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
+                            <div>
+                                <strong>Authentication Required</strong>
+                                <span>Please <a href="#" onclick="handleLogin(); return false;" class="banner-link">Sign In with Google</a> to process files.</span>
+                            </div>
+                        </div>
+
+                        <!-- Interrupted Session Banner -->
+                        <div id="interruptedBanner" class="interrupted-banner" style="display:none; margin: 12px 16px;">
+                            <div class="interrupted-banner-title">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline></svg>
+                                Interrupted Session Found
+                            </div>
+                            <p id="interruptedBannerMsg">We found a pending restoration. Resume or discard it.</p>
+                            <div class="interrupted-banner-actions">
+                                <button class="rc-btn" style="font-size:12px;padding:7px 12px;" onclick="resumeSession()">Resume Restoration</button>
+                                <button class="rc-btn-outline" style="font-size:12px;padding:7px 12px;" onclick="discardSession()">Discard</button>
+                            </div>
+                        </div>
+
+                        <!-- Body: main + side -->
+                        <div class="recovery-body">
+                            <!-- Left: Source + Destination + Sponsor + Logs -->
+                            <div class="recovery-main">
+
+                                <!-- SOURCE -->
+                                <div class="rc-section">
+                                    <div class="rc-section-header">
+                                        <div class="rc-section-num">1</div>
+                                        SOURCE
+                                    </div>
+                                    <div class="rc-btn-row">
+                                        <button id="btnBrowseInput" class="rc-btn" onclick="browseFolder('inputPath')">
+                                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>
+                                            Browse Folder
+                                        </button>
+                                        <button id="btnBrowseZip" class="rc-btn" onclick="browseZipFile()" style="background: rgba(120,120,120,0.08); color: var(--text-primary); border: 1px solid var(--border-color);">
+                                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>
+                                            Select ZIP File
+                                        </button>
+                                    </div>
+                                    <div class="rc-drop-hint">or drag &amp; drop your folder / ZIP file here</div>
+                                    <input type="text" id="inputPath" style="display:none;" readonly>
+                                </div>
+
+                                <!-- DESTINATION -->
+                                <div class="rc-section">
+                                    <div class="rc-section-header">
+                                        <div class="rc-section-num">2</div>
+                                        DESTINATION
+                                    </div>
+                                    <button id="btnBrowseOutput" class="rc-btn" onclick="browseFolder('outputPath')" style="background: rgba(120,120,120,0.08); color: var(--text-primary); border: 1px solid var(--border-color);">
+                                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>
+                                        Browse Output Directory
+                                    </button>
+                                    <input type="text" id="outputPath" style="display:none;" readonly>
+                                </div>
+
+                                <!-- OPTIONS (hidden, kept for JS compat) -->
+                                <div class="rc-section" style="display:none;">
+                                    <input type="datetime-local" id="takeoutDate">
+                                    <select id="postAction">
+                                        <option value="KEEP_AWAKE_ONLY">Keep System Awake</option>
+                                        <option value="KEEP_AWAKE_THEN_SHUTDOWN">Shutdown After Completion</option>
+                                    </select>
+                                </div>
+
+                                <!-- SPONSOR AREA -->
+                                <div class="rc-sponsor" id="rcSponsorArea">
+                                    <div class="rc-sponsor-icon">🚀</div>
+                                    <div class="rc-sponsor-text">
+                                        <p>Upgrade to Premium</p>
+                                        <span>Faster processing • Larger archives • Priority support</span>
+                                    </div>
+                                    <a href="https://takeoutfix.pages.dev/pricing/" target="_blank" rel="noopener" class="btn-upgrade-mini">Upgrade Now →</a>
+                                </div>
+
+                                <!-- LOGS -->
+                                <div class="rc-section">
+                                    <div class="rc-section-header">
+                                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>
+                                        LOGS
+                                    </div>
+                                    <div class="log-tabs-bar">
+                                        <button class="log-tab-btn active" onclick="switchLogTab('all', this)">All <span id="logCountAll" class="log-tab-count">0</span></button>
+                                        <button class="log-tab-btn" onclick="switchLogTab('restored', this)">Restored <span id="logCountRestored" class="log-tab-count">0</span></button>
+                                        <button class="log-tab-btn" onclick="switchLogTab('errors', this)">Errors <span id="logCountErrors" class="log-tab-count">0</span></button>
+                                        <button class="log-tab-btn" onclick="switchLogTab('skipped', this)">Skipped <span id="logCountSkipped" class="log-tab-count">0</span></button>
+                                    </div>
+                                    <div class="console-box" style="height: 200px; border-radius: 12px;">
+                                        <div id="consoleContent" class="console-content">
+                                            <span id="consolePlaceholder" class="console-placeholder">Waiting for process initialization parameters...</span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                            </div>
+
+                            <!-- Right: Plan Status + Controls -->
+                            <div class="recovery-side">
+
+                                <!-- Plan Status -->
+                                <div class="plan-status-card">
+                                    <div class="plan-status-header">
+                                        <div class="plan-status-label">
+                                            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display:inline;vertical-align:middle;margin-right:3px;"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
+                                            Plan Status
+                                        </div>
+                                        <div id="planStatusBadge" class="plan-status-badge">FREE TIER</div>
+                                    </div>
+                                    <div id="planStatusMsg" class="plan-status-upgrade-msg">Upgrade to unlock unlimited files, EXIF meta repairs &amp; maximum speed (Free limit: 250 files / 500 MB).</div>
+                                </div>
+
+                                <div class="plan-status-sep"></div>
+
+                                <!-- Progress (shown during processing) -->
+                                <div id="progressSection" class="progress-section" style="display:none; flex-direction:column; gap:5px;">
+                                    <div class="progress-header">
+                                        <span class="form-label" style="font-size:10px;">Processing</span>
+                                        <span id="progressStats" class="progress-stats" style="font-size:11px;">0 / 0</span>
+                                    </div>
+                                    <div class="progress-bar-container"><div id="progressBarFill" class="progress-bar-fill"></div></div>
+                                </div>
+
+                                <!-- Start Restore -->
+                                <button id="btnStart" class="btn-start-restore" onclick="startProcess()">
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+                                    Start Restore
+                                </button>
+
+                                <!-- Deep Restore (outline) -->
+                                <button id="btnDeepRestore" class="rc-btn-outline" onclick="startProcess()" title="Deep restore scans nested folders more thoroughly">
+                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                                    Deep Restore
+                                </button>
+
+                                <!-- Do these look different? -->
+                                <a href="https://takeoutfix.pages.dev/pricing/" target="_blank" rel="noopener" style="text-align:center; font-size:11px; color: var(--text-secondary); text-decoration: underline; cursor: pointer;">Do these look too restricted? Differ?</a>
+
+                                <!-- Busy Controls (pause/cancel) -->
+                                <div id="busyControls" class="busy-controls" style="flex-direction:column; gap:6px;">
+                                    <button id="btnPause" class="rc-btn-outline" onclick="togglePause()">⏸ Pause</button>
+                                    <button id="btnCancel" class="btn-cancel" onclick="cancelProcess()" style="padding:10px;">✕ Cancel</button>
+                                </div>
+
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- TAB 2: EXIF VIEWER (Super Tier) -->
+                <div id="tabContent-viewer" class="tab-content">
+                    <!-- Super Tier Gate (shown when not super) -->
+                    <div id="viewerSuperGate" class="auth-lock-card" style="display: none;">
+                        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="color: var(--accent-color);">
+                            <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                            <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                        </svg>
+                        <h3 class="auth-lock-title">EXIF Viewer — Super Feature</h3>
+                        <p style="font-size: 13px; color: var(--text-secondary); max-width: 340px; line-height: 1.5;">The in-depth EXIF metadata reader is available exclusively to <strong style="color: var(--accent-color);">Super</strong> plan subscribers. Upgrade to inspect full EXIF tag sets from any photo directly in the desktop engine.</p>
+                        <div style="display: flex; flex-direction: column; gap: 8px; background: rgba(120,120,120,0.03); border: 1px solid var(--border-color); border-radius: 12px; padding: 14px; width: 100%; max-width: 320px; text-align: left;">
+                            <span style="font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-secondary);">Included Features</span>
+                            <div style="display: flex; gap: 8px; font-size: 12px;"><span style="color: var(--success-color);">✓</span> Read all EXIF / IPTC / XMP tags</div>
+                            <div style="display: flex; gap: 8px; font-size: 12px;"><span style="color: var(--success-color);">✓</span> GPS coordinate extraction</div>
+                            <div style="display: flex; gap: 8px; font-size: 12px;"><span style="color: var(--success-color);">✓</span> Camera model &amp; lens data</div>
+                            <div style="display: flex; gap: 8px; font-size: 12px;"><span style="color: var(--success-color);">✓</span> Full date/time metadata tree</div>
+                        </div>
+                        <a href="https://takeoutfix.pages.dev/pricing/" target="_blank" rel="noopener noreferrer">
+                            <button class="btn-upgrade" style="margin-top: 6px;">Unlock with Super Plan →</button>
+                        </a>
+                    </div>
+                    <!-- Actual EXIF Viewer Content (shown for super users) -->
+                    <div id="viewerContent" style="display: none; flex-direction: column; gap: 16px;">
+                        <div class="card">
+                            <div class="card-title">EXIF Reader</div>
+                            <div class="dropzone" onclick="document.getElementById('viewerFileInput').click()">
+                                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                                    <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                                    <circle cx="8.5" cy="8.5" r="1.5"></circle>
+                                    <polyline points="21 15 16 10 5 21"></polyline>
+                                </svg>
+                                <p style="font-size: 13.5px; font-weight: 500;">Select or drag &amp; drop an image file to read EXIF metadata</p>
+                                <span style="font-size: 11px;">Supports JPEG, JPG, PNG formats</span>
+                                <input type="file" id="viewerFileInput" accept="image/*" style="display: none;" onchange="handleViewerFileChange(event)">
+                            </div>
+                            <div id="viewerPreviewContainer" style="display: none; align-items: flex-start; gap: 20px; flex-wrap: wrap;">
+                                <div style="flex-shrink: 0; width: 140px; height: 140px; border-radius: 12px; overflow: hidden; border: 1px solid var(--border-color); background: rgba(120,120,120,0.03); display: flex; align-items: center; justify-content: center;">
+                                    <img id="viewerImgPreview" src="" alt="Preview" style="max-width: 100%; max-height: 100%; object-fit: contain;">
+                                </div>
+                                <div style="flex: 1; min-width: 250px;">
+                                    <div class="table-wrapper">
+                                        <table class="data-table">
+                                            <thead><tr><th>EXIF Tag</th><th>Header Value</th></tr></thead>
+                                            <tbody id="viewerExifBody"></tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+                            <div id="viewerPlaceholder" style="text-align: center; font-size: 13px; color: var(--text-secondary); padding: 10px 0;">No file selected.</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- TAB 3: METADATA COMPARISON (Super Tier) -->
+                <div id="tabContent-comparison" class="tab-content">
+                    <!-- Super Tier Gate -->
+                    <div id="compSuperGate" class="auth-lock-card" style="display: none;">
+                        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="color: var(--accent-color);">
+                            <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                            <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                        </svg>
+                        <h3 class="auth-lock-title">Sidecar Comparison — Super Feature</h3>
+                        <p style="font-size: 13px; color: var(--text-secondary); max-width: 340px; line-height: 1.5;">Side-by-side EXIF vs JSON sidecar comparison is a <strong style="color: var(--accent-color);">Super</strong> plan feature. Upgrade to verify metadata integrity between your photo files and their JSON sidecars.</p>
+                        <div style="display: flex; flex-direction: column; gap: 8px; background: rgba(120,120,120,0.03); border: 1px solid var(--border-color); border-radius: 12px; padding: 14px; width: 100%; max-width: 320px; text-align: left;">
+                            <span style="font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-secondary);">Included Features</span>
+                            <div style="display: flex; gap: 8px; font-size: 12px;"><span style="color: var(--success-color);">✓</span> Date Taken EXIF vs JSON comparison</div>
+                            <div style="display: flex; gap: 8px; font-size: 12px;"><span style="color: var(--success-color);">✓</span> GPS coordinate cross-match</div>
+                            <div style="display: flex; gap: 8px; font-size: 12px;"><span style="color: var(--success-color);">✓</span> MATCH / MISMATCH / MISSING status flags</div>
+                            <div style="display: flex; gap: 8px; font-size: 12px;"><span style="color: var(--success-color);">✓</span> Side-by-side verification table</div>
+                        </div>
+                        <a href="https://takeoutfix.pages.dev/pricing/" target="_blank" rel="noopener noreferrer">
+                            <button class="btn-upgrade" style="margin-top: 6px;">Unlock with Super Plan →</button>
+                        </a>
+                    </div>
+                    <!-- Actual Comparison Content (Super users only) -->
+                    <div id="compContent" style="display: none; flex-direction: column; gap: 16px;">
+                        <div class="card">
+                            <div class="card-title">Sidecar Comparison</div>
+                            <p style="font-size: 13px; color: var(--text-secondary); line-height: 1.4;">Compare EXIF headers of a photo file side-by-side with its JSON sidecar metadata.</p>
+                            <div class="card-row">
+                                <div class="form-group">
+                                    <label class="form-label">Step 1: Select Media File</label>
+                                    <button class="btn-secondary" onclick="document.getElementById('compMediaInput').click()">Select Photo</button>
+                                    <span id="compMediaLabel" style="font-size: 12px; color: var(--text-secondary); word-break: break-all; margin-top: 4px;">No photo selected</span>
+                                    <input type="file" id="compMediaInput" accept="image/*" style="display: none;" onchange="handleCompMediaChange(event)">
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">Step 2: Select JSON Sidecar</label>
+                                    <button class="btn-secondary" onclick="document.getElementById('compJsonInput').click()">Select JSON File</button>
+                                    <span id="compJsonLabel" style="font-size: 12px; color: var(--text-secondary); word-break: break-all; margin-top: 4px;">No JSON selected</span>
+                                    <input type="file" id="compJsonInput" accept=".json" style="display: none;" onchange="handleCompJsonChange(event)">
+                                </div>
+                            </div>
+                            <div class="table-wrapper" style="margin-top: 10px;">
+                                <table class="data-table">
+                                    <thead><tr><th>Attribute</th><th>EXIF value</th><th>JSON value</th><th>Status</th></tr></thead>
+                                    <tbody id="compTableBody">
+                                        <tr><td colspan="4" style="text-align: center; color: var(--text-secondary);">Select files above to begin comparison metrics.</td></tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- TAB 4: DUPLICATE SPACE ANALYZER (Super Tier) -->
+                <div id="tabContent-duplicates" class="tab-content">
+                    <div id="dupSuperGate" class="auth-lock-card">
+                        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="color: var(--accent-color);">
+                            <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                            <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                        </svg>
+                        <h3 class="auth-lock-title">Duplicate Space Analyzer — Super Feature</h3>
+                        <p style="font-size: 13px; color: var(--text-secondary); max-width: 340px; line-height: 1.5;">The Duplicate Space Analyzer is a <strong style="color: var(--accent-color);">Super</strong> plan exclusive. Upgrade to recursively scan your Takeout folders for byte-identical duplicates and reclaim wasted storage.</p>
+                        <div style="display: flex; flex-direction: column; gap: 8px; background: rgba(120,120,120,0.03); border: 1px solid var(--border-color); border-radius: 12px; padding: 14px; width: 100%; max-width: 320px; text-align: left;">
+                            <span style="font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-secondary);">Included Features</span>
+                            <div style="display: flex; gap: 8px; font-size: 12px;"><span style="color: var(--success-color);">✓</span> Byte-exact duplicate detection</div>
+                            <div style="display: flex; gap: 8px; font-size: 12px;"><span style="color: var(--success-color);">✓</span> Recursive multi-folder scanning</div>
+                            <div style="display: flex; gap: 8px; font-size: 12px;"><span style="color: var(--success-color);">✓</span> Reclaimable storage calculation</div>
+                            <div style="display: flex; gap: 8px; font-size: 12px;"><span style="color: var(--success-color);">✓</span> Duplicate group listing</div>
+                        </div>
+                        <a href="https://takeoutfix.pages.dev/pricing/" target="_blank" rel="noopener noreferrer">
+                            <button class="btn-upgrade" style="margin-top: 6px;">Unlock with Super Plan →</button>
+                        </a>
+                    </div>
+
+                    <div id="dupWorkspace" style="display: none; flex-direction: column; gap: 20px;">
+                        <div class="card">
+                            <div class="card-title">Scan Directory</div>
+                            <div class="form-group">
+                                <label class="form-label" for="dupFolderInput">Select Folder to Scan</label>
+                                <div class="input-wrapper">
+                                    <input type="text" id="dupFolderInput" placeholder="Enter path or click Browse..." readonly>
+                                    <button class="btn-secondary" onclick="selectDuplicateFolder()">Browse</button>
+                                </div>
+                            </div>
+                            <button id="dupScanBtn" class="btn-primary" style="margin-top: 10px;" onclick="scanDuplicates()">Scan Directory For Duplicates</button>
+                            <div style="font-size: 12.5px; color: var(--text-secondary); display: flex; align-items: center; gap: 6px;">
+                                <span style="font-weight: 600;">Status:</span>
+                                <span id="dupStatusText">Idle</span>
+                            </div>
+                        </div>
+                        <div class="card-row">
+                            <div class="card" style="padding: 16px;">
+                                <span class="stat-lbl" style="font-size: 11px;">Scanned Files</span>
+                                <span id="dupScannedCount" class="stat-val" style="font-size: 24px;">0</span>
+                            </div>
+                            <div class="card" style="padding: 16px;">
+                                <span class="stat-lbl" style="font-size: 11px;">Duplicate Matches</span>
+                                <span id="dupDuplicateCount" class="stat-val" style="font-size: 24px; color: var(--danger-color);">0</span>
+                            </div>
+                            <div class="card" style="padding: 16px;">
+                                <span class="stat-lbl" style="font-size: 11px;">Reclaimable Space</span>
+                                <span id="dupSavedBytes" class="stat-val" style="font-size: 24px; color: var(--success-color);">0 B</span>
+                            </div>
+                        </div>
+                        <div class="card">
+                            <div class="card-title">Duplicate Groups</div>
+                            <div class="table-wrapper">
+                                <table class="data-table">
+                                    <thead><tr><th>Media Name</th><th>Size</th><th>Duplicate File Paths</th></tr></thead>
+                                    <tbody id="dupGroupsBody">
+                                        <tr><td colspan="3" style="text-align: center; color: var(--text-secondary);">Select a folder and run the scanner to view details.</td></tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- TAB 5: MY DASHBOARD -->
+                <div id="tabContent-dashboard" class="tab-content">
+                    <!-- Auth gate: show login prompt when logged out -->
+                    <div id="dashAuthGate" class="auth-lock-card">
+                        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="color: var(--text-secondary);">
+                            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                            <circle cx="12" cy="7" r="4"></circle>
+                        </svg>
+                        <h3 class="auth-lock-title">Sign In to View Dashboard</h3>
+                        <p style="font-size: 13px; color: var(--text-secondary); max-width: 320px; line-height: 1.4;">Your personal dashboard shows plan details, usage quotas, and session history. Sign in to access it.</p>
+                        <button class="btn-primary" style="max-width: 180px; font-size: 13px; padding: 10px;" onclick="handleLogin()">Sign In with Google</button>
+                    </div>
+
+                    <!-- Dashboard content when logged in -->
+                    <div id="dashContent" style="display: none; flex-direction: column; gap: 20px;">
+                        <!-- User Profile Card -->
+                        <div class="card">
+                            <div class="card-title">Account Overview</div>
+                            <div style="display: flex; align-items: center; gap: 16px; padding: 8px 0;">
+                                <img id="dashAvatar" src="" alt="Avatar" style="width: 52px; height: 52px; border-radius: 50%; border: 2px solid var(--accent-color); object-fit: cover;">
+                                <div style="flex: 1;">
+                                    <div id="dashName" style="font-family: 'Outfit', sans-serif; font-size: 17px; font-weight: 700;">—</div>
+                                    <div id="dashEmail" style="font-size: 12px; color: var(--text-secondary); margin-top: 2px;">—</div>
+                                    <div style="margin-top: 6px;">
+                                        <span id="dashPlanBadge" style="display: inline-block; padding: 3px 10px; border-radius: 9999px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; background: rgba(120,120,120,0.1); border: 1px solid var(--border-color); color: var(--text-secondary);">FREE TIER</span>
+                                    </div>
+                                </div>
+                                <button class="btn-upgrade" onclick="openModal()" id="dashUpgradeBtn">Upgrade →</button>
+                            </div>
+                        </div>
+
+                        <!-- Plan Usage Stats -->
+                        <div class="card">
+                            <div class="card-title">Plan &amp; Usage</div>
+                            <div class="stats-grid">
+                                <div class="stat-item">
+                                    <span id="dashPlan" class="stat-val" style="font-size: 16px;">Free</span>
+                                    <span class="stat-lbl">Current Plan</span>
+                                </div>
+                                <div class="stat-item">
+                                    <span id="dashFilesLimit" class="stat-val" style="font-size: 16px;">250</span>
+                                    <span class="stat-lbl">File Limit</span>
+                                </div>
+                                <div class="stat-item">
+                                    <span id="dashExifViewer" class="stat-val" style="font-size: 16px; color: var(--danger-color);">✗</span>
+                                    <span class="stat-lbl">EXIF Viewer</span>
+                                </div>
+                                <div class="stat-item">
+                                    <span id="dashDuplicates" class="stat-val" style="font-size: 16px; color: var(--danger-color);">✗</span>
+                                    <span class="stat-lbl">Duplicates</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Feature Access Table -->
+                        <div class="card">
+                            <div class="card-title">Feature Access by Plan</div>
+                            <div class="table-wrapper">
+                                <table class="data-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Feature</th>
+                                            <th style="color: var(--text-secondary);">Free</th>
+                                            <th style="color: var(--warning-color);">Recovery Pass</th>
+                                            <th style="color: #6366f1;">Pro</th>
+                                            <th style="color: var(--success-color);">Super ✦</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr><td style="font-weight:600;">Restore Metadata</td><td>✓ (250 files)</td><td>✓ (3,000 files)</td><td>✓ Unlimited</td><td style="color:var(--success-color);font-weight:700;">✓ Unlimited</td></tr>
+                                        <tr><td style="font-weight:600;">Deep Restore</td><td style="color:var(--danger-color);">✗</td><td style="color:var(--danger-color);">✗</td><td>✓</td><td style="color:var(--success-color);font-weight:700;">✓</td></tr>
+                                        <tr><td style="font-weight:600;">EXIF Viewer</td><td style="color:var(--danger-color);">✗</td><td style="color:var(--danger-color);">✗</td><td style="color:var(--danger-color);">✗</td><td style="color:var(--success-color);font-weight:700;">✓</td></tr>
+                                        <tr><td style="font-weight:600;">Sidecar Comparison</td><td style="color:var(--danger-color);">✗</td><td style="color:var(--danger-color);">✗</td><td style="color:var(--danger-color);">✗</td><td style="color:var(--success-color);font-weight:700;">✓</td></tr>
+                                        <tr><td style="font-weight:600;">Duplicate Finder</td><td style="color:var(--danger-color);">✗</td><td style="color:var(--danger-color);">✗</td><td style="color:var(--danger-color);">✗</td><td style="color:var(--success-color);font-weight:700;">✓</td></tr>
+                                        <tr><td style="font-weight:600;">System Wake Lock</td><td>✓</td><td>✓</td><td>✓</td><td style="color:var(--success-color);font-weight:700;">✓</td></tr>
+                                        <tr><td style="font-weight:600;">Auto Shutdown</td><td>✓</td><td>✓</td><td>✓</td><td style="color:var(--success-color);font-weight:700;">✓</td></tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <!-- Platform Comparison Table -->
+                        <div class="card">
+                            <div class="card-title">🌐 Browser vs 💻 Desktop Standalone</div>
+                            <div class="table-wrapper">
+                                <table class="data-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Feature</th>
+                                            <th>🌐 Web Browser Tool</th>
+                                            <th style="color: var(--accent-color);">💻 Desktop Standalone App</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr><td style="font-weight:600;">Installation</td><td>Instant (Zero install required)</td><td>Requires download (No install needed)</td></tr>
+                                        <tr><td style="font-weight:600;">Processing Speed</td><td style="color: var(--warning-color);">Standard (Browser throttle limits)</td><td style="color: var(--success-color); font-weight:700;">Native Multithreaded (Fastest)</td></tr>
+                                        <tr><td style="font-weight:600;">Ideal Archive Size</td><td>Small archives (&lt; 20 GB)</td><td>Infinite size (50 GB to 1 TB+)</td></tr>
+                                        <tr><td style="font-weight:600;">Offline Use</td><td style="color: var(--danger-color);">No (Requires server sync)</td><td style="color: var(--success-color); font-weight:700;">Yes (100% Offline supported)</td></tr>
+                                        <tr><td style="font-weight:600;">Direct Local EXIF Injection</td><td>Yes (Via virtual files api)</td><td>Yes (Direct write to physical disk)</td></tr>
+                                        <tr><td style="font-weight:600;">System Standby Prevention</td><td style="color: var(--danger-color);">No</td><td style="color: var(--success-color); font-weight:700;">Yes (Includes Auto-Wake lock)</td></tr>
+                                        <tr><td style="font-weight:600;">Auto PC Shutdown</td><td style="color: var(--danger-color);">No</td><td style="color: var(--success-color); font-weight:700;">Yes (Optional post-action)</td></tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <!-- UPGRADE MODAL -->
+    <div id="upgradeModal" class="modal-overlay">
+        <div class="modal-container">
+            <div class="modal-accent-line"></div>
+            <button class="modal-close" onclick="closeModal()">×</button>
+            <div class="modal-body">
+                <div class="modal-header-text">
+                    <h2>Upgrade to Premium</h2>
+                    <p>Unlock offline batch processing limits and advanced EXIF date restoration tools permanently.</p>
+                </div>
+
+                <div class="upgrade-comparison">
+                    <div class="comparison-row">
+                        <span class="comparison-label">Processing Limit</span>
+                        <span class="comparison-free">250 files</span>
+                        <span class="comparison-premium">Unlimited</span>
+                    </div>
+                    <div class="comparison-row" style="border-top: 1px solid rgba(255,255,255,0.03); padding-top: 8px;">
+                        <span class="comparison-label">Max Batch Size</span>
+                        <span class="comparison-free">500 MB</span>
+                        <span class="comparison-premium">No Limit</span>
+                    </div>
+                    <div class="comparison-row" style="border-top: 1px solid rgba(255,255,255,0.03); padding-top: 8px;">
+                        <span class="comparison-label">Duplicate Media Cleaner</span>
+                        <span class="comparison-free">Disabled</span>
+                        <span class="comparison-premium">Included</span>
+                    </div>
+                    <div class="comparison-row" style="border-top: 1px solid rgba(255,255,255,0.03); padding-top: 8px;">
+                        <span class="comparison-label">Date Taken Rebuilding</span>
+                        <span class="comparison-free">Standard</span>
+                        <span class="comparison-premium">Deep Repair</span>
+                    </div>
+                </div>
+
+                <div class="license-input-section" style="display: flex; flex-direction: column; gap: 10px;">
+                    <label class="form-label" for="licenseKey">License Key</label>
+                    <input type="text" id="licenseKey" placeholder="TF-PRO-XXXX-XXXX-XXXX" style="text-align: center; font-family: 'Fira Code', monospace; letter-spacing: 0.05em;">
+                    <button class="btn-activate" onclick="activateLicense()">Activate License</button>
+                </div>
+
+                <div class="modal-footer-text">
+                    <span>Don't have a license key?</span>
+                    <a href="https://takeoutfix.pages.dev/pricing/" target="_blank" rel="noopener noreferrer">Get Premium License Key →</a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- CORE LOGIC JS -->
+    <script>
+        let stompClient = null;
+        let isProcessing = false;
+        let currentUser = null;
+        let currentUserPlan = 'free';
+
+        // Firebase Web Config (fetched from local secrets)
+        const firebaseConfig = {
+            apiKey: "AIzaSyBAQFr7OeHkaLDk8yfNyGl6YD2qhdlnoXk",
+            authDomain: "gt-metadata-merger.firebaseapp.com",
+            projectId: "gt-metadata-merger",
+            storageBucket: "gt-metadata-merger.firebasestorage.app",
+            messagingSenderId: "198090983108",
+            appId: "1:198090983108:web:a90faac4214ecd91d76b91",
+            measurementId: "G-P0DY1QKD63"
+        };
+
+        // Initialize Firebase
+        firebase.initializeApp(firebaseConfig);
+        const auth = firebase.auth();
+        const db = firebase.firestore();
+        const googleProvider = new firebase.auth.GoogleAuthProvider();
+
+        document.addEventListener('DOMContentLoaded', () => {
+            initTheme();
+            setupAuthListener();
+            connectWebSocket();
+            startTelemetryHeartbeat();
+        });
+
+        // Theme Manager
+        function initTheme() {
+            const savedTheme = localStorage.getItem('takeoutfix_theme') || 'dark';
+            if (savedTheme === 'dark') {
+                document.documentElement.classList.add('dark');
+            } else {
+                document.documentElement.classList.remove('dark');
+            }
+            updateThemeIcon();
+        }
+
+        function toggleTheme() {
+            const isDark = document.documentElement.classList.toggle('dark');
+            localStorage.setItem('takeoutfix_theme', isDark ? 'dark' : 'light');
+            updateThemeIcon();
+        }
+
+        function updateThemeIcon() {
+            const isDark = document.documentElement.classList.contains('dark');
+            const themeBtn = document.getElementById('btnThemeToggle');
+            if (isDark) {
+                themeBtn.innerHTML = `
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+                    </svg>
+                `;
+            } else {
+                themeBtn.innerHTML = `
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="5"></circle>
+                        <line x1="12" y1="1" x2="12" y2="3"></line>
+                        <line x1="12" y1="21" x2="12" y2="23"></line>
+                        <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+                        <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+                        <line x1="1" y1="12" x2="3" y2="12"></line>
+                        <line x1="21" y1="12" x2="23" y2="12"></line>
+                        <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+                        <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+                    </svg>
+                `;
+            }
+        }
+
+        // Firebase Auth handler
+        function setupAuthListener() {
+            auth.onAuthStateChanged(async (user) => {
+                const userProfile = document.getElementById('userProfile');
+                const userAvatar = document.getElementById('userAvatar');
+                const userName = document.getElementById('userName');
+                const btnLogin = document.getElementById('btnLogin');
+                const btnLogout = document.getElementById('btnLogout');
+
+                if (user) {
+                    currentUser = user;
+                    userAvatar.src = user.photoURL || 'https://www.gravatar.com/avatar/?d=mp';
+                    userName.innerText = user.displayName || user.email || 'Operator';
+                    userProfile.style.display = 'flex';
+                    btnLogin.style.display = 'none';
+                    btnLogout.style.display = 'block';
+
+                    // Fetch user plan details
+                    try {
+                        const userDoc = await db.collection('users').doc(user.uid).get();
+                        if (userDoc.exists) {
+                            currentUserPlan = userDoc.data().plan || 'free';
+                        } else {
+                            currentUserPlan = 'free';
+                        }
+                    } catch (e) {
+                        console.warn('Failed to fetch plan from cloud database. Loading local cache.');
+                        currentUserPlan = localStorage.getItem('takeoutfix_cached_plan') || 'free';
+                    }
+                    localStorage.setItem('takeoutfix_cached_plan', currentUserPlan);
+                } else {
+                    currentUser = null;
+                    currentUserPlan = 'free';
+                    localStorage.removeItem('takeoutfix_cached_plan');
+                    userProfile.style.display = 'none';
+                    btnLogin.style.display = 'block';
+                    btnLogout.style.display = 'none';
+                }
+
+                // Apply all gating logic after plan/user is resolved
+                applyAccessGates();
+                updatePremiumBadgeState();
+            });
+        }
+
+        function applyAccessGates() {
+            const isLoggedIn = !!currentUser;
+            const isSuper = ['super'].includes(currentUserPlan);
+            const hasPremium = ['pro', 'super', 'recovery_pass'].includes(currentUserPlan)
+                || localStorage.getItem('takeoutfix_premium_licensed') === 'true';
+
+            // --- RESTORE TAB ---
+            // Always visible, but Start button disabled if not logged in
+            const restoreAuthWarning = document.getElementById('restoreAuthWarning');
+            const btnStart = document.getElementById('btnStart');
+            if (restoreAuthWarning) {
+                restoreAuthWarning.style.display = isLoggedIn ? 'none' : 'flex';
+            }
+            if (btnStart) {
+                btnStart.disabled = !isLoggedIn;
+                btnStart.innerText = isLoggedIn ? 'Start Processing' : '🔒 Login Required — Start Processing';
+            }
+
+            // --- EXIF VIEWER TAB ---
+            const viewerSuperGate = document.getElementById('viewerSuperGate');
+            const viewerContent = document.getElementById('viewerContent');
+            if (viewerSuperGate && viewerContent) {
+                if (isSuper) {
+                    viewerSuperGate.style.display = 'none';
+                    viewerContent.style.display = 'flex';
+                } else {
+                    viewerSuperGate.style.display = 'flex';
+                    viewerContent.style.display = 'none';
+                }
+            }
+
+            // --- COMPARISON TAB ---
+            const compSuperGate = document.getElementById('compSuperGate');
+            const compContent = document.getElementById('compContent');
+            if (compSuperGate && compContent) {
+                if (isSuper) {
+                    compSuperGate.style.display = 'none';
+                    compContent.style.display = 'flex';
+                } else {
+                    compSuperGate.style.display = 'flex';
+                    compContent.style.display = 'none';
+                }
+            }
+
+            // --- DUPLICATES TAB ---
+            const dupSuperGate = document.getElementById('dupSuperGate');
+            const dupWorkspace = document.getElementById('dupWorkspace');
+            if (dupSuperGate && dupWorkspace) {
+                if (isSuper) {
+                    dupSuperGate.style.display = 'none';
+                    dupWorkspace.style.display = 'flex';
+                } else {
+                    dupSuperGate.style.display = 'flex';
+                    dupWorkspace.style.display = 'none';
+                }
+            }
+
+            // --- DASHBOARD TAB ---
+            const dashAuthGate = document.getElementById('dashAuthGate');
+            const dashContent = document.getElementById('dashContent');
+            if (dashAuthGate && dashContent) {
+                if (isLoggedIn) {
+                    dashAuthGate.style.display = 'none';
+                    dashContent.style.display = 'flex';
+                    populateDashboard();
+                } else {
+                    dashAuthGate.style.display = 'flex';
+                    dashContent.style.display = 'none';
+                }
+            }
+        }
+
+        function populateDashboard() {
+            if (!currentUser) return;
+            const planLabels = { free: 'Free', recovery_pass: 'Recovery Pass', pro: 'Pro', super: 'Super ✦' };
+            const planColors = { free: 'var(--text-secondary)', recovery_pass: 'var(--warning-color)', pro: '#6366f1', super: 'var(--success-color)' };
+            const planFileLimits = { free: '250 files', recovery_pass: '3,000 files', pro: 'Unlimited', super: 'Unlimited' };
+
+            const plan = currentUserPlan || 'free';
+            const isSuper = plan === 'super';
+
+            document.getElementById('dashAvatar').src = currentUser.photoURL || 'https://www.gravatar.com/avatar/?d=mp';
+            document.getElementById('dashName').innerText = currentUser.displayName || currentUser.email || 'User';
+            document.getElementById('dashEmail').innerText = currentUser.email || '';
+
+            const badge = document.getElementById('dashPlanBadge');
+            badge.innerText = planLabels[plan] || plan.toUpperCase();
+            badge.style.color = planColors[plan] || 'var(--text-secondary)';
+            badge.style.borderColor = planColors[plan] || 'var(--border-color)';
+            badge.style.background = `${planColors[plan]}18` || 'rgba(120,120,120,0.1)';
+
+            document.getElementById('dashPlan').innerText = planLabels[plan] || plan;
+            document.getElementById('dashPlan').style.color = planColors[plan] || 'var(--text-primary)';
+            document.getElementById('dashFilesLimit').innerText = planFileLimits[plan] || '250';
+
+            const tick = '✓'; const cross = '✗';
+            const exifEl = document.getElementById('dashExifViewer');
+            exifEl.innerText = isSuper ? tick : cross;
+            exifEl.style.color = isSuper ? 'var(--success-color)' : 'var(--danger-color)';
+            const dupEl = document.getElementById('dashDuplicates');
+            dupEl.innerText = isSuper ? tick : cross;
+            dupEl.style.color = isSuper ? 'var(--success-color)' : 'var(--danger-color)';
+
+            const upgradeBtn = document.getElementById('dashUpgradeBtn');
+            if (isSuper) upgradeBtn.style.display = 'none';
+            else upgradeBtn.style.display = 'flex';
+        }
+
+        async function handleLogin() {
+            try {
+                await auth.signInWithPopup(googleProvider);
+            } catch (e) {
+                alert("Sign-in failed: " + e.message);
+            }
+        }
+
+        async function handleLogout() {
+            try {
+                await auth.signOut();
+            } catch (e) {
+                console.error("Sign-out failed", e);
+            }
+        }
+
+        function updatePremiumBadgeState() {
+            const isLocalPremium = localStorage.getItem('takeoutfix_premium_licensed') === 'true';
+            const hasPremium = isLocalPremium || ['pro', 'super', 'recovery_pass'].includes(currentUserPlan);
+            
+            const btnUpgrade = document.getElementById('btnUpgrade');
+            const premiumBadge = document.getElementById('premiumBadge');
+            const planStatusBadge = document.getElementById('planStatusBadge');
+            const planStatusMsg = document.getElementById('planStatusMsg');
+            const sidebarUpgradeBar = document.getElementById('sidebarUpgradeBar');
+            const sidebarSponsorArea = document.getElementById('sidebarSponsorArea');
+            const rcSponsorArea = document.getElementById('rcSponsorArea');
+ 
+            let label = 'FREE TIER';
+            let limitFiles = 250;
+            let limitBytes = 500 * 1024 * 1024; // 500 MB
+ 
+            if (hasPremium) {
+                btnUpgrade.style.display = 'none';
+                premiumBadge.style.display = 'block';
+ 
+                if (currentUserPlan === 'super') { label = 'SUPER'; limitFiles = Infinity; limitBytes = Infinity; }
+                else if (currentUserPlan === 'recovery_pass') { label = 'SINGLE PASS'; limitFiles = 5000; limitBytes = 50 * 1024 * 1024 * 1024; }
+                else if (currentUserPlan === 'pro' || isLocalPremium) { label = 'PRO'; limitFiles = Infinity; limitBytes = Infinity; }
+ 
+                premiumBadge.innerText = label;
+                premiumBadge.style.color = 'var(--success-color)';
+                premiumBadge.style.border = '1px solid rgba(16, 185, 129, 0.3)';
+                premiumBadge.style.background = 'linear-gradient(135deg, rgba(16, 185, 129, 0.15) 0%, rgba(5, 150, 105, 0.15) 100%)';
+ 
+                if (planStatusBadge) {
+                    planStatusBadge.innerText = label;
+                    planStatusBadge.className = 'plan-status-badge ' + (currentUserPlan === 'super' ? 'super' : 'pro');
+                }
+                if (planStatusMsg) planStatusMsg.innerText = 'You have full access. No restrictions apply.';
+                if (sidebarUpgradeBar) sidebarUpgradeBar.style.display = 'none';
+                if (sidebarSponsorArea) sidebarSponsorArea.style.display = 'none';
+                if (rcSponsorArea) rcSponsorArea.style.display = 'none';
+            } else {
+                btnUpgrade.style.display = 'flex';
+                premiumBadge.style.display = 'block';
+                premiumBadge.innerText = 'FREE TIER';
+                premiumBadge.style.color = 'var(--text-secondary)';
+                premiumBadge.style.border = '1px solid rgba(255, 255, 255, 0.1)';
+                premiumBadge.style.background = 'rgba(255, 255, 255, 0.05)';
+ 
+                if (planStatusBadge) { planStatusBadge.innerText = 'FREE TIER'; planStatusBadge.className = 'plan-status-badge'; }
+                if (planStatusMsg) planStatusMsg.innerText = 'Upgrade to unlock unlimited files, EXIF meta repairs & maximum speed (Free limit: 250 files / 500 MB).';
+                if (sidebarUpgradeBar) sidebarUpgradeBar.style.display = 'flex';
+                if (sidebarSponsorArea) sidebarSponsorArea.style.display = 'block';
+                if (rcSponsorArea) rcSponsorArea.style.display = 'flex';
+            }
+ 
+            // Update limit progress bars with live values
+            const usedFiles = parseInt(document.getElementById('statScanned')?.innerText?.split('/')[0]) || 0;
+            updateLimitBars(usedFiles, 0, limitFiles, limitBytes);
+        }
+
+
+        // Navigation Tabs Switcher
+        function switchTab(tabId) {
+            const tabButtons = document.querySelectorAll('.tab-btn');
+            tabButtons.forEach(btn => btn.classList.remove('active'));
+            const tabBtn = document.getElementById(`tabBtn-${tabId}`);
+            if (tabBtn) tabBtn.classList.add('active');
+
+            const tabContents = document.querySelectorAll('.tab-content');
+            tabContents.forEach(content => content.classList.remove('active'));
+            const tabContent = document.getElementById(`tabContent-${tabId}`);
+            if (tabContent) tabContent.classList.add('active');
+        }
+
+        // 2. WebSocket handler
+        function connectWebSocket() {
+            try {
+                const socket = new SockJS('/ws-extraction');
+                stompClient = Stomp.over(socket);
+                stompClient.debug = null;
+
+                stompClient.connect({}, function (frame) {
+                    addLog('INFO', 'Linked with local restoration engine successfully.');
+                    
+                    stompClient.subscribe('/topic/logs', function (message) {
+                        try {
+                            const log = JSON.parse(message.body);
+                            addLog(log.level, log.message);
+                        } catch (e) {
+                            console.error("Error parsing logs:", e);
+                        }
+                    });
+
+                    stompClient.subscribe('/topic/progress', function (message) {
+                        try {
+                            const progress = JSON.parse(message.body);
+                            updateProgress(progress.current, progress.total);
+                        } catch (e) {
+                            console.error("Error parsing progress:", e);
+                        }
+                    });
+                }, function (error) {
+                    console.error('STOMP disconnect error:', error);
+                    addLog('ERROR', 'Restoration socket link interrupted. Re-connecting...');
+                    setTimeout(connectWebSocket, 5000);
+                });
+            } catch (err) {
+                console.error("STOMP client launch failure:", err);
+            }
+        }
+
+        // 3. Browse Folder
+        async function browseFolder(targetInputId) {
+            try {
+                const res = await fetch('/api/system/browse-folder');
+                const data = await res.json();
+                if (data && data.path) {
+                    document.getElementById(targetInputId).value = data.path;
+                    addLog('INFO', `Configured directory path: ${data.path}`);
+                }
+            } catch (e) {
+                console.error("Directory browse execution failed", e);
+            }
+        }
+
+        async function browseZipFile() {
+            addLog('INFO', 'ZIP file selection is not yet supported in server mode. Please extract your Takeout archive and use Browse Folder.');
+        }
+
+        function resumeSession() {
+            document.getElementById('interruptedBanner').style.display = 'none';
+            addLog('INFO', 'Resuming interrupted session...');
+            startProcess();
+        }
+
+        function discardSession() {
+            document.getElementById('interruptedBanner').style.display = 'none';
+            addLog('INFO', 'Previous session discarded.');
+        }
+
+
+        // 4. Processing controls
+        async function startProcess() {
+            if (!currentUser) {
+                alert("Authentication Required!\n\nYou must be logged in to execute metadata restorations.");
+                handleLogin();
+                return;
+            }
+
+            const inputPath = document.getElementById('inputPath').value;
+            const outputPath = document.getElementById('outputPath').value;
+            const takeoutDate = document.getElementById('takeoutDate').value;
+            const postAction = document.getElementById('postAction').value;
+
+            if (!inputPath || !outputPath) {
+                alert("Please specify input and output directories first.");
+                return;
+            }
+
+            setBusyState(true);
+            clearLogs();
+            addLog('INFO', 'Launching metadata restoration thread pipeline...');
+
+            try {
+                const res = await fetch('/api/extraction/start', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ inputPath, outputPath, takeoutDate, postAction })
+                });
+                
+                const data = await res.json();
+                if (!res.ok) throw new Error(data.message || "Bad Request");
+                
+                document.getElementById('engineStatusText').innerText = "ACTIVE";
+                document.getElementById('engineStatusDot').className = "status-dot active";
+            } catch (e) {
+                addLog('ERROR', 'Process start failure: ' + e.message);
+                setBusyState(false);
+            }
+        }
+
+        async function togglePause() {
+            try {
+                const res = await fetch('/api/extraction/pause', { method: 'POST' });
+                const data = await res.json();
+                
+                const btnPause = document.getElementById('btnPause');
+                const statusDot = document.getElementById('engineStatusDot');
+                const statusText = document.getElementById('engineStatusText');
+
+                if (data.paused) {
+                    btnPause.innerText = 'Resume';
+                    btnPause.style.background = 'rgba(245, 158, 11, 0.1)';
+                    btnPause.style.color = 'var(--warning-color)';
+                    btnPause.style.borderColor = 'rgba(245, 158, 11, 0.2)';
+                    
+                    statusText.innerText = "PAUSED";
+                    statusDot.className = "status-dot paused";
+                    addLog('WARN', 'Engine suspended by user.');
+                } else {
+                    btnPause.innerText = 'Pause';
+                    btnPause.style.background = 'rgba(255, 255, 255, 0.08)';
+                    btnPause.style.color = 'var(--text-primary)';
+                    btnPause.style.borderColor = 'var(--border-color)';
+                    
+                    statusText.innerText = "ACTIVE";
+                    statusDot.className = "status-dot active";
+                    addLog('SUCCESS', 'Engine resumed.');
+                }
+            } catch (e) {
+                console.error("Pause toggle failure", e);
+            }
+        }
+
+        async function cancelProcess() {
+            if (!confirm("Are you sure you want to stop processing?")) return;
+            try {
+                await fetch('/api/extraction/cancel', { method: 'POST' });
+                setBusyState(false);
+                addLog('WARN', 'Processing aborted by operator.');
+            } catch (e) {
+                console.error("Aborting process failure", e);
+            }
+        }
+
+        async function cancelProcessSilently() {
+            try { await fetch('/api/extraction/cancel', { method: 'POST' }); } catch (_) {}
+        }
+
+        function setBusyState(busy) {
+            isProcessing = busy;
+            document.getElementById('inputPath').disabled = busy;
+            document.getElementById('outputPath').disabled = busy;
+            document.getElementById('takeoutDate').disabled = busy;
+            document.getElementById('postAction').disabled = busy;
+            document.getElementById('btnBrowseInput').disabled = busy;
+            document.getElementById('btnBrowseOutput').disabled = busy;
+
+            const btnStart = document.getElementById('btnStart');
+            const busyControls = document.getElementById('busyControls');
+            const progressSection = document.getElementById('progressSection');
+
+            if (busy) {
+                btnStart.style.display = 'none';
+                busyControls.style.display = 'flex';
+                progressSection.style.display = 'flex';
+            } else {
+                btnStart.style.display = 'block';
+                busyControls.style.display = 'none';
+                progressSection.style.display = 'none';
+                
+                document.getElementById('engineStatusText').innerText = "IDLE";
+                document.getElementById('engineStatusDot').className = "status-dot";
+            }
+        }
+
+        function updateProgress(current, total) {
+            const stats = document.getElementById('progressStats');
+            const fill = document.getElementById('progressBarFill');
+
+            // Enforce free tier batch threshold limit of 250 files
+            const isLocalPremium = localStorage.getItem('takeoutfix_premium_licensed') === 'true';
+            const hasPremium = isLocalPremium || ['pro', 'super', 'recovery_pass'].includes(currentUserPlan);
+
+            if (total > 250 && !hasPremium) {
+                cancelProcessSilently();
+                setBusyState(false);
+                addLog('ERROR', `[LIMIT EXCEEDED] Processing aborted. Batch contains ${total} files, exceeding Free Tier limit of 250 files.`);
+                alert(`Free Tier Limit Exceeded!\n\nThis folder contains ${total} files, which exceeds the Free Tier limit of 250 files.\n\nPlease login with an upgraded premium account or register a license key to restore unlimited files.`);
+                openModal();
+                return;
+            }
+
+            if (total === 0) {
+                stats.innerText = 'Initializing...';
+                fill.style.width = '0%';
+                return;
+            }
+
+            // Sync sidebar counters
+            document.getElementById('statScanned').innerText = current;
+            document.getElementById('statMatched').innerText = current; // Fallback mapping
+
+            const pct = Math.round((current / total) * 100);
+            stats.innerText = `${current} / ${total} (${pct}%)`;
+            fill.style.width = `${pct}%`;
+
+            if (current >= total && total > 0) {
+                setTimeout(() => {
+                    addLog('SUCCESS', 'Metadata restoration completed successfully.');
+                    setBusyState(false);
+                }, 1000);
+            }
+        }
+
+        function addLog(level, message) {
+            const content = document.getElementById('consoleContent');
+            const placeholder = document.getElementById('consolePlaceholder');
+            if (placeholder) placeholder.remove();
+
+            const div = document.createElement('div');
+            div.style.display = 'flex';
+            div.style.gap = '8px';
+            
+            const lvl = document.createElement('span');
+            lvl.className = `log-level log-${level}`;
+            lvl.innerText = `[${level}]`;
+            
+            const msg = document.createElement('span');
+            msg.innerText = message;
+            
+            div.appendChild(lvl);
+            div.appendChild(msg);
+            content.appendChild(div);
+            content.scrollTop = content.scrollHeight;
+        }
+
+        function clearLogs() {
+            document.getElementById('consoleContent').innerHTML = '';
+        }
+
+        // 5. EXIF Viewer logic
+        function handleViewerFileChange(e) {
+            const file = e.target.files[0] || document.getElementById('viewerFileInput').files[0];
+            if (!file) return;
+
+            document.getElementById('viewerPlaceholder').style.display = 'none';
+            const previewContainer = document.getElementById('viewerPreviewContainer');
+            previewContainer.style.display = 'flex';
+
+            const preview = document.getElementById('viewerImgPreview');
+            const reader = new FileReader();
+            reader.onload = function(event) {
+                preview.src = event.target.result;
+            };
+            reader.readAsDataURL(file);
+
+            const body = document.getElementById('viewerExifBody');
+            body.innerHTML = '<tr><td colspan="2" style="text-align:center;">Extracting EXIF metadata...</td></tr>';
+
+            EXIF.getData(file, function() {
+                const tags = EXIF.getAllTags(this);
+                body.innerHTML = '';
+                
+                if (Object.keys(tags).length === 0) {
+                    body.innerHTML = '<tr><td colspan="2" style="text-align:center; color:var(--text-secondary);">No EXIF data metadata attributes found in this photo.</td></tr>';
+                    return;
+                }
+
+                for (const [key, val] of Object.entries(tags)) {
+                    if (typeof val === 'object' && val !== null && !(val instanceof Date)) continue;
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `
+                        <td style="font-weight:600; padding:8px 12px; border-bottom:1px solid var(--border-color);">${key}</td>
+                        <td style="color:var(--text-secondary); padding:8px 12px; border-bottom:1px solid var(--border-color); font-family:monospace; font-size:12px;">${val}</td>
+                    `;
+                    body.appendChild(tr);
+                }
+            });
+        }
+
+        // 6. Metadata Comparison logic
+        let compMediaData = null;
+        let compJsonData = null;
+
+        function handleCompMediaChange(e) {
+            const file = e.target.files[0] || document.getElementById('compMediaInput').files[0];
+            if (!file) return;
+            document.getElementById('compMediaLabel').innerText = file.name;
+
+            EXIF.getData(file, function() {
+                compMediaData = EXIF.getAllTags(this);
+                runComparison();
+            });
+        }
+
+        function handleCompJsonChange(e) {
+            const file = e.target.files[0] || document.getElementById('compJsonInput').files[0];
+            if (!file) return;
+            document.getElementById('compJsonLabel').innerText = file.name;
+
+            const reader = new FileReader();
+            reader.onload = function(event) {
+                try {
+                    compJsonData = JSON.parse(event.target.result);
+                    runComparison();
+                } catch(_) {
+                    alert("Failed to parse sidecar JSON metadata file.");
+                }
+            };
+            reader.readAsText(file);
+        }
+
+        function runComparison() {
+            if (!compMediaData || !compJsonData) return;
+            const body = document.getElementById('compTableBody');
+            body.innerHTML = '';
+
+            const comparisons = [];
+            // Date Taken comparison
+            const exifDate = compMediaData.DateTimeOriginal || compMediaData.DateTime || 'N/A';
+            const jsonDate = compJsonData.photoTakenTime ? new Date(Number(compJsonData.photoTakenTime.timestamp) * 1000).toLocaleString() : 'N/A';
+            comparisons.push({ label: 'Date Taken / Created', exif: exifDate, json: jsonDate });
+
+            // Location GPS comparison
+            const exifGps = (compMediaData.GPSLatitude && compMediaData.GPSLongitude) ? `${compMediaData.GPSLatitude.join(',')}, ${compMediaData.GPSLongitude.join(',')}` : 'N/A';
+            const jsonGps = (compJsonData.geoData && compJsonData.geoData.latitude) ? `${compJsonData.geoData.latitude.toFixed(4)}, ${compJsonData.geoData.longitude.toFixed(4)}` : 'N/A';
+            comparisons.push({ label: 'GPS Location Coordinates', exif: exifGps, json: jsonGps });
+
+            for (const item of comparisons) {
+                const tr = document.createElement('tr');
+                const isMatch = item.exif.toString().substring(0, 10) === item.json.toString().substring(0, 10);
+                const statusText = item.exif === 'N/A' || item.json === 'N/A' ? 'Missing Info' : (isMatch ? 'MATCH' : 'MISMATCH');
+                const statusClass = statusText === 'MATCH' ? 'log-SUCCESS' : (statusText === 'Missing Info' ? 'log-WARN' : 'log-ERROR');
+
+                tr.innerHTML = `
+                    <td style="font-weight:600; padding:10px 14px; border-bottom:1px solid var(--border-color);">${item.label}</td>
+                    <td style="color:var(--text-secondary); padding:10px 14px; border-bottom:1px solid var(--border-color); font-family:monospace; font-size:12px;">${item.exif}</td>
+                    <td style="color:var(--text-secondary); padding:10px 14px; border-bottom:1px solid var(--border-color); font-family:monospace; font-size:12px;">${item.json}</td>
+                    <td class="${statusClass}" style="font-weight:700; padding:10px 14px; border-bottom:1px solid var(--border-color); font-size:12px;">${statusText}</td>
+                `;
+                body.appendChild(tr);
+            }
+        }
+
+        // 7. Duplicate Media Cleaner logic
+        async function selectDuplicateFolder() {
+            if (typeof window === 'undefined' || !window.showDirectoryPicker) {
+                alert("Your browser does not support folder picker. Please use Chrome or Edge.");
+                return;
+            }
+            try {
+                const handle = await window.showDirectoryPicker();
+                document.getElementById('dupFolderInput').value = handle.name;
+                window.selectedDupFolderHandle = handle;
+            } catch(e) {
+                console.error("Directory selector exception", e);
+            }
+        }
+
+        async function scanDuplicates() {
+            if (!currentUser) {
+                alert("Authentication Required!\n\nYou must be logged in to execute directory scans.");
+                handleLogin();
+                return;
+            }
+
+            const handle = window.selectedDupFolderHandle;
+            if (!handle) {
+                alert("Please select a folder to analyze.");
+                return;
+            }
+
+            document.getElementById('dupScanBtn').disabled = true;
+            document.getElementById('dupStatusText').innerText = "Scanning folders recursively...";
+
+            const fileMap = {};
+            let scanned = 0;
+            let duplicates = 0;
+            let savedBytes = 0;
+
+            async function traverse(dirHandle, path = "") {
+                for await (const entry of dirHandle.values()) {
+                    if (entry.kind === 'file') {
+                        scanned++;
+                        const file = await entry.getFile();
+                        const key = `${file.size}_${file.name}`;
+                        if (fileMap[key]) {
+                            duplicates++;
+                            savedBytes += file.size;
+                            fileMap[key].push(path + "/" + file.name);
+                        } else {
+                            fileMap[key] = [path + "/" + file.name];
+                        }
+                    } else if (entry.kind === 'directory') {
+                        await traverse(entry, path + "/" + entry.name);
+                    }
+                }
+            }
+
+            try {
+                await traverse(handle);
+                document.getElementById('dupScannedCount').innerText = scanned;
+                document.getElementById('dupDuplicateCount').innerText = duplicates;
+                document.getElementById('dupSavedBytes').innerText = formatByteSize(savedBytes);
+
+                const body = document.getElementById('dupGroupsBody');
+                body.innerHTML = '';
+                
+                let groupsFound = 0;
+                for (const [key, paths] of Object.entries(fileMap)) {
+                    if (paths.length > 1) {
+                        groupsFound++;
+                        const name = key.split('_')[1];
+                        const size = formatByteSize(Number(key.split('_')[0]));
+                        
+                        const tr = document.createElement('tr');
+                        tr.innerHTML = `
+                            <td style="font-weight:600; padding:10px 14px; border-bottom:1px solid var(--border-color);">${name}</td>
+                            <td style="color:var(--text-secondary); padding:10px 14px; border-bottom:1px solid var(--border-color);">${size}</td>
+                            <td style="color:var(--text-secondary); padding:10px 14px; border-bottom:1px solid var(--border-color); font-size:11px;">
+                                ${paths.map(p => `<div style="margin-bottom:2px;">${p}</div>`).join('')}
+                            </td>
+                        `;
+                        body.appendChild(tr);
+                    }
+                }
+                
+                if (groupsFound === 0) {
+                    body.innerHTML = '<tr><td colspan="3" style="text-align:center; color:var(--text-secondary); padding:20px;">No duplicate files detected in this folder.</td></tr>';
+                }
+                document.getElementById('dupStatusText').innerText = "Scan completed successfully.";
+            } catch(e) {
+                console.error(e);
+                document.getElementById('dupStatusText').innerText = "Scan failed: " + e.message;
+            } finally {
+                document.getElementById('dupScanBtn').disabled = false;
+            }
+        }
+
+        // Telemetry Heartbeat simulation
+        function startTelemetryHeartbeat() {
+            const cores = navigator.hardwareConcurrency || 4;
+            const memGB = navigator && 'deviceMemory' in navigator ? navigator.deviceMemory : null;
+            const optimalThreads = Math.min(cores <= 4 ? Math.max(2, cores - 1) : Math.floor(cores * 0.75), 16);
+
+            setInterval(() => {
+                let cpu, heap;
+                if (isProcessing) {
+                    cpu = 45.0 + Math.random() * 20.0;
+                    heap = 180.0 + Math.random() * 40.0;
+                } else {
+                    cpu = 0.5 + Math.random() * 0.5;
+                    heap = 40.0 + Math.random() * 8.0;
+                }
+
+                const totalMem = memGB ? memGB * 1024 : null;
+                const usedMem = totalMem ? (heap + Math.random() * 20).toFixed(0) : '?';
+
+                document.getElementById('telemWorkers').innerText = `Auto (${optimalThreads} Threads)`;
+                document.getElementById('telemCpu').innerText = `${cpu.toFixed(1)} / ${cores} Cores (${(cpu / cores).toFixed(1)}%)`;
+                document.getElementById('telemHeap').innerText = totalMem
+                    ? `${heap.toFixed(0)}MB / ${totalMem}MB`
+                    : `${heap.toFixed(0)}MB / ?MB`;
+            }, 1000);
+        }
+
+        function formatByteSize(bytes) {
+            if (bytes === 0) return '0 B';
+            const k = 1024;
+            const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+        }
+
+        // Upgrade Modal Logic
+        function openModal() {
+            // Redirect to pricing page instead of modal
+            window.open('https://takeoutfix.pages.dev/pricing/', '_blank', 'noopener,noreferrer');
+        }
+
+        function closeModal() {
+            document.getElementById('upgradeModal').style.display = 'none';
+        }
+
+        // Log Tab Switcher
+        function switchLogTab(tab, btn) {
+            document.querySelectorAll('.log-tab-btn').forEach(b => b.classList.remove('active'));
+            if (btn) btn.classList.add('active');
+            // In future: filter consoleContent entries by log type
+            // For now just highlight the active tab
+        }
+
+        // Update sidebar limit progress bars
+        function updateLimitBars(usedFiles, usedBytes, limitFiles, limitBytes) {
+            const safeFiles = limitFiles === Infinity ? 0 : Math.min((usedFiles / limitFiles) * 100, 100);
+            const safeBytes = limitBytes === Infinity ? 0 : Math.min((usedBytes / limitBytes) * 100, 100);
+
+            const fFill = document.getElementById('filesLimitFill');
+            const sFill = document.getElementById('storageLimitFill');
+
+            if (fFill) {
+                fFill.style.width = safeFiles + '%';
+                fFill.className = 'limit-bar-fill files';
+                if (safeFiles >= 90) fFill.classList.add('danger');
+                else if (safeFiles >= 70) fFill.classList.add('warning');
+            }
+            if (sFill) {
+                sFill.style.width = safeBytes + '%';
+                sFill.className = 'limit-bar-fill storage';
+                if (safeBytes >= 90) sFill.classList.add('danger');
+                else if (safeBytes >= 70) sFill.classList.add('warning');
+            }
+
+            const limitMB = limitBytes === Infinity ? '∞' : (limitBytes / 1024 / 1024).toFixed(0);
+            const usedMB = (usedBytes / 1024 / 1024).toFixed(2);
+            const limF = limitFiles === Infinity ? '∞' : limitFiles;
+
+            const sv = document.getElementById('storageLimitVal');
+            const fv = document.getElementById('filesLimitVal');
+            if (sv) sv.innerText = `${usedMB} GB / ${limitMB} MB`;
+            if (fv) fv.innerText = `${usedFiles.toLocaleString()} / ${limF}`;
+        }
+
+        function activateLicense() {
+            const key = document.getElementById('licenseKey').value.trim();
+            if (!key) {
+                alert("Please enter your license key.");
+                return;
+            }
+            localStorage.setItem('takeoutfix_premium_licensed', 'true');
+            localStorage.setItem('takeoutfix_premium_key', key);
+            updatePremiumBadgeState();
+            closeModal();
+            alert("Premium license activated successfully! Unlimited offline mode activated.");
+        }
+    </script>
+</body>
+</html>

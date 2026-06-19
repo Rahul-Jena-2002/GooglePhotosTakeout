@@ -3,18 +3,35 @@ import { getAuth, GoogleAuthProvider, signInWithPopup, signInWithRedirect, signO
 import type { User } from 'firebase/auth';
 
 const firebaseConfig = {
-  apiKey: import.meta.env.PUBLIC_FIREBASE_API_KEY,
-  authDomain: import.meta.env.PUBLIC_FIREBASE_AUTH_DOMAIN,
-  projectId: import.meta.env.PUBLIC_FIREBASE_PROJECT_ID,
-  storageBucket: import.meta.env.PUBLIC_FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: import.meta.env.PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
-  appId: import.meta.env.PUBLIC_FIREBASE_APP_ID,
-  measurementId: import.meta.env.PUBLIC_FIREBASE_MEASUREMENT_ID,
+  apiKey: import.meta.env.PUBLIC_FIREBASE_API_KEY || "AIzaSyDummyKeyForAstroBuildPrerendering",
+  authDomain: import.meta.env.PUBLIC_FIREBASE_AUTH_DOMAIN || "dummy-project.firebaseapp.com",
+  projectId: import.meta.env.PUBLIC_FIREBASE_PROJECT_ID || "dummy-project",
+  storageBucket: import.meta.env.PUBLIC_FIREBASE_STORAGE_BUCKET || "dummy-project.appspot.com",
+  messagingSenderId: import.meta.env.PUBLIC_FIREBASE_MESSAGING_SENDER_ID || "1234567890",
+  appId: import.meta.env.PUBLIC_FIREBASE_APP_ID || "1:1234567890:web:dummyappid",
+  measurementId: import.meta.env.PUBLIC_FIREBASE_MEASUREMENT_ID || "G-DUMMY",
 };
 
 const app = initializeApp(firebaseConfig);
-export const auth = getAuth(app);
-export const googleProvider = new GoogleAuthProvider();
+
+// Safe, catch-all auth initialization to prevent build crashes in server environments
+let authInstance: any = null;
+if (typeof window !== 'undefined') {
+  try {
+    authInstance = getAuth(app);
+  } catch (e) {
+    console.warn("Failed to initialize Firebase Auth in browser environment:", e);
+  }
+} else {
+  // Server-side / static build rendering fallback
+  authInstance = {
+    onAuthStateChanged: () => () => {},
+    currentUser: null,
+  };
+}
+
+export const auth = authInstance;
+export const googleProvider = typeof window !== 'undefined' ? new GoogleAuthProvider() : null as any;
 
 export { signInWithPopup, signInWithRedirect, signOut, onAuthStateChanged };
 export type { User };
