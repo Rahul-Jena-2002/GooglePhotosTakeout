@@ -1,7 +1,6 @@
 import { initializeApp } from 'firebase/app';
 import { getAuth, GoogleAuthProvider, signInWithPopup, signInWithRedirect, signOut, onAuthStateChanged } from 'firebase/auth';
 import type { User } from 'firebase/auth';
-import { getFirestore, doc, getDoc, setDoc, updateDoc, increment } from 'firebase/firestore';
 
 const firebaseConfig = {
   apiKey: import.meta.env.PUBLIC_FIREBASE_API_KEY,
@@ -15,11 +14,24 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
-export const db = getFirestore(app);
 export const googleProvider = new GoogleAuthProvider();
 
 export { signInWithPopup, signInWithRedirect, signOut, onAuthStateChanged };
 export type { User };
+
+let dbInstance: any = null;
+
+export async function getDb() {
+  if (!dbInstance) {
+    const { getFirestore } = await import('firebase/firestore');
+    dbInstance = getFirestore(app);
+  }
+  return dbInstance;
+}
+
+// Lazy db export - loads on first access. For backward compatibility with existing imports.
+export let db: any = null;
+getDb().then(instance => { db = instance; });
 
 // -- Cloud Quota & License Logic --
 export interface UserRecord {
@@ -33,9 +45,11 @@ export interface UserRecord {
 }
 
 export const initUser = async (firebaseUser: any) => {
-  const userRef = doc(db, 'users', firebaseUser.uid);
+  const { doc, getDoc, setDoc } = await import('firebase/firestore');
+  const firebaseDb = await getDb();
+  const userRef = doc(firebaseDb, 'users', firebaseUser.uid);
   const snap = await getDoc(userRef);
-  
+
   if (!snap.exists()) {
     const newUser: UserRecord = {
       uid: firebaseUser.uid,
@@ -48,23 +62,25 @@ export const initUser = async (firebaseUser: any) => {
     await setDoc(userRef, newUser);
     return newUser;
   }
-  
+
   return snap.data() as UserRecord;
 }
 
 /** Increment the user's usedBytes in Firestore securely. */
 export async function addCloudUsage(user: User, bytes: number) {
-  const userRef = doc(db, 'users', user.uid);
+  const { doc, updateDoc, increment } = await import('firebase/firestore');
+  const firebaseDb = await getDb();
+  const userRef = doc(firebaseDb, 'users', user.uid);
   await updateDoc(userRef, {
     usedBytes: increment(bytes),
     lifetimeBytes: increment(bytes)
   });
 }
 
-import { collection, addDoc } from 'firebase/firestore';
-
 export async function logExtractionEvent(user: User, bytesProcessed: number, filesMatched: number, filesTotal: number) {
-  const logsRef = collection(db, 'usage_logs');
+  const { collection, addDoc } = await import('firebase/firestore');
+  const firebaseDb = await getDb();
+  const logsRef = collection(firebaseDb, 'usage_logs');
   await addDoc(logsRef, {
     uid: user.uid,
     email: user.email || 'Anonymous',
