@@ -671,6 +671,19 @@ app.post("/sync-coupon", async (req, res) => {
     return res.status(401).json({ error: "Unauthorized" });
   }
 
+  const { couponId } = req.body;
+  if (!couponId) {
+    return res.status(400).json({ error: "couponId is required." });
+  }
+
+  try {
+    const couponDoc = await db.collection("coupons").doc(couponId).get();
+    if (!couponDoc.exists) return res.status(404).json({ error: "Coupon not found." });
+    const coupon = couponDoc.data();
+
+    const targetsSnap = await db.collection("coupons").doc(couponId).collection("targets").get();
+    if (targetsSnap.empty) return res.status(400).json({ error: "No targets defined for this coupon." });
+
     // Resolve Dodo API key and host
     const { dodoApiKey, dodoHost } = await resolveDodoCredentials(db);
     if (!dodoApiKey) {
