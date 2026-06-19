@@ -71,9 +71,9 @@ export default function MainLayout() {
         const errMsg = err?.code || err?.message || String(err);
         const isCancelled = errMsg.includes("cancelled") || errMsg.includes("closed") || errMsg.includes("popup-closed-by-user");
         useToastStore.getState().addToast(
-          isCancelled ? "Please check your credentials and try again." : "An error occurred during sign in. Please try again.",
+          isCancelled ? "Sign-in was cancelled." : `Sign-in failed: ${errMsg}`,
           "error",
-          4500,
+          7000,
           "Login Failed"
         );
       }

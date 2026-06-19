@@ -1061,7 +1061,7 @@ const canonicalUrl = `https://takeoutfix.pages.dev${Astro.url.pathname.replace(/
               const errMsg = err?.code || err?.message || String(err);
               const isCancelled = errMsg.includes("cancelled") || errMsg.includes("closed") || errMsg.includes("popup-closed-by-user");
               (window as any).showVanillaToast(
-                isCancelled ? "Please check your credentials and try again." : "An error occurred during sign in. Please try again.",
+                isCancelled ? "Sign-in was cancelled." : `Sign-in failed: ${errMsg}`,
                 "error",
                 "Login Failed"
               );
