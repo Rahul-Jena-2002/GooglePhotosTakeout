@@ -1,0 +1,66 @@
+The project can run — the blocker is where it lives on disk, not the Astro/React code itself.
+
+Root cause: exFAT drive + npm symlinks
+Your project is on an exFAT partition:
+
+/dev/nvme0n1p4  exfat  →  /run/media/rahul/Rahulllllll/...
+exFAT does not support Unix symlinks. npm relies on symlinks for everything in node_modules/.bin/ (including astro).
+
+When you run npm run dev, npm tries to execute astro from .bin, but that link was never created. You get:
+
+sh: line 1: astro: command not found
+If you run npm install fresh, it fails with:
+
+EPERM: operation not permitted, symlink '...' -> '.../node_modules/.bin/parser'
+So dependencies may look installed, but the CLI shortcuts in .bin are missing or broken.
+
+What I verified
+Step	Result
+npm run dev
+Fails — astro: command not found
+npm install
+Fails — cannot create symlinks on exFAT
+npm install --no-bin-links
+Succeeds
+node node_modules/astro/bin/astro.mjs dev
+Works — server starts at http://localhost:4321/
+Node.js (v22.22.2) and npm (10.9.7) are fine. The app itself is fine once Astro is invoked correctly.
+
+How to fix it
+Best option — move the project to a Linux filesystem (ext4/btrfs):
+
+cp -r "/run/media/rahul/Rahulllllll/UBUNTU/DESKTOP/Rahul/Java/Projects/takeout extractor/GoogleTakeout - Copy (2)/webapp" ~/Projects/takeoutfix-webapp
+cd ~/Projects/takeoutfix-webapp
+rm -rf node_modules
+npm install
+npm run dev
+On ext4, symlinks work normally and npm run dev will work as expected.
+
+Workaround — stay on exFAT:
+
+Install without symlinks:
+
+npm install --no-bin-links
+Add this to your .npmrc so future installs behave the same:
+
+bin-links=false
+Run dev by calling Astro directly (since .bin/astro still won't exist):
+
+node node_modules/astro/bin/astro.mjs dev
+Or update package.json scripts to use that path instead of astro.
+
+Summary: The problem isn't your code — it's that npm + Node projects need symlinks, and your external drive is exFAT, which can't create them. Move the project to your home drive, or use --no-bin-links and run Astro via node directly.
+
+Want me to update package.json and .npmrc so npm run dev works on that exFAT drive?
+
+The initial npm run dev attempt failed because the project sits on an exFAT drive (/run/media/rahul/Rahulllllll/...), which cannot create the symlinks npm needs in node_modules/.bin/. That is why you see astro: command not found.
+
+After reinstalling with npm install --no-bin-links and starting Astro directly, the dev server came up successfully at http://localhost:4321/.
+
+To run it yourself from that drive:
+
+npm install --no-bin-links
+node node_modules/astro/bin/astro.mjs dev
+For a permanent fix, move the project to a Linux filesystem (e.g. ~/Projects/) and run a normal npm install + npm run dev.
+
+

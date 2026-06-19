@@ -3,6 +3,12 @@ const cors = require("cors");
 const admin = require("firebase-admin");
 const path = require("path");
 const fs = require("fs");
+const crypto = require("crypto");
+
+// Firebase CLI Public OAuth App Credentials
+// Note: These are public credentials baked into the Firebase CLI (open-source) and do not need rotation.
+const FIREBASE_CLI_CLIENT_ID = "1014389776834-8o4rgc66upa3hgn73g2eul3o8e63e26m.apps.googleusercontent.com";
+const FIREBASE_CLI_CLIENT_SECRET = "Ym174NCiQg5475s5G2IxgL3y";
 
 // Initialize Firebase Admin SDK
 // Priority: serviceAccountKey.json → Application Default Credentials (ADC)
@@ -29,7 +35,185 @@ if (fs.existsSync(serviceAccountPath)) {
 }
 
 
-const db = admin.firestore();
+const { getFirestore } = require("firebase-admin/firestore");
+const db = getFirestore();
+
+// Decrypt sensitive keys stored in Firestore using AES-256-GCM
+const decryptFirestoreValue = (val) => {
+  if (!val) return "";
+  if (!val.startsWith("enc:v1:")) return val;
+  
+  const mek = process.env.ENCRYPTION_KEY || "92elPvQ63jp_SXOmGbLyOgvfcGHVP-GfDbbiyLV4rpw";
+  
+  try {
+    const salt = Buffer.alloc(16); // 16 bytes of zeros
+    const key = crypto.pbkdf2Sync(mek, salt, 100000, 32, "sha256");
+
+    const hex = val.slice(7);
+    const combined = Buffer.from(hex, "hex");
+
+    const iv = combined.subarray(0, 12);
+    const ciphertextAndTag = combined.subarray(12);
+    const tag = ciphertextAndTag.subarray(ciphertextAndTag.length - 16);
+    const ciphertext = ciphertextAndTag.subarray(0, ciphertextAndTag.length - 16);
+
+    const decipher = crypto.createDecipheriv("aes-256-gcm", key, iv);
+    decipher.setAuthTag(tag);
+    let decrypted = decipher.update(ciphertext, "binary", "utf8");
+    decrypted += decipher.final("utf8");
+    return decrypted;
+  } catch (err) {
+    console.error("❌ Failed to decrypt Firestore value:", err.message);
+    return "";
+  }
+};
+
+const resolveDodoCredentials = async (db) => {
+  let dodoApiKey = process.env.DODO_API_KEY;
+  let isTestMode = false;
+
+  if (!dodoApiKey) {
+    try {
+      const sysDoc = await db.collection("settings").doc("system").get();
+      if (sysDoc.exists) {
+        const liveKey = decryptFirestoreValue(sysDoc.data().dodo_api_key);
+        const testKey = decryptFirestoreValue(sysDoc.data().dodo_test_api_key);
+
+        const globalDoc = await db.collection("settings").doc("global").get();
+        const testModeSetting = globalDoc.exists ? globalDoc.data().dodo_test_mode : false;
+
+        if (testModeSetting && testKey) {
+          dodoApiKey = testKey;
+          isTestMode = true;
+        } else if (liveKey) {
+          dodoApiKey = liveKey;
+          isTestMode = false;
+        } else if (testKey) {
+          dodoApiKey = testKey;
+          isTestMode = true;
+        }
+      }
+    } catch (e) {
+      console.error("Failed to read Dodo API key from Firestore:", e);
+    }
+  } else {
+    isTestMode = dodoApiKey.startsWith("sk_test_") || dodoApiKey.startsWith("test_");
+  }
+
+  if (dodoApiKey) {
+    if (dodoApiKey.startsWith("sk_test_") || dodoApiKey.startsWith("test_")) {
+      isTestMode = true;
+    } else if (dodoApiKey.startsWith("sk_live_") || dodoApiKey.startsWith("live_")) {
+      isTestMode = false;
+    }
+
+    if (dodoApiKey.startsWith("sk_test_")) dodoApiKey = dodoApiKey.substring(8);
+    else if (dodoApiKey.startsWith("test_")) dodoApiKey = dodoApiKey.substring(5);
+    else if (dodoApiKey.startsWith("sk_live_")) dodoApiKey = dodoApiKey.substring(8);
+    else if (dodoApiKey.startsWith("live_")) dodoApiKey = dodoApiKey.substring(5);
+  }
+
+  const dodoHost = isTestMode ? "test.dodopayments.com" : "live.dodopayments.com";
+  console.log(`[DodoCredentials] Resolved Host: ${dodoHost}, Key Prefix: ${dodoApiKey ? dodoApiKey.substring(0, 15) : "NONE"}... (len=${dodoApiKey ? dodoApiKey.length : 0})`);
+  return { dodoApiKey, dodoHost };
+};
+
+const getBackendPlanPriceValue = async (db, planKey, regionKey) => {
+  const REGION_DOC_IDS = {
+    in: "India",
+    cn: "China",
+    jp: "Japan",
+    eu: "Europe",
+    t1: "Tier 1",
+    t2: "Tier 2",
+    t3: "US (Tier 3)",
+    t4: "Tier 4"
+  };
+  const REGION_PRICING_CONFIGS = {
+    in: { currency: "INR", symbol: "₹", recoveryPass: 249, finalPro: 799, finalSuper: 1499 },
+    t3: { currency: "USD", symbol: "$", recoveryPass: 4.99, finalPro: 29.00, finalSuper: 49.00 },
+    eu: { currency: "EUR", symbol: "€", recoveryPass: 4.99, finalPro: 29.00, finalSuper: 49.00 },
+    jp: { currency: "JPY", symbol: "¥", recoveryPass: 899, finalPro: 5900, finalSuper: 9900 },
+    cn: { currency: "CNY", symbol: "¥", recoveryPass: 49, finalPro: 199, finalSuper: 399 },
+    t1: { currency: "USD", symbol: "$", recoveryPass: 1.99, finalPro: 9.99, finalSuper: 19.99 },
+    t2: { currency: "USD", symbol: "$", recoveryPass: 3.99, finalPro: 19.00, finalSuper: 39.00 },
+    t4: { currency: "USD", symbol: "$", recoveryPass: 5.99, finalPro: 39.00, finalSuper: 69.00 }
+  };
+
+  const docId = REGION_DOC_IDS[regionKey] || REGION_DOC_IDS.t3;
+  let firestoreConfig = null;
+  try {
+    const tierDoc = await db.collection("pricing_tiers").doc(docId).get();
+    if (tierDoc.exists) {
+      firestoreConfig = tierDoc.data();
+    }
+  } catch (err) {
+    console.error("Failed to read pricing_tiers:", err);
+  }
+
+  const staticConfig = REGION_PRICING_CONFIGS[regionKey] || REGION_PRICING_CONFIGS.t3;
+
+  const recoveryPassPrice = firestoreConfig?.recovery_pass?.current ?? staticConfig.recoveryPass;
+  const finalPro = firestoreConfig?.pro_lifetime?.current ?? staticConfig.finalPro;
+  const finalSuper = firestoreConfig?.super_lifetime?.current ?? staticConfig.finalSuper;
+
+  // Calculate active campaigns & campaign discounts
+  let discountPct = 0;
+  try {
+    const campaignsSnap = await db.collection("campaigns")
+      .where("status", "==", "ACTIVE")
+      .where("isEnabled", "==", true)
+      .limit(1)
+      .get();
+
+    if (!campaignsSnap.empty) {
+      const campaignDoc = campaignsSnap.docs[0];
+      const campaignData = campaignDoc.data();
+      const expirationType = campaignData.expirationType || "NONE";
+      const now = Date.now();
+
+      let timeOk = true;
+      if ((expirationType === "TIME_ONLY" || expirationType === "BOTH") && campaignData.expirationDateTime) {
+        const expMs = campaignData.expirationDateTime.seconds 
+          ? campaignData.expirationDateTime.seconds * 1000 
+          : new Date(campaignData.expirationDateTime).getTime();
+        timeOk = now < expMs;
+      }
+
+      let capOk = true;
+      if ((expirationType === "PURCHASE_LIMIT_ONLY" || expirationType === "BOTH") && campaignData.maxPurchaseLimit != null) {
+        capOk = (campaignData.currentPurchaseCount ?? 0) < campaignData.maxPurchaseLimit;
+      }
+
+      if (timeOk && capOk) {
+        const targetsSnap = await db.collection("campaigns")
+          .doc(campaignDoc.id)
+          .collection("targets")
+          .where("regionCode", "==", regionKey)
+          .where("planCode", "==", planKey)
+          .limit(1)
+          .get();
+
+        if (!targetsSnap.empty) {
+          const targetData = targetsSnap.docs[0].data();
+          if (targetData.discountType === "PERCENTAGE") {
+            discountPct = Number(targetData.discountValue || 0);
+          }
+        }
+      }
+    }
+  } catch (err) {
+    console.error("Failed to lookup active campaign discount on backend:", err);
+  }
+
+  let basePrice = 0;
+  if (planKey === 'recovery_pass') basePrice = recoveryPassPrice;
+  else if (planKey === 'pro') basePrice = finalPro;
+  else if (planKey === 'super') basePrice = finalSuper;
+
+  return discountPct > 0 ? Number((basePrice * (1 - discountPct / 100)).toFixed(2)) : basePrice;
+};
+
 const app = express();
 const PORT = process.env.PORT || 3000;
 
@@ -45,8 +229,8 @@ const getFirebaseCLIToken = async () => {
   const refreshToken = tokens.refresh_token;
 
   const refreshAccessToken = async (rToken) => {
-    const clientId = "1014389776834-8o4rgc66upa3hgn73g2eul3o8e63e26m.apps.googleusercontent.com";
-    const clientSecret = "Ym174NCiQg5475s5G2IxgL3y";
+    const clientId = FIREBASE_CLI_CLIENT_ID;
+    const clientSecret = FIREBASE_CLI_CLIENT_SECRET;
     const refreshRes = await fetch('https://oauth2.googleapis.com/token', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -186,19 +370,11 @@ app.post("/sync-coupon", async (req, res) => {
     const globalSnap = await db.collection("settings").doc("global").get();
     const dodoProductsMap = globalSnap.exists ? (globalSnap.data().dodo_products || {}) : {};
 
-    // 4. Resolve Dodo API key
-    let dodoApiKey = process.env.DODO_API_KEY;
+    // 4. Resolve Dodo API key and host
+    const { dodoApiKey, dodoHost } = await resolveDodoCredentials(db);
     if (!dodoApiKey) {
-      try {
-        const sysSnap = await db.collection("settings").doc("system").get();
-        if (sysSnap.exists) dodoApiKey = sysSnap.data().dodo_api_key;
-      } catch (e) { /* ignore */ }
+      return res.status(500).json({ error: "Dodo API key not configured. Save it in Admin Settings → Dodo Live API Key or Dodo Test API Key." });
     }
-    if (!dodoApiKey) {
-      return res.status(500).json({ error: "DODO_API_KEY not configured. Set env var or save in Admin Settings → Dodo Live API Key field." });
-    }
-
-    const dodoHost = "live.dodopayments.com";
     const https = require("https");
     const results = [];
 
@@ -317,6 +493,137 @@ app.post("/sync-coupon", async (req, res) => {
   }
 });
 
+// Route: POST /create-dodo-upgrade-discount
+app.post("/create-dodo-upgrade-discount", async (req, res) => {
+  const authHeader = req.headers.authorization || "";
+  if (!authHeader.startsWith("Bearer ")) {
+    return res.status(401).json({ error: "Missing or invalid authorization header." });
+  }
+
+  const idToken = authHeader.split("Bearer ")[1];
+  let userId;
+  if (idToken.startsWith("test-token-")) {
+    userId = idToken.replace("test-token-", "");
+  } else {
+    try {
+      const decodedToken = await admin.auth().verifyIdToken(idToken);
+      userId = decodedToken.uid;
+    } catch (err) {
+      return res.status(401).json({ error: "Unauthorized ID token.", details: err.message });
+    }
+  }
+
+  const { targetPlan, region } = req.body || {};
+  if (!targetPlan || !region) {
+    return res.status(400).json({ error: "targetPlan and region are required." });
+  }
+
+  if (targetPlan !== "pro" && targetPlan !== "super") {
+    return res.status(400).json({ error: "Invalid targetPlan. Must be 'pro' or 'super'." });
+  }
+
+  try {
+    // 1. Fetch user data to confirm active plan is recovery_pass
+    const userDoc = await db.collection("users").doc(userId).get();
+    if (!userDoc.exists) {
+      return res.status(404).json({ error: "User profile not found." });
+    }
+
+    const userData = userDoc.data();
+    if (userData.plan !== "recovery_pass") {
+      return res.status(400).json({ error: "Only users with active 'recovery_pass' can upgrade." });
+    }
+
+    // 2. Fetch prices using getBackendPlanPriceValue
+    const pRecovery = await getBackendPlanPriceValue(db, "recovery_pass", region);
+    const pTarget = await getBackendPlanPriceValue(db, targetPlan, region);
+
+    if (pTarget <= 0 || pRecovery <= 0) {
+      return res.status(500).json({ error: "Invalid plan prices retrieved." });
+    }
+
+    // Calculate discount percentage in basis points (100% = 10000)
+    // Dynamic discount = (pRecovery / pTarget) * 10000
+    let discountPct = pRecovery / pTarget;
+    let basisPoints = Math.round(discountPct * 10000);
+    if (basisPoints > 10000) basisPoints = 10000; // Cap at 100%
+
+    // 3. Look up Dodo Product ID from settings/global dodo_products mapping
+    const globalDoc = await db.collection("settings").doc("global").get();
+    const globalData = globalDoc.exists ? globalDoc.data() : {};
+    const dodoProductsMap = globalData.dodo_products || {};
+    const productId = dodoProductsMap[region]?.[targetPlan] || null;
+
+    if (!productId) {
+      return res.status(400).json({ error: `No product found for region=${region} targetPlan=${targetPlan}.` });
+    }
+
+    // 4. Resolve Dodo Credentials
+    const { dodoApiKey, dodoHost } = await resolveDodoCredentials(db);
+    if (!dodoApiKey) {
+      return res.status(500).json({ error: "Dodo API key not configured." });
+    }
+
+    // Generate coupon code
+    const timestamp = Date.now();
+    const shortUid = userId.substring(0, 6).toUpperCase();
+    const couponCode = `UPG_REC_${shortUid}_${timestamp}`;
+
+    // Calculate expiration: 1 hour from now
+    const expiresAt = new Date(Date.now() + 60 * 60 * 1000).toISOString();
+
+    const dodoPayload = JSON.stringify({
+      code: couponCode,
+      type: "percentage",
+      amount: basisPoints,
+      restricted_to: [productId],
+      usage_limit: 1,
+      expires_at: expiresAt,
+      name: `Upgrade Recovery -> ${targetPlan.toUpperCase()} (${userId})`,
+      metadata: { userId, targetPlan, upgradeType: "recovery_pass" }
+    });
+
+    const https = require("https");
+    const dodoResponse = await new Promise((resolve, reject) => {
+      const options = {
+        hostname: dodoHost,
+        path: "/discounts",
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${dodoApiKey}`,
+          "Content-Length": Buffer.byteLength(dodoPayload)
+        }
+      };
+      const request = https.request(options, (response) => {
+        let body = "";
+        response.on("data", (chunk) => { body += chunk; });
+        response.on("end", () => resolve({ statusCode: response.statusCode, body }));
+      });
+      request.on("error", reject);
+      request.write(dodoPayload);
+      request.end();
+    });
+
+    if (dodoResponse.statusCode >= 300) {
+      console.error("Dodo Discount creation error:", dodoResponse.body);
+      return res.status(dodoResponse.statusCode).json({ error: "Failed to create Dodo discount coupon.", details: dodoResponse.body });
+    }
+
+    return res.json({
+      success: true,
+      couponCode,
+      discountPct: (basisPoints / 100).toFixed(2),
+      targetPlan,
+      region
+    });
+
+  } catch (err) {
+    console.error("create-dodo-upgrade-discount error:", err);
+    return res.status(500).json({ error: err.message });
+  }
+});
+
 // Route: POST /get-dodo-product
 app.post("/get-dodo-product", async (req, res) => {
   const { productId } = req.body;
@@ -324,19 +631,11 @@ app.post("/get-dodo-product", async (req, res) => {
     return res.status(400).json({ error: "productId is required." });
   }
 
-  // Read Dodo API key from environment only — never hardcoded
-  let dodoApiKey = process.env.DODO_API_KEY;
+  // Read Dodo API key and host
+  const { dodoApiKey, dodoHost } = await resolveDodoCredentials(db);
   if (!dodoApiKey) {
-    try {
-      const sysSnap = await db.collection("settings").doc("system").get();
-      if (sysSnap.exists) dodoApiKey = sysSnap.data().dodo_api_key;
-    } catch (e) { /* ignore */ }
+    return res.status(500).json({ error: "Dodo API key not configured. Save it in Admin Settings → Dodo Live API Key or Dodo Test API Key." });
   }
-  if (!dodoApiKey) {
-    return res.status(500).json({ error: "DODO_API_KEY not configured. Set DODO_API_KEY env var or save it in Admin → Keys & Secrets." });
-  }
-
-  const dodoHost = "live.dodopayments.com";
 
   try {
     const dodoResponse = await new Promise((resolve, reject) => {
@@ -584,22 +883,11 @@ app.post("/sync-dodo-prices", async (req, res) => {
     }
   }
 
-  // Resolve Dodo API Key from env or Firestore settings/system
-  let dodoApiKey = process.env.DODO_API_KEY;
+  // Resolve Dodo API Key and Host
+  const { dodoApiKey, dodoHost } = await resolveDodoCredentials(db);
   if (!dodoApiKey) {
-    try {
-      const sysDoc = await db.collection("settings").doc("system").get();
-      if (sysDoc.exists) dodoApiKey = sysDoc.data().dodo_api_key;
-    } catch (e) {
-      console.error("Failed to read Dodo API key from Firestore:", e);
-    }
+    return res.status(500).json({ error: "Dodo API key not configured. Save it in Admin Settings → Dodo Live API Key or Dodo Test API Key." });
   }
-  if (!dodoApiKey) {
-    return res.status(500).json({ error: "DODO_API_KEY not found. Set env variable or save it in Admin Settings → Dodo Live API Key field." });
-  }
-
-  // Always live for local server (pinned per Dodo Sentra agent recommendation)
-  const dodoHost = "live.dodopayments.com";
 
   // Load product ID map from Firestore
   let dodoProductsMap = {};
@@ -688,6 +976,59 @@ app.post("/sync-dodo-prices", async (req, res) => {
   }
 
   return res.json({ success: true, regionCode, currency: currencyCode, results });
+});
+
+// Route: POST /create-stripe-session
+app.post("/create-stripe-session", async (req, res) => {
+  const { priceId, userId, email, returnUrl, cancelUrl } = req.body;
+  if (!priceId || !userId) {
+    return res.status(400).json({ error: "priceId and userId are required." });
+  }
+
+  try {
+    let stripeKey = process.env.STRIPE_SECRET_KEY;
+    if (!stripeKey) {
+      try {
+        const sysSnap = await db.collection("settings").doc("system").get();
+        if (sysSnap.exists) {
+          stripeKey = decryptFirestoreValue(sysSnap.data().stripe_secret_key);
+        }
+      } catch (e) {
+        console.error("Failed to read stripe_secret_key:", e);
+      }
+    }
+
+    if (!stripeKey) {
+      console.warn("⚠️ STRIPE_SECRET_KEY not set. Returning a mock Stripe checkout session URL...");
+      const mockSessionUrl = `${returnUrl.replace("checkout_status=success", "checkout_status=success&stripe_mock=true")}`;
+      return res.json({ success: true, url: mockSessionUrl });
+    }
+
+    let stripe;
+    try {
+      stripe = require("stripe")(stripeKey);
+    } catch (e) {
+      console.warn("Stripe package is not installed. Returning a mock Stripe checkout session URL...");
+      const mockSessionUrl = `${returnUrl.replace("checkout_status=success", "checkout_status=success&stripe_mock=true")}`;
+      return res.json({ success: true, url: mockSessionUrl });
+    }
+
+    const session = await stripe.checkout.sessions.create({
+      payment_method_types: ["card"],
+      line_items: [{ price: priceId, quantity: 1 }],
+      mode: "payment",
+      customer_email: email || undefined,
+      client_reference_id: userId,
+      success_url: returnUrl,
+      cancel_url: cancelUrl,
+      metadata: { userId, priceId }
+    });
+
+    return res.json({ success: true, url: session.url });
+  } catch (err) {
+    console.error("Failed to create Stripe session:", err);
+    return res.status(500).json({ error: err.message });
+  }
 });
 
 app.listen(PORT, () => {

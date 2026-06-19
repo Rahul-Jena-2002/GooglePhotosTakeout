@@ -6,8 +6,80 @@ import { db } from "../firebase";
 import { doc, getDoc, collection, query, where, getDocs } from "firebase/firestore";
 import { useToastStore } from "../store/useToastStore";
 
+const renderFormattedText = (text: string) => {
+  if (!text) return "";
+  const regex = /(\*\*.*?\*\*|\*.*?\*|<u>.*?<\/u>)/g;
+  const parts = text.split(regex);
+  return parts.map((part, index) => {
+    if (part.startsWith('**') && part.endsWith('**')) {
+      return <strong key={index} className="font-bold">{part.slice(2, -2)}</strong>;
+    }
+    if (part.startsWith('*') && part.endsWith('*')) {
+      return <em key={index} className="italic">{part.slice(1, -1)}</em>;
+    }
+    if (part.startsWith('<u>') && part.endsWith('</u>')) {
+      return <u key={index}>{part.slice(3, -4)}</u>;
+    }
+    return part;
+  });
+};
+
+const getTableCellStyle = (val: string, plan: 'free' | 'recovery_pass' | 'pro' | 'super') => {
+  const lowerVal = val.toLowerCase().trim();
+  
+  if (lowerVal === "—" || lowerVal === "-" || !lowerVal) {
+    return "text-zinc-400 dark:text-zinc-650 font-normal";
+  }
+
+  // Devices and partial matching rates (e.g. up to 90%) should be flat black/white
+  if (lowerVal.includes("device") || lowerVal.includes("90%")) {
+    return "text-black dark:text-white font-bold";
+  }
+  
+  if (plan === 'super') {
+    if (
+      lowerVal.includes("unlimited") || 
+      lowerVal.includes("enabled") || 
+      lowerVal.includes("included") || 
+      lowerVal.includes("complete") || 
+      lowerVal.includes("100%")
+    ) {
+      return "text-emerald-600 dark:text-emerald-400 font-bold";
+    }
+    return "text-amber-600 dark:text-amber-500 font-bold";
+  }
+  
+  if (plan === 'pro') {
+    if (
+      lowerVal.includes("unlimited") || 
+      lowerVal.includes("enabled") || 
+      lowerVal.includes("included") || 
+      lowerVal.includes("complete") || 
+      lowerVal.includes("100%")
+    ) {
+      // Unlocked pro limits - purple/violet (no emerald green)
+      return "text-purple-600 dark:text-purple-400 font-bold";
+    }
+    // Capacity or size limits (e.g., 50 GB) - violet
+    const isBold = /\d/.test(lowerVal) || lowerVal.length > 2;
+    return `${isBold ? 'font-bold text-violet-600 dark:text-violet-400' : 'text-zinc-700 dark:text-zinc-300'}`;
+  }
+  
+  const isBold = lowerVal.includes("device") || /\d/.test(lowerVal);
+  return `${isBold ? 'font-bold text-zinc-900 dark:text-zinc-200' : 'text-zinc-700 dark:text-zinc-300'}`;
+};
+
 function PricingPageContent() {
-  const { region, campaigns, activeCampaignDiscounts, getPlanPriceValue, pricingTiers, featuresConfig } = useAuth();
+  const { user, userData, region, campaigns, activeCampaignDiscounts, getPlanPriceValue, pricingTiers, featuresConfig, tierThresholds, refundPolicy, comparisonRows } = useAuth();
+
+  const formatThresholdLimit = (maxSizeMB?: number, maxFiles?: number) => {
+    const sizeVal = maxSizeMB ?? 0;
+    const filesVal = maxFiles ?? 0;
+    if (sizeVal === 0 && filesVal === 0) return "Unlimited";
+    const sizeStr = sizeVal === 0 ? "Unlimited" : (sizeVal >= 1024 ? `${(sizeVal / 1024).toFixed(0)} GB` : `${sizeVal} MB`);
+    const filesStr = filesVal === 0 ? "Unlimited files" : `${filesVal.toLocaleString()} files`;
+    return `${sizeStr} (${filesStr})`;
+  };
 
   const [isPromoActiveLocal, setIsPromoActiveLocal] = useState(false);
   const [timeLeftStr, setTimeLeftStr] = useState("");
@@ -168,6 +240,8 @@ function PricingPageContent() {
   const proDisc = getDiscountPct('pro');
   const superDisc = getDiscountPct('super');
 
+  const isUpgrading = userData?.plan === 'recovery_pass';
+
   // Recovery prices
   const recoveryCurrentVal = recoveryPassBase * (1 - recoveryDisc / 100);
   const formattedRecoveryCurrent = formatPrice(symbol, recoveryCurrentVal, currency);
@@ -175,26 +249,93 @@ function PricingPageContent() {
   const showRecoveryDiscount = recoveryDisc > 0;
 
   // Pro prices
-  const proCurrentVal = proBase * (1 - proDisc / 100);
+  const proCurrentValOriginal = proBase * (1 - proDisc / 100);
+  const proCurrentVal = isUpgrading ? Math.max(0, proCurrentValOriginal - recoveryCurrentVal) : proCurrentValOriginal;
   const formattedProCurrent = formatPrice(symbol, proCurrentVal, currency);
   const formattedProWas = formatPrice(symbol, proBase, currency);
   const showProDiscount = proDisc > 0;
 
   // Super prices
-  const superCurrentVal = superBase * (1 - superDisc / 100);
+  const superCurrentValOriginal = superBase * (1 - superDisc / 100);
+  const superCurrentVal = isUpgrading ? Math.max(0, superCurrentValOriginal - recoveryCurrentVal) : superCurrentValOriginal;
   const formattedSuperCurrent = formatPrice(symbol, superCurrentVal, currency);
   const formattedSuperWas = formatPrice(symbol, superBase, currency);
   const showSuperDiscount = superDisc > 0;
 
   const bannerText = `🎉 ${campaigns?.campaignName || "Founding Member Pricing"} — ${campaigns?.currentPurchaseCount ?? 0} / ${campaigns?.maxPurchaseLimit ?? 200} slots claimed. Lock in your lifetime price before slots are gone!`;
 
+  const formatMB = (mb: number) => {
+    if (mb === 0) return "unlimited";
+    if (mb >= 1024) {
+      const gb = mb / 1024;
+      return gb % 1 === 0 ? `${gb.toFixed(0)}GB` : `${gb.toFixed(1)}GB`;
+    }
+    return `${mb}MB`;
+  };
+
+  const formatLimitText = (maxFiles: number, maxSizeMB: number) => {
+    if (maxFiles === 0 && maxSizeMB === 0) {
+      return "unlimited files & storage";
+    }
+    if (maxFiles === 0) {
+      return `unlimited files up to ${formatMB(maxSizeMB)}`;
+    }
+    if (maxSizeMB === 0) {
+      return `${maxFiles.toLocaleString()} files with unlimited storage`;
+    }
+    return `${maxFiles.toLocaleString()} files or ${formatMB(maxSizeMB)}`;
+  };
+
+  const getFreeSubheading = () => {
+    if (!tierThresholds?.free) return featuresConfig?.subheadings?.free || 'Free up to 250 files or 500MB';
+    const { maxFiles, maxSizeMB } = tierThresholds.free;
+    return `Free up to ${formatLimitText(maxFiles, maxSizeMB)}`;
+  };
+
+  const getRecoverySubheading = () => {
+    if (!tierThresholds?.recovery_pass) return featuresConfig?.subheadings?.recovery_pass || 'Single takeout batch up to 3,000 files or 3GB';
+    const { maxFiles, maxSizeMB } = tierThresholds.recovery_pass;
+    return `Single takeout batch up to ${formatLimitText(maxFiles, maxSizeMB)}`;
+  };
+
+  const getProSubheading = () => {
+    if (!tierThresholds?.pro) return featuresConfig?.subheadings?.pro || 'Unlimited photos and videos. 2 devices. Lifetime.';
+    const { maxFiles, maxSizeMB } = tierThresholds.pro;
+    if (maxFiles === 0 && maxSizeMB === 0) {
+      return featuresConfig?.subheadings?.pro || 'Unlimited photos and videos. 2 devices. Lifetime.';
+    }
+    return `Up to ${formatLimitText(maxFiles, maxSizeMB)}. 2 devices. Lifetime.`;
+  };
+
+  const getSuperSubheading = () => {
+    if (!tierThresholds?.super) return featuresConfig?.subheadings?.super || 'Unlimited + duplicate finder, before/after logs, ad-free. 3 devices. Lifetime.';
+    const { maxFiles, maxSizeMB } = tierThresholds.super;
+    if (maxFiles === 0 && maxSizeMB === 0) {
+      return featuresConfig?.subheadings?.super || 'Unlimited + duplicate finder, before/after logs, ad-free. 3 devices. Lifetime.';
+    }
+    return `Up to ${formatLimitText(maxFiles, maxSizeMB)} + duplicate finder, before/after logs, ad-free. 3 devices. Lifetime.`;
+  };
+
+  const formatFeatureText = (text: string, planKey: string) => {
+    if (!tierThresholds?.[planKey]) return text;
+    const { maxFiles, maxSizeMB } = tierThresholds[planKey];
+    
+    if (planKey === 'free' && text.toLowerCase().includes('250 files') && text.toLowerCase().includes('500mb')) {
+      return `Free up to ${formatLimitText(maxFiles, maxSizeMB)}`;
+    }
+    if (planKey === 'recovery_pass' && text.toLowerCase().includes('3,000 files') && text.toLowerCase().includes('3gb')) {
+      return `Single takeout batch up to ${formatLimitText(maxFiles, maxSizeMB)}`;
+    }
+    return text;
+  };
+
   return (
     <div className="w-full max-w-7xl mx-auto px-6 py-16 font-sans select-none">
       <div className="text-center mb-12 flex flex-col items-center">
-        <h1 className="text-4xl md:text-5xl font-bold mb-4 text-white tracking-tight font-semibold">
+        <h1 className="text-4xl md:text-5xl font-bold mb-4 text-zinc-900 dark:text-white tracking-tight font-semibold">
           Simple Pricing
         </h1>
-        <p className="text-lg text-zinc-300 max-w-2xl mx-auto leading-relaxed">
+        <p className="text-lg text-zinc-650 dark:text-zinc-300 max-w-2xl mx-auto leading-relaxed">
           Every plan works completely on your computer to restore your photos safely and privately.
         </p>
       </div>
@@ -245,7 +386,7 @@ function PricingPageContent() {
           <div>
             <div className="mb-6">
               <h2 className="text-2xl font-bold text-white font-semibold">{featuresConfig?.headings?.free || 'Free'}</h2>
-              <p className="text-zinc-550 text-xs mt-1">{featuresConfig?.subheadings?.free || 'Free up to 250 files or 500MB'}</p>
+              <p className="text-zinc-550 text-xs mt-1">{getFreeSubheading()}</p>
             </div>
             <div className="space-y-6">
               <div>
@@ -258,7 +399,7 @@ function PricingPageContent() {
                   {(featuresConfig?.free || []).map((feat, idx) => (
                     <li key={idx} className="flex items-center gap-1.5">
                       <span className="text-green-400 font-bold">✓</span>
-                      <span className={feat.isBold ? 'font-bold text-white' : ''}>{feat.text}</span>
+                      <span className={feat.isBold ? 'font-bold text-white' : ''}>{renderFormattedText(formatFeatureText(feat.text, 'free'))}</span>
                     </li>
                   ))}
                 </ul>
@@ -277,7 +418,7 @@ function PricingPageContent() {
           <div>
             <div className="mb-6">
               <h2 className="text-2xl font-bold text-white font-semibold">{featuresConfig?.headings?.recovery_pass || 'Recovery Pass'}</h2>
-              <p className="text-zinc-550 text-xs mt-1">{featuresConfig?.subheadings?.recovery_pass || 'Single takeout batch up to 3,000 files or 3GB'}</p>
+              <p className="text-zinc-550 text-xs mt-1">{getRecoverySubheading()}</p>
             </div>
             <div className="space-y-6">
               <div>
@@ -323,7 +464,7 @@ function PricingPageContent() {
                   {(featuresConfig?.recovery_pass || []).map((feat, idx) => (
                     <li key={idx} className={`flex items-center gap-1.5${idx === 0 ? ' recovery-pass-highlight' : ''}`}>
                       <span className={idx === 0 ? 'font-bold' : 'text-zinc-600 dark:text-zinc-400 font-bold'}>✓</span>
-                      <span className={feat.isBold ? 'font-bold' : ''}>{feat.text}</span>
+                      <span className={feat.isBold ? 'font-bold' : ''}>{renderFormattedText(formatFeatureText(feat.text, 'recovery_pass'))}</span>
                     </li>
                   ))}
                 </ul>
@@ -331,9 +472,13 @@ function PricingPageContent() {
             </div>
           </div>
           <div className="mt-8">
-            <a href={`/checkout?plan=recovery_pass&region=${region}`} className="w-full">
-              <button className="btn-monochrome-primary w-full py-3 rounded-xl font-bold text-xs cursor-pointer transition-all">Get Recovery Pass</button>
-            </a>
+            {userData?.plan === 'recovery_pass' ? (
+              <button disabled className="w-full py-3 rounded-xl font-bold text-xs bg-zinc-800 text-zinc-550 border border-zinc-700 cursor-not-allowed select-none transition-all">Your Active Plan</button>
+            ) : (
+              <a href={`/checkout?plan=recovery_pass&region=${region}`} className="w-full" target="_blank" rel="noopener noreferrer">
+                <button className="btn-monochrome-primary w-full py-3 rounded-xl font-bold text-xs cursor-pointer transition-all">Get Recovery Pass</button>
+              </a>
+            )}
           </div>
         </div>
 
@@ -345,14 +490,19 @@ function PricingPageContent() {
           <div>
             <div className="mb-6">
               <h2 className="text-2xl font-bold text-blue-500 dark:text-blue-400 font-semibold">{featuresConfig?.headings?.pro || 'Pro Lifetime'}</h2>
-              <p className="text-blue-400 dark:text-blue-350 text-xs mt-1">{featuresConfig?.subheadings?.pro || 'Unlimited photos and videos. 2 devices. Lifetime.'}</p>
+              <p className="text-blue-400 dark:text-blue-350 text-xs mt-1">{getProSubheading()}</p>
             </div>
             <div className="space-y-6">
               <div>
                 <div className="flex items-baseline flex-wrap gap-2">
                   <span className="text-4xl font-bold text-white">{formattedProCurrent}</span>
-                  {(showProDiscount || activeCoupons['pro']) && (
+                  {(showProDiscount || activeCoupons['pro'] || userData?.plan === 'recovery_pass') && (
                     <div className="flex items-center gap-1.5 flex-wrap">
+                      {userData?.plan === 'recovery_pass' && (
+                        <span className="text-[10px] font-bold text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-1.5 py-0.5 rounded-md animate-pulse">
+                          Upgrade: Save {formattedRecoveryCurrent}
+                        </span>
+                      )}
                       {showProDiscount && <span className="text-sm text-zinc-500 line-through font-medium">{formattedProWas}</span>}
                       {showProDiscount && <span className="text-[10px] font-bold text-green-400 bg-green-500/10 border border-green-500/20 px-1.5 py-0.5 rounded-md">{proDisc}% OFF</span>}
                       {activeCoupons['pro'] && (
@@ -405,7 +555,7 @@ function PricingPageContent() {
                   {(featuresConfig?.pro || []).map((feat, idx) => (
                     <li key={idx} className={`flex items-center gap-1.5 font-semibold${idx === 0 ? ' text-blue-500 dark:text-blue-400' : ''}`}>
                       <span className="text-blue-500 dark:text-blue-400 font-bold">✓</span>
-                      <span className={feat.isBold ? 'font-bold text-blue-500 dark:text-blue-400' : ''}>{feat.text}</span>
+                      <span className={feat.isBold ? 'font-bold text-blue-500 dark:text-blue-400' : ''}>{renderFormattedText(formatFeatureText(feat.text, 'pro'))}</span>
                     </li>
                   ))}
                 </ul>
@@ -413,7 +563,7 @@ function PricingPageContent() {
             </div>
           </div>
           <div className="mt-8">
-            <a href={`/checkout?plan=pro&region=${region}`} className="w-full">
+            <a href={`/checkout?plan=pro&region=${region}`} className="w-full" target="_blank" rel="noopener noreferrer">
               <button className="btn-pro-blue w-full py-3 rounded-xl font-bold text-xs cursor-pointer transition-all">Go Pro</button>
             </a>
           </div>
@@ -424,14 +574,19 @@ function PricingPageContent() {
           <div>
             <div className="mb-6">
               <h2 className="text-2xl font-bold text-amber-500 font-semibold">{featuresConfig?.headings?.super || 'Super Lifetime'}</h2>
-              <p className="text-amber-300 text-xs mt-1">{featuresConfig?.subheadings?.super || 'Unlimited + duplicate finder, before/after logs, ad-free. 3 devices. Lifetime.'}</p>
+              <p className="text-amber-300 text-xs mt-1">{getSuperSubheading()}</p>
             </div>
             <div className="space-y-6">
               <div>
                 <div className="flex items-baseline flex-wrap gap-2">
                   <span className="text-4xl font-bold text-white">{formattedSuperCurrent}</span>
-                  {(showSuperDiscount || activeCoupons['super']) && (
+                  {(showSuperDiscount || activeCoupons['super'] || userData?.plan === 'recovery_pass') && (
                     <div className="flex items-center gap-1.5 flex-wrap">
+                      {userData?.plan === 'recovery_pass' && (
+                        <span className="text-[10px] font-bold text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-1.5 py-0.5 rounded-md animate-pulse">
+                          Upgrade: Save {formattedRecoveryCurrent}
+                        </span>
+                      )}
                       {showSuperDiscount && <span className="text-sm text-zinc-500 line-through font-medium">{formattedSuperWas}</span>}
                       {showSuperDiscount && <span className="text-[10px] font-bold text-green-400 bg-green-500/10 border border-green-500/20 px-1.5 py-0.5 rounded-md">{superDisc}% OFF</span>}
                       {activeCoupons['super'] && (
@@ -484,7 +639,7 @@ function PricingPageContent() {
                   {(featuresConfig?.super || []).map((feat, idx) => (
                     <li key={idx} className={`flex items-center gap-1.5 font-semibold${idx === 0 ? ' text-amber-500' : ''}`}>
                       <span className="text-amber-500 font-bold">✓</span>
-                      <span className={feat.isBold ? 'font-bold text-amber-500' : ''}>{feat.text}</span>
+                      <span className={feat.isBold ? 'font-bold text-amber-500' : ''}>{renderFormattedText(formatFeatureText(feat.text, 'super'))}</span>
                     </li>
                   ))}
                 </ul>
@@ -492,7 +647,7 @@ function PricingPageContent() {
             </div>
           </div>
           <div className="mt-8">
-            <a href={`/checkout?plan=super&region=${region}`} className="w-full">
+            <a href={`/checkout?plan=super&region=${region}`} className="w-full" target="_blank" rel="noopener noreferrer">
               <button className="btn-super-orange w-full py-3 rounded-xl font-bold text-xs cursor-pointer transition-all">Go Super</button>
             </a>
           </div>
@@ -506,74 +661,70 @@ function PricingPageContent() {
 
       {/* DETAILED COMPARISON TABLE */}
       <div className="mt-32">
-        <h2 className="text-3xl font-bold text-center mb-12 text-white font-semibold">Compare Plans</h2>
-        <div className="overflow-x-auto bg-zinc-950/20 border border-zinc-900 rounded-2xl">
-          <table className="w-full text-left border-collapse min-w-[800px] text-sm text-zinc-300">
+        <h2 className="text-3xl font-bold text-center mb-12 text-zinc-900 dark:text-white font-semibold">Compare Plans</h2>
+        <div className="overflow-x-auto bg-zinc-50 dark:bg-zinc-950/20 border border-zinc-200 dark:border-zinc-900 rounded-2xl">
+          <table className="w-full text-left border-collapse min-w-[800px] text-sm text-zinc-700 dark:text-zinc-300">
             <thead>
-              <tr className="border-b border-zinc-900 bg-zinc-950/40">
-                <th className="py-4 px-6 font-semibold text-zinc-400 w-1/3">Feature</th>
-                <th className="py-4 px-6 font-bold text-center">Free</th>
-                <th className="py-4 px-6 font-bold text-center">Single Pass</th>
-                <th className="py-4 px-6 font-bold text-center text-indigo-400">Pro Lifetime</th>
-                <th className="py-4 px-6 font-bold text-center text-amber-500">Super Lifetime</th>
+              <tr className="border-b border-zinc-200 dark:border-zinc-900 bg-zinc-100/40 dark:bg-zinc-950/40">
+                <th className="py-4 px-6 font-semibold text-zinc-500 dark:text-zinc-400 w-1/3 sticky left-0 bg-white dark:bg-[#0A0A0A] z-20 shadow-[2px_0_5px_rgba(0,0,0,0.04)] dark:shadow-[2px_0_5px_rgba(0,0,0,0.4)]">Feature</th>
+                <th className="py-4 px-6 font-bold text-center text-zinc-900 dark:text-zinc-300">Free</th>
+                <th className="py-4 px-6 font-bold text-center text-zinc-900 dark:text-zinc-300">Single Pass</th>
+                <th className="py-4 px-6 font-bold text-center text-indigo-600 dark:text-indigo-400">Pro Lifetime</th>
+                <th className="py-4 px-6 font-bold text-center text-amber-600 dark:text-amber-500">Super Lifetime</th>
               </tr>
             </thead>
             <tbody>
-              <tr className="border-b border-zinc-900 hover:bg-white/[0.01]">
-                <td className="py-4 px-6 font-medium text-white">Device Limit</td>
-                <td className="py-4 px-6 text-center text-zinc-300">1 device</td>
-                <td className="py-4 px-6 text-center text-zinc-300">1 device</td>
-                <td className="py-4 px-6 text-center text-zinc-300 font-bold">2 devices</td>
-                <td className="py-4 px-6 text-center text-zinc-300 font-bold">3 devices</td>
-              </tr>
-              <tr className="border-b border-zinc-900 hover:bg-white/[0.01]">
-                <td className="py-4 px-6 font-medium text-white">Processing Limit</td>
-                <td className="py-4 px-6 text-center text-zinc-300">500 MB (250 files)</td>
-                <td className="py-4 px-6 text-center text-zinc-300">3 GB (3,000 files)</td>
-                <td className="py-4 px-6 text-center text-green-400 font-bold">Unlimited</td>
-                <td className="py-4 px-6 text-center text-green-400 font-bold">Unlimited</td>
-              </tr>
-              <tr className="border-b border-zinc-900 hover:bg-white/[0.01]">
-                <td className="py-4 px-6 font-medium text-white">Photo Matching</td>
-                <td className="py-4 px-6 text-center text-zinc-300">100% Complete</td>
-                <td className="py-4 px-6 text-center text-zinc-300">100% Complete</td>
-                <td className="py-4 px-6 text-center text-zinc-300">100% Complete</td>
-                <td className="py-4 px-6 text-center text-zinc-300">100% Complete</td>
-              </tr>
-              <tr className="border-b border-zinc-900 hover:bg-white/[0.01]">
-                <td className="py-4 px-6 font-medium text-white">Advanced Media Tools</td>
-                <td className="py-4 px-6 text-center text-zinc-500">—</td>
-                <td className="py-4 px-6 text-center text-zinc-500">—</td>
-                <td className="py-4 px-6 text-center text-zinc-500">—</td>
-                <td className="py-4 px-6 text-center text-amber-500 font-bold">Included</td>
-              </tr>
-              <tr className="border-b border-zinc-900 hover:bg-white/[0.01]">
-                <td className="py-4 px-6 font-medium text-white">No Ads Window</td>
-                <td className="py-4 px-6 text-center text-zinc-500">—</td>
-                <td className="py-4 px-6 text-center text-zinc-500">—</td>
-                <td className="py-4 px-6 text-center text-zinc-500">—</td>
-                <td className="py-4 px-6 text-center text-green-400 font-bold">✓ Enabled</td>
-              </tr>
+              {comparisonRows.map((row, idx) => {
+                const isLimitRow = row.isDynamicLimit;
+                const freeVal = isLimitRow ? formatThresholdLimit(tierThresholds?.free?.maxSizeMB, tierThresholds?.free?.maxFiles) : row.free;
+                const recoveryVal = isLimitRow ? formatThresholdLimit(tierThresholds?.recovery_pass?.maxSizeMB, tierThresholds?.recovery_pass?.maxFiles) : row.recovery_pass;
+                const proVal = isLimitRow 
+                  ? (tierThresholds?.pro?.maxSizeMB === 0 && tierThresholds?.pro?.maxFiles === 0 ? "Unlimited" : formatThresholdLimit(tierThresholds?.pro?.maxSizeMB, tierThresholds?.pro?.maxFiles))
+                  : row.pro;
+                const superVal = isLimitRow 
+                  ? (tierThresholds?.super?.maxSizeMB === 0 && tierThresholds?.super?.maxFiles === 0 ? "Unlimited" : formatThresholdLimit(tierThresholds?.super?.maxSizeMB, tierThresholds?.super?.maxFiles))
+                  : row.super;
+
+                return (
+                  <tr key={idx} className="border-b border-zinc-200 dark:border-zinc-900 hover:bg-zinc-100/30 dark:hover:bg-white/[0.01]">
+                    <td className="py-4 px-6 font-medium text-zinc-900 dark:text-white sticky left-0 bg-white dark:bg-[#0A0A0A] z-10 shadow-[2px_0_5px_rgba(0,0,0,0.04)] dark:shadow-[2px_0_5px_rgba(0,0,0,0.4)]">
+                      {renderFormattedText(row.featureName)}
+                    </td>
+                    <td className={`py-4 px-6 text-center ${getTableCellStyle(freeVal, 'free')}`}>
+                      {renderFormattedText(freeVal)}
+                    </td>
+                    <td className={`py-4 px-6 text-center ${getTableCellStyle(recoveryVal, 'recovery_pass')}`}>
+                      {renderFormattedText(recoveryVal)}
+                    </td>
+                    <td className={`py-4 px-6 text-center ${getTableCellStyle(proVal, 'pro')}`}>
+                      {renderFormattedText(proVal)}
+                    </td>
+                    <td className={`py-4 px-6 text-center ${getTableCellStyle(superVal, 'super')}`}>
+                      {renderFormattedText(superVal)}
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
       </div>
 
       <div className="mt-20 max-w-2xl mx-auto text-center">
-        <h2 className="text-2xl font-bold mb-8 text-white font-semibold">Plan Limits & Guarantee Conditions</h2>
+        <h2 className="text-2xl font-bold mb-8 text-zinc-900 dark:text-white font-semibold">Plan Limits & Guarantee Conditions</h2>
         
-        <div className="bg-zinc-950/45 border border-zinc-900 p-8 rounded-2xl space-y-8">
+        <div className="bg-zinc-50 dark:bg-zinc-950/45 border border-zinc-200 dark:border-zinc-900 p-8 rounded-2xl space-y-8">
           <div>
-            <h3 className="text-sm font-bold text-white uppercase tracking-wider mb-3">Enforcement of Limits</h3>
-            <p className="text-xs text-zinc-300 leading-relaxed max-w-md mx-auto">
-              Limits on <strong>Free</strong> (250 files/500 MB) and <strong>Recovery Pass</strong> (3,000 files/3 GB) are enforced on a <strong>"whichever comes first"</strong> basis. Device limits are tied to your browser installation environment. Paid lifetime licenses allow activation on up to 2 or 3 separate devices simultaneously.
+            <h3 className="text-sm font-bold text-zinc-900 dark:text-white uppercase tracking-wider mb-3">Enforcement of Limits</h3>
+            <p className="text-xs text-zinc-700 dark:text-zinc-300 leading-relaxed max-w-md mx-auto">
+              Limits on <strong>Free</strong> ({tierThresholds?.free?.maxFiles === 0 ? "Unlimited" : `${tierThresholds?.free?.maxFiles.toLocaleString()} files`}/{tierThresholds?.free?.maxSizeMB === 0 ? "Unlimited" : (tierThresholds?.free?.maxSizeMB >= 1024 ? `${(tierThresholds?.free?.maxSizeMB / 1024).toFixed(0)} GB` : `${tierThresholds?.free?.maxSizeMB} MB`)}) and <strong>Recovery Pass</strong> ({tierThresholds?.recovery_pass?.maxFiles === 0 ? "Unlimited" : `${tierThresholds?.recovery_pass?.maxFiles.toLocaleString()} files`}/{tierThresholds?.recovery_pass?.maxSizeMB === 0 ? "Unlimited" : (tierThresholds?.recovery_pass?.maxSizeMB >= 1024 ? `${(tierThresholds?.recovery_pass?.maxSizeMB / 1024).toFixed(0)} GB` : `${tierThresholds?.recovery_pass?.maxSizeMB} MB`)}) are enforced on a <strong>"whichever comes first"</strong> basis. Device limits are tied to your browser installation environment. Paid lifetime licenses allow activation on up to 2 or 3 separate devices simultaneously.
             </p>
           </div>
           
-          <div className="border-t border-zinc-900 pt-6">
-            <h3 className="text-sm font-bold text-white uppercase tracking-wider mb-3">7-Day Refund Policy</h3>
-            <p className="text-xs text-zinc-300 leading-relaxed max-w-md mx-auto">
-              We offer a 100% Recovery Guarantee: if a verified technical issue prevents your restoration, and our support desk is unable to resolve it, we will issue a full refund within 7 days of purchase. Refunds are not available for change of mind or successfully completed recoveries.
+          <div className="border-t border-zinc-200 dark:border-zinc-900 pt-6">
+            <h3 className="text-sm font-bold text-zinc-900 dark:text-white uppercase tracking-wider mb-3">7-Day Refund Policy</h3>
+            <p className="text-xs text-zinc-700 dark:text-zinc-300 leading-relaxed max-w-md mx-auto whitespace-pre-wrap">
+              {renderFormattedText(refundPolicy)}
             </p>
           </div>
         </div>

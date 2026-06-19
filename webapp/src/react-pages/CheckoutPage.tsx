@@ -108,9 +108,9 @@ function CheckoutPageContent() {
   })()
   const regionParam = (() => {
     if (typeof window !== 'undefined') {
-      return new URLSearchParams(window.location.search).get("region") || region || "us";
+      return new URLSearchParams(window.location.search).get("region") || region || "in";
     }
-    return region || "us";
+    return region || "in";
   })()
 
   // Normalize region parameter to one of: in, t1, t2, t3, eu, jp, cn, t4
@@ -119,7 +119,7 @@ function CheckoutPageContent() {
     const valid = ['in', 't1', 't2', 't3', 'eu', 'jp', 'cn', 't4'];
     if (valid.includes(r)) return r;
     if (r === 'us') return 't3';
-    return 't3'; // Fallback for us/eu/jp etc.
+    return 'in'; // Fallback for other regions to 'in' (India)
   })()
 
   const [detectedCoupon, setDetectedCoupon] = useState("")
@@ -131,6 +131,43 @@ function CheckoutPageContent() {
         setCouponLookupDone(true);
         return;
       }
+
+      // If user has recovery_pass and is upgrading to pro or super, get dynamic upgrade discount from backend
+      if (userData?.plan === 'recovery_pass' && (planKey === 'pro' || planKey === 'super')) {
+        try {
+          const idToken = await user.getIdToken();
+          const cfBase = cloudFunctionUrl || "https://us-central1-gt-metadata-merger.cloudfunctions.net/geminiToolGateway";
+          let cfUrl = `${cfBase}/create-dodo-upgrade-discount`;
+          if (typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')) {
+            cfUrl = 'http://localhost:3001/create-dodo-upgrade-discount';
+          }
+          
+          const response = await fetch(cfUrl, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "Authorization": `Bearer ${idToken}`
+            },
+            body: JSON.stringify({
+              targetPlan: planKey,
+              region: normalizedRegion
+            })
+          });
+          
+          const data = await response.json();
+          if (response.ok && data.couponCode) {
+            setDetectedCoupon(data.couponCode);
+          } else {
+            console.warn("Failed to generate dynamic upgrade coupon:", data.error || "Unknown error");
+          }
+        } catch (err) {
+          console.error("Failed to generate upgrade coupon:", err);
+        } finally {
+          setCouponLookupDone(true);
+        }
+        return;
+      }
+
       try {
         const couponsSnap = await getDocs(
           query(collection(db, "coupons"), where("active", "==", true))
@@ -200,7 +237,7 @@ function CheckoutPageContent() {
       }
     };
     lookupCoupon();
-  }, [user, normalizedRegion, planKey]);
+  }, [user, userData, normalizedRegion, planKey, cloudFunctionUrl]);
   
   if (loading) {
     return (
@@ -260,61 +297,157 @@ function CheckoutPageContent() {
     // No redirect logic here
   }, [user, loading])
 
-  const handleDodoRedirect = async () => {
+  const [activeGateway, setActiveGateway] = useState<string>("dodo")
+  const [gatewayProductIds, setGatewayProductIds] = useState<Record<string, Record<string, string>>>({})
+  const [cloudFunctionUrl, setCloudFunctionUrl] = useState("")
+
+  useEffect(() => {
+    const fetchGatewayConfig = async () => {
+      try {
+        const snap = await getDoc(doc(db, "settings", "global"))
+        if (snap.exists()) {
+          const data = snap.data()
+          const gateway = data.active_gateway || "dodo"
+          setActiveGateway(gateway)
+          const mapName = `${gateway}_products`
+          if (data[mapName]) {
+            setGatewayProductIds(data[mapName])
+          }
+        }
+        const sysSnap = await getDoc(doc(db, "settings", "system"))
+        if (sysSnap.exists()) {
+          setCloudFunctionUrl(sysSnap.data().cloud_function_url || "")
+        }
+      } catch (err) {
+        console.error("Failed to load active gateway config:", err)
+      }
+    }
+    fetchGatewayConfig()
+  }, [])
+
+  const handleUniversalRedirect = async () => {
     if (!user) return
     setError("")
     setIsProcessing(true)
-    setProcessStep("Redirecting to Dodo Payments secure checkout...")
 
-    // Look up product ID by region first, then plan
-    const productId = dodoProductIds[normalizedRegion]?.[planKey] || ""
-    const dodoBaseUrl = dodoTestMode
-      ? "https://test.checkout.dodopayments.com/buy"
-      : "https://checkout.dodopayments.com/buy"
-    const returnUrl = `${window.location.origin}/dashboard?checkout_status=success&plan=${planKey}`
-
-    // Build URL params — pass email and country so Dodo pre-fills them,
-    // and pass region + plan as metadata so the webhook can process correctly
-    const params = new URLSearchParams({
-      email: user.email || "",
-      customer_email: user.email || "", // Fallback
-      redirect_url: returnUrl,
-      cancel_url: `${window.location.origin}/pricing`,
-      metadata_userId: user.uid,
-      metadata_plan: planKey,
-      metadata_region: normalizedRegion,
-    })
-
-    if (selectedCountry) {
-      params.set("country", selectedCountry)
+    const productId = gatewayProductIds[normalizedRegion]?.[planKey] || ""
+    if (!productId) {
+      setError(`No product configured for region ${normalizedRegion} and plan ${planKey}.`)
+      setIsProcessing(false)
+      return
     }
 
-    if (user.displayName) {
-      const nameParts = user.displayName.trim().split(/\s+/)
-      if (nameParts.length > 0) {
-        params.set("firstName", nameParts[0])
-        if (nameParts.length > 1) {
-          params.set("lastName", nameParts.slice(1).join(" "))
+    const returnUrl = `${window.location.origin}/dashboard?checkout_status=success&plan=${planKey}`
+    const cancelUrl = `${window.location.origin}/pricing`
+
+    // --- GATEWAY ROUTING ---
+    if (activeGateway === "stripe") {
+      setProcessStep("Redirecting to Stripe secure checkout...")
+      // If it is a full stripe payment link, redirect directly
+      if (productId.startsWith("https://") || productId.includes("buy.stripe.com")) {
+        const urlObj = new URL(productId)
+        urlObj.searchParams.set("client_reference_id", user.uid)
+        urlObj.searchParams.set("prefilled_email", user.email || "")
+        window.location.replace(urlObj.toString())
+      } else {
+        // Otherwise, it's a Stripe price ID. Create checkout session via backend
+        try {
+          const cfBase = cloudFunctionUrl || "https://us-central1-gt-metadata-merger.cloudfunctions.net/geminiToolGateway"
+          let cfUrl = `${cfBase}/create-stripe-session`
+          if (typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')) {
+            cfUrl = 'http://localhost:3001/create-stripe-session'
+          }
+          const response = await fetch(cfUrl, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              priceId: productId,
+              userId: user.uid,
+              email: user.email || "",
+              returnUrl,
+              cancelUrl
+            })
+          })
+          const data = await response.json()
+          if (response.ok && data.url) {
+            window.location.replace(data.url)
+          } else {
+            throw new Error(data.error || "Failed to generate Stripe checkout session.")
+          }
+        } catch (err: any) {
+          setError(err.message || "Stripe initialization failed.")
+          setIsProcessing(false)
         }
       }
-    }
+    } else if (activeGateway === "lemonsqueezy") {
+      setProcessStep("Redirecting to Lemon Squeezy secure checkout...")
+      if (productId.startsWith("https://")) {
+        const urlObj = new URL(productId)
+        urlObj.searchParams.set("checkout[email]", user.email || "")
+        urlObj.searchParams.set("checkout[custom][userId]", user.uid)
+        window.location.replace(urlObj.toString())
+      } else {
+        const checkoutUrl = `https://takeoutfix.lemonsqueezy.com/checkout/buy/${productId}?checkout[email]=${encodeURIComponent(user.email || "")}&checkout[custom][userId]=${user.uid}`
+        window.location.replace(checkoutUrl)
+      }
+    } else if (activeGateway === "paddle") {
+      setProcessStep("Redirecting to Paddle secure checkout...")
+      if (productId.startsWith("https://")) {
+        const urlObj = new URL(productId)
+        urlObj.searchParams.set("user_email", user.email || "")
+        urlObj.searchParams.set("passthrough", user.uid)
+        window.location.replace(urlObj.toString())
+      } else {
+        const checkoutUrl = `https://checkout.paddle.com/checkout/buy/${productId}?user_email=${encodeURIComponent(user.email || "")}&passthrough=${user.uid}`
+        window.location.replace(checkoutUrl)
+      }
+    } else {
+      // Default: Dodo Payments
+      setProcessStep("Redirecting to Dodo Payments secure checkout...")
+      const dodoBaseUrl = dodoTestMode
+        ? "https://test.checkout.dodopayments.com/buy"
+        : "https://checkout.dodopayments.com/buy"
 
-    // Pass currency to Dodo (override to USD for JPY and CNY since Dodo doesn't support JPY/CNY)
-    if (plan?.currency) {
-      const isUnsupported = plan.currency.toUpperCase() === "JPY" || plan.currency.toUpperCase() === "CNY";
-      params.set("currency", isUnsupported ? "USD" : plan.currency);
-    }
+      const params = new URLSearchParams({
+        email: user.email || "",
+        customer_email: user.email || "",
+        redirect_url: returnUrl,
+        cancel_url: cancelUrl,
+        metadata_userId: user.uid,
+        metadata_plan: planKey,
+        metadata_region: normalizedRegion,
+      })
 
-    if (detectedCoupon) {
-      params.set("discount_code", detectedCoupon);
-    }
+      if (selectedCountry) {
+        params.set("country", selectedCountry)
+      }
 
-    window.location.replace(`${dodoBaseUrl}/${productId}?${params.toString()}`)
+      if (user.displayName) {
+        const nameParts = user.displayName.trim().split(/\s+/)
+        if (nameParts.length > 0) {
+          params.set("firstName", nameParts[0])
+          if (nameParts.length > 1) {
+            params.set("lastName", nameParts.slice(1).join(" "))
+          }
+        }
+      }
+
+      if (plan?.currency) {
+        const isUnsupported = plan.currency.toUpperCase() === "JPY" || plan.currency.toUpperCase() === "CNY";
+        params.set("currency", isUnsupported ? "USD" : plan.currency);
+      }
+
+      if (detectedCoupon) {
+        params.set("discount_code", detectedCoupon);
+      }
+
+      window.location.replace(`${dodoBaseUrl}/${productId}?${params.toString()}`)
+    }
   }
 
   // Automatic redirect trigger: when user, plan and coupon lookup are ready, immediately redirect
   useEffect(() => {
-    if (user && plan) {
+    if (user && plan && Object.keys(gatewayProductIds).length > 0) {
       if (!couponLookupDone) {
         setIsProcessing(true)
         setProcessStep("Checking for eligible promotions and coupons...")
@@ -323,11 +456,11 @@ function CheckoutPageContent() {
       setIsProcessing(true)
       setProcessStep("Opening secure checkout portal...")
       const timer = setTimeout(() => {
-        handleDodoRedirect()
+        handleUniversalRedirect()
       }, 1500)
       return () => clearTimeout(timer)
     }
-  }, [user, plan, dodoProductIds, couponLookupDone, detectedCoupon])
+  }, [user, plan, gatewayProductIds, couponLookupDone, detectedCoupon, activeGateway])
 
   if (!plan) {
     return (
@@ -483,7 +616,7 @@ function CheckoutPageContent() {
               )}
 
               <button
-                onClick={handleDodoRedirect}
+                onClick={handleUniversalRedirect}
                 className="w-full max-w-xs mx-auto h-12 bg-zinc-950 dark:bg-zinc-50 text-white dark:text-black font-bold hover:bg-zinc-800 dark:hover:bg-zinc-250 transition-colors flex items-center justify-center gap-2 border border-transparent rounded-lg cursor-pointer text-sm"
               >
                 Proceed to Checkout <ChevronRight className="w-4 h-4" />

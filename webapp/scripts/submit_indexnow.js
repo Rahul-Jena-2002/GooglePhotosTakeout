@@ -1,11 +1,19 @@
 // Using native global fetch
+// Usage: INDEXNOW_KEY=your-key SITE_URL=https://yourdomain.com node scripts/submit_indexnow.js
 
 const actionKeys = ["restore", "recover", "fix", "repair", "merge", "sync", "rebuild", "reconstruct", "retrieve", "preserve", "extract", "convert", "transfer"];
 const targetKeys = ["metadata", "meta-data", "exif", "gps", "location", "timestamp", "date-taken", "creation-date", "albums", "people-tags", "camera-data", "photo-information", "video-information"];
 const sourceKeys = ["takeout", "photos", "export"];
 
-const baseUrl = "https://takeoutfix.pages.dev";
-const INDEXNOW_KEY = "e107aca980264801af5ddd4a7fe361a3";
+const baseUrl = process.env.SITE_URL || "https://takeoutfix.pages.dev";
+const INDEXNOW_KEY = process.env.INDEXNOW_KEY;
+
+if (!INDEXNOW_KEY) {
+  console.error("❌ INDEXNOW_KEY env var is required.");
+  console.error("   Set it in your shell: INDEXNOW_KEY=your-key node scripts/submit_indexnow.js");
+  console.error("   Or save it in Admin → Keys & Secrets → IndexNow Key, then read it here.");
+  process.exit(1);
+}
 
 // ─── Core + keyword landing pages ─────────────────────────────────────────────
 const urls = [
@@ -31,8 +39,9 @@ for (const action of actionKeys) {
   }
 }
 
+const host = new URL(baseUrl).hostname;
 const payload = {
-  host: "takeoutfix.pages.dev",
+  host,
   key: INDEXNOW_KEY,
   keyLocation: `${baseUrl}/${INDEXNOW_KEY}.txt`,
   urlList: urls

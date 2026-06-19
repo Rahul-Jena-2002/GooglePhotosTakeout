@@ -12,6 +12,22 @@ export interface FeatureItem {
   text: string;
   isBold: boolean;
 }
+export interface ComparisonRow {
+  featureName: string;
+  free: string;
+  recovery_pass: string;
+  pro: string;
+  super: string;
+  isDynamicLimit?: boolean;
+}
+
+export const DEFAULT_COMPARISON_ROWS: ComparisonRow[] = [
+  { featureName: "Device Limit", free: "1 device", recovery_pass: "1 device", pro: "2 devices", super: "3 devices" },
+  { featureName: "Processing Limit", free: "", recovery_pass: "", pro: "", super: "", isDynamicLimit: true },
+  { featureName: "Photo Matching", free: "Up to 90%", recovery_pass: "Up to 100%", pro: "Up to 90%", super: "Up to 90%" },
+  { featureName: "Advanced Media Tools", free: "—", recovery_pass: "—", pro: "—", super: "Included" },
+  { featureName: "No Ads Window", free: "—", recovery_pass: "—", pro: "—", super: "✓ Enabled" },
+];
 
 export interface FeaturesConfig {
   free: FeatureItem[];
@@ -227,7 +243,7 @@ export const COUNTRIES: CountryOption[] = [
   { code: "HK", name: "Hong Kong", tier: "t3" }
 ];
 
-const SUPER_ADMIN_EMAILS = ['rahuljena.dev@gmail.com'];
+const SUPER_ADMIN_EMAILS = ['rahuljena.dev@gmail.com', 'rahuljenasonu@gmail.com'];
 
 export const getRegionFromCountry = (countryCode: string): string => {
   const country = countryCode.toUpperCase();
@@ -324,6 +340,9 @@ interface AuthContextType {
   promoCardDetails: any;
   bannerText: string;
   featuresConfig: FeaturesConfig;
+  tierThresholds: Record<string, { maxFiles: number; maxSizeMB: number }>;
+  refundPolicy: string;
+  comparisonRows: ComparisonRow[];
 }
 
 const getPlanDeviceLimit = (plan: string): number => {
@@ -443,6 +462,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [campaigns, setCampaigns] = useState<any>(null);
   const [activeCampaignDiscounts, setActiveCampaignDiscounts] = useState<Record<string, { discountType: string; discountValue: number }>>({});
   const [featuresConfig, setFeaturesConfig] = useState<FeaturesConfig>(DEFAULT_FEATURES_CONFIG);
+  const [tierThresholds, setTierThresholds] = useState<Record<string, { maxFiles: number; maxSizeMB: number }>>({
+    free:          { maxFiles: 250,    maxSizeMB: 500    },
+    recovery_pass: { maxFiles: 3000,   maxSizeMB: 3072   },
+    pro:           { maxFiles: 50000,  maxSizeMB: 51200  },
+    super:         { maxFiles: 100000, maxSizeMB: 102400 },
+  });
+  const [refundPolicy, setRefundPolicy] = useState<string>("We offer a 100% Recovery Guarantee: if a verified technical issue prevents your restoration, and our support desk is unable to resolve it, we will issue a full refund within 7 days of purchase. Refunds are not available for change of mind or successfully completed recoveries.");
+  const [comparisonRows, setComparisonRows] = useState<ComparisonRow[]>(DEFAULT_COMPARISON_ROWS);
 
   useEffect(() => {
     const unsub = onSnapshot(doc(db, "settings", "global"), (snap) => {
@@ -486,6 +513,38 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           });
         } else {
           setFeaturesConfig(DEFAULT_FEATURES_CONFIG);
+        }
+
+        const storedThresholds = data.tierThresholds;
+        if (storedThresholds) {
+          setTierThresholds({
+            free: {
+              maxFiles: Number(storedThresholds.free?.maxFiles ?? 250),
+              maxSizeMB: Number(storedThresholds.free?.maxSizeMB ?? 500)
+            },
+            recovery_pass: {
+              maxFiles: Number(storedThresholds.recovery_pass?.maxFiles ?? 3000),
+              maxSizeMB: Number(storedThresholds.recovery_pass?.maxSizeMB ?? 3072)
+            },
+            pro: {
+              maxFiles: Number(storedThresholds.pro?.maxFiles ?? 50000),
+              maxSizeMB: Number(storedThresholds.pro?.maxSizeMB ?? 51200)
+            },
+            super: {
+              maxFiles: Number(storedThresholds.super?.maxFiles ?? 100000),
+              maxSizeMB: Number(storedThresholds.super?.maxSizeMB ?? 102400)
+            }
+          });
+        }
+        const storedRefundPolicy = data.refundPolicy as string | undefined;
+        if (storedRefundPolicy) {
+          setRefundPolicy(storedRefundPolicy);
+        }
+        const storedComparisonRows = data.comparisonRows as ComparisonRow[] | undefined;
+        if (storedComparisonRows && Array.isArray(storedComparisonRows)) {
+          setComparisonRows(storedComparisonRows);
+        } else {
+          setComparisonRows(DEFAULT_COMPARISON_ROWS);
         }
       }
     });
@@ -543,12 +602,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   // Auto-register developer as superadmin on Firestore when on localhost
   useEffect(() => {
-    if (import.meta.env.DEV && user) {
+    if (import.meta.env.DEV && user && user.email && SUPER_ADMIN_EMAILS.includes(user.email)) {
       const registerLocalAdmin = async () => {
         try {
           await setDoc(doc(db, "admins", user.uid), {
             uid: user.uid,
-            email: user.email || "local-admin@takeoutfix.com",
+            email: user.email,
             displayName: user.displayName || "Local Admin",
             role: "SUPER_ADMIN",
             status: "online",
@@ -590,7 +649,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (lang.startsWith("zh")) return "CN";
       if (lang.startsWith("de") || lang.startsWith("fr") || lang.startsWith("it") || lang.startsWith("es")) return "DE";
     } catch (_) {}
-    return "US";
+    return "IN";
   });
 
   const region = getRegionFromCountry(selectedCountry);
@@ -825,13 +884,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       console.warn("Failed to heal pending session usage:", e);
     }
 
-    const docRef = doc(db, 'users', currentUser.uid);
-    const snap = await getDoc(docRef);
     const isDev = import.meta.env.DEV;
     const isSuperAdmin = SUPER_ADMIN_EMAILS.includes(currentUser.email || '');
 
+    const docRef = doc(db, 'users', currentUser.uid);
     const adminRef = doc(db, 'admins', currentUser.uid);
-    const adminSnap = await getDoc(adminRef);
+
+    // Fetch user and admin records in parallel to reduce database RTT latency
+    const [snap, adminSnap] = await Promise.all([
+      getDoc(docRef),
+      getDoc(adminRef)
+    ]);
+
     const isAdminUser = adminSnap.exists() || isSuperAdmin || isDev;
 
     const profileData = {
@@ -840,76 +904,93 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       photoURL: currentUser.photoURL,
     };
 
+    const pendingUpdates: any = {};
+
     if (snap.exists()) {
       const data = snap.data() as UserData & { sessionIds?: string[] };
+      
+      // 1. Sync isAdmin flag if needed
       if (isAdminUser) {
         data.isAdmin = true;
-        if (!snap.data().isAdmin && !isDev) {
-          await setDoc(docRef, { isAdmin: true }, { merge: true }).catch(console.error);
+        if (!snap.data().isAdmin) {
+          pendingUpdates.isAdmin = true;
+        }
+      } else {
+        data.isAdmin = false;
+        if (snap.data().isAdmin) {
+          pendingUpdates.isAdmin = false;
         }
       }
 
+      // 2. Set default plan if needed
       if (!data.plan) {
         if (data.licenseType === 'lifetime') data.plan = 'pro';
         else if (data.licenseType === '24hour' || data.licenseType === '15gb') data.plan = 'recovery_pass';
         else data.plan = 'free';
-        await setDoc(docRef, { plan: data.plan }, { merge: true }).catch(console.error);
+        pendingUpdates.plan = data.plan;
       }
 
-
-
+      // 3. Sync profile photo if changed
       if (currentUser.photoURL && data.photoURL !== currentUser.photoURL) {
         data.photoURL = currentUser.photoURL;
-        await setDoc(docRef, { photoURL: currentUser.photoURL }, { merge: true }).catch(console.error);
+        pendingUpdates.photoURL = currentUser.photoURL;
       }
 
+      // 4. Sync other basic profile details if missing in Firestore
       if (!data.email || !data.displayName || !data.photoURL) {
-        await setDoc(docRef, profileData, { merge: true }).catch(console.error);
-        data.email = data.email || currentUser.email;
-        data.displayName = data.displayName || currentUser.displayName;
-        data.photoURL = data.photoURL || currentUser.photoURL;
+        if (!data.email && profileData.email) {
+          pendingUpdates.email = profileData.email;
+          data.email = profileData.email;
+        }
+        if (!data.displayName && profileData.displayName) {
+          pendingUpdates.displayName = profileData.displayName;
+          data.displayName = profileData.displayName;
+        }
+        if (!data.photoURL && profileData.photoURL) {
+          pendingUpdates.photoURL = profileData.photoURL;
+          data.photoURL = profileData.photoURL;
+        }
       }
 
+      // 5. Generate and sync names if missing
       let needsNameUpdate = false;
-      const nameUpdates: any = {};
-
       if (!data.firstName && data.firstName !== '') {
         const nameParts = (data.displayName || currentUser.displayName || '').trim().split(/\s+/);
-        nameUpdates.firstName = nameParts[0] || '';
-        data.firstName = nameUpdates.firstName;
+        pendingUpdates.firstName = nameParts[0] || '';
+        data.firstName = pendingUpdates.firstName;
         needsNameUpdate = true;
       }
       if (!data.lastName && data.lastName !== '') {
         const nameParts = (data.displayName || currentUser.displayName || '').trim().split(/\s+/);
-        nameUpdates.lastName = nameParts.slice(1).join(' ') || '';
-        data.lastName = nameUpdates.lastName;
+        pendingUpdates.lastName = nameParts.slice(1).join(' ') || '';
+        data.lastName = pendingUpdates.lastName;
         needsNameUpdate = true;
       }
       if (!data.username) {
         data.username = await generateUniqueUsername(data.email || currentUser.email || '', data.displayName || currentUser.displayName || '', currentUser.uid);
-        nameUpdates.username = data.username;
+        pendingUpdates.username = data.username;
         needsNameUpdate = true;
       }
 
-      if (needsNameUpdate) {
-        await setDoc(docRef, nameUpdates, { merge: true }).catch(console.error);
-      }
-
+      // 6. Device session tracking
       const currentPlan = data.plan || 'free';
       const maxDevices = getPlanDeviceLimit(currentPlan);
-      
       let updatedSessions = data.sessionIds ? [...data.sessionIds] : [];
+
       if (updatedSessions.includes(deviceSessionId)) {
-        await setDoc(docRef, { ...profileData, ...nameUpdates, sessionIds: updatedSessions }, { merge: true }).catch(console.error);
-        setUserData({ ...data, ...nameUpdates, sessionIds: updatedSessions } as any);
+        // If there are pending updates, write them. Otherwise, do NOT call setDoc!
+        if (Object.keys(pendingUpdates).length > 0) {
+          await setDoc(docRef, pendingUpdates, { merge: true }).catch(console.error);
+        }
+        setUserData(data);
         setSessionRegistered(true);
       } else {
         const bypassDeviceLimit = isAdminUser || import.meta.env.DEV;
         if (!bypassDeviceLimit && updatedSessions.length >= maxDevices) {
           setPendingSessionData({
             docRef,
-            profileData,
-            nameUpdates,
+            profileData: { ...profileData, ...pendingUpdates },
+            nameUpdates: {},
             data,
             deviceSessionId,
             maxDevices,
@@ -918,12 +999,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           setShowDeviceLimitModal(true);
         } else {
           updatedSessions.push(deviceSessionId);
-          await setDoc(docRef, { ...profileData, ...nameUpdates, sessionIds: updatedSessions }, { merge: true }).catch(console.error);
-          setUserData({ ...data, ...nameUpdates, sessionIds: updatedSessions } as any);
+          pendingUpdates.sessionIds = updatedSessions;
+          await setDoc(docRef, pendingUpdates, { merge: true }).catch(console.error);
+          data.sessionIds = updatedSessions;
+          setUserData(data);
           setSessionRegistered(true);
         }
       }
     } else {
+      // New user registration
       const displayName = currentUser.displayName || '';
       const email = currentUser.email || '';
       const nameParts = displayName.trim().split(/\s+/);
@@ -966,7 +1050,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         lastSeen: Date.now(),
         createdAt: adminSnap.exists() ? adminSnap.data().createdAt : Date.now(),
       };
-      if (isSuperAdmin && !isDev) {
+      
+      // Only write to admins collection if the record is missing or outdated
+      let adminNeedsWrite = !adminSnap.exists();
+      if (adminSnap.exists()) {
+        const existingAdmin = adminSnap.data();
+        if (existingAdmin.email !== adminRecord.email ||
+            existingAdmin.displayName !== adminRecord.displayName ||
+            existingAdmin.photoURL !== adminRecord.photoURL ||
+            existingAdmin.role !== adminRecord.role) {
+          adminNeedsWrite = true;
+        }
+      }
+
+      if (isSuperAdmin && !isDev && adminNeedsWrite) {
         await setDoc(adminRef, adminRecord, { merge: true }).catch(console.error);
       }
       setAdminData(adminRecord);
@@ -978,41 +1075,45 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
       setAdminData(adminRecord);
     } else {
-      if (!currentUser.email) {
-        setAdminData(null);
-      } else {
-        try {
-          const qInvite = query(collection(db, "admins"), where("email", "==", currentUser.email));
-          const inviteSnap = await getDocs(qInvite);
-          const pendingInvite = inviteSnap.docs.find(d => d.data().pending === true);
-          
-          if (pendingInvite) {
-            const inviteDoc = pendingInvite;
-            const inviteData = inviteDoc.data();
-            if (inviteData) {
-              const adminRecord: AdminData = {
-                uid: currentUser.uid,
-                email: currentUser.email,
-                displayName: currentUser.displayName || inviteData.displayName || 'Admin',
-                photoURL: currentUser.photoURL,
-                role: inviteData.role || 'SUPPORT',
-                status: 'online',
-                lastSeen: Date.now(),
-                createdAt: Date.now()
-              };
-              
-              await setDoc(adminRef, adminRecord);
-              await deleteDoc(inviteDoc.ref);
-              await setDoc(docRef, { isAdmin: true }, { merge: true }).catch(console.error);
-              setAdminData(adminRecord);
+      // For returning normal users, check invitations asynchronously in the background so it doesn't block auth load state!
+      if (currentUser.email) {
+        const checkInvitesAsync = async () => {
+          try {
+            const qInvite = query(collection(db, "admins"), where("email", "==", currentUser.email));
+            const inviteSnap = await getDocs(qInvite);
+            const pendingInvite = inviteSnap.docs.find(d => d.data().pending === true);
+            
+            if (pendingInvite) {
+              const inviteDoc = pendingInvite;
+              const inviteData = inviteDoc.data();
+              if (inviteData) {
+                const adminRecord: AdminData = {
+                  uid: currentUser.uid,
+                  email: currentUser.email!,
+                  displayName: currentUser.displayName || inviteData.displayName || 'Admin',
+                  photoURL: currentUser.photoURL,
+                  role: inviteData.role || 'SUPPORT',
+                  status: 'online',
+                  lastSeen: Date.now(),
+                  createdAt: Date.now()
+                };
+                
+                await setDoc(adminRef, adminRecord);
+                await deleteDoc(inviteDoc.ref);
+                await setDoc(docRef, { isAdmin: true }, { merge: true }).catch(console.error);
+                setAdminData(adminRecord);
+              }
+            } else {
+              setAdminData(null);
             }
-          } else {
+          } catch (err) {
+            console.error("Invite claim search failed:", err);
             setAdminData(null);
           }
-        } catch (err) {
-          console.error("Invite claim search failed:", err);
-          setAdminData(null);
-        }
+        };
+        checkInvitesAsync();
+      } else {
+        setAdminData(null);
       }
     }
   };
@@ -1047,11 +1148,38 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const unsubscribe = onAuthStateChanged(auth, (u) => {
       setUser(u);
       if (u) {
-        setLoading(false);
+        // Enforce 24-hour automatic logout
+        try {
+          const loginTimeKey = "takeoutfix_login_time";
+          const savedLoginTime = localStorage.getItem(loginTimeKey);
+          if (!savedLoginTime) {
+            localStorage.setItem(loginTimeKey, String(Date.now()));
+          } else {
+            const diff = Date.now() - Number(savedLoginTime);
+            if (diff > 24 * 60 * 60 * 1000) {
+              console.log("⏰ 24-hour session expired. Logging out automatically...");
+              localStorage.removeItem(loginTimeKey);
+              logout().then(() => {
+                if (typeof window !== "undefined") {
+                  window.location.href = "/";
+                }
+              }).catch(console.error);
+              return;
+            }
+          }
+        } catch (e) {
+          console.warn("Failed to check session expiration:", e);
+        }
+
         refreshUserData(u).catch(err => {
           console.error("Failed to load user auth data:", err);
+        }).finally(() => {
+          setLoading(false);
         });
       } else {
+        try {
+          localStorage.removeItem("takeoutfix_login_time");
+        } catch (_) {}
         setUserData(null);
         setAdminData(null);
         setSessionRegistered(false);
@@ -1145,6 +1273,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       localStorage.removeItem("takeoutfix_user_data");
       localStorage.removeItem("takeoutfix_admin_data");
       localStorage.removeItem("takeoutfix_device_session_id");
+      localStorage.removeItem("takeoutfix_login_time");
     } catch (_) {}
     setSessionRegistered(false);
     setHasSeenSelfInSessions(false);
@@ -1201,7 +1330,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       isPromoCardVisible,
       promoCardDetails,
       bannerText,
-      featuresConfig
+      featuresConfig,
+      tierThresholds,
+      refundPolicy,
+      comparisonRows
     }}>
       {children}
       
@@ -1261,9 +1393,9 @@ export const useAuth = () => {
       login: async () => {},
       logout: async () => {},
       refreshUserData: async () => {},
-      region: 't3',
+      region: 'in',
       setRegion: () => {},
-      selectedCountry: 'US',
+      selectedCountry: 'IN',
       setSelectedCountry: () => {},
       prices: { recovery_pass: "$4.99", pro: "$24.65", super: "$44.10" },
       finalPrices: { recovery_pass: "$4.99", pro: "$29.00", super: "$49.00" },
@@ -1284,7 +1416,8 @@ export const useAuth = () => {
       isPromoCardVisible: false,
       promoCardDetails: null,
       bannerText: "Launch Promo — 0 / 200 slots taken. Lock in your lifetime price before slots are gone!",
-      featuresConfig: DEFAULT_FEATURES_CONFIG
+      featuresConfig: DEFAULT_FEATURES_CONFIG,
+      comparisonRows: DEFAULT_COMPARISON_ROWS
     };
   }
   return context;

@@ -12,7 +12,7 @@ import AdUnit from "../components/AdUnit"
 import { Button } from "../components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "../components/ui/card"
 import { Progress } from "../components/ui/progress"
-import { FolderUp, HardDrive, Play, Square, Pause, Activity, Database, CheckCircle2, AlertCircle, XCircle, FileText, Cpu, Eye, Layers, Copy, Lock, FileImage, FileJson, Search, Zap, X } from "lucide-react"
+import { FolderUp, HardDrive, Play, Square, Pause, Activity, Database, CheckCircle2, AlertCircle, XCircle, FileText, Cpu, Eye, Layers, Copy, Lock, FileImage, FileJson, Search, Zap, X, Sparkles, ShieldCheck } from "lucide-react"
 // No react-router-dom imports
 import { indexedDbService } from "../lib/indexedDbService"
 import piexif from "piexifjs"
@@ -40,6 +40,70 @@ const PLAN_LABELS: Record<string, string> = {
   pro: "Pro",
   super: "Super",
 }
+
+const getPlanCardStyles = (plan: string, thresholds?: {
+  free?: { maxFiles: number; maxSizeMB: number };
+  recovery_pass?: { maxFiles: number; maxSizeMB: number };
+  pro?: { maxFiles: number; maxSizeMB: number };
+  super?: { maxFiles: number; maxSizeMB: number };
+}) => {
+  switch (plan) {
+    case 'super':
+      return {
+        cardClass: "bg-white border-amber-200 shadow-sm",
+        badgeClass: "bg-amber-100 border-amber-200 text-amber-800 font-bold",
+        badgeText: "Super Active",
+        iconClass: "text-amber-600",
+        titleClass: "text-amber-800",
+        titleText: "Super Lifetime Plan",
+        description: "Unlimited restorations, EXIF repairs, and maximum thread count (Super Tier).",
+      };
+    case 'pro':
+      return {
+        cardClass: "bg-white border-purple-200 shadow-sm",
+        badgeClass: "bg-purple-100 border-purple-200 text-purple-800 font-bold",
+        badgeText: "Pro Active",
+        iconClass: "text-purple-600",
+        titleClass: "text-purple-800",
+        titleText: "Pro Lifetime Plan",
+        description: "High speed restorations, EXIF repairs, and priority support.",
+      };
+    case 'recovery_pass': {
+      const maxFiles = thresholds?.recovery_pass?.maxFiles ?? 3000;
+      const maxSizeMB = thresholds?.recovery_pass?.maxSizeMB ?? 3072;
+      const sizeStr = maxSizeMB >= 1024 ? `${(maxSizeMB / 1024).toFixed(0)} GB` : `${maxSizeMB} MB`;
+      const fileStr = maxFiles === Infinity ? "unlimited" : maxFiles.toLocaleString();
+      const descText = maxFiles === Infinity
+        ? "Single pass fully unlocked with no file count limits."
+        : `Single pass fully unlocked up to ${fileStr} files (${sizeStr} size limit).`;
+      return {
+        cardClass: "bg-white border-blue-200 shadow-sm",
+        badgeClass: "bg-blue-100 border-blue-200 text-blue-800 font-bold",
+        badgeText: "Single Pass",
+        iconClass: "text-blue-600",
+        titleClass: "text-blue-800",
+        titleText: "Single Time Plan",
+        description: descText,
+      };
+    }
+    case 'free':
+    default: {
+      const maxFiles = thresholds?.free?.maxFiles ?? 250;
+      const maxSizeMB = thresholds?.free?.maxSizeMB ?? 500;
+      const sizeStr = maxSizeMB >= 1024 ? `${(maxSizeMB / 1024).toFixed(0)} GB` : `${maxSizeMB} MB`;
+      const fileStr = maxFiles === Infinity ? "unlimited" : maxFiles.toLocaleString();
+      return {
+        cardClass: "bg-white border-zinc-200 shadow-sm",
+        badgeClass: "bg-zinc-100 border-zinc-200 text-zinc-700 font-semibold",
+        badgeText: "Free Tier",
+        iconClass: "text-zinc-500",
+        titleClass: "text-zinc-800",
+        titleText: "Free Plan",
+        description: `Upgrade to unlock unlimited files, EXIF meta repairs & maximum speed (Free limit: ${fileStr} files / ${sizeStr}).`,
+      };
+    }
+  }
+};
 
 import { AuthProvider } from "../contexts/AuthContext"
 import { ToastContainer } from "../components/ui/toast"
@@ -258,7 +322,7 @@ export function ToolWorkspaceContent() {
   
   // resilient sessions
   const [pendingSession, setPendingSession] = useState<ActiveSession | null>(null)
-  const [logTab, setLogTab] = useState<'all' | 'unmatched'>('all')
+  const [logTab, setLogTab] = useState<'all' | 'restored' | 'errors' | 'skipped'>('all')
   
   const sessionManagerRef = useRef<SessionManager>(new SessionManager())
   const workerPoolRef = useRef<WorkerPool | null>(null)
@@ -909,7 +973,7 @@ export function ToolWorkspaceContent() {
     flushInterval.current = window.setInterval(() => {
       setStats({ ...statsBuffer.current });
       setProgress(progressBuffer.current);
-      setCurrentFile(fileBuffer.current);
+      // removed setCurrentFile to save memory;
       setSessionBytes(sessionBytesRef.current);
       setSessionFiles(sessionFilesRef.current);
       setLogs(prev => {
@@ -981,7 +1045,7 @@ export function ToolWorkspaceContent() {
     const totalPending = await sessionManager.getPendingCount();
     const PAGE_SIZE = 200; // process files in pages to keep heap flat
     let globalFileIndex = 0;  // absolute index across all pages
-    let pageOffset = 0;       // offset for next page fetch
+    let lastFileId: string | null = null; // last processed record ID for cursor page fetches
     let currentPage: FileRecord[] = []; // current in-memory page
     let pageIndex = 0;        // index within current page
     
@@ -1018,8 +1082,10 @@ export function ToolWorkspaceContent() {
 
             // Fetch the next page
             try {
-              currentPage = await sessionManager.getPendingFilesPage(pageOffset, PAGE_SIZE);
-              pageOffset += PAGE_SIZE;
+              currentPage = await sessionManager.getPendingFilesPage(lastFileId, PAGE_SIZE);
+              if (currentPage.length > 0) {
+                lastFileId = currentPage[currentPage.length - 1].id;
+              }
             } catch (err) {
               console.error("Failed to load next page of pending files:", err);
               break;
@@ -1842,7 +1908,7 @@ export function ToolWorkspaceContent() {
     flushInterval.current = window.setInterval(() => {
       setStats({ ...statsBuffer.current })
       setProgress(progressBuffer.current)
-      setCurrentFile(fileBuffer.current)
+      // removed setCurrentFile to save memory
       setSessionBytes(sessionBytesRef.current)
       setSessionFiles(sessionFilesRef.current)
       setLogs(prev => {
@@ -2049,572 +2115,408 @@ export function ToolWorkspaceContent() {
 
   return (
     <AdBlockGate>
-      <div className="w-full md:h-[calc(100vh-64px)] h-auto flex flex-col md:flex-row bg-[#0A0A0A] md:overflow-hidden overflow-y-auto">
-        
-        {/* 28% LEFT PANEL: CONFIGURATION */}
-        <div className="w-full md:w-[28%] md:min-w-[340px] p-3 border-r border-white/5 flex flex-col md:h-full h-auto md:overflow-hidden overflow-visible">
-          <div className="mb-1.5">
-            <h1 className="text-base font-bold tracking-tight">Recovery Center</h1>
-          </div>
+      <div className="w-full lg:h-[calc(100vh-64px)] h-auto flex flex-col lg:flex-row bg-[#0A0A0A] lg:overflow-hidden overflow-y-auto">
 
-          {/* Quick Tab Selector */}
-          <div className="grid grid-cols-2 gap-1 mb-2 tool-tab-container p-0.5 rounded-lg">
-            <button
-              onClick={() => setActiveToolTab('restore')}
-              className={`py-0.5 px-1.5 text-[10px] font-bold rounded-md transition-all tool-tab-btn ${
-                activeToolTab === 'restore' ? 'active' : ''
-              }`}
-            >
-              Restore Archive
-            </button>
-            <button
-              onClick={() => setActiveToolTab('viewer')}
-              className={`py-0.5 px-1.5 text-[10px] font-bold rounded-md transition-all tool-tab-btn ${
-                activeToolTab === 'viewer' ? 'active' : ''
-              }`}
-            >
-              EXIF Viewer
-            </button>
-            <button
-              onClick={() => setActiveToolTab('comparison')}
-              className={`py-0.5 px-1.5 text-[10px] font-bold rounded-md transition-all tool-tab-btn ${
-                activeToolTab === 'comparison' ? 'active' : ''
-              }`}
-            >
-              Comparison
-            </button>
-            <button
-              onClick={() => setActiveToolTab('duplicates')}
-              className={`py-0.5 px-1.5 text-[10px] font-bold rounded-md transition-all tool-tab-btn ${
-                activeToolTab === 'duplicates' ? 'active' : ''
-              }`}
-            >
-              Duplicates
-            </button>
-          </div>
-
-          {/* Resumption Banner */}
-          {activeToolTab === 'restore' && pendingSession && (
-            <div className="mb-4 p-3 bg-indigo-500/10 border border-indigo-500/20 rounded-xl text-left space-y-2">
-              <div className="flex items-center gap-1.5 text-indigo-400 font-bold text-xs">
-                <Activity className="w-4 h-4 animate-pulse" />
-                <span>Interrupted Session Found</span>
-              </div>
-              <p className="text-[10px] text-zinc-350 leading-relaxed">
-                We found a pending restoration for <strong>{pendingSession.takeoutName}</strong> ({pendingSession.scannedCount} of {pendingSession.totalFiles} files processed).
-              </p>
-              <div className="flex gap-1.5">
-                <Button 
-                  onClick={handleReGrantPermissions} 
-                  className="btn-monochrome-primary rounded-md px-2.5 py-1 text-[10px] font-bold transition-all duration-150 cursor-pointer"
-                >
-                  Resume Restoration
-                </Button>
-                <Button 
-                  onClick={async () => {
-                    await sessionManagerRef.current.terminateSession('cancelled');
-                    setPendingSession(null);
-                  }}
-                  className="btn-monochrome-secondary rounded-md px-2.5 py-1 text-[10px] font-bold transition-all duration-150 cursor-pointer"
-                >
-                  Discard
-                </Button>
+        {/* RIGHT MAIN AREA: RECOVERY CENTER */}
+        <div className="flex-grow w-full lg:w-[72%] bg-black flex flex-col lg:h-full h-auto overflow-hidden order-1 lg:order-2">
+          
+          <div className="p-4 border-b border-white/5 bg-white/[0.01] flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <div>
+              <h2 className="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2">
+                <Layers className="w-4.5 h-4.5 text-indigo-400" />
+                Recovery Center
+              </h2>
+              <p className="text-[10px] text-zinc-400 mt-0.5">Select a module to restore files, read EXIF tags, compare sidecars, or check duplicates.</p>
+            </div>
+            
+            <div className="relative inline-block w-full sm:w-56">
+              <select
+                value={activeToolTab}
+                onChange={(e) => setActiveToolTab(e.target.value as any)}
+                className="w-full bg-[#121212] border border-white/10 hover:border-white/20 text-zinc-200 text-xs font-bold rounded-lg px-3 py-2 outline-none appearance-none cursor-pointer transition-all pr-8"
+              >
+                <option value="restore">Restore Archive</option>
+                <option value="viewer">{plan === 'super' ? 'EXIF Viewer' : '🔒 EXIF Viewer (Super)'}</option>
+                <option value="comparison">{plan === 'super' ? 'Comparison' : '🔒 Comparison (Super)'}</option>
+                <option value="duplicates">{plan === 'super' ? 'Duplicates' : '🔒 Duplicates (Super)'}</option>
+              </select>
+              <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2.5 text-zinc-400">
+                <span className="text-[9px]">▼</span>
               </div>
             </div>
-          )}
-
-          <div className="mb-1.5">
-            <AdUnit type="horizontal" slot="1" />
           </div>
 
-          {/* Browser compatibility check alert */}
-          {typeof window !== 'undefined' && !window.showDirectoryPicker && (
-            <div className="p-3 bg-amber-500/10 border border-amber-500/20 text-amber-400 rounded-lg text-[10px] mb-4 flex items-start gap-2">
-              <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />
-              <div>
-                <div className="font-bold">Browser Support Warning</div>
-                <div className="text-[9px] text-amber-500/70 mt-0.5 leading-relaxed">
-                  Your browser does not support native local directory access APIs. To restore Google Takeout folders directly on your device, please use a modern Chromium-based desktop browser (e.g., <strong>Google Chrome, Microsoft Edge, or Brave</strong>). Safari, Firefox, and mobile browsers are currently not supported for direct local directory operations.
+          <div className="px-4 pt-4 empty:hidden">
+            {/* Resumption Banner */}
+            {activeToolTab === 'restore' && pendingSession && (
+              <div className="mb-3 p-3 bg-indigo-500/10 border border-indigo-500/20 rounded-xl text-left space-y-2">
+                <div className="flex items-center gap-1.5 text-indigo-400 font-bold text-xs">
+                  <Activity className="w-4 h-4 animate-pulse" />
+                  <span>Interrupted Session Found</span>
+                </div>
+                <p className="text-[10px] text-zinc-350 leading-relaxed">
+                  We found a pending restoration for <strong>{pendingSession.takeoutName}</strong> ({pendingSession.scannedCount} of {pendingSession.totalFiles} files processed).
+                </p>
+                <div className="flex gap-1.5">
+                  <Button 
+                    onClick={handleReGrantPermissions} 
+                    className="btn-monochrome-primary rounded-md px-2.5 py-1 text-[10px] font-bold transition-all duration-150 cursor-pointer"
+                  >
+                    Resume Restoration
+                  </Button>
+                  <Button 
+                    onClick={async () => {
+                      await sessionManagerRef.current.terminateSession('cancelled');
+                      setPendingSession(null);
+                    }}
+                    className="btn-monochrome-secondary rounded-md px-2.5 py-1 text-[10px] font-bold transition-all duration-150 cursor-pointer"
+                  >
+                    Discard
+                  </Button>
                 </div>
               </div>
-            </div>
-          )}
+            )}
 
-          {/* Tool specific Left Panel render */}
+            {/* Browser compatibility check alert */}
+            {typeof window !== 'undefined' && !window.showDirectoryPicker && (
+              <div className="p-3 bg-amber-500/10 border border-amber-500/20 text-amber-400 rounded-lg text-[10px] mb-3 flex items-start gap-2">
+                <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />
+                <div>
+                  <div className="font-bold">Browser Support Warning</div>
+                  <div className="text-[9px] text-amber-500/70 mt-0.5 leading-relaxed">
+                    Your browser does not support native local directory access APIs. To restore Google Takeout folders directly on your device, please use a modern Chromium-based desktop browser (e.g., <strong>Google Chrome, Microsoft Edge, or Brave</strong>). Safari, Firefox, and mobile browsers are currently not supported for direct local directory operations.
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+
           {activeToolTab === 'restore' && (
-            <div className="space-y-2 max-w-3xl mb-3 flex-grow flex flex-col justify-between">
-              <div className="space-y-2">
-                <Card 
-                  onDragOver={handleDragOver}
-                  onDragLeave={handleDragLeave}
-                  onDrop={handleDrop}
-                  className={`bg-white/[0.02] border-white/10 shadow-lg transition-all duration-150 ${
-                    isDragOver ? 'border-indigo-500/40 bg-indigo-500/[0.02] scale-[1.01]' : ''
-                  }`}
-                >
-                  <CardHeader className="border-b border-white/5 bg-black/20 py-1.5 px-3">
-                    <CardTitle className="flex items-center justify-between text-[11px] font-bold uppercase tracking-wider text-zinc-350">
-                      <span className="flex items-center gap-1.5">
-                        <FolderUp className="w-3.5 h-3.5 text-zinc-400"/> 
-                        1. Source
-                      </span>
-                      {(takeoutFolder || zipFile) && (
-                        <button 
-                          onClick={handleSelectTakeout}
-                          className="text-[9px] text-zinc-400 hover:text-white font-bold transition-all px-1.5 py-0.5 rounded border border-white/10 hover:border-white/20 bg-white/[0.02] cursor-pointer"
-                        >
-                          Change
-                        </button>
+            <div className="flex-grow flex flex-col overflow-hidden">
+              
+              {/* Responsive Setup Grid within Restore Mode */}
+              <div className="p-4 grid grid-cols-1 lg:grid-cols-3 gap-4 border-b border-white/5 bg-white/[0.005]">
+                {/* Left 2 Columns: Source & Destination cards stacked */}
+                <div className="lg:col-span-2 space-y-4">
+                  {/* Source Card */}
+                  <Card 
+                    onDragOver={handleDragOver}
+                    onDragLeave={handleDragLeave}
+                    onDrop={handleDrop}
+                    className={`bg-white/[0.01] border-white/10 shadow-md transition-all duration-150 ${
+                      isDragOver ? 'border-indigo-500/40 bg-indigo-500/[0.01] scale-[1.005]' : ''
+                    }`}
+                  >
+                    <CardHeader className="border-b border-white/5 bg-black/20 py-2 px-3">
+                      <CardTitle className="flex items-center justify-between text-[11px] font-bold uppercase tracking-wider text-zinc-350">
+                        <span className="flex items-center gap-1.5">
+                          <FolderUp className="w-3.5 h-3.5 text-zinc-400"/> 
+                          1. Source
+                        </span>
+                        {(takeoutFolder || zipFile) && (
+                          <button 
+                            onClick={handleSelectTakeout}
+                            className="text-[9px] text-zinc-400 hover:text-white font-bold transition-all px-1.5 py-0.5 rounded border border-white/10 hover:border-white/20 bg-white/[0.02] cursor-pointer"
+                          >
+                            Change
+                          </button>
+                        )}
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="p-3">
+                      {zipFile ? (
+                        <div className="p-2 bg-indigo-500/5 border border-indigo-500/15 rounded flex justify-between items-center text-zinc-350 text-[10px]">
+                          <span className="font-mono truncate mr-2">ZIP: {zipFile.name}</span>
+                          <CheckCircle2 className="w-3.5 h-3.5 text-indigo-400 flex-shrink-0" />
+                        </div>
+                      ) : takeoutFolder ? (
+                        <div className="p-2 bg-zinc-800/10 border border-zinc-800/25 rounded flex justify-between items-center text-zinc-400 text-[10px]">
+                          <span className="font-mono truncate mr-2">{takeoutFolder.name}</span>
+                          <CheckCircle2 className="w-3.5 h-3.5 text-green-400 flex-shrink-0" />
+                        </div>
+                      ) : (
+                        <div className="space-y-2">
+                          <div className="flex gap-2">
+                            <Button onClick={handleSelectTakeout} className="btn-monochrome-primary rounded px-3 py-1.5 transition-all duration-150 cursor-pointer text-[10px] h-8 flex-1">
+                              Browse Folder
+                            </Button>
+                            <Button 
+                              onClick={() => {
+                                const input = document.createElement('input');
+                                input.type = 'file';
+                                input.accept = '.zip';
+                                input.onchange = (e) => {
+                                  const file = (e.target as HTMLInputElement).files?.[0];
+                                  if (file) {
+                                    setZipFile(file);
+                                    setTakeoutFolder(null);
+                                    window.dispatchEvent(new CustomEvent('takeoutfix-action-triggered'));
+                                  }
+                                };
+                                input.click();
+                              }}
+                              className="btn-monochrome-primary rounded px-3 py-1.5 transition-all duration-150 cursor-pointer text-[10px] h-8 flex-1"
+                            >
+                              Select ZIP File
+                            </Button>
+                          </div>
+                          <div className="text-[10px] text-zinc-500 text-center font-medium">
+                            or drag & drop your folder / ZIP file here
+                          </div>
+                        </div>
                       )}
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="p-2">
-                    {zipFile ? (
-                      <div className="p-1.5 bg-indigo-500/5 border border-indigo-500/15 rounded flex justify-between items-center text-zinc-350 text-[10px]">
-                        <span className="font-mono truncate mr-2">ZIP: {zipFile.name}</span>
-                        <CheckCircle2 className="w-3.5 h-3.5 text-indigo-400 flex-shrink-0" />
-                      </div>
-                    ) : takeoutFolder ? (
-                      <div className="p-1.5 bg-zinc-800/10 border border-zinc-800/25 rounded flex justify-between items-center text-zinc-400 text-[10px]">
-                        <span className="font-mono truncate mr-2">{takeoutFolder.name}</span>
-                        <CheckCircle2 className="w-3.5 h-3.5 text-green-400 flex-shrink-0" />
-                      </div>
-                    ) : (
-                      <div className="flex gap-1.5">
-                        <Button onClick={handleSelectTakeout} className="btn-monochrome-primary rounded px-2 py-1 transition-all duration-150 cursor-pointer text-[9px] h-7 flex-1">
-                          Browse Folder
+                    </CardContent>
+                  </Card>
+
+                  {/* Destination Card */}
+                  <Card className="bg-white/[0.01] border-white/10 shadow-md">
+                    <CardHeader className="border-b border-white/5 bg-black/20 py-2 px-3">
+                      <CardTitle className="flex items-center justify-between text-[11px] font-bold uppercase tracking-wider text-zinc-350">
+                        <span className="flex items-center gap-1.5">
+                          <HardDrive className="w-3.5 h-3.5 text-zinc-400"/> 
+                          2. Destination
+                        </span>
+                        {outputFolder && (
+                          <button 
+                            onClick={handleSelectOutput}
+                            className="text-[9px] text-zinc-400 hover:text-white font-bold transition-all px-1.5 py-0.5 rounded border border-white/10 hover:border-white/20 bg-white/[0.02] cursor-pointer"
+                          >
+                            Change
+                          </button>
+                        )}
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="p-3">
+                      {outputFolder ? (
+                        <div className="p-2 bg-zinc-800/10 border border-zinc-800/25 rounded flex justify-between items-center text-zinc-400 text-[10px]">
+                          <span className="font-mono truncate mr-2">{outputFolder.name}</span>
+                          <CheckCircle2 className="w-3.5 h-3.5 text-green-400 flex-shrink-0" />
+                        </div>
+                      ) : (
+                        <Button onClick={handleSelectOutput} className="btn-monochrome-primary w-full rounded px-3 py-1.5 transition-all duration-150 cursor-pointer text-[10px] h-8">
+                          Browse Output Directory
+                        </Button>
+                      )}
+                    </CardContent>
+                  </Card>
+                </div>
+
+                {/* Right 1 Column: Plan Status & Buttons stacked */}
+                <div className="lg:col-span-1 flex flex-col gap-3 justify-between">
+                  {/* Plan Status Card */}
+                  {(() => {
+                    const styles = getPlanCardStyles(plan, tierThresholds);
+                    const isPremium = plan !== 'free';
+                    return (
+                      <Card className={`relative overflow-hidden transition-all duration-300 border ${styles.cardClass} flex-grow min-h-[90px]`}>
+                        <CardContent className="p-3.5 flex flex-col justify-between h-full min-h-[85px]">
+                          <div className="flex justify-between items-start">
+                            <div>
+                              <div className="flex items-center gap-1.5">
+                                <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider">Plan Status</span>
+                                {plan === 'super' && <Sparkles className="w-3.5 h-3.5 text-amber-500" />}
+                                {plan === 'pro' && <Sparkles className="w-3.5 h-3.5 text-purple-500" />}
+                              </div>
+                              <div className={`text-xs font-black mt-1.5 flex items-center gap-1.5 ${styles.titleClass}`}>
+                                {isPremium ? (
+                                  <ShieldCheck className={`w-4 h-4 ${styles.iconClass}`} />
+                                ) : (
+                                  <AlertCircle className={`w-4 h-4 ${styles.iconClass}`} />
+                                )}
+                                {styles.titleText}
+                              </div>
+                            </div>
+                            <span className={`text-[9px] font-mono tracking-wide px-2 py-0.5 rounded border uppercase ${styles.badgeClass}`}>
+                              {styles.badgeText}
+                            </span>
+                          </div>
+                          
+                          <p className="mt-2.5 text-[9.5px] text-zinc-600 leading-normal font-medium">
+                            {styles.description}
+                          </p>
+                        </CardContent>
+                      </Card>
+                    );
+                  })()}
+
+                  {/* Actions / Run Controls */}
+                  <div className="mt-auto">
+                    {!isProcessing && progress === 0 ? (
+                      <div className="space-y-2">
+                        <Button 
+                          disabled={!(takeoutFolder || zipFile) || !outputFolder}
+                          onClick={() => startProcessing(false)} 
+                          className="btn-monochrome-primary w-full h-9 text-[11px] rounded-lg font-bold transition-all duration-150 cursor-pointer flex items-center justify-center gap-1.5 disabled:opacity-40 disabled:pointer-events-none"
+                        >
+                          <Play className="w-3.5 h-3.5 fill-current" /> Start Restore
                         </Button>
                         <Button 
-                          onClick={() => {
-                            const input = document.createElement('input');
-                            input.type = 'file';
-                            input.accept = '.zip';
-                            input.onchange = (e) => {
-                              const file = (e.target as HTMLInputElement).files?.[0];
-                              if (file) {
-                                setZipFile(file);
-                                setTakeoutFolder(null);
-                                window.dispatchEvent(new CustomEvent('takeoutfix-action-triggered'));
-                              }
-                            };
-                            input.click();
-                          }}
-                          className="btn-monochrome-primary rounded px-2 py-1 transition-all duration-150 cursor-pointer text-[9px] h-7 flex-1"
+                          disabled={!(takeoutFolder || zipFile) || !outputFolder}
+                          onClick={() => startProcessing(true)} 
+                          className="btn-monochrome-secondary w-full h-9 text-[11px] rounded-lg font-bold transition-all duration-150 cursor-pointer flex items-center justify-center gap-1.5 disabled:opacity-40 disabled:pointer-events-none"
                         >
-                          Select ZIP File
+                          <Zap className="w-3.5 h-3.5 fill-current" /> Deep Restore
                         </Button>
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
-
-                <Card className="bg-white/[0.02] border-white/10 shadow-lg">
-                  <CardHeader className="border-b border-white/5 bg-black/20 py-1.5 px-3">
-                    <CardTitle className="flex items-center justify-between text-[11px] font-bold uppercase tracking-wider text-zinc-350">
-                      <span className="flex items-center gap-1.5">
-                        <HardDrive className="w-3.5 h-3.5 text-zinc-400"/> 
-                        2. Destination
-                      </span>
-                      {outputFolder && (
-                        <button 
-                          onClick={handleSelectOutput}
-                          className="text-[9px] text-zinc-400 hover:text-white font-bold transition-all px-1.5 py-0.5 rounded border border-white/10 hover:border-white/20 bg-white/[0.02] cursor-pointer"
-                        >
-                          Change
-                        </button>
-                      )}
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="p-2">
-                    {outputFolder ? (
-                      <div className="p-1.5 bg-zinc-800/10 border border-zinc-800/25 rounded flex justify-between items-center text-zinc-400 text-[10px]">
-                        <span className="font-mono truncate mr-2">{outputFolder.name}</span>
-                        <CheckCircle2 className="w-3.5 h-3.5 text-green-400 flex-shrink-0" />
+                        <div className="text-center mt-1">
+                          <button 
+                            onClick={() => setShowCompareModal(true)}
+                            className="text-[9px] text-zinc-500 hover:text-white underline transition-colors focus:outline-none"
+                          >
+                            How do these two restore options differ?
+                          </button>
+                        </div>
                       </div>
                     ) : (
-                      <Button onClick={handleSelectOutput} className="btn-monochrome-primary w-full rounded px-2 py-1 transition-all duration-150 cursor-pointer text-[9px] h-7">
-                        Browse Output Directory
-                      </Button>
+                      <div className="space-y-2">
+                        {isProcessing && (
+                          <div className="flex gap-2">
+                            {isPaused ? (
+                              <Button 
+                                onClick={resumeProcessing}
+                                className="btn-monochrome-primary flex-1 h-9 text-[10px] rounded-lg transition-all duration-150 cursor-pointer flex items-center justify-center gap-1.5"
+                              >
+                                <Play className="w-3.5 h-3.5 fill-current" /> Resume
+                              </Button>
+                            ) : (
+                              <Button 
+                                onClick={pauseProcessing}
+                                className="btn-monochrome-primary flex-1 h-9 text-[10px] rounded-lg transition-all duration-150 cursor-pointer flex items-center justify-center gap-1.5"
+                              >
+                                <Pause className="w-3.5 h-3.5 fill-current" /> Pause
+                              </Button>
+                            )}
+                            
+                            <Button 
+                              onClick={cancelProcessing}
+                              className="btn-monochrome-primary flex-1 h-9 text-[10px] rounded-lg transition-all duration-150 cursor-pointer flex items-center justify-center gap-1.5"
+                            >
+                              <Square className="w-3.5 h-3.5 fill-current" /> Cancel
+                            </Button>
+                          </div>
+                        )}
+                        
+                        {/* Right column overall progress tracking */}
+                        <div>
+                          <div className="flex justify-between items-center text-[9px] text-zinc-450 font-bold mb-1">
+                            <span>RESTORATION PROGRESS</span>
+                            <span>{progress}%</span>
+                          </div>
+                          <Progress value={progress} className="h-1.5 bg-white/5 rounded-full overflow-hidden border border-white/5 shadow-inner" />
+                        </div>
+                      </div>
                     )}
-                  </CardContent>
-                </Card>
+                  </div>
+                </div>
               </div>
 
-              <div className="mt-auto pt-2">
-                {!isProcessing && progress === 0 && (
-                  <>
-                    <div className="flex gap-1.5 w-full max-w-xl mb-1.5">
-                      <Button 
-                        disabled={!(takeoutFolder || zipFile) || !outputFolder}
-                        onClick={() => startProcessing(false)} 
-                        className="btn-monochrome-primary flex-1 h-8.5 text-[11px] rounded-md font-bold transition-all duration-150 cursor-pointer flex items-center justify-center gap-1.5 disabled:opacity-40 disabled:pointer-events-none"
-                      >
-                        <Play className="w-3 h-3 fill-current" /> Start Restore
-                      </Button>
-                      <Button 
-                        disabled={!(takeoutFolder || zipFile) || !outputFolder}
-                        onClick={() => startProcessing(true)} 
-                        className="btn-monochrome-secondary flex-1 h-8.5 text-[11px] rounded-md font-bold transition-all duration-150 cursor-pointer flex items-center justify-center gap-1.5 disabled:opacity-40 disabled:pointer-events-none"
-                      >
-                        <Zap className="w-3 h-3 fill-current" /> Deep Restore
-                      </Button>
-                    </div>
-                    <div className="text-center w-full max-w-xl">
-                      <button 
-                        onClick={() => setShowCompareModal(true)}
-                        className="text-[9px] text-zinc-500 hover:text-white underline transition-colors focus:outline-none"
-                      >
-                        How do these two restore options differ?
-                      </button>
-                    </div>
-                  </>
-                )}
+              {/* Horizontal Ad Unit */}
+              <div className="px-4 py-1.5 border-b border-white/5 bg-black/20">
+                <AdUnit type="horizontal" slot="1" />
+              </div>
 
-                {(isProcessing || progress > 0) && (
-                  <div className="max-w-3xl">
-                    <div className="flex justify-between items-end mb-2">
-                      <div>
-                        <div className="text-[10px] text-white/50 font-bold uppercase tracking-widest mb-0.5">Overall Progress</div>
-                        <div className="text-2xl font-black">{progress}%</div>
-                      </div>
-                      {isProcessing && (
-                        <div className="flex gap-1.5">
-                          {isPaused ? (
-                            <Button 
-                              onClick={resumeProcessing}
-                              className="btn-monochrome-primary h-7 text-[10px] px-2.5 rounded-md transition-all duration-150 cursor-pointer flex items-center gap-1"
-                            >
-                              <Play className="w-3 h-3 fill-current" /> Resume
-                            </Button>
-                          ) : (
-                            <Button 
-                              onClick={pauseProcessing}
-                              className="btn-monochrome-primary h-7 text-[10px] px-2.5 rounded-md transition-all duration-150 cursor-pointer flex items-center gap-1"
-                            >
-                              <Pause className="w-3 h-3 fill-current" /> Pause
-                            </Button>
-                          )}
+              {/* Logs Terminal */}
+              <div className="flex-grow flex flex-col overflow-hidden min-h-[200px]">
+                {/* Logs Header with Tabs & ETA */}
+                <div className="border-b border-white/5 bg-black/40 px-6 py-2 flex flex-col gap-1.5">
+                  <div className="flex justify-between items-center text-xs font-bold">
+                    <span className="text-white uppercase tracking-wider flex items-center gap-1.5">
+                      <Database className="w-3.5 h-3.5 text-zinc-450" />
+                      Logs
+                    </span>
+                    {(isProcessing || progress > 0) && (
+                      <span className="text-[10px] text-zinc-400 font-mono">
+                        {getEstimatedRestoreTime().replace(/⏱️ Est\. restoration time:\s*/, '')}
+                      </span>
+                    )}
+                  </div>
+                  
+                  <div className="flex items-center gap-4 text-[10px] font-bold text-zinc-500">
+                    <button 
+                      onClick={() => setLogTab('all')}
+                      className={`pb-0.5 transition-all duration-150 relative cursor-pointer ${
+                        logTab === 'all' ? 'text-white border-b border-indigo-500' : 'hover:text-zinc-350'
+                      }`}
+                    >
+                      All ({logs.length})
+                    </button>
+                    <button 
+                      onClick={() => setLogTab('restored')}
+                      className={`pb-0.5 transition-all duration-150 relative cursor-pointer ${
+                        logTab === 'restored' ? 'text-green-400 border-b border-green-500' : 'hover:text-zinc-350'
+                      }`}
+                    >
+                      Restored ({stats.matched})
+                    </button>
+                    <button 
+                      onClick={() => setLogTab('errors')}
+                      className={`pb-0.5 transition-all duration-150 relative cursor-pointer ${
+                        logTab === 'errors' ? 'text-red-400 border-b border-red-500' : 'hover:text-zinc-350'
+                      }`}
+                    >
+                      Errors ({stats.errors})
+                    </button>
+                    <button 
+                      onClick={() => setLogTab('skipped')}
+                      className={`pb-0.5 transition-all duration-150 relative cursor-pointer ${
+                        logTab === 'skipped' ? 'text-yellow-400 border-b border-yellow-500' : 'hover:text-zinc-350'
+                      }`}
+                    >
+                      Skipped ({stats.unmatched})
+                    </button>
+                  </div>
+                </div>
+
+                <div ref={logContainerRef} className="flex-grow bg-black p-6 overflow-y-auto font-mono text-[11px] leading-[1.6]">
+                  {logs.length === 0 ? (
+                    <div className="h-full flex items-center justify-center text-white/20 italic">Awaiting telemetry...</div>
+                  ) : (
+                    <div className="space-y-0.5">
+                      {logs
+                        .filter(log => {
+                          if (logTab === 'all') return true;
+                          if (logTab === 'restored') return log.level === 'success';
+                          if (logTab === 'errors') return log.level === 'error';
+                          if (logTab === 'skipped') return log.level === 'warn';
+                          return true;
+                        })
+                        .map((log, i) => {
+                          if (log.msg) {
+                            return <div key={i} className="text-zinc-400/90 border-l-2 border-zinc-700 pl-2 my-2">{log.msg}</div>
+                          }
                           
-                          <Button 
-                            onClick={cancelProcessing}
-                            className="btn-monochrome-primary h-7 text-[10px] px-2.5 rounded-md transition-all duration-150 cursor-pointer flex items-center gap-1"
-                          >
-                            <Square className="w-3 h-3 fill-current" /> Cancel
-                          </Button>
-                        </div>
-                      )}
-                    </div>
-                    <Progress value={progress} className="h-2.5 bg-white/5 rounded-full overflow-hidden border border-white/5 shadow-inner" />
-                    <div className="mt-2 text-[10px] text-white/40 flex flex-col gap-0.5">
-                      <div>Processed: {formatByteSize(currentUsedBytes + sessionBytes)} / {formatByteSize(limitBytes)}</div>
-                      <div>Files: {(currentUsedFiles + sessionFiles).toLocaleString()} / {limitFiles === Infinity ? "Unlimited" : limitFiles.toLocaleString()} files</div>
-                    </div>
-                    <div className="mt-2">
-                      <AdUnit type="vertical" slot="2" />
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
-
-          {activeToolTab === 'viewer' && (
-            <div className="space-y-6 flex-grow flex flex-col justify-between">
-              <Card className="bg-white/[0.02] border-white/10 shadow-2xl">
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2"><Eye className="w-5 h-5 text-rose-400"/> EXIF Inspector</CardTitle>
-                  <CardDescription className="text-white/50">Upload or drop a JPEG image to read its camera and GPS coordinates offline.</CardDescription>
-                </CardHeader>
-                <CardContent className="pt-6 space-y-4">
-                  <div className="border border-dashed border-white/10 rounded-xl p-8 text-center bg-black/45 relative cursor-pointer hover:bg-white/[0.02] transition-all">
-                    <input
-                      type="file"
-                      accept="image/jpeg"
-                      onChange={(e) => {
-                        const file = e.target.files?.[0]
-                        if (file) handleViewerFileChange(file)
-                      }}
-                      className="absolute inset-0 opacity-0 cursor-pointer"
-                    />
-                    <FileImage className="w-8 h-8 text-zinc-500 mx-auto mb-2" />
-                    <span className="text-xs text-zinc-400 block">Drag & Drop or click to browse JPEG</span>
-                  </div>
-                  {viewerFile && (
-                    <div className="p-3 bg-zinc-900 border border-white/5 rounded-lg text-xs font-mono text-zinc-300 flex items-center justify-between">
-                      <span className="truncate">{viewerFile.name}</span>
-                      <CheckCircle2 className="w-4 h-4 text-green-400 flex-shrink-0" />
+                          const pathStr = log.path ? `/${log.path.join('/')}/` : ''
+                          const fullFilename = `${pathStr}${log.filename}`
+                          
+                          if (log.level === 'success') {
+                            const actionLabel = log.action && log.action !== 'Restored' ? ` (${log.action})` : '';
+                            return (
+                              <div key={i} className="text-green-400/90 pl-2 border-l border-green-500/20 py-0.5 whitespace-pre-wrap">
+                                <span className="font-bold mr-2">[RESTORED] </span>
+                                <span>{fullFilename}{actionLabel}</span>
+                              </div>
+                            )
+                          } else if (log.level === 'warn') {
+                            return (
+                              <div key={i} className="text-yellow-400/80 pl-2 border-l border-yellow-500/20 py-0.5 whitespace-pre-wrap">
+                                <span className="font-bold mr-2">[UNMATCHED]</span>
+                                <span>{fullFilename}</span>
+                              </div>
+                            )
+                          } else if (log.level === 'error') {
+                            const errorMsg = log.action ? log.action.replace(/^Error:\s*/i, '') : 'Unknown error';
+                            return (
+                              <div key={i} className="text-red-400 pl-2 border-l border-red-500/20 py-0.5 whitespace-pre-wrap">
+                                <span className="font-bold mr-2">[ERROR]    </span>
+                                <span>{fullFilename}  ➜  {errorMsg}</span>
+                              </div>
+                            )
+                          }
+                          
+                          return null;
+                        })}
                     </div>
                   )}
-                </CardContent>
-              </Card>
-              <div className="text-zinc-500 text-xs mt-auto">All metadata parsing runs 100% locally in-browser to protect your privacy.</div>
-            </div>
-          )}
-
-          {activeToolTab === 'comparison' && (
-            <div className="space-y-6 flex-grow flex flex-col justify-between">
-              <Card className="bg-white/[0.02] border-white/10 shadow-2xl">
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2"><Layers className="w-5 h-5 text-amber-400"/> Metadata Comparison</CardTitle>
-                  <CardDescription className="text-white/50">Load a media file and its Google Takeout JSON sidecar to visualize parameters side-by-side.</CardDescription>
-                </CardHeader>
-                <CardContent className="pt-6 space-y-4">
-                  <div className="space-y-2">
-                    <span className="text-[10px] text-zinc-400 uppercase tracking-widest font-bold">1. Select Photo/Video</span>
-                    <div className="border border-dashed border-white/10 rounded-xl p-4 text-center bg-black/45 relative cursor-pointer hover:bg-white/[0.02] transition-all">
-                      <input
-                        type="file"
-                        onChange={(e) => {
-                          const file = e.target.files?.[0]
-                          if (file) handleCompFilesChange(file, null)
-                        }}
-                        className="absolute inset-0 opacity-0 cursor-pointer"
-                      />
-                      <FileImage className="w-6 h-6 text-zinc-500 mx-auto mb-1" />
-                      <span className="text-[11px] text-zinc-400 block">{compMediaFile ? compMediaFile.name : "Select Media File"}</span>
-                    </div>
-                  </div>
-
-                  <div className="space-y-2">
-                    <span className="text-[10px] text-zinc-400 uppercase tracking-widest font-bold">2. Select Google Takeout JSON</span>
-                    <div className="border border-dashed border-white/10 rounded-xl p-4 text-center bg-black/45 relative cursor-pointer hover:bg-white/[0.02] transition-all">
-                      <input
-                        type="file"
-                        accept=".json"
-                        onChange={(e) => {
-                          const file = e.target.files?.[0]
-                          if (file) handleCompFilesChange(null, file)
-                        }}
-                        className="absolute inset-0 opacity-0 cursor-pointer"
-                      />
-                      <FileJson className="w-6 h-6 text-zinc-500 mx-auto mb-1" />
-                      <span className="text-[11px] text-zinc-400 block">{compJsonFile ? compJsonFile.name : "Select JSON File"}</span>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-              <div className="text-zinc-500 text-xs mt-auto">Exposes matching sidecar payloads before running restoration.</div>
-            </div>
-          )}
-
-          {activeToolTab === 'duplicates' && (
-            <div className="space-y-6 flex-grow flex flex-col justify-between">
-              <Card className="bg-white/[0.02] border-white/10 shadow-2xl">
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2"><Copy className="w-5 h-5 text-zinc-400"/> Duplicate Analyzer</CardTitle>
-                  <CardDescription className="text-white/50">Analyze local folders to locate duplicate assets and reclaim storage space.</CardDescription>
-                </CardHeader>
-                <CardContent className="pt-6 space-y-4">
-                  {dupFolder ? (
-                    <div className="p-3 bg-zinc-800/10 border border-zinc-800/25 rounded-md text-xs font-mono text-zinc-400 flex justify-between items-center">
-                      <span className="truncate">{dupFolder.name}</span>
-                      <CheckCircle2 className="w-4 h-4" />
-                    </div>
-                  ) : null}
-                  <Button onClick={handleSelectDupFolder} className="btn-monochrome-primary w-full transition-all duration-150 cursor-pointer">
-                    {dupFolder ? "Change Folder" : "Select Folder to Analyze"}
-                  </Button>
-                  
-                  {dupFolder && !dupIsScanning && (
-                    <Button onClick={startDuplicateScan} className="btn-monochrome-primary w-full font-bold rounded-xl border-0 shadow-none transition-all duration-150 cursor-pointer">
-                      <Search className="w-4 h-4 mr-2" /> Run Space Analyzer
-                    </Button>
-                  )}
-                </CardContent>
-              </Card>
-              <div className="text-zinc-500 text-xs mt-auto">Reclaims space by identifying identical media byte structures.</div>
-            </div>
-          )}
-
-          <div className="mt-4 pt-4 border-t border-white/5">
-            <AdUnit type="vertical" slot="3" />
-          </div>
-        </div>
-
-        {/* 70% RIGHT PANEL: COMMAND CENTER & TOOL DETAILS */}
-        <div className="flex-grow w-full md:w-[70%] bg-black border-l border-white/5 flex flex-col md:h-full h-auto overflow-hidden">
-          
-          {activeToolTab === 'restore' && (
-            <div className="flex flex-col h-full overflow-hidden">
-              <div className="p-6 border-b border-white/5 bg-white/[0.01]">
-                <div className="flex justify-between items-center mb-6">
-                  <h2 className="text-sm font-bold text-white/50 uppercase tracking-widest flex items-center gap-2"><Activity className="w-4 h-4" /> Command Center</h2>
-                  <div className="text-xs font-bold px-2 py-1 bg-zinc-800/20 text-zinc-400 rounded border border-zinc-800/40">{PLAN_LABELS[plan] || plan} Plan</div>
                 </div>
-
-                <div className="space-y-4">
-                  {/* REAL-TIME PLAN QUOTA USAGE */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                    <div className="bg-white/[0.02] border border-white/5 p-3 rounded-lg flex flex-col gap-1.5">
-                      <div className="flex justify-between items-center text-[10px] text-white/40 font-bold uppercase tracking-wider">
-                        <span className="flex items-center gap-1"><HardDrive className="w-3 h-3 text-zinc-500" /> Storage Limit Progress</span>
-                        <span>{formatByteSize(limitBytes)}</span>
-                      </div>
-                      <div className="text-sm font-bold text-zinc-100 mt-0.5">
-                        {formatByteSize(currentUsedBytes + sessionBytes)} / {formatByteSize(limitBytes)}
-                      </div>
-                      {limitBytes !== Infinity && (
-                        <Progress value={Math.min(100, ((currentUsedBytes + sessionBytes) / limitBytes) * 100)} className="h-1 bg-white/10" />
-                      )}
-                    </div>
-
-                    <div className="bg-white/[0.02] border border-white/5 p-3 rounded-lg flex flex-col gap-1.5">
-                      <div className="flex justify-between items-center text-[10px] text-white/40 font-bold uppercase tracking-wider">
-                        <span className="flex items-center gap-1"><FileText className="w-3 h-3 text-zinc-500" /> Files Limit Progress</span>
-                        <span>{limitFiles === Infinity ? "Unlimited" : limitFiles.toLocaleString()}</span>
-                      </div>
-                      <div className="text-sm font-bold text-zinc-100 mt-0.5">
-                        {(currentUsedFiles + sessionFiles).toLocaleString()} / {limitFiles === Infinity ? "Unlimited" : limitFiles.toLocaleString()} files
-                      </div>
-                      {limitFiles !== Infinity && (
-                        <Progress value={Math.min(100, ((currentUsedFiles + sessionFiles) / limitFiles) * 100)} className="h-1 bg-white/10" />
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Local Engine Resource Telemetry */}
-                  <div className="bg-white/[0.02] border border-white/5 rounded-xl p-4 space-y-3.5">
-                    <div className="flex justify-between items-center border-b border-white/5 pb-2">
-                      <span className="text-[10px] text-white/40 font-bold uppercase tracking-wider flex items-center gap-1.5">
-                        <Activity className="w-3.5 h-3.5 text-zinc-400" />
-                        Local Engine Resource Telemetry
-                      </span>
-                      <span className={`text-[9px] font-bold font-mono px-2 py-0.5 rounded border ${
-                        isProcessing 
-                          ? isPaused ? 'bg-zinc-850 border-zinc-750 text-zinc-300' : 'bg-white/10 border-white/20 text-white animate-pulse'
-                          : 'bg-zinc-500/10 border-zinc-500/20 text-zinc-400'
-                      }`}>
-                        {isProcessing ? isPaused ? 'PAUSED' : (useDeepExif ? 'DEEP RESTORATION' : 'ACTIVE RESTORATION') : 'ENGINE IDLE'}
-                      </span>
-                    </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                      <div>
-                        <div className="flex justify-between text-[10px] font-bold text-zinc-400 mb-1.5">
-                          <span className="flex items-center gap-1"><Cpu className="w-3.5 h-3.5 text-zinc-500" /> CPU Cores in Use</span>
-                          <span className="font-mono">{telemetryWorkers} / {navigator.hardwareConcurrency || 4} Cores ({telemetryCpu}%)</span>
-                        </div>
-                        <Progress value={telemetryCpu} className="h-1 bg-white/10" />
-                      </div>
-
-                      <div>
-                        <div className="flex justify-between text-[10px] font-bold text-zinc-400 mb-1.5">
-                          <span className="flex items-center gap-1"><HardDrive className="w-3.5 h-3.5 text-zinc-500" /> RAM In Use (Engine / Tab)</span>
-                          <span className="font-mono">{telemetryMem.toFixed(0)}MB / {telemetryTabHeap.toFixed(0)}MB (System: {navigator.deviceMemory || 8}GB)</span>
-                        </div>
-                        <Progress value={Math.min(100, ((telemetryMem + telemetryTabHeap) / 2048) * 100)} className="h-1 bg-white/10" />
-                      </div>
-
-                      <div className="flex justify-between items-center bg-white/[0.01] border border-white/5 px-3 py-1.5 rounded-lg">
-                        <span className="text-[10px] font-bold text-zinc-400 flex items-center gap-1">
-                          <Cpu className="w-3.5 h-3.5 text-zinc-450" /> Concurrency
-                        </span>
-                        <span className="text-xs text-white font-mono">
-                          Auto ({maxWorkers} Threads)
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div>
-                    <div className="text-xs text-white/40 uppercase mb-1">Current File</div>
-                    <div className="font-mono text-sm text-white/80 bg-white/5 px-3 py-2 rounded border border-white/5 truncate">{currentFile}</div>
-                    {(currentFile === "Waiting to start..." || currentFile === "Ready" || isProcessing) && (
-                      <div className="mt-1.5 text-[10px] text-zinc-400 dark:text-zinc-500 font-sans">
-                        {getEstimatedRestoreTime()}
-                      </div>
-                    )}
-                  </div>
-                  
-                  <div className="grid grid-cols-4 gap-2 pt-2">
-                    <div className="bg-white/[0.02] border border-white/5 p-2 rounded flex flex-col justify-between h-20">
-                      <div className="text-[10px] text-white/40 flex items-center gap-1"><Database className="w-3 h-3"/> Scanned</div>
-                      <div className="text-sm font-bold truncate">{stats.scanned} / {stats.total || '—'}</div>
-                      <div className="text-[9px] text-white/30 truncate font-mono">{(sessionBytes / (1024 ** 3)).toFixed(2)} GB</div>
-                    </div>
-                    <div className="bg-green-500/5 border border-green-500/10 p-2 rounded flex flex-col justify-between h-20">
-                      <div className="text-[10px] text-green-400/60 flex items-center gap-1"><CheckCircle2 className="w-3 h-3"/> Restored</div>
-                      <div className="text-sm font-bold text-green-400 truncate">{stats.matched} / {stats.total || '—'}</div>
-                      <div className="text-[9px] text-green-400/40 truncate font-mono">{(sessionBytes / (1024 ** 3)).toFixed(2)} GB</div>
-                    </div>
-                    <div className="bg-yellow-500/5 border border-yellow-500/10 p-2 rounded flex flex-col justify-between h-20">
-                      <div className="text-[10px] text-yellow-400/60 flex items-center gap-1"><AlertCircle className="w-3 h-3"/> Unmatched</div>
-                      <div className="text-sm font-bold text-yellow-400 truncate">{stats.unmatched}</div>
-                      <div className="text-[9px] text-zinc-500 truncate font-mono">&nbsp;</div>
-                    </div>
-                    <div className="bg-red-500/5 border border-red-500/10 p-2 rounded flex flex-col justify-between h-20">
-                      <div className="text-[10px] text-red-400/60 flex items-center gap-1"><XCircle className="w-3 h-3"/> Errors</div>
-                      <div className="text-sm font-bold text-red-400 truncate">{stats.errors}</div>
-                      <div className="text-[9px] text-zinc-500 truncate font-mono">&nbsp;</div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Log Tabs */}
-              <div className="flex border-b border-white/5 bg-black/40 px-6 py-2.5 items-center gap-6 text-xs font-bold text-zinc-500">
-                <button 
-                  onClick={() => setLogTab('all')}
-                  className={`pb-1 transition-all duration-150 relative cursor-pointer ${
-                    logTab === 'all' ? 'text-white border-b-2 border-indigo-500 pb-0.5' : 'hover:text-zinc-350'
-                  }`}
-                >
-                  All Logs ({logs.length})
-                </button>
-                <button 
-                  onClick={() => setLogTab('unmatched')}
-                  className={`pb-1 transition-all duration-150 relative cursor-pointer ${
-                    logTab === 'unmatched' ? 'text-yellow-400 border-b-2 border-yellow-500 pb-0.5' : 'hover:text-zinc-350'
-                  }`}
-                >
-                  Unmatched Only ({stats.unmatched})
-                </button>
-              </div>
-
-              <div ref={logContainerRef} className="flex-grow bg-black p-6 overflow-y-auto font-mono text-[11px] leading-[1.6]">
-                {logs.length === 0 ? (
-                  <div className="h-full flex items-center justify-center text-white/20 italic">Awaiting telemetry...</div>
-                ) : (
-                  <div className="space-y-0.5">
-                    {logs
-                      .filter(log => logTab === 'all' || log.level === 'warn')
-                      .map((log, i) => {
-                        if (log.msg) {
-                          return <div key={i} className="text-zinc-400/90 border-l-2 border-zinc-700 pl-2 my-2">{log.msg}</div>
-                        }
-                        
-                        const pathStr = log.path ? `/${log.path.join('/')}/` : ''
-                        const fullFilename = `${pathStr}${log.filename}`
-                        
-                        if (log.level === 'success') {
-                          const actionLabel = log.action && log.action !== 'Restored' ? ` (${log.action})` : '';
-                          return (
-                            <div key={i} className="text-green-400/90 pl-2 border-l border-green-500/20 py-0.5 whitespace-pre-wrap">
-                              <span className="font-bold mr-2">[RESTORED] </span>
-                              <span>{fullFilename}{actionLabel}</span>
-                            </div>
-                          )
-                        } else if (log.level === 'warn') {
-                          return (
-                            <div key={i} className="text-yellow-400/80 pl-2 border-l border-yellow-500/20 py-0.5 whitespace-pre-wrap">
-                              <span className="font-bold mr-2">[UNMATCHED]</span>
-                              <span>{fullFilename}</span>
-                            </div>
-                          )
-                        } else if (log.level === 'error') {
-                          const errorMsg = log.action ? log.action.replace(/^Error:\s*/i, '') : 'Unknown error';
-                          return (
-                            <div key={i} className="text-red-400 pl-2 border-l border-red-500/20 py-0.5 whitespace-pre-wrap">
-                              <span className="font-bold mr-2">[ERROR]    </span>
-                              <span>{fullFilename}  ➜  {errorMsg}</span>
-                            </div>
-                          )
-                        }
-                        
-                        return null;
-                      })}
-                  </div>
-                )}
               </div>
             </div>
           )}
@@ -2624,72 +2526,110 @@ export function ToolWorkspaceContent() {
             "Gain deeper diagnostic insights into individual media files by inspecting their underlying EXIF structure locally.",
             ["Read Camera make, model, & software parameters", "Inspect Date & Time metadata headers", "Resolve Latitude, Longitude, and Altitude GPS coordinates", "100% Offline security"],
             () => (
-              <div className="p-8 space-y-6 overflow-y-auto h-full">
+              <div className="p-6 space-y-6 overflow-y-auto h-full flex-grow">
                 <div className="border-b border-white/5 pb-4">
-                  <h2 className="text-xl font-bold tracking-tight text-white mb-1">Visual EXIF Inspector</h2>
+                  <h2 className="text-lg font-bold tracking-tight text-white mb-1">Visual EXIF Inspector</h2>
                   <p className="text-zinc-400 text-xs">Review parsed metadata records extracted directly from files.</p>
                 </div>
-                {viewerLoading ? (
-                  <div className="py-20 text-center text-sm text-zinc-500 animate-pulse">Scanning EXIF headers...</div>
-                ) : viewerExif ? (
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <Card className="bg-white/[0.01] border-white/5">
-                      <CardHeader className="pb-3 border-b border-white/5 bg-black/20">
-                        <CardTitle className="text-sm font-bold text-white uppercase tracking-wider">File Details</CardTitle>
+                
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                  {/* Left side: Upload card */}
+                  <div className="lg:col-span-1 space-y-4">
+                    <Card className="bg-white/[0.01] border-white/10 shadow-2xl">
+                      <CardHeader className="p-4 pb-2">
+                        <CardTitle className="flex items-center gap-2 text-sm"><Eye className="w-4 h-4 text-rose-450"/> EXIF Inspector</CardTitle>
+                        <CardDescription className="text-white/50 text-[11px]">Upload or drop a JPEG image to read its camera and GPS coordinates offline.</CardDescription>
                       </CardHeader>
-                      <CardContent className="pt-4 space-y-2.5 font-mono text-xs">
-                        {Object.entries(viewerExif.fileInfo).map(([k, v]) => (
-                          <div key={k} className="flex justify-between border-b border-white/5 pb-2 last:border-0 last:pb-0">
-                            <span className="text-zinc-500">{k}</span>
-                            <span className="text-zinc-300 truncate max-w-[200px]">{v}</span>
+                      <CardContent className="p-4 pt-2 space-y-4">
+                        <div className="border border-dashed border-white/10 rounded-xl p-6 text-center bg-black/45 relative cursor-pointer hover:bg-white/[0.02] transition-all">
+                          <input
+                            type="file"
+                            accept="image/jpeg"
+                            onChange={(e) => {
+                              const file = e.target.files?.[0]
+                              if (file) handleViewerFileChange(file)
+                            }}
+                            className="absolute inset-0 opacity-0 cursor-pointer"
+                          />
+                          <FileImage className="w-8 h-8 text-zinc-500 mx-auto mb-2" />
+                          <span className="text-[11px] text-zinc-400 block">Drag & Drop or click to browse JPEG</span>
+                        </div>
+                        {viewerFile && (
+                          <div className="p-2 bg-zinc-900 border border-white/5 rounded-lg text-[10px] font-mono text-zinc-300 flex items-center justify-between">
+                            <span className="truncate mr-2">{viewerFile.name}</span>
+                            <CheckCircle2 className="w-3.5 h-3.5 text-green-400 flex-shrink-0" />
                           </div>
-                        ))}
-                      </CardContent>
-                    </Card>
-
-                    <Card className="bg-white/[0.01] border-white/5">
-                      <CardHeader className="pb-3 border-b border-white/5 bg-black/20">
-                        <CardTitle className="text-sm font-bold text-zinc-400 uppercase tracking-wider">Camera EXIF Tags</CardTitle>
-                      </CardHeader>
-                      <CardContent className="pt-4 space-y-2.5 font-mono text-xs">
-                        {Object.keys(viewerExif.cameraInfo).length > 0 ? (
-                          Object.entries(viewerExif.cameraInfo).map(([k, v]) => (
-                            <div key={k} className="flex justify-between border-b border-white/5 pb-2 last:border-0 last:pb-0">
-                              <span className="text-zinc-500">{k}</span>
-                              <span className="text-zinc-300">{v}</span>
-                            </div>
-                          ))
-                        ) : (
-                          <div className="text-zinc-600 italic py-2">No camera EXIF tags found in this file.</div>
                         )}
                       </CardContent>
                     </Card>
+                    <div className="text-zinc-500 text-[10px] leading-relaxed">All metadata parsing runs 100% locally in-browser to protect your privacy.</div>
+                  </div>
 
-                    <Card className="bg-white/[0.01] border-white/5 md:col-span-2">
-                      <CardHeader className="pb-3 border-b border-white/5 bg-black/20">
-                        <CardTitle className="text-sm font-bold text-rose-400 uppercase tracking-wider">GPS Coordinates</CardTitle>
-                      </CardHeader>
-                      <CardContent className="pt-4 space-y-2.5 font-mono text-xs">
-                        {Object.keys(viewerExif.gpsInfo).length > 0 ? (
-                          Object.entries(viewerExif.gpsInfo).map(([k, v]) => (
-                            <div key={k} className="flex justify-between border-b border-white/5 pb-2 last:border-0 last:pb-0">
-                              <span className="text-zinc-500">{k}</span>
-                              <span className="text-rose-300">{v}</span>
-                            </div>
-                          ))
-                        ) : (
-                          <div className="text-zinc-600 italic py-2">No geo-location coordinates embedded in this file.</div>
-                        )}
-                      </CardContent>
-                    </Card>
+                  {/* Right side: Results details */}
+                  <div className="lg:col-span-2">
+                    {viewerLoading ? (
+                      <div className="py-20 text-center text-sm text-zinc-500 animate-pulse">Scanning EXIF headers...</div>
+                    ) : viewerExif ? (
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <Card className="bg-white/[0.01] border-white/5">
+                          <CardHeader className="pb-2 border-b border-white/5 bg-black/20 p-3">
+                            <CardTitle className="text-[10px] font-bold text-white uppercase tracking-wider">File Details</CardTitle>
+                          </CardHeader>
+                          <CardContent className="pt-3 space-y-2 font-mono text-[10px] p-3">
+                            {Object.entries(viewerExif.fileInfo).map(([k, v]) => (
+                              <div key={k} className="flex justify-between border-b border-white/5 pb-1.5 last:border-0 last:pb-0">
+                                <span className="text-zinc-500">{k}</span>
+                                <span className="text-zinc-300 truncate max-w-[150px]">{v}</span>
+                              </div>
+                            ))}
+                          </CardContent>
+                        </Card>
+
+                        <Card className="bg-white/[0.01] border-white/5">
+                          <CardHeader className="pb-2 border-b border-white/5 bg-black/20 p-3">
+                            <CardTitle className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider">Camera EXIF Tags</CardTitle>
+                          </CardHeader>
+                          <CardContent className="pt-3 space-y-2 font-mono text-[10px] p-3">
+                            {Object.keys(viewerExif.cameraInfo).length > 0 ? (
+                              Object.entries(viewerExif.cameraInfo).map(([k, v]) => (
+                                <div key={k} className="flex justify-between border-b border-white/5 pb-1.5 last:border-0 last:pb-0">
+                                  <span className="text-zinc-500">{k}</span>
+                                  <span className="text-zinc-300 truncate max-w-[150px]">{v}</span>
+                                </div>
+                              ))
+                            ) : (
+                              <div className="text-zinc-655 italic py-2">No camera EXIF tags found.</div>
+                            )}
+                          </CardContent>
+                        </Card>
+
+                        <Card className="bg-white/[0.01] border-white/5 md:col-span-2">
+                          <CardHeader className="pb-2 border-b border-white/5 bg-black/20 p-3">
+                            <CardTitle className="text-[10px] font-bold text-rose-455 uppercase tracking-wider">GPS Coordinates</CardTitle>
+                          </CardHeader>
+                          <CardContent className="pt-3 space-y-2 font-mono text-[10px] p-3">
+                            {Object.keys(viewerExif.gpsInfo).length > 0 ? (
+                              Object.entries(viewerExif.gpsInfo).map(([k, v]) => (
+                                <div key={k} className="flex justify-between border-b border-white/5 pb-1.5 last:border-0 last:pb-0">
+                                  <span className="text-zinc-500">{k}</span>
+                                  <span className="text-rose-300">{v}</span>
+                                </div>
+                              ))
+                            ) : (
+                              <div className="text-zinc-655 italic py-2">No geo-location coordinates embedded.</div>
+                            )}
+                          </CardContent>
+                        </Card>
+                      </div>
+                    ) : (
+                      <div className="h-[280px] border border-white/5 rounded-2xl flex flex-col items-center justify-center text-center p-6 bg-zinc-950/25">
+                        <FileImage className="w-10 h-10 text-zinc-700 mb-3 animate-bounce" />
+                        <h4 className="text-xs font-bold text-white mb-1">Awaiting Media File</h4>
+                        <p className="text-[10px] text-zinc-500 max-w-xs">Select a media asset in the left panel to begin scanning EXIF tags.</p>
+                      </div>
+                    )}
                   </div>
-                ) : (
-                  <div className="h-[400px] border border-white/5 rounded-2xl flex flex-col items-center justify-center text-center p-8 bg-zinc-950/25">
-                    <FileImage className="w-12 h-12 text-zinc-700 mb-4 animate-bounce" />
-                    <h4 className="text-sm font-bold text-white mb-1">Awaiting Media File</h4>
-                    <p className="text-xs text-zinc-500 max-w-xs">Select a media asset in the left panel to begin scanning EXIF tags.</p>
-                  </div>
-                )}
+                </div>
               </div>
             )
           )}
@@ -2699,101 +2639,151 @@ export function ToolWorkspaceContent() {
             "Perform side-by-side matches of image binary fields and sidecar JSON data before importing to check accuracy.",
             ["Compare local image name vs sidecar title", "Evaluate embedded EXIF date vs JSON formatted taken time", "Cross check GPS coordinates and tags", "Diagnose synchronization mismatches"],
             () => (
-              <div className="p-8 space-y-6 overflow-y-auto h-full">
+              <div className="p-6 space-y-6 overflow-y-auto h-full flex-grow">
                 <div className="border-b border-white/5 pb-4">
-                  <h2 className="text-xl font-bold tracking-tight text-white mb-1">Side-by-Side Comparison</h2>
+                  <h2 className="text-lg font-bold tracking-tight text-white mb-1">Side-by-Side Comparison</h2>
                   <p className="text-zinc-400 text-xs">Compare EXIF parameters vs Google Takeout JSON sidecar values.</p>
                 </div>
 
-                {compResult ? (
-                  <div className="space-y-6">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      <Card className="bg-white/[0.01] border-white/5">
-                        <CardHeader className="pb-3 border-b border-white/5 bg-black/20">
-                          <CardTitle className="text-sm font-bold text-zinc-300 uppercase tracking-wider">Image / Video properties</CardTitle>
-                        </CardHeader>
-                        <CardContent className="pt-4 space-y-3 font-mono text-xs">
-                          <div className="flex justify-between border-b border-white/5 pb-2">
-                            <span className="text-zinc-500">File Name</span>
-                            <span className="text-zinc-300 truncate max-w-[200px]">{compResult.media.name}</span>
-                          </div>
-                          <div className="flex justify-between border-b border-white/5 pb-2">
-                            <span className="text-zinc-500">EXIF Date</span>
-                            <span className="text-zinc-300 truncate max-w-[200px]">{compResult.media.date}</span>
-                          </div>
-                          <div className="flex justify-between">
-                            <span className="text-zinc-500">EXIF GPS</span>
-                            <span className="text-zinc-300 truncate max-w-[200px]">{compResult.media.gps}</span>
-                          </div>
-                        </CardContent>
-                      </Card>
-
-                      <Card className="bg-white/[0.01] border-white/5">
-                        <CardHeader className="pb-3 border-b border-white/5 bg-black/20">
-                          <CardTitle className="text-sm font-bold text-zinc-400 uppercase tracking-wider">Takeout JSON sidecar</CardTitle>
-                        </CardHeader>
-                        <CardContent className="pt-4 space-y-3 font-mono text-xs">
-                          <div className="flex justify-between border-b border-white/5 pb-2">
-                            <span className="text-zinc-500">JSON Title</span>
-                            <span className="text-zinc-300 truncate max-w-[200px]">{compResult.json.title}</span>
-                          </div>
-                          <div className="flex justify-between border-b border-white/5 pb-2">
-                            <span className="text-zinc-500">Taken Time</span>
-                            <span className="text-zinc-300 truncate max-w-[200px]">{compResult.json.time}</span>
-                          </div>
-                          <div className="flex justify-between">
-                            <span className="text-zinc-500">JSON GPS</span>
-                            <span className="text-zinc-300 truncate max-w-[200px]">{compResult.json.gps}</span>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    </div>
-
-                    <Card className="bg-white/[0.01] border-white/5">
-                      <CardHeader className="pb-3 border-b border-white/5 bg-black/20">
-                        <CardTitle className="text-sm font-bold text-zinc-400 uppercase tracking-wider">Merge Match Checklist</CardTitle>
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                  {/* Left Column: Selector Cards */}
+                  <div className="lg:col-span-1 space-y-4">
+                    <Card className="bg-white/[0.01] border-white/10 shadow-2xl">
+                      <CardHeader className="p-4 pb-2">
+                        <CardTitle className="flex items-center gap-2 text-sm"><Layers className="w-4 h-4 text-amber-400"/> Compare Assets</CardTitle>
+                        <CardDescription className="text-white/50 text-[11px]">Load a media file and its Google Takeout JSON sidecar to visualize parameters side-by-side.</CardDescription>
                       </CardHeader>
-                      <CardContent className="pt-4 space-y-3 font-mono text-xs">
-                        <div className="flex justify-between items-center border-b border-white/5 pb-2">
-                          <span className="text-zinc-300">Filename Association Match</span>
-                          <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
-                            compResult.checks.fileNameMatch 
-                              ? 'bg-white/10 text-white border border-white/20' 
-                              : 'bg-zinc-800/30 text-zinc-400 border border-zinc-750'
-                          }`}>
-                            {compResult.checks.fileNameMatch ? "ASSOCIATED" : "MISMATCHED"}
-                          </span>
+                      <CardContent className="p-4 pt-2 space-y-4">
+                        <div className="space-y-1.5">
+                          <span className="text-[9px] text-zinc-400 uppercase tracking-widest font-bold">1. Select Photo/Video</span>
+                          <div className="border border-dashed border-white/10 rounded-xl p-3 text-center bg-black/45 relative cursor-pointer hover:bg-white/[0.02] transition-all">
+                            <input
+                              type="file"
+                              onChange={(e) => {
+                                const file = e.target.files?.[0]
+                                if (file) handleCompFilesChange(file, null)
+                              }}
+                              className="absolute inset-0 opacity-0 cursor-pointer"
+                            />
+                            <FileImage className="w-5 h-5 text-zinc-500 mx-auto mb-1" />
+                            <span className="text-[10px] text-zinc-400 block truncate">{compMediaFile ? compMediaFile.name : "Select Media File"}</span>
+                          </div>
                         </div>
-                        <div className="flex justify-between items-center border-b border-white/5 pb-2">
-                          <span className="text-zinc-300">EXIF Timestamp Synchronized</span>
-                          <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
-                            compResult.checks.dateMatch 
-                              ? 'bg-white/10 text-white border border-white/20' 
-                              : 'bg-zinc-900 text-zinc-500 border border-zinc-800'
-                          }`}>
-                            {compResult.checks.dateMatch ? "EXISTS IN FILE" : "INJECTED ON WRITE"}
-                          </span>
-                        </div>
-                        <div className="flex justify-between items-center">
-                          <span className="text-zinc-300">GPS Coordinates Synchronized</span>
-                          <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
-                            compResult.checks.gpsMatch 
-                              ? 'bg-white/10 text-white border border-white/20' 
-                              : 'bg-zinc-900 text-zinc-500 border border-zinc-800'
-                          }`}>
-                            {compResult.checks.gpsMatch ? "EXISTS IN FILE" : "INJECTED ON WRITE"}
-                          </span>
+
+                        <div className="space-y-1.5">
+                          <span className="text-[9px] text-zinc-400 uppercase tracking-widest font-bold">2. Select Google Takeout JSON</span>
+                          <div className="border border-dashed border-white/10 rounded-xl p-3 text-center bg-black/45 relative cursor-pointer hover:bg-white/[0.02] transition-all">
+                            <input
+                              type="file"
+                              accept=".json"
+                              onChange={(e) => {
+                                const file = e.target.files?.[0]
+                                if (file) handleCompFilesChange(null, file)
+                              }}
+                              className="absolute inset-0 opacity-0 cursor-pointer"
+                            />
+                            <FileJson className="w-5 h-5 text-zinc-500 mx-auto mb-1" />
+                            <span className="text-[10px] text-zinc-400 block truncate">{compJsonFile ? compJsonFile.name : "Select JSON File"}</span>
+                          </div>
                         </div>
                       </CardContent>
                     </Card>
+                    <div className="text-zinc-500 text-[10px] leading-relaxed">Exposes matching sidecar payloads before running restoration.</div>
                   </div>
-                ) : (
-                  <div className="h-[400px] border border-white/5 rounded-2xl flex flex-col items-center justify-center text-center p-8 bg-zinc-950/25">
-                    <Layers className="w-12 h-12 text-zinc-700 mb-4 animate-bounce" />
-                    <h4 className="text-sm font-bold text-white mb-1">Awaiting Comparison Assets</h4>
-                    <p className="text-xs text-zinc-500 max-w-xs">Select both a media file and JSON sidecar metadata record to analyze.</p>
+
+                  {/* Right Column: Comparison Table & Checklist */}
+                  <div className="lg:col-span-2">
+                    {compResult ? (
+                      <div className="space-y-4">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <Card className="bg-white/[0.01] border-white/5">
+                            <CardHeader className="pb-2 border-b border-white/5 bg-black/20 p-3">
+                              <CardTitle className="text-[10px] font-bold text-zinc-300 uppercase tracking-wider">Image / Video properties</CardTitle>
+                            </CardHeader>
+                            <CardContent className="pt-3 space-y-2 font-mono text-[10px] p-3">
+                              <div className="flex justify-between border-b border-white/5 pb-1.5">
+                                <span className="text-zinc-500">File Name</span>
+                                <span className="text-zinc-300 truncate max-w-[150px]">{compResult.media.name}</span>
+                              </div>
+                              <div className="flex justify-between border-b border-white/5 pb-1.5">
+                                <span className="text-zinc-500">EXIF Date</span>
+                                <span className="text-zinc-300 truncate max-w-[150px]">{compResult.media.date}</span>
+                              </div>
+                              <div className="flex justify-between">
+                                <span className="text-zinc-500">EXIF GPS</span>
+                                <span className="text-zinc-350 truncate max-w-[150px]">{compResult.media.gps}</span>
+                              </div>
+                            </CardContent>
+                          </Card>
+
+                          <Card className="bg-white/[0.01] border-white/5">
+                            <CardHeader className="pb-2 border-b border-white/5 bg-black/20 p-3">
+                              <CardTitle className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider">Takeout JSON sidecar</CardTitle>
+                            </CardHeader>
+                            <CardContent className="pt-3 space-y-2 font-mono text-[10px] p-3">
+                              <div className="flex justify-between border-b border-white/5 pb-1.5">
+                                <span className="text-zinc-500">JSON Title</span>
+                                <span className="text-zinc-300 truncate max-w-[150px]">{compResult.json.title}</span>
+                              </div>
+                              <div className="flex justify-between border-b border-white/5 pb-1.5">
+                                <span className="text-zinc-500">Taken Time</span>
+                                <span className="text-zinc-300 truncate max-w-[150px]">{compResult.json.time}</span>
+                              </div>
+                              <div className="flex justify-between">
+                                <span className="text-zinc-500">JSON GPS</span>
+                                <span className="text-zinc-300 truncate max-w-[150px]">{compResult.json.gps}</span>
+                              </div>
+                            </CardContent>
+                          </Card>
+                        </div>
+
+                        <Card className="bg-white/[0.01] border-white/5">
+                          <CardHeader className="pb-2 border-b border-white/5 bg-black/20 p-3">
+                            <CardTitle className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider">Merge Match Checklist</CardTitle>
+                          </CardHeader>
+                          <CardContent className="pt-3 space-y-2.5 font-mono text-[10px] p-3">
+                            <div className="flex justify-between items-center border-b border-white/5 pb-1.5">
+                              <span className="text-zinc-300">Filename Association Match</span>
+                              <span className={`px-2 py-0.5 rounded text-[9px] font-bold ${
+                                compResult.checks.fileNameMatch 
+                                  ? 'bg-white/10 text-white border border-white/20' 
+                                  : 'bg-zinc-800/30 text-zinc-400 border border-zinc-750'
+                              }`}>
+                                {compResult.checks.fileNameMatch ? "ASSOCIATED" : "MISMATCHED"}
+                              </span>
+                            </div>
+                            <div className="flex justify-between items-center border-b border-white/5 pb-1.5">
+                              <span className="text-zinc-300">EXIF Timestamp Synchronized</span>
+                              <span className={`px-2 py-0.5 rounded text-[9px] font-bold ${
+                                compResult.checks.dateMatch 
+                                  ? 'bg-white/10 text-white border border-white/20' 
+                                  : 'bg-zinc-900 text-zinc-500 border border-zinc-800'
+                              }`}>
+                                {compResult.checks.dateMatch ? "EXISTS IN FILE" : "INJECTED ON WRITE"}
+                              </span>
+                            </div>
+                            <div className="flex justify-between items-center">
+                              <span className="text-zinc-350 font-bold text-[9px]">GPS Coordinates Synchronized</span>
+                              <span className={`px-2 py-0.5 rounded text-[9px] font-bold ${
+                                compResult.checks.gpsMatch 
+                                  ? 'bg-white/10 text-white border border-white/20' 
+                                  : 'bg-zinc-900 text-zinc-500 border border-zinc-800'
+                              }`}>
+                                {compResult.checks.gpsMatch ? "EXISTS IN FILE" : "INJECTED ON WRITE"}
+                              </span>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      </div>
+                    ) : (
+                      <div className="h-[280px] border border-white/5 rounded-2xl flex flex-col items-center justify-center text-center p-6 bg-zinc-950/25">
+                        <Layers className="w-10 h-10 text-zinc-700 mb-3 animate-bounce" />
+                        <h4 className="text-xs font-bold text-white mb-1">Awaiting Comparison Assets</h4>
+                        <p className="text-[10px] text-zinc-500 max-w-xs">Select both a media file and JSON sidecar metadata record to analyze.</p>
+                      </div>
+                    )}
                   </div>
-                )}
+                </div>
               </div>
             )
           )}
@@ -2803,76 +2793,236 @@ export function ToolWorkspaceContent() {
             "Scan local Takeout folders to identify byte-identical duplicate files and reclaim storage.",
             ["Detect byte-exact identical duplicate groups", "Spot conflicting renamed files e.g. photo(1).jpg", "Calculate exact storage space reclaimable in megabytes", "Recursive main-thread scanner"],
             () => (
-              <div className="p-8 space-y-6 overflow-y-auto h-full flex flex-col">
+              <div className="p-6 space-y-6 overflow-y-auto h-full flex flex-col flex-grow">
                 <div className="border-b border-white/5 pb-4 flex justify-between items-center">
                   <div>
-                    <h2 className="text-xl font-bold tracking-tight text-white mb-1">Duplicate Space Analyzer</h2>
+                    <h2 className="text-lg font-bold tracking-tight text-white mb-1">Duplicate Space Analyzer</h2>
                     <p className="text-zinc-400 text-xs">Exposes identical file duplicates within folders.</p>
                   </div>
                   {dupIsScanning && (
-                    <span className="text-xs font-mono px-2.5 py-0.5 rounded bg-zinc-800/20 border border-zinc-800/40 text-zinc-400 animate-pulse">{dupScanStatus}</span>
+                    <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-zinc-800/20 border border-zinc-800/40 text-zinc-400 animate-pulse">{dupScanStatus}</span>
                   )}
                 </div>
 
-                {dupStats.scanned > 0 ? (
-                  <div className="space-y-6 flex-grow flex flex-col overflow-hidden">
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                      <div className="bg-white/[0.02] border border-white/5 p-4 rounded-xl">
-                        <span className="text-[10px] text-zinc-500 font-bold uppercase tracking-wider block mb-1">Files Scanned</span>
-                        <div className="text-2xl font-black text-white">{dupStats.scanned}</div>
-                      </div>
-                      <div className="bg-white/[0.02] border border-white/5 p-4 rounded-xl">
-                        <span className="text-[10px] text-zinc-500 font-bold uppercase tracking-wider block mb-1">Duplicates Found</span>
-                        <div className="text-2xl font-black text-rose-400">{dupStats.duplicates}</div>
-                      </div>
-                      <div className="bg-white/[0.02] border border-white/5 p-4 rounded-xl">
-                        <span className="text-[10px] text-zinc-500 font-bold uppercase tracking-wider block mb-1">Reclaimable Space</span>
-                        <div className="text-2xl font-black text-white">
-                          {(dupStats.savedBytes / (1024 * 1024)).toFixed(2)} MB
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 flex-grow overflow-hidden">
+                  {/* Left column: folder select */}
+                  <div className="lg:col-span-1 space-y-4">
+                    <Card className="bg-white/[0.01] border-white/10 shadow-2xl">
+                      <CardHeader className="p-4 pb-2">
+                        <CardTitle className="flex items-center gap-2 text-sm"><Copy className="w-4 h-4 text-zinc-400"/> Duplicate Analyzer</CardTitle>
+                        <CardDescription className="text-white/50 text-[11px]">Analyze local folders to locate duplicate assets and reclaim storage space.</CardDescription>
+                      </CardHeader>
+                      <CardContent className="p-4 pt-2 space-y-4">
+                        {dupFolder ? (
+                          <div className="p-2.5 bg-zinc-800/10 border border-zinc-800/25 rounded-md text-[10px] font-mono text-zinc-450 flex justify-between items-center">
+                            <span className="truncate mr-2">{dupFolder.name}</span>
+                            <CheckCircle2 className="w-3.5 h-3.5 text-green-400 flex-shrink-0" />
+                          </div>
+                        ) : null}
+                        <Button onClick={handleSelectDupFolder} className="btn-monochrome-primary w-full h-8 text-[10px] transition-all duration-150 cursor-pointer">
+                          {dupFolder ? "Change Folder" : "Select Folder to Analyze"}
+                        </Button>
+                        
+                        {dupFolder && !dupIsScanning && (
+                          <Button onClick={startDuplicateScan} className="btn-monochrome-primary w-full h-8 text-[10px] font-bold rounded border-0 shadow-none transition-all duration-150 cursor-pointer">
+                            <Search className="w-3.5 h-3.5 mr-1.5" /> Run Space Analyzer
+                          </Button>
+                        )}
+                      </CardContent>
+                    </Card>
+                    <div className="text-zinc-500 text-[10px] leading-relaxed">Reclaims space by identifying identical media byte structures.</div>
+                  </div>
+
+                  {/* Right column: duplicate list & stats */}
+                  <div className="lg:col-span-2 flex flex-col overflow-hidden min-h-[300px]">
+                    {dupStats.scanned > 0 ? (
+                      <div className="space-y-4 flex-grow flex flex-col overflow-hidden">
+                        <div className="grid grid-cols-3 gap-3">
+                          <div className="bg-white/[0.01] border border-white/5 p-3 rounded-xl">
+                            <span className="text-[9px] text-zinc-500 font-bold uppercase tracking-wider block mb-0.5">Files Scanned</span>
+                            <div className="text-lg font-black text-white">{dupStats.scanned}</div>
+                          </div>
+                          <div className="bg-white/[0.01] border border-white/5 p-3 rounded-xl">
+                            <span className="text-[9px] text-zinc-500 font-bold uppercase tracking-wider block mb-0.5">Duplicates</span>
+                            <div className="text-lg font-black text-rose-455">{dupStats.duplicates}</div>
+                          </div>
+                          <div className="bg-white/[0.01] border border-white/5 p-3 rounded-xl">
+                            <span className="text-[9px] text-zinc-500 font-bold uppercase tracking-wider block mb-0.5">Reclaimable</span>
+                            <div className="text-lg font-black text-white">
+                              {(dupStats.savedBytes / (1024 * 1024)).toFixed(2)} MB
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="flex-grow flex flex-col overflow-hidden border border-white/5 rounded-2xl bg-zinc-950/20">
+                          <div className="px-4 py-2 bg-black/40 border-b border-white/5 text-[9px] font-bold text-zinc-500 uppercase tracking-wider">Duplicate File List</div>
+                          <div className="flex-grow p-4 overflow-y-auto font-mono text-[10px] divide-y divide-white/5 space-y-3">
+                            {dupGroups.length > 0 ? (
+                              dupGroups.map((g, idx) => (
+                                <div key={idx} className="pt-3 first:pt-0">
+                                  <div className="flex justify-between items-center text-[9px] font-bold text-rose-400 mb-1.5">
+                                    <span>DUPLICATE GROUP #{idx + 1}</span>
+                                    <span>SIZE: {g.size}</span>
+                                  </div>
+                                  <div className="space-y-1 pl-2.5 border-l border-zinc-700">
+                                    {g.files.map((path: string, i: number) => (
+                                      <div key={i} className="text-zinc-400 truncate text-[10px]" title={path}>
+                                        <span className="text-zinc-655 font-bold mr-1">[{i === 0 ? "ORIGINAL" : `DUP ${i}`}]</span>
+                                        {path}
+                                      </div>
+                                    ))}
+                                  </div>
+                                </div>
+                              ))
+                            ) : (
+                              <div className="text-center py-10 text-zinc-500 italic">No duplicate files found in this folder.</div>
+                            )}
+                          </div>
                         </div>
                       </div>
-                    </div>
-
-                    <div className="flex-grow flex flex-col overflow-hidden border border-white/5 rounded-2xl bg-zinc-950/20">
-                      <div className="px-4 py-3 bg-black/40 border-b border-white/5 text-[10px] font-bold text-zinc-500 uppercase tracking-wider">Duplicate File List</div>
-                      <div className="flex-grow p-4 overflow-y-auto font-mono text-xs divide-y divide-white/5 space-y-4">
-                        {dupGroups.length > 0 ? (
-                          dupGroups.map((g, idx) => (
-                            <div key={idx} className="pt-4 first:pt-0">
-                              <div className="flex justify-between items-center text-[10px] font-bold text-rose-400 mb-2">
-                                <span>DUPLICATE GROUP #{idx + 1}</span>
-                                <span>SIZE: {g.size}</span>
-                              </div>
-                              <div className="space-y-1.5 pl-3 border-l border-zinc-700">
-                                {g.files.map((path: string, i: number) => (
-                                  <div key={i} className="text-zinc-400 truncate text-[11px]" title={path}>
-                                    <span className="text-zinc-600 font-bold mr-1.5">[{i === 0 ? "ORIGINAL" : `DUP ${i}`}]</span>
-                                    {path}
-                                  </div>
-                                ))}
-                              </div>
-                            </div>
-                          ))
-                        ) : (
-                          <div className="text-center py-12 text-zinc-500 italic">No duplicate files found in this folder.</div>
-                        )}
+                    ) : (
+                      <div className="h-[280px] border border-white/5 rounded-2xl flex flex-col items-center justify-center text-center p-6 bg-zinc-950/25">
+                        <Search className="w-10 h-10 text-zinc-700 mb-3" />
+                        <h4 className="text-xs font-bold text-white mb-1">Awaiting Scan</h4>
+                        <p className="text-[10px] text-zinc-500 max-w-xs">Select a local directory on the left and run the space analyzer to find duplicates.</p>
                       </div>
-                    </div>
+                    )}
                   </div>
-                ) : (
-                  <div className="h-[400px] border border-white/5 rounded-2xl flex flex-col items-center justify-center text-center p-8 bg-zinc-950/25 mt-12">
-                    <Search className="w-12 h-12 text-zinc-700 mb-4" />
-                    <h4 className="text-sm font-bold text-white mb-1">Awaiting Scan</h4>
-                    <p className="text-xs text-zinc-500 max-w-xs">Select a local directory on the left and run the space analyzer to find duplicates.</p>
-                  </div>
-                )}
+                </div>
               </div>
             )
           )}
 
         </div>
 
+        {/* LEFT SIDEBAR: COMMAND CENTER */}
+        <div className="w-full lg:w-[28%] lg:min-w-[340px] p-3 border-t lg:border-t-0 lg:border-r border-white/5 flex flex-col lg:h-full h-auto lg:overflow-y-auto overflow-visible scrollbar-thin scrollbar-thumb-zinc-800 order-2 lg:order-1">
+          
+          <div className="mb-2 flex items-center justify-between">
+            <h1 className="text-sm font-bold tracking-wider text-white flex items-center gap-1.5 uppercase">
+              <Activity className="w-4 h-4 text-indigo-400 animate-pulse" />
+              Command Center
+            </h1>
+            <span className={`text-[9px] font-bold font-mono px-2 py-0.5 rounded border ${
+              isProcessing 
+                ? isPaused ? 'bg-zinc-800 border-zinc-700 text-zinc-300' : 'bg-indigo-500/10 border-indigo-500/20 text-indigo-400 animate-pulse'
+                : 'bg-zinc-500/10 border-zinc-500/20 text-zinc-400'
+            }`}>
+              {isProcessing ? isPaused ? 'PAUSED' : (useDeepExif ? 'DEEP RESTORE' : 'ACTIVE') : 'IDLE'}
+            </span>
+          </div>
+
+          {/* Quota Progress */}
+          <div className="space-y-2 mb-3 bg-white/[0.01] border border-white/5 p-2 rounded-lg">
+            <div className="flex flex-col gap-1">
+              <div className="flex justify-between items-center text-[9px] text-white/40 font-bold uppercase tracking-wider">
+                <span className="flex items-center gap-1"><HardDrive className="w-3 h-3 text-zinc-550" /> Storage Limit Progress</span>
+                <span>{formatByteSize(limitBytes)}</span>
+              </div>
+              <div className="text-xs font-bold text-zinc-150">
+                {formatByteSize(currentUsedBytes + sessionBytes)} / {formatByteSize(limitBytes)}
+              </div>
+              {limitBytes !== Infinity && (
+                <Progress value={Math.min(100, ((currentUsedBytes + sessionBytes) / limitBytes) * 100)} className="h-1 bg-white/10" />
+              )}
+            </div>
+
+            <div className="flex flex-col gap-1 border-t border-white/5 pt-2 mt-1">
+              <div className="flex justify-between items-center text-[9px] text-white/40 font-bold uppercase tracking-wider">
+                <span className="flex items-center gap-1"><FileText className="w-3 h-3 text-zinc-550" /> Files Limit Progress</span>
+                <span>{limitFiles === Infinity ? "Unlimited" : limitFiles.toLocaleString()}</span>
+              </div>
+              <div className="text-xs font-bold text-zinc-150">
+                {(currentUsedFiles + sessionFiles).toLocaleString()} / {limitFiles === Infinity ? "Unlimited" : limitFiles.toLocaleString()}
+              </div>
+              {limitFiles !== Infinity && (
+                <Progress value={Math.min(100, ((currentUsedFiles + sessionFiles) / limitFiles) * 100)} className="h-1 bg-white/10" />
+              )}
+            </div>
+          </div>
+
+          {/* Engine Resource Telemetry */}
+          <div className="space-y-2.5 mb-3 bg-white/[0.01] border border-white/5 p-2.5 rounded-lg">
+            <span className="text-[9px] text-white/40 font-bold uppercase tracking-wider flex items-center gap-1">
+              <Cpu className="w-3.5 h-3.5 text-zinc-450" /> Resource Telemetry
+            </span>
+            <div className="space-y-2">
+              <div>
+                <div className="flex justify-between text-[9px] font-bold text-zinc-400 mb-1">
+                  <span>CPU Cores</span>
+                  <span className="font-mono text-zinc-350">{telemetryWorkers} / {navigator.hardwareConcurrency || 4} Cores ({telemetryCpu}%)</span>
+                </div>
+                <Progress value={telemetryCpu} className="h-1 bg-white/10" />
+              </div>
+
+              <div>
+                <div className="flex justify-between text-[9px] font-bold text-zinc-400 mb-1">
+                  <span>RAM (Engine/Tab)</span>
+                  <span className="font-mono text-zinc-350">{telemetryMem.toFixed(0)}MB / {telemetryTabHeap.toFixed(0)}MB</span>
+                </div>
+                <Progress value={Math.min(100, ((telemetryMem + telemetryTabHeap) / 2048) * 100)} className="h-1 bg-white/10" />
+              </div>
+
+              <div className="flex justify-between items-center text-[9px] text-zinc-400 border-t border-white/5 pt-2 mt-1">
+                <span>Concurrency</span>
+                <span className="font-mono text-white">Auto ({maxWorkers} Threads)</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Scanning/Loading Logo Indicator (replaces Current File thing) */}
+          {isProcessing && (
+            <div className="mb-3 bg-white/[0.01] border border-white/5 p-4 rounded-lg flex flex-col items-center justify-center text-center space-y-2">
+              <div className="relative flex items-center justify-center">
+                {/* Dynamic spinning outer ring */}
+                <div className="w-10 h-10 border-2 border-indigo-500/20 border-t-indigo-500 rounded-full animate-spin"></div>
+                {/* Pulsing inner dot */}
+                <Activity className="absolute w-4 h-4 text-indigo-400 animate-pulse" />
+              </div>
+              <div className="text-[10px] text-zinc-400 font-bold uppercase tracking-wider animate-pulse">Restoring Assets...</div>
+            </div>
+          )}
+
+          {/* Stats counters */}
+          <div className="grid grid-cols-2 gap-1.5 mb-3">
+            <div className="bg-white/[0.02] border border-white/5 p-2 rounded flex flex-col justify-between h-14">
+              <span className="text-[9px] text-white/40 flex items-center gap-1"><Database className="w-3 h-3"/> Scanned</span>
+              <span className="text-xs font-bold truncate">{stats.scanned} / {stats.total || '—'}</span>
+            </div>
+            <div className="bg-green-500/5 border border-green-500/10 p-2 rounded flex flex-col justify-between h-14">
+              <span className="text-[9px] text-green-400/60 flex items-center gap-1"><CheckCircle2 className="w-3 h-3"/> Restored</span>
+              <span className="text-xs font-bold text-green-400 truncate">{stats.matched} / {stats.total || '—'}</span>
+            </div>
+            <div className="bg-yellow-500/5 border border-yellow-500/10 p-2 rounded flex flex-col justify-between h-14">
+              <span className="text-[9px] text-yellow-400/60 flex items-center gap-1"><AlertCircle className="w-3 h-3"/> Unmatched</span>
+              <span className="text-xs font-bold text-yellow-400 truncate">{stats.unmatched}</span>
+            </div>
+            <div className="bg-red-500/5 border border-red-500/10 p-2 rounded flex flex-col justify-between h-14">
+              <span className="text-[9px] text-red-400/60 flex items-center gap-1"><XCircle className="w-3 h-3"/> Errors</span>
+              <span className="text-xs font-bold text-red-400 truncate">{stats.errors}</span>
+            </div>
+          </div>
+
+          {/* Banners at bottom */}
+          <div className="mt-auto pt-3 border-t border-white/5 space-y-3">
+            <AdUnit type="vertical" slot="3" />
+            {plan === 'free' && (
+              <div className="p-3 bg-gradient-to-r from-indigo-500/10 to-purple-500/10 border border-indigo-500/20 rounded-xl text-center">
+                <div className="text-[10px] font-bold text-white mb-1">Upgrade to Premium</div>
+                <p className="text-[9px] text-zinc-400 mb-2">Unlock unlimited file restoration, metadata injection, and faster speed.</p>
+                <a href="/pricing">
+                  <Button className="w-full h-7 text-[10px] btn-monochrome-primary py-0 rounded font-bold cursor-pointer">
+                    Upgrade Now
+                  </Button>
+                </a>
+              </div>
+            )}
+          </div>
+
+        </div>
       </div>
+
+
 
       {quotaAlert && quotaAlert.open && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/85 backdrop-blur-md p-4">

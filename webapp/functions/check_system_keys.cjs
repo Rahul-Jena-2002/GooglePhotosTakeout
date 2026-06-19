@@ -1,0 +1,34 @@
+const path = require("path");
+process.env.GOOGLE_APPLICATION_CREDENTIALS = path.resolve(__dirname, "serviceAccountKey.json");
+
+const admin = require("firebase-admin");
+admin.initializeApp();
+const { getFirestore } = require("firebase-admin/firestore");
+const db = getFirestore();
+
+async function run() {
+  console.log("Reading settings/system...");
+  const snap = await db.collection("settings").doc("system").get();
+  if (snap.exists) {
+    const data = snap.data();
+    for (const key of Object.keys(data)) {
+      const val = data[key];
+      if (key.includes("dodo") || key.includes("key") || key.includes("url")) {
+        const isEncrypted = typeof val === 'string' && val.startsWith("enc:v1:");
+        console.log(`Key: ${key}`);
+        console.log(` - Type: ${typeof val}`);
+        console.log(` - Is Encrypted (starts with enc:v1:): ${isEncrypted}`);
+        if (isEncrypted) {
+          console.log(` - Encrypted value prefix: ${val.substring(0, 15)}...`);
+        } else if (val) {
+          console.log(` - Plain value length: ${val.length}`);
+          console.log(` - Plain value preview: ${val.substring(0, 15)}...`);
+        }
+      }
+    }
+  } else {
+    console.log("settings/system does not exist!");
+  }
+}
+
+run().catch(console.error);

@@ -25,9 +25,31 @@ export default function AdminSupport() {
   const [geminiApiKey, setGeminiApiKey] = useState("")
 
   useEffect(() => {
-    getDoc(doc(db, "settings", "system")).then(snap => {
-      if (snap.exists()) setGeminiApiKey(snap.data().gemini_api_key || "")
-    }).catch(() => {})
+    const loadKey = async () => {
+      try {
+        const snap = await getDoc(doc(db, "settings", "system"))
+        if (snap.exists()) {
+          const val = snap.data().gemini_api_key || ""
+          if (val.startsWith("enc:v1:")) {
+            const savedMek = sessionStorage.getItem("tf_mek") || "92elPvQ63jp_SXOmGbLyOgvfcGHVP-GfDbbiyLV4rpw"
+            if (savedMek) {
+              const { decrypt, deriveKeyFromPassword } = await import("../lib/crypto")
+              const salt = new Uint8Array(16)
+              const { key } = await deriveKeyFromPassword(savedMek, salt)
+              const decrypted = await decrypt(val, key)
+              setGeminiApiKey(decrypted)
+            } else {
+              console.warn("Gemini API key is encrypted in Firestore, but no Master Encryption Key (MEK) is active in this session. Unlock keys in Admin -> Keys & Secrets.")
+            }
+          } else {
+            setGeminiApiKey(val)
+          }
+        }
+      } catch (err) {
+        console.error("Failed to load Gemini API key:", err)
+      }
+    }
+    loadKey()
   }, [])
 
   const callGemini = async (promptText: string): Promise<string> => {
@@ -70,6 +92,41 @@ export default function AdminSupport() {
       setAiLoading(false)
       setAiStatus("")
     }
+  }
+
+  const handleTextareaKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>, val: string, setVal: (s: string) => void) => {
+    const isCtrl = e.ctrlKey || e.metaKey
+    if (!isCtrl) return
+
+    let wrapStart = ""
+    let wrapEnd = ""
+
+    if (e.key === "b" || e.key === "B") {
+      wrapStart = "**"
+      wrapEnd = "**"
+    } else if (e.key === "i" || e.key === "I") {
+      wrapStart = "*"
+      wrapEnd = "*"
+    } else if (e.key === "u" || e.key === "U") {
+      wrapStart = "<u>"
+      wrapEnd = "</u>"
+    } else {
+      return
+    }
+
+    e.preventDefault()
+    const el = e.currentTarget
+    const start = el.selectionStart ?? 0
+    const end = el.selectionEnd ?? 0
+    const selection = el.value.slice(start, end)
+    const newValue = el.value.slice(0, start) + wrapStart + selection + wrapEnd + el.value.slice(end)
+
+    setVal(newValue)
+    setTimeout(() => {
+      el.selectionStart = start + wrapStart.length
+      el.selectionEnd = start + wrapStart.length + selection.length
+      el.focus()
+    }, 0)
   }
 
 
@@ -517,7 +574,12 @@ Polished response:`
 
               {/* Developer Response Area */}
               <div className="space-y-2 pt-4 border-t border-zinc-900">
-                <h4 className="text-xs font-bold text-zinc-400 uppercase">developer reply</h4>
+                <div className="flex items-center justify-between">
+                  <h4 className="text-xs font-bold text-zinc-400 uppercase">developer reply</h4>
+                  <span className="text-[9px] text-zinc-500 font-mono select-none">
+                    Ctrl+B = <strong>bold</strong> | Ctrl+I = <em>italic</em> | Ctrl+U = <u>underline</u>
+                  </span>
+                </div>
                 
                 {selectedTicket.status === 'CLOSED' ? (
                   <div className="p-4 bg-zinc-900/40 border border-zinc-800 rounded-xl text-center text-xs text-zinc-500 font-bold uppercase tracking-wider">
@@ -527,9 +589,10 @@ Polished response:`
                   <div className="space-y-3">
                     <div className="relative">
                       <textarea 
-                        placeholder="Write response that resolves user's issue..."
+                        placeholder="Write response that resolves user's issue... Use Ctrl+B/I/U to format selection."
                         value={replyBody}
                         onChange={(e) => setReplyBody(e.target.value)}
+                        onKeyDown={(e) => handleTextareaKeyDown(e, replyBody, setReplyBody)}
                         rows={5}
                         disabled={aiLoading}
                         className="w-full bg-zinc-950 border border-zinc-800 rounded-xl p-3 text-xs text-white focus:outline-none focus:border-zinc-500 focus:bg-zinc-950 transition-all font-sans leading-relaxed resize-none disabled:opacity-50"

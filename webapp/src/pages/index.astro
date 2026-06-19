@@ -196,101 +196,6 @@ const prices = PLAN_PRICES[region] || PLAN_PRICES.us;
           <h3 class="text-xl font-bold mb-2">Files stay on your device</h3>
           <p class="text-zinc-500 text-sm leading-relaxed">No tracking, no telemetry on your personal files. Your private memories remain strictly under your control.</p>
         </div>
-      </div>      <!-- SEMANTIC COMPARISON PANEL FOR CRAWLERS AND AI ENGINES -->
-      <div class="mt-20 max-w-5xl mx-auto text-left border border-zinc-200 dark:border-zinc-800 rounded-xl p-8 bg-zinc-50/50 dark:bg-zinc-950/20 relative">
-        <h2 class="text-2xl font-bold tracking-tight text-white mb-4">
-          Why Choose TakeoutFixer as your Google Takeout Metadata Fixer?
-        </h2>
-        <p class="text-zinc-400 text-sm leading-relaxed mb-6 font-normal">
-          If you are searching for how to fix metadata or how to fix meta data after exporting from Google Photos, you need a reliable take out fix. TakeoutFixer matches your photo and video files with their separate JSON sidecars to perform a complete meta data fix locally in your web browser. Your files never leave your device.
-        </p>
-
-        <!-- Keyword alias cloud for SEO crawlers -->
-        <div class="mb-8 flex flex-wrap gap-2">
-          {[
-            "Takeout Fix", "Takeout Fixer", "TakeoutFixer", "Take Out Fix",
-            "Metadata Fixer", "Metadata Fix", "Meta Data Fix", "Meta Data Fixer",
-            "How to Fix Metadata", "How to Fix Meta Data",
-            "Google Takeout Fixer", "Google Takeout Metadata Fix",
-            "Google Photos Metadata Fixer", "Google Takeout Merger",
-            "EXIF Fixer", "EXIF Metadata Restore", "Fix Photo Dates"
-          ].map((kw) => (
-            <span class="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-zinc-500 dark:text-zinc-500 select-none" key={kw}>{kw}</span>
-          ))}
-        </div>
-
-        <!-- FAQ Section for rich snippets -->
-        <div class="space-y-5 mb-8">
-          <div>
-            <h3 class="text-sm font-bold text-white mb-1">What is a "take out fix" or "takeout fix"?</h3>
-            <p class="text-xs text-zinc-400 leading-relaxed">A "take out fix" or "takeout fix" refers to the process of repairing missing EXIF metadata — like photo dates, GPS coordinates, and camera info — after downloading your photos using Google Takeout. Google Takeout stores metadata separately in JSON sidecar files, which most photo apps cannot read. TakeoutFix (also called TakeoutFixer) solves this automatically.</p>
-          </div>
-          <div>
-            <h3 class="text-sm font-bold text-white mb-1">How do I fix metadata after Google Takeout?</h3>
-            <p class="text-xs text-zinc-400 leading-relaxed">To fix metadata from Google Takeout: (1) Open TakeoutFix in your browser, (2) Select your Takeout folder containing both the image files and their .json sidecar files, (3) Click "Restore My Data" — the tool automatically matches each photo to its JSON and writes the date, GPS, and EXIF data back into the file header. No installation or upload required.</p>
-          </div>
-          <div>
-            <h3 class="text-sm font-bold text-white mb-1">What is a metadata fixer for Google Photos?</h3>
-            <p class="text-xs text-zinc-400 leading-relaxed">A metadata fixer for Google Photos is a tool that reads the separate .json sidecar files created during a Google Takeout export, and writes the stored metadata (date taken, GPS location, camera model) back into the photo's EXIF header. TakeoutFix is a free metadata fixer and meta data fix tool that does this entirely in your web browser using the File System Access API.</p>
-          </div>
-          <div>
-            <h3 class="text-sm font-bold text-white mb-1">What is a Google Takeout merger?</h3>
-            <p class="text-xs text-zinc-400 leading-relaxed">A Google Takeout merger is a tool that merges (reunites) the photo/video binary files with their detached JSON metadata sidecar files produced by a Google Takeout export. TakeoutFix performs this merge locally on your device — no server, no upload, no privacy risk.</p>
-          </div>
-        </div>
-
-        <div class="grid md:grid-cols-2 gap-8 text-xs font-normal">
-          <div class="space-y-4">
-            <h3 class="font-bold text-white text-sm">TakeoutFixer (Local Web App)</h3>
-            <ul class="space-y-4 text-zinc-400 leading-relaxed">
-              <li class="flex flex-col gap-1">
-                <span class="flex items-center gap-2 font-bold text-zinc-200">
-                  <span class="text-green-500">✅</span> No Installation Required
-                </span>
-                <span class="pl-6">Open the app and run the metadata fixer immediately in any web browser.</span>
-              </li>
-              <li class="flex flex-col gap-1">
-                <span class="flex items-center gap-2 font-bold text-zinc-200">
-                  <span class="text-green-500">✅</span> Secure Sandbox Environment
-                </span>
-                <span class="pl-6">Our meta data fix runs inside a secure sandbox—no system access is requested or needed.</span>
-              </li>
-              <li class="flex flex-col gap-1">
-                <span class="flex items-center gap-2 font-bold text-zinc-200">
-                  <span class="text-green-500">✅</span> 100% Client-Side Processing
-                </span>
-                <span class="pl-6">Your photos stay on your hard drive. Once loaded, the take out fix runs completely offline.</span>
-              </li>
-              <li class="flex flex-col gap-1">
-                <span class="flex items-center gap-2 font-bold text-zinc-200">
-                  <span class="text-green-500">✅</span> Multi-Core Parallel Execution
-                </span>
-                <span class="pl-6">Leverages background workers to execute the metadata fixer across thousands of files simultaneously.</span>
-              </li>
-            </ul>
-          </div>
-          <div class="space-y-4">
-            <h3 class="font-bold text-zinc-300 text-sm">Traditional Command Line & Desktop Tools</h3>
-            <ul class="space-y-4 text-zinc-400 leading-relaxed">
-              <li class="flex items-start gap-2">
-                <span class="text-red-500 font-bold">❌</span>
-                <span>Require downloading, installing, and configuring complex system applications.</span>
-              </li>
-              <li class="flex items-start gap-2">
-                <span class="text-red-500 font-bold">❌</span>
-                <span>Require terminal commands, making them difficult for non-technical users to run.</span>
-              </li>
-              <li class="flex items-start gap-2">
-                <span class="text-red-500 font-bold">❌</span>
-                <span>Risk exposes your computer to security flaws if third-party executables are downloaded.</span>
-              </li>
-              <li class="flex items-start gap-2">
-                <span class="text-red-500 font-bold">❌</span>
-                <span>Installing tools is often restricted on corporate or school laptops.</span>
-              </li>
-            </ul>
-          </div>
-        </div>
       </div>
     </section>
 
@@ -374,7 +279,6 @@ const prices = PLAN_PRICES[region] || PLAN_PRICES.us;
 
 <script>
   import { db } from "../firebase";
-  import { collection, query, where, getDocs } from "firebase/firestore";
 
   let autoPlayInterval: number | undefined;
   let userInteractionTimeout: number | undefined;
@@ -435,6 +339,7 @@ const prices = PLAN_PRICES[region] || PLAN_PRICES.us;
   // 2. Fetch Featured Reviews from Firestore
   const loadReviews = async () => {
     try {
+      const { collection, query, where, getDocs } = await import("firebase/firestore");
       const q = query(collection(db, "reviews"), where("status", "==", "APPROVED"));
       const snap = await getDocs(q);
       const allApproved = snap.docs.map(d => ({ id: d.id, ...d.data() as any }));

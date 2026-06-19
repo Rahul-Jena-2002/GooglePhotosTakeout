@@ -25,7 +25,7 @@ export function ToastContainer() {
         {toasts.map((toast) => {
           const Icon = TOAST_ICONS[toast.type]
           const styles = TOAST_STYLES[toast.type]
-          const defaultTitle = toast.title || (toast.type === "error" ? "Login Failed" : toast.type === "success" ? "Success" : "Notification")
+          const defaultTitle = toast.title || (toast.type === "error" ? "Error" : toast.type === "success" ? "Success" : "Notification")
 
           return (
             <motion.div

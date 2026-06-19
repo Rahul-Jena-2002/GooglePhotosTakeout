@@ -2,7 +2,6 @@ import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { X } from "lucide-react";
 import { db } from "../../firebase";
-import { doc, onSnapshot } from "firebase/firestore";
 
 interface FaqItem {
   id: string;
@@ -44,17 +43,25 @@ export default function ExpandableFaq() {
 
   // Load FAQs from Firestore, fall back to defaults
   useEffect(() => {
-    const unsub = onSnapshot(doc(db, "settings", "faqs"), (snap) => {
-      if (snap.exists()) {
-        const data = snap.data();
-        if (Array.isArray(data.items) && data.items.length > 0) {
-          setFaqs(data.items);
+    let unsub: (() => void) | null = null;
+    import("firebase/firestore").then(({ doc, onSnapshot }) => {
+      unsub = onSnapshot(doc(db, "settings", "faqs"), (snap) => {
+        if (snap.exists()) {
+          const data = snap.data();
+          if (Array.isArray(data.items) && data.items.length > 0) {
+            setFaqs(data.items);
+          }
         }
-      }
-    }, () => {
-      // On error, keep defaults
+      }, () => {
+        // On error, keep defaults
+      });
+    }).catch(err => {
+      console.warn("Failed to load FAQs from Firestore dynamically:", err);
     });
-    return () => unsub();
+
+    return () => {
+      if (unsub) unsub();
+    };
   }, []);
 
   const macOsSpring = {
@@ -64,12 +71,23 @@ export default function ExpandableFaq() {
     mass: 1
   };
 
-  // Renders **bold** markers as <strong> spans
+  // Renders **bold**, *italic*, and <u>underline</u> markers as JSX elements
   const renderBoldText = (text: string) => {
-    const parts = text.split(/\*\*(.*?)\*\*/g);
-    return parts.map((part, i) =>
-      i % 2 === 1 ? <strong key={i} className="font-semibold">{part}</strong> : part
-    );
+    if (!text) return "";
+    const regex = /(\*\*.*?\*\*|\*.*?\*|<u>.*?<\/u>)/g;
+    const parts = text.split(regex);
+    return parts.map((part, index) => {
+      if (part.startsWith('**') && part.endsWith('**')) {
+        return <strong key={index} className="font-bold">{part.slice(2, -2)}</strong>;
+      }
+      if (part.startsWith('*') && part.endsWith('*')) {
+        return <em key={index} className="italic">{part.slice(1, -1)}</em>;
+      }
+      if (part.startsWith('<u>') && part.endsWith('</u>')) {
+        return <u key={index}>{part.slice(3, -4)}</u>;
+      }
+      return part;
+    });
   };
 
   // Handle ESC key to close modal

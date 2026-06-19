@@ -13,16 +13,19 @@ import {
   BarChart3,
   ActivitySquare,
   ShieldCheck,
+  ShieldAlert,
   Settings,
   ExternalLink,
   Users2,
   Bell,
   X,
   Key,
+  Sliders,
+  List,
 } from "lucide-react"
 
 export default function AdminLayout() {
-  const { userData, adminData, loading } = useAuth()
+  const { user, userData, adminData, loading } = useAuth()
   const location = useLocation()
   const [sidebarOpen, setSidebarOpen] = useState(false)
 
@@ -43,8 +46,24 @@ export default function AdminLayout() {
     )
   }
 
-  const isDev = import.meta.env.DEV;
-  if (!userData?.isAdmin && !adminData && !isDev) {
+  if (!user) {
+    return (
+      <div className="min-h-screen bg-zinc-950 flex items-center justify-center p-4">
+        <div className="max-w-md w-full p-6 bg-black/45 border border-zinc-900 rounded-xl text-center shadow-xl">
+          <ShieldAlert className="w-12 h-12 text-red-400 mx-auto mb-4" />
+          <h2 className="text-xl font-bold text-white mb-2">Authentication Required</h2>
+          <p className="text-zinc-400 text-sm mb-6 font-normal">You must be signed in to access the Admin Center.</p>
+          <a href="/">
+            <button className="w-full py-2.5 bg-white text-black hover:bg-white/90 rounded-lg font-semibold text-sm transition-colors">
+              Return Home
+            </button>
+          </a>
+        </div>
+      </div>
+    )
+  }
+
+  if (!userData?.isAdmin && !adminData) {
     return <Navigate to="/" replace />
   }
 
@@ -78,6 +97,9 @@ export default function AdminLayout() {
         { label: "Admin Team", path: "/admin/team", icon: Users2, show: true },
         { label: "Audit Logs", path: "/admin/audit", icon: ShieldCheck, show: isAdminOrAbove },
         { label: "Keys & Secrets", path: "/admin/keys", icon: Key, show: isSuperAdmin || isDev },
+        { label: "Payment Gateway", path: "/admin/payment-gateway", icon: CreditCard, show: isSuperAdmin || isDev },
+        { label: "Plan Thresholds", path: "/admin/plan-thresholds", icon: Sliders, show: isSuperAdmin || isDev },
+        { label: "Tier Features", path: "/admin/tier-features", icon: List, show: isSuperAdmin || isDev },
         { label: "Settings", path: "/admin/settings", icon: Settings, show: isSuperAdmin || isDev },
       ],
     },

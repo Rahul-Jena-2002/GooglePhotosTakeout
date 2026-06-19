@@ -42,12 +42,23 @@ const macOsSpring = {
   mass: 1
 };
 
-// Renders **bold** markers as <strong> spans
+// Renders **bold**, *italic*, and <u>underline</u> markers as JSX elements
 function renderBoldText(text: string) {
-  const parts = text.split(/\*\*(.*?)\*\*/g);
-  return parts.map((part, i) =>
-    i % 2 === 1 ? <strong key={i} className="font-semibold text-white">{part}</strong> : part
-  );
+  if (!text) return "";
+  const regex = /(\*\*.*?\*\*|\*.*?\*|<u>.*?<\/u>)/g;
+  const parts = text.split(regex);
+  return parts.map((part, index) => {
+    if (part.startsWith('**') && part.endsWith('**')) {
+      return <strong key={index} className="font-bold">{part.slice(2, -2)}</strong>;
+    }
+    if (part.startsWith('*') && part.endsWith('*')) {
+      return <em key={index} className="italic">{part.slice(1, -1)}</em>;
+    }
+    if (part.startsWith('<u>') && part.endsWith('</u>')) {
+      return <u key={index}>{part.slice(3, -4)}</u>;
+    }
+    return part;
+  });
 }
 
 function SupportPageContent() {
@@ -588,14 +599,14 @@ function SupportPageContent() {
                               <CardContent className="pt-6 space-y-4">
                                 <div className="bg-zinc-950 border border-zinc-900/50 p-4 rounded-xl">
                                   <p className="text-[10px] text-white/45 mb-1.5 uppercase tracking-wider font-bold">Initial Message</p>
-                                  <p className="text-sm text-white/80 whitespace-pre-wrap">{ticket.message}</p>
+                                  <p className="text-sm text-white/80 whitespace-pre-wrap">{renderBoldText(ticket.message)}</p>
                                 </div>
 
                                 {/* Legacy Admin Reply */}
                                 {ticket.adminReply && (!ticket.replies || ticket.replies.length === 0) && (
                                   <div className="bg-indigo-500/5 border border-indigo-500/20 p-4 rounded-xl ml-6">
                                     <p className="text-[10px] text-indigo-400 mb-1.5 uppercase tracking-wider font-bold">Support Response</p>
-                                    <p className="text-sm text-zinc-300 whitespace-pre-wrap">{ticket.adminReply}</p>
+                                    <p className="text-sm text-zinc-300 whitespace-pre-wrap">{renderBoldText(ticket.adminReply)}</p>
                                     <span className="text-[9px] text-zinc-500 mt-2 block font-mono">Replied by: {ticket.repliedBy || "Support"}</span>
                                   </div>
                                 )}
@@ -617,7 +628,7 @@ function SupportPageContent() {
                                       }`}>
                                         {isAdminReply ? `${reply.senderName || 'Support'} (Support)` : 'You'}
                                       </p>
-                                      <p className="text-sm text-zinc-355 whitespace-pre-wrap">{reply.message}</p>
+                                      <p className="text-sm text-zinc-355 whitespace-pre-wrap">{renderBoldText(reply.message)}</p>
                                       <span className="text-[9px] text-zinc-500 mt-2 block font-mono">{new Date(reply.timestamp).toLocaleString()}</span>
                                     </div>
                                   )

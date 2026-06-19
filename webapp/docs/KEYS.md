@@ -23,17 +23,18 @@ These can be stored plaintext in Firestore and `.env` files, as they are not sec
 
 ## Encryption & Decryption
 
-### Browser (AdminKeys.tsx)
+### Browser (AdminKeys.tsx & AdminPaymentGateway.tsx)
 1. Admin enters a Master Encryption Key (MEK) — a 32-byte hex string — via a password input.
-2. MEK is stored only in React state (never localStorage/Firestore/cookies).
+2. MEK is stored only in React state (never localStorage/Firestore/cookies). If none is entered, it automatically falls back to the default MEK (`92elPvQ63jp_SXOmGbLyOgvfcGHVP-GfDbbiyLV4rpw`) for zero-config local operations.
 3. Sensitive keys are decrypted in memory for editing using `decrypt(ciphertext, key)`.
 4. On save, sensitive keys are re-encrypted using `encrypt(plaintext, key)`.
-5. If MEK is missing, encrypted fields display as locked (🔒) and are read-only.
+5. If MEK is missing and the fallback is not active, encrypted fields display as locked (🔒) and are read-only.
+6. **Dodo Prefix Isolation**: The `sk_live_` and `sk_test_` prefixes are completely hardcoded and separated into a non-editable visual prefix badge on the left side of the input field. If a user pastes a key containing the prefix, it is automatically parsed/stripped, and the prefix is re-applied during database save operations.
 
 ### Server (Node.js)
 1. `functions/lib/crypto.js` provides `decrypt(ciphertext, key)` using Node's crypto module.
-2. At runtime, Cloud Functions read encrypted secrets from Firestore, decrypt them using the MEK (provided via environment variable), and use the decrypted value.
-3. The MEK is never stored in Firestore or source code — it is provided at deployment time.
+2. At runtime, Cloud Functions read encrypted secrets from Firestore, decrypt them using the MEK (provided via environment variable, falling back to the default MEK `92elPvQ63jp_SXOmGbLyOgvfcGHVP-GfDbbiyLV4rpw` locally), and use the decrypted value.
+3. The MEK is never stored in Firestore — it is provided at deployment time or resolved locally via fallback.
 
 ## Setup Instructions
 

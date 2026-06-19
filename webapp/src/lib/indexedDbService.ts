@@ -1,6 +1,6 @@
 class IndexedDbService {
   private dbName = 'TakeoutFixDB';
-  private dbVersion = 2;
+  private dbVersion = 3;
   private db: IDBDatabase | null = null;
 
   private init(): Promise<IDBDatabase> {
@@ -14,15 +14,25 @@ class IndexedDbService {
       };
       request.onupgradeneeded = (e) => {
         const db = request.result;
+        const transaction = request.transaction || (e.target as any).transaction;
         if (!db.objectStoreNames.contains('telemetry')) {
           db.createObjectStore('telemetry');
         }
         if (!db.objectStoreNames.contains('checkpoints')) {
           db.createObjectStore('checkpoints');
         }
+        
+        let filesStore: IDBObjectStore;
         if (!db.objectStoreNames.contains('files')) {
-          db.createObjectStore('files');
+          filesStore = db.createObjectStore('files');
+        } else {
+          filesStore = transaction.objectStore('files');
         }
+        
+        if (!filesStore.indexNames.contains('status')) {
+          filesStore.createIndex('status', 'status', { unique: false });
+        }
+
         if (!db.objectStoreNames.contains('sessions')) {
           db.createObjectStore('sessions');
         }
@@ -106,6 +116,77 @@ class IndexedDbService {
       const store = transaction.objectStore(storeName);
       const request = store.clear();
       request.onsuccess = () => resolve();
+      request.onerror = () => reject(request.error);
+    });
+  }
+
+  async countByIndex(
+    storeName: string,
+    indexName: string,
+    indexValue: any
+  ): Promise<number> {
+    const db = await this.init();
+    return new Promise((resolve, reject) => {
+      const transaction = db.transaction(storeName, 'readonly');
+      const store = transaction.objectStore(storeName);
+      const index = store.index(indexName);
+      const request = index.count(IDBKeyRange.only(indexValue));
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => reject(request.error);
+    });
+  }
+
+  async getAllByIndex(
+    storeName: string,
+    indexName: string,
+    indexValue: any
+  ): Promise<any[]> {
+    const db = await this.init();
+    return new Promise((resolve, reject) => {
+      const out: any[] = [];
+      const transaction = db.transaction(storeName, 'readonly');
+      const store = transaction.objectStore(storeName);
+      const index = store.index(indexName);
+      const request = index.openCursor(IDBKeyRange.only(indexValue), 'next');
+      request.onsuccess = () => {
+        const cursor = request.result;
+        if (!cursor) {
+          resolve(out);
+          return;
+        }
+        out.push(cursor.value);
+        cursor.continue();
+      };
+      request.onerror = () => reject(request.error);
+    });
+  }
+
+  async getPendingFilesPage(lastId: string | null, limit: number): Promise<any[]> {
+    const db = await this.init();
+    return new Promise((resolve, reject) => {
+      const out: any[] = [];
+      const transaction = db.transaction('files', 'readonly');
+      const store = transaction.objectStore('files');
+      const index = store.index('status');
+      const request = index.openCursor(IDBKeyRange.only('pending'), 'next');
+      request.onsuccess = () => {
+        const cursor = request.result;
+        if (!cursor) {
+          resolve(out);
+          return;
+        }
+        const record = cursor.value;
+        if (lastId && record.id <= lastId) {
+          cursor.continue();
+          return;
+        }
+        out.push(record);
+        if (out.length >= limit) {
+          resolve(out);
+          return;
+        }
+        cursor.continue();
+      };
       request.onerror = () => reject(request.error);
     });
   }

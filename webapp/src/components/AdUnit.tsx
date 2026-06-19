@@ -1,7 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
 import { useAuth } from "../contexts/AuthContext";
-import { auth, db } from "../firebase";
-import { doc, onSnapshot } from "firebase/firestore";
+import { auth } from "../firebase";
 import { ArrowRight, ShieldCheck, Key, RefreshCw } from "lucide-react";
 
 interface Ad {
@@ -35,43 +34,35 @@ export default function AdUnit({ type = "auto", slot, className = "" }: AdUnitPr
       return;
     }
 
-    try {
-      const saved = localStorage.getItem("takeoutfix_user_data");
-      if (saved) {
-        setLocalUserData(JSON.parse(saved));
-      }
-    } catch (_) {}
+    const loadLocalData = () => {
+      try {
+        const saved = localStorage.getItem("takeoutfix_user_data");
+        if (saved) {
+          setLocalUserData(JSON.parse(saved));
+        }
+      } catch (_) {}
+    };
+
+    loadLocalData();
 
     const unsubscribe = auth.onAuthStateChanged((user) => {
       if (user) {
-        const userDocRef = doc(db, "users", user.uid);
-        const unsubDoc = onSnapshot(userDocRef, (snap) => {
-          if (snap.exists()) {
-            const data = snap.data();
-            const fullData = {
-              uid: user.uid,
-              email: user.email,
-              displayName: user.displayName,
-              photoURL: user.photoURL,
-              ...data
-            };
-            setLocalUserData(fullData);
-            try {
-              localStorage.setItem("takeoutfix_user_data", JSON.stringify(fullData));
-            } catch (_) {}
-          }
-        }, (err) => console.error("AdUnit Firestore error:", err));
-
-        return () => unsubDoc();
+        loadLocalData();
       } else {
         setLocalUserData(null);
-        try {
-          localStorage.removeItem("takeoutfix_user_data");
-        } catch (_) {}
       }
     });
 
-    return () => unsubscribe();
+    // Listen for storage events (e.g. plan upgrades on checkout success)
+    window.addEventListener("storage", loadLocalData);
+    // Listen for custom tab/auth changes
+    window.addEventListener("takeoutfix_user_sync", loadLocalData);
+
+    return () => {
+      unsubscribe();
+      window.removeEventListener("storage", loadLocalData);
+      window.removeEventListener("takeoutfix_user_sync", loadLocalData);
+    };
   }, [contextUserData]);
 
   const activeUserData = contextUserData || localUserData;

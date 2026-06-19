@@ -102,3 +102,15 @@ export function bytesToHex(bytes: Uint8Array): string {
     .map((b) => b.toString(16).padStart(2, "0"))
     .join("");
 }
+
+export async function importKeyFromHex(hexKey: string): Promise<CryptoKey> {
+  const bytes = hexToBytes(hexKey);
+  return await crypto.subtle.importKey(
+    "raw",
+    bytes,
+    { name: ALGORITHM },
+    false,
+    ["encrypt", "decrypt"]
+  );
+}
+

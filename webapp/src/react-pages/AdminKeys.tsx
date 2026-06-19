@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react"
-import { doc, getDoc, setDoc } from "firebase/firestore"
+import { doc, getDoc, setDoc, onSnapshot } from "firebase/firestore"
 import { db } from "../firebase"
 import { useAuth } from "../contexts/AuthContext"
 import { useToastStore } from "../store/useToastStore"
@@ -59,7 +59,7 @@ const KEY_DEFINITIONS: Omit<KeyEntry, "value">[] = [
     description: "Live secret API key for Dodo Payments. Used by Cloud Functions and local-server.js to create/update products and discounts. Never expose this in the browser.",
     firestorePath: "settings/system",
     firestoreField: "dodo_api_key",
-    placeholder: "sk_live_xxxxxxxxxxxxxxxxxxxx",
+    placeholder: "Live API Key from Dodo Dashboard",
     category: "Payments",
     sensitive: true,
     link: "https://dashboard.dodopayments.com/",
@@ -71,7 +71,7 @@ const KEY_DEFINITIONS: Omit<KeyEntry, "value">[] = [
     description: "Test/sandbox secret API key for Dodo Payments. Used for testing payment flows without real money. Get this from Dodo Dashboard → API Keys → Test Mode.",
     firestorePath: "settings/system",
     firestoreField: "dodo_test_api_key",
-    placeholder: "sk_test_xxxxxxxxxxxxxxxxxxxx",
+    placeholder: "Test API Key from Dodo Dashboard",
     category: "Payments",
     sensitive: true,
     link: "https://dashboard.dodopayments.com/",
@@ -219,7 +219,7 @@ function generateKey(prefix = "tf"): string {
 }
 
 // ─── Copy Button ──────────────────────────────────────────────────────────────
-function CopyButton({ text, small = false }: { text: string; small?: boolean }) {
+function CopyButton({ text, small = false, isLight }: { text: string; small?: boolean; isLight: boolean }) {
   const [copied, setCopied] = useState(false)
   const handleCopy = async () => {
     await navigator.clipboard.writeText(text)
@@ -231,9 +231,23 @@ function CopyButton({ text, small = false }: { text: string; small?: boolean }) 
       type="button"
       onClick={handleCopy}
       disabled={!text}
-      className={`flex items-center gap-1.5 bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 text-zinc-300 font-bold rounded-lg transition-all disabled:opacity-30 disabled:cursor-not-allowed ${small ? "px-2 py-1 text-[10px]" : "px-3 py-1.5 text-[11px]"}`}
+      className={`flex items-center gap-1.5 font-bold rounded-lg transition-all disabled:opacity-30 disabled:cursor-not-allowed ${small ? "px-2 py-1 text-[10px]" : "px-3 py-1.5 text-[11px]"}`}
+      style={{
+        backgroundColor: isLight ? '#ffffff' : '#1c1c1e',
+        borderColor: isLight ? '#e4e4e7' : '#27272a',
+        color: isLight ? '#374151' : '#d1d5db',
+        borderWidth: '1px',
+      }}
+      onMouseOver={(e) => {
+        if (!text) return
+        e.currentTarget.style.backgroundColor = isLight ? '#f4f4f5' : '#27272a'
+      }}
+      onMouseOut={(e) => {
+        if (!text) return
+        e.currentTarget.style.backgroundColor = isLight ? '#ffffff' : '#1c1c1e'
+      }}
     >
-      {copied ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
+      {copied ? <Check className="w-3 h-3 text-emerald-500" /> : <Copy className="w-3 h-3" />}
       {copied ? "Copied!" : "Copy"}
     </button>
   )
@@ -245,17 +259,20 @@ function KeyCard({
   onSave,
   saving,
   mekKey,
+  isLight,
 }: {
   entry: KeyEntry
   onSave: (id: string, value: string) => Promise<void>
   saving: string | null
   mekKey: CryptoKey | null
+  isLight: boolean
 }) {
   const [revealed, setRevealed] = useState(false)
   const [editing, setEditing] = useState(false)
   const [draft, setDraft] = useState(entry.value)
   const [expanded, setExpanded] = useState(false)
   const [decrypted, setDecrypted] = useState<string>("")
+  const [isOverwriting, setIsOverwriting] = useState(false)
 
   useEffect(() => {
     const loadValue = async () => {
@@ -272,9 +289,15 @@ function KeyCard({
         setDecrypted("")
         setDraft(entry.value)
       }
+      setEditing(false)
+      setIsOverwriting(false)
     }
     loadValue()
   }, [entry.value, mekKey, entry.sensitive])
+
+  const getDisplayValue = () => {
+    return editing ? draft : (decrypted || entry.value || "")
+  }
 
   const handleSave = async () => {
     await onSave(entry.id, draft)
@@ -292,51 +315,86 @@ function KeyCard({
   const isSaving = saving === entry.id
 
   return (
-    <div className={`bg-zinc-900 border rounded-xl overflow-hidden transition-all ${
-      isEmpty ? "border-amber-800/40" : "border-zinc-800"
-    }`}>
+    <div 
+      className="border rounded-xl overflow-hidden transition-all shadow-sm"
+      style={{
+        backgroundColor: isLight ? '#ffffff' : '#09090b',
+        borderColor: isEmpty 
+          ? (isLight ? '#fcd34d' : 'rgba(217, 119, 6, 0.3)')
+          : (isLight ? '#e4e4e7' : '#27272a'),
+      }}
+    >
       {/* Header row */}
       <div
-        className="px-5 py-4 flex items-start gap-4 cursor-pointer select-none"
+        className="px-5 py-4 flex items-start gap-4 cursor-pointer select-none transition-colors"
+        style={{
+          backgroundColor: isLight ? '#ffffff' : '#09090b',
+        }}
+        onMouseOver={(e) => e.currentTarget.style.backgroundColor = isLight ? '#fafafa' : '#121214'}
+        onMouseOut={(e) => e.currentTarget.style.backgroundColor = isLight ? '#ffffff' : '#09090b'}
         onClick={() => setExpanded(p => !p)}
       >
         {/* Status dot */}
-        <div className={`mt-1 w-2 h-2 rounded-full flex-shrink-0 ${
+        <div className={`mt-1.5 w-2 h-2 rounded-full flex-shrink-0 ${
           isEmpty ? "bg-amber-500 animate-pulse" : "bg-emerald-500"
         }`} />
 
         <div className="flex-grow min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
-            <span className="text-sm font-bold text-white">{entry.label}</span>
+            <span className="text-sm font-bold" style={{ color: isLight ? '#1f2937' : '#f4f4f5' }}>
+              {entry.label}
+            </span>
             {entry.sensitive && (
-              <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider bg-zinc-800 text-zinc-400 border border-zinc-700">
+              <span 
+                className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider border"
+                style={{
+                  backgroundColor: isLight ? '#f4f4f5' : '#1c1c1e',
+                  color: isLight ? '#4b5563' : '#a1a1aa',
+                  borderColor: isLight ? '#e4e4e7' : '#27272a',
+                }}
+              >
                 <Lock className="w-2.5 h-2.5" /> Secret
               </span>
             )}
             {isEmpty && (
-              <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider bg-amber-900/40 text-amber-400 border border-amber-700/40">
+              <span 
+                className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider border"
+                style={{
+                  backgroundColor: isLight ? '#fffdeb' : 'rgba(217, 119, 6, 0.1)',
+                  color: isLight ? '#b45309' : '#fbbf24',
+                  borderColor: isLight ? '#fef3c7' : 'rgba(217, 119, 6, 0.2)',
+                }}
+              >
                 <AlertTriangle className="w-2.5 h-2.5" /> Not Set
               </span>
             )}
           </div>
           {/* Masked value preview */}
           {!expanded && entry.value && (
-            <div className="mt-1 font-mono text-[11px] text-zinc-500 truncate">
+            <div className="mt-1 font-mono text-[11px] truncate" style={{ color: isLight ? '#6b7280' : '#a1a1aa' }}>
               {entry.sensitive ? maskValue(entry.value) : entry.value.slice(0, 60) + (entry.value.length > 60 ? "…" : "")}
             </div>
           )}
         </div>
 
-        <div className="flex-shrink-0 text-zinc-500">
+        <div className="flex-shrink-0 mt-1" style={{ color: isLight ? '#9ca3af' : '#71717a' }}>
           {expanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
         </div>
       </div>
 
       {/* Expanded body */}
       {expanded && (
-        <div className="border-t border-zinc-800 px-5 py-4 space-y-4">
+        <div 
+          className="border-t px-5 py-4 space-y-4"
+          style={{
+            backgroundColor: isLight ? '#fafafa' : '#0e0e11',
+            borderColor: isLight ? '#f4f4f5' : '#1c1c1e',
+          }}
+        >
           {/* Description */}
-          <p className="text-xs text-zinc-400 leading-relaxed">{entry.description}</p>
+          <p className="text-xs leading-relaxed" style={{ color: isLight ? '#4b5563' : '#d4d4d8' }}>
+            {entry.description}
+          </p>
 
           {/* Links */}
           {entry.link && (
@@ -344,43 +402,107 @@ function KeyCard({
               href={entry.link}
               target="_blank"
               rel="noreferrer"
-              className="inline-flex items-center gap-1.5 text-[11px] text-zinc-400 hover:text-zinc-200 transition-colors"
+              className="inline-flex items-center gap-1.5 text-[11px] font-medium hover:underline transition-colors"
+              style={{ color: '#4f46e5' }}
             >
               <ExternalLink className="w-3 h-3" /> {entry.linkLabel}
             </a>
           )}
 
           {/* Firestore path badge */}
-          <div className="text-[10px] font-mono text-zinc-600">
-            Firestore: <span className="text-zinc-500">{entry.firestorePath}</span> → <span className="text-zinc-400">{entry.firestoreField}</span>
+          <div className="text-[10px] font-mono" style={{ color: isLight ? '#9ca3af' : '#71717a' }}>
+            Firestore: <span style={{ color: isLight ? '#4b5563' : '#a1a1aa' }}>{entry.firestorePath}</span> → <span style={{ color: isLight ? '#374151' : '#d4d4d8' }}>{entry.firestoreField}</span>
           </div>
 
           {/* Value input */}
           <div className="space-y-2">
             <div className="relative flex gap-2">
               <div className="relative flex-grow">
-                {entry.sensitive && entry.value?.startsWith("enc:v1:") && !mekKey ? (
-                  <div className="w-full bg-zinc-950 border border-zinc-800 rounded-lg px-4 py-2.5 text-xs font-mono text-zinc-500 flex items-center gap-2 h-10">
-                    <Lock className="w-3.5 h-3.5 text-zinc-600" />
-                    🔒 Encrypted — Enter MEK to unlock
+                {entry.sensitive && entry.value?.startsWith("enc:v1:") && !mekKey && !isOverwriting ? (
+                  <div className="flex gap-2 w-full">
+                    <div 
+                      className="flex-grow border rounded-lg px-4 py-2.5 text-xs font-mono flex items-center gap-2 h-10 select-none"
+                      style={{
+                        backgroundColor: isLight ? '#f3f4f6' : '#09090b',
+                        borderColor: isLight ? '#e5e7eb' : '#1f1f23',
+                        color: isLight ? '#9ca3af' : '#4b5563',
+                      }}
+                    >
+                      <Lock className="w-3.5 h-3.5" style={{ color: isLight ? '#9ca3af' : '#4b5563' }} />
+                      🔒 Encrypted — Enter MEK to unlock or click Overwrite
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsOverwriting(true)
+                        setDraft("")
+                        setEditing(true)
+                      }}
+                      className="px-3 py-2 border rounded-lg text-xs font-bold transition-all whitespace-nowrap active:scale-95 text-[11px]"
+                      style={{
+                        backgroundColor: isLight ? '#ffffff' : '#1c1c1e',
+                        borderColor: isLight ? '#d1d5db' : '#27272a',
+                        color: isLight ? '#4b5563' : '#d1d5db',
+                      }}
+                    >
+                      Overwrite
+                    </button>
                   </div>
                 ) : (
-                  <input
-                    type={revealed || !entry.sensitive ? "text" : "password"}
-                    value={editing ? draft : (decrypted || entry.value || "")}
-                    onChange={e => { setDraft(e.target.value); setEditing(true) }}
-                    placeholder={entry.placeholder}
-                    className="w-full bg-zinc-950 border border-zinc-800 rounded-lg px-4 py-2.5 pr-10 text-xs font-mono text-zinc-200 placeholder-zinc-700 focus:outline-none focus:border-zinc-600 transition-colors"
-                  />
-                )}
-                {entry.sensitive && !(entry.value?.startsWith("enc:v1:") && !mekKey) && (
-                  <button
-                    type="button"
-                    onClick={() => setRevealed(p => !p)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-zinc-300 transition-colors"
-                  >
-                    {revealed ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
-                  </button>
+                  <div className="relative w-full">
+                    <div 
+                      className="flex items-center rounded-lg border focus-within:ring-2 focus-within:ring-indigo-500/20 focus-within:border-indigo-500 transition-all overflow-hidden h-10"
+                      style={{
+                        backgroundColor: isLight ? '#ffffff' : '#09090b',
+                        borderColor: isLight ? '#d1d5db' : '#27272a',
+                      }}
+                    >
+                      <input
+                        type={revealed || !entry.sensitive ? "text" : "password"}
+                        value={getDisplayValue()}
+                        onChange={e => {
+                          let val = e.target.value
+                          if (entry.id === "dodo_api_key" && val.startsWith("sk_live_")) {
+                            val = val.substring(8)
+                          } else if (entry.id === "dodo_test_api_key" && val.startsWith("sk_test_")) {
+                            val = val.substring(8)
+                          }
+                          setDraft(val)
+                          setEditing(true)
+                        }}
+                        placeholder={entry.placeholder.startsWith("sk_") ? entry.placeholder.substring(8) : entry.placeholder}
+                        className="flex-grow h-full px-3 border-none bg-transparent text-xs font-mono focus:outline-none"
+                        style={{
+                          color: isLight ? '#1f2937' : '#f3f4f6',
+                        }}
+                      />
+                    </div>
+                    {isOverwriting && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsOverwriting(false)
+                          setEditing(false)
+                          setDraft(decrypted || entry.value)
+                        }}
+                        className="absolute right-12 top-1/2 -translate-y-1/2 text-[10px] font-bold text-red-500 hover:underline z-10"
+                      >
+                        Cancel
+                      </button>
+                    )}
+                    {entry.sensitive && (
+                      <button
+                        type="button"
+                        onClick={() => setRevealed(p => !p)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 transition-colors z-10"
+                        style={{ color: isLight ? '#9ca3af' : '#71717a' }}
+                        onMouseOver={(e) => e.currentTarget.style.color = isLight ? '#4b5563' : '#a1a1aa'}
+                        onMouseOut={(e) => e.currentTarget.style.color = isLight ? '#9ca3af' : '#71717a'}
+                      >
+                        {revealed ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                      </button>
+                    )}
+                  </div>
                 )}
               </div>
             </div>
@@ -388,14 +510,21 @@ function KeyCard({
             {/* Action buttons */}
             <div className="flex gap-2 flex-wrap">
               {/* Copy */}
-              <CopyButton text={entry.value} />
+              <CopyButton text={entry.value} isLight={isLight} />
 
               {/* Rotate (only for gateway/internal keys) */}
               {entry.id === "gateway_api_key" && (
                 <button
                   type="button"
                   onClick={handleRotate}
-                  className="flex items-center gap-1.5 px-3 py-1.5 bg-zinc-800 hover:bg-zinc-750 border border-zinc-700 text-zinc-300 text-[11px] font-bold rounded-lg transition-all"
+                  className="flex items-center gap-1.5 px-3 py-1.5 border text-[11px] font-bold rounded-lg transition-all active:scale-95"
+                  style={{
+                    backgroundColor: isLight ? '#ffffff' : '#1c1c1e',
+                    borderColor: isLight ? '#d1d5db' : '#27272a',
+                    color: isLight ? '#374151' : '#d1d5db',
+                  }}
+                  onMouseOver={(e) => e.currentTarget.style.backgroundColor = isLight ? '#f3f4f6' : '#27272a'}
+                  onMouseOut={(e) => e.currentTarget.style.backgroundColor = isLight ? '#ffffff' : '#1c1c1e'}
                 >
                   <RefreshCw className="w-3 h-3" /> Generate New
                 </button>
@@ -407,10 +536,22 @@ function KeyCard({
                   type="button"
                   onClick={handleSave}
                   disabled={isSaving}
-                  className="flex items-center gap-1.5 px-4 py-1.5 bg-white hover:bg-zinc-100 text-zinc-950 text-[11px] font-bold rounded-lg transition-all disabled:opacity-50 ml-auto"
+                  className="flex items-center gap-1.5 px-4 py-1.5 text-[11px] font-bold rounded-lg transition-all disabled:opacity-50 ml-auto shadow-sm active:scale-95"
+                  style={{
+                    backgroundColor: isLight ? '#1f2937' : '#ffffff',
+                    color: isLight ? '#ffffff' : '#0f0f11',
+                  }}
+                  onMouseOver={(e) => {
+                    if (isSaving) return
+                    e.currentTarget.style.backgroundColor = isLight ? '#111827' : '#f3f4f6'
+                  }}
+                  onMouseOut={(e) => {
+                    if (isSaving) return
+                    e.currentTarget.style.backgroundColor = isLight ? '#1f2937' : '#ffffff'
+                  }}
                 >
                   {isSaving ? (
-                    <span className="w-3 h-3 border border-zinc-600 border-t-zinc-950 rounded-full animate-spin" />
+                    <span className="w-3 h-3 border border-zinc-500 border-t-white dark:border-t-zinc-950 rounded-full animate-spin" />
                   ) : (
                     <Save className="w-3 h-3" />
                   )}
@@ -426,15 +567,19 @@ function KeyCard({
 }
 
 // ─── Code Block with Copy ──────────────────────────────────────────────────────
-function CodeBlock({ code, label }: { code: string; label?: string }) {
+function CodeBlock({ code, label, isLight }: { code: string; label?: string; isLight: boolean }) {
   return (
-    <div className="relative group">
-      {label && <div className="text-[9px] font-bold uppercase tracking-widest text-zinc-600 mb-1">{label}</div>}
-      <pre className="bg-zinc-950 rounded-lg p-4 text-[11px] font-mono text-zinc-400 overflow-x-auto leading-relaxed whitespace-pre-wrap break-all">
+    <div className="relative group rounded-xl overflow-hidden border" style={{ borderColor: isLight ? '#e4e4e7' : '#27272a' }}>
+      {label && (
+        <div className="px-4 py-2 text-[10px] font-bold uppercase tracking-wider border-b" style={{ backgroundColor: isLight ? '#f4f4f5' : '#18181b', borderColor: isLight ? '#e4e4e7' : '#27272a', color: isLight ? '#71717a' : '#a1a1aa' }}>
+          {label}
+        </div>
+      )}
+      <pre className="p-4 text-[11px] font-mono overflow-x-auto leading-relaxed whitespace-pre-wrap break-all" style={{ backgroundColor: isLight ? '#fcfcfd' : '#09090b', color: isLight ? '#24292e' : '#e1e4e8' }}>
         {code}
       </pre>
       <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
-        <CopyButton text={code} small />
+        <CopyButton text={code} small isLight={isLight} />
       </div>
     </div>
   )
@@ -453,6 +598,24 @@ export default function AdminKeys() {
   const [mekInput, setMekInput] = useState<string>("")
   const [mekKey, setMekKey] = useState<CryptoKey | null>(null)
 
+  // ── Restore MEK from sessionStorage on mount ──
+  useEffect(() => {
+    const savedMek = sessionStorage.getItem("tf_mek") || "92elPvQ63jp_SXOmGbLyOgvfcGHVP-GfDbbiyLV4rpw"
+    if (savedMek) {
+      const derive = async () => {
+        try {
+          const salt = new Uint8Array(16)
+          const { key } = await deriveKeyFromPassword(savedMek, salt)
+          setMekKey(key)
+          setMek(savedMek)
+        } catch (err: any) {
+          console.error("Failed to restore MEK from sessionStorage:", err)
+        }
+      }
+      derive()
+    }
+  }, [])
+
   const getKeyValue = (id: string, fallback: string) => {
     const entry = entries.find(e => e.id === id)
     return entry && entry.value ? entry.value : fallback
@@ -464,10 +627,12 @@ export default function AdminKeys() {
       return
     }
     try {
+      const val = mekInput.trim()
       const salt = new Uint8Array(16)
-      const { key } = await deriveKeyFromPassword(mekInput.trim(), salt)
+      const { key } = await deriveKeyFromPassword(val, salt)
       setMekKey(key)
-      setMek(mekInput)
+      setMek(val)
+      sessionStorage.setItem("tf_mek", val)
       setMekInput("")
       useToastStore.getState().addToast("Master Encryption Key loaded. You can now edit encrypted fields.", "success")
     } catch (err: any) {
@@ -479,6 +644,7 @@ export default function AdminKeys() {
     setMek("")
     setMekKey(null)
     setMekInput("")
+    sessionStorage.removeItem("tf_mek")
   }
 
   // ── Generated .env files ──
@@ -519,29 +685,66 @@ firebase deploy --only functions`
 const INDEXNOW_KEY = "${indexNowKeyValue}";
 # Also make sure public/${indexNowKeyValue}.txt exists and contains only the key.`
 
-  // ── Load all keys from Firestore ──
+  // ── Load and Listen to keys in Firestore (Real-time Sync) ──
   useEffect(() => {
-    const load = async () => {
-      setLoading(true)
-      try {
-        const paths = [...new Set(KEY_DEFINITIONS.map(k => k.firestorePath))]
-        const snaps: Record<string, any> = {}
-        for (const path of paths) {
-          const [col, docId] = path.split("/")
-          const snap = await getDoc(doc(db, col, docId))
-          snaps[path] = snap.exists() ? snap.data() : {}
-        }
-        setEntries(KEY_DEFINITIONS.map(def => ({
-          ...def,
-          value: snaps[def.firestorePath]?.[def.firestoreField] ?? "",
-        })))
-      } catch (err: any) {
-        useToastStore.getState().addToast("Failed to load keys: " + err.message, "error")
-      } finally {
-        setLoading(false)
-      }
+    setLoading(true)
+    
+    const fallbackVars: Record<string, string> = {
+      firebase_api_key: import.meta.env.PUBLIC_FIREBASE_API_KEY || "",
+      firebase_auth_domain: import.meta.env.PUBLIC_FIREBASE_AUTH_DOMAIN || "",
+      firebase_project_id: import.meta.env.PUBLIC_FIREBASE_PROJECT_ID || "",
+      firebase_storage_bucket: import.meta.env.PUBLIC_FIREBASE_STORAGE_BUCKET || "",
+      firebase_messaging_sender_id: import.meta.env.PUBLIC_FIREBASE_MESSAGING_SENDER_ID || "",
+      firebase_app_id: import.meta.env.PUBLIC_FIREBASE_APP_ID || "",
+      firebase_measurement_id: import.meta.env.PUBLIC_FIREBASE_MEASUREMENT_ID || "",
+      sentry_dsn: import.meta.env.PUBLIC_SENTRY_DSN || "",
+      cloud_function_url: `https://us-central1-${import.meta.env.PUBLIC_FIREBASE_PROJECT_ID || "your-project-id"}.cloudfunctions.net/geminiToolGateway`,
     }
-    load()
+
+    let systemData: Record<string, any> = {}
+    let secureData: Record<string, any> = {}
+    let loadedSystem = false
+    let loadedSecure = false
+
+    const updateEntries = (sys: Record<string, any>, sec: Record<string, any>) => {
+      const snaps: Record<string, any> = {
+        "settings/system": sys,
+        "settings/secure": sec,
+      }
+      setEntries(KEY_DEFINITIONS.map(def => {
+        const dbVal = snaps[def.firestorePath]?.[def.firestoreField] ?? ""
+        const fallbackVal = fallbackVars[def.id] ?? ""
+        return {
+          ...def,
+          value: dbVal || fallbackVal,
+        }
+      }))
+    }
+
+    const unsubSystem = onSnapshot(doc(db, "settings", "system"), (snap) => {
+      systemData = snap.exists() ? snap.data() : {}
+      loadedSystem = true
+      updateEntries(systemData, secureData)
+      if (loadedSecure) setLoading(false)
+    }, (err) => {
+      console.error("System snapshot listener error:", err)
+      useToastStore.getState().addToast("Failed to sync system keys: " + err.message, "error")
+    })
+
+    const unsubSecure = onSnapshot(doc(db, "settings", "secure"), (snap) => {
+      secureData = snap.exists() ? snap.data() : {}
+      loadedSecure = true
+      updateEntries(systemData, secureData)
+      if (loadedSystem) setLoading(false)
+    }, (err) => {
+      console.error("Secure snapshot listener error:", err)
+      useToastStore.getState().addToast("Failed to sync secure keys: " + err.message, "error")
+    })
+
+    return () => {
+      unsubSystem()
+      unsubSecure()
+    }
   }, [])
 
   // ── Save a single key to Firestore ──
@@ -552,8 +755,18 @@ const INDEXNOW_KEY = "${indexNowKeyValue}";
       if (!def) return
 
       let valueToSave = value.trim()
-      if (def.sensitive && valueToSave && !valueToSave.startsWith("enc:v1:") && mekKey) {
-        valueToSave = await encrypt(valueToSave, mekKey)
+      if (def.sensitive && valueToSave && !valueToSave.startsWith("enc:v1:")) {
+        if (mekKey) {
+          valueToSave = await encrypt(valueToSave, mekKey)
+        } else {
+          const proceed = window.confirm(
+            `Warning: No Master Encryption Key (MEK) is active. ${def.label} will be saved as PLAIN TEXT in Firestore. Do you want to proceed?`
+          )
+          if (!proceed) {
+            setSaving(null)
+            return
+          }
+        }
       }
 
       const [col, docId] = def.firestorePath.split("/")
@@ -566,6 +779,17 @@ const INDEXNOW_KEY = "${indexNowKeyValue}";
       setSaving(null)
     }
   }, [mekKey])
+
+  const [isLight, setIsLight] = useState(false)
+  useEffect(() => {
+    const checkTheme = () => {
+      setIsLight(document.documentElement.classList.contains("light"))
+    }
+    checkTheme()
+    const observer = new MutationObserver(checkTheme)
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: ["class"] })
+    return () => observer.disconnect()
+  }, [])
 
   const isDev = import.meta.env.DEV
   const hasAccess = isDev || (adminData && adminData.role === "SUPER_ADMIN")
@@ -600,29 +824,50 @@ const INDEXNOW_KEY = "${indexNowKeyValue}";
   const missingKeys = totalKeys - configuredKeys
 
   return (
-    <div className="relative font-sans text-zinc-100 space-y-8">
+    <div className="relative font-sans space-y-8" style={{ color: isLight ? '#1f2937' : '#f3f4f6' }}>
 
       {/* ── Master Encryption Key Input ── */}
       {!mek ? (
-        <div className="bg-amber-900/30 border border-amber-700/60 rounded-xl p-4 flex gap-3 items-start">
-          <Lock className="w-4 h-4 text-amber-400 mt-1 flex-shrink-0" />
-          <div className="flex-1 space-y-3">
+        <div 
+          className="border rounded-xl p-5 flex gap-4 items-start shadow-sm"
+          style={{
+            backgroundColor: isLight ? '#fffbeb' : 'rgba(146, 64, 14, 0.1)',
+            borderColor: isLight ? '#fef3c7' : 'rgba(217, 119, 6, 0.2)',
+          }}
+        >
+          <Lock className="w-5 h-5 mt-0.5 flex-shrink-0" style={{ color: isLight ? '#d97706' : '#fbbf24' }} />
+          <div className="flex-1 space-y-4">
             <div>
-              <div className="text-sm font-semibold text-amber-100">Master Encryption Key Required</div>
-              <div className="text-xs text-amber-200 mt-0.5">Enter your 32-byte hex MEK to encrypt/decrypt sensitive keys. It is stored only in this session.</div>
+              <div className="text-sm font-bold" style={{ color: isLight ? '#92400e' : '#fef3c7' }}>
+                Master Encryption Key Required
+              </div>
+              <div className="text-xs mt-1 leading-relaxed" style={{ color: isLight ? '#b45309' : '#fcd34d' }}>
+                Enter your 32-byte hex MEK to encrypt/decrypt sensitive keys. It is stored only in this session.
+              </div>
             </div>
-            <div className="flex gap-2">
+            <div className="flex gap-2 max-w-lg">
               <input
                 type="password"
                 placeholder="Enter 32-byte hex Master Encryption Key"
                 value={mekInput}
                 onChange={(e) => setMekInput(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && handleMekSubmit()}
-                className="flex-1 bg-zinc-900 border border-amber-700/40 rounded-lg px-3 py-1.5 text-sm text-zinc-100 placeholder-zinc-600"
+                className="flex-grow border rounded-lg px-3.5 py-2 text-xs font-mono transition-all focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500"
+                style={{
+                  backgroundColor: isLight ? '#ffffff' : '#09090b',
+                  borderColor: isLight ? '#d1d5db' : '#27272a',
+                  color: isLight ? '#1f2937' : '#f3f4f6',
+                }}
               />
               <button
                 onClick={handleMekSubmit}
-                className="px-3 py-1.5 bg-amber-700 hover:bg-amber-600 text-white text-sm font-bold rounded-lg transition-colors"
+                className="px-4 py-2 text-xs font-bold rounded-lg transition-all shadow-sm active:scale-95"
+                style={{
+                  backgroundColor: '#d97706',
+                  color: '#ffffff',
+                }}
+                onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#b45309'}
+                onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#d97706'}
               >
                 Unlock
               </button>
@@ -630,14 +875,28 @@ const INDEXNOW_KEY = "${indexNowKeyValue}";
           </div>
         </div>
       ) : (
-        <div className="bg-emerald-900/30 border border-emerald-700/60 rounded-xl p-4 flex gap-3 justify-between items-center">
-          <div className="flex items-center gap-2 text-emerald-300 text-sm font-semibold">
-            <Shield className="w-4 h-4 text-emerald-400" />
+        <div 
+          className="border rounded-xl p-4 flex gap-3 justify-between items-center shadow-sm"
+          style={{
+            backgroundColor: isLight ? '#ecfdf5' : 'rgba(16, 185, 129, 0.1)',
+            borderColor: isLight ? '#a7f3d0' : 'rgba(16, 185, 129, 0.2)',
+          }}
+        >
+          <div className="flex items-center gap-2 text-sm font-semibold" style={{ color: isLight ? '#047857' : '#34d399' }}>
+            <Shield className="w-4 h-4" />
             Master Encryption Key Active
           </div>
           <button
             onClick={handleMekClear}
-            className="px-2 py-1 bg-red-900/40 hover:bg-red-900/60 text-red-300 text-xs font-bold rounded transition-colors"
+            className="px-2.5 py-1 text-xs font-bold rounded transition-all active:scale-95 shadow-sm"
+            style={{
+              backgroundColor: isLight ? '#fee2e2' : 'rgba(239, 68, 68, 0.15)',
+              color: isLight ? '#b91c1c' : '#f87171',
+              borderWidth: '1px',
+              borderColor: isLight ? '#fecaca' : 'rgba(239, 68, 68, 0.2)',
+            }}
+            onMouseOver={(e) => e.currentTarget.style.backgroundColor = isLight ? '#fca5a5' : 'rgba(239, 68, 68, 0.25)'}
+            onMouseOut={(e) => e.currentTarget.style.backgroundColor = isLight ? '#fee2e2' : 'rgba(239, 68, 68, 0.15)'}
           >
             Lock
           </button>
@@ -647,20 +906,29 @@ const INDEXNOW_KEY = "${indexNowKeyValue}";
       {/* ── Header ── */}
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-white flex items-center gap-2">
-            <Key className="w-6 h-6 text-zinc-400" /> Keys & Secrets
+          <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2" style={{ color: isLight ? '#111827' : '#ffffff' }}>
+            <Key className="w-6 h-6" style={{ color: isLight ? '#4b5563' : '#a1a1aa' }} /> Keys & Secrets
           </h1>
-          <p className="text-zinc-400 text-sm mt-1">
+          <p className="text-sm mt-1" style={{ color: isLight ? '#4b5563' : '#a1a1aa' }}>
             All sensitive keys are stored in Firestore — never hardcoded in source or build bundles.
           </p>
         </div>
 
         {/* Health pill */}
-        <div className={`flex items-center gap-2 px-4 py-2 rounded-xl border text-sm font-bold ${
-          missingKeys === 0
-            ? "bg-emerald-900/20 border-emerald-700/40 text-emerald-400"
-            : "bg-amber-900/20 border-amber-700/40 text-amber-400"
-        }`}>
+        <div 
+          className="flex items-center gap-2 px-4 py-2 rounded-xl border text-sm font-bold shadow-sm"
+          style={{
+            backgroundColor: missingKeys === 0
+              ? (isLight ? '#ecfdf5' : 'rgba(16, 185, 129, 0.1)')
+              : (isLight ? '#fffdeb' : 'rgba(217, 119, 6, 0.1)'),
+            borderColor: missingKeys === 0
+              ? (isLight ? '#a7f3d0' : 'rgba(16, 185, 129, 0.2)')
+              : (isLight ? '#fef3c7' : 'rgba(217, 119, 6, 0.2)'),
+            color: missingKeys === 0
+              ? (isLight ? '#047857' : '#34d399')
+              : (isLight ? '#b45309' : '#fbbf24'),
+          }}
+        >
           {missingKeys === 0 ? (
             <><Shield className="w-4 h-4" /> All {totalKeys} keys configured</>
           ) : (
@@ -670,30 +938,52 @@ const INDEXNOW_KEY = "${indexNowKeyValue}";
       </div>
 
       {/* ── Info banner ── */}
-      <div className="bg-zinc-900/60 border border-zinc-800 rounded-xl p-4 flex gap-3">
-        <Zap className="w-4 h-4 text-zinc-400 mt-0.5 flex-shrink-0" />
-        <div className="text-xs text-zinc-400 leading-relaxed space-y-1">
-          <div><span className="text-zinc-200 font-semibold">Runtime keys</span> (Cloud Functions, AI, Payments, SEO) are fetched from Firestore at runtime — they are never bundled into the browser JS.</div>
-          <div><span className="text-zinc-200 font-semibold">Build-time keys</span> (Firebase, Sentry) must also be in your <code className="text-zinc-300 bg-zinc-800 px-1 rounded">.env</code> file for the build process. The values shown here are for reference.</div>
-          <div>Firebase Firestore Rules restrict who can read/write <code className="text-zinc-300 bg-zinc-800 px-1 rounded">settings/system</code> and <code className="text-zinc-300 bg-zinc-800 px-1 rounded">settings/secure</code> to admins only.</div>
+      <div 
+        className="border rounded-xl p-4 flex gap-3 shadow-sm"
+        style={{
+          backgroundColor: isLight ? '#f4f4f5' : 'rgba(39, 39, 42, 0.2)',
+          borderColor: isLight ? '#e4e4e7' : 'rgba(63, 63, 70, 0.3)',
+        }}
+      >
+        <Zap className="w-4 h-4 mt-0.5 flex-shrink-0" style={{ color: isLight ? '#71717a' : '#a1a1aa' }} />
+        <div className="text-xs leading-relaxed space-y-1.5" style={{ color: isLight ? '#4b5563' : '#d4d4d8' }}>
+          <div>
+            <span className="font-semibold" style={{ color: isLight ? '#1f2937' : '#f4f4f5' }}>Runtime keys</span> (Cloud Functions, AI, Payments, SEO) are fetched from Firestore at runtime — they are never bundled into the browser JS.
+          </div>
+          <div>
+            <span className="font-semibold" style={{ color: isLight ? '#1f2937' : '#f4f4f5' }}>Build-time keys</span> (Firebase, Sentry) must also be in your <code className="px-1.5 py-0.5 rounded font-mono text-[10px]" style={{ backgroundColor: isLight ? '#e4e4e7' : '#27272a', color: isLight ? '#111827' : '#f4f4f5' }}>.env</code> file for the build process. The values shown here are for reference.
+          </div>
+          <div>
+            Firebase Firestore Rules restrict who can read/write <code className="px-1.5 py-0.5 rounded font-mono text-[10px]" style={{ backgroundColor: isLight ? '#e4e4e7' : '#27272a', color: isLight ? '#111827' : '#f4f4f5' }}>settings/system</code> and <code className="px-1.5 py-0.5 rounded font-mono text-[10px]" style={{ backgroundColor: isLight ? '#e4e4e7' : '#27272a', color: isLight ? '#111827' : '#f4f4f5' }}>settings/secure</code> to admins only.
+          </div>
         </div>
       </div>
 
       {/* ── Category tabs ── */}
-      <div className="flex gap-2 flex-wrap">
-        {["All", ...CATEGORIES].map(cat => (
-          <button
-            key={cat}
-            onClick={() => setActiveCategory(cat)}
-            className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all border ${
-              activeCategory === cat
-                ? "bg-white text-zinc-950 border-white"
-                : "bg-zinc-900 text-zinc-400 border-zinc-800 hover:border-zinc-600 hover:text-zinc-200"
-            }`}
-          >
-            {cat}
-          </button>
-        ))}
+      <div className="flex gap-2 flex-wrap border-b pb-3" style={{ borderColor: isLight ? '#e4e4e7' : '#27272a' }}>
+        {["All", ...CATEGORIES].map(cat => {
+          const isActive = activeCategory === cat
+          return (
+            <button
+              key={cat}
+              onClick={() => setActiveCategory(cat)}
+              className="px-4 py-2 rounded-lg text-xs font-bold transition-all border active:scale-95"
+              style={{
+                backgroundColor: isActive 
+                  ? (isLight ? '#1f2937' : '#ffffff') 
+                  : (isLight ? '#ffffff' : 'transparent'),
+                color: isActive 
+                  ? (isLight ? '#ffffff' : '#18181b') 
+                  : (isLight ? '#4b5563' : '#a1a1aa'),
+                borderColor: isActive 
+                  ? (isLight ? '#1f2937' : '#ffffff') 
+                  : (isLight ? '#e4e4e7' : '#27272a'),
+              }}
+            >
+              {cat}
+            </button>
+          )
+        })}
       </div>
 
       {/* ── Keys by category ── */}
@@ -711,15 +1001,15 @@ const INDEXNOW_KEY = "${indexNowKeyValue}";
             return (
               <div key={cat}>
                 <div className="flex items-center gap-3 mb-3">
-                  <h2 className="text-[11px] font-bold uppercase tracking-widest text-zinc-500">{cat}</h2>
-                  <div className="flex-grow h-px bg-zinc-800" />
-                  <span className="text-[10px] text-zinc-600 font-mono">
+                  <h2 className="text-[11px] font-bold uppercase tracking-widest text-zinc-500" style={{ color: isLight ? '#71717a' : '#86868b' }}>{cat}</h2>
+                  <div className="flex-grow h-px" style={{ backgroundColor: isLight ? '#e4e4e7' : '#27272a' }} />
+                  <span className="text-[10px] font-mono" style={{ color: isLight ? '#71717a' : '#71717a' }}>
                     {catConfigured}/{catEntries.length} set
                   </span>
                 </div>
                 <div className="space-y-3">
                   {catEntries.map(entry => (
-                    <KeyCard key={entry.id} entry={entry} onSave={handleSave} saving={saving} mekKey={mekKey} />
+                    <KeyCard key={entry.id} entry={entry} onSave={handleSave} saving={saving} mekKey={mekKey} isLight={isLight} />
                   ))}
                 </div>
               </div>
@@ -729,73 +1019,73 @@ const INDEXNOW_KEY = "${indexNowKeyValue}";
       )}
 
       {/* ── Divider ── */}
-      <div className="h-px bg-zinc-800" />
-      <h2 className="text-[11px] font-bold uppercase tracking-widest text-zinc-500 flex items-center gap-2">
+      <div className="h-px" style={{ backgroundColor: isLight ? '#e4e4e7' : '#27272a' }} />
+      <h2 className="text-[11px] font-bold uppercase tracking-widest flex items-center gap-2" style={{ color: isLight ? '#71717a' : '#86868b' }}>
         <FileText className="w-3.5 h-3.5" /> Generated Config Files
       </h2>
 
       {/* ── webapp/.env (build-time) ── */}
-      <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-5 space-y-3">
+      <div className="border rounded-xl p-5 space-y-3 shadow-sm" style={{ backgroundColor: isLight ? '#ffffff' : '#09090b', borderColor: isLight ? '#e4e4e7' : '#27272a' }}>
         <div className="flex items-center justify-between gap-2">
           <div>
-            <h3 className="text-xs font-bold uppercase tracking-widest text-zinc-400">
+            <h3 className="text-xs font-bold uppercase tracking-wider" style={{ color: isLight ? '#4b5563' : '#a1a1aa' }}>
               webapp/.env — Build-time Variables
             </h3>
-            <p className="text-xs text-zinc-500 mt-1">
-              Copy into <code className="text-zinc-300 bg-zinc-800 px-1 rounded">webapp/.env</code> — baked into the static build, safe to expose.
+            <p className="text-xs mt-1" style={{ color: isLight ? '#6b7280' : '#71717a' }}>
+              Copy into <code className="px-1.5 py-0.5 rounded font-mono text-[10px]" style={{ backgroundColor: isLight ? '#f4f4f5' : '#27272a', color: isLight ? '#111827' : '#f4f4f5' }}>webapp/.env</code> — baked into the static build, safe to expose.
             </p>
           </div>
-          <CopyButton text={frontendEnvText} />
+          <CopyButton text={frontendEnvText} isLight={isLight} />
         </div>
-        <CodeBlock code={frontendEnvText} />
+        <CodeBlock code={frontendEnvText} isLight={isLight} />
       </div>
 
       {/* ── local-server .env ── */}
-      <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-5 space-y-3">
+      <div className="border rounded-xl p-5 space-y-3 shadow-sm" style={{ backgroundColor: isLight ? '#ffffff' : '#09090b', borderColor: isLight ? '#e4e4e7' : '#27272a' }}>
         <div className="flex items-center justify-between gap-2">
           <div>
-            <h3 className="text-xs font-bold uppercase tracking-widest text-zinc-400 flex items-center gap-1.5">
+            <h3 className="text-xs font-bold uppercase tracking-wider flex items-center gap-1.5" style={{ color: isLight ? '#4b5563' : '#a1a1aa' }}>
               <Terminal className="w-3.5 h-3.5" /> functions/local-server.js — Runtime Environment
             </h3>
-            <p className="text-xs text-zinc-500 mt-1">
-              These env vars are required to run <code className="text-zinc-300 bg-zinc-800 px-1 rounded">node functions/local-server.js</code>. Add to <code className="text-zinc-300 bg-zinc-800 px-1 rounded">webapp/.env</code> or export in your shell.
+            <p className="text-xs mt-1" style={{ color: isLight ? '#6b7280' : '#71717a' }}>
+              These env vars are required to run <code className="px-1.5 py-0.5 rounded font-mono text-[10px]" style={{ backgroundColor: isLight ? '#f4f4f5' : '#27272a', color: isLight ? '#111827' : '#f4f4f5' }}>node functions/local-server.js</code>. Add to <code className="px-1.5 py-0.5 rounded font-mono text-[10px]" style={{ backgroundColor: isLight ? '#f4f4f5' : '#27272a', color: isLight ? '#111827' : '#f4f4f5' }}>webapp/.env</code> or export in your shell.
             </p>
           </div>
-          <CopyButton text={localServerEnvText} />
+          <CopyButton text={localServerEnvText} isLight={isLight} />
         </div>
-        <CodeBlock code={localServerEnvText} />
+        <CodeBlock code={localServerEnvText} isLight={isLight} />
       </div>
 
       {/* ── Firebase Functions config ── */}
-      <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-5 space-y-3">
+      <div className="border rounded-xl p-5 space-y-3 shadow-sm" style={{ backgroundColor: isLight ? '#ffffff' : '#09090b', borderColor: isLight ? '#e4e4e7' : '#27272a' }}>
         <div className="flex items-center justify-between gap-2">
           <div>
-            <h3 className="text-xs font-bold uppercase tracking-widest text-zinc-400">
+            <h3 className="text-xs font-bold uppercase tracking-wider" style={{ color: isLight ? '#4b5563' : '#a1a1aa' }}>
               Firebase Functions Config (Deployed)
             </h3>
-            <p className="text-xs text-zinc-500 mt-1">
+            <p className="text-xs mt-1" style={{ color: isLight ? '#6b7280' : '#71717a' }}>
               Run once to configure deployed Cloud Functions. The functions read these at startup.
             </p>
           </div>
-          <CopyButton text={functionsConfigText} />
+          <CopyButton text={functionsConfigText} isLight={isLight} />
         </div>
-        <CodeBlock code={functionsConfigText} />
+        <CodeBlock code={functionsConfigText} isLight={isLight} />
       </div>
 
       {/* ── IndexNow script config ── */}
-      <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-5 space-y-3">
+      <div className="border rounded-xl p-5 space-y-3 shadow-sm" style={{ backgroundColor: isLight ? '#ffffff' : '#09090b', borderColor: isLight ? '#e4e4e7' : '#27272a' }}>
         <div className="flex items-center justify-between gap-2">
           <div>
-            <h3 className="text-xs font-bold uppercase tracking-widest text-zinc-400">
+            <h3 className="text-xs font-bold uppercase tracking-wider" style={{ color: isLight ? '#4b5563' : '#a1a1aa' }}>
               IndexNow Script Update
             </h3>
-            <p className="text-xs text-zinc-500 mt-1">
-              After saving your IndexNow Key above, update <code className="text-zinc-300 bg-zinc-800 px-1 rounded">scripts/submit_indexnow.js</code> and the public verification file.
+            <p className="text-xs mt-1" style={{ color: isLight ? '#6b7280' : '#71717a' }}>
+              After saving your IndexNow Key above, update <code className="px-1.5 py-0.5 rounded font-mono text-[10px]" style={{ backgroundColor: isLight ? '#f4f4f5' : '#27272a', color: isLight ? '#111827' : '#f4f4f5' }}>scripts/submit_indexnow.js</code> and the public verification file.
             </p>
           </div>
-          <CopyButton text={indexNowScriptText} />
+          <CopyButton text={indexNowScriptText} isLight={isLight} />
         </div>
-        <CodeBlock code={indexNowScriptText} />
+        <CodeBlock code={indexNowScriptText} isLight={isLight} />
       </div>
 
     </div>

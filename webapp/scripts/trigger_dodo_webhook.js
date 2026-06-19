@@ -2,15 +2,26 @@ import { initializeApp } from 'firebase/app';
 import { getFirestore, doc, getDoc } from 'firebase/firestore';
 import crypto from 'crypto';
 
+// Firebase config — read from environment variables.
+// Required env vars:
+//   PUBLIC_FIREBASE_API_KEY, PUBLIC_FIREBASE_AUTH_DOMAIN, PUBLIC_FIREBASE_PROJECT_ID
+//   PUBLIC_FIREBASE_STORAGE_BUCKET, PUBLIC_FIREBASE_MESSAGING_SENDER_ID
+//   PUBLIC_FIREBASE_APP_ID, PUBLIC_FIREBASE_MEASUREMENT_ID
+// Copy these from webapp/.env or export them in your shell before running.
 const firebaseConfig = {
-  apiKey: "AIzaSyBAQFr7OeHkaLDk8yfNyGl6YD2qhdlnoXk",
-  authDomain: "gt-metadata-merger.firebaseapp.com",
-  projectId: "gt-metadata-merger",
-  storageBucket: "gt-metadata-merger.firebasestorage.app",
-  messagingSenderId: "198090983108",
-  appId: "1:198090983108:web:a90faac4214ecd91d76b91",
-  measurementId: "G-P0DY1QKD63"
+  apiKey:            process.env.PUBLIC_FIREBASE_API_KEY,
+  authDomain:        process.env.PUBLIC_FIREBASE_AUTH_DOMAIN,
+  projectId:         process.env.PUBLIC_FIREBASE_PROJECT_ID,
+  storageBucket:     process.env.PUBLIC_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: process.env.PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
+  appId:             process.env.PUBLIC_FIREBASE_APP_ID,
+  measurementId:     process.env.PUBLIC_FIREBASE_MEASUREMENT_ID,
 };
+
+if (!firebaseConfig.projectId || !firebaseConfig.apiKey) {
+  console.error("❌ Missing Firebase env vars. Export PUBLIC_FIREBASE_API_KEY and PUBLIC_FIREBASE_PROJECT_ID before running.");
+  process.exit(1);
+}
 
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
@@ -18,7 +29,8 @@ const db = getFirestore(app);
 const args = process.argv.slice(2);
 const userId = args[0];
 const plan = args[1] || 'pro';
-const targetUrl = args[2] || 'https://us-central1-gt-metadata-merger.cloudfunctions.net/geminiToolGateway/dodo-webhook';
+const defaultUrl = `https://us-central1-${firebaseConfig.projectId}.cloudfunctions.net/geminiToolGateway/dodo-webhook`;
+const targetUrl = args[2] || defaultUrl;
 
 if (!userId) {
   console.log("\n❌ Error: Missing user ID argument.\n");

@@ -364,30 +364,20 @@ export class SessionManager {
    * @param offset - Number of records to skip (0-based)
    * @param limit  - Maximum records to return per page (default 200)
    */
-  public async getPendingFilesPage(offset: number, limit: number = 200): Promise<FileRecord[]> {
-    const db = (indexedDbService as any);
-    // Use the underlying getAll with a cursor-based approach:
-    // We load the full keys list first (tiny overhead), then fetch only the page window.
-    // This avoids materialising all records while still being deterministic.
-    const all = await indexedDbService.getAll('files') as FileRecord[];
-    const pending = all.filter(f => f.status === 'pending');
-    // Eagerly null-out the non-pending slice so GC can reclaim handle memory
-    return pending.slice(offset, offset + limit);
+  public async getPendingFilesPage(lastId: string | null, limit: number = 200): Promise<FileRecord[]> {
+    return indexedDbService.getPendingFilesPage(lastId, limit) as Promise<FileRecord[]>;
   }
 
   public async getPendingFiles(): Promise<FileRecord[]> {
-    const all = await indexedDbService.getAll('files') as FileRecord[];
-    return all.filter(f => f.status === 'pending');
+    return indexedDbService.getAllByIndex('files', 'status', 'pending') as Promise<FileRecord[]>;
   }
 
   public async getPendingCount(): Promise<number> {
-    const all = await indexedDbService.getAll('files') as FileRecord[];
-    return all.filter(f => f.status === 'pending').length;
+    return indexedDbService.countByIndex('files', 'status', 'pending');
   }
 
   public async getInFlightFiles(): Promise<FileRecord[]> {
-    const all = await indexedDbService.getAll('files') as FileRecord[];
-    return all.filter(f => f.status === 'processing');
+    return indexedDbService.getAllByIndex('files', 'status', 'processing') as Promise<FileRecord[]>;
   }
 
   public async revertInFlightFiles(): Promise<void> {
