@@ -3,9 +3,11 @@ import { doc, getDoc, setDoc } from "firebase/firestore"
 import { db } from "../firebase"
 import { useAuth } from "../contexts/AuthContext"
 import { useToastStore } from "../store/useToastStore"
+import { decrypt, encrypt, deriveKeyFromPassword } from "../lib/crypto"
 import {
   Key, Eye, EyeOff, Copy, Check, RefreshCw, Save, Shield,
-  AlertTriangle, ChevronDown, ChevronUp, ExternalLink, Lock, Zap
+  AlertTriangle, ChevronDown, ChevronUp, ExternalLink, Lock, Zap,
+  Terminal, FileText
 } from "lucide-react"
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -23,14 +25,14 @@ interface KeyEntry {
   sensitive: boolean
 }
 
-const CATEGORIES = ["Cloud Functions", "Payments", "AI / APIs", "Frontend (Build-time)"]
+const CATEGORIES = ["Cloud Functions", "Payments", "AI / APIs", "SEO", "Frontend (Build-time)"]
 
 const KEY_DEFINITIONS: Omit<KeyEntry, "value">[] = [
   // ── Cloud Functions ──────────────────────────────────────────────────
   {
     id: "gateway_api_key",
     label: "Gateway API Key",
-    description: "Secret used to authenticate requests from the admin frontend to your Cloud Functions (sync-coupon, sync-dodo-prices). Also used as GATEWAY_API_KEY env var for local-server.js.",
+    description: "Secret used to authenticate requests from the admin frontend to your Cloud Functions (sync-coupon, sync-dodo-prices). Also required as GATEWAY_API_KEY env var when running local-server.js.",
     firestorePath: "settings/system",
     firestoreField: "gateway_api_key",
     placeholder: "takeoutfix-xxxx-xxxx-xxxx",
@@ -40,7 +42,7 @@ const KEY_DEFINITIONS: Omit<KeyEntry, "value">[] = [
   {
     id: "cloud_function_url",
     label: "Cloud Function Base URL",
-    description: "Base URL of your deployed Firebase Cloud Function (geminiToolGateway). Used as the endpoint for price sync and coupon sync calls.",
+    description: "Base URL of your deployed Firebase Cloud Function (geminiToolGateway). Used as the endpoint for price sync and coupon sync calls from the admin UI.",
     firestorePath: "settings/system",
     firestoreField: "cloud_function_url",
     placeholder: "https://us-central1-your-project.cloudfunctions.net/geminiToolGateway",
@@ -54,7 +56,7 @@ const KEY_DEFINITIONS: Omit<KeyEntry, "value">[] = [
   {
     id: "dodo_api_key",
     label: "Dodo Payments Live API Key",
-    description: "Live secret API key for Dodo Payments. Used by Cloud Functions to create/update products and discounts. Never expose this in the browser.",
+    description: "Live secret API key for Dodo Payments. Used by Cloud Functions and local-server.js to create/update products and discounts. Never expose this in the browser.",
     firestorePath: "settings/system",
     firestoreField: "dodo_api_key",
     placeholder: "sk_live_xxxxxxxxxxxxxxxxxxxx",
@@ -64,9 +66,21 @@ const KEY_DEFINITIONS: Omit<KeyEntry, "value">[] = [
     linkLabel: "Dodo Dashboard",
   },
   {
+    id: "dodo_test_api_key",
+    label: "Dodo Payments Test API Key",
+    description: "Test/sandbox secret API key for Dodo Payments. Used for testing payment flows without real money. Get this from Dodo Dashboard → API Keys → Test Mode.",
+    firestorePath: "settings/system",
+    firestoreField: "dodo_test_api_key",
+    placeholder: "sk_test_xxxxxxxxxxxxxxxxxxxx",
+    category: "Payments",
+    sensitive: true,
+    link: "https://dashboard.dodopayments.com/",
+    linkLabel: "Dodo Dashboard",
+  },
+  {
     id: "dodo_webhook_key",
     label: "Dodo Webhook Signing Secret",
-    description: "Webhook secret used to verify Dodo payment webhooks (HMAC SHA-256). Get this from your Dodo Dashboard → Webhooks.",
+    description: "Webhook secret used to verify Dodo payment webhooks (HMAC SHA-256). Get this from your Dodo Dashboard → Webhooks. Required by the Cloud Function to validate incoming payment events.",
     firestorePath: "settings/secure",
     firestoreField: "dodo_webhook_key",
     placeholder: "whsec_xxxxxxxxxxxxxxxxxxxx",
@@ -80,7 +94,7 @@ const KEY_DEFINITIONS: Omit<KeyEntry, "value">[] = [
   {
     id: "gemini_api_key",
     label: "Gemini API Key (Admin AI)",
-    description: "Google Gemini API key used by the Admin Support page to AI-draft and polish ticket replies. Fetched at runtime — never bundled into the frontend build.",
+    description: "Google Gemini API key used by the Admin Support page to AI-draft and polish ticket replies. Fetched at runtime from Firestore — never bundled into the frontend build.",
     firestorePath: "settings/system",
     firestoreField: "gemini_api_key",
     placeholder: "AIzaSy_xxxxxxxxxxxxxxxxxxxxxxxxxxxx",
@@ -88,6 +102,20 @@ const KEY_DEFINITIONS: Omit<KeyEntry, "value">[] = [
     sensitive: true,
     link: "https://aistudio.google.com/app/apikey",
     linkLabel: "Google AI Studio",
+  },
+
+  // ── SEO ───────────────────────────────────────────────────────────────
+  {
+    id: "indexnow_key",
+    label: "IndexNow Key",
+    description: "IndexNow protocol key for submitting URLs to Bing and other search engines. Also needs a matching verification file at /{key}.txt in the public/ folder. Used by scripts/submit_indexnow.js.",
+    firestorePath: "settings/system",
+    firestoreField: "indexnow_key",
+    placeholder: "e107aca980264801af5ddd4a7fe361a3",
+    category: "SEO",
+    sensitive: false,
+    link: "https://www.indexnow.org/",
+    linkLabel: "IndexNow Docs",
   },
 
   // ── Frontend Build-time ────────────────────────────────────────────────
@@ -102,6 +130,66 @@ const KEY_DEFINITIONS: Omit<KeyEntry, "value">[] = [
     sensitive: false,
     link: "https://console.firebase.google.com/project/_/settings/general",
     linkLabel: "Firebase Console",
+  },
+  {
+    id: "firebase_auth_domain",
+    label: "Firebase Auth Domain",
+    description: "Auth domain for Firebase Authentication. E.g., project-id.firebaseapp.com. Stored in .env as PUBLIC_FIREBASE_AUTH_DOMAIN.",
+    firestorePath: "settings/system",
+    firestoreField: "firebase_auth_domain_display",
+    placeholder: "your-project.firebaseapp.com",
+    category: "Frontend (Build-time)",
+    sensitive: false,
+  },
+  {
+    id: "firebase_project_id",
+    label: "Firebase Project ID",
+    description: "The unique identifier of your Firebase project. E.g., project-id. Stored in .env as PUBLIC_FIREBASE_PROJECT_ID.",
+    firestorePath: "settings/system",
+    firestoreField: "firebase_project_id_display",
+    placeholder: "your-project-id",
+    category: "Frontend (Build-time)",
+    sensitive: false,
+  },
+  {
+    id: "firebase_storage_bucket",
+    label: "Firebase Storage Bucket",
+    description: "Firebase Storage bucket name. E.g., project-id.firebasestorage.app. Stored in .env as PUBLIC_FIREBASE_STORAGE_BUCKET.",
+    firestorePath: "settings/system",
+    firestoreField: "firebase_storage_bucket_display",
+    placeholder: "your-project.firebasestorage.app",
+    category: "Frontend (Build-time)",
+    sensitive: false,
+  },
+  {
+    id: "firebase_messaging_sender_id",
+    label: "Firebase Messaging Sender ID",
+    description: "The unique numerical identifier for your Firebase Cloud Messaging sender. Stored in .env as PUBLIC_FIREBASE_MESSAGING_SENDER_ID.",
+    firestorePath: "settings/system",
+    firestoreField: "firebase_messaging_sender_id_display",
+    placeholder: "1234567890",
+    category: "Frontend (Build-time)",
+    sensitive: false,
+  },
+  {
+    id: "firebase_app_id",
+    label: "Firebase App ID",
+    description: "The unique identifier of your Firebase Web App. Stored in .env as PUBLIC_FIREBASE_APP_ID.",
+    firestorePath: "settings/system",
+    firestoreField: "firebase_app_id_display",
+    placeholder: "1:1234567890:web:xxxxxxxxxxxxxxxxx",
+    category: "Frontend (Build-time)",
+    sensitive: false,
+  },
+  {
+    id: "firebase_measurement_id",
+    label: "Firebase Measurement ID",
+    description: "The Google Analytics measurement ID for your Firebase project. Stored in .env as PUBLIC_FIREBASE_MEASUREMENT_ID.",
+    firestorePath: "settings/system",
+    firestoreField: "firebase_measurement_id_display",
+    placeholder: "G-XXXXXXXXXX",
+    category: "Frontend (Build-time)",
+    sensitive: false,
   },
   {
     id: "sentry_dsn",
@@ -130,30 +218,63 @@ function generateKey(prefix = "tf"): string {
   return `${prefix}-${arr.join("")}`
 }
 
+// ─── Copy Button ──────────────────────────────────────────────────────────────
+function CopyButton({ text, small = false }: { text: string; small?: boolean }) {
+  const [copied, setCopied] = useState(false)
+  const handleCopy = async () => {
+    await navigator.clipboard.writeText(text)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2000)
+  }
+  return (
+    <button
+      type="button"
+      onClick={handleCopy}
+      disabled={!text}
+      className={`flex items-center gap-1.5 bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 text-zinc-300 font-bold rounded-lg transition-all disabled:opacity-30 disabled:cursor-not-allowed ${small ? "px-2 py-1 text-[10px]" : "px-3 py-1.5 text-[11px]"}`}
+    >
+      {copied ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
+      {copied ? "Copied!" : "Copy"}
+    </button>
+  )
+}
+
 // ─── Key Card ─────────────────────────────────────────────────────────────────
 function KeyCard({
   entry,
   onSave,
   saving,
+  mekKey,
 }: {
   entry: KeyEntry
   onSave: (id: string, value: string) => Promise<void>
   saving: string | null
+  mekKey: CryptoKey | null
 }) {
   const [revealed, setRevealed] = useState(false)
   const [editing, setEditing] = useState(false)
   const [draft, setDraft] = useState(entry.value)
-  const [copied, setCopied] = useState(false)
   const [expanded, setExpanded] = useState(false)
+  const [decrypted, setDecrypted] = useState<string>("")
 
-  useEffect(() => { setDraft(entry.value) }, [entry.value])
-
-  const handleCopy = async () => {
-    if (!entry.value) return
-    await navigator.clipboard.writeText(entry.value)
-    setCopied(true)
-    setTimeout(() => setCopied(false), 2000)
-  }
+  useEffect(() => {
+    const loadValue = async () => {
+      if (entry.sensitive && entry.value?.startsWith("enc:v1:") && mekKey) {
+        try {
+          const decVal = await decrypt(entry.value, mekKey)
+          setDecrypted(decVal)
+          setDraft(decVal)
+        } catch (err) {
+          setDecrypted("")
+          setDraft("")
+        }
+      } else {
+        setDecrypted("")
+        setDraft(entry.value)
+      }
+    }
+    loadValue()
+  }, [entry.value, mekKey, entry.sensitive])
 
   const handleSave = async () => {
     await onSave(entry.id, draft)
@@ -238,14 +359,21 @@ function KeyCard({
           <div className="space-y-2">
             <div className="relative flex gap-2">
               <div className="relative flex-grow">
-                <input
-                  type={revealed || !entry.sensitive ? "text" : "password"}
-                  value={editing ? draft : (entry.value || "")}
-                  onChange={e => { setDraft(e.target.value); setEditing(true) }}
-                  placeholder={entry.placeholder}
-                  className="w-full bg-zinc-950 border border-zinc-800 rounded-lg px-4 py-2.5 pr-10 text-xs font-mono text-zinc-200 placeholder-zinc-700 focus:outline-none focus:border-zinc-600 transition-colors"
-                />
-                {entry.sensitive && (
+                {entry.sensitive && entry.value?.startsWith("enc:v1:") && !mekKey ? (
+                  <div className="w-full bg-zinc-950 border border-zinc-800 rounded-lg px-4 py-2.5 text-xs font-mono text-zinc-500 flex items-center gap-2 h-10">
+                    <Lock className="w-3.5 h-3.5 text-zinc-600" />
+                    🔒 Encrypted — Enter MEK to unlock
+                  </div>
+                ) : (
+                  <input
+                    type={revealed || !entry.sensitive ? "text" : "password"}
+                    value={editing ? draft : (decrypted || entry.value || "")}
+                    onChange={e => { setDraft(e.target.value); setEditing(true) }}
+                    placeholder={entry.placeholder}
+                    className="w-full bg-zinc-950 border border-zinc-800 rounded-lg px-4 py-2.5 pr-10 text-xs font-mono text-zinc-200 placeholder-zinc-700 focus:outline-none focus:border-zinc-600 transition-colors"
+                  />
+                )}
+                {entry.sensitive && !(entry.value?.startsWith("enc:v1:") && !mekKey) && (
                   <button
                     type="button"
                     onClick={() => setRevealed(p => !p)}
@@ -260,15 +388,7 @@ function KeyCard({
             {/* Action buttons */}
             <div className="flex gap-2 flex-wrap">
               {/* Copy */}
-              <button
-                type="button"
-                onClick={handleCopy}
-                disabled={!entry.value}
-                className="flex items-center gap-1.5 px-3 py-1.5 bg-zinc-800 hover:bg-zinc-750 border border-zinc-700 text-zinc-300 text-[11px] font-bold rounded-lg transition-all disabled:opacity-30 disabled:cursor-not-allowed"
-              >
-                {copied ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
-                {copied ? "Copied!" : "Copy"}
-              </button>
+              <CopyButton text={entry.value} />
 
               {/* Rotate (only for gateway/internal keys) */}
               {entry.id === "gateway_api_key" && (
@@ -305,6 +425,21 @@ function KeyCard({
   )
 }
 
+// ─── Code Block with Copy ──────────────────────────────────────────────────────
+function CodeBlock({ code, label }: { code: string; label?: string }) {
+  return (
+    <div className="relative group">
+      {label && <div className="text-[9px] font-bold uppercase tracking-widest text-zinc-600 mb-1">{label}</div>}
+      <pre className="bg-zinc-950 rounded-lg p-4 text-[11px] font-mono text-zinc-400 overflow-x-auto leading-relaxed whitespace-pre-wrap break-all">
+        {code}
+      </pre>
+      <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
+        <CopyButton text={code} small />
+      </div>
+    </div>
+  )
+}
+
 // ─── Main Page ─────────────────────────────────────────────────────────────────
 export default function AdminKeys() {
   const { adminData, loading: authLoading } = useAuth()
@@ -314,7 +449,75 @@ export default function AdminKeys() {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState<string | null>(null)
   const [activeCategory, setActiveCategory] = useState<string>("All")
+  const [mek, setMek] = useState<string>("")
+  const [mekInput, setMekInput] = useState<string>("")
+  const [mekKey, setMekKey] = useState<CryptoKey | null>(null)
 
+  const getKeyValue = (id: string, fallback: string) => {
+    const entry = entries.find(e => e.id === id)
+    return entry && entry.value ? entry.value : fallback
+  }
+
+  const handleMekSubmit = async () => {
+    if (!mekInput.trim()) {
+      useToastStore.getState().addToast("Please enter a Master Encryption Key", "error")
+      return
+    }
+    try {
+      const salt = new Uint8Array(16)
+      const { key } = await deriveKeyFromPassword(mekInput.trim(), salt)
+      setMekKey(key)
+      setMek(mekInput)
+      setMekInput("")
+      useToastStore.getState().addToast("Master Encryption Key loaded. You can now edit encrypted fields.", "success")
+    } catch (err: any) {
+      useToastStore.getState().addToast("Failed to process MEK: " + err.message, "error")
+    }
+  }
+
+  const handleMekClear = () => {
+    setMek("")
+    setMekKey(null)
+    setMekInput("")
+  }
+
+  // ── Generated .env files ──
+  const frontendEnvText = `# ── Firebase (Public — safe to expose in browser bundles) ──
+PUBLIC_FIREBASE_API_KEY=${getKeyValue("firebase_api_key", "your-firebase-api-key")}
+PUBLIC_FIREBASE_AUTH_DOMAIN=${getKeyValue("firebase_auth_domain", "your-project.firebaseapp.com")}
+PUBLIC_FIREBASE_PROJECT_ID=${getKeyValue("firebase_project_id", "your-project-id")}
+PUBLIC_FIREBASE_STORAGE_BUCKET=${getKeyValue("firebase_storage_bucket", "your-project.firebasestorage.app")}
+PUBLIC_FIREBASE_MESSAGING_SENDER_ID=${getKeyValue("firebase_messaging_sender_id", "your-messaging-sender-id")}
+PUBLIC_FIREBASE_APP_ID=${getKeyValue("firebase_app_id", "your-app-id")}
+PUBLIC_FIREBASE_MEASUREMENT_ID=${getKeyValue("firebase_measurement_id", "G-XXXXXXXXXX")}
+
+# ── Sentry (Public — rate-limited DSN) ──
+PUBLIC_SENTRY_DSN=${getKeyValue("sentry_dsn", "https://xxxx@xxxx.ingest.sentry.io/xxxx")}`
+
+  const localServerEnvText = `# ── functions/local-server.js requires these env vars ──
+# Copy into webapp/.env or export in your shell before running:
+#   node functions/local-server.js
+
+GATEWAY_API_KEY=${getKeyValue("gateway_api_key", "your-gateway-api-key")}
+DODO_API_KEY=${getKeyValue("dodo_api_key", "your-dodo-live-api-key")}
+
+# Optional — falls back to Firestore settings/system.dodo_api_key if not set:
+# DODO_TEST_API_KEY=${getKeyValue("dodo_test_api_key", "your-dodo-test-api-key")}
+
+# Optional — only needed if serviceAccountKey.json is not present:
+# GOOGLE_APPLICATION_CREDENTIALS=/path/to/serviceAccountKey.json
+# FIREBASE_PROJECT_ID=${getKeyValue("firebase_project_id", "your-project-id")}`
+
+  const functionsConfigText = `# Run once to configure deployed Cloud Functions:
+firebase functions:config:set gateway.key="${getKeyValue("gateway_api_key", "YOUR_GATEWAY_API_KEY")}"
+
+# Then deploy:
+firebase deploy --only functions`
+
+  const indexNowKeyValue = getKeyValue("indexnow_key", "e107aca980264801af5ddd4a7fe361a3")
+  const indexNowScriptText = `# In scripts/submit_indexnow.js — update INDEXNOW_KEY:
+const INDEXNOW_KEY = "${indexNowKeyValue}";
+# Also make sure public/${indexNowKeyValue}.txt exists and contains only the key.`
 
   // ── Load all keys from Firestore ──
   useEffect(() => {
@@ -347,16 +550,22 @@ export default function AdminKeys() {
     try {
       const def = KEY_DEFINITIONS.find(d => d.id === id)
       if (!def) return
+
+      let valueToSave = value.trim()
+      if (def.sensitive && valueToSave && !valueToSave.startsWith("enc:v1:") && mekKey) {
+        valueToSave = await encrypt(valueToSave, mekKey)
+      }
+
       const [col, docId] = def.firestorePath.split("/")
-      await setDoc(doc(db, col, docId), { [def.firestoreField]: value.trim() }, { merge: true })
-      setEntries(prev => prev.map(e => e.id === id ? { ...e, value: value.trim() } : e))
+      await setDoc(doc(db, col, docId), { [def.firestoreField]: valueToSave }, { merge: true })
+      setEntries(prev => prev.map(e => e.id === id ? { ...e, value: valueToSave } : e))
       useToastStore.getState().addToast(`${def.label} saved successfully.`, "success")
     } catch (err: any) {
       useToastStore.getState().addToast("Failed to save key: " + err.message, "error")
     } finally {
       setSaving(null)
     }
-  }, [])
+  }, [mekKey])
 
   const isDev = import.meta.env.DEV
   const hasAccess = isDev || (adminData && adminData.role === "SUPER_ADMIN")
@@ -386,13 +595,54 @@ export default function AdminKeys() {
     ? entries
     : entries.filter(e => e.category === activeCategory)
 
-
   const totalKeys = entries.length
   const configuredKeys = entries.filter(e => !!e.value).length
   const missingKeys = totalKeys - configuredKeys
 
   return (
     <div className="relative font-sans text-zinc-100 space-y-8">
+
+      {/* ── Master Encryption Key Input ── */}
+      {!mek ? (
+        <div className="bg-amber-900/30 border border-amber-700/60 rounded-xl p-4 flex gap-3 items-start">
+          <Lock className="w-4 h-4 text-amber-400 mt-1 flex-shrink-0" />
+          <div className="flex-1 space-y-3">
+            <div>
+              <div className="text-sm font-semibold text-amber-100">Master Encryption Key Required</div>
+              <div className="text-xs text-amber-200 mt-0.5">Enter your 32-byte hex MEK to encrypt/decrypt sensitive keys. It is stored only in this session.</div>
+            </div>
+            <div className="flex gap-2">
+              <input
+                type="password"
+                placeholder="Enter 32-byte hex Master Encryption Key"
+                value={mekInput}
+                onChange={(e) => setMekInput(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && handleMekSubmit()}
+                className="flex-1 bg-zinc-900 border border-amber-700/40 rounded-lg px-3 py-1.5 text-sm text-zinc-100 placeholder-zinc-600"
+              />
+              <button
+                onClick={handleMekSubmit}
+                className="px-3 py-1.5 bg-amber-700 hover:bg-amber-600 text-white text-sm font-bold rounded-lg transition-colors"
+              >
+                Unlock
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : (
+        <div className="bg-emerald-900/30 border border-emerald-700/60 rounded-xl p-4 flex gap-3 justify-between items-center">
+          <div className="flex items-center gap-2 text-emerald-300 text-sm font-semibold">
+            <Shield className="w-4 h-4 text-emerald-400" />
+            Master Encryption Key Active
+          </div>
+          <button
+            onClick={handleMekClear}
+            className="px-2 py-1 bg-red-900/40 hover:bg-red-900/60 text-red-300 text-xs font-bold rounded transition-colors"
+          >
+            Lock
+          </button>
+        </div>
+      )}
 
       {/* ── Header ── */}
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
@@ -423,7 +673,7 @@ export default function AdminKeys() {
       <div className="bg-zinc-900/60 border border-zinc-800 rounded-xl p-4 flex gap-3">
         <Zap className="w-4 h-4 text-zinc-400 mt-0.5 flex-shrink-0" />
         <div className="text-xs text-zinc-400 leading-relaxed space-y-1">
-          <div><span className="text-zinc-200 font-semibold">Runtime keys</span> (Cloud Functions, AI, Payments) are fetched from Firestore at runtime — they are never bundled into the browser JS.</div>
+          <div><span className="text-zinc-200 font-semibold">Runtime keys</span> (Cloud Functions, AI, Payments, SEO) are fetched from Firestore at runtime — they are never bundled into the browser JS.</div>
           <div><span className="text-zinc-200 font-semibold">Build-time keys</span> (Firebase, Sentry) must also be in your <code className="text-zinc-300 bg-zinc-800 px-1 rounded">.env</code> file for the build process. The values shown here are for reference.</div>
           <div>Firebase Firestore Rules restrict who can read/write <code className="text-zinc-300 bg-zinc-800 px-1 rounded">settings/system</code> and <code className="text-zinc-300 bg-zinc-800 px-1 rounded">settings/secure</code> to admins only.</div>
         </div>
@@ -469,7 +719,7 @@ export default function AdminKeys() {
                 </div>
                 <div className="space-y-3">
                   {catEntries.map(entry => (
-                    <KeyCard key={entry.id} entry={entry} onSave={handleSave} saving={saving} />
+                    <KeyCard key={entry.id} entry={entry} onSave={handleSave} saving={saving} mekKey={mekKey} />
                   ))}
                 </div>
               </div>
@@ -478,45 +728,74 @@ export default function AdminKeys() {
         </div>
       )}
 
-      {/* ── ENV file reference ── */}
-      <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-5 space-y-3">
-        <h3 className="text-xs font-bold uppercase tracking-widest text-zinc-400">
-          .env File Reference (Build-time Only)
-        </h3>
-        <p className="text-xs text-zinc-500">
-          Copy the following into your <code className="text-zinc-300 bg-zinc-800 px-1 rounded">.env</code> file
-          at the root of the <code className="text-zinc-300 bg-zinc-800 px-1 rounded">webapp/</code> directory.
-          These variables are baked into the static build and are <strong className="text-zinc-300">not secret</strong> — Firebase's API key is safe to expose.
-        </p>
-        <pre className="bg-zinc-950 rounded-lg p-4 text-[11px] font-mono text-zinc-400 overflow-x-auto leading-relaxed">{`# Firebase (public — safe to expose)
-PUBLIC_FIREBASE_API_KEY=AIzaSyBAQFr7OeHkaLDk8yfNyGl6YD2qhdlnoXk
-PUBLIC_FIREBASE_AUTH_DOMAIN=gt-metadata-merger.firebaseapp.com
-PUBLIC_FIREBASE_PROJECT_ID=gt-metadata-merger
-PUBLIC_FIREBASE_STORAGE_BUCKET=gt-metadata-merger.firebasestorage.app
-PUBLIC_FIREBASE_MESSAGING_SENDER_ID=198090983108
-PUBLIC_FIREBASE_APP_ID=1:198090983108:web:a90faac4214ecd91d76b91
-PUBLIC_FIREBASE_MEASUREMENT_ID=G-P0DY1QKD63
+      {/* ── Divider ── */}
+      <div className="h-px bg-zinc-800" />
+      <h2 className="text-[11px] font-bold uppercase tracking-widest text-zinc-500 flex items-center gap-2">
+        <FileText className="w-3.5 h-3.5" /> Generated Config Files
+      </h2>
 
-# Sentry (public — rate-limited DSN)
-PUBLIC_SENTRY_DSN=https://789a81283ea0ec0d1f762a19102c7a91@o4507198765277184.ingest.us.sentry.io/4508912384729182`}</pre>
-        <p className="text-[10px] text-zinc-600">
-          Runtime secrets (Dodo, Gemini, Gateway) are stored in Firestore and fetched server-side — they do NOT belong in .env.
-        </p>
+      {/* ── webapp/.env (build-time) ── */}
+      <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-5 space-y-3">
+        <div className="flex items-center justify-between gap-2">
+          <div>
+            <h3 className="text-xs font-bold uppercase tracking-widest text-zinc-400">
+              webapp/.env — Build-time Variables
+            </h3>
+            <p className="text-xs text-zinc-500 mt-1">
+              Copy into <code className="text-zinc-300 bg-zinc-800 px-1 rounded">webapp/.env</code> — baked into the static build, safe to expose.
+            </p>
+          </div>
+          <CopyButton text={frontendEnvText} />
+        </div>
+        <CodeBlock code={frontendEnvText} />
       </div>
 
-      {/* ── Firebase Functions config reference ── */}
+      {/* ── local-server .env ── */}
       <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-5 space-y-3">
-        <h3 className="text-xs font-bold uppercase tracking-widest text-zinc-400">
-          Firebase Functions Config (Deployed Functions)
-        </h3>
-        <p className="text-xs text-zinc-500">
-          Run these commands once to configure your deployed Cloud Functions. The functions read these at startup.
-        </p>
-        <pre className="bg-zinc-950 rounded-lg p-4 text-[11px] font-mono text-zinc-400 overflow-x-auto leading-relaxed">{`# Set the gateway API key (same value as saved above in Keys & Secrets)
-firebase functions:config:set gateway.key="YOUR_GATEWAY_API_KEY"
+        <div className="flex items-center justify-between gap-2">
+          <div>
+            <h3 className="text-xs font-bold uppercase tracking-widest text-zinc-400 flex items-center gap-1.5">
+              <Terminal className="w-3.5 h-3.5" /> functions/local-server.js — Runtime Environment
+            </h3>
+            <p className="text-xs text-zinc-500 mt-1">
+              These env vars are required to run <code className="text-zinc-300 bg-zinc-800 px-1 rounded">node functions/local-server.js</code>. Add to <code className="text-zinc-300 bg-zinc-800 px-1 rounded">webapp/.env</code> or export in your shell.
+            </p>
+          </div>
+          <CopyButton text={localServerEnvText} />
+        </div>
+        <CodeBlock code={localServerEnvText} />
+      </div>
 
-# Then deploy
-firebase deploy --only functions`}</pre>
+      {/* ── Firebase Functions config ── */}
+      <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-5 space-y-3">
+        <div className="flex items-center justify-between gap-2">
+          <div>
+            <h3 className="text-xs font-bold uppercase tracking-widest text-zinc-400">
+              Firebase Functions Config (Deployed)
+            </h3>
+            <p className="text-xs text-zinc-500 mt-1">
+              Run once to configure deployed Cloud Functions. The functions read these at startup.
+            </p>
+          </div>
+          <CopyButton text={functionsConfigText} />
+        </div>
+        <CodeBlock code={functionsConfigText} />
+      </div>
+
+      {/* ── IndexNow script config ── */}
+      <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-5 space-y-3">
+        <div className="flex items-center justify-between gap-2">
+          <div>
+            <h3 className="text-xs font-bold uppercase tracking-widest text-zinc-400">
+              IndexNow Script Update
+            </h3>
+            <p className="text-xs text-zinc-500 mt-1">
+              After saving your IndexNow Key above, update <code className="text-zinc-300 bg-zinc-800 px-1 rounded">scripts/submit_indexnow.js</code> and the public verification file.
+            </p>
+          </div>
+          <CopyButton text={indexNowScriptText} />
+        </div>
+        <CodeBlock code={indexNowScriptText} />
       </div>
 
     </div>

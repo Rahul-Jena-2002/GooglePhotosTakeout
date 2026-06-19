@@ -12,7 +12,10 @@ const REGIONS = {
   cn: { name: 'China', currency: 'CNY', recovery: 49, pro: 199, super: 399 }
 };
 
-const dodoApiKey = process.env.DODO_API_KEY || "7RM41OfN1w8XWVR2.DcyoI7MMlg5Ydc_EMOlG_om2QE8hGxOHsgpa9-gdpZAaapWO";
+// DODO_API_KEY must be set as an environment variable — never hardcode secrets in source.
+// Get it from: https://dashboard.dodopayments.com → API Keys
+// Usage: DODO_API_KEY=sk_live_xxx node scripts/setup_dodo_products.js
+const dodoApiKey = process.env.DODO_API_KEY;
 
 // Check dry-run mode
 const isDryRun = process.argv.includes('--dry-run') || process.argv.includes('-d');
@@ -131,8 +134,8 @@ async function saveToFirestoreREST(activeProducts, fullProducts) {
   // Refresh token if needed
   async function refreshAccessToken(rToken) {
     console.log("Refreshing Firebase CLI access token...");
-    const clientId = "1014389776834-8o4rgc66upa3hgn73g2eul3o8e63e26m.apps.googleusercontent.com";
-    const clientSecret = "Ym174NCiQg5475s5G2IxgL3y";
+    const clientId = process.env.FIREBASE_OAUTH_CLIENT_ID || "1014389776834-8o4rgc66upa3hgn73g2eul3o8e63e26m.apps.googleusercontent.com";
+    const clientSecret = process.env.FIREBASE_OAUTH_CLIENT_SECRET || "Ym174NCiQg5475s5G2IxgL3y";
     const refreshRes = await fetch('https://oauth2.googleapis.com/token', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
