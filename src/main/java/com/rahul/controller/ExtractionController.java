@@ -6,9 +6,13 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.io.File;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.time.Instant;
 import java.util.Map;
 import java.util.Optional;
+import java.util.zip.ZipInputStream;
+import java.io.FileInputStream;
 
 @RestController
 @RequestMapping("/api/extraction")
@@ -31,8 +35,26 @@ public class ExtractionController {
             }
 
             File input = new File(inputPath);
-            if (!input.exists() || !input.isDirectory()) {
-                throw new IllegalArgumentException("The input folder path does not exist or is not a directory.");
+            if (!input.exists()) {
+                throw new IllegalArgumentException("The input path does not exist.");
+            }
+
+            if (input.isFile() && input.getName().toLowerCase().endsWith(".zip")) {
+                Path tempDir = Files.createTempDirectory("zip_extraction");
+                try (ZipInputStream zis = new ZipInputStream(new FileInputStream(input))) {
+                    java.util.zip.ZipEntry entry;
+                    while ((entry = zis.getNextEntry()) != null) {
+                        Path newPath = tempDir.resolve(entry.getName());
+                        if (entry.isDirectory()) Files.createDirectories(newPath);
+                        else {
+                            Files.createDirectories(newPath.getParent());
+                            Files.copy(zis, newPath);
+                        }
+                    }
+                }
+                inputPath = tempDir.toAbsolutePath().toString();
+            } else if (!input.isDirectory()) {
+                throw new IllegalArgumentException("The input path is not a directory or a ZIP file.");
             }
             
             File output = new File(outputPath);

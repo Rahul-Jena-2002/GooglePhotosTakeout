@@ -283,6 +283,13 @@
         .rc-btn-outline:hover:not(:disabled) { background: rgba(120,120,120,0.05); }
         .rc-btn-outline:disabled { opacity: 0.35; cursor: not-allowed; }
         .rc-drop-hint { text-align: center; font-size: 11px; color: var(--text-secondary); padding: 4px 0; }
+        .rc-dropzone { border: 2px dashed var(--border-color); border-radius: 10px; padding: 14px 12px; text-align: center; cursor: pointer; transition: all 0.2s ease; font-size: 11.5px; color: var(--text-secondary); margin-top: 6px; user-select: none; }
+        .rc-dropzone:hover, .rc-dropzone.drag-over { border-color: #6366f1; background: rgba(99,102,241,0.06); color: #818cf8; }
+        .rc-dropzone .drop-icon { font-size: 20px; margin-bottom: 3px; }
+        .rc-dropzone .drop-name { font-size: 11px; font-weight: 600; margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%; }
+        .rc-dropzone .drop-type-badge { display: inline-block; margin-top: 4px; padding: 2px 8px; border-radius: 5px; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; }
+        .rc-dropzone .drop-type-badge.folder { background: rgba(16,185,129,0.12); color: #34d399; border: 1px solid rgba(16,185,129,0.25); }
+        .rc-dropzone .drop-type-badge.zip { background: rgba(245,158,11,0.12); color: #fbbf24; border: 1px solid rgba(245,158,11,0.25); }
         /* Plan Status Panel */
         .plan-status-card { background: rgba(120,120,120,0.04); border: 1px solid var(--border-color); border-radius: 12px; padding: 12px; display: flex; flex-direction: column; gap: 8px; }
         .plan-status-header { display: flex; justify-content: space-between; align-items: center; }
@@ -1153,7 +1160,12 @@
                                             Select ZIP File
                                         </button>
                                     </div>
-                                    <div class="rc-drop-hint">or drag &amp; drop your folder / ZIP file here</div>
+                                    <div id="inputDropZone" class="rc-dropzone" onclick="inputDropZoneClick()">
+                                        <div class="drop-icon">📂</div>
+                                        <div>or drag &amp; drop your folder / ZIP file here</div>
+                                        <div id="inputDropName" class="drop-name" style="display:none;"></div>
+                                        <div id="inputDropBadge" class="drop-type-badge" style="display:none;"></div>
+                                    </div>
                                     <input type="text" id="inputPath" style="display:none;" readonly>
                                 </div>
 
@@ -1949,7 +1961,11 @@
                 const data = await res.json();
                 if (data && data.path) {
                     document.getElementById(targetInputId).value = data.path;
-                    addLog('INFO', `Configured directory path: ${data.path}`);
+                    if (targetInputId === 'inputPath') {
+                        setInputSource(data.path, 'folder');
+                    } else {
+                        addLog('INFO', `Configured directory path: ${data.path}`);
+                    }
                 }
             } catch (e) {
                 console.error("Directory browse execution failed", e);
@@ -1957,8 +1973,91 @@
         }
 
         async function browseZipFile() {
-            addLog('INFO', 'ZIP file selection is not yet supported in server mode. Please extract your Takeout archive and use Browse Folder.');
+            try {
+                const res = await fetch('/api/system/browse-zip');
+                const data = await res.json();
+                if (data && data.path) {
+                    document.getElementById('inputPath').value = data.path;
+                    setInputSource(data.path, 'zip');
+                }
+            } catch (e) {
+                addLog('ERROR', 'ZIP file selection failed: ' + e.message);
+            }
         }
+
+        // Called when user clicks the drop zone directly — forwards to browse folder
+        function inputDropZoneClick() {
+            browseFolder('inputPath');
+        }
+
+        // Update the drop zone UI after a path is selected (by browse or drag-drop)
+        function setInputSource(path, type) {
+            const name = path.split(/[\\/]/).pop() || path;
+            const zone = document.getElementById('inputDropZone');
+            const nameEl = document.getElementById('inputDropName');
+            const badge = document.getElementById('inputDropBadge');
+
+            zone.querySelector('.drop-icon').textContent = type === 'zip' ? '🗜️' : '📁';
+            zone.querySelector('div:nth-child(2)').textContent = 'Source selected:';
+            nameEl.textContent = name;
+            nameEl.style.display = 'block';
+            badge.textContent = type === 'zip' ? 'ZIP Archive' : 'Folder';
+            badge.className = `drop-type-badge ${type}`;
+            badge.style.display = 'inline-block';
+
+            addLog('INFO', `Source ${type === 'zip' ? 'ZIP' : 'folder'} selected: ${path}`);
+        }
+
+        // Drag & drop wiring — runs after DOM ready
+        document.addEventListener('DOMContentLoaded', function() {
+            const zone = document.getElementById('inputDropZone');
+            if (!zone) return;
+
+            zone.addEventListener('dragenter', function(e) {
+                e.preventDefault();
+                zone.classList.add('drag-over');
+            });
+            zone.addEventListener('dragover', function(e) {
+                e.preventDefault();
+                e.dataTransfer.dropEffect = 'copy';
+                zone.classList.add('drag-over');
+            });
+            zone.addEventListener('dragleave', function(e) {
+                if (!zone.contains(e.relatedTarget)) {
+                    zone.classList.remove('drag-over');
+                }
+            });
+            zone.addEventListener('drop', function(e) {
+                e.preventDefault();
+                zone.classList.remove('drag-over');
+
+                const items = e.dataTransfer.items;
+                const files = e.dataTransfer.files;
+
+                // Try to get the filesystem path via webkitGetAsEntry (works in Electron / local browser)
+                if (items && items.length > 0) {
+                    const entry = items[0].webkitGetAsEntry && items[0].webkitGetAsEntry();
+                    if (entry) {
+                        // Use the file object to get the name; path only available via electron or drag from file manager
+                        const f = files[0];
+                        const isZip = f.name.toLowerCase().endsWith('.zip');
+                        // The full native path is accessible via f.path in Electron or some local server contexts
+                        const path = f.path || f.name;
+                        if (path && path !== f.name) {
+                            // Full path available (Electron / local file server)
+                            document.getElementById('inputPath').value = path;
+                            setInputSource(path, isZip ? 'zip' : 'folder');
+                        } else {
+                            // Browser security limits: can only get name, not full path
+                            addLog('WARN', 'Full path not available in browser drag-drop. Use "Browse Folder" or "Select ZIP File" buttons instead for a local server setup.');
+                        }
+                        return;
+                    }
+                }
+                addLog('WARN', 'Could not read dropped item. Please use the browse buttons.');
+            });
+        });
+
 
         function resumeSession() {
             document.getElementById('interruptedBanner').style.display = 'none';
