@@ -71,12 +71,14 @@ jobs:
           path: TakeoutFix-Windows-Portable.zip
 
       - name: Upload Windows to Cloudflare R2
-        if: matrix.os == 'windows-latest' && secrets.R2_ENDPOINT != ''
-        run: aws s3 cp TakeoutFix-Windows-Portable.zip s3://${{ secrets.R2_BUCKET }}/windows/TakeoutFix-Windows-Portable.zip --endpoint-url ${{ secrets.R2_ENDPOINT }}
+        if: matrix.os == 'windows-latest' && env.R2_ENDPOINT != ''
         env:
+          R2_ENDPOINT: ${{ secrets.R2_ENDPOINT }}
+          R2_BUCKET: ${{ secrets.R2_BUCKET }}
           AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
           AWS_DEFAULT_REGION: auto
+        run: aws s3 cp TakeoutFix-Windows-Portable.zip s3://${{ env.R2_BUCKET }}/windows/TakeoutFix-Windows-Portable.zip --endpoint-url ${{ env.R2_ENDPOINT }}
 
       - name: Upload macOS Asset to Release
         if: matrix.os == 'macos-latest' && github.event_name == 'release'
@@ -92,12 +94,14 @@ jobs:
           path: TakeoutFix-macOS-Portable.zip
 
       - name: Upload macOS to Cloudflare R2
-        if: matrix.os == 'macos-latest' && secrets.R2_ENDPOINT != ''
-        run: aws s3 cp TakeoutFix-macOS-Portable.zip s3://${{ secrets.R2_BUCKET }}/macos/TakeoutFix-macOS-Portable.zip --endpoint-url ${{ secrets.R2_ENDPOINT }}
+        if: matrix.os == 'macos-latest' && env.R2_ENDPOINT != ''
         env:
+          R2_ENDPOINT: ${{ secrets.R2_ENDPOINT }}
+          R2_BUCKET: ${{ secrets.R2_BUCKET }}
           AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
           AWS_DEFAULT_REGION: auto
+        run: aws s3 cp TakeoutFix-macOS-Portable.zip s3://${{ env.R2_BUCKET }}/macos/TakeoutFix-macOS-Portable.zip --endpoint-url ${{ env.R2_ENDPOINT }}
 
       - name: Upload Linux Asset to Release
         if: matrix.os == 'ubuntu-latest' && github.event_name == 'release'
@@ -113,9 +117,11 @@ jobs:
           path: TakeoutFix-Linux-Portable.tar.gz
 
       - name: Upload Linux to Cloudflare R2
-        if: matrix.os == 'ubuntu-latest' && secrets.R2_ENDPOINT != ''
-        run: aws s3 cp TakeoutFix-Linux-Portable.tar.gz s3://${{ secrets.R2_BUCKET }}/linux/TakeoutFix-Linux-Portable.tar.gz --endpoint-url ${{ secrets.R2_ENDPOINT }}
+        if: matrix.os == 'ubuntu-latest' && env.R2_ENDPOINT != ''
         env:
+          R2_ENDPOINT: ${{ secrets.R2_ENDPOINT }}
+          R2_BUCKET: ${{ secrets.R2_BUCKET }}
           AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
           AWS_DEFAULT_REGION: auto
+        run: aws s3 cp TakeoutFix-Linux-Portable.tar.gz s3://${{ env.R2_BUCKET }}/linux/TakeoutFix-Linux-Portable.tar.gz --endpoint-url ${{ env.R2_ENDPOINT }}
