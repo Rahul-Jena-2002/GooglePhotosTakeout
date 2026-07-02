@@ -63,6 +63,14 @@ jobs:
           name: GTMetadataMerger-Windows
           path: GTMetadataMerger-Windows-Portable.zip
 
+      - name: Upload Windows to Cloudflare R2
+        if: matrix.os == 'windows-latest'
+        run: aws s3 cp GTMetadataMerger-Windows-Portable.zip s3://${{ secrets.R2_BUCKET }}/windows/TakeoutFix-Windows-Portable.zip --endpoint-url ${{ secrets.R2_ENDPOINT }}
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          AWS_DEFAULT_REGION: auto
+
       - name: Upload macOS Asset to Release
         if: matrix.os == 'macos-latest' && github.event_name == 'release'
         uses: softprops/action-gh-release@v2
@@ -76,6 +84,14 @@ jobs:
           name: GTMetadataMerger-macOS
           path: GTMetadataMerger-macOS-Portable.zip
 
+      - name: Upload macOS to Cloudflare R2
+        if: matrix.os == 'macos-latest'
+        run: aws s3 cp GTMetadataMerger-macOS-Portable.zip s3://${{ secrets.R2_BUCKET }}/macos/TakeoutFix-macOS-Portable.zip --endpoint-url ${{ secrets.R2_ENDPOINT }}
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          AWS_DEFAULT_REGION: auto
+
       - name: Upload Linux Asset to Release
         if: matrix.os == 'ubuntu-latest' && github.event_name == 'release'
         uses: softprops/action-gh-release@v2
@@ -88,3 +104,11 @@ jobs:
         with:
           name: GTMetadataMerger-Linux
           path: GTMetadataMerger-Linux-Portable.tar.gz
+
+      - name: Upload Linux to Cloudflare R2
+        if: matrix.os == 'ubuntu-latest'
+        run: aws s3 cp GTMetadataMerger-Linux-Portable.tar.gz s3://${{ secrets.R2_BUCKET }}/linux/TakeoutFix-Linux-Portable.tar.gz --endpoint-url ${{ secrets.R2_ENDPOINT }}
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          AWS_DEFAULT_REGION: auto
