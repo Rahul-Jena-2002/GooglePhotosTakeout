@@ -40,39 +40,39 @@ jobs:
       - name: Create Native App Image (Windows)
         if: matrix.os == 'windows-latest'
         run: |
-          jpackage --type app-image --name GTMetadataMerger --input jpackage-input --main-jar GTakeout-1.0.0.jar --main-class com.rahul.TakeoutApplication --icon icons/icon.ico --dest dist --verbose
-          Compress-Archive -Path dist/GTMetadataMerger -DestinationPath GTMetadataMerger-Windows-Portable.zip
+          jpackage --type app-image --name TakeoutFix --input jpackage-input --main-jar GTakeout-1.0.0.jar --main-class com.rahul.TakeoutApplication --icon icons/icon.ico --dest dist --verbose
+          Compress-Archive -Path dist/TakeoutFix -DestinationPath TakeoutFix-Windows-Portable.zip
 
       - name: Create Native App Image (macOS)
         if: matrix.os == 'macos-latest'
         run: |
-          jpackage --type app-image --name GTMetadataMerger --input jpackage-input --main-jar GTakeout-1.0.0.jar --main-class com.rahul.TakeoutApplication --icon icons/icon.icns --dest dist --mac-package-identifier com.takeoutfix.desktop --verbose
+          jpackage --type app-image --name TakeoutFix --input jpackage-input --main-jar GTakeout-1.0.0.jar --main-class com.rahul.TakeoutApplication --icon icons/icon.icns --dest dist --mac-package-identifier com.takeoutfix.desktop --verbose
           cd dist
-          zip -r ../GTMetadataMerger-macOS-Portable.zip GTMetadataMerger.app
+          zip -r ../TakeoutFix-macOS-Portable.zip TakeoutFix.app
 
       - name: Create Native App Image (Linux)
         if: matrix.os == 'ubuntu-latest'
         run: |
-          jpackage --type app-image --name GTMetadataMerger --input jpackage-input --main-jar GTakeout-1.0.0.jar --main-class com.rahul.TakeoutApplication --icon icons/icon.png --dest dist --verbose
+          jpackage --type app-image --name TakeoutFix --input jpackage-input --main-jar GTakeout-1.0.0.jar --main-class com.rahul.TakeoutApplication --icon icons/icon.png --dest dist --verbose
           cd dist
-          tar -czvf ../GTMetadataMerger-Linux-Portable.tar.gz GTMetadataMerger
+          tar -czvf ../TakeoutFix-Linux-Portable.tar.gz TakeoutFix
 
       - name: Upload Windows Asset to Release
         if: matrix.os == 'windows-latest' && github.event_name == 'release'
         uses: softprops/action-gh-release@v2
         with:
-          files: GTMetadataMerger-Windows-Portable.zip
+          files: TakeoutFix-Windows-Portable.zip
 
       - name: Upload Windows Artifact
         if: matrix.os == 'windows-latest'
         uses: actions/upload-artifact@v4
         with:
-          name: GTMetadataMerger-Windows
-          path: GTMetadataMerger-Windows-Portable.zip
+          name: TakeoutFix-Windows
+          path: TakeoutFix-Windows-Portable.zip
 
       - name: Upload Windows to Cloudflare R2
-        if: matrix.os == 'windows-latest'
-        run: aws s3 cp GTMetadataMerger-Windows-Portable.zip s3://${{ secrets.R2_BUCKET }}/windows/TakeoutFix-Windows-Portable.zip --endpoint-url ${{ secrets.R2_ENDPOINT }}
+        if: matrix.os == 'windows-latest' && secrets.R2_ENDPOINT != ''
+        run: aws s3 cp TakeoutFix-Windows-Portable.zip s3://${{ secrets.R2_BUCKET }}/windows/TakeoutFix-Windows-Portable.zip --endpoint-url ${{ secrets.R2_ENDPOINT }}
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
@@ -82,18 +82,18 @@ jobs:
         if: matrix.os == 'macos-latest' && github.event_name == 'release'
         uses: softprops/action-gh-release@v2
         with:
-          files: GTMetadataMerger-macOS-Portable.zip
+          files: TakeoutFix-macOS-Portable.zip
 
       - name: Upload macOS Artifact
         if: matrix.os == 'macos-latest'
         uses: actions/upload-artifact@v4
         with:
-          name: GTMetadataMerger-macOS
-          path: GTMetadataMerger-macOS-Portable.zip
+          name: TakeoutFix-macOS
+          path: TakeoutFix-macOS-Portable.zip
 
       - name: Upload macOS to Cloudflare R2
-        if: matrix.os == 'macos-latest'
-        run: aws s3 cp GTMetadataMerger-macOS-Portable.zip s3://${{ secrets.R2_BUCKET }}/macos/TakeoutFix-macOS-Portable.zip --endpoint-url ${{ secrets.R2_ENDPOINT }}
+        if: matrix.os == 'macos-latest' && secrets.R2_ENDPOINT != ''
+        run: aws s3 cp TakeoutFix-macOS-Portable.zip s3://${{ secrets.R2_BUCKET }}/macos/TakeoutFix-macOS-Portable.zip --endpoint-url ${{ secrets.R2_ENDPOINT }}
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
@@ -103,18 +103,18 @@ jobs:
         if: matrix.os == 'ubuntu-latest' && github.event_name == 'release'
         uses: softprops/action-gh-release@v2
         with:
-          files: GTMetadataMerger-Linux-Portable.tar.gz
+          files: TakeoutFix-Linux-Portable.tar.gz
 
       - name: Upload Linux Artifact
         if: matrix.os == 'ubuntu-latest'
         uses: actions/upload-artifact@v4
         with:
-          name: GTMetadataMerger-Linux
-          path: GTMetadataMerger-Linux-Portable.tar.gz
+          name: TakeoutFix-Linux
+          path: TakeoutFix-Linux-Portable.tar.gz
 
       - name: Upload Linux to Cloudflare R2
-        if: matrix.os == 'ubuntu-latest'
-        run: aws s3 cp GTMetadataMerger-Linux-Portable.tar.gz s3://${{ secrets.R2_BUCKET }}/linux/TakeoutFix-Linux-Portable.tar.gz --endpoint-url ${{ secrets.R2_ENDPOINT }}
+        if: matrix.os == 'ubuntu-latest' && secrets.R2_ENDPOINT != ''
+        run: aws s3 cp TakeoutFix-Linux-Portable.tar.gz s3://${{ secrets.R2_BUCKET }}/linux/TakeoutFix-Linux-Portable.tar.gz --endpoint-url ${{ secrets.R2_ENDPOINT }}
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
