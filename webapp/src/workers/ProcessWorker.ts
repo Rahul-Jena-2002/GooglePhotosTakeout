@@ -8,21 +8,22 @@ self.onmessage = async (e: MessageEvent) => {
   if (action === 'inject_exif') {
     const { buffer, epochSec, lat, lng, filename } = payload;
     try {
-      let resultBuffer: ArrayBuffer;
       if (lat !== undefined && lng !== undefined) {
         // Perform CPU-heavy deep EXIF and GPS injection inside the worker thread
-        resultBuffer = await injectImageExif(buffer, epochSec, lat, lng);
+        const resultBuffer: ArrayBuffer = await injectImageExif(buffer, epochSec, lat, lng);
+        (self as any).postMessage(
+          { success: true, buffer: resultBuffer, filename },
+          [resultBuffer]
+        );
       } else {
-        // Perform standard EXIF date-only injection
-        const resultBytes = injectExifDate(buffer, epochSec);
-        resultBuffer = resultBytes.buffer;
+        // Standard EXIF date-only injection — returns {bytes, success, reason}
+        const result = injectExifDate(buffer, epochSec);
+        const resultBuffer = result.bytes.buffer as ArrayBuffer;
+        (self as any).postMessage(
+          { success: result.success, error: result.reason, buffer: resultBuffer, filename },
+          [resultBuffer]
+        );
       }
-
-      // Transfer the ownership of the resulting buffer back to the main thread
-      (self as any).postMessage(
-        { success: true, buffer: resultBuffer, filename },
-        [resultBuffer]
-      );
     } catch (err) {
       const errMsg = err instanceof Error ? err.message : 'EXIF Injection Error';
       console.error("Worker EXIF injection failed for file:", filename, err);

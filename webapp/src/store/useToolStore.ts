@@ -14,7 +14,7 @@ interface ToolState {
   isProcessing: boolean;
   progress: number;
   currentFile: string;
-  stats: { scanned: number; matched: number; unmatched: number; errors: number; total: number };
+  stats: { scanned: number; matched: number; unmatched: number; exifFailed: number; errors: number; total: number };
   logs: LogEntry[];
   quotaAlert: { open: boolean; message: string } | null;
   
@@ -23,7 +23,7 @@ interface ToolState {
   setIsProcessing: (val: boolean) => void;
   setProgress: (val: number) => void;
   setCurrentFile: (file: string) => void;
-  setStats: (stats: { scanned: number; matched: number; unmatched: number; errors: number; total: number }) => void;
+  setStats: (stats: { scanned: number; matched: number; unmatched: number; exifFailed: number; errors: number; total: number }) => void;
   addLog: (log: LogEntry) => void;
   setLogs: (logs: LogEntry[] | ((prev: LogEntry[]) => LogEntry[])) => void;
   setQuotaAlert: (alert: { open: boolean; message: string } | null) => void;
@@ -36,7 +36,7 @@ export const useToolStore = create<ToolState>((set) => ({
   isProcessing: false,
   progress: 0,
   currentFile: "Waiting to start...",
-  stats: { scanned: 0, matched: 0, unmatched: 0, errors: 0, total: 0 },
+  stats: { scanned: 0, matched: 0, unmatched: 0, exifFailed: 0, errors: 0, total: 0 },
   logs: [],
   quotaAlert: null,
 
@@ -54,7 +54,7 @@ export const useToolStore = create<ToolState>((set) => ({
   resetRun: () => set({
     progress: 0,
     currentFile: "Ready",
-    stats: { scanned: 0, matched: 0, unmatched: 0, errors: 0, total: 0 },
+    stats: { scanned: 0, matched: 0, unmatched: 0, exifFailed: 0, errors: 0, total: 0 },
     logs: [],
     quotaAlert: null
   })

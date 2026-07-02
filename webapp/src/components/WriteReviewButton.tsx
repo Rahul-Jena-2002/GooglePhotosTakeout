@@ -13,7 +13,7 @@ export default function WriteReviewButton() {
   const [submitSuccess, setSubmitSuccess] = useState(false)
 
   useEffect(() => {
-    const unsub = auth.onAuthStateChanged((u) => {
+    const unsub = auth.onAuthStateChanged((u: any) => {
       setUser(u)
     })
     return unsub
@@ -103,7 +103,7 @@ export default function WriteReviewButton() {
         photoURL: user.photoURL || null,
         rating,
         message,
-        status: "PENDING",
+        status: "APPROVED",
         createdAt: serverTimestamp()
       })
       setSubmitSuccess(true)
@@ -130,7 +130,7 @@ export default function WriteReviewButton() {
 
       {submitSuccess && (
         <div className="inline-block bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 px-6 py-3 rounded-full text-sm font-medium">
-          Thank you! Your review has been submitted and is pending approval.
+          Thank you! Your review has been published.
         </div>
       )}
 

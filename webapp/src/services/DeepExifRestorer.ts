@@ -11,12 +11,11 @@ export async function injectImageExif(
   lng?: number
 ): Promise<ArrayBuffer> {
   const binary = arrayBufferToBinaryString(imageBuffer);
-  const dataUrl = `data:image/jpeg;base64,${btoa(binary)}`;
 
   // Load existing EXIF or create empty object
   let exifObj: any;
   try {
-    exifObj = piexif.load(dataUrl);
+    exifObj = piexif.load(binary);
   } catch {
     exifObj = { '0th': {}, 'Exif': {}, 'GPS': {}, '1st': {}, thumbnail: null };
   }
@@ -51,11 +50,9 @@ export async function injectImageExif(
     }
 
     const exifBytes = piexif.dump(exifObj);
-    const newDataUrl = piexif.insert(exifBytes, dataUrl);
+    const newBinary = piexif.insert(exifBytes, binary);
 
-    // Strip the data URL prefix and decode base64
-    const base64 = newDataUrl.replace(/^data:image\/jpeg;base64,/, '');
-    const resultBytes = binaryStringToUint8Array(atob(base64));
+    const resultBytes = binaryStringToUint8Array(newBinary);
     return resultBytes.buffer as ArrayBuffer;
   } catch {
     // piexifjs throws "Cannot set property writable of #<cA> which has only a

@@ -66,7 +66,8 @@ export default function AdUnit({ type = "auto", slot, className = "" }: AdUnitPr
   }, [contextUserData]);
 
   const activeUserData = contextUserData || localUserData;
-  const isAdFree = activeUserData?.plan === "super" && !activeUserData?.supportWithAds;
+  const isPaidPlan = activeUserData?.plan === 'super' || activeUserData?.plan === 'pro';
+  const isAdFree = isPaidPlan && !activeUserData?.supportWithAds;
 
   // List of premium internal feature promotions to rotate
   const ads: Ad[] = [

@@ -31,8 +31,8 @@
             --success-color: #059669;
             --warning-color: #d97706;
             --danger-color: #dc2626;
-            --console-bg: #0f172a;
-            --console-text: #f8fafc;
+            --console-bg: #ffffff;
+            --console-text: #1e293b;
             --card-glow: rgba(79, 70, 229, 0.03);
             --sidebar-bg: #ffffff;
         }
@@ -50,8 +50,8 @@
             --success-color: #10b981;
             --warning-color: #f59e0b;
             --danger-color: #ef4444;
-            --console-bg: #040406;
-            --console-text: #d4d4d8;
+            --console-bg: #ffffff;
+            --console-text: #1e293b;
             --card-glow: rgba(99, 102, 241, 0.03);
             --sidebar-bg: #121218;
         }
@@ -101,10 +101,10 @@
         }
 
         .app-container {
-            max-width: 1280px;
-            width: 100%;
+            max-width: 1600px;
+            width: 95%;
             margin: 0 auto;
-            padding: 30px 20px;
+            padding: 20px 10px;
             display: flex;
             flex-direction: column;
             gap: 20px;
@@ -267,7 +267,7 @@
         .recovery-header-left p { font-size: 10.5px; color: var(--text-secondary); margin-top: 2px; }
         .recovery-module-select { background: rgba(18,18,24,0.9); border: 1px solid var(--border-color); color: var(--text-primary); padding: 7px 28px 7px 10px; border-radius: 8px; font-size: 12px; font-weight: 600; outline: none; cursor: pointer; appearance: none; -webkit-appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 24 24' fill='none' stroke='%2371717a' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 8px center; }
         .recovery-body { display: grid; grid-template-columns: 1fr; gap: 0; }
-        @media (min-width: 900px) { .recovery-body { grid-template-columns: 1fr 220px; } }
+        @media (min-width: 900px) { .recovery-body { grid-template-columns: 1fr 280px; } }
         .recovery-main { padding: 16px; display: flex; flex-direction: column; gap: 12px; border-right: 1px solid var(--border-color); }
         .recovery-side { padding: 16px; display: flex; flex-direction: column; gap: 10px; }
         .rc-section { display: flex; flex-direction: column; gap: 8px; }
@@ -730,7 +730,7 @@
             display: flex;
             flex-direction: column;
             height: 260px;
-            box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.3);
+            box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.08);
             overflow: hidden;
         }
 
@@ -754,6 +754,9 @@
             display: flex;
             flex-direction: column;
             gap: 4px;
+        }
+        .console-placeholder {
+            color: #64748b !important;
         }
 
         /* Custom Tables for EXIF and comparison */
@@ -2169,15 +2172,18 @@
             document.getElementById('btnBrowseOutput').disabled = busy;
 
             const btnStart = document.getElementById('btnStart');
+            const btnDeepRestore = document.getElementById('btnDeepRestore');
             const busyControls = document.getElementById('busyControls');
             const progressSection = document.getElementById('progressSection');
 
             if (busy) {
                 btnStart.style.display = 'none';
+                if (btnDeepRestore) btnDeepRestore.style.display = 'none';
                 busyControls.style.display = 'flex';
                 progressSection.style.display = 'flex';
             } else {
                 btnStart.style.display = 'block';
+                if (btnDeepRestore) btnDeepRestore.style.display = 'block';
                 busyControls.style.display = 'none';
                 progressSection.style.display = 'none';
                 

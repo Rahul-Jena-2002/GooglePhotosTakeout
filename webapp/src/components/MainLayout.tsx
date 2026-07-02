@@ -250,7 +250,11 @@ export default function MainLayout() {
                 {/* Desktop Theme Toggle */}
                 <button 
                   onClick={() => setTheme(theme === 'light' ? 'dark' : 'light')}
-                  className="btn-theme-toggle-navbar flex p-2 rounded-full bg-zinc-900 border border-zinc-800 hover:bg-zinc-800 hover:scale-[1.02] focus:outline-none transition-all items-center justify-center text-white/80 hover:text-white"
+                  className={`btn-theme-toggle-navbar flex p-2 rounded-full border hover:scale-[1.02] focus:outline-none transition-all items-center justify-center ${
+                    theme === 'light'
+                      ? 'bg-zinc-100 border-zinc-200 text-zinc-800 hover:bg-zinc-200 hover:text-zinc-900'
+                      : 'bg-zinc-900 border-zinc-800 text-white/80 hover:bg-zinc-800 hover:text-white'
+                  }`}
                   title={theme === 'light' ? 'Switch to Dark Mode' : 'Switch to Light Mode'}
                 >
                   {theme === 'light' ? (
@@ -469,16 +473,20 @@ export default function MainLayout() {
               <span className="text-xs font-bold text-white/30 uppercase tracking-wider">Appearance</span>
               <button 
                 onClick={() => setTheme(theme === 'light' ? 'dark' : 'light')}
-                className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/[0.04] border border-white/10 hover:bg-white/[0.08] text-xs font-semibold text-white/80 transition-all"
+                className={`flex items-center gap-2 px-3 py-1.5 rounded-full border text-xs font-semibold transition-all ${
+                  theme === 'light'
+                    ? 'bg-zinc-150 border-zinc-200 text-zinc-800 hover:bg-zinc-200 hover:text-zinc-900'
+                    : 'bg-white/[0.04] border-white/10 hover:bg-white/[0.08] text-white/80'
+                }`}
               >
                 {theme === 'light' ? (
                   <>
-                    <Moon className="w-3.5 h-3.5 text-zinc-400" />
+                    <Moon className="w-3.5 h-3.5" />
                     <span>Dark Mode</span>
                   </>
                 ) : (
                   <>
-                    <Sun className="w-3.5 h-3.5 text-amber-400" />
+                    <Sun className="w-3.5 h-3.5" />
                     <span>Light Mode</span>
                   </>
                 )}
@@ -514,16 +522,20 @@ export default function MainLayout() {
               <span className="text-xs font-bold text-white/30 uppercase tracking-wider">Appearance</span>
               <button 
                 onClick={() => setTheme(theme === 'light' ? 'dark' : 'light')}
-                className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/[0.04] border border-white/10 hover:bg-white/[0.08] text-xs font-semibold text-white/80 transition-all"
+                className={`flex items-center gap-2 px-3 py-1.5 rounded-full border text-xs font-semibold transition-all ${
+                  theme === 'light'
+                    ? 'bg-zinc-150 border-zinc-200 text-zinc-800 hover:bg-zinc-200 hover:text-zinc-900'
+                    : 'bg-white/[0.04] border-white/10 hover:bg-white/[0.08] text-white/80'
+                }`}
               >
                 {theme === 'light' ? (
                   <>
-                    <Moon className="w-3.5 h-3.5 text-zinc-400" />
+                    <Moon className="w-3.5 h-3.5" />
                     <span>Dark Mode</span>
                   </>
                 ) : (
                   <>
-                    <Sun className="w-3.5 h-3.5 text-amber-400" />
+                    <Sun className="w-3.5 h-3.5" />
                     <span>Light Mode</span>
                   </>
                 )}

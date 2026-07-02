@@ -11,6 +11,16 @@
 // piexifjs is a UMD module — import as namespace
 import piexif from 'piexifjs';
 
+// ---------------------------------------------------------------------------
+// Result type — callers can distinguish success from each failure mode
+// ---------------------------------------------------------------------------
+export type ExifInjectResult = {
+  bytes: Uint8Array<ArrayBuffer>;
+  success: boolean;
+  /** Populated only when success === false */
+  reason?: 'piexif_load_failed' | 'piexif_dump_failed';
+}
+
 /** Format an epoch-seconds timestamp to EXIF date string: "YYYY:MM:DD HH:MM:SS" */
 function toExifDate(epochSec: number): string {
   const d = new Date(epochSec * 1000);
@@ -42,45 +52,83 @@ function binaryStringToUint8Array(str: string): Uint8Array<ArrayBuffer> {
 }
 
 /**
- * Inject EXIF DateTimeOriginal into a JPEG.
- * Returns new Uint8Array<ArrayBuffer> with the injected EXIF data.
- * Throws if the file is not a JPEG or piexifjs fails.
+ * Inject EXIF DateTimeOriginal (+ GPS if provided) into a JPEG.
+ *
+ * Returns an ExifInjectResult:
+ *   - success=true  → bytes contains the updated JPEG with EXIF injected
+ *   - success=false → bytes contains the ORIGINAL unchanged bytes (safe fallback)
+ *                     reason tells you which piexif step failed
+ *
+ * The safe fallback behaviour is intentional: corrupt / non-standard JPEGs
+ * (Snapchat exports, some Samsung/Xiaomi variants) are still written to disk
+ * rather than being lost. Callers should log the reason for user visibility.
  */
-export function injectExifDate(jpegBuffer: ArrayBuffer, epochSec: number): Uint8Array<ArrayBuffer> {
+export function injectExifDate(
+  jpegBuffer: ArrayBuffer,
+  epochSec: number,
+  lat?: number,
+  lng?: number,
+): ExifInjectResult {
   const binary = arrayBufferToBinaryString(jpegBuffer);
-  const dataUrl = `data:image/jpeg;base64,${btoa(binary)}`;
-
   const dateStr = toExifDate(epochSec);
 
-  // Load existing EXIF or create empty object.
-  // piexifjs has a known bug where certain Snapchat / non-standard JPEGs cause
-  // "Cannot set property writable of #<cA> which has only a getter" — we catch
-  // ALL errors from load() and fall back to a fresh EXIF object so the file is
-  // still copied with the correct date rather than being logged as an error.
-  let exifObj: ReturnType<typeof piexif.load>;
+  // ── Step 1: Load existing EXIF (or start fresh) ────────────────────────────
+  // piexifjs has a known bug where certain non-standard JPEGs throw
+  // "Cannot set property writable of #<cA> which has only a getter".
+  // We resolve this by loading the raw data and copying it into a fresh,
+  // fully-writable object structure.
+  let exifObj: any;
+  let loadFailed = false;
   try {
-    exifObj = piexif.load(dataUrl);
+    const raw = piexif.load(binary);
+    exifObj = {
+      '0th': { ...(raw['0th'] || {}) },
+      'Exif': { ...(raw['Exif'] || {}) },
+      'GPS': { ...(raw['GPS'] || {}) },
+      '1st': { ...(raw['1st'] || {}) },
+      thumbnail: raw.thumbnail || null
+    };
   } catch {
+    loadFailed = true;
     exifObj = { '0th': {}, 'Exif': {}, 'GPS': {}, '1st': {}, thumbnail: null };
   }
 
-  // Inject into both '0th' (DateTime) and 'Exif' (DateTimeOriginal + DateTimeDigitized)
+  // ── Step 2: Inject date + optional GPS ─────────────────────────────────────
   try {
-    exifObj['0th'][piexif.ImageIFD.DateTime] = dateStr;
-    exifObj['Exif'][piexif.ExifIFD.DateTimeOriginal]  = dateStr;
-    exifObj['Exif'][piexif.ExifIFD.DateTimeDigitized] = dateStr;
+    exifObj['0th'][piexif.ImageIFD.DateTime]              = dateStr;
+    exifObj['Exif'][piexif.ExifIFD.DateTimeOriginal]      = dateStr;
+    exifObj['Exif'][piexif.ExifIFD.DateTimeDigitized]     = dateStr;
+
+    if (lat != null && lng != null) {
+      const toRational = (val: number): [number, number][] => {
+        const abs = Math.abs(val);
+        const deg = Math.floor(abs);
+        const minFloat = (abs - deg) * 60;
+        const min = Math.floor(minFloat);
+        const sec = Math.round((minFloat - min) * 60 * 100);
+        return [[deg, 1], [min, 1], [sec, 100]];
+      };
+      exifObj['GPS'][piexif.GPSIFD.GPSLatitudeRef]  = lat >= 0 ? 'N' : 'S';
+      exifObj['GPS'][piexif.GPSIFD.GPSLatitude]     = toRational(lat);
+      exifObj['GPS'][piexif.GPSIFD.GPSLongitudeRef] = lng >= 0 ? 'E' : 'W';
+      exifObj['GPS'][piexif.GPSIFD.GPSLongitude]    = toRational(lng);
+    }
 
     const exifBytes  = piexif.dump(exifObj);
-    const newDataUrl = piexif.insert(exifBytes, dataUrl);
+    const newBinary = piexif.insert(exifBytes, binary);
+    const bytes  = binaryStringToUint8Array(newBinary);
 
-    // Strip the data URL prefix and decode base64
-    const base64 = newDataUrl.replace(/^data:image\/jpeg;base64,/, '');
-    return binaryStringToUint8Array(atob(base64));
+    // If load failed but dump/insert succeeded, still mark as partial success
+    // (the date is injected, GPS wasn't preserved from original EXIF, but that's fine)
+    return { bytes, success: true };
   } catch {
-    // If piexif.dump/insert also fails (e.g. malformed IFD on Snapchat images),
-    // fall back to writing original bytes unchanged — metadata won't be injected
-    // but the file is still saved rather than being lost as an error.
-    return new Uint8Array(jpegBuffer);
+    // piexif.dump/insert failed — return ORIGINAL bytes unchanged so the file
+    // is still written to disk. Caller gets reason to surface in the UI.
+    return {
+      bytes:   new Uint8Array(jpegBuffer),
+      success: false,
+      reason:  loadFailed ? 'piexif_load_failed' : 'piexif_dump_failed',
+    };
   }
 }
 

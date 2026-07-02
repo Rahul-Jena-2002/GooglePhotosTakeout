@@ -285,6 +285,7 @@ Your EXIF metadata recovery tools are active.
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+    URL.revokeObjectURL(url);
   };
 
   const containerVariants = {

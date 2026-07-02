@@ -190,6 +190,28 @@ class IndexedDbService {
       request.onerror = () => reject(request.error);
     });
   }
+
+  async resetProcessingToPending(): Promise<void> {
+    const db = await this.init();
+    return new Promise((resolve, reject) => {
+      const transaction = db.transaction('files', 'readwrite');
+      const store = transaction.objectStore('files');
+      const index = store.index('status');
+      const request = index.openCursor(IDBKeyRange.only('processing'), 'next');
+      request.onsuccess = () => {
+        const cursor = request.result;
+        if (!cursor) {
+          resolve();
+          return;
+        }
+        const file = cursor.value;
+        file.status = 'pending';
+        cursor.update(file);
+        cursor.continue();
+      };
+      request.onerror = () => reject(request.error);
+    });
+  }
 }
 
 export const indexedDbService = new IndexedDbService();

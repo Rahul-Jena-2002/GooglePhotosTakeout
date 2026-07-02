@@ -194,7 +194,11 @@ export default function AdminTopbar({ onMenuClick }: { onMenuClick?: () => void 
         {/* Theme Toggle Button */}
         <button 
           onClick={() => setTheme(theme === 'light' ? 'dark' : 'light')}
-          className="btn-theme-toggle-navbar flex p-1.5 rounded-full bg-zinc-900/60 border border-zinc-800 hover:bg-zinc-900 hover:scale-[1.02] focus:outline-none transition-all items-center justify-center text-zinc-400 hover:text-zinc-200"
+          className={`btn-theme-toggle-navbar flex p-1.5 rounded-full border hover:scale-[1.02] focus:outline-none transition-all items-center justify-center ${
+            theme === 'light'
+              ? 'bg-zinc-100 border-zinc-200 text-zinc-800 hover:bg-zinc-200 hover:text-zinc-900'
+              : 'bg-zinc-900/60 border-zinc-800 text-zinc-400 hover:text-zinc-200'
+          }`}
           title={theme === 'light' ? 'Switch to Dark Mode' : 'Switch to Light Mode'}
         >
           {theme === 'light' ? (

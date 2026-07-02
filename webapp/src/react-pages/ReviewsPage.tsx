@@ -66,13 +66,15 @@ function ReviewsPageContent() {
         photoURL: user.photoURL || null,
         rating,
         message,
-        status: "PENDING", // Needs admin approval
+        status: "APPROVED", // Auto-approved directly
         createdAt: serverTimestamp()
       })
       setSubmitSuccess(true)
       setShowForm(false)
       setMessage("")
       setRating(5)
+      // Fetch latest reviews immediately so the user sees their review on screen right away
+      fetchReviews()
     } catch (err) {
       console.error("Error submitting review", err)
     } finally {
@@ -130,7 +132,7 @@ function ReviewsPageContent() {
             animate={{ opacity: 1, scale: 1 }}
             className="inline-block bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 px-6 py-3 rounded-full text-sm font-medium"
           >
-            Thank you! Your review has been submitted and is pending approval.
+            Thank you! Your review has been published.
           </motion.div>
         )}
       </div>
