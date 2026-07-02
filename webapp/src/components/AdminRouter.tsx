@@ -21,6 +21,7 @@ const AdminKeys           = React.lazy(() => import("../react-pages/AdminKeys"))
 const AdminPaymentGateway = React.lazy(() => import("../react-pages/AdminPaymentGateway"))
 const AdminPlanThresholds = React.lazy(() => import("../react-pages/AdminPlanThresholds"))
 const AdminTierFeatures   = React.lazy(() => import("../react-pages/AdminTierFeatures"))
+const AdminDev           = React.lazy(() => import("../react-pages/AdminDev"))
 
 // ---------------------------------------------------------------------------
 // Loading skeleton (shown while lazy chunks are fetching)
@@ -80,6 +81,31 @@ function RequireRole({
   return <>{children}</>
 }
 
+function RequireDeveloper({ children }: { children: React.ReactNode }) {
+  const { user, loading } = useAuth()
+  const isDev = import.meta.env.DEV
+
+  if (loading) return null
+
+  const isDeveloper = user?.email === 'rahuljenasonu@gmail.com' || isDev
+
+  if (!isDeveloper) {
+    return (
+      <div className="flex flex-col items-center justify-center h-full min-h-[60vh] p-8 text-center">
+        <div className="w-14 h-14 bg-red-500/10 border border-red-500/20 text-red-400 rounded-full flex items-center justify-center mb-5">
+          <ShieldAlert className="w-7 h-7" />
+        </div>
+        <h2 className="text-lg font-bold text-white mb-2">Developer Clearance Required</h2>
+        <p className="text-zinc-400 text-sm max-w-xs leading-relaxed">
+          This panel is strictly restricted to developer profile <span className="text-zinc-200 font-semibold font-mono text-xs">rahuljenasonu@gmail.com</span>.
+        </p>
+      </div>
+    )
+  }
+
+  return <>{children}</>
+}
+
 // ---------------------------------------------------------------------------
 // Router content (needs to live inside AuthProvider)
 // ---------------------------------------------------------------------------
@@ -94,6 +120,11 @@ function AdminRouterContent() {
             <Route index element={<AdminDashboard />} />
             <Route path="tool"  element={<ToolWorkspaceContent />} />
             <Route path="team"  element={<AdminTeam />} />
+            <Route path="dev" element={
+              <RequireDeveloper>
+                <AdminDev />
+              </RequireDeveloper>
+            } />
 
             {/* ── ADMIN + SUPER_ADMIN only ───────────────────────────────────── */}
             <Route path="users" element={

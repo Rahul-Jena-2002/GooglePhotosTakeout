@@ -2,7 +2,7 @@ import { Link } from "react-router-dom";
 
 export default function TermsPage() {
   return (
-    <div className="max-w-4xl mx-auto px-4 py-16 mt-20">
+    <div className="max-w-4xl mx-auto px-4 py-16 mt-20 min-h-[105vh]">
       <div className="text-center mb-16">
         <h1 className="text-4xl md:text-5xl font-bold tracking-tighter mb-4">Terms of Service</h1>
         <p className="text-xl text-white/60">Last updated: June 11, 2026</p>

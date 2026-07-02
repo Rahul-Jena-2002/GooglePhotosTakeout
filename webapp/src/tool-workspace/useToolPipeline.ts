@@ -16,7 +16,7 @@ import piexif from "piexifjs"
 import { detectAdBlock } from "../services/AdBlockDetector"
 import { SessionManager, type ActiveSession, type FileRecord } from "../lib/SessionManager"
 import { WorkerPool } from "../lib/WorkerPool"
-import { ZipReader, BlobReader, Uint8ArrayWriter, Writer } from "@zip.js/zip.js"
+import { ZipReader, BlobReader, Uint8ArrayWriter, Writer, ZipWriter, BlobWriter } from "@zip.js/zip.js"
 import { normalizeZipPath } from "../services/ZipMetadataMatcher"
 
 // ---------------------------------------------------------------------------
@@ -243,6 +243,13 @@ export function useToolPipeline() {
 
   const [useDeepExif, setUseDeepExif] = useState(false)
   const useDeepExifRef = useRef(false)
+
+  const [zipMode, setZipMode] = useState(false)
+  const zipModeRef = useRef(false)
+  const currentZipWriterRef = useRef<any>(null)
+  const currentZipBlobWriterRef = useRef<any>(null)
+  const currentZipBytesRef = useRef<number>(0)
+  const currentZipPartRef = useRef<number>(1)
 
   // Concurrency processing pool implementation
   const [maxWorkers, setMaxWorkers] = useState(1)
@@ -828,7 +835,7 @@ export function useToolPipeline() {
     // For ZIP: sequential processing (1 at a time) avoids ZipReader lock contention and is actually faster.
     // For folder: use user-configured maxWorkers.
     let inFlightCount = 0;
-    const inflightLimit = session.zipFile ? 1 : maxWorkers;
+    const inflightLimit = (session.zipFile || zipModeRef.current) ? 1 : maxWorkers;
 
     const processNext = async () => {
       if (!isProcessingRef.current || isPausedRef.current) {
@@ -940,6 +947,8 @@ export function useToolPipeline() {
             let epochSec: number | null = null;
             let lat: number | undefined = undefined;
             let lng: number | undefined = undefined;
+            let description: string | undefined = undefined;
+            let people: string[] | undefined = undefined;
 
             if (fileHandle && parentDirHandle) {
               // Folder source: resolve sidecar on-demand during restoration
@@ -954,21 +963,26 @@ export function useToolPipeline() {
                   if (parsed) {
                     epochSec = extractTimestamp(parsed);
                     const geoData = (parsed as any).geoData;
-                    if (useDeepExifRef.current && geoData && (geoData.latitude !== 0 || geoData.longitude !== 0)) {
+                    if (geoData && (geoData.latitude !== 0 || geoData.longitude !== 0)) {
                       lat = geoData.latitude;
                       lng = geoData.longitude;
+                    }
+                    description = parsed.description || undefined;
+                    if (parsed.people) {
+                      people = parsed.people.map((p: any) => p.name).filter(Boolean);
                     }
                   }
                 } catch {}
               }
             } else if (fileRecord.zipPath) {
               // ZIP source: metadata was pre-cached during the scan phase — use it directly!
-              // This avoids re-opening the ZIP to re-read JSON sidecars during restoration.
               epochSec = fileRecord.epochSec;
-              if (useDeepExifRef.current && fileRecord.lat != null && fileRecord.lng != null) {
+              if (fileRecord.lat != null && fileRecord.lng != null) {
                 lat = fileRecord.lat;
                 lng = fileRecord.lng;
               }
+              description = fileRecord.description;
+              people = fileRecord.people;
             }
 
             // 4. Process buffer / inject EXIF if applicable
@@ -976,21 +990,21 @@ export function useToolPipeline() {
             let actionStr = 'No Metadata Found';
             let levelStr = 'warn';
 
-            // Resolve output destination and prepare handles
-            // On exFAT/FAT32 drives, the output handle can silently lose readwrite
-            // permission (handle goes stale). Verify and re-request before use.
+            // Resolve output destination and prepare handles (skipped in zipMode)
             const baseFolder = (epochSec && actionStr !== 'EXIF Error') ? 'restored' : 'unmatched';
-            let outSubDir: FileSystemDirectoryHandle;
-            let outHandle: FileSystemFileHandle;
-            try {
-              const perm = await (session.outputHandle as any).queryPermission?.({ mode: 'readwrite' });
-              if (perm === 'prompt') {
-                await (session.outputHandle as any).requestPermission?.({ mode: 'readwrite' });
+            let outSubDir: FileSystemDirectoryHandle | null = null;
+            let outHandle: FileSystemFileHandle | null = null;
+            if (!zipModeRef.current) {
+              try {
+                const perm = await (session.outputHandle as any).queryPermission?.({ mode: 'readwrite' });
+                if (perm === 'prompt') {
+                  await (session.outputHandle as any).requestPermission?.({ mode: 'readwrite' });
+                }
+                outSubDir = await getOrCreateDir(session.outputHandle!, [baseFolder, ...fileRecord.relativePath]);
+                outHandle = await outSubDir.getFileHandle(fileRecord.filename, { create: true });
+              } catch (permErr: any) {
+                throw new Error(`Output folder access lost — please re-select the destination folder and resume. (${permErr?.message ?? permErr})`);
               }
-              outSubDir = await getOrCreateDir(session.outputHandle!, [baseFolder, ...fileRecord.relativePath]);
-              outHandle = await outSubDir.getFileHandle(fileRecord.filename, { create: true });
-            } catch (permErr: any) {
-              throw new Error(`Output folder access lost — please re-select the destination folder and resume. (${permErr?.message ?? permErr})`);
             }
 
             // 5. Read, process, and write output directly using streams where possible
@@ -1018,12 +1032,14 @@ export function useToolPipeline() {
                     epochSec,
                     lat,
                     lng,
-                    filename: fileRecord.filename
+                    filename: fileRecord.filename,
+                    description,
+                    people
                   }, [bufferOrBlob]);
 
                   bufferOrBlob = res.buffer;
                   if (res.success) {
-                    actionStr = useDeepExifRef.current ? 'Deep Injected' : 'Restored & Injected';
+                    actionStr = 'Deep Injected';
                   } else {
                     // File was still saved — only the EXIF injection failed.
                     // Count as exifFailed (warn), not a hard error.
@@ -1037,31 +1053,77 @@ export function useToolPipeline() {
                   throw new Error("Failed to read file contents.");
                 }
 
-                writable = await outHandle.createWritable();
-                await writable.write(bufferOrBlob);
-                await writable.close();
-                writable = null; // Mark as closed successfully
+                if (zipModeRef.current) {
+                  if (!currentZipWriterRef.current) {
+                    const blobWriter = new BlobWriter("application/zip");
+                    currentZipBlobWriterRef.current = blobWriter;
+                    currentZipWriterRef.current = new ZipWriter(blobWriter);
+                  }
+                  const zipEntryPath = [baseFolder, ...fileRecord.relativePath, fileRecord.filename].join('/');
+                  const dateObj = epochSec ? new Date(epochSec * 1000) : new Date();
+                  await currentZipWriterRef.current.add(zipEntryPath, new BlobReader(new Blob([bufferOrBlob])), {
+                    lastModDate: dateObj
+                  });
+                  currentZipBytesRef.current += size;
+                } else {
+                  writable = await outHandle!.createWritable();
+                  await writable.write(bufferOrBlob);
+                  await writable.close();
+                  writable = null; // Mark as closed successfully
+                }
               } else {
                 // Zero-RAM Copying: stream file directly to output handle!
                 if (epochSec) {
                   actionStr = 'Restored';
                   levelStr = 'success';
                 }
-                writable = await outHandle.createWritable();
-                if (fileObj) {
-                  // Stream folder file directly to output disk writable
-                  const readableStream = fileObj.stream();
-                  await readableStream.pipeTo(writable);
-                  writable = null; // pipeTo closes the stream automatically
-                } else if (zipEntry) {
-                  // Stream decompress ZIP entry directly to output disk writable
-                  const zipWriter = new FileSystemWritableFileStreamWriter(writable);
-                  await zipEntry.getData!(zipWriter);
-                  await writable.close();
-                  writable = null; // Mark as closed successfully
+
+                if (zipModeRef.current) {
+                  if (!currentZipWriterRef.current) {
+                    const blobWriter = new BlobWriter("application/zip");
+                    currentZipBlobWriterRef.current = blobWriter;
+                    currentZipWriterRef.current = new ZipWriter(blobWriter);
+                  }
+                  const zipEntryPath = [baseFolder, ...fileRecord.relativePath, fileRecord.filename].join('/');
+                  const dateObj = epochSec ? new Date(epochSec * 1000) : new Date();
+
+                  let contentReader: any;
+                  if (fileObj) {
+                    contentReader = new BlobReader(fileObj);
+                  } else if (zipEntry) {
+                    const writer = new Uint8ArrayWriter();
+                    const bytes = await zipEntry.getData!(writer);
+                    contentReader = new BlobReader(new Blob([bytes]));
+                  } else {
+                    throw new Error("Failed to resolve file reference.");
+                  }
+
+                  await currentZipWriterRef.current.add(zipEntryPath, contentReader, {
+                    lastModDate: dateObj
+                  });
+                  currentZipBytesRef.current += size;
                 } else {
-                  throw new Error("Failed to resolve file reference for streaming.");
+                  writable = await outHandle!.createWritable();
+                  if (fileObj) {
+                    // Stream folder file directly to output disk writable
+                    const readableStream = fileObj.stream();
+                    await readableStream.pipeTo(writable);
+                    writable = null; // pipeTo closes the stream automatically
+                  } else if (zipEntry) {
+                    // Stream decompress ZIP entry directly to output disk writable
+                    const zipWriter = new FileSystemWritableFileStreamWriter(writable);
+                    await zipEntry.getData!(zipWriter);
+                    await writable.close();
+                    writable = null; // Mark as closed successfully
+                  } else {
+                    throw new Error("Failed to resolve file reference for streaming.");
+                  }
                 }
+              }
+
+              // Threshold check for ZIP size (chunking at 1.5 GB)
+              if (zipModeRef.current && currentZipBytesRef.current > 1500 * 1024 * 1024) {
+                await downloadCurrentZipChunk();
               }
             } catch (err) {
               if (writable) {
@@ -1143,6 +1205,9 @@ export function useToolPipeline() {
             }
             resumeNextRef.current = null;
             if (globalFileIndex >= totalPending && isProcessingRef.current) {
+              if (zipModeRef.current) {
+                await downloadCurrentZipChunk();
+              }
               await completeProcessing();
             }
           }
@@ -1235,11 +1300,41 @@ export function useToolPipeline() {
     })
   }
 
+  const downloadCurrentZipChunk = async () => {
+    if (!currentZipWriterRef.current) return
+    const zipWriter = currentZipWriterRef.current
+    currentZipWriterRef.current = null
+    currentZipBlobWriterRef.current = null
+
+    try {
+      setCurrentFile("Packaging ZIP archive...")
+      const zipBlob = await zipWriter.close()
+      const url = URL.createObjectURL(zipBlob)
+      const a = document.createElement('a')
+      a.href = url
+      const takeoutName = zipFile?.name || takeoutFolder?.name || 'Takeout'
+      a.download = `${takeoutName.replace(/\.[^/.]+$/, "")}_Restored_Part${currentZipPartRef.current}.zip`
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      URL.revokeObjectURL(url)
+
+      currentZipPartRef.current += 1
+      currentZipBytesRef.current = 0
+    } catch (err) {
+      console.error("Failed to close/download ZIP chunk:", err)
+    }
+  }
+
   const completeProcessing = async () => {
     setIsProcessing(false)
     isProcessingRef.current = false
     setUseDeepExif(false)
     useDeepExifRef.current = false
+    setZipMode(false)
+    zipModeRef.current = false
+    currentZipWriterRef.current = null
+    currentZipBlobWriterRef.current = null
     setActiveWorkersCount(0)
 
     if (flushInterval.current) {
@@ -1733,7 +1828,7 @@ export function useToolPipeline() {
     }
   }
 
-  const startProcessing = async (deep: boolean = false) => {
+  const startProcessing = async (useZip: boolean = false) => {
     // Whitelist Enforcement: Only start restoration process if not blocked by ad blocker
     const isAdFree = userData?.plan === "super" && !userData?.supportWithAds;
     if (!isAdFree) {
@@ -1751,10 +1846,10 @@ export function useToolPipeline() {
 
     window.dispatchEvent(new CustomEvent('takeoutfix-action-triggered'))
     const sourceName = zipFile ? zipFile.name : (takeoutFolder ? takeoutFolder.name : '');
-    if (!sourceName || !outputFolder) return
+    if (!sourceName || (!outputFolder && !useZip)) return
 
     try {
-      if (takeoutFolder) {
+      if (takeoutFolder && outputFolder && !useZip) {
         const isSame = await takeoutFolder.isSameEntry(outputFolder)
         if (isSame) {
           setQuotaAlert({
@@ -1790,8 +1885,16 @@ export function useToolPipeline() {
     isProcessingRef.current = true
     setIsPaused(false)
     isPausedRef.current = false
-    setUseDeepExif(deep)
-    useDeepExifRef.current = deep
+    setUseDeepExif(true)
+    useDeepExifRef.current = true
+    setZipMode(useZip)
+    zipModeRef.current = useZip
+
+    currentZipWriterRef.current = null
+    currentZipBlobWriterRef.current = null
+    currentZipBytesRef.current = 0
+    currentZipPartRef.current = 1
+
     setProgress(0)
     setStats({ scanned: 0, matched: 0, unmatched: 0, exifFailed: 0, errors: 0, total: 0 })
     statsBuffer.current = { scanned: 0, matched: 0, unmatched: 0, exifFailed: 0, errors: 0, total: 0 }
@@ -1902,6 +2005,14 @@ export function useToolPipeline() {
   const cancelProcessing = async () => {
     setActiveWorkersCount(0)
 
+    if (currentZipWriterRef.current) {
+      try {
+        await currentZipWriterRef.current.close()
+      } catch {}
+      currentZipWriterRef.current = null
+      currentZipBlobWriterRef.current = null
+    }
+
     if (flushInterval.current) window.clearInterval(flushInterval.current)
     setIsProcessing(false)
     isProcessingRef.current = false
@@ -1909,6 +2020,8 @@ export function useToolPipeline() {
     isPausedRef.current = false
     setUseDeepExif(false)
     useDeepExifRef.current = false
+    setZipMode(false)
+    zipModeRef.current = false
     setCurrentFile("Cancelled")
     setLogs(prev => [...prev, { level: 'error', msg: 'Processing cancelled by user.' }])
 
@@ -2131,6 +2244,7 @@ export function useToolPipeline() {
     // Local state
     isPaused,
     useDeepExif,
+    zipMode,
     maxWorkers,
     activeWorkersCount,
     popupModal,

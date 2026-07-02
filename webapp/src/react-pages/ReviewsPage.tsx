@@ -83,7 +83,7 @@ function ReviewsPageContent() {
   }
 
   return (
-    <div className="max-w-6xl mx-auto px-4 py-16 mt-16 relative min-h-[80vh]">
+    <div className="max-w-6xl mx-auto px-4 py-16 mt-16 relative min-h-[105vh]">
       <div className="text-center mb-12 relative z-10">
         <motion.div
           initial={{ opacity: 0, scale: 0.9 }}

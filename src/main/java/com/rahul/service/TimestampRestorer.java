@@ -55,7 +55,11 @@ public class TimestampRestorer {
         long chosen = takenTs
                 .or(() -> creationTsFiltered)
                 .or(() -> modificationTsFiltered)
-                .orElse(mediaToModify.lastModified() / 1000L);
+                .orElseGet(() -> {
+                    long lm = mediaToModify.lastModified();
+                    if (lm > 0) return lm / 1000L;
+                    return Instant.now().getEpochSecond();
+                });
 
         Instant dateTaken = Instant.ofEpochSecond(chosen);
         applyFileTimes(mediaToModify.toPath(), dateTaken);

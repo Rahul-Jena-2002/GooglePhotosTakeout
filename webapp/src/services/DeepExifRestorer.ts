@@ -4,18 +4,37 @@ import piexif from 'piexifjs';
  * Deep injects timestamp and GPS data directly into the image binary payload (JPEGs)
  * while preserving existing metadata.
  */
+function toUtf16Array(str: string): number[] {
+  const arr: number[] = [];
+  for (let i = 0; i < str.length; i++) {
+    const code = str.charCodeAt(i);
+    arr.push(code & 0xff, (code >> 8) & 0xff);
+  }
+  arr.push(0, 0); // null terminator
+  return arr;
+}
+
 export async function injectImageExif(
   imageBuffer: ArrayBuffer,
   epochSeconds: number,
   lat?: number,
-  lng?: number
+  lng?: number,
+  description?: string,
+  people?: string[]
 ): Promise<ArrayBuffer> {
   const binary = arrayBufferToBinaryString(imageBuffer);
 
   // Load existing EXIF or create empty object
   let exifObj: any;
   try {
-    exifObj = piexif.load(binary);
+    const raw = piexif.load(binary);
+    exifObj = {
+      '0th': { ...(raw['0th'] || {}) },
+      'Exif': { ...(raw['Exif'] || {}) },
+      'GPS': { ...(raw['GPS'] || {}) },
+      '1st': { ...(raw['1st'] || {}) },
+      thumbnail: raw.thumbnail || null
+    };
   } catch {
     exifObj = { '0th': {}, 'Exif': {}, 'GPS': {}, '1st': {}, thumbnail: null };
   }
@@ -47,6 +66,16 @@ export async function injectImageExif(
       exifObj['GPS'][piexif.GPSIFD.GPSLongitudeRef] = lng >= 0 ? 'E' : 'W';
       exifObj['GPS'][piexif.GPSIFD.GPSLongitude] = DegToDMS(absLng);
       exifObj['GPS'][piexif.GPSIFD.GPSVersionID] = [2, 3, 0, 0];
+    }
+
+    if (description) {
+      exifObj['0th'][piexif.ImageIFD.ImageDescription] = description;
+    }
+
+    if (people && people.length > 0) {
+      const peopleStr = people.join(', ');
+      exifObj['Exif'][piexif.ExifIFD.UserComment] = "People: " + peopleStr;
+      exifObj['0th'][piexif.ImageIFD.XPKeywords] = toUtf16Array(peopleStr);
     }
 
     const exifBytes = piexif.dump(exifObj);

@@ -279,7 +279,7 @@ function SupportPageContent() {
   }
 
   return (
-    <div className="max-w-5xl mx-auto px-4 py-12 mt-16 relative">
+    <div className="max-w-5xl mx-auto px-4 py-12 mt-16 relative min-h-[105vh]">
       <motion.div
         initial={{ opacity: 0, y: -10 }}
         animate={{ opacity: 1, y: 0 }}

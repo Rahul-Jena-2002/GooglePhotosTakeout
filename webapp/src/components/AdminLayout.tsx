@@ -73,6 +73,7 @@ export default function AdminLayout() {
   const isSupportOrAbove = ["SUPER_ADMIN", "ADMIN", "SUPPORT"].includes(role)
   const isModeratorOrAbove = ["SUPER_ADMIN", "ADMIN", "MODERATOR"].includes(role)
   const isDev = import.meta.env.DEV
+  const isDeveloper = user?.email === 'rahuljenasonu@gmail.com' || isDev
 
   const navGroups = [
     {
@@ -102,6 +103,7 @@ export default function AdminLayout() {
         { label: "Plan Thresholds", path: "/admin/plan-thresholds", icon: Sliders, show: isSuperAdmin || isDev },
         { label: "Tier Features", path: "/admin/tier-features", icon: List, show: isSuperAdmin || isDev },
         { label: "Settings", path: "/admin/settings", icon: Settings, show: isSuperAdmin || isDev },
+        { label: "Dev Options", path: "/admin/dev", icon: Sliders, show: isDeveloper },
       ],
     },
   ]

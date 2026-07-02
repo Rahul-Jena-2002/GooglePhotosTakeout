@@ -31,8 +31,8 @@
             --success-color: #059669;
             --warning-color: #d97706;
             --danger-color: #dc2626;
-            --console-bg: #ffffff;
-            --console-text: #1e293b;
+            --console-bg: #f8fafc;
+            --console-text: #0f172a;
             --card-glow: rgba(79, 70, 229, 0.03);
             --sidebar-bg: #ffffff;
         }
@@ -50,8 +50,8 @@
             --success-color: #10b981;
             --warning-color: #f59e0b;
             --danger-color: #ef4444;
-            --console-bg: #ffffff;
-            --console-text: #1e293b;
+            --console-bg: #121218;
+            --console-text: #e4e4e7;
             --card-glow: rgba(99, 102, 241, 0.03);
             --sidebar-bg: #121218;
         }
@@ -101,15 +101,17 @@
         }
 
         .app-container {
-            max-width: 1600px;
-            width: 95%;
-            margin: 0 auto;
-            padding: 20px 10px;
+            max-width: 100%;
+            width: 100%;
+            min-height: 100vh;
+            margin: 0;
+            padding: 24px;
             display: flex;
             flex-direction: column;
             gap: 20px;
             position: relative;
             z-index: 1;
+            box-sizing: border-box;
         }
 
         /* HEADER */
@@ -123,13 +125,14 @@
 
         .logo-section h1 {
             font-family: 'Outfit', sans-serif;
-            font-size: 22px;
-            font-weight: 300;
-            letter-spacing: -0.02em;
+            font-size: 24px;
+            font-weight: 800;
+            letter-spacing: -0.03em;
+            color: var(--text-primary);
         }
 
         .logo-section h1 span {
-            font-weight: 750;
+            font-weight: 800;
             background: linear-gradient(135deg, #a5b4fc 0%, var(--accent-color) 100%);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
@@ -226,7 +229,7 @@
 
         @media (min-width: 1025px) {
             .layout-grid {
-                grid-template-columns: 260px 1fr;
+                grid-template-columns: 310px 1fr;
             }
         }
 
@@ -301,11 +304,38 @@
         .plan-status-upgrade-msg { font-size: 11px; color: var(--text-secondary); line-height: 1.4; }
         .plan-status-sep { height: 1px; background: var(--border-color); }
         /* Start Restore btn (green gradient matching webapp) */
-        .btn-start-restore { background: linear-gradient(135deg, #18181b 0%, #27272a 100%); color: #ffffff; border: 1px solid rgba(255,255,255,0.08); padding: 12px 14px; border-radius: 10px; font-family: 'Outfit', sans-serif; font-weight: 700; font-size: 13.5px; cursor: pointer; transition: all 0.2s; width: 100%; display: flex; align-items: center; justify-content: center; gap: 7px; }
-        .btn-start-restore:hover:not(:disabled) { background: linear-gradient(135deg, #27272a 0%, #3f3f46 100%); transform: translateY(-1px); }
-        .btn-start-restore:disabled { opacity: 0.35; cursor: not-allowed; }
-        .dark .btn-start-restore { background: rgba(255,255,255,0.9); color: #09090b; }
-        .dark .btn-start-restore:hover:not(:disabled) { background: rgba(255,255,255,1); }
+        .btn-start-restore {
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            color: #ffffff;
+            border: 1px solid rgba(16, 185, 129, 0.2);
+            padding: 12px 14px;
+            border-radius: 10px;
+            font-family: 'Outfit', sans-serif;
+            font-weight: 700;
+            font-size: 13.5px;
+            cursor: pointer;
+            transition: all 0.2s;
+            width: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 7.5px;
+            box-shadow: 0 4px 12px rgba(16, 185, 129, 0.15);
+        }
+        .btn-start-restore:hover:not(:disabled) {
+            background: linear-gradient(135deg, #059669 0%, #047857 100%);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 16px rgba(16, 185, 129, 0.25);
+        }
+        .btn-start-restore:disabled {
+            opacity: 0.35;
+            cursor: not-allowed;
+            background: rgba(120, 120, 120, 0.08) !important;
+            border-color: var(--border-color) !important;
+            color: var(--text-secondary) !important;
+            box-shadow: none !important;
+            transform: none !important;
+        }
         /* Log Tabs */
         .log-tabs-bar { display: flex; gap: 4px; border-bottom: 1px solid var(--border-color); padding-bottom: 6px; }
         .log-tab-btn { background: transparent; border: none; color: var(--text-secondary); padding: 5px 10px; border-radius: 6px; cursor: pointer; font-size: 12px; font-weight: 600; transition: all 0.2s; }
@@ -970,7 +1000,7 @@
         <!-- HEADER -->
         <header>
             <div class="logo-section">
-                <h1>Google Takeout <span>Metadata Restorer</span></h1>
+                <h1>Takeout<span>Fix</span> <small style="font-size: 11px; font-weight: 700; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.1em; margin-left: 6px; vertical-align: middle;">Desktop Ops Center</small></h1>
             </div>
             <div class="header-actions">
                 <button id="btnThemeToggle" class="btn-theme-toggle" onclick="toggleTheme()" aria-label="Toggle Theme">
@@ -990,45 +1020,60 @@
         <!-- MAIN LAYOUT GRID -->
         <div class="layout-grid">
             <!-- SIDEBAR: COMMAND CENTER -->
-            <aside class="sidebar" style="position: relative; overflow: hidden; display: flex; flex-direction: column; gap: 14px; padding: 16px;">
+            <aside class="sidebar" style="position: relative; overflow: hidden; display: flex; flex-direction: column; gap: 24px; padding: 24px;">
+
+                <!-- Desktop Status Card -->
+                <div class="auth-warning-banner" style="margin: 0; border-radius: 12px; background: rgba(16, 185, 129, 0.08); border-color: rgba(16, 185, 129, 0.2); color: #10b981; display: flex; flex-direction: column; gap: 8px; padding: 14px; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);">
+                    <div style="display: flex; align-items: center; gap: 8px; font-weight: 700; font-size: 12px; text-transform: uppercase; letter-spacing: 0.05em;">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
+                        Desktop Mode Active
+                    </div>
+                    <span style="font-size: 11px; line-height: 1.4; color: var(--text-secondary);">This app runs natively with direct filesystem access. Perfect for large video files (> 1 GB).</span>
+                </div>
+
+                <hr style="border: 0; border-top: 1px solid var(--border-color); margin: 0;">
 
                 <!-- Sidebar Header -->
-                <div class="sidebar-cmd-header">
-                    <div class="sidebar-cmd-title">
-                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline></svg>
-                        COMMAND CENTER
+                <div style="display: flex; flex-direction: column; gap: 14px;">
+                    <div class="sidebar-cmd-header">
+                        <div class="sidebar-cmd-title">
+                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline></svg>
+                            COMMAND CENTER
+                        </div>
+                        <div id="engineStatusDot" class="status-dot"></div>
                     </div>
-                    <div id="engineStatusDot" class="status-dot"></div>
+    
+                    <!-- Storage Limit -->
+                    <div class="limit-bar-section">
+                        <div class="limit-bar-block">
+                            <div class="limit-bar-header">
+                                <div class="limit-bar-label">
+                                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
+                                    Storage Limit
+                                </div>
+                                <span id="storageLimitVal" class="limit-bar-value">0 / 500 MB</span>
+                            </div>
+                            <div class="limit-bar-track"><div id="storageLimitFill" class="limit-bar-fill storage" style="width:0%"></div></div>
+                        </div>
+                        <div class="limit-bar-block">
+                            <div class="limit-bar-header">
+                                <div class="limit-bar-label">
+                                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>
+                                    Files Limit
+                                </div>
+                                <span id="filesLimitVal" class="limit-bar-value">0 / 250</span>
+                            </div>
+                            <div class="limit-bar-track"><div id="filesLimitFill" class="limit-bar-fill files" style="width:0%"></div></div>
+                        </div>
+                    </div>
                 </div>
 
-                <!-- Storage Limit Progress -->
-                <div class="limit-bar-section">
-                    <div class="limit-bar-block">
-                        <div class="limit-bar-header">
-                            <div class="limit-bar-label">
-                                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
-                                Storage Limit Progress
-                            </div>
-                            <span id="storageLimitVal" class="limit-bar-value">0 / 500 MB</span>
-                        </div>
-                        <div class="limit-bar-track"><div id="storageLimitFill" class="limit-bar-fill storage" style="width:0%"></div></div>
-                    </div>
-                    <div class="limit-bar-block">
-                        <div class="limit-bar-header">
-                            <div class="limit-bar-label">
-                                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>
-                                Files Limit Progress
-                            </div>
-                            <span id="filesLimitVal" class="limit-bar-value">0 / 250</span>
-                        </div>
-                        <div class="limit-bar-track"><div id="filesLimitFill" class="limit-bar-fill files" style="width:0%"></div></div>
-                    </div>
-                </div>
+                <hr style="border: 0; border-top: 1px solid var(--border-color); margin: 0;">
 
                 <!-- Resource Telemetry -->
                 <div class="form-group">
                     <span class="sidebar-section-title">Resource Telemetry</span>
-                    <div style="display: flex; flex-direction: column; gap: 6px; margin-top: 2px;">
+                    <div style="display: flex; flex-direction: column; gap: 8px; margin-top: 6px;">
                         <div class="telemetry-row">
                             <span>CPU Cores</span>
                             <span id="telemCpu" class="telemetry-val">— / — Cores</span>
@@ -1044,8 +1089,10 @@
                     </div>
                 </div>
 
+                <hr style="border: 0; border-top: 1px solid var(--border-color); margin: 0;">
+
                 <!-- Stats Grid -->
-                <div class="stats-grid">
+                <div class="stats-grid" style="gap: 12px;">
                     <div class="stat-item">
                         <div class="stat-lbl" style="display:flex;align-items:center;gap:4px;">
                             <span style="color:var(--text-secondary);">✦</span> Scanned
@@ -1120,6 +1167,8 @@
                             </div>
                         </div>
 
+
+
                         <!-- AUTH WARNING BANNER -->
                         <div class="auth-warning-banner" id="restoreAuthWarning" style="display: none; margin: 12px 16px; border-radius: 10px;">
                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
@@ -1156,16 +1205,12 @@
                                     <div class="rc-btn-row">
                                         <button id="btnBrowseInput" class="rc-btn" onclick="browseFolder('inputPath')">
                                             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>
-                                            Browse Folder
-                                        </button>
-                                        <button id="btnBrowseZip" class="rc-btn" onclick="browseZipFile()" style="background: rgba(120,120,120,0.08); color: var(--text-primary); border: 1px solid var(--border-color);">
-                                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>
-                                            Select ZIP File
+                                            Browse Input Directory
                                         </button>
                                     </div>
                                     <div id="inputDropZone" class="rc-dropzone" onclick="inputDropZoneClick()">
                                         <div class="drop-icon">📂</div>
-                                        <div>or drag &amp; drop your folder / ZIP file here</div>
+                                        <div>or drag &amp; drop your Google Takeout folder here</div>
                                         <div id="inputDropName" class="drop-name" style="display:none;"></div>
                                         <div id="inputDropBadge" class="drop-type-badge" style="display:none;"></div>
                                     </div>
@@ -1254,22 +1299,41 @@
                                 <!-- Start Restore -->
                                 <button id="btnStart" class="btn-start-restore" onclick="startProcess()">
                                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
-                                    Start Restore
+                                    Start Restoring
                                 </button>
-
-                                <!-- Deep Restore (outline) -->
-                                <button id="btnDeepRestore" class="rc-btn-outline" onclick="startProcess()" title="Deep restore scans nested folders more thoroughly">
-                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
-                                    Deep Restore
-                                </button>
-
-                                <!-- Do these look different? -->
-                                <a href="https://takeoutfix.pages.dev/pricing/" target="_blank" rel="noopener" style="text-align:center; font-size:11px; color: var(--text-secondary); text-decoration: underline; cursor: pointer;">Do these look too restricted? Differ?</a>
 
                                 <!-- Busy Controls (pause/cancel) -->
                                 <div id="busyControls" class="busy-controls" style="flex-direction:column; gap:6px;">
                                     <button id="btnPause" class="rc-btn-outline" onclick="togglePause()">⏸ Pause</button>
                                     <button id="btnCancel" class="btn-cancel" onclick="cancelProcess()" style="padding:10px;">✕ Cancel</button>
+                                </div>
+
+                                <!-- Quick Actions -->
+                                <div class="plan-status-card" style="margin-top: 14px;">
+                                    <div class="plan-status-header" style="margin-bottom: 8px;">
+                                        <div class="plan-status-label" style="font-size: 11px; font-weight: 700; text-transform: uppercase; color: var(--text-primary);">
+                                            ⚡ Quick Actions
+                                        </div>
+                                    </div>
+                                    <div style="display: flex; flex-direction: column; gap: 8px;">
+                                        <button class="rc-btn-outline" style="text-align: left; justify-content: flex-start; font-size: 12px; padding: 8px 12px; width: 100%;" onclick="switchTab('viewer')">🔍 Open EXIF Viewer</button>
+                                        <button class="rc-btn-outline" style="text-align: left; justify-content: flex-start; font-size: 12px; padding: 8px 12px; width: 100%;" onclick="switchTab('duplicates')">👥 Find Duplicates</button>
+                                        <button class="rc-btn-outline" style="text-align: left; justify-content: flex-start; font-size: 12px; padding: 8px 12px; width: 100%;" onclick="switchTab('comparison')">⚖️ Compare Folders</button>
+                                    </div>
+                                </div>
+
+                                <!-- Tips -->
+                                <div class="plan-status-card" style="margin-top: 14px; background: rgba(99, 102, 241, 0.02); border-color: rgba(99, 102, 241, 0.1);">
+                                    <div class="plan-status-header" style="margin-bottom: 8px;">
+                                        <div class="plan-status-label" style="color: var(--accent-color); font-size: 11px; font-weight: 700;">
+                                            💡 Recommendations
+                                        </div>
+                                    </div>
+                                    <ul style="font-size: 11px; color: var(--text-secondary); padding-left: 14px; display: flex; flex-direction: column; gap: 6px; line-height: 1.4; text-align: left; margin: 0;">
+                                        <li>For best performance, use an SSD instead of HDD.</li>
+                                        <li>Keep your system plugged into power for large restores.</li>
+                                        <li>The app never uploads your data. 100% local &amp; private.</li>
+                                    </ul>
                                 </div>
 
                             </div>
@@ -1556,6 +1620,55 @@
                 </div>
             </main>
         </div>
+
+        <!-- Feature Cards -->
+        <div style="margin-top: 20px; border-top: 1px solid var(--border-color); padding-top: 30px; display: flex; flex-direction: column; gap: 16px; width: 100%;">
+            <h3 style="font-family: 'Outfit', sans-serif; font-size: 16px; font-weight: 700; color: var(--text-primary); text-transform: uppercase; letter-spacing: 0.05em; display: flex; align-items: center; gap: 8px;">
+                🛡️ Why TakeoutFix?
+            </h3>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; width: 100%;">
+                <div class="card" style="padding: 16px; display: flex; flex-direction: column; gap: 8px; background: rgba(120, 120, 120, 0.01);">
+                    <div style="font-size: 20px;">🔒</div>
+                    <strong style="font-size: 13.5px; color: var(--text-primary);">100% Local</strong>
+                    <span style="font-size: 11.5px; color: var(--text-secondary); line-height: 1.4;">Your photos and JSON sidecars are processed entirely on your device. We never upload anything.</span>
+                </div>
+                <div class="card" style="padding: 16px; display: flex; flex-direction: column; gap: 8px; background: rgba(120, 120, 120, 0.01);">
+                    <div style="font-size: 20px;">⚡</div>
+                    <strong style="font-size: 13.5px; color: var(--text-primary);">Blazing Fast</strong>
+                    <span style="font-size: 11.5px; color: var(--text-secondary); line-height: 1.4;">Multi-threaded Java file scanner handles tens of thousands of media files in minutes.</span>
+                </div>
+                <div class="card" style="padding: 16px; display: flex; flex-direction: column; gap: 8px; background: rgba(120, 120, 120, 0.01);">
+                    <div style="font-size: 20px;">📂</div>
+                    <strong style="font-size: 13.5px; color: var(--text-primary);">Metadata Safe</strong>
+                    <span style="font-size: 11.5px; color: var(--text-secondary); line-height: 1.4;">Writes original Date Taken and GPS metadata directly back into photo EXIF headers natively.</span>
+                </div>
+                <div class="card" style="padding: 16px; display: flex; flex-direction: column; gap: 8px; background: rgba(120, 120, 120, 0.01);">
+                    <div style="font-size: 20px;">🛡️</div>
+                    <strong style="font-size: 13.5px; color: var(--text-primary);">Privacy First</strong>
+                    <span style="font-size: 11.5px; color: var(--text-secondary); line-height: 1.4;">No trackers, ads, or external cloud telemetry scripts. Your privacy is fully guaranteed.</span>
+                </div>
+                <div class="card" style="padding: 16px; display: flex; flex-direction: column; gap: 8px; background: rgba(120, 120, 120, 0.01);">
+                    <div style="font-size: 20px;">💻</div>
+                    <strong style="font-size: 13.5px; color: var(--text-primary);">Cross-Platform</strong>
+                    <span style="font-size: 11.5px; color: var(--text-secondary); line-height: 1.4;">Native builds available for Windows, macOS, and Linux out of the box with zero setup.</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- FOOTER -->
+        <footer style="margin-top: auto; padding-top: 20px; border-top: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; font-size: 11px; color: var(--text-secondary); flex-wrap: wrap; gap: 12px; width: 100%;">
+            <div>
+                <strong>TakeoutFix</strong> v1.0.0<br>
+                <span style="font-size: 10px; opacity: 0.7;">&copy; 2026 All rights reserved.</span>
+            </div>
+            <div style="font-weight: 500;">Made with ❤️ by TakeoutFix</div>
+            <div style="display: flex; gap: 16px; flex-wrap: wrap;">
+                <a href="https://takeoutfix.pages.dev/privacy" target="_blank" rel="noopener noreferrer" style="color: var(--text-secondary); text-decoration: none; font-weight: 600;">Privacy Policy</a>
+                <a href="https://takeoutfix.pages.dev/terms" target="_blank" rel="noopener noreferrer" style="color: var(--text-secondary); text-decoration: none; font-weight: 600;">Terms of Service</a>
+                <a href="https://takeoutfix.pages.dev/refund" target="_blank" rel="noopener noreferrer" style="color: var(--text-secondary); text-decoration: none; font-weight: 600;">Refund Policy</a>
+                <a href="https://takeoutfix.pages.dev/support" target="_blank" rel="noopener noreferrer" style="color: var(--text-secondary); text-decoration: none; font-weight: 600;">Help &amp; Support</a>
+            </div>
+        </footer>
     </div>
 
     <!-- UPGRADE MODAL -->
@@ -1740,7 +1853,7 @@
             }
             if (btnStart) {
                 btnStart.disabled = !isLoggedIn;
-                btnStart.innerText = isLoggedIn ? 'Start Processing' : '🔒 Login Required — Start Processing';
+                btnStart.innerText = isLoggedIn ? 'Start Restoring' : '🔒 Login Required — Start Restoring';
             }
 
             // --- EXIF VIEWER TAB ---
@@ -2172,18 +2285,15 @@
             document.getElementById('btnBrowseOutput').disabled = busy;
 
             const btnStart = document.getElementById('btnStart');
-            const btnDeepRestore = document.getElementById('btnDeepRestore');
             const busyControls = document.getElementById('busyControls');
             const progressSection = document.getElementById('progressSection');
 
             if (busy) {
                 btnStart.style.display = 'none';
-                if (btnDeepRestore) btnDeepRestore.style.display = 'none';
                 busyControls.style.display = 'flex';
                 progressSection.style.display = 'flex';
             } else {
                 btnStart.style.display = 'block';
-                if (btnDeepRestore) btnDeepRestore.style.display = 'block';
                 busyControls.style.display = 'none';
                 progressSection.style.display = 'none';
                 
@@ -2484,6 +2594,7 @@
         }
 
         function formatByteSize(bytes) {
+            if (bytes === Infinity) return 'Unlimited';
             if (bytes === 0) return '0 B';
             const k = 1024;
             const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
@@ -2505,8 +2616,6 @@
         function switchLogTab(tab, btn) {
             document.querySelectorAll('.log-tab-btn').forEach(b => b.classList.remove('active'));
             if (btn) btn.classList.add('active');
-            // In future: filter consoleContent entries by log type
-            // For now just highlight the active tab
         }
 
         // Update sidebar limit progress bars
@@ -2522,22 +2631,28 @@
                 fFill.className = 'limit-bar-fill files';
                 if (safeFiles >= 90) fFill.classList.add('danger');
                 else if (safeFiles >= 70) fFill.classList.add('warning');
+                
+                // Hide progress track if limit is Infinity
+                fFill.parentElement.style.display = limitFiles === Infinity ? 'none' : 'block';
             }
             if (sFill) {
                 sFill.style.width = safeBytes + '%';
                 sFill.className = 'limit-bar-fill storage';
                 if (safeBytes >= 90) sFill.classList.add('danger');
                 else if (safeBytes >= 70) sFill.classList.add('warning');
+                
+                // Hide progress track if limit is Infinity
+                sFill.parentElement.style.display = limitBytes === Infinity ? 'none' : 'block';
             }
 
-            const limitMB = limitBytes === Infinity ? '∞' : (limitBytes / 1024 / 1024).toFixed(0);
-            const usedMB = (usedBytes / 1024 / 1024).toFixed(2);
-            const limF = limitFiles === Infinity ? '∞' : limitFiles;
+            const limitStr = limitBytes === Infinity ? 'Unlimited' : formatByteSize(limitBytes);
+            const usedStr = formatByteSize(usedBytes);
+            const limF = limitFiles === Infinity ? 'Unlimited' : limitFiles.toLocaleString();
 
             const sv = document.getElementById('storageLimitVal');
             const fv = document.getElementById('filesLimitVal');
-            if (sv) sv.innerText = `${usedMB} GB / ${limitMB} MB`;
-            if (fv) fv.innerText = `${usedFiles.toLocaleString()} / ${limF}`;
+            if (sv) sv.innerText = limitBytes === Infinity ? `${usedStr} / Unlimited` : `${usedStr} / ${limitStr}`;
+            if (fv) fv.innerText = limitFiles === Infinity ? `${usedFiles.toLocaleString()} / Unlimited` : `${usedFiles.toLocaleString()} / ${limF}`;
         }
 
         function activateLicense() {

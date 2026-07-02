@@ -63,11 +63,23 @@ function binaryStringToUint8Array(str: string): Uint8Array<ArrayBuffer> {
  * (Snapchat exports, some Samsung/Xiaomi variants) are still written to disk
  * rather than being lost. Callers should log the reason for user visibility.
  */
+function toUtf16Array(str: string): number[] {
+  const arr: number[] = [];
+  for (let i = 0; i < str.length; i++) {
+    const code = str.charCodeAt(i);
+    arr.push(code & 0xff, (code >> 8) & 0xff);
+  }
+  arr.push(0, 0); // null terminator
+  return arr;
+}
+
 export function injectExifDate(
   jpegBuffer: ArrayBuffer,
   epochSec: number,
   lat?: number,
   lng?: number,
+  description?: string,
+  people?: string[],
 ): ExifInjectResult {
   const binary = arrayBufferToBinaryString(jpegBuffer);
   const dateStr = toExifDate(epochSec);
@@ -93,7 +105,7 @@ export function injectExifDate(
     exifObj = { '0th': {}, 'Exif': {}, 'GPS': {}, '1st': {}, thumbnail: null };
   }
 
-  // ── Step 2: Inject date + optional GPS ─────────────────────────────────────
+  // ── Step 2: Inject date + optional GPS + description + people ──────────────
   try {
     exifObj['0th'][piexif.ImageIFD.DateTime]              = dateStr;
     exifObj['Exif'][piexif.ExifIFD.DateTimeOriginal]      = dateStr;
@@ -112,6 +124,16 @@ export function injectExifDate(
       exifObj['GPS'][piexif.GPSIFD.GPSLatitude]     = toRational(lat);
       exifObj['GPS'][piexif.GPSIFD.GPSLongitudeRef] = lng >= 0 ? 'E' : 'W';
       exifObj['GPS'][piexif.GPSIFD.GPSLongitude]    = toRational(lng);
+    }
+
+    if (description) {
+      exifObj['0th'][piexif.ImageIFD.ImageDescription] = description;
+    }
+
+    if (people && people.length > 0) {
+      const peopleStr = people.join(', ');
+      exifObj['Exif'][piexif.ExifIFD.UserComment] = "People: " + peopleStr;
+      exifObj['0th'][piexif.ImageIFD.XPKeywords] = toUtf16Array(peopleStr);
     }
 
     const exifBytes  = piexif.dump(exifObj);

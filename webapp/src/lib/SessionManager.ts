@@ -32,6 +32,8 @@ export interface FileRecord {
   epochSec: number | null;
   lat?: number | null;
   lng?: number | null;
+  description?: string;
+  people?: string[];
   status: 'pending' | 'processing' | 'completed' | 'failed';
   bytes: number;
   error?: string;
@@ -249,10 +251,12 @@ export class SessionManager {
 
       if (!isAllowedMediaFile(safeName)) continue;
 
-      // Pre-resolve JSON sidecar and extract epoch/coords during scan phase
+      // Pre-resolve JSON sidecar and extract epoch/coords/description/people during scan phase
       let epochSec: number | null = null;
       let lat: number | null = null;
       let lng: number | null = null;
+      let description: string | undefined = undefined;
+      let people: string[] | undefined = undefined;
 
       try {
         const dirNames = dirToFilenames.get(dirPath) || new Set<string>();
@@ -268,6 +272,10 @@ export class SessionManager {
               if (parsed.geoData && (parsed.geoData.latitude !== 0 || parsed.geoData.longitude !== 0)) {
                 lat = parsed.geoData.latitude ?? null;
                 lng = parsed.geoData.longitude ?? null;
+              }
+              description = parsed.description || undefined;
+              if (parsed.people) {
+                people = parsed.people.map((p: any) => p.name).filter(Boolean);
               }
             }
           }
@@ -287,6 +295,8 @@ export class SessionManager {
         epochSec,
         lat,
         lng,
+        description,
+        people,
         status: 'pending',
         bytes: entry.uncompressedSize
       });

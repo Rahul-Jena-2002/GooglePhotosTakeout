@@ -3,7 +3,7 @@
  * Renders the 4 tool tabs: Restore Archive, EXIF Viewer, Comparison, Duplicates.
  */
 
-import { FolderUp, HardDrive, Play, Square, Pause, Activity, Database, CheckCircle2, AlertCircle, Eye, Layers, Copy, Lock, FileImage, FileJson, Search, Zap, Sparkles, ShieldCheck } from "lucide-react"
+import { FolderUp, HardDrive, Play, Square, Pause, Activity, Database, CheckCircle2, AlertCircle, AlertTriangle, Download, Eye, Layers, Copy, Lock, FileImage, FileJson, Search, Zap, Sparkles, ShieldCheck } from "lucide-react"
 import { Button } from "../components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "../components/ui/card"
 import { Progress } from "../components/ui/progress"
@@ -51,7 +51,8 @@ interface RestorePanelProps {
   handleSelectTakeout: () => void
   handleSelectOutput: () => void
   handleReGrantPermissions: () => void
-  startProcessing: (deep?: boolean) => void
+  startProcessing: (useZip?: boolean) => void
+  zipMode: boolean
   cancelProcessing: () => void
   pauseProcessing: () => void
   resumeProcessing: () => void
@@ -156,6 +157,7 @@ export function RestorePanel({
   handleSelectOutput,
   handleReGrantPermissions,
   startProcessing,
+  zipMode,
   cancelProcessing,
   pauseProcessing,
   resumeProcessing,
@@ -402,7 +404,17 @@ export function RestorePanel({
               })()}
 
               {/* Actions / Run Controls */}
-              <div className="mt-auto">
+              <div className="mt-auto space-y-3">
+                {/* Memory Limit Warning for Large Files */}
+                {!isProcessing && progress === 0 && (takeoutFolder || zipFile) && (
+                  <div className="p-2.5 rounded-lg border border-yellow-500/20 bg-yellow-500/[0.03] text-yellow-500/80 text-[9.5px] leading-relaxed flex gap-2">
+                    <AlertTriangle className="w-3.5 h-3.5 text-yellow-500 flex-shrink-0 mt-0.5" />
+                    <div>
+                      <span className="font-bold text-yellow-500">Notice on Large Media:</span> Browser tabs have strict memory limits. If you have single files larger than 1.5 GB, we highly recommend using our free desktop app to restore them natively without limits.
+                    </div>
+                  </div>
+                )}
+
                 {!isProcessing && progress === 0 ? (
                   <div className="space-y-2">
                     <Button
@@ -410,23 +422,15 @@ export function RestorePanel({
                       onClick={() => startProcessing(false)}
                       className="btn-monochrome-primary w-full h-9 text-[11px] rounded-lg font-bold transition-all duration-150 cursor-pointer flex items-center justify-center gap-1.5 disabled:opacity-40 disabled:pointer-events-none"
                     >
-                      <Play className="w-3.5 h-3.5 fill-current" /> Start Restore
+                      <Play className="w-3.5 h-3.5 fill-current" /> Start Restore (Folder)
                     </Button>
                     <Button
-                      disabled={!(takeoutFolder || zipFile) || !outputFolder}
+                      disabled={!(takeoutFolder || zipFile)}
                       onClick={() => startProcessing(true)}
                       className="btn-monochrome-secondary w-full h-9 text-[11px] rounded-lg font-bold transition-all duration-150 cursor-pointer flex items-center justify-center gap-1.5 disabled:opacity-40 disabled:pointer-events-none"
                     >
-                      <Zap className="w-3.5 h-3.5 fill-current" /> Deep Restore
+                      <Download className="w-3.5 h-3.5 fill-current" /> Download as ZIP
                     </Button>
-                    <div className="text-center mt-1">
-                      <button
-                        onClick={() => setShowCompareModal(true)}
-                        className="text-[9px] text-zinc-500 hover:text-white underline transition-colors focus:outline-none"
-                      >
-                        How do these two restore options differ?
-                      </button>
-                    </div>
                   </div>
                 ) : (
                   <div className="space-y-2">

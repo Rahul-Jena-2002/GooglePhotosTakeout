@@ -169,6 +169,7 @@ export function ToolWorkspaceContent() {
           dupScanStatus={pipeline.dupScanStatus}
           handleSelectDupFolder={pipeline.handleSelectDupFolder}
           startDuplicateScan={pipeline.startDuplicateScan}
+          zipMode={pipeline.zipMode}
         />
 
         {/* Left sidebar: command center */}
