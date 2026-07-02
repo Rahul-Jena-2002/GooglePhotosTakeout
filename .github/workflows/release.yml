@@ -32,23 +32,28 @@ jobs:
       - name: Build with Maven
         run: mvn clean package -DskipTests
 
+      - name: Prepare Clean Packaging Input
+        run: |
+          mkdir jpackage-input
+          cp target/GTakeout-1.0.0.jar jpackage-input/
+
       - name: Create Native App Image (Windows)
         if: matrix.os == 'windows-latest'
         run: |
-          jpackage --type app-image --name GTMetadataMerger --input target --main-jar GTakeout-1.0.0.jar --icon icons/icon.ico --dest dist
+          jpackage --type app-image --name GTMetadataMerger --input jpackage-input --main-jar GTakeout-1.0.0.jar --main-class com.rahul.TakeoutApplication --icon icons/icon.ico --dest dist --verbose
           Compress-Archive -Path dist/GTMetadataMerger -DestinationPath GTMetadataMerger-Windows-Portable.zip
 
       - name: Create Native App Image (macOS)
         if: matrix.os == 'macos-latest'
         run: |
-          jpackage --type app-image --name GTMetadataMerger --input target --main-jar GTakeout-1.0.0.jar --icon icons/icon.icns --dest dist
+          jpackage --type app-image --name GTMetadataMerger --input jpackage-input --main-jar GTakeout-1.0.0.jar --main-class com.rahul.TakeoutApplication --icon icons/icon.icns --dest dist --mac-package-identifier com.takeoutfix.desktop --verbose
           cd dist
           zip -r ../GTMetadataMerger-macOS-Portable.zip GTMetadataMerger.app
 
       - name: Create Native App Image (Linux)
         if: matrix.os == 'ubuntu-latest'
         run: |
-          jpackage --type app-image --name GTMetadataMerger --input target --main-jar GTakeout-1.0.0.jar --icon icons/icon.png --dest dist
+          jpackage --type app-image --name GTMetadataMerger --input jpackage-input --main-jar GTakeout-1.0.0.jar --main-class com.rahul.TakeoutApplication --icon icons/icon.png --dest dist --verbose
           cd dist
           tar -czvf ../GTMetadataMerger-Linux-Portable.tar.gz GTMetadataMerger
 
