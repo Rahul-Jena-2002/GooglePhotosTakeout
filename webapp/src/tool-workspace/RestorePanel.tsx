@@ -3,6 +3,7 @@
  * Renders the 4 tool tabs: Restore Archive, EXIF Viewer, Comparison, Duplicates.
  */
 
+import { useState } from "react"
 import { FolderUp, HardDrive, Play, Square, Pause, Activity, Database, CheckCircle2, AlertCircle, AlertTriangle, Download, Eye, Layers, Copy, Lock, FileImage, FileJson, Search, Zap, Sparkles, ShieldCheck } from "lucide-react"
 import { Button } from "../components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "../components/ui/card"
@@ -178,6 +179,8 @@ export function RestorePanel({
   handleSelectDupFolder,
   startDuplicateScan,
 }: RestorePanelProps) {
+  const [agreedToTerms, setAgreedToTerms] = useState(false);
+
   return (
     <div className="flex-grow w-full lg:w-[72%] bg-black flex flex-col lg:h-full h-auto overflow-hidden order-1 lg:order-2">
 
@@ -415,17 +418,32 @@ export function RestorePanel({
                   </div>
                 )}
 
+                {!isProcessing && progress === 0 && (takeoutFolder || zipFile) && (
+                  <div className="flex items-start gap-2.5 p-2.5 rounded-lg bg-zinc-950/40 border border-white/5 text-[9.5px] text-zinc-400">
+                    <input
+                      type="checkbox"
+                      id="agree-checkbox"
+                      checked={agreedToTerms}
+                      onChange={(e) => setAgreedToTerms(e.target.checked)}
+                      className="w-3.5 h-3.5 rounded border-white/10 bg-zinc-900 text-white focus:ring-0 focus:ring-offset-0 cursor-pointer accent-zinc-800 mt-0.5 flex-shrink-0"
+                    />
+                    <label htmlFor="agree-checkbox" className="cursor-pointer select-none leading-relaxed">
+                      I agree to the <a href="/terms" target="_blank" rel="noopener noreferrer" className="text-white underline hover:text-zinc-350 transition-colors">Terms of Service</a> and <a href="/refund" target="_blank" rel="noopener noreferrer" className="text-white underline hover:text-zinc-350 transition-colors">Refund Policy</a>.
+                    </label>
+                  </div>
+                )}
+
                 {!isProcessing && progress === 0 ? (
                   <div className="space-y-2">
                     <Button
-                      disabled={!(takeoutFolder || zipFile) || !outputFolder}
+                      disabled={!(takeoutFolder || zipFile) || !outputFolder || !agreedToTerms}
                       onClick={() => startProcessing(false)}
                       className="btn-monochrome-primary w-full h-9 text-[11px] rounded-lg font-bold transition-all duration-150 cursor-pointer flex items-center justify-center gap-1.5 disabled:opacity-40 disabled:pointer-events-none"
                     >
                       <Play className="w-3.5 h-3.5 fill-current" /> Start Restore (Folder)
                     </Button>
                     <Button
-                      disabled={!(takeoutFolder || zipFile)}
+                      disabled={!(takeoutFolder || zipFile) || !agreedToTerms}
                       onClick={() => startProcessing(true)}
                       className="btn-monochrome-secondary w-full h-9 text-[11px] rounded-lg font-bold transition-all duration-150 cursor-pointer flex items-center justify-center gap-1.5 disabled:opacity-40 disabled:pointer-events-none"
                     >

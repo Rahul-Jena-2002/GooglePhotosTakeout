@@ -30,6 +30,30 @@ const prices = PLAN_PRICES[region] || PLAN_PRICES.us;
           <p class="text-lg sm:text-xl text-zinc-500 font-normal leading-relaxed max-w-2xl">
             Restore missing EXIF dates, GPS coordinates, timestamps, and other metadata from Google Takeout archives. Everything runs locally in your browser—your files never leave your device.
           </p>
+          
+          <!-- Mobile Image -->
+          <div class="block lg:hidden relative animate-fade-in my-6">
+            <div class="absolute inset-0 bg-zinc-500/5 blur-[120px] rounded-full"></div>
+            <img 
+              src="/hero-graphic-light.webp" 
+              alt="TakeoutFix local workspace metadata restoration tool interface screenshot" 
+              class="relative rounded-lg border border-zinc-200 dark:border-zinc-800 shadow-none w-full object-cover max-h-[300px] block dark:hidden"
+              fetchpriority="high"
+              width="1024"
+              height="1024"
+              decoding="sync"
+            />
+            <img 
+              src="/hero-graphic-dark.webp" 
+              alt="TakeoutFix local workspace metadata restoration tool interface screenshot" 
+              class="relative rounded-lg border border-zinc-200 dark:border-zinc-800 shadow-none w-full object-cover max-h-[300px] hidden dark:block"
+              fetchpriority="high"
+              width="1024"
+              height="1024"
+              decoding="async"
+            />
+          </div>
+
           <div class="flex flex-col sm:flex-row gap-4 pt-2 items-center">
             <a href="/restore-data" class="text-zinc-500 hover:text-foreground transition-colors flex items-center justify-center h-14 font-bold px-6 w-full sm:w-auto">
               Restore Guide
@@ -42,7 +66,7 @@ const prices = PLAN_PRICES[region] || PLAN_PRICES.us;
             </a>
           </div>
         </div>
-        <div class="lg:col-span-5 relative animate-fade-in">
+        <div class="hidden lg:block lg:col-span-5 relative animate-fade-in">
           <div class="absolute inset-0 bg-zinc-500/5 blur-[120px] rounded-full"></div>
           <img 
             src="/hero-graphic-light.webp" 
@@ -66,7 +90,7 @@ const prices = PLAN_PRICES[region] || PLAN_PRICES.us;
       </div>
 
       <!-- TRUST BAR / CHECKLIST (IMMEDIATELY BELOW HERO) -->
-      <div class="flex flex-wrap justify-center gap-x-8 gap-y-4 text-sm font-semibold text-zinc-700 dark:text-zinc-350 px-4 py-8 border-y border-zinc-200 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-950/20 mt-16 rounded-lg">
+      <div class="flex flex-wrap justify-center gap-x-8 gap-y-4 text-sm font-semibold text-zinc-700 dark:text-zinc-300 px-4 py-8 border-y border-zinc-200 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-950/20 mt-16 rounded-lg">
         <div class="flex items-center gap-2">
           <svg class="w-4 h-4 text-zinc-900 dark:text-zinc-100 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3">
             <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
@@ -133,7 +157,7 @@ const prices = PLAN_PRICES[region] || PLAN_PRICES.us;
         </div>
       </div>
       <div class="relative">
-        <div class="absolute inset-0 bg-zinc-550/5 blur-[100px] rounded-full"></div>
+        <div class="absolute inset-0 bg-zinc-500/5 blur-[100px] rounded-full"></div>
         <div class="relative bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg p-6 sm:p-8 flex flex-col gap-4 shadow-none">
           <div class="flex items-center justify-between p-4 bg-zinc-100 dark:bg-zinc-900 rounded-lg border border-zinc-200 dark:border-zinc-800 overflow-hidden">
             <span class="font-mono text-xs sm:text-sm truncate mr-2 text-foreground">IMG_20140812.jpg</span>
@@ -142,7 +166,7 @@ const prices = PLAN_PRICES[region] || PLAN_PRICES.us;
             </svg>
           </div>
           <div class="flex justify-center">
-            <svg class="w-6 h-6 text-zinc-400 dark:text-zinc-660 rotate-90" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <svg class="w-6 h-6 text-zinc-400 dark:text-zinc-600 rotate-90" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
               <path stroke-linecap="round" stroke-linejoin="round" d="M14 5l7 7m0 0l-7 7m7-7H3" />
             </svg>
           </div>

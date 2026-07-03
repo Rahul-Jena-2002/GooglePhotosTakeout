@@ -71,6 +71,7 @@ const getTableCellStyle = (val: string, plan: 'free' | 'recovery_pass' | 'pro' |
 
 function PricingPageContent() {
   const { user, userData, region, campaigns, activeCampaignDiscounts, getPlanPriceValue, pricingTiers, featuresConfig, tierThresholds, refundPolicy, comparisonRows } = useAuth();
+  const isPricingLoading = Object.keys(pricingTiers).length === 0;
 
   const formatThresholdLimit = (maxSizeMB?: number, maxFiles?: number) => {
     const sizeVal = maxSizeMB ?? 0;
@@ -390,7 +391,11 @@ function PricingPageContent() {
             </div>
             <div className="space-y-6">
               <div>
+                {isPricingLoading ? (
+                  <div className="h-10 w-24 bg-zinc-900 rounded animate-pulse my-1"></div>
+                ) : (
                 <div className="text-4xl font-bold text-white">{symbol}0</div>
+                )}
                 <p className="text-[11px] text-zinc-400 mt-1 leading-relaxed">Test with a small set of photos to see how it works.</p>
               </div>
               <div className="space-y-2.5">
@@ -422,6 +427,9 @@ function PricingPageContent() {
             </div>
             <div className="space-y-6">
               <div>
+                {isPricingLoading ? (
+                  <div className="h-10 w-36 bg-zinc-900 rounded animate-pulse my-1"></div>
+                ) : (
                 <div className="flex items-baseline flex-wrap gap-2">
                   <span className="text-4xl font-bold text-white">{formattedRecoveryCurrent}</span>
                   {(showRecoveryDiscount || activeCoupons['recovery_pass']) && (
@@ -448,6 +456,7 @@ function PricingPageContent() {
                     </div>
                   )}
                 </div>
+                )}
 
 
 
@@ -494,6 +503,9 @@ function PricingPageContent() {
             </div>
             <div className="space-y-6">
               <div>
+                {isPricingLoading ? (
+                  <div className="h-10 w-36 bg-zinc-900 rounded animate-pulse my-1"></div>
+                ) : (
                 <div className="flex items-baseline flex-wrap gap-2">
                   <span className="text-4xl font-bold text-white">{formattedProCurrent}</span>
                   {(showProDiscount || activeCoupons['pro'] || userData?.plan === 'recovery_pass') && (
@@ -525,6 +537,7 @@ function PricingPageContent() {
                     </div>
                   )}
                 </div>
+                )}
 
                 {( (isPromoActiveLocal && proDisc > 0) || activeCoupons['pro'] ) && (
                   <div className="mt-2 flex flex-col gap-1.5">
@@ -578,6 +591,9 @@ function PricingPageContent() {
             </div>
             <div className="space-y-6">
               <div>
+                {isPricingLoading ? (
+                  <div className="h-10 w-36 bg-zinc-900 rounded animate-pulse my-1"></div>
+                ) : (
                 <div className="flex items-baseline flex-wrap gap-2">
                   <span className="text-4xl font-bold text-white">{formattedSuperCurrent}</span>
                   {(showSuperDiscount || activeCoupons['super'] || userData?.plan === 'recovery_pass') && (
@@ -609,6 +625,7 @@ function PricingPageContent() {
                     </div>
                   )}
                 </div>
+                )}
 
                 {( (isPromoActiveLocal && superDisc > 0) || activeCoupons['super'] ) && (
                   <div className="mt-2 flex flex-col gap-1.5">

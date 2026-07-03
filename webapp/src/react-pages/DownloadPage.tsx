@@ -83,33 +83,43 @@ export default function DownloadPage() {
               <div className="flex border-b border-white/5 pb-4 mb-6 justify-between gap-2 overflow-x-auto">
                 <button 
                   onClick={() => setSelectedOS("win")}
-                  className={`flex-1 min-w-[90px] py-2.5 px-4 rounded-xl text-xs font-bold transition-all border text-center ${
+                  className={`flex-1 min-w-[90px] py-2.5 px-4 rounded-xl text-xs font-bold transition-all border text-center flex items-center justify-center gap-1.5 ${
                     selectedOS === "win" 
                       ? "bg-white text-black border-transparent shadow-md"
                       : "bg-white/[0.02] border-white/5 text-zinc-400 hover:text-white"
                   }`}
                 >
-                  🪟 Windows
+                  <img src="/windows-logo.png" className="w-3.5 h-3.5 object-contain flex-shrink-0" alt="" />
+                  <span>Windows</span>
                 </button>
                 <button 
                   onClick={() => setSelectedOS("mac")}
-                  className={`flex-1 min-w-[90px] py-2.5 px-4 rounded-xl text-xs font-bold transition-all border text-center ${
+                  className={`flex-1 min-w-[90px] py-2.5 px-4 rounded-xl text-xs font-bold transition-all border text-center flex items-center justify-center gap-1.5 ${
                     selectedOS === "mac" 
                       ? "bg-white text-black border-transparent shadow-md"
                       : "bg-white/[0.02] border-white/5 text-zinc-400 hover:text-white"
                   }`}
                 >
-                  🍎 macOS
+                  {selectedOS === "mac" ? (
+                    <img src="/apple-logo-black.png" className="w-3.5 h-3.5 object-contain flex-shrink-0" alt="" />
+                  ) : (
+                    <>
+                      <img src="/apple-logo-black.png" className="w-3.5 h-3.5 object-contain flex-shrink-0 dark:hidden" alt="" />
+                      <img src="/apple-logo-white.png" className="w-3.5 h-3.5 object-contain flex-shrink-0 hidden dark:block" alt="" />
+                    </>
+                  )}
+                  <span>macOS</span>
                 </button>
                 <button 
                   onClick={() => setSelectedOS("linux")}
-                  className={`flex-1 min-w-[90px] py-2.5 px-4 rounded-xl text-xs font-bold transition-all border text-center ${
+                  className={`flex-1 min-w-[90px] py-2.5 px-4 rounded-xl text-xs font-bold transition-all border text-center flex items-center justify-center gap-1.5 ${
                     selectedOS === "linux" 
                       ? "bg-white text-black border-transparent shadow-md"
                       : "bg-white/[0.02] border-white/5 text-zinc-400 hover:text-white"
                   }`}
                 >
-                  🐧 Linux
+                  <img src="/linux-logo.png" className="w-3.5 h-3.5 object-contain flex-shrink-0" alt="" />
+                  <span>Linux</span>
                 </button>
               </div>
 
