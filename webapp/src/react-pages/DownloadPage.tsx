@@ -16,13 +16,17 @@ import {
 export default function DownloadPage() {
   const [selectedOS, setSelectedOS] = useState<"win" | "mac" | "linux">("win");
 
-  const releasesUrl = "https://github.com/rahuljena-dev/takeoutfix/releases/latest"; // Example release page URL
+  const downloadUrls = {
+    win: "https://takeoutfix-download.takeoutfix.workers.dev/download/windows",
+    mac: "https://takeoutfix-download.takeoutfix.workers.dev/download/macos",
+    linux: "https://takeoutfix-download.takeoutfix.workers.dev/download/linux"
+  };
 
   const osInfo = {
     win: {
       title: "Windows Standalone",
       desc: "Compatible with Windows 10 & 11 (64-bit). No installer required.",
-      file: "takeoutfix-windows.zip",
+      file: "TakeoutFix-Windows-Portable.zip",
       instructions: [
         "Download the ZIP archive using the link below.",
         "Right-click the downloaded folder and select 'Extract All...'.",
@@ -33,7 +37,7 @@ export default function DownloadPage() {
     mac: {
       title: "macOS Application",
       desc: "Supports Intel & Apple Silicon (M1/M2/M3) chips. macOS 12+.",
-      file: "takeoutfix-macos.zip",
+      file: "TakeoutFix-macOS-Portable.zip",
       instructions: [
         "Download the macOS archive file.",
         "Double-click to extract the ZIP archive.",
@@ -44,10 +48,10 @@ export default function DownloadPage() {
     linux: {
       title: "Linux Executable",
       desc: "Compatible with modern x86_64 distributions (Ubuntu, Fedora, Arch).",
-      file: "takeoutfix-linux.tar.gz",
+      file: "TakeoutFix-Linux-Portable.tar.gz",
       instructions: [
         "Download the Linux compressed tarball.",
-        "Extract it using your archive manager or run: tar -xzf takeoutfix-linux.tar.gz",
+        "Extract it using your archive manager or run: tar -xzf TakeoutFix-Linux-Portable.tar.gz",
         "Navigate into the folder and mark the main executable as runnable: chmod +x GTMetadataMerger",
         "Launch the tool directly from terminal or double-click to start: ./GTMetadataMerger"
       ]
@@ -143,14 +147,9 @@ export default function DownloadPage() {
                 </div>
 
                 <div className="pt-4 flex flex-col sm:flex-row gap-3">
-                  <a href={releasesUrl} target="_blank" rel="noopener noreferrer" className="flex-1">
+                  <a href={downloadUrls[selectedOS]} className="flex-1">
                     <button className="primary-saas w-full h-11 text-xs font-bold rounded-xl flex items-center justify-center gap-2 cursor-pointer shadow-md">
                       <Download className="w-4 h-4" /> Download Standalone ({osInfo[selectedOS].file})
-                    </button>
-                  </a>
-                  <a href={releasesUrl} target="_blank" rel="noopener noreferrer">
-                    <button className="secondary-saas h-11 px-5 text-xs font-bold rounded-xl flex items-center justify-center gap-1.5 cursor-pointer">
-                      All Releases <ArrowRight className="w-3.5 h-3.5" />
                     </button>
                   </a>
                 </div>

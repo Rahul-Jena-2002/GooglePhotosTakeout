@@ -69,10 +69,18 @@ export default {
         redirect: "manual" // Stop automatic redirect follow to capture the S3 URL
       });
 
-      // Capture the Location header (pre-signed S3 URL) and redirect the user
+      // Capture the Location header (pre-signed S3 URL) and stream the file directly
       const redirectUrl = assetResponse.headers.get("Location");
       if (assetResponse.status === 302 && redirectUrl) {
-        return Response.redirect(redirectUrl, 302);
+        const fileResponse = await fetch(redirectUrl);
+        return new Response(fileResponse.body, {
+          status: fileResponse.status,
+          headers: {
+            "Content-Type": "application/octet-stream",
+            "Content-Disposition": `attachment; filename="${targetFileName}"`,
+            "Content-Length": fileResponse.headers.get("Content-Length")
+          }
+        });
       }
 
       // If GitHub didn't return a redirect, try to stream the content directly
