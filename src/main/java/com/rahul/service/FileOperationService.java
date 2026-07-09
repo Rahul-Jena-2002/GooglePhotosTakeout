@@ -59,4 +59,20 @@ public class FileOperationService {
             // Secondary operation failure should not crash the main loop.
         }
     }
+
+    /**
+     * Recursively deletes a directory and its contents.
+     *
+     * @param directoryToBeDeleted The root directory to delete.
+     * @return true if successfully deleted.
+     */
+    public boolean deleteDirectory(File directoryToBeDeleted) {
+        File[] allContents = directoryToBeDeleted.listFiles();
+        if (allContents != null) {
+            for (File file : allContents) {
+                deleteDirectory(file);
+            }
+        }
+        return directoryToBeDeleted.delete();
+    }
 }

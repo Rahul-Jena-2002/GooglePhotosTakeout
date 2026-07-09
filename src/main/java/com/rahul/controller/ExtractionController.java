@@ -29,6 +29,7 @@ public class ExtractionController {
             String outputPath = params.get("outputPath");
             String postActionStr = params.getOrDefault("postAction", "KEEP_AWAKE_ONLY");
             String dateStr = params.get("takeoutDate");
+            boolean outputZip = Boolean.parseBoolean(params.getOrDefault("outputZip", "false"));
 
             if (inputPath == null || inputPath.trim().isEmpty() || outputPath == null || outputPath.trim().isEmpty()) {
                 throw new IllegalArgumentException("Both input and output folder paths are required.");
@@ -39,12 +40,16 @@ public class ExtractionController {
                 throw new IllegalArgumentException("The input path does not exist.");
             }
 
+            boolean isTemp = false;
             if (input.isFile() && input.getName().toLowerCase().endsWith(".zip")) {
                 Path tempDir = Files.createTempDirectory("zip_extraction");
                 try (ZipInputStream zis = new ZipInputStream(new FileInputStream(input))) {
                     java.util.zip.ZipEntry entry;
                     while ((entry = zis.getNextEntry()) != null) {
-                        Path newPath = tempDir.resolve(entry.getName());
+                        Path newPath = tempDir.resolve(entry.getName()).normalize();
+                        if (!newPath.startsWith(tempDir)) {
+                            throw new SecurityException("Bad zip entry: " + entry.getName());
+                        }
                         if (entry.isDirectory()) Files.createDirectories(newPath);
                         else {
                             Files.createDirectories(newPath.getParent());
@@ -53,6 +58,7 @@ public class ExtractionController {
                     }
                 }
                 inputPath = tempDir.toAbsolutePath().toString();
+                isTemp = true;
             } else if (!input.isDirectory()) {
                 throw new IllegalArgumentException("The input path is not a directory or a ZIP file.");
             }
@@ -76,11 +82,18 @@ public class ExtractionController {
                 }
             }
 
+            int limitFiles = Integer.parseInt(params.getOrDefault("limitFiles", "250"));
+            int offsetFiles = Integer.parseInt(params.getOrDefault("offsetFiles", "0"));
+
             extractionService.startExtraction(
                     inputPath,
                     outputPath,
                     com.rahul.service.PowerManager.PostAction.valueOf(postActionStr),
-                    takeoutDate
+                    takeoutDate,
+                    isTemp,
+                    outputZip,
+                    limitFiles,
+                    offsetFiles
             );
 
             return ResponseEntity.ok(Map.of("status", "started"));

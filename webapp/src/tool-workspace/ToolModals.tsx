@@ -1,8 +1,8 @@
 /**
  * ToolModals — all fixed-position modal overlays for ToolWorkspace.
- * Includes: QuotaAlert, PopupModal, CompareModal, PermissionModal.
+ * Includes: QuotaAlert, PopupModal, CompareModal, PermissionModal, RestoreCompleteModal.
  */
-import { AlertCircle, FolderUp, HardDrive, X } from "lucide-react"
+import { AlertCircle, CheckCircle2, FolderUp, HardDrive, Play, X } from "lucide-react"
 import { Button } from "../components/ui/button"
 
 interface ToolModalsProps {
@@ -19,6 +19,11 @@ interface ToolModalsProps {
   modalContext: 'source' | 'destination' | null
   setModalContext: (v: 'source' | 'destination' | null) => void
   handleModalConfirm: () => void
+  // Restore complete modal
+  showRestoreComplete: boolean
+  restoreCompleteStats: { scanned: number; matched: number; unmatched: number; errors: number }
+  onRestoreAnother: () => void
+  onRestoreCompleteDismiss: () => void
 }
 
 export function ToolModals({
@@ -31,6 +36,10 @@ export function ToolModals({
   modalContext,
   setModalContext,
   handleModalConfirm,
+  showRestoreComplete,
+  restoreCompleteStats,
+  onRestoreAnother,
+  onRestoreCompleteDismiss,
 }: ToolModalsProps) {
   return (
     <>
@@ -234,6 +243,84 @@ export function ToolModals({
                 className="btn-monochrome-primary h-9 text-xs px-4 font-bold rounded-lg transition-all border-0"
               >
                 Grant Access
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Restore Complete Modal ───────────────────────────────────────── */}
+      {showRestoreComplete && (
+        <div className="fixed inset-0 z-[300] flex items-center justify-center bg-black/85 backdrop-blur-md p-4 select-none animate-in fade-in duration-200">
+          <div className="bg-zinc-950 border border-white/10 p-8 rounded-2xl max-w-md w-full text-center relative overflow-hidden shadow-2xl animate-in fade-in zoom-in-95 duration-200">
+            {/* Monochrome top bar — same as quota / permission modals */}
+            <div className="absolute top-0 left-0 right-0 h-1 bg-zinc-800 dark:bg-zinc-200"></div>
+
+            {/* Dismiss X */}
+            <button
+              onClick={onRestoreCompleteDismiss}
+              className="absolute top-4 right-4 w-7 h-7 rounded-full flex items-center justify-center text-zinc-500 hover:text-white hover:bg-white/10 transition-all duration-150 cursor-pointer"
+              aria-label="Close"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+
+            {/* Icon — same style as other modals */}
+            <div className="w-14 h-14 rounded-full bg-white/[0.04] border border-white/10 flex items-center justify-center mx-auto mb-5">
+              <CheckCircle2 className="w-7 h-7 text-white/80" />
+            </div>
+
+            {/* Title */}
+            <h3 className="text-xl font-bold text-white mb-2">Restoration Complete</h3>
+
+            {/* Hero number */}
+            <div className="mb-5">
+              <div className="text-5xl font-black text-white tracking-tighter">
+                {restoreCompleteStats.scanned.toLocaleString()}
+              </div>
+              <div className="text-zinc-500 text-[11px] font-semibold uppercase tracking-widest mt-1.5">
+                files processed
+              </div>
+            </div>
+
+            {/* Stat pills — monochrome, no colors */}
+            <div className="flex items-center justify-center gap-2 mb-6 flex-wrap">
+              <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-semibold bg-white/[0.04] border border-white/10 text-zinc-300">
+                <span className="text-white/50">✓</span>
+                <span>{restoreCompleteStats.matched.toLocaleString()} Restored</span>
+              </div>
+              {restoreCompleteStats.unmatched > 0 && (
+                <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-semibold bg-white/[0.04] border border-white/10 text-zinc-400">
+                  <span className="text-white/30">—</span>
+                  <span>{restoreCompleteStats.unmatched.toLocaleString()} Unmatched</span>
+                </div>
+              )}
+              {restoreCompleteStats.errors > 0 && (
+                <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-semibold bg-white/[0.04] border border-white/10 text-zinc-400">
+                  <span className="text-white/30">✕</span>
+                  <span>{restoreCompleteStats.errors.toLocaleString()} Errors</span>
+                </div>
+              )}
+            </div>
+
+            {/* Description */}
+            <p className="text-zinc-500 text-xs mb-6 leading-relaxed">
+              Metadata has been embedded. Dates, GPS, and timestamps are now restored in your files.
+            </p>
+
+            {/* Action buttons */}
+            <div className="space-y-3">
+              <Button
+                onClick={onRestoreAnother}
+                className="btn-monochrome-primary w-full h-12 font-bold rounded-lg border-0 shadow-none transition-all duration-150 cursor-pointer flex items-center justify-center gap-2"
+              >
+                <Play className="w-4 h-4" /> Restore Another Archive
+              </Button>
+              <Button
+                onClick={onRestoreCompleteDismiss}
+                className="btn-monochrome-primary w-full h-10 font-bold rounded-lg border-0 shadow-none transition-all duration-150 cursor-pointer"
+              >
+                View Results & Logs
               </Button>
             </div>
           </div>

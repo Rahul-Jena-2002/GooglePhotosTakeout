@@ -46,9 +46,10 @@ public class MetadataMatcher {
      * Searches for a matching JSON file for the given media file.
      *
      * @param media The media file.
+     * @param dirCache A cache of directory listings to improve performance.
      * @return An Optional containing the matching JSON file if found.
      */
-    public Optional<File> findMatchingJson(File media) {
+    public Optional<File> findMatchingJson(File media, Map<String, File[]> dirCache) {
         File parent = media.getParentFile();
         if (parent == null) return Optional.empty();
 
@@ -65,7 +66,7 @@ public class MetadataMatcher {
         }
 
         // 3. Fallback: Scan folder for files that "look like" metadata for this media
-        return findDynamicMatch(media, parent);
+        return findDynamicMatch(media, parent, dirCache);
     }
 
     private Optional<File> findExactMatch(File media, File parent) {
@@ -83,8 +84,9 @@ public class MetadataMatcher {
         return Optional.empty();
     }
 
-    private Optional<File> findDynamicMatch(File media, File parent) {
-        File[] files = parent.listFiles();
+    private Optional<File> findDynamicMatch(File media, File parent, Map<String, File[]> dirCache) {
+        String parentPath = parent.getAbsolutePath();
+        File[] files = dirCache.computeIfAbsent(parentPath, k -> parent.listFiles());
         if (files == null) return Optional.empty();
 
         String mediaName = media.getName();

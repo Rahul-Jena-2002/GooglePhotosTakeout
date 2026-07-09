@@ -215,21 +215,21 @@ export default function MainLayout() {
             <Link to="/" className="text-[17px] font-semibold tracking-tight text-white flex items-center gap-2" onClick={() => setMobileMenuOpen(false)}>
               <svg className="w-5 h-5 md:w-6 md:h-6 flex-shrink-0" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                 <defs>
-                  <linearGradient id="logo-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <linearGradient id="logo-grad-nav" x1="0%" y1="0%" x2="100%" y2="100%">
                     <stop offset="0%" stopColor="#6366f1" />
                     <stop offset="100%" stopColor="#a855f7" />
                   </linearGradient>
                 </defs>
-                <rect x="9" y="1" width="1.5" height="1.5" fill="url(#logo-grad)" />
-                <rect x="14" y="2" width="1.5" height="1.5" fill="url(#logo-grad)" />
-                <rect x="11" y="4" width="1.5" height="1.5" fill="url(#logo-grad)" />
-                <rect x="8" y="5" width="1.5" height="1.5" fill="url(#logo-grad)" />
-                <rect x="15" y="5" width="1.5" height="1.5" fill="url(#logo-grad)" />
-                <rect x="10" y="7" width="1.5" height="1.5" fill="url(#logo-grad)" />
-                <rect x="13" y="7" width="1.5" height="1.5" fill="url(#logo-grad)" />
-                <path d="M8 10H4C2.89543 10 2 10.8954 2 12V20C2 21.1046 2.89543 22 4 22H20C21.1046 22 22 21.1046 22 20V12C22 10.8954 21.1046 10 20 10H16" stroke="url(#logo-grad)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                <path d="M2 20L8 14L13 19L18 13L22 17" stroke="url(#logo-grad)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                <circle cx="16" cy="14" r="1.5" fill="url(#logo-grad)" />
+                <rect x="9" y="1" width="1.5" height="1.5" fill="url(#logo-grad-nav)" />
+                <rect x="14" y="2" width="1.5" height="1.5" fill="url(#logo-grad-nav)" />
+                <rect x="11" y="4" width="1.5" height="1.5" fill="url(#logo-grad-nav)" />
+                <rect x="8" y="5" width="1.5" height="1.5" fill="url(#logo-grad-nav)" />
+                <rect x="15" y="5" width="1.5" height="1.5" fill="url(#logo-grad-nav)" />
+                <rect x="10" y="7" width="1.5" height="1.5" fill="url(#logo-grad-nav)" />
+                <rect x="13" y="7" width="1.5" height="1.5" fill="url(#logo-grad-nav)" />
+                <path d="M8 10H4C2.89543 10 2 10.8954 2 12V20C2 21.1046 2.89543 22 4 22H20C21.1046 22 22 21.1046 22 20V12C22 10.8954 21.1046 10 20 10H16" stroke="url(#logo-grad-nav)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                <path d="M2 20L8 14L13 19L18 13L22 17" stroke="url(#logo-grad-nav)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                <circle cx="16" cy="14" r="1.5" fill="url(#logo-grad-nav)" />
               </svg>
               <span className="text-base md:text-lg font-semibold tracking-tight">TakeoutFix</span>
             </Link>

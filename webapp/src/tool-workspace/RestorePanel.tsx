@@ -57,6 +57,7 @@ interface RestorePanelProps {
   cancelProcessing: () => void
   pauseProcessing: () => void
   resumeProcessing: () => void
+  resetForNewRestore: () => void
   setShowCompareModal: (v: boolean) => void
   // EXIF Viewer
   viewerFile: File | null
@@ -162,6 +163,7 @@ export function RestorePanel({
   cancelProcessing,
   pauseProcessing,
   resumeProcessing,
+  resetForNewRestore,
   setShowCompareModal,
   viewerFile,
   viewerExif,
@@ -683,6 +685,7 @@ export function RestorePanel({
 
           </div>
         )}
+
         </>
       )}
 

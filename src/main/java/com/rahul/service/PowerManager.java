@@ -18,13 +18,28 @@ public class PowerManager {
 
     private volatile boolean keepAwake = false;
     private Thread keeperThread;
+    private Process nativeKeepAwakeProcess;
 
-    public void startKeepAwake() {
-        if (keeperThread != null && keeperThread.isAlive()) {
+    public synchronized void startKeepAwake() {
+        if (keepAwake) {
             return;
         }
-
         keepAwake = true;
+
+        String os = System.getProperty("os.name").toLowerCase();
+        if (os.contains("win")) {
+            // Windows: Robot is silent and does not trigger security prompts
+            startWindowsRobotKeeper();
+        } else if (os.contains("mac")) {
+            // macOS: Use native caffeinate command
+            startNativeKeeper("caffeinate", "-d");
+        } else {
+            // Linux/Unix: Use systemd-inhibit (completely silent and portal-free)
+            startNativeKeeper("systemd-inhibit", "--what=idle", "--who=TakeoutFix", "--why=Restoring Metadata", "sleep", "86400");
+        }
+    }
+
+    private void startWindowsRobotKeeper() {
         keeperThread = new Thread(() -> {
             try {
                 Robot robot = new Robot();
@@ -42,13 +57,30 @@ public class PowerManager {
         keeperThread.start();
     }
 
-    public void stopKeepAwake() {
+    private void startNativeKeeper(String... command) {
+        try {
+            nativeKeepAwakeProcess = new ProcessBuilder(command).start();
+        } catch (Exception e) {
+            System.err.println("Failed to start native power keeper: " + e.getMessage());
+            keepAwake = false;
+        }
+    }
+
+    public synchronized void stopKeepAwake() {
         keepAwake = false;
         if (keeperThread != null) {
             try {
-                keeperThread.join(1000);
+                keeperThread.join(500);
             } catch (InterruptedException ignored) {
             }
+            keeperThread = null;
+        }
+        if (nativeKeepAwakeProcess != null) {
+            try {
+                nativeKeepAwakeProcess.destroy();
+            } catch (Exception ignored) {
+            }
+            nativeKeepAwakeProcess = null;
         }
     }
 

@@ -199,9 +199,10 @@ export function useToolPipeline() {
         // Sync tool thresholds from admin settings
         const stored = data.tierThresholds
         if (stored) {
+          const parseLimit = (val: any, def: number) => val === 0 ? Infinity : (val ?? def);
           setTierThresholds({
-            free:          { maxFiles: stored.free?.maxFiles ?? 250,           maxSizeMB: stored.free?.maxSizeMB ?? 500    },
-            recovery_pass: { maxFiles: stored.recovery_pass?.maxFiles ?? 3000, maxSizeMB: stored.recovery_pass?.maxSizeMB ?? 3072 },
+            free:          { maxFiles: parseLimit(stored.free?.maxFiles, 250),           maxSizeMB: parseLimit(stored.free?.maxSizeMB, 500)    },
+            recovery_pass: { maxFiles: parseLimit(stored.recovery_pass?.maxFiles, 3000), maxSizeMB: parseLimit(stored.recovery_pass?.maxSizeMB, 3072) },
             pro:           { maxFiles: Infinity,                               maxSizeMB: Infinity },
             super:         { maxFiles: Infinity,                               maxSizeMB: Infinity },
           })
@@ -2083,6 +2084,24 @@ export function useToolPipeline() {
     }
   }
 
+  /** Resets all restoration state so the user can start a fresh restore without a page reload. */
+  const resetForNewRestore = () => {
+    setTakeoutFolder(null)
+    setOutputFolder(null)
+    setZipFile(null)
+    setIsProcessing(false)
+    isProcessingRef.current = false
+    setIsPaused(false)
+    isPausedRef.current = false
+    setProgress(0)
+    setCurrentFile('')
+    setStats({ scanned: 0, matched: 0, unmatched: 0, exifFailed: 0, errors: 0, total: 0 })
+    setLogs([])
+    setZipMode(false)
+    zipModeRef.current = false
+    setActiveWorkersCount(0)
+  }
+
   const getEstimatedRestoreTime = () => {
     const totalFiles = stats.total || 0;
     if (totalFiles <= 0) {
@@ -2299,6 +2318,7 @@ export function useToolPipeline() {
     cancelProcessing,
     pauseProcessing,
     resumeProcessing,
+    resetForNewRestore,
     getEstimatedRestoreTime,
     handleViewerFileChange,
     handleCompFilesChange,

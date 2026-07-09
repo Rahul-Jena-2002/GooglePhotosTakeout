@@ -248,21 +248,21 @@ const canonicalUrl = `https://takeoutfix.pages.dev${Astro.url.pathname.replace(/
             <a href="/" class="text-[17px] font-semibold tracking-tight text-white flex items-center gap-2">
               <svg class="w-5 h-5 md:w-6 md:h-6 flex-shrink-0" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                 <defs>
-                  <linearGradient id="logo-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <linearGradient id="logo-grad-astro" x1="0%" y1="0%" x2="100%" y2="100%">
                     <stop offset="0%" stop-color="#6366f1" />
                     <stop offset="100%" stop-color="#a855f7" />
                   </linearGradient>
                 </defs>
-                <rect x="9" y="1" width="1.5" height="1.5" fill="url(#logo-grad)" />
-                <rect x="14" y="2" width="1.5" height="1.5" fill="url(#logo-grad)" />
-                <rect x="11" y="4" width="1.5" height="1.5" fill="url(#logo-grad)" />
-                <rect x="8" y="5" width="1.5" height="1.5" fill="url(#logo-grad)" />
-                <rect x="15" y="5" width="1.5" height="1.5" fill="url(#logo-grad)" />
-                <rect x="10" y="7" width="1.5" height="1.5" fill="url(#logo-grad)" />
-                <rect x="13" y="7" width="1.5" height="1.5" fill="url(#logo-grad)" />
-                <path d="M8 10H4C2.89543 10 2 10.8954 2 12V20C2 21.1046 2.89543 22 4 22H20C21.1046 22 22 21.1046 22 20V12C22 10.8954 21.1046 10 20 10H16" stroke="url(#logo-grad)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
-                <path d="M2 20L8 14L13 19L18 13L22 17" stroke="url(#logo-grad)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
-                <circle cx="16" cy="14" r="1.5" fill="url(#logo-grad)" />
+                <rect x="9" y="1" width="1.5" height="1.5" fill="url(#logo-grad-astro)" />
+                <rect x="14" y="2" width="1.5" height="1.5" fill="url(#logo-grad-astro)" />
+                <rect x="11" y="4" width="1.5" height="1.5" fill="url(#logo-grad-astro)" />
+                <rect x="8" y="5" width="1.5" height="1.5" fill="url(#logo-grad-astro)" />
+                <rect x="15" y="5" width="1.5" height="1.5" fill="url(#logo-grad-astro)" />
+                <rect x="10" y="7" width="1.5" height="1.5" fill="url(#logo-grad-astro)" />
+                <rect x="13" y="7" width="1.5" height="1.5" fill="url(#logo-grad-astro)" />
+                <path d="M8 10H4C2.89543 10 2 10.8954 2 12V20C2 21.1046 2.89543 22 4 22H20C21.1046 22 22 21.1046 22 20V12C22 10.8954 21.1046 10 20 10H16" stroke="url(#logo-grad-astro)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+                <path d="M2 20L8 14L13 19L18 13L22 17" stroke="url(#logo-grad-astro)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+                <circle cx="16" cy="14" r="1.5" fill="url(#logo-grad-astro)" />
               </svg>
               <span class="text-base md:text-lg font-semibold tracking-tight">TakeoutFix</span>
             </a>
@@ -419,8 +419,8 @@ const canonicalUrl = `https://takeoutfix.pages.dev${Astro.url.pathname.replace(/
         </div>
       </main>
 
-      <!-- FOOTER -->
-      <footer class="w-full border-t border-white/5 bg-black/40 backdrop-blur-md mt-auto py-16">
+      <!-- FOOTER — hidden on tool page since it's a full-screen app -->
+      { !isToolPage && <footer class="w-full border-t border-white/5 bg-black/40 backdrop-blur-md mt-auto py-16">
           <div class="max-w-7xl mx-auto px-6">
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-12 mb-12">
               
@@ -507,7 +507,7 @@ const canonicalUrl = `https://takeoutfix.pages.dev${Astro.url.pathname.replace(/
               </div>
             </div>
           </div>
-        </footer>
+        </footer> }
       <!-- ADBLOCKER SOFT BANNER -->
       <div 
         id="adblock-banner" 

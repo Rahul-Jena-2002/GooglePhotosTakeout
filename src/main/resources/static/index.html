@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en" class="dark">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -37,7 +37,7 @@
             --sidebar-bg: #ffffff;
         }
 
-        .dark {
+        [data-theme='dark'] {
             /* Dark Theme CSS Variables */
             --bg-base: #09090b;
             --bg-card: rgba(18, 18, 24, 0.7);
@@ -408,10 +408,9 @@
             box-shadow: 0 0 8px var(--warning-color);
         }
 
-        /* Stats Grid */
         .stats-grid {
             display: grid;
-            grid-template-columns: 1fr 1fr;
+            grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
             gap: 10px;
         }
 
@@ -871,6 +870,191 @@
             animation: scaleIn 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
         }
 
+        .modal-container.pricing-modal {
+            max-width: 1050px;
+            width: 95%;
+        }
+
+        /* Pricing Cards Grid */
+        .pricing-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 14px;
+            margin-top: 16px;
+            width: 100%;
+        }
+
+        @media (max-width: 960px) {
+            .pricing-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+            .modal-container.pricing-modal {
+                max-height: 85vh;
+                overflow-y: auto;
+            }
+        }
+
+        @media (max-width: 600px) {
+            .pricing-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .pricing-card {
+            background: rgba(120, 120, 120, 0.02);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            padding: 16px;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+            transition: all 0.2s ease;
+        }
+
+        .pricing-card.popular {
+            border: 1.5px solid var(--primary);
+            box-shadow: 0 8px 32px rgba(99, 102, 241, 0.1);
+            background: rgba(99, 102, 241, 0.02);
+        }
+
+        .pricing-card-badge {
+            position: absolute;
+            top: -10px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: var(--primary);
+            color: #fff;
+            padding: 3px 10px;
+            border-radius: 20px;
+            font-size: 9px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .pricing-card-title {
+            font-size: 18px;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin-bottom: 2px;
+        }
+
+        .pricing-card-subtitle {
+            font-size: 10.5px;
+            color: var(--text-secondary);
+            margin-bottom: 12px;
+            line-height: 1.35;
+        }
+
+        .pricing-card-price {
+            font-size: 24px;
+            font-weight: 800;
+            color: var(--text-primary);
+            margin-bottom: 2px;
+        }
+
+        .pricing-card-strike {
+            font-size: 11px;
+            text-decoration: line-through;
+            color: var(--text-secondary);
+            margin-bottom: 4px;
+        }
+
+        .pricing-badge-row {
+            display: flex;
+            gap: 4px;
+            margin-bottom: 8px;
+            flex-wrap: wrap;
+        }
+
+        .pricing-badge-promo {
+            font-size: 9px;
+            font-weight: 700;
+            padding: 1px 5px;
+            border-radius: 4px;
+        }
+
+        .pricing-badge-promo.green {
+            background: rgba(16, 185, 129, 0.15);
+            color: #10b981;
+        }
+
+        .pricing-badge-promo.purple {
+            background: rgba(99, 102, 241, 0.15);
+            color: var(--primary);
+            border: 1px dashed rgba(99, 102, 241, 0.3);
+        }
+
+        .pricing-claims-bar {
+            background: rgba(249, 115, 22, 0.08);
+            border: 1px solid rgba(249, 115, 22, 0.15);
+            color: #f97316;
+            font-size: 9.5px;
+            font-weight: 600;
+            padding: 5px 8px;
+            border-radius: 6px;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .pricing-features-list {
+            margin-top: 10px;
+            margin-bottom: 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            font-size: 10.5px;
+            color: var(--text-secondary);
+            flex-grow: 1;
+        }
+
+        .pricing-feature-item {
+            display: flex;
+            align-items: flex-start;
+            gap: 5px;
+            line-height: 1.35;
+        }
+
+        .pricing-feature-item svg {
+            flex-shrink: 0;
+            margin-top: 2px;
+        }
+
+        .pricing-feature-header {
+            font-size: 8.5px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--text-secondary);
+            margin-bottom: 2px;
+            margin-top: 6px;
+        }
+
+        .pricing-card-btn {
+            width: 100%;
+            padding: 8px 12px;
+            border-radius: 8px;
+            font-size: 11.5px;
+            font-weight: 700;
+            border: none;
+            cursor: pointer;
+            text-align: center;
+            text-decoration: none;
+            transition: all 0.2s ease;
+            display: inline-block;
+        }
+
+        .pricing-card-btn.primary {
+            background: var(--text-primary);
+            color: var(--sidebar-bg);
+        }
+
+        .pricing-card-btn.primary:hover {
+            opacity: 0.9;
+        }
+
         .modal-accent-line {
             height: 4px;
             background: linear-gradient(90deg, var(--accent-color) 0%, var(--success-color) 100%);
@@ -1003,7 +1187,7 @@
                 <h1>Takeout<span>Fix</span> <small style="font-size: 11px; font-weight: 700; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.1em; margin-left: 6px; vertical-align: middle;">Desktop Ops Center</small></h1>
             </div>
             <div class="header-actions">
-                <button id="btnThemeToggle" class="btn-theme-toggle" onclick="toggleTheme()" aria-label="Toggle Theme">
+                <button type="button" id="btnThemeToggle" class="btn-theme-toggle" onclick="toggleTheme()" aria-label="Toggle Theme">
                     <!-- Sun/Moon SVGs will load dynamically -->
                 </button>
                 <div id="userProfile" class="user-profile" style="display: none;">
@@ -1302,10 +1486,21 @@
                                     Start Restoring
                                 </button>
 
-                                <!-- Busy Controls (pause/cancel) -->
-                                <div id="busyControls" class="busy-controls" style="flex-direction:column; gap:6px;">
-                                    <button id="btnPause" class="rc-btn-outline" onclick="togglePause()">⏸ Pause</button>
-                                    <button id="btnCancel" class="btn-cancel" onclick="cancelProcess()" style="padding:10px;">✕ Cancel</button>
+                                <!-- Chunked ZIP Output Option (Highly Visible & Highlighted) -->
+                                <div style="margin-top: 10px; margin-bottom: 5px; padding: 12px 14px; background: rgba(99, 102, 241, 0.08); border: 1px dashed var(--primary); border-radius: 10px; display: flex; align-items: center; gap: 10px; transition: all 0.2s;">
+                                    <input type="checkbox" id="outputZip" style="accent-color: var(--primary); width: 16px; height: 16px; cursor: pointer;">
+                                    <label for="outputZip" style="font-size: 12.5px; font-weight: 600; color: var(--text-primary); cursor: pointer; user-select: none;">
+                                        📦 Output as chunked ZIP archives (2GB per file)
+                                    </label>
+                                </div>
+
+                                <!-- Busy Controls (pause/stop/cancel) -->
+                                <div id="busyControls" class="busy-controls" style="display: none; flex-direction: column; gap: 8px;">
+                                    <button id="btnPause" type="button" class="rc-btn-outline" onclick="togglePause()" style="width: 100%;">⏸ Pause</button>
+                                    <div style="display: flex; gap: 8px; width: 100%;">
+                                        <button id="btnStop" type="button" class="rc-btn-outline" onclick="stopProcess()" style="flex: 1; border-color: var(--warning-color); color: var(--warning-color); padding: 10px;">⏹ Stop</button>
+                                        <button id="btnCancel" type="button" class="btn-cancel" onclick="cancelProcess()" style="flex: 1; padding: 10px;">✕ Cancel</button>
+                                    </div>
                                 </div>
 
                                 <!-- Quick Actions -->
@@ -1562,6 +1757,10 @@
                                     <span id="dashDuplicates" class="stat-val" style="font-size: 16px; color: var(--danger-color);">✗</span>
                                     <span class="stat-lbl">Duplicates</span>
                                 </div>
+                                <div class="stat-item">
+                                    <span id="dashTotalRestored" class="stat-val" style="font-size: 16px;">0</span>
+                                    <span class="stat-lbl">Total Restored (All time)</span>
+                                </div>
                             </div>
                         </div>
 
@@ -1673,47 +1872,140 @@
 
     <!-- UPGRADE MODAL -->
     <div id="upgradeModal" class="modal-overlay">
-        <div class="modal-container">
+        <div class="modal-container pricing-modal">
             <div class="modal-accent-line"></div>
             <button class="modal-close" onclick="closeModal()">×</button>
-            <div class="modal-body">
-                <div class="modal-header-text">
-                    <h2>Upgrade to Premium</h2>
-                    <p>Unlock offline batch processing limits and advanced EXIF date restoration tools permanently.</p>
+            <div class="modal-body" style="padding: 20px;">
+                <div class="modal-header-text" style="text-align: center; margin-bottom: 15px;">
+                    <h2 style="font-size: 20px;">Choose Your Plan</h2>
+                    <p style="font-size: 12px; margin-top: 2px;">Unlock offline batch processing limits and advanced EXIF date restoration tools permanently.</p>
                 </div>
 
-                <div class="upgrade-comparison">
-                    <div class="comparison-row">
-                        <span class="comparison-label">Processing Limit</span>
-                        <span class="comparison-free">250 files</span>
-                        <span class="comparison-premium">Unlimited</span>
+                <div class="pricing-grid">
+                    <!-- Free Plan -->
+                    <div class="pricing-card">
+                        <div class="pricing-card-title">Free</div>
+                        <div class="pricing-card-subtitle">Free up to 250 files or 500MB</div>
+                        <div class="pricing-card-price">₹0</div>
+                        <div style="font-size: 9.5px; color: var(--text-secondary); margin-bottom: 10px; line-height: 1.3;">Test with a small set of photos to see how it works.</div>
+                        <div class="pricing-features-list">
+                            <div class="pricing-feature-header">Includes</div>
+                            <div class="pricing-feature-item">
+                                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="3.5"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                                <span>Free up to 250 files or 500MB</span>
+                            </div>
+                            <div class="pricing-feature-item">
+                                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="3.5"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                                <span>Restores original dates & times</span>
+                            </div>
+                            <div class="pricing-feature-item">
+                                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="3.5"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                                <span>Works directly in your browser</span>
+                            </div>
+                            <div class="pricing-feature-item">
+                                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="3.5"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                                <span>Photos stay 100% private</span>
+                            </div>
+                        </div>
+                        <button type="button" class="pricing-card-btn primary" onclick="closeModal()" style="margin-top: auto;">Start Free Fix</button>
                     </div>
-                    <div class="comparison-row" style="border-top: 1px solid rgba(255,255,255,0.03); padding-top: 8px;">
-                        <span class="comparison-label">Max Batch Size</span>
-                        <span class="comparison-free">500 MB</span>
-                        <span class="comparison-premium">No Limit</span>
+
+                    <!-- Recovery Pass -->
+                    <div class="pricing-card">
+                        <div class="pricing-card-title">Recovery Pass</div>
+                        <div class="pricing-card-subtitle">Single takeout batch up to 3,000 files or 3GB</div>
+                        <div class="pricing-card-price">₹299.00</div>
+                        <div style="font-size: 9.5px; color: var(--text-secondary); margin-bottom: 10px; line-height: 1.3;">Fix one folder of photos without any subscription details.</div>
+                        <div class="pricing-features-list">
+                            <div class="pricing-feature-header">Everything in Free plus:</div>
+                            <div class="pricing-feature-item">
+                                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="var(--text-primary)" stroke-width="3.5"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                                <span><strong>Single takeout batch up to 3,000 files or 3GB</strong></span>
+                            </div>
+                            <div class="pricing-feature-item">
+                                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="var(--text-primary)" stroke-width="3.5"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                                <span>Friendly support help desk</span>
+                            </div>
+                            <div class="pricing-feature-item">
+                                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="var(--text-primary)" stroke-width="3.5"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                                <span>Download clean file update logs</span>
+                            </div>
+                        </div>
+                        <a href="https://takeoutfix.pages.dev/pricing/" target="_blank" rel="noopener noreferrer" class="pricing-card-btn primary" style="margin-top: auto;">Get Recovery Pass</a>
                     </div>
-                    <div class="comparison-row" style="border-top: 1px solid rgba(255,255,255,0.03); padding-top: 8px;">
-                        <span class="comparison-label">Duplicate Media Cleaner</span>
-                        <span class="comparison-free">Disabled</span>
-                        <span class="comparison-premium">Included</span>
+
+                    <!-- Pro Lifetime -->
+                    <div class="pricing-card popular">
+                        <div class="pricing-card-badge">Most Popular</div>
+                        <div class="pricing-card-title" style="color: var(--primary);">Pro Lifetime</div>
+                        <div class="pricing-card-subtitle">Unlimited photos and videos. 2 devices. Lifetime.</div>
+                        <div class="pricing-card-price">₹849.15</div>
+                        <div class="pricing-card-strike">₹999.00</div>
+                        <div class="pricing-badge-row">
+                            <span class="pricing-badge-promo green">15% OFF</span>
+                            <span class="pricing-badge-promo purple">Code: PRO15</span>
+                        </div>
+                        <div class="pricing-claims-bar">
+                            <span>🔥 Claims: 0 / 250 claimed</span>
+                        </div>
+                        <div style="font-size: 9.5px; color: var(--text-secondary); margin-bottom: 10px; line-height: 1.3;">Use forever · On up to 2 devices</div>
+                        <div class="pricing-features-list">
+                            <div class="pricing-feature-header">Everything in Pass plus:</div>
+                            <div class="pricing-feature-item">
+                                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" stroke-width="3.5"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                                <span style="color: var(--primary); font-weight: 600;">Unlimited photos & videos</span>
+                            </div>
+                            <div class="pricing-feature-item">
+                                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" stroke-width="3.5"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                                <span style="color: var(--primary); font-weight: 600;">Keep history of your runs</span>
+                            </div>
+                            <div class="pricing-feature-item">
+                                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" stroke-width="3.5"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                                <span style="color: var(--primary); font-weight: 600;">Priority support messages</span>
+                            </div>
+                        </div>
+                        <a href="https://takeoutfix.pages.dev/pricing/" target="_blank" rel="noopener noreferrer" class="pricing-card-btn primary" style="margin-top: auto;">Go Pro</a>
                     </div>
-                    <div class="comparison-row" style="border-top: 1px solid rgba(255,255,255,0.03); padding-top: 8px;">
-                        <span class="comparison-label">Date Taken Rebuilding</span>
-                        <span class="comparison-free">Standard</span>
-                        <span class="comparison-premium">Deep Repair</span>
+
+                    <!-- Super Lifetime -->
+                    <div class="pricing-card" style="border-color: rgba(245, 158, 11, 0.4); background: rgba(245, 158, 11, 0.015);">
+                        <div class="pricing-card-title" style="color: #f59e0b;">Super Lifetime</div>
+                        <div class="pricing-card-subtitle">Unlimited + duplicate finder, before/after logs, ad-free. 3 devices. Lifetime.</div>
+                        <div class="pricing-card-price" style="color: #f59e0b;">₹1619.10</div>
+                        <div class="pricing-card-strike">₹1799.00</div>
+                        <div class="pricing-badge-row">
+                            <span class="pricing-badge-promo green">10% OFF</span>
+                            <span class="pricing-badge-promo purple" style="color: #f59e0b; border-color: rgba(245, 158, 11, 0.3);">Code: SUPER15</span>
+                        </div>
+                        <div class="pricing-claims-bar" style="background: rgba(245, 158, 11, 0.08); border-color: rgba(245, 158, 11, 0.15); color: #f59e0b;">
+                            <span>🔥 Claims: 0 / 250 claimed</span>
+                        </div>
+                        <div style="font-size: 9.5px; color: var(--text-secondary); margin-bottom: 10px; line-height: 1.3;">Use forever · On up to 3 devices</div>
+                        <div class="pricing-features-list">
+                            <div class="pricing-feature-header">Everything in Pro plus:</div>
+                            <div class="pricing-feature-item">
+                                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="3.5"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                                <span style="color: #f59e0b; font-weight: 600;">Complete ad-free experience</span>
+                            </div>
+                            <div class="pricing-feature-item">
+                                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="3.5"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                                <span style="color: #f59e0b; font-weight: 600;">View hidden photo details</span>
+                            </div>
+                            <div class="pricing-feature-item">
+                                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="3.5"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                                <span style="color: #f59e0b; font-weight: 600;">Find and clean duplicates</span>
+                            </div>
+                            <div class="pricing-feature-item">
+                                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="3.5"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                                <span style="color: #f59e0b; font-weight: 600;">Compare before & after logs</span>
+                            </div>
+                        </div>
+                        <a href="https://takeoutfix.pages.dev/pricing/" target="_blank" rel="noopener noreferrer" class="pricing-card-btn primary" style="margin-top: auto;">Go Super</a>
                     </div>
                 </div>
 
-                <div class="license-input-section" style="display: flex; flex-direction: column; gap: 10px;">
-                    <label class="form-label" for="licenseKey">License Key</label>
-                    <input type="text" id="licenseKey" placeholder="TF-PRO-XXXX-XXXX-XXXX" style="text-align: center; font-family: 'Fira Code', monospace; letter-spacing: 0.05em;">
-                    <button class="btn-activate" onclick="activateLicense()">Activate License</button>
-                </div>
-
-                <div class="modal-footer-text">
-                    <span>Don't have a license key?</span>
-                    <a href="https://takeoutfix.pages.dev/pricing/" target="_blank" rel="noopener noreferrer">Get Premium License Key →</a>
+                <div style="display: flex; justify-content: center; margin-top: 18px; width: 100%;">
+                    <button type="button" class="rc-btn-outline" onclick="syncUserPlan()" style="max-width: 280px; padding: 8px 12px; font-size: 12px;">🔄 Sync Account Status</button>
                 </div>
             </div>
         </div>
@@ -1726,6 +2018,9 @@
         let currentUser = null;
         let currentUserPlan = 'free';
 
+        // Live per-session stat counters updated from log messages
+        let sessionStats = { matched: 0, unmatched: 0, errors: 0 };
+
         // Firebase Web Config (fetched from local secrets)
         const firebaseConfig = {
             apiKey: "AIzaSyBAQFr7OeHkaLDk8yfNyGl6YD2qhdlnoXk",
@@ -1737,38 +2032,135 @@
             measurementId: "G-P0DY1QKD63"
         };
 
-        // Initialize Firebase
-        firebase.initializeApp(firebaseConfig);
-        const auth = firebase.auth();
-        const db = firebase.firestore();
-        const googleProvider = new firebase.auth.GoogleAuthProvider();
+        // Initialize Firebase safely
+        let auth = null;
+        let db = null;
+        let googleProvider = null;
 
-        document.addEventListener('DOMContentLoaded', () => {
+        try {
+            if (typeof firebase !== 'undefined') {
+                firebase.initializeApp(firebaseConfig);
+                auth = firebase.auth();
+                db = firebase.firestore();
+                googleProvider = new firebase.auth.GoogleAuthProvider();
+            } else {
+                console.warn("Firebase scripts not loaded. Authentication features disabled.");
+            }
+        } catch (e) {
+            console.error("Error initializing Firebase:", e);
+        }
+
+        function startApp() {
             initTheme();
             setupAuthListener();
             connectWebSocket();
             startTelemetryHeartbeat();
-        });
+            loadSessionStats();
+
+            window.addEventListener('online', applyAccessGates);
+            window.addEventListener('offline', applyAccessGates);
+        }
+
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', startApp);
+        } else {
+            startApp();
+        }
+
+        // Seed limit bars: localStorage first (instant), then server (authoritative)
+        function loadSessionStats() {
+            // 1. Instant paint from localStorage cache
+            const cachedFiles = parseInt(localStorage.getItem('tf_total_files') || '0');
+            const cachedBytes = parseInt(localStorage.getItem('tf_total_bytes') || '0');
+            applySessionStatsToUI(cachedFiles, cachedBytes);
+
+            // 2. Fetch server-side totals (survives localStorage clears)
+            fetch('/api/system/session-stats')
+                .then(r => r.ok ? r.json() : null)
+                .then(data => {
+                    if (!data) return;
+                    // Server is authoritative — use whichever is larger (server vs cache)
+                    const serverFiles = data.totalFiles || 0;
+                    const serverBytes = data.totalBytes || 0;
+                    const files = Math.max(cachedFiles, serverFiles);
+                    const bytes = Math.max(cachedBytes, serverBytes);
+                    // Sync localStorage to server value
+                    localStorage.setItem('tf_total_files', files);
+                    localStorage.setItem('tf_total_bytes', bytes);
+                    applySessionStatsToUI(files, bytes);
+                })
+                .catch(() => { /* Spring Boot not running — localStorage already applied */ });
+        }
+
+        let currentTierFiles = 250;
+        let currentTierBytes = 500 * 1024 * 1024;
+        
+        async function fetchDynamicLimits() {
+            if (!db) return;
+            try {
+                const doc = await db.collection('settings').doc('global').get();
+                if (doc.exists) {
+                    const data = doc.data();
+                    if (data.tierThresholds && data.tierThresholds.free) {
+                        const parseLimit = (val, def) => val === 0 ? Infinity : (val ?? def);
+                        currentTierFiles = parseLimit(data.tierThresholds.free.maxFiles, 250);
+                        currentTierBytes = parseLimit(data.tierThresholds.free.maxSizeMB, 500) * 1024 * 1024;
+                    }
+                }
+            } catch(e) {
+                console.warn("Failed to fetch dynamic limits", e);
+            }
+        }
+
+        function applySessionStatsToUI(totalFiles, totalBytes) {
+            const isLocalPremium = localStorage.getItem('takeoutfix_premium_licensed') === 'true';
+            let limitFiles = currentTierFiles;
+            let limitBytes = currentTierBytes;
+
+            if (isLocalPremium || ['pro', 'super'].includes(currentUserPlan)) {
+                limitFiles = Infinity;
+                limitBytes = Infinity;
+            } else if (currentUserPlan === 'recovery_pass') {
+                limitFiles = 3000;
+                limitBytes = Infinity;
+            }
+
+            const offsetFiles = parseInt(localStorage.getItem('tf_recovery_pass_offset_files') || '0');
+            const offsetBytes = parseInt(localStorage.getItem('tf_recovery_pass_offset_bytes') || '0');
+
+            const activeFiles = Math.max(0, totalFiles - offsetFiles);
+            const activeBytes = Math.max(0, totalBytes - offsetBytes);
+
+            updateLimitBars(activeFiles, activeBytes, limitFiles, limitBytes);
+        }
 
         // Theme Manager
         function initTheme() {
-            const savedTheme = localStorage.getItem('takeoutfix_theme') || 'dark';
-            if (savedTheme === 'dark') {
-                document.documentElement.classList.add('dark');
+            const savedTheme = localStorage.getItem('takeoutfix_theme');
+            const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+            const isDark = savedTheme === 'dark' || (!savedTheme && prefersDark);
+            
+            if (isDark) {
+                document.documentElement.setAttribute('data-theme', 'dark');
             } else {
-                document.documentElement.classList.remove('dark');
+                document.documentElement.removeAttribute('data-theme');
             }
             updateThemeIcon();
         }
 
         function toggleTheme() {
-            const isDark = document.documentElement.classList.toggle('dark');
-            localStorage.setItem('takeoutfix_theme', isDark ? 'dark' : 'light');
+            const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+            if (isDark) {
+                document.documentElement.removeAttribute('data-theme');
+            } else {
+                document.documentElement.setAttribute('data-theme', 'dark');
+            }
+            localStorage.setItem('takeoutfix_theme', !isDark ? 'dark' : 'light');
             updateThemeIcon();
         }
 
         function updateThemeIcon() {
-            const isDark = document.documentElement.classList.contains('dark');
+            const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
             const themeBtn = document.getElementById('btnThemeToggle');
             if (isDark) {
                 themeBtn.innerHTML = `
@@ -1793,8 +2185,98 @@
             }
         }
 
+        let userDocListener = null;
+
+        async function syncUserPlanData(user) {
+            if (!db) return;
+            return new Promise((resolve) => {
+                if (userDocListener) {
+                    userDocListener();
+                }
+                userDocListener = db.collection('users').doc(user.uid).onSnapshot(async (doc) => {
+                    await fetchDynamicLimits();
+                    if (doc.exists) {
+                        const userData = doc.data();
+                        currentUserPlan = userData.plan || 'free';
+                        
+                        // Pull online resource usage from Firestore as authoritative
+                        const onlineFiles = userData.filesProcessed || 0;
+                        const onlineBytes = userData.bytesProcessed || 0;
+                        localStorage.setItem('tf_total_files', onlineFiles.toString());
+                        localStorage.setItem('tf_total_bytes', onlineBytes.toString());
+
+                        // Sync to local Spring Boot database to prevent limit resets on reinstall
+                        fetch('/api/system/session-stats/sync', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ files: onlineFiles, bytes: onlineBytes })
+                        }).catch(() => {});
+
+                        // Multiple recovery pass resets logic
+                        const firestoreCount = userData.recoveryPassCount || 1;
+                        const localCount = parseInt(localStorage.getItem('takeoutfix_recovery_pass_count') || '0');
+                        
+                        if (currentUserPlan === 'recovery_pass' && firestoreCount > localCount) {
+                            localStorage.setItem('takeoutfix_recovery_pass_count', firestoreCount.toString());
+                            // Save current progress as offset so limit check starts at 0
+                            localStorage.setItem('tf_recovery_pass_offset_files', onlineFiles.toString());
+                            localStorage.setItem('tf_recovery_pass_offset_bytes', onlineBytes.toString());
+                            console.log(`Recovery pass limit offset reset. Offset files: ${onlineFiles}, Bytes: ${onlineBytes}`);
+                        } else if (currentUserPlan !== 'recovery_pass') {
+                            // Clear offsets if no longer on recovery pass
+                            localStorage.removeItem('takeoutfix_recovery_pass_count');
+                            localStorage.removeItem('tf_recovery_pass_offset_files');
+                            localStorage.removeItem('tf_recovery_pass_offset_bytes');
+                        }
+                        
+                        localStorage.setItem('takeoutfix_cached_plan', currentUserPlan);
+                        applyAccessGates();
+                        updatePremiumBadgeState();
+                        resolve();
+                    }
+                }, (error) => {
+                    console.warn("Firestore snapshot listener failed, fallback to cache", error);
+                    currentUserPlan = localStorage.getItem('takeoutfix_cached_plan') || 'free';
+                    applyAccessGates();
+                    updatePremiumBadgeState();
+                    resolve();
+                });
+            });
+        }
+
+        async function syncUserPlan() {
+            if (!currentUser) {
+                alert("Please sign in first to sync plan status.");
+                return;
+            }
+            const syncBtn = document.querySelector("#upgradeModal button.rc-btn-outline");
+            if (syncBtn) {
+                syncBtn.innerText = "⏳ Syncing...";
+                syncBtn.disabled = true;
+            }
+            try {
+                await syncUserPlanData(currentUser);
+                applyAccessGates();
+                updatePremiumBadgeState();
+                alert("Account status successfully synced! Current Plan: " + currentUserPlan.toUpperCase());
+            } catch (e) {
+                alert("Failed to sync account: " + e.message);
+            } finally {
+                if (syncBtn) {
+                    syncBtn.innerText = "🔄 Sync Account Status";
+                    syncBtn.disabled = false;
+                }
+            }
+        }
+
         // Firebase Auth handler
         function setupAuthListener() {
+            if (!auth) {
+                console.warn("Auth disabled: firebase auth is not initialized.");
+                applyAccessGates();
+                updatePremiumBadgeState();
+                return;
+            }
             auth.onAuthStateChanged(async (user) => {
                 const userProfile = document.getElementById('userProfile');
                 const userAvatar = document.getElementById('userAvatar');
@@ -1810,29 +2292,23 @@
                     btnLogin.style.display = 'none';
                     btnLogout.style.display = 'block';
 
-                    // Fetch user plan details
-                    try {
-                        const userDoc = await db.collection('users').doc(user.uid).get();
-                        if (userDoc.exists) {
-                            currentUserPlan = userDoc.data().plan || 'free';
-                        } else {
-                            currentUserPlan = 'free';
-                        }
-                    } catch (e) {
-                        console.warn('Failed to fetch plan from cloud database. Loading local cache.');
-                        currentUserPlan = localStorage.getItem('takeoutfix_cached_plan') || 'free';
-                    }
-                    localStorage.setItem('takeoutfix_cached_plan', currentUserPlan);
+                    await syncUserPlanData(user);
                 } else {
                     currentUser = null;
                     currentUserPlan = 'free';
+                    if (userDocListener) {
+                        userDocListener();
+                        userDocListener = null;
+                    }
                     localStorage.removeItem('takeoutfix_cached_plan');
+                    localStorage.removeItem('takeoutfix_recovery_pass_count');
+                    localStorage.removeItem('tf_recovery_pass_offset_files');
+                    localStorage.removeItem('tf_recovery_pass_offset_bytes');
                     userProfile.style.display = 'none';
                     btnLogin.style.display = 'block';
                     btnLogout.style.display = 'none';
                 }
 
-                // Apply all gating logic after plan/user is resolved
                 applyAccessGates();
                 updatePremiumBadgeState();
             });
@@ -1845,15 +2321,48 @@
                 || localStorage.getItem('takeoutfix_premium_licensed') === 'true';
 
             // --- RESTORE TAB ---
-            // Always visible, but Start button disabled if not logged in
             const restoreAuthWarning = document.getElementById('restoreAuthWarning');
             const btnStart = document.getElementById('btnStart');
-            if (restoreAuthWarning) {
-                restoreAuthWarning.style.display = isLoggedIn ? 'none' : 'flex';
-            }
-            if (btnStart) {
-                btnStart.disabled = !isLoggedIn;
-                btnStart.innerText = isLoggedIn ? 'Start Restoring' : '🔒 Login Required — Start Restoring';
+            const isOnline = navigator.onLine;
+
+            if (!isOnline) {
+                if (restoreAuthWarning) {
+                    restoreAuthWarning.style.display = 'flex';
+                    restoreAuthWarning.innerHTML = `
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
+                        <div>
+                            <strong>Internet Connection Required</strong>
+                            <span>Please connect to the internet to verify your account status.</span>
+                        </div>
+                    `;
+                }
+                if (btnStart) {
+                    btnStart.disabled = true;
+                    btnStart.innerText = '🔌 Internet Required — Go Online';
+                }
+            } else if (!isLoggedIn) {
+                if (restoreAuthWarning) {
+                    restoreAuthWarning.style.display = 'flex';
+                    restoreAuthWarning.innerHTML = `
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
+                        <div>
+                            <strong>Authentication Required</strong>
+                            <span>Please <a href="#" onclick="handleLogin(); return false;" class="banner-link">Sign In with Google</a> to process files.</span>
+                        </div>
+                    `;
+                }
+                if (btnStart) {
+                    btnStart.disabled = true;
+                    btnStart.innerText = '🔒 Login Required — Start Restoring';
+                }
+            } else {
+                if (restoreAuthWarning) {
+                    restoreAuthWarning.style.display = 'none';
+                }
+                if (btnStart) {
+                    btnStart.disabled = false;
+                    btnStart.innerText = 'Start Restoring';
+                }
             }
 
             // --- EXIF VIEWER TAB ---
@@ -1931,7 +2440,21 @@
 
             document.getElementById('dashPlan').innerText = planLabels[plan] || plan;
             document.getElementById('dashPlan').style.color = planColors[plan] || 'var(--text-primary)';
-            document.getElementById('dashFilesLimit').innerText = planFileLimits[plan] || '250';
+
+            const totalFiles = parseInt(localStorage.getItem('tf_total_files') || '0');
+            const offsetFiles = parseInt(localStorage.getItem('tf_recovery_pass_offset_files') || '0');
+            const activeFiles = Math.max(0, totalFiles - offsetFiles);
+
+            if (plan === 'recovery_pass') {
+                document.getElementById('dashFilesLimit').innerText = `${activeFiles.toLocaleString()} / 3,000 files`;
+            } else {
+                document.getElementById('dashFilesLimit').innerText = planFileLimits[plan] || '250';
+            }
+
+            const totalRestoredEl = document.getElementById('dashTotalRestored');
+            if (totalRestoredEl) {
+                totalRestoredEl.innerText = totalFiles.toLocaleString();
+            }
 
             const tick = '✓'; const cross = '✗';
             const exifEl = document.getElementById('dashExifViewer');
@@ -1947,6 +2470,10 @@
         }
 
         async function handleLogin() {
+            if (!auth || !googleProvider) {
+                alert("Authentication is currently unavailable.");
+                return;
+            }
             try {
                 await auth.signInWithPopup(googleProvider);
             } catch (e) {
@@ -1955,6 +2482,7 @@
         }
 
         async function handleLogout() {
+            if (!auth) return;
             try {
                 await auth.signOut();
             } catch (e) {
@@ -1974,49 +2502,62 @@
             const sidebarSponsorArea = document.getElementById('sidebarSponsorArea');
             const rcSponsorArea = document.getElementById('rcSponsorArea');
  
+            let limitFiles = currentTierFiles;
+            let limitBytes = currentTierBytes;
             let label = 'FREE TIER';
-            let limitFiles = 250;
-            let limitBytes = 500 * 1024 * 1024; // 500 MB
- 
-            if (hasPremium) {
-                btnUpgrade.style.display = 'none';
+
+            if (isLocalPremium || ['pro', 'super'].includes(currentUserPlan)) {
+                limitFiles = Infinity;
+                limitBytes = Infinity;
+                label = currentUserPlan === 'super' ? 'SUPER' : 'PRO';
+            } else if (currentUserPlan === 'recovery_pass') {
+                limitFiles = 3000;
+                limitBytes = Infinity;
+                label = 'SINGLE PASS';
+            }
+
+            // Show/hide upgrade UI based on plan
+            const showUpgrade = (limitFiles !== Infinity);
+            if (btnUpgrade) btnUpgrade.style.display = showUpgrade ? 'block' : 'none';
+            if (sidebarUpgradeBar) sidebarUpgradeBar.style.display = showUpgrade ? 'block' : 'none';
+            if (sidebarSponsorArea) sidebarSponsorArea.style.display = showUpgrade ? 'block' : 'none';
+            if (rcSponsorArea) rcSponsorArea.style.display = showUpgrade ? 'block' : 'none';
+
+            if (premiumBadge) {
                 premiumBadge.style.display = 'block';
- 
-                if (currentUserPlan === 'super') { label = 'SUPER'; limitFiles = Infinity; limitBytes = Infinity; }
-                else if (currentUserPlan === 'recovery_pass') { label = 'SINGLE PASS'; limitFiles = 5000; limitBytes = 50 * 1024 * 1024 * 1024; }
-                else if (currentUserPlan === 'pro' || isLocalPremium) { label = 'PRO'; limitFiles = Infinity; limitBytes = Infinity; }
- 
                 premiumBadge.innerText = label;
-                premiumBadge.style.color = 'var(--success-color)';
-                premiumBadge.style.border = '1px solid rgba(16, 185, 129, 0.3)';
-                premiumBadge.style.background = 'linear-gradient(135deg, rgba(16, 185, 129, 0.15) 0%, rgba(5, 150, 105, 0.15) 100%)';
- 
-                if (planStatusBadge) {
-                    planStatusBadge.innerText = label;
-                    planStatusBadge.className = 'plan-status-badge ' + (currentUserPlan === 'super' ? 'super' : 'pro');
+                if (limitFiles === Infinity) {
+                    premiumBadge.style.color = 'var(--success-color)';
+                    premiumBadge.style.border = '1px solid rgba(16, 185, 129, 0.3)';
+                    premiumBadge.style.background = 'linear-gradient(135deg, rgba(16, 185, 129, 0.15) 0%, rgba(5, 150, 105, 0.15) 100%)';
+                } else if (currentUserPlan === 'recovery_pass') {
+                    premiumBadge.style.color = 'var(--warning-color)';
+                    premiumBadge.style.border = '1px solid rgba(217, 119, 6, 0.3)';
+                    premiumBadge.style.background = 'linear-gradient(135deg, rgba(217, 119, 6, 0.15) 0%, rgba(217, 119, 6, 0.15) 100%)';
+                } else {
+                    premiumBadge.style.color = 'var(--text-secondary)';
+                    premiumBadge.style.border = '1px solid var(--border-color)';
+                    premiumBadge.style.background = 'rgba(120, 120, 120, 0.08)';
                 }
-                if (planStatusMsg) planStatusMsg.innerText = 'You have full access. No restrictions apply.';
-                if (sidebarUpgradeBar) sidebarUpgradeBar.style.display = 'none';
-                if (sidebarSponsorArea) sidebarSponsorArea.style.display = 'none';
-                if (rcSponsorArea) rcSponsorArea.style.display = 'none';
-            } else {
-                btnUpgrade.style.display = 'flex';
-                premiumBadge.style.display = 'block';
-                premiumBadge.innerText = 'FREE TIER';
-                premiumBadge.style.color = 'var(--text-secondary)';
-                premiumBadge.style.border = '1px solid rgba(255, 255, 255, 0.1)';
-                premiumBadge.style.background = 'rgba(255, 255, 255, 0.05)';
- 
-                if (planStatusBadge) { planStatusBadge.innerText = 'FREE TIER'; planStatusBadge.className = 'plan-status-badge'; }
-                if (planStatusMsg) planStatusMsg.innerText = 'Upgrade to unlock unlimited files, EXIF meta repairs & maximum speed (Free limit: 250 files / 500 MB).';
-                if (sidebarUpgradeBar) sidebarUpgradeBar.style.display = 'flex';
-                if (sidebarSponsorArea) sidebarSponsorArea.style.display = 'block';
-                if (rcSponsorArea) rcSponsorArea.style.display = 'flex';
+            }
+            if (planStatusBadge) { 
+                planStatusBadge.innerText = label; 
+                planStatusBadge.className = 'plan-status-badge ' + (limitFiles === Infinity ? 'pro' : (currentUserPlan === 'recovery_pass' ? 'warning' : 'free')); 
+            }
+            if (planStatusMsg) {
+                if (limitFiles === Infinity) {
+                    planStatusMsg.innerText = 'Premium active — unlimited file and storage restorations.';
+                } else if (currentUserPlan === 'recovery_pass') {
+                    planStatusMsg.innerText = 'Recovery Pass active — 3,000 files limit.';
+                } else {
+                    planStatusMsg.innerText = 'Free tier — 250 files limit. Upgrade to remove restrictions.';
+                }
             }
  
-            // Update limit progress bars with live values
-            const usedFiles = parseInt(document.getElementById('statScanned')?.innerText?.split('/')[0]) || 0;
-            updateLimitBars(usedFiles, 0, limitFiles, limitBytes);
+            // Update limit progress bars using offsets
+            const persistedFiles = parseInt(localStorage.getItem('tf_total_files') || '0');
+            const persistedBytes = parseInt(localStorage.getItem('tf_total_bytes') || '0');
+            applySessionStatsToUI(persistedFiles, persistedBytes);
         }
 
 
@@ -2199,9 +2740,37 @@
             const outputPath = document.getElementById('outputPath').value;
             const takeoutDate = document.getElementById('takeoutDate').value;
             const postAction = document.getElementById('postAction').value;
+            const outputZip = document.getElementById('outputZip').checked;
 
             if (!inputPath || !outputPath) {
                 alert("Please specify input and output directories first.");
+                return;
+            }
+
+            // Enforce limit pre-flight
+            const isLocalPremium = localStorage.getItem('takeoutfix_premium_licensed') === 'true';
+            let limitFiles = currentTierFiles;
+            let limitBytes = currentTierBytes;
+
+            if (isLocalPremium || ['pro', 'super'].includes(currentUserPlan)) {
+                limitFiles = Infinity;
+                limitBytes = Infinity;
+            } else if (currentUserPlan === 'recovery_pass') {
+                limitFiles = 3000;
+                limitBytes = Infinity;
+            }
+            
+            const prevFiles = parseInt(localStorage.getItem('tf_total_files') || '0');
+            const prevBytes = parseInt(localStorage.getItem('tf_total_bytes') || '0');
+
+            const offsetFiles = parseInt(localStorage.getItem('tf_recovery_pass_offset_files') || '0');
+            const offsetBytes = parseInt(localStorage.getItem('tf_recovery_pass_offset_bytes') || '0');
+
+            const activeFiles = Math.max(0, prevFiles - offsetFiles);
+            const activeBytes = Math.max(0, prevBytes - offsetBytes);
+            
+            if (activeFiles >= limitFiles || activeBytes >= limitBytes) {
+                document.getElementById('upgradeModal').style.display = 'flex';
                 return;
             }
 
@@ -2210,17 +2779,26 @@
             addLog('INFO', 'Launching metadata restoration thread pipeline...');
 
             try {
+                const backendLimit = limitFiles === Infinity ? -1 : limitFiles;
                 const res = await fetch('/api/extraction/start', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ inputPath, outputPath, takeoutDate, postAction })
+                    body: JSON.stringify({ 
+                        inputPath, 
+                        outputPath, 
+                        takeoutDate, 
+                        postAction, 
+                        outputZip: outputZip.toString(),
+                        limitFiles: backendLimit.toString(),
+                        offsetFiles: offsetFiles.toString()
+                    })
                 });
                 
                 const data = await res.json();
                 if (!res.ok) throw new Error(data.message || "Bad Request");
                 
-                document.getElementById('engineStatusText').innerText = "ACTIVE";
-                document.getElementById('engineStatusDot').className = "status-dot active";
+                
+                
             } catch (e) {
                 addLog('ERROR', 'Process start failure: ' + e.message);
                 setBusyState(false);
@@ -2234,7 +2812,7 @@
                 
                 const btnPause = document.getElementById('btnPause');
                 const statusDot = document.getElementById('engineStatusDot');
-                const statusText = document.getElementById('engineStatusText');
+                
 
                 if (data.paused) {
                     btnPause.innerText = 'Resume';
@@ -2260,12 +2838,48 @@
             }
         }
 
+        async function stopProcess() {
+            if (!confirm("Are you sure you want to stop restoration and save progress?")) return;
+            try {
+                await fetch('/api/extraction/cancel', { method: 'POST' });
+                
+                // Save current progress to stats
+                const current = parseInt(document.getElementById('statScanned').innerText) || 0;
+                const prevFiles = parseInt(localStorage.getItem('tf_total_files') || '0');
+                const prevBytes = parseInt(localStorage.getItem('tf_total_bytes') || '0');
+                const approxNewBytes = current * 1024 * 1024;
+                
+                localStorage.setItem('tf_total_files', prevFiles + current);
+                localStorage.setItem('tf_total_bytes', prevBytes + approxNewBytes);
+
+                // Update Firestore if online
+                if (currentUser && db) {
+                    db.collection('users').doc(currentUser.uid).update({
+                        filesProcessed: firebase.firestore.FieldValue.increment(current),
+                        bytesProcessed: firebase.firestore.FieldValue.increment(approxNewBytes)
+                    }).catch(err => console.error("Error updating Firestore stats", err));
+                }
+                
+                fetch('/api/system/session-stats/record', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ files: current, bytes: approxNewBytes })
+                }).catch(() => {});
+
+                setBusyState(false);
+                addLog('SUCCESS', 'Restoration stopped gracefully. Processed files saved.');
+                applySessionStatsToUI(prevFiles + current, prevBytes + approxNewBytes);
+            } catch (e) {
+                console.error("Stopping process failure", e);
+            }
+        }
+
         async function cancelProcess() {
-            if (!confirm("Are you sure you want to stop processing?")) return;
+            if (!confirm("Are you sure you want to cancel restoration and discard current progress?")) return;
             try {
                 await fetch('/api/extraction/cancel', { method: 'POST' });
                 setBusyState(false);
-                addLog('WARN', 'Processing aborted by operator.');
+                addLog('WARN', 'Restoration aborted. Session progress discarded.');
             } catch (e) {
                 console.error("Aborting process failure", e);
             }
@@ -2297,7 +2911,7 @@
                 busyControls.style.display = 'none';
                 progressSection.style.display = 'none';
                 
-                document.getElementById('engineStatusText').innerText = "IDLE";
+                
                 document.getElementById('engineStatusDot').className = "status-dot";
             }
         }
@@ -2306,37 +2920,95 @@
             const stats = document.getElementById('progressStats');
             const fill = document.getElementById('progressBarFill');
 
-            // Enforce free tier batch threshold limit of 250 files
-            const isLocalPremium = localStorage.getItem('takeoutfix_premium_licensed') === 'true';
-            const hasPremium = isLocalPremium || ['pro', 'super', 'recovery_pass'].includes(currentUserPlan);
-
-            if (total > 250 && !hasPremium) {
-                cancelProcessSilently();
-                setBusyState(false);
-                addLog('ERROR', `[LIMIT EXCEEDED] Processing aborted. Batch contains ${total} files, exceeding Free Tier limit of 250 files.`);
-                alert(`Free Tier Limit Exceeded!\n\nThis folder contains ${total} files, which exceeds the Free Tier limit of 250 files.\n\nPlease login with an upgraded premium account or register a license key to restore unlimited files.`);
-                openModal();
-                return;
-            }
-
             if (total === 0) {
                 stats.innerText = 'Initializing...';
                 fill.style.width = '0%';
                 return;
             }
 
-            // Sync sidebar counters
+            // Update scanned counter only (matched/errors tracked live via addLog)
             document.getElementById('statScanned').innerText = current;
-            document.getElementById('statMatched').innerText = current; // Fallback mapping
 
             const pct = Math.round((current / total) * 100);
             stats.innerText = `${current} / ${total} (${pct}%)`;
             fill.style.width = `${pct}%`;
 
+            const isLocalPremium = localStorage.getItem('takeoutfix_premium_licensed') === 'true';
+            let limitFiles = currentTierFiles;
+            let limitBytes = currentTierBytes;
+
+            if (isLocalPremium || ['pro', 'super'].includes(currentUserPlan)) {
+                limitFiles = Infinity;
+                limitBytes = Infinity;
+            } else if (currentUserPlan === 'recovery_pass') {
+                limitFiles = 3000;
+                limitBytes = Infinity;
+            }
+
+            const prevFiles = parseInt(localStorage.getItem('tf_total_files') || '0');
+            const prevBytes = parseInt(localStorage.getItem('tf_total_bytes') || '0');
+
+            const offsetFiles = parseInt(localStorage.getItem('tf_recovery_pass_offset_files') || '0');
+            const offsetBytes = parseInt(localStorage.getItem('tf_recovery_pass_offset_bytes') || '0');
+
+            const activeFiles = Math.max(0, prevFiles - offsetFiles);
+            const activeBytes = Math.max(0, prevBytes - offsetBytes);
+
+            // Mid-flight limit check (Assuming 1MB per file on average since backend doesn't send bytes)
+            const approxNewBytes = current * 1024 * 1024;
+            const currentActiveFiles = activeFiles + current;
+            const currentActiveBytes = activeBytes + approxNewBytes;
+
+            updateLimitBars(currentActiveFiles, currentActiveBytes, limitFiles, limitBytes);
+
+            const isPremium = isLocalPremium || ['pro', 'super'].includes(currentUserPlan);
+            const isRecovery = currentUserPlan === 'recovery_pass';
+
+            if (!isPremium && ((isRecovery && currentActiveFiles >= limitFiles) || (!isRecovery && (currentActiveFiles >= limitFiles || currentActiveBytes >= limitBytes)))) {
+                // Cancel extraction!
+                fetch('/api/extraction/cancel', { method: 'POST' });
+                addLog('ERROR', isRecovery ? 'Recovery Pass limit reached! Stopping extraction...' : 'Free tier limits reached! Stopping extraction...');
+                document.getElementById('upgradeModal').style.display = 'flex';
+                // Note: The backend will send a completion or cancel event to reset busy state
+            }
+
             if (current >= total && total > 0) {
                 setTimeout(() => {
                     addLog('SUCCESS', 'Metadata restoration completed successfully.');
                     setBusyState(false);
+
+                    // --- Record session stats: server + localStorage ---
+                    // Bytes: approximate from statScanned text — Spring Boot doesn't send bytes
+                    // so we record 0 bytes here; future enhancement can add byte tracking.
+                    const newFiles = total;
+                    const newBytes = 0; // byte tracking not yet wired in backend
+
+                    // Accumulate in localStorage
+                    const prevFiles = parseInt(localStorage.getItem('tf_total_files') || '0');
+                    const prevBytes = parseInt(localStorage.getItem('tf_total_bytes') || '0');
+                    localStorage.setItem('tf_total_files', prevFiles + newFiles);
+                    localStorage.setItem('tf_total_bytes', prevBytes + newBytes);
+
+                    // Update Firestore if online
+                    if (currentUser && db) {
+                        db.collection('users').doc(currentUser.uid).update({
+                            filesProcessed: firebase.firestore.FieldValue.increment(newFiles),
+                            bytesProcessed: firebase.firestore.FieldValue.increment(newBytes)
+                        }).catch(err => console.error("Error updating Firestore stats", err));
+                    }
+
+                    // Persist to server (best-effort)
+                    fetch('/api/system/session-stats/record', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ files: newFiles, bytes: newBytes })
+                    }).catch(() => {});
+
+                    // Refresh the limit bars with updated totals
+                    applySessionStatsToUI(
+                        prevFiles + newFiles,
+                        prevBytes + newBytes
+                    );
                 }, 1000);
             }
         }
@@ -2346,9 +3018,37 @@
             const placeholder = document.getElementById('consolePlaceholder');
             if (placeholder) placeholder.remove();
 
+            // ── Live stat counting from backend log message prefixes ──────────
+            if (message.startsWith('[SUCCESS]')) {
+                sessionStats.matched++;
+                const el = document.getElementById('statMatched');
+                const logCount = document.getElementById('logCountRestored');
+                if (el) el.innerText = sessionStats.matched;
+                if (logCount) logCount.innerText = sessionStats.matched;
+            } else if (message.startsWith('[NO META]')) {
+                sessionStats.unmatched++;
+                const el = document.getElementById('statUnmatched');
+                const logCount = document.getElementById('logCountSkipped');
+                if (el) el.innerText = sessionStats.unmatched;
+                if (logCount) logCount.innerText = sessionStats.unmatched;
+            } else if (message.startsWith('[ERROR]')) {
+                sessionStats.errors++;
+                const el = document.getElementById('statErrors');
+                const logCount = document.getElementById('logCountErrors');
+                if (el) el.innerText = sessionStats.errors;
+                if (logCount) logCount.innerText = sessionStats.errors;
+            }
+            // ─────────────────────────────────────────────────────────────────
+
             const div = document.createElement('div');
             div.style.display = 'flex';
             div.style.gap = '8px';
+
+            // Tag each row so log tab filtering can show/hide it
+            if (message.startsWith('[SUCCESS]')) div.dataset.logType = 'restored';
+            else if (message.startsWith('[NO META]')) div.dataset.logType = 'skipped';
+            else if (message.startsWith('[ERROR]')) div.dataset.logType = 'errors';
+            else div.dataset.logType = 'info';
             
             const lvl = document.createElement('span');
             lvl.className = `log-level log-${level}`;
@@ -2365,6 +3065,10 @@
 
         function clearLogs() {
             document.getElementById('consoleContent').innerHTML = '';
+            // Reset live counters
+            sessionStats = { matched: 0, unmatched: 0, errors: 0 };
+            const ids = ['statMatched','statUnmatched','statErrors','logCountRestored','logCountSkipped','logCountErrors'];
+            ids.forEach(id => { const el = document.getElementById(id); if (el) el.innerText = '0'; });
         }
 
         // 5. EXIF Viewer logic
@@ -2568,28 +3272,44 @@
 
         // Telemetry Heartbeat simulation
         function startTelemetryHeartbeat() {
-            const cores = navigator.hardwareConcurrency || 4;
-            const memGB = navigator && 'deviceMemory' in navigator ? navigator.deviceMemory : null;
-            const optimalThreads = Math.min(cores <= 4 ? Math.max(2, cores - 1) : Math.floor(cores * 0.75), 16);
+            const fallbackCores = navigator.hardwareConcurrency || 4;
+            const fallbackMemGB = navigator && 'deviceMemory' in navigator ? navigator.deviceMemory : 8;
+            const optimalThreads = Math.min(fallbackCores <= 4 ? Math.max(2, fallbackCores - 1) : Math.floor(fallbackCores * 0.75), 16);
 
             setInterval(() => {
-                let cpu, heap;
-                if (isProcessing) {
-                    cpu = 45.0 + Math.random() * 20.0;
-                    heap = 180.0 + Math.random() * 40.0;
-                } else {
-                    cpu = 0.5 + Math.random() * 0.5;
-                    heap = 40.0 + Math.random() * 8.0;
-                }
+                fetch('/api/system/telemetry')
+                    .then(r => {
+                        if (!r.ok) throw new Error("HTTP error");
+                        return r.json();
+                    })
+                    .then(data => {
+                        const cores = data.cores || fallbackCores;
+                        const cpu = data.cpuLoad || 0.0;
+                        const totalMem = data.totalMemoryMB || (fallbackMemGB * 1024);
+                        const usedMem = data.usedMemoryMB || 500;
+                        const activeCores = (cpu / 100) * cores;
 
-                const totalMem = memGB ? memGB * 1024 : null;
-                const usedMem = totalMem ? (heap + Math.random() * 20).toFixed(0) : '?';
+                        document.getElementById('telemWorkers').innerText = `Auto (${optimalThreads} Threads)`;
+                        document.getElementById('telemCpu').innerText = `${activeCores.toFixed(1)} / ${cores} Cores (${cpu.toFixed(1)}%)`;
+                        document.getElementById('telemHeap').innerText = `${usedMem}MB / ${totalMem}MB`;
+                    })
+                    .catch(() => {
+                        // Fallback simulation when server is offline or restarting
+                        let cpu, heap;
+                        if (isProcessing) {
+                            cpu = 65.0 + Math.random() * 20.0;
+                            heap = 4200.0 + Math.random() * 600.0;
+                        } else {
+                            cpu = 1.2 + Math.random() * 1.5;
+                            heap = 620.0 + Math.random() * 80.0;
+                        }
+                        const totalMem = fallbackMemGB * 1024;
+                        const activeCores = (cpu / 100) * fallbackCores;
 
-                document.getElementById('telemWorkers').innerText = `Auto (${optimalThreads} Threads)`;
-                document.getElementById('telemCpu').innerText = `${cpu.toFixed(1)} / ${cores} Cores (${(cpu / cores).toFixed(1)}%)`;
-                document.getElementById('telemHeap').innerText = totalMem
-                    ? `${heap.toFixed(0)}MB / ${totalMem}MB`
-                    : `${heap.toFixed(0)}MB / ?MB`;
+                        document.getElementById('telemWorkers').innerText = `Auto (${optimalThreads} Threads)`;
+                        document.getElementById('telemCpu').innerText = `${activeCores.toFixed(1)} / ${fallbackCores} Cores (${cpu.toFixed(1)}%)`;
+                        document.getElementById('telemHeap').innerText = `${heap.toFixed(0)}MB / ${totalMem}MB`;
+                    });
             }, 1000);
         }
 
@@ -2655,18 +3375,7 @@
             if (fv) fv.innerText = limitFiles === Infinity ? `${usedFiles.toLocaleString()} / Unlimited` : `${usedFiles.toLocaleString()} / ${limF}`;
         }
 
-        function activateLicense() {
-            const key = document.getElementById('licenseKey').value.trim();
-            if (!key) {
-                alert("Please enter your license key.");
-                return;
-            }
-            localStorage.setItem('takeoutfix_premium_licensed', 'true');
-            localStorage.setItem('takeoutfix_premium_key', key);
-            updatePremiumBadgeState();
-            closeModal();
-            alert("Premium license activated successfully! Unlimited offline mode activated.");
-        }
+
     </script>
 </body>
 </html>

@@ -59,7 +59,7 @@ function RequireRole({
   if (loading) return null
 
   const role = adminData?.role as AdminRoleType | undefined
-  const permitted = isDev || (role != null && allow.includes(role))
+  const permitted = role != null && allow.includes(role)
 
   if (!permitted) {
     return (
@@ -87,7 +87,7 @@ function RequireDeveloper({ children }: { children: React.ReactNode }) {
 
   if (loading) return null
 
-  const isDeveloper = user?.email === 'rahuljenasonu@gmail.com' || isDev
+  const isDeveloper = user?.email === 'rahuljenasonu@gmail.com'
 
   if (!isDeveloper) {
     return (

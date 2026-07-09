@@ -9,7 +9,7 @@
  *
  * All state and processing logic lives in useToolPipeline.ts.
  */
-import React from "react"
+import React, { useEffect, useState } from "react"
 import { HardDrive, AlertCircle } from "lucide-react"
 import { Button } from "../components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "../components/ui/card"
@@ -29,6 +29,32 @@ export function ToolWorkspaceContent() {
 
   // ── Pipeline hook (all state + handlers) ──────────────────────────────────
   const pipeline = useToolPipeline()
+
+  // ── Restore complete modal state ───────────────────────────────────────────
+  const [showRestoreComplete, setShowRestoreComplete] = useState(false)
+  const [frozenStats, setFrozenStats] = useState({ scanned: 0, matched: 0, unmatched: 0, errors: 0 })
+  // Track previous isProcessing to detect the exact true→false transition
+  const wasProcessingRef = React.useRef(false)
+
+  useEffect(() => {
+    const wasProcessing = wasProcessingRef.current
+    wasProcessingRef.current = pipeline.isProcessing
+
+    // Trigger ONLY when we transition from processing → done, with actual results
+    // and not when the user cancels (stats.scanned > 0 but matched === 0 means cancelled early)
+    if (wasProcessing && !pipeline.isProcessing && pipeline.stats.scanned > 0 && !showRestoreComplete) {
+      const timer = setTimeout(() => {
+        setFrozenStats({
+          scanned: pipeline.stats.scanned,
+          matched: pipeline.stats.matched,
+          unmatched: pipeline.stats.unmatched,
+          errors: pipeline.stats.errors,
+        })
+        setShowRestoreComplete(true)
+      }, 600)
+      return () => clearTimeout(timer)
+    }
+  }, [pipeline.isProcessing])
 
   // ── Auth / system guards (all hooks are above — React rules of hooks) ──────
   if (loading) {
@@ -153,6 +179,7 @@ export function ToolWorkspaceContent() {
           cancelProcessing={pipeline.cancelProcessing}
           pauseProcessing={pipeline.pauseProcessing}
           resumeProcessing={pipeline.resumeProcessing}
+          resetForNewRestore={pipeline.resetForNewRestore}
           setShowCompareModal={pipeline.setShowCompareModal}
           viewerFile={pipeline.viewerFile}
           viewerExif={pipeline.viewerExif}
@@ -208,6 +235,13 @@ export function ToolWorkspaceContent() {
         modalContext={pipeline.modalContext}
         setModalContext={pipeline.setModalContext}
         handleModalConfirm={pipeline.handleModalConfirm}
+        showRestoreComplete={showRestoreComplete}
+        restoreCompleteStats={frozenStats}
+        onRestoreAnother={() => {
+          setShowRestoreComplete(false)
+          pipeline.resetForNewRestore()
+        }}
+        onRestoreCompleteDismiss={() => setShowRestoreComplete(false)}
       />
     </AdBlockGate>
   )
