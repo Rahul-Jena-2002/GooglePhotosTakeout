@@ -123,6 +123,7 @@ function CheckoutPageContent() {
   })()
 
   const [detectedCoupon, setDetectedCoupon] = useState("")
+  const [couponDetails, setCouponDetails] = useState<any>(null)
   const [couponLookupDone, setCouponLookupDone] = useState(false)
 
   // All state must be declared before any conditional early returns (Rules of Hooks)
@@ -167,6 +168,12 @@ function CheckoutPageContent() {
           const data = await response.json();
           if (response.ok && data.couponCode) {
             setDetectedCoupon(data.couponCode);
+            // Dodo dynamic upgrade discounts are typically 50%
+            setCouponDetails({
+              couponCode: data.couponCode,
+              discountType: "PERCENTAGE",
+              discountValue: 50
+            });
           } else {
             console.warn("Failed to generate dynamic upgrade coupon:", data.error || "Unknown error");
           }
@@ -178,6 +185,31 @@ function CheckoutPageContent() {
         return;
       }
 
+      // Check URL for explicit coupon parameter first
+      const urlParams = new URLSearchParams(window.location.search);
+      const urlCoupon = urlParams.get("coupon") || "";
+      if (urlCoupon) {
+        try {
+          const couponQuery = query(
+            collection(db, "coupons"),
+            where("couponCode", "==", urlCoupon.trim().toUpperCase()),
+            where("active", "==", true)
+          );
+          const couponSnap = await getDocs(couponQuery);
+          if (!couponSnap.empty) {
+            const couponDoc = couponSnap.docs[0];
+            const couponData = couponDoc.data();
+            setDetectedCoupon(couponData.couponCode);
+            setCouponDetails({ id: couponDoc.id, ...couponData });
+            setCouponLookupDone(true);
+            return;
+          }
+        } catch (err) {
+          console.warn("URL coupon lookup failed:", err);
+        }
+      }
+
+      // Automatic active campaigns coupon lookup
       try {
         const couponsSnap = await getDocs(
           query(collection(db, "coupons"), where("active", "==", true))
@@ -237,6 +269,7 @@ function CheckoutPageContent() {
           });
           if (matchesTarget) {
             setDetectedCoupon(couponData.couponCode);
+            setCouponDetails({ id: couponDoc.id, ...couponData });
             break;
           }
         }
@@ -296,6 +329,18 @@ function CheckoutPageContent() {
   const firestoreConfig = pricingTiers?.[docId];
 
   const plan = getPlanDetails(planKey, normalizedRegion, firestoreConfig, getPlanPriceValue)
+
+  // Calculate dynamic discounted price for display
+  let displayPriceVal = plan ? plan.priceVal : 0;
+  if (plan && couponDetails) {
+    if (couponDetails.discountType === "PERCENTAGE") {
+      displayPriceVal = plan.priceVal * (1 - couponDetails.discountValue / 100);
+    } else if (couponDetails.discountType === "FLAT") {
+      displayPriceVal = Math.max(0, plan.priceVal - couponDetails.discountValue);
+    }
+  }
+  // Format to 2 decimal places if it's a decimal, otherwise keep it as integer
+  displayPriceVal = Number.isInteger(displayPriceVal) ? displayPriceVal : parseFloat(displayPriceVal.toFixed(2));
 
   // (All useState declarations have been moved above the early returns to comply with Rules of Hooks)
 
@@ -486,9 +531,14 @@ function CheckoutPageContent() {
             <h1 className="text-3xl font-black text-foreground mb-2">{plan.name}</h1>
             <p className="text-zinc-550 dark:text-zinc-400 text-sm mb-6">{plan.description}</p>
 
-            <div className="flex items-baseline gap-1.5 mb-8">
-              <span className="text-5xl font-black text-foreground">{plan.symbol}{plan.priceVal}</span>
-              <span className="text-zinc-550 text-sm font-semibold">{planKey === "recovery_pass" ? "/ one-time" : "/ lifetime"}</span>
+            <div className="flex items-baseline gap-2 mb-8 flex-wrap">
+              <span className="text-5xl font-black text-foreground">{plan.symbol}{displayPriceVal}</span>
+              {couponDetails && (
+                <span className="text-lg text-zinc-500 line-through font-semibold self-end mb-1">
+                  {plan.symbol}{plan.priceVal}
+                </span>
+              )}
+              <span className="text-zinc-550 text-sm font-semibold self-end mb-1">{planKey === "recovery_pass" ? "/ one-time" : "/ lifetime"}</span>
             </div>
 
             {detectedCoupon && (
