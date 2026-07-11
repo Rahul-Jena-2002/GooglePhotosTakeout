@@ -1,4 +1,33 @@
 import type { APIRoute } from 'astro';
+import nodeCrypto from 'node:crypto';
+
+// Decrypt sensitive keys stored in Firestore using AES-256-GCM
+function decryptFirestoreValue(val: string, mek: string): string {
+  if (!val) return "";
+  if (!val.startsWith("enc:v1:")) return val;
+
+  try {
+    const salt = Buffer.alloc(16); // 16 bytes of zeros
+    const key = nodeCrypto.pbkdf2Sync(mek, salt, 100000, 32, "sha256");
+
+    const hex = val.slice(7);
+    const combined = Buffer.from(hex, "hex");
+
+    const iv = combined.subarray(0, 12);
+    const ciphertextAndTag = combined.subarray(12);
+    const tag = ciphertextAndTag.subarray(ciphertextAndTag.length - 16);
+    const ciphertext = ciphertextAndTag.subarray(0, ciphertextAndTag.length - 16);
+
+    const decipher = nodeCrypto.createDecipheriv("aes-256-gcm", key, iv);
+    decipher.setAuthTag(tag);
+    let decrypted = decipher.update(ciphertext, "binary", "utf8");
+    decrypted += decipher.final("utf8");
+    return decrypted;
+  } catch (err: any) {
+    console.error("❌ Failed to decrypt Firestore value:", err.message);
+    return "";
+  }
+}
 
 // Verification helper for Dodo Payments Webhooks using native Web Crypto API
 async function verifyDodoSignature(
@@ -50,68 +79,6 @@ async function verifyDodoSignature(
     }
   }
   return false;
-}
-
-// Decrypt AES-256-GCM encrypted values using Web Crypto API
-async function decryptFirestoreValue(val: string, mek: string): Promise<string> {
-  if (!val) return "";
-  if (!val.startsWith("enc:v1:")) return val;
-
-  try {
-    const hex = val.slice(7);
-    const combined = new Uint8Array(
-      hex.match(/.{1,2}/g)!.map((byte) => parseInt(byte, 16))
-    );
-
-    const iv = combined.slice(0, 12);
-    const ciphertextAndTag = combined.slice(12);
-    const ciphertext = ciphertextAndTag.slice(0, ciphertextAndTag.length - 16);
-    const tag = ciphertextAndTag.slice(ciphertextAndTag.length - 16);
-
-    // Concatenate ciphertext and tag for Web Crypto GCM decrypt
-    const encryptedBuffer = new Uint8Array(ciphertext.length + tag.length);
-    encryptedBuffer.set(ciphertext);
-    encryptedBuffer.set(tag, ciphertext.length);
-
-    const encoder = new TextEncoder();
-    const baseKey = await crypto.subtle.importKey(
-      "raw",
-      encoder.encode(mek),
-      "PBKDF2",
-      false,
-      ["deriveKey", "deriveBits"]
-    );
-
-    const salt = new Uint8Array(16); // 16 bytes of zeros
-    const aesKey = await crypto.subtle.deriveKey(
-      {
-        name: "PBKDF2",
-        salt: salt,
-        iterations: 100000,
-        hash: "SHA-256"
-      },
-      baseKey,
-      { name: "AES-GCM", length: 256 },
-      false,
-      ["decrypt"]
-    );
-
-    const decryptedBuffer = await crypto.subtle.decrypt(
-      {
-        name: "AES-GCM",
-        iv: iv,
-        additionalData: new Uint8Array(0),
-        tagLength: 128
-      },
-      aesKey,
-      encryptedBuffer
-    );
-
-    return new TextDecoder().decode(decryptedBuffer);
-  } catch (err: any) {
-    console.error("Failed to decrypt Firestore value via Web Crypto:", err.message);
-    return "";
-  }
 }
 
 // Generate Google OAuth2 Token using Service Account Private Key in Cloudflare Workers
@@ -207,31 +174,27 @@ export const POST: APIRoute = async ({ request, locals }) => {
       "Authorization": `Bearer ${token}`
     };
 
-    // 2. Fetch webhook secret dynamically from Firestore if not hardcoded in Cloudflare env
+    // Backup: If webhook secret is not set in Cloudflare env, fetch and decrypt it from Firestore settings/secure
     if (!dodoWebhookSecret) {
       try {
+        console.log("DODO_WEBHOOK_KEY not set in env. Attempting backup Firestore secure fetch...");
         const secureUrl = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/settings/secure`;
-        const secureRes = await fetch(secureUrl, { method: "GET", headers });
+        const secureRes = await fetch(secureUrl, { headers });
         if (secureRes.ok) {
           const secureData: any = await secureRes.json();
-          const encryptedKey = secureData.fields?.dodo_webhook_key?.stringValue;
-          if (encryptedKey) {
-            dodoWebhookSecret = await decryptFirestoreValue(encryptedKey, encryptionKey);
-            console.log("Successfully fetched and decrypted Dodo Webhook Secret dynamically from Firestore.");
+          const encryptedSecret = secureData.fields?.dodo_webhook_key?.stringValue || "";
+          if (encryptedSecret) {
+            dodoWebhookSecret = decryptFirestoreValue(encryptedSecret, encryptionKey);
+            console.log("Successfully retrieved and decrypted Dodo Webhook Secret from Firestore!");
           }
         }
       } catch (err: any) {
-        console.error("Failed to read secure settings dynamically from Firestore:", err.message);
+        console.error("Backup webhook secret retrieval failed:", err.message);
       }
     }
 
-    // Default fallback placeholder
-    if (!dodoWebhookSecret) {
-      dodoWebhookSecret = "dodo-webhook-secret-placeholder";
-    }
-
-    // 3. Signature Verification
-    if (dodoWebhookSecret !== "dodo-webhook-secret-placeholder") {
+    // 1. Signature Verification (if secret configured)
+    if (dodoWebhookSecret && dodoWebhookSecret !== "dodo-webhook-secret-placeholder") {
       const webhookId = request.headers.get("webhook-id") || "";
       const webhookTimestamp = request.headers.get("webhook-timestamp") || "";
       const webhookSignature = request.headers.get("webhook-signature") || "";
@@ -242,31 +205,34 @@ export const POST: APIRoute = async ({ request, locals }) => {
         return new Response("Invalid signature", { status: 401 });
       }
     } else {
-      console.log("Placeholder secret detected. Skipping verification (TEST/LOCAL MODE).");
+      console.log("No Dodo Webhook Secret or placeholder detected. Skipping verification (TEST MODE).");
     }
 
-    const { type, data: eventData } = payload;
-    if (!type || !eventData) {
+    const { type, data } = payload;
+    if (!type || !data) {
       return new Response("Missing type or data", { status: 400 });
     }
 
     console.log(`Processing Dodo webhook event on Cloudflare: ${type}`);
 
     if (type === "payment.succeeded") {
-      const userId = eventData.metadata?.userId || eventData.metadata?.userid;
-      const plan = eventData.metadata?.plan || eventData.metadata?.plankey;
-      const regionCode = eventData.metadata?.region || eventData.metadata?.metadata_region || "t3";
+      const userId = data.metadata?.userId || data.metadata?.userid;
+      const plan = data.metadata?.plan || data.metadata?.plankey;
+      const regionCode = data.metadata?.region || data.metadata?.metadata_region || "t3";
 
       if (!userId || !plan) {
-        console.error("Missing userId or plan in metadata:", eventData.metadata);
+        console.error("Missing userId or plan in metadata:", data.metadata);
         return new Response("Missing metadata", { status: 400 });
       }
 
       const timestamp = Date.now();
-      const txId = eventData.payment_id || `TXN-DODO-${timestamp}`;
-      const userEmail = eventData.customer?.email || "";
-      const amount = eventData.total_amount || 0;
-      const currency = eventData.currency || "USD";
+      const txId = data.payment_id || `TXN-DODO-${timestamp}`;
+      const userEmail = data.customer?.email || "";
+      const amount = data.total_amount || 0;
+      const currency = data.currency || "USD";
+
+      // Reuse the access token and headers generated above
+
 
       // 1. Create Transaction Document
       const txUrl = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/transactions?documentId=${txId}`;
