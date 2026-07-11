@@ -589,6 +589,12 @@ export default function AdminPaymentGateway() {
       const currency = currencyCode
 
       let cfBase = (cloudFunctionUrl || "https://us-central1-gt-metadata-merger.cloudfunctions.net/geminiToolGateway").trim()
+      if (cfBase.endsWith("/dodo-webhook")) {
+        cfBase = cfBase.slice(0, -13)
+      }
+      if (cfBase.endsWith("/api")) {
+        cfBase = cfBase.slice(0, -4)
+      }
       if (cfBase.endsWith("/")) {
         cfBase = cfBase.slice(0, -1)
       }
@@ -891,6 +897,12 @@ export default function AdminPaymentGateway() {
 
       const currency = tierData.currency_code || 'USD'
       let cfBase = (cloudFunctionUrl || "https://us-central1-gt-metadata-merger.cloudfunctions.net/geminiToolGateway").trim()
+      if (cfBase.endsWith("/dodo-webhook")) {
+        cfBase = cfBase.slice(0, -13)
+      }
+      if (cfBase.endsWith("/api")) {
+        cfBase = cfBase.slice(0, -4)
+      }
       if (cfBase.endsWith("/")) {
         cfBase = cfBase.slice(0, -1)
       }
@@ -1111,6 +1123,12 @@ export default function AdminPaymentGateway() {
     setSyncingCoupon(true)
     try {
       let cfBase = (cloudFunctionUrl || "https://us-central1-gt-metadata-merger.cloudfunctions.net/geminiToolGateway").trim()
+      if (cfBase.endsWith("/dodo-webhook")) {
+        cfBase = cfBase.slice(0, -13)
+      }
+      if (cfBase.endsWith("/api")) {
+        cfBase = cfBase.slice(0, -4)
+      }
       if (cfBase.endsWith("/")) {
         cfBase = cfBase.slice(0, -1)
       }
