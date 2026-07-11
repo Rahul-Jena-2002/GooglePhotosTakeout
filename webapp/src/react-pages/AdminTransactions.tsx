@@ -39,7 +39,7 @@ export default function AdminTransactions() {
   const [transactions, setTransactions] = useState<Transaction[]>([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState("")
-  const [filterType, setFilterType] = useState<"all" | "commercial" | "pro" | "super" | "single" | "admin">("all")
+  const [filterType, setFilterType] = useState<"all" | "commercial" | "pro" | "super" | "single" | "admin" | "refunded" | "processing">("all")
   const [activeGateway, setActiveGateway] = useState("dodo")
 
   // Pagination states
@@ -154,6 +154,10 @@ export default function AdminTransactions() {
       return !isAdminGrant && t.plan === "super";
     } else if (filterType === "single") {
       return !isAdminGrant && t.plan === "recovery_pass";
+    } else if (filterType === "refunded") {
+      return t.status === "refunded";
+    } else if (filterType === "processing") {
+      return t.status === "processing";
     }
 
     return true; // "all"
@@ -270,6 +274,8 @@ export default function AdminTransactions() {
               <option value="super">Super Purchases Only</option>
               <option value="single">Single Time Passes</option>
               <option value="admin">Admin Grants Only</option>
+              <option value="refunded">Refunded Only</option>
+              <option value="processing">In Process Only</option>
             </select>
 
             <div className="relative">

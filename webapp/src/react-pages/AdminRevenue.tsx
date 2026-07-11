@@ -92,8 +92,7 @@ export default function AdminRevenue() {
     super: activeTx.filter(t => t.plan === "super").reduce((sum, t) => sum + t.amount, 0),
   }
 
-  // Transaction list filtered to succeeded only for charts
-  const activeTx = transactions.filter(t => t.status === "succeeded")
+
 
   // Generate historical data points for custom SVG line chart (simulating last 7 days of sales)
   const drawChartPoints = () => {
