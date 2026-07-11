@@ -13,7 +13,7 @@ interface Transaction {
   displayName: string;
   plan: string;
   amount: number;
-  status: "succeeded" | "refunded" | "failed";
+  status: "succeeded" | "refunded" | "failed" | "cancelled" | "processing";
   timestamp: number;
   paymentMethod: string;
 }
@@ -451,11 +451,15 @@ export default function AdminRevenue() {
                       <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full font-semibold border ${
                         tx.status === "succeeded" ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20" :
                         tx.status === "refunded" ? "bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/20" :
+                        tx.status === "processing" ? "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20" :
+                        tx.status === "cancelled" ? "bg-zinc-500/10 text-zinc-500 dark:text-zinc-400 border-zinc-500/20" :
                         "bg-red-500/10 text-red-600 dark:text-red-400 border-red-500/20"
                       }`}>
                         <span className={`w-1.5 h-1.5 rounded-full ${
                           tx.status === "succeeded" ? "bg-emerald-500 dark:bg-emerald-400" :
                           tx.status === "refunded" ? "bg-purple-500 dark:bg-purple-400" :
+                          tx.status === "processing" ? "bg-amber-500 dark:bg-amber-400" :
+                          tx.status === "cancelled" ? "bg-zinc-500 dark:bg-zinc-400" :
                           "bg-red-500 dark:bg-red-400"
                         }`}></span>
                         {tx.status}

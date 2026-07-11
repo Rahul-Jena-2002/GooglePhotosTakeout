@@ -21,7 +21,7 @@ const serviceAccountPath = path.join(__dirname, "serviceAccountKey.json");
 
 if (fs.existsSync(serviceAccountPath)) {
   const serviceAccount = require(serviceAccountPath);
-  admin.initializeApp({ credential: admin.credential.cert(serviceAccount), projectId: PROJECT_ID });
+  admin.initializeApp({ credential: admin.credential.cert(serviceAccount), projectId: serviceAccount.project_id });
   console.log("✅ Firebase Admin SDK: serviceAccountKey.json");
 } else {
   // Falls back to GOOGLE_APPLICATION_CREDENTIALS or gcloud ADC
@@ -432,7 +432,7 @@ app.post("/dodo-webhook", async (req, res) => {
 
   console.log(`Processing Dodo webhook event: ${type}`);
 
-  if (type === "payment.succeeded") {
+  if (type === "payment.succeeded" || type === "payment.failed" || type === "payment.cancelled" || type === "payment.processing") {
     const userId = data.metadata?.userId || data.metadata?.userid;
     const plan = data.metadata?.plan || data.metadata?.plankey;
     const regionCode = data.metadata?.region || data.metadata?.metadata_region || "t3";
@@ -450,6 +450,12 @@ app.post("/dodo-webhook", async (req, res) => {
       const currency = data.currency || "USD";
       const discountCode = (data.discount_code || data.coupon_code || "").toUpperCase();
 
+      // Map event type to transaction status
+      let txStatus = "failed";
+      if (type === "payment.succeeded") txStatus = "succeeded";
+      else if (type === "payment.cancelled") txStatus = "cancelled";
+      else if (type === "payment.processing") txStatus = "processing";
+
       // 1. Create Transaction Document
       await db.collection("transactions").doc(txId).set({
         txId,
@@ -460,11 +466,14 @@ app.post("/dodo-webhook", async (req, res) => {
         amount,
         currency,
         displayAmount: `${currency === "INR" ? "₹" : "$"}${amount}`,
-        status: "succeeded",
+        status: txStatus,
         timestamp,
         paymentMethod: "Dodo Payments",
         cardLast4: null
       });
+
+      // ONLY fulfill plan upgrades if payment succeeded
+      if (type === "payment.succeeded") {
 
       // 2. Update User Document
       await db.collection("users").doc(userId).set({
@@ -558,7 +567,10 @@ app.post("/dodo-webhook", async (req, res) => {
         timestamp
       });
 
-      console.log(`User ${userId} upgraded to ${plan}.`);
+        console.log(`User ${userId} upgraded to ${plan}.`);
+      } else {
+        console.log(`Logged non-success payment transaction status: ${txStatus} for user ${userId}`);
+      }
     } catch (err) {
       console.error("Failed to update user license in Firestore:", err);
       return res.status(500).json({ error: "Database update failure", message: err.message });

@@ -215,7 +215,7 @@ export const POST: APIRoute = async ({ request, locals }) => {
 
     console.log(`Processing Dodo webhook event on Cloudflare: ${type}`);
 
-    if (type === "payment.succeeded") {
+    if (type === "payment.succeeded" || type === "payment.failed" || type === "payment.cancelled" || type === "payment.processing") {
       const userId = data.metadata?.userId || data.metadata?.userid;
       const plan = data.metadata?.plan || data.metadata?.plankey;
       const regionCode = data.metadata?.region || data.metadata?.metadata_region || "t3";
@@ -230,6 +230,12 @@ export const POST: APIRoute = async ({ request, locals }) => {
       const userEmail = data.customer?.email || "";
       const amount = data.total_amount || 0;
       const currency = data.currency || "USD";
+
+      // Map event type to transaction status
+      let txStatus = "failed";
+      if (type === "payment.succeeded") txStatus = "succeeded";
+      else if (type === "payment.cancelled") txStatus = "cancelled";
+      else if (type === "payment.processing") txStatus = "processing";
 
       // Reuse the access token and headers generated above
 
@@ -246,7 +252,7 @@ export const POST: APIRoute = async ({ request, locals }) => {
           amount: { integerValue: String(amount) },
           currency: { stringValue: currency },
           displayAmount: { stringValue: `${currency === "INR" ? "₹" : "$"}${amount}` },
-          status: { stringValue: "succeeded" },
+          status: { stringValue: txStatus },
           timestamp: { integerValue: String(timestamp) },
           paymentMethod: { stringValue: "Dodo Payments" }
         }
@@ -254,56 +260,61 @@ export const POST: APIRoute = async ({ request, locals }) => {
       const txRes = await fetch(txUrl, { method: "POST", headers, body: JSON.stringify(txBody) });
       if (!txRes.ok) console.warn("Failed to create transaction log:", await txRes.text());
 
-      // 2. Update User plan, reset quotas
-      const userUrl = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/users/${userId}?updateMask.fieldPaths=plan&updateMask.fieldPaths=usedBytes&updateMask.fieldPaths=usedFiles&updateMask.fieldPaths=updatedAt`;
-      const userBody = {
-        fields: {
-          plan: { stringValue: plan },
-          usedBytes: { integerValue: "0" },
-          usedFiles: { integerValue: "0" },
-          updatedAt: { integerValue: String(timestamp) }
+      // ONLY fulfill plan upgrades if payment succeeded
+      if (type === "payment.succeeded") {
+        // 2. Update User plan, reset quotas
+        const userUrl = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/users/${userId}?updateMask.fieldPaths=plan&updateMask.fieldPaths=usedBytes&updateMask.fieldPaths=usedFiles&updateMask.fieldPaths=updatedAt`;
+        const userBody = {
+          fields: {
+            plan: { stringValue: plan },
+            usedBytes: { integerValue: "0" },
+            usedFiles: { integerValue: "0" },
+            updatedAt: { integerValue: String(timestamp) }
+          }
+        };
+        const userRes = await fetch(userUrl, { method: "PATCH", headers, body: JSON.stringify(userBody) });
+        if (!userRes.ok) {
+          console.error("Failed to update user plan:", await userRes.text());
+          return new Response("Database update failed", { status: 500 });
         }
-      };
-      const userRes = await fetch(userUrl, { method: "PATCH", headers, body: JSON.stringify(userBody) });
-      if (!userRes.ok) {
-        console.error("Failed to update user plan:", await userRes.text());
-        return new Response("Database update failed", { status: 500 });
+
+        // 3. Create Purchase Log Document
+        const logUrl = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/purchase_logs`;
+        const logBody = {
+          fields: {
+            customerEmail: { stringValue: userEmail },
+            userId: { stringValue: userId },
+            plan: { stringValue: plan },
+            regionCode: { stringValue: regionCode },
+            amount: { integerValue: String(amount) },
+            currency: { stringValue: currency },
+            purchasedAt: { integerValue: String(timestamp) },
+            dodoPaymentId: { stringValue: txId }
+          }
+        };
+        const logRes = await fetch(logUrl, { method: "POST", headers, body: JSON.stringify(logBody) });
+        if (!logRes.ok) console.warn("Failed to write purchase log:", await logRes.text());
+
+        // 4. Create Admin Activity Log Document
+        const activityUrl = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/admin_activity`;
+        const activityBody = {
+          fields: {
+            actorUid: { stringValue: userId },
+            actorName: { stringValue: userEmail || "Dodo Customer" },
+            actorRole: { stringValue: "USER" },
+            action: { stringValue: "PURCHASE" },
+            target: { stringValue: plan },
+            description: { stringValue: `Purchased ${plan} via Dodo Payments for ${currency} ${amount}` },
+            timestamp: { integerValue: String(timestamp) }
+          }
+        };
+        const activityRes = await fetch(activityUrl, { method: "POST", headers, body: JSON.stringify(activityBody) });
+        if (!activityRes.ok) console.warn("Failed to write admin activity log:", await activityRes.text());
+
+        console.log(`Successfully completed payment webhook upgrade on Cloudflare for user ${userId} to plan ${plan}`);
+      } else {
+        console.log(`Logged non-success payment transaction status: ${txStatus} for user ${userId}`);
       }
-
-      // 3. Create Purchase Log Document
-      const logUrl = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/purchase_logs`;
-      const logBody = {
-        fields: {
-          customerEmail: { stringValue: userEmail },
-          userId: { stringValue: userId },
-          plan: { stringValue: plan },
-          regionCode: { stringValue: regionCode },
-          amount: { integerValue: String(amount) },
-          currency: { stringValue: currency },
-          purchasedAt: { integerValue: String(timestamp) },
-          dodoPaymentId: { stringValue: txId }
-        }
-      };
-      const logRes = await fetch(logUrl, { method: "POST", headers, body: JSON.stringify(logBody) });
-      if (!logRes.ok) console.warn("Failed to write purchase log:", await logRes.text());
-
-      // 4. Create Admin Activity Log Document
-      const activityUrl = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/admin_activity`;
-      const activityBody = {
-        fields: {
-          actorUid: { stringValue: userId },
-          actorName: { stringValue: userEmail || "Dodo Customer" },
-          actorRole: { stringValue: "USER" },
-          action: { stringValue: "PURCHASE" },
-          target: { stringValue: plan },
-          description: { stringValue: `Purchased ${plan} via Dodo Payments for ${currency} ${amount}` },
-          timestamp: { integerValue: String(timestamp) }
-        }
-      };
-      const activityRes = await fetch(activityUrl, { method: "POST", headers, body: JSON.stringify(activityBody) });
-      if (!activityRes.ok) console.warn("Failed to write admin activity log:", await activityRes.text());
-
-      console.log(`Successfully completed payment webhook upgrade on Cloudflare for user ${userId} to plan ${plan}`);
     }
 
     return new Response(JSON.stringify({ success: true }), {
