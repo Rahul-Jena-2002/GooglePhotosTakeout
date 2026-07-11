@@ -433,8 +433,8 @@ app.post("/dodo-webhook", async (req, res) => {
   console.log(`Processing Dodo webhook event: ${type}`);
 
   if (type === "payment.succeeded" || type === "payment.failed" || type === "payment.cancelled" || type === "payment.processing") {
-    const userId = data.metadata?.userId || data.metadata?.userid;
-    const plan = data.metadata?.plan || data.metadata?.plankey;
+    const userId = data.metadata?.userId || data.metadata?.userid || data.metadata?.metadata_userId;
+    const plan = data.metadata?.plan || data.metadata?.plankey || data.metadata?.metadata_plan;
     const regionCode = data.metadata?.region || data.metadata?.metadata_region || "t3";
 
     if (!userId || !plan) {
