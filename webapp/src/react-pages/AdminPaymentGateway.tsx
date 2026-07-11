@@ -599,7 +599,13 @@ export default function AdminPaymentGateway() {
         headers: { 'Content-Type': 'application/json', 'x-api-key': gatewayApiKey },
         body: JSON.stringify({ regionCode, prices, currency })
       })
-      const data = await resp.json()
+      const text = await resp.text()
+      let data: any = {}
+      try {
+        data = text ? JSON.parse(text) : {}
+      } catch (e) {
+        throw new Error(`Invalid response from server (Status ${resp.status}): ${text.substring(0, 150)}`)
+      }
       if (resp.ok && data.results) {
         setPriceSyncResults(data.results)
         const allOk = data.results.every((r: any) => r.status === 'SUCCESS')
@@ -1118,7 +1124,13 @@ export default function AdminPaymentGateway() {
         },
         body: JSON.stringify({ couponId, productIds: productIdsPayload })
       })
-      const result = await resp.json()
+      const text = await resp.text()
+      let result: any = {}
+      try {
+        result = text ? JSON.parse(text) : {}
+      } catch (e) {
+        throw new Error(`Invalid response from server (Status ${resp.status}): ${text.substring(0, 150)}`)
+      }
       const logSnap = await getDocs(collection(db, 'coupons', couponId, 'sync_log'))
       setSyncLog(logSnap.docs.map(d => ({ id: d.id, ...d.data() })))
       if (resp.ok) {
