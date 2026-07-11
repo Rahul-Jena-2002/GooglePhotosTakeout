@@ -22,6 +22,7 @@ const AdminPaymentGateway = React.lazy(() => import("../react-pages/AdminPayment
 const AdminPlanThresholds = React.lazy(() => import("../react-pages/AdminPlanThresholds"))
 const AdminTierFeatures   = React.lazy(() => import("../react-pages/AdminTierFeatures"))
 const AdminDev           = React.lazy(() => import("../react-pages/AdminDev"))
+const AdminTransactions  = React.lazy(() => import("../react-pages/AdminTransactions"))
 
 // ---------------------------------------------------------------------------
 // Loading skeleton (shown while lazy chunks are fetching)
@@ -140,6 +141,11 @@ function AdminRouterContent() {
             <Route path="revenue" element={
               <RequireRole allow={["SUPER_ADMIN", "ADMIN"]}>
                 <AdminRevenue />
+              </RequireRole>
+            } />
+            <Route path="payments" element={
+              <RequireRole allow={["SUPER_ADMIN", "ADMIN"]}>
+                <AdminTransactions />
               </RequireRole>
             } />
             <Route path="statistics" element={

@@ -27,6 +27,7 @@ const BREADCRUMBS: Record<string, string[]> = {
   "/admin": ["Operations", "Dashboard"],
   "/admin/users": ["Operations", "Users"],
   "/admin/support": ["Operations", "Tickets"],
+  "/admin/payments": ["Operations", "Payments"],
   "/admin/revenue": ["Operations", "Revenue"],
   "/admin/reviews": ["Content", "Reviews"],
   "/admin/statistics": ["Content", "Statistics"],
