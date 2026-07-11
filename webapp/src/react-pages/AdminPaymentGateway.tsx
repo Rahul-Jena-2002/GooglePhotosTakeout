@@ -818,6 +818,144 @@ export default function AdminPaymentGateway() {
     } catch (e) { console.error('Failed to load sync log:', e) }
   }
 
+  const syncPricingAndDodoForRegion = async (regionCode: string) => {
+    try {
+      const docId = REGION_DOC_IDS[regionCode]
+      if (!docId) return
+      
+      const docSnap = await getDoc(doc(db, "pricing_tiers", docId))
+      if (!docSnap.exists()) return
+      const tierData = docSnap.data()
+      
+      const prices = {
+        recovery_pass: {
+          amount: Number(tierData.recovery_pass?.current || 0),
+          tax_inclusive: tierData.recovery_pass?.dodo_cfg?.tax_inclusive ?? true,
+          discount: Number(tierData.recovery_pass?.dodo_cfg?.discount ?? 0),
+          purchasing_power_parity: tierData.recovery_pass?.dodo_cfg?.purchasing_power_parity ?? false,
+          pay_what_you_want: tierData.recovery_pass?.dodo_cfg?.pay_what_you_want ?? false,
+          suggested_price: tierData.recovery_pass?.dodo_cfg?.suggested_price ? Number(tierData.recovery_pass.dodo_cfg.suggested_price) : null
+        },
+        pro: {
+          amount: Number(tierData.pro_lifetime?.current || 0),
+          tax_inclusive: tierData.pro_lifetime?.dodo_cfg?.tax_inclusive ?? true,
+          discount: Number(tierData.pro_lifetime?.dodo_cfg?.discount ?? 0),
+          purchasing_power_parity: tierData.pro_lifetime?.dodo_cfg?.purchasing_power_parity ?? false,
+          pay_what_you_want: tierData.pro_lifetime?.dodo_cfg?.pay_what_you_want ?? false,
+          suggested_price: tierData.pro_lifetime?.dodo_cfg?.suggested_price ? Number(tierData.pro_lifetime.dodo_cfg.suggested_price) : null
+        },
+        super: {
+          amount: Number(tierData.super_lifetime?.current || 0),
+          tax_inclusive: tierData.super_lifetime?.dodo_cfg?.tax_inclusive ?? true,
+          discount: Number(tierData.super_lifetime?.dodo_cfg?.discount ?? 0),
+          purchasing_power_parity: tierData.super_lifetime?.dodo_cfg?.purchasing_power_parity ?? false,
+          pay_what_you_want: tierData.super_lifetime?.dodo_cfg?.pay_what_you_want ?? false,
+          suggested_price: tierData.super_lifetime?.dodo_cfg?.suggested_price ? Number(tierData.super_lifetime.dodo_cfg.suggested_price) : null
+        }
+      }
+
+      const currency = tierData.currency_code || 'USD'
+      const cfBase = cloudFunctionUrl || "https://us-central1-gt-metadata-merger.cloudfunctions.net/geminiToolGateway"
+      let cfUrl = `${cfBase}/sync-dodo-prices`
+      if (typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')) {
+        cfUrl = 'http://localhost:3001/sync-dodo-prices'
+      }
+
+      const resp = await fetch(cfUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-api-key': gatewayApiKey },
+        body: JSON.stringify({ regionCode, prices, currency })
+      })
+      if (!resp.ok) {
+        console.warn(`Auto Dodo price sync failed for region ${regionCode}:`, resp.statusText)
+      }
+    } catch (e) {
+      console.error(`Auto Dodo sync error for region ${regionCode}:`, e)
+    }
+  }
+
+  const autoSyncCouponCampaignAndPricing = async (targetCampaignId: string | null) => {
+    try {
+      // 1. Get all coupons
+      const couponsSnap = await getDocs(collection(db, 'coupons'))
+      const allCoupons = couponsSnap.docs.map(d => ({ id: d.id, ...d.data() } as any))
+      const activeCoupons = allCoupons.filter(c => c.active === true)
+
+      // 2. Auto-update Campaign Manager discounts if campaign is linked
+      if (targetCampaignId) {
+        const campaignCoupons = activeCoupons.filter(c => c.campaignId === targetCampaignId)
+        
+        // Group discounts by planCode
+        const planDiscounts: Record<string, number> = { recovery_pass: 0, pro: 0, super: 0 }
+        
+        for (const coup of campaignCoupons) {
+          const targetsSnap = await getDocs(collection(db, 'coupons', coup.id, 'targets'))
+          targetsSnap.docs.forEach(t => {
+            const td = t.data()
+            if (td.planCode) {
+              planDiscounts[td.planCode] = Math.max(planDiscounts[td.planCode], Number(coup.discountValue || 0))
+            }
+          })
+        }
+
+        // Write the discounts back to the campaign subcollection
+        for (const planCode of ['recovery_pass', 'pro', 'super']) {
+          await setDoc(doc(db, 'campaigns', targetCampaignId, 'discounts', planCode), {
+            discountType: 'PERCENTAGE',
+            discountValue: planDiscounts[planCode]
+          }, { merge: true })
+        }
+      }
+
+      // 3. Auto-update Regional Pricing discounts in Firestore and auto-sync Dodo Payments
+      const regionPlanDiscounts: Record<string, Record<string, number>> = {}
+      
+      // Initialize discounts for all known regions to 0
+      Object.keys(REGION_DOC_IDS).forEach(rCode => {
+        regionPlanDiscounts[rCode] = { recovery_pass: 0, pro: 0, super: 0 }
+      })
+
+      // Find targets of all active coupons
+      for (const coup of activeCoupons) {
+        const targetsSnap = await getDocs(collection(db, 'coupons', coup.id, 'targets'))
+        targetsSnap.docs.forEach(t => {
+          const td = t.data()
+          if (td.regionCode && td.planCode) {
+            if (!regionPlanDiscounts[td.regionCode]) {
+              regionPlanDiscounts[td.regionCode] = { recovery_pass: 0, pro: 0, super: 0 }
+            }
+            regionPlanDiscounts[td.regionCode][td.planCode] = Math.max(
+              regionPlanDiscounts[td.regionCode][td.planCode] || 0,
+              Number(coup.discountValue || 0)
+            )
+          }
+        })
+      }
+
+      // Update and sync each region
+      const syncPromises = Object.keys(regionPlanDiscounts).map(async (rCode) => {
+        const docId = REGION_DOC_IDS[rCode]
+        if (!docId) return
+
+        const discounts = regionPlanDiscounts[rCode]
+        
+        // Update Firestore pricing_tiers
+        await setDoc(doc(db, "pricing_tiers", docId), {
+          recovery_pass: { dodo_cfg: { discount: discounts.recovery_pass } },
+          pro_lifetime: { dodo_cfg: { discount: discounts.pro } },
+          super_lifetime: { dodo_cfg: { discount: discounts.super } }
+        }, { merge: true })
+
+        // Trigger Dodo sync for this region
+        await syncPricingAndDodoForRegion(rCode)
+      })
+
+      await Promise.all(syncPromises)
+    } catch (e) {
+      console.error('autoSyncCouponCampaignAndPricing failed:', e)
+    }
+  }
+
   const handleSaveCoupon = async () => {
     if (!couponForm.couponCode.trim()) {
       useToastStore.getState().addToast('Coupon code is required.', 'error')
@@ -839,6 +977,10 @@ export default function AdminPaymentGateway() {
         usageLimit: (!couponForm.campaignId && couponForm.usageLimit) ? Number(couponForm.usageLimit) : null,
         updatedAt: serverTimestamp(),
       }
+      
+      const oldCampaignId = editingCoupon?.campaignId || null
+      const newCampaignId = payload.campaignId || null
+
       let couponId: string
       if (editingCoupon) {
         await updateDoc(doc(db, 'coupons', editingCoupon.id), payload)
@@ -866,7 +1008,13 @@ export default function AdminPaymentGateway() {
         actorRole: role, action: editingCoupon ? 'COUPON_UPDATE' : 'COUPON_CREATE',
         description: `${editingCoupon ? 'Updated' : 'Created'} coupon "${payload.couponCode}"`, timestamp: Date.now()
       })
-      useToastStore.getState().addToast(`Coupon ${editingCoupon ? 'updated' : 'created'} successfully.`, 'success')
+
+      // Run auto-sync updates for campaigns and regional pricing
+      if (oldCampaignId) await autoSyncCouponCampaignAndPricing(oldCampaignId)
+      if (newCampaignId && newCampaignId !== oldCampaignId) await autoSyncCouponCampaignAndPricing(newCampaignId)
+      if (!oldCampaignId && !newCampaignId) await autoSyncCouponCampaignAndPricing(null)
+
+      useToastStore.getState().addToast(`Coupon ${editingCoupon ? 'updated' : 'created'} and synced successfully.`, 'success')
       resetCouponForm()
     } catch (err: any) {
       useToastStore.getState().addToast('Failed to save coupon: ' + err.message, 'error')
@@ -878,6 +1026,9 @@ export default function AdminPaymentGateway() {
   const handleDeleteCoupon = async (couponId: string) => {
     setDeletingCouponId(couponId)
     try {
+      const couponDoc = await getDoc(doc(db, 'coupons', couponId))
+      const campaignId = couponDoc.exists() ? couponDoc.data()?.campaignId : null
+
       const targSnap = await getDocs(collection(db, 'coupons', couponId, 'targets'))
       for (const d of targSnap.docs) await deleteDoc(d.ref)
       const logSnap = await getDocs(collection(db, 'coupons', couponId, 'sync_log'))
@@ -888,7 +1039,11 @@ export default function AdminPaymentGateway() {
         actorRole: role, action: 'COUPON_DELETE',
         description: `Deleted coupon ${couponId}`, timestamp: Date.now()
       })
-      useToastStore.getState().addToast('Coupon deleted.', 'success')
+
+      // Perform auto-sync to Campaigns & Regional Pricing
+      await autoSyncCouponCampaignAndPricing(campaignId || null)
+
+      useToastStore.getState().addToast('Coupon deleted and synced successfully.', 'success')
     } catch (err: any) {
       useToastStore.getState().addToast('Failed to delete coupon: ' + err.message, 'error')
     } finally {
@@ -899,7 +1054,13 @@ export default function AdminPaymentGateway() {
 
   const handleToggleCouponActive = async (coup: any) => {
     try {
-      await updateDoc(doc(db, 'coupons', coup.id), { active: !coup.active, updatedAt: serverTimestamp() })
+      const newActive = !coup.active
+      await updateDoc(doc(db, 'coupons', coup.id), { active: newActive, updatedAt: serverTimestamp() })
+      
+      // Perform auto-sync to Campaigns & Regional Pricing
+      await autoSyncCouponCampaignAndPricing(coup.campaignId || null)
+      
+      useToastStore.getState().addToast(`Coupon toggled successfully.`, 'success')
     } catch (err: any) {
       useToastStore.getState().addToast('Failed to toggle coupon: ' + err.message, 'error')
     }
@@ -1701,56 +1862,58 @@ export default function AdminPaymentGateway() {
                 <div className="text-center py-8 text-zinc-500 text-xs">No active promotional campaigns yet.</div>
               )}
 
-              <div className="grid md:grid-cols-2 gap-4">
-                {campaigns.map((camp) => {
-                  const statusColors: Record<string, string> = {
-                    DRAFT: 'bg-zinc-700/40 text-zinc-400 border-zinc-700/40',
-                    ACTIVE: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20',
-                    PAUSED: 'bg-amber-500/10 text-amber-400 border-amber-500/20',
-                    EXPIRED: 'bg-red-500/10 text-red-400 border-red-500/20',
-                  }
-                  return (
-                    <div key={camp.id} className="p-4 border rounded-2xl flex flex-col justify-between" style={{ borderColor: isLight ? '#e5e7eb' : '#1e1e21', backgroundColor: isLight ? '#ffffff' : '#0a0a0c' }}>
-                      <div className="space-y-2">
-                        <div className="flex items-center justify-between gap-2">
-                          <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full border ${statusColors[camp.status] || 'bg-zinc-800'}`}>
-                            {camp.status}
-                          </span>
+              {!showCampaignForm && (
+                <div className="grid md:grid-cols-2 gap-4">
+                  {campaigns.map((camp) => {
+                    const statusColors: Record<string, string> = {
+                      DRAFT: 'bg-zinc-700/40 text-zinc-400 border-zinc-700/40',
+                      ACTIVE: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20',
+                      PAUSED: 'bg-amber-500/10 text-amber-400 border-amber-500/20',
+                      EXPIRED: 'bg-red-500/10 text-red-400 border-red-500/20',
+                    }
+                    return (
+                      <div key={camp.id} className="p-4 border rounded-2xl flex flex-col justify-between" style={{ borderColor: isLight ? '#e5e7eb' : '#1e1e21', backgroundColor: isLight ? '#ffffff' : '#0a0a0c' }}>
+                        <div className="space-y-2">
+                          <div className="flex items-center justify-between gap-2">
+                            <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full border ${statusColors[camp.status] || 'bg-zinc-800'}`}>
+                              {camp.status}
+                            </span>
+                            <button
+                              onClick={() => handleToggleCampaignEnabled(camp)}
+                              className="text-zinc-550 hover:text-indigo-400 text-xs flex items-center gap-1.5"
+                            >
+                              {camp.isEnabled ? <ToggleRight className="w-5 h-5 text-indigo-500" /> : <ToggleLeft className="w-5 h-5 text-zinc-600" />}
+                            </button>
+                          </div>
+                          <h4 className="text-sm font-bold" style={{ color: isLight ? '#111827' : '#ffffff' }}>{camp.campaignName}</h4>
+                          <p className="text-xs" style={{ color: isLight ? '#6b7280' : '#88888b' }}>{camp.description || "No description provided."}</p>
+                          
+                          <div className="text-[10px] text-zinc-500 font-semibold space-y-1">
+                            <div>Purchases: <strong>{camp.currentPurchaseCount || 0}</strong> {camp.maxPurchaseLimit ? `/ ${camp.maxPurchaseLimit}` : ''}</div>
+                            {camp.expirationDateTime && <div>Expires: <strong>{tsToDatetimeLocal(camp.expirationDateTime).substring(0, 16)}</strong></div>}
+                          </div>
+                        </div>
+
+                        <div className="flex justify-end gap-2 pt-4 border-t mt-4" style={{ borderColor: isLight ? '#e5e7eb' : '#1b1b1e' }}>
                           <button
-                            onClick={() => handleToggleCampaignEnabled(camp)}
-                            className="text-zinc-500 hover:text-indigo-400 text-xs flex items-center gap-1.5"
+                            onClick={() => handleEditCampaign(camp)}
+                            className="px-2.5 py-1.5 rounded-lg border text-[10px] font-bold hover:bg-zinc-800 hover:text-white"
+                            style={{ borderColor: isLight ? '#d1d5db' : '#27272a', color: isLight ? '#4b5563' : '#a1a1aa' }}
                           >
-                            {camp.isEnabled ? <ToggleRight className="w-5 h-5 text-indigo-500" /> : <ToggleLeft className="w-5 h-5 text-zinc-600" />}
+                            Edit Config
+                          </button>
+                          <button
+                            onClick={() => handleDeleteCampaign(camp.id)}
+                            className="px-2.5 py-1.5 rounded-lg border text-[10px] font-bold bg-red-500/10 hover:bg-red-500 hover:text-white border-red-500/20 text-red-500"
+                          >
+                            Delete
                           </button>
                         </div>
-                        <h4 className="text-sm font-bold" style={{ color: isLight ? '#111827' : '#ffffff' }}>{camp.campaignName}</h4>
-                        <p className="text-xs" style={{ color: isLight ? '#6b7280' : '#88888b' }}>{camp.description || "No description provided."}</p>
-                        
-                        <div className="text-[10px] text-zinc-500 font-semibold space-y-1">
-                          <div>Purchases: <strong>{camp.currentPurchaseCount || 0}</strong> {camp.maxPurchaseLimit ? `/ ${camp.maxPurchaseLimit}` : ''}</div>
-                          {camp.expirationDateTime && <div>Expires: <strong>{tsToDatetimeLocal(camp.expirationDateTime).substring(0, 16)}</strong></div>}
-                        </div>
                       </div>
-
-                      <div className="flex justify-end gap-2 pt-4 border-t mt-4" style={{ borderColor: isLight ? '#e5e7eb' : '#1b1b1e' }}>
-                        <button
-                          onClick={() => handleEditCampaign(camp)}
-                          className="px-2.5 py-1.5 rounded-lg border text-[10px] font-bold hover:bg-zinc-800 hover:text-white"
-                          style={{ borderColor: isLight ? '#d1d5db' : '#27272a', color: isLight ? '#4b5563' : '#a1a1aa' }}
-                        >
-                          Edit Config
-                        </button>
-                        <button
-                          onClick={() => handleDeleteCampaign(camp.id)}
-                          className="px-2.5 py-1.5 rounded-lg border text-[10px] font-bold bg-red-500/10 hover:bg-red-500 hover:text-white border-red-500/20 text-red-500"
-                        >
-                          Delete
-                        </button>
-                      </div>
-                    </div>
-                  )
-                })}
-              </div>
+                    )
+                  })}
+                </div>
+              )}
             </CardContent>
           </Card>
         )}
@@ -1938,66 +2101,68 @@ export default function AdminPaymentGateway() {
                 <div className="text-center py-8 text-zinc-500 text-xs">No active coupons configured.</div>
               )}
 
-              <div className="space-y-3">
-                {coupons.map((coup) => {
-                  const hasCampaign = !!coup.campaignId
-                  const campaignObj = hasCampaign ? campaigns.find(c => c.id === coup.campaignId) : null
+              {!showCouponForm && (
+                <div className="space-y-3">
+                  {coupons.map((coup) => {
+                    const hasCampaign = !!coup.campaignId
+                    const campaignObj = hasCampaign ? campaigns.find(c => c.id === coup.campaignId) : null
 
-                  return (
-                    <div key={coup.id} className="p-4 border rounded-2xl flex flex-col md:flex-row md:items-center justify-between gap-4" style={{ borderColor: isLight ? '#e5e7eb' : '#1e1e21', backgroundColor: isLight ? '#ffffff' : '#0a0a0c' }}>
-                      <div className="space-y-1">
-                        <div className="flex items-center gap-2">
-                          <span className="text-xs font-black font-mono tracking-wider px-2 py-0.5 rounded bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">
-                            {coup.couponCode}
-                          </span>
-                          <span className="text-xs font-bold" style={{ color: isLight ? '#1f2937' : '#f3f4f6' }}>
-                            {coup.discountValue}% Off
-                          </span>
-                          {coup.active ? (
-                            <span className="text-[9px] font-extrabold px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/25">ACTIVE</span>
-                          ) : (
-                            <span className="text-[9px] font-extrabold px-1.5 py-0.5 rounded bg-zinc-700/30 text-zinc-500 border border-zinc-800">DISABLED</span>
-                          )}
+                    return (
+                      <div key={coup.id} className="p-4 border rounded-2xl flex flex-col md:flex-row md:items-center justify-between gap-4" style={{ borderColor: isLight ? '#e5e7eb' : '#1e1e21', backgroundColor: isLight ? '#ffffff' : '#0a0a0c' }}>
+                        <div className="space-y-1">
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs font-black font-mono tracking-wider px-2 py-0.5 rounded bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">
+                              {coup.couponCode}
+                            </span>
+                            <span className="text-xs font-bold" style={{ color: isLight ? '#1f2937' : '#f3f4f6' }}>
+                              {coup.discountValue}% Off
+                            </span>
+                            {coup.active ? (
+                              <span className="text-[9px] font-extrabold px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/25">ACTIVE</span>
+                            ) : (
+                              <span className="text-[9px] font-extrabold px-1.5 py-0.5 rounded bg-zinc-700/30 text-zinc-500 border border-zinc-800">DISABLED</span>
+                            )}
+                          </div>
+                          <h5 className="text-xs font-bold" style={{ color: isLight ? '#374151' : '#d1d5db' }}>{coup.title || "Discount Coupon"}</h5>
+                          <p className="text-[11px]" style={{ color: isLight ? '#6b7280' : '#88888b' }}>{coup.description || "Valid on checkout pass products."}</p>
+                          
+                          <div className="text-[9px] text-zinc-500 font-semibold">
+                            {hasCampaign ? (
+                              <span>Linked to Campaign: <strong className="text-purple-400">{campaignObj?.campaignName || "Unknown Campaign"}</strong></span>
+                            ) : (
+                              <span>Static Coupon {coup.validUntil ? `· Expires: ${tsToDatetimeLocal(coup.validUntil).substring(0, 10)}` : ""}</span>
+                            )}
+                            <span> · Used: <strong>{coup.usedCount || 0}</strong> {coup.usageLimit ? `/ ${coup.usageLimit}` : ""}</span>
+                          </div>
                         </div>
-                        <h5 className="text-xs font-bold" style={{ color: isLight ? '#374151' : '#d1d5db' }}>{coup.title || "Discount Coupon"}</h5>
-                        <p className="text-[11px]" style={{ color: isLight ? '#6b7280' : '#88888b' }}>{coup.description || "Valid on checkout pass products."}</p>
-                        
-                        <div className="text-[9px] text-zinc-500 font-semibold">
-                          {hasCampaign ? (
-                            <span>Linked to Campaign: <strong className="text-purple-400">{campaignObj?.campaignName || "Unknown Campaign"}</strong></span>
-                          ) : (
-                            <span>Static Coupon {coup.validUntil ? `· Expires: ${tsToDatetimeLocal(coup.validUntil).substring(0, 10)}` : ""}</span>
-                          )}
-                          <span> · Used: <strong>{coup.usedCount || 0}</strong> {coup.usageLimit ? `/ ${coup.usageLimit}` : ""}</span>
+
+                        <div className="flex items-center gap-2 self-end md:self-center">
+                          <button
+                            onClick={() => handleSyncCoupon(coup.id)}
+                            disabled={syncingCoupon}
+                            className="px-2.5 py-1.5 rounded-lg border text-[10px] font-bold bg-amber-500/10 hover:bg-amber-500 hover:text-white border-amber-500/25 text-amber-500 flex items-center gap-1"
+                          >
+                            <RefreshCw className="w-3 h-3" /> Sync Gateway
+                          </button>
+                          <button
+                            onClick={() => handleEditCoupon(coup)}
+                            className="px-2.5 py-1.5 rounded-lg border text-[10px] font-bold hover:bg-zinc-800 hover:text-white"
+                            style={{ borderColor: isLight ? '#d1d5db' : '#27272a', color: isLight ? '#4b5563' : '#a1a1aa' }}
+                          >
+                            Edit
+                          </button>
+                          <button
+                            onClick={() => handleDeleteCoupon(coup.id)}
+                            className="px-2.5 py-1.5 rounded-lg border text-[10px] font-bold bg-red-500/10 hover:bg-red-500 hover:text-white border-red-500/20 text-red-500"
+                          >
+                            Delete
+                          </button>
                         </div>
                       </div>
-
-                      <div className="flex items-center gap-2 self-end md:self-center">
-                        <button
-                          onClick={() => handleSyncCoupon(coup.id)}
-                          disabled={syncingCoupon}
-                          className="px-2.5 py-1.5 rounded-lg border text-[10px] font-bold bg-amber-500/10 hover:bg-amber-500 hover:text-white border-amber-500/25 text-amber-500 flex items-center gap-1"
-                        >
-                          <RefreshCw className="w-3 h-3" /> Sync Gateway
-                        </button>
-                        <button
-                          onClick={() => handleEditCoupon(coup)}
-                          className="px-2.5 py-1.5 rounded-lg border text-[10px] font-bold hover:bg-zinc-800 hover:text-white"
-                          style={{ borderColor: isLight ? '#d1d5db' : '#27272a', color: isLight ? '#4b5563' : '#a1a1aa' }}
-                        >
-                          Edit
-                        </button>
-                        <button
-                          onClick={() => handleDeleteCoupon(coup.id)}
-                          className="px-2.5 py-1.5 rounded-lg border text-[10px] font-bold bg-red-500/10 hover:bg-red-500 hover:text-white border-red-500/20 text-red-500"
-                        >
-                          Delete
-                        </button>
-                      </div>
-                    </div>
-                  )
-                })}
-              </div>
+                    )
+                  })}
+                </div>
+              )}
             </CardContent>
           </Card>
         )}
