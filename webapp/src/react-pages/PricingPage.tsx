@@ -86,6 +86,7 @@ function PricingPageContent() {
   const [timeLeftStr, setTimeLeftStr] = useState("");
   const [checkoutLoading, setCheckoutLoading] = useState(false);
   const [activeCoupons, setActiveCoupons] = useState<Record<string, string>>({});
+  const [activeCouponDiscountsLocal, setActiveCouponDiscountsLocal] = useState<Record<string, number>>({});
 
   useEffect(() => {
     const checkPromoActive = () => {
@@ -148,6 +149,7 @@ function PricingPageContent() {
           query(collection(db, "coupons"), where("active", "==", true))
         );
         const activeMap: Record<string, string> = {};
+        const discountsMap: Record<string, number> = {};
         
         for (const couponDoc of couponsSnap.docs) {
           const couponData = couponDoc.data();
@@ -193,11 +195,13 @@ function PricingPageContent() {
             const td = t.data();
             if (td.regionCode === region) {
               activeMap[td.planCode] = couponData.couponCode;
+              discountsMap[td.planCode] = Number(couponData.discountValue || 0);
             }
           });
         }
         
         setActiveCoupons(activeMap);
+        setActiveCouponDiscountsLocal(discountsMap);
       } catch (err) {
         console.warn("Pricing coupons lookup failed:", err);
       }
@@ -231,10 +235,7 @@ function PricingPageContent() {
 
   const getDiscountPct = (planKey: string) => {
     if (!isPromoActiveLocal) return 0;
-    const disc = activeCampaignDiscounts?.[planKey];
-    if (!disc || disc.discountValue <= 0) return 0;
-    if (disc.discountType === 'PERCENTAGE') return disc.discountValue;
-    return 0;
+    return activeCouponDiscountsLocal[planKey] || 0;
   };
 
   const recoveryDisc = getDiscountPct('recovery_pass');
