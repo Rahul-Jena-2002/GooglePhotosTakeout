@@ -6,7 +6,7 @@ import { indexedDbService } from '../lib/indexedDbService';
 import { useToastStore } from '../store/useToastStore';
 
 export type PlanType = 'free' | 'recovery_pass' | 'pro' | 'super';
-export type AdminRole = 'SUPER_ADMIN' | 'ADMIN' | 'SUPPORT' | 'MODERATOR';
+export type AdminRole = 'SUPER_ADMIN' | 'ADMIN' | 'SUPPORT' | 'MODERATOR' | 'DEVELOPER';
 
 export interface FeatureItem {
   text: string;

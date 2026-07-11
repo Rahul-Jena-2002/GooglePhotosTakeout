@@ -1892,7 +1892,8 @@ html.light .admin-notification-badge {
 .admin-role-super-admin,
 .admin-role-admin,
 .admin-role-support,
-.admin-role-moderator {
+.admin-role-moderator,
+.admin-role-developer {
   display: inline-flex;
   align-items: center;
   font-weight: 700;
@@ -1921,6 +1922,11 @@ html.light .admin-notification-badge {
   color: #71717a !important;
   border-color: rgba(255, 255, 255, 0.05) !important;
 }
+.admin-role-developer {
+  background-color: rgba(99, 102, 241, 0.1) !important;
+  color: #818cf8 !important;
+  border-color: rgba(99, 102, 241, 0.15) !important;
+}
 
 /* Light mode role styles */
 html.light .admin-role-super-admin {
@@ -1942,6 +1948,11 @@ html.light .admin-role-moderator {
   background-color: transparent !important;
   color: #a1a1aa !important;
   border-color: rgba(0, 0, 0, 0.04) !important;
+}
+html.light .admin-role-developer {
+  background-color: rgba(99, 102, 241, 0.08) !important;
+  color: #4f46e5 !important;
+  border-color: rgba(99, 102, 241, 0.12) !important;
 }
 
 /* General clean up to prevent colored background highlight bleed inside admin containers */

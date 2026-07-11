@@ -27,13 +27,14 @@ interface AdminInvite {
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
-const ALL_ROLES: AdminRole[] = ['ADMIN', 'SUPPORT', 'MODERATOR', 'SUPER_ADMIN']
+const ALL_ROLES: AdminRole[] = ['ADMIN', 'SUPPORT', 'MODERATOR', 'DEVELOPER', 'SUPER_ADMIN']
 
 const ROLE_COLORS: Record<AdminRole, string> = {
   SUPER_ADMIN: "admin-role-super-admin px-1.5 py-0.5",
   ADMIN:       "admin-role-admin px-1.5 py-0.5",
   SUPPORT:     "admin-role-support px-1.5 py-0.5",
   MODERATOR:   "admin-role-moderator px-1.5 py-0.5",
+  DEVELOPER:   "admin-role-developer px-1.5 py-0.5",
 }
 
 const ROLE_DESCRIPTIONS: Record<AdminRole, string> = {
@@ -41,6 +42,7 @@ const ROLE_DESCRIPTIONS: Record<AdminRole, string> = {
   ADMIN:       "Access to users, tickets, revenue, statistics",
   SUPPORT:     "Access to tickets and user support tools only",
   MODERATOR:   "Access to reviews and content moderation only",
+  DEVELOPER:   "Access to developer tools and system diagnostic settings",
 }
 
 const STATUS_DOT: Record<string, string> = {

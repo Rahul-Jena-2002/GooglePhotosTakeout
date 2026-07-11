@@ -41,6 +41,7 @@ const ROLE_COLORS: Record<AdminRole, string> = {
   ADMIN: "admin-role-admin px-1.5 py-0.5",
   SUPPORT: "admin-role-support px-1.5 py-0.5",
   MODERATOR: "admin-role-moderator px-1.5 py-0.5",
+  DEVELOPER: "admin-role-developer px-1.5 py-0.5",
 }
 
 const ROLE_LABELS: Record<AdminRole, string> = {
@@ -48,6 +49,7 @@ const ROLE_LABELS: Record<AdminRole, string> = {
   ADMIN: "Admin",
   SUPPORT: "Support",
   MODERATOR: "Moderator",
+  DEVELOPER: "Developer",
 }
 
 export default function AdminTopbar({ onMenuClick }: { onMenuClick?: () => void }) {
