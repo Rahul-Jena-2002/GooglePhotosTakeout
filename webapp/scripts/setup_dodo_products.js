@@ -159,7 +159,7 @@ async function saveToFirestoreREST(activeProducts, fullProducts) {
   }
 
   async function tryPatch(token) {
-    const firestoreUrl = `https://firestore.googleapis.com/v1/projects/gt-metadata-merger/databases/(default)/documents/settings/global?updateMask.fieldPaths=dodo_products&updateMask.fieldPaths=dodo_products_full`;
+    const firestoreUrl = `https://firestore.googleapis.com/v1/projects/takeout-fix/databases/(default)/documents/settings/global?updateMask.fieldPaths=dodo_products&updateMask.fieldPaths=dodo_products_full`;
     const requestBody = {
       fields: {
         dodo_products: valueToFirestore(activeProducts).mapValue,

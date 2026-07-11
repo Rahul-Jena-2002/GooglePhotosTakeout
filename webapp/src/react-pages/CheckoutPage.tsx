@@ -147,7 +147,7 @@ function CheckoutPageContent() {
       if (userData?.plan === 'recovery_pass' && (planKey === 'pro' || planKey === 'super')) {
         try {
           const idToken = await user.getIdToken();
-          const cfBase = cloudFunctionUrl || "https://us-central1-gt-metadata-merger.cloudfunctions.net/geminiToolGateway";
+          const cfBase = cloudFunctionUrl || "https://us-central1-takeout-fix.cloudfunctions.net/geminiToolGateway";
           let cfUrl = `${cfBase}/create-dodo-upgrade-discount`;
           if (typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')) {
             cfUrl = 'http://localhost:3001/create-dodo-upgrade-discount';
@@ -412,7 +412,7 @@ function CheckoutPageContent() {
         setIsProcessing(false)
       } else {
         try {
-          const cfBase = cloudFunctionUrl || "https://us-central1-gt-metadata-merger.cloudfunctions.net/geminiToolGateway"
+          const cfBase = cloudFunctionUrl || "https://us-central1-takeout-fix.cloudfunctions.net/geminiToolGateway"
           let cfUrl = `${cfBase}/create-stripe-session`
           if (typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')) {
             cfUrl = 'http://localhost:3001/create-stripe-session'

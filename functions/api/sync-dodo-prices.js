@@ -6,7 +6,7 @@
  * then updates each Dodo product price via PATCH.
  *
  * Environment variables (set in Cloudflare Pages dashboard):
- *   FIREBASE_PROJECT_ID  — e.g. "gt-metadata-merger"
+ *   FIREBASE_PROJECT_ID  — e.g. "takeout-fix"
  *   FIREBASE_API_KEY     — Firebase Web API key (for auth token exchange)
  *   FIREBASE_SA_EMAIL    — Service Account email
  *   FIREBASE_SA_KEY      — Service Account private key (PEM, newlines as \n)

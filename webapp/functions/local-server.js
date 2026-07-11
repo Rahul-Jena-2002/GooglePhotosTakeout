@@ -16,7 +16,7 @@ const FIREBASE_CLI_CLIENT_SECRET = "Ym174NCiQg5475s5G2IxgL3y";
 //   - GOOGLE_APPLICATION_CREDENTIALS env points to a key file
 //   - gcloud auth application-default login has been run
 // Explicit projectId prevents "Unable to detect Project Id" error.
-const PROJECT_ID = process.env.GCLOUD_PROJECT || process.env.FIREBASE_PROJECT_ID || "gt-metadata-merger";
+const PROJECT_ID = process.env.GCLOUD_PROJECT || process.env.FIREBASE_PROJECT_ID || "takeout-fix";
 const serviceAccountPath = path.join(__dirname, "serviceAccountKey.json");
 
 if (fs.existsSync(serviceAccountPath)) {

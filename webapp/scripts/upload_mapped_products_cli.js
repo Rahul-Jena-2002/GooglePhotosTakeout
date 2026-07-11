@@ -119,7 +119,7 @@ async function run() {
 
   admin.initializeApp({
     credential: admin.credential.oauthToken(accessToken),
-    projectId: 'gt-metadata-merger'
+    projectId: 'takeout-fix'
   });
 
   const db = admin.firestore();

@@ -21,7 +21,7 @@ async function deploy() {
   console.log("🟢 Found active Firebase CLI session token.");
   console.log("Running firebase deploy command using your user token...");
   
-  const cmd = `npx -y firebase-tools@latest deploy --only functions --token "${refreshToken}" --project gt-metadata-merger`;
+  const cmd = `npx -y firebase-tools@latest deploy --only functions --token "${refreshToken}" --project takeout-fix`;
   
   // Execute the command, inheriting stdout and stderr so we see progress in real-time
   execSync(cmd, {

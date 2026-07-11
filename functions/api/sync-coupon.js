@@ -5,7 +5,7 @@
  * resolves Dodo credentials, then creates the discount in Dodo Payments.
  *
  * Environment variables (set in Cloudflare Pages dashboard):
- *   FIREBASE_PROJECT_ID  — e.g. "gt-metadata-merger"
+ *   FIREBASE_PROJECT_ID  — e.g. "takeout-fix"
  *   FIREBASE_SA_EMAIL    — Service Account email
  *   FIREBASE_SA_KEY      — Service Account private key (PEM, newlines as \n)
  *   ENCRYPTION_KEY       — MEK used to decrypt enc:v1: values

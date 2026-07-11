@@ -1505,7 +1505,7 @@ export default function AdminPaymentGateway() {
                     <div key={x.gw} className="p-3 bg-zinc-900/10 border border-zinc-850 rounded-xl space-y-1">
                       <div className="font-extrabold text-[10px] uppercase tracking-wider text-zinc-550">{x.gw} Hook URL</div>
                       <div className="font-mono text-[10px] truncate select-all text-indigo-400">
-                        {cloudFunctionUrl ? `${cloudFunctionUrl}${x.path}` : `https://us-central1-gt-metadata-merger.cloudfunctions.net/geminiToolGateway${x.path}`}
+                        {cloudFunctionUrl ? `${cloudFunctionUrl}${x.path}` : `https://us-central1-takeout-fix.cloudfunctions.net/geminiToolGateway${x.path}`}
                       </div>
                     </div>
                   ))}

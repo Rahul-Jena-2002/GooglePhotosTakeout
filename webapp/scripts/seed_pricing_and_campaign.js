@@ -13,9 +13,9 @@ if (fs.existsSync(serviceAccountPath)) {
     credential: cert(serviceAccount)
   });
 } else {
-  console.log("ℹ️ Initializing Firebase Admin using default/environment credentials with project ID: gt-metadata-merger.");
+  console.log("ℹ️ Initializing Firebase Admin using default/environment credentials with project ID: takeout-fix.");
   initializeApp({
-    projectId: "gt-metadata-merger"
+    projectId: "takeout-fix"
   });
 }
 
