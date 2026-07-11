@@ -8,7 +8,10 @@ type RuntimeLocals = { runtime?: { env?: RuntimeEnv } };
 function json(status: number, data: JsonRecord): Response {
   return new Response(JSON.stringify(data), {
     status,
-    headers: { 'Content-Type': 'application/json' }
+    headers: {
+      'Content-Type': 'application/json',
+      'Access-Control-Allow-Origin': '*'
+    }
   });
 }
 
