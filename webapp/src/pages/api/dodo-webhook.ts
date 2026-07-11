@@ -52,6 +52,68 @@ async function verifyDodoSignature(
   return false;
 }
 
+// Decrypt AES-256-GCM encrypted values using Web Crypto API
+async function decryptFirestoreValue(val: string, mek: string): Promise<string> {
+  if (!val) return "";
+  if (!val.startsWith("enc:v1:")) return val;
+
+  try {
+    const hex = val.slice(7);
+    const combined = new Uint8Array(
+      hex.match(/.{1,2}/g)!.map((byte) => parseInt(byte, 16))
+    );
+
+    const iv = combined.slice(0, 12);
+    const ciphertextAndTag = combined.slice(12);
+    const ciphertext = ciphertextAndTag.slice(0, ciphertextAndTag.length - 16);
+    const tag = ciphertextAndTag.slice(ciphertextAndTag.length - 16);
+
+    // Concatenate ciphertext and tag for Web Crypto GCM decrypt
+    const encryptedBuffer = new Uint8Array(ciphertext.length + tag.length);
+    encryptedBuffer.set(ciphertext);
+    encryptedBuffer.set(tag, ciphertext.length);
+
+    const encoder = new TextEncoder();
+    const baseKey = await crypto.subtle.importKey(
+      "raw",
+      encoder.encode(mek),
+      "PBKDF2",
+      false,
+      ["deriveKey", "deriveBits"]
+    );
+
+    const salt = new Uint8Array(16); // 16 bytes of zeros
+    const aesKey = await crypto.subtle.deriveKey(
+      {
+        name: "PBKDF2",
+        salt: salt,
+        iterations: 100000,
+        hash: "SHA-256"
+      },
+      baseKey,
+      { name: "AES-GCM", length: 256 },
+      false,
+      ["decrypt"]
+    );
+
+    const decryptedBuffer = await crypto.subtle.decrypt(
+      {
+        name: "AES-GCM",
+        iv: iv,
+        additionalData: new Uint8Array(0),
+        tagLength: 128
+      },
+      aesKey,
+      encryptedBuffer
+    );
+
+    return new TextDecoder().decode(decryptedBuffer);
+  } catch (err: any) {
+    console.error("Failed to decrypt Firestore value via Web Crypto:", err.message);
+    return "";
+  }
+}
+
 // Generate Google OAuth2 Token using Service Account Private Key in Cloudflare Workers
 async function getGoogleAuthToken(serviceAccount: any): Promise<string> {
   const iat = Math.floor(Date.now() / 1000);
@@ -126,8 +188,9 @@ export const POST: APIRoute = async ({ request, locals }) => {
 
     // Retrieve environment variables from Cloudflare context
     const runtimeEnv = (locals as any)?.runtime?.env || {};
-    const dodoWebhookSecret = runtimeEnv.DODO_WEBHOOK_KEY || import.meta.env.DODO_WEBHOOK_KEY;
+    let dodoWebhookSecret = runtimeEnv.DODO_WEBHOOK_KEY || import.meta.env.DODO_WEBHOOK_KEY;
     const serviceAccountStr = runtimeEnv.FIREBASE_SERVICE_ACCOUNT || import.meta.env.FIREBASE_SERVICE_ACCOUNT;
+    const encryptionKey = runtimeEnv.ENCRYPTION_KEY || import.meta.env.ENCRYPTION_KEY || "92elPvQ63jp_SXOmGbLyOgvfcGHVP-GfDbbiyLV4rpw";
 
     if (!serviceAccountStr) {
       console.error("Missing FIREBASE_SERVICE_ACCOUNT environment variable.");
@@ -137,8 +200,38 @@ export const POST: APIRoute = async ({ request, locals }) => {
     const serviceAccount = JSON.parse(serviceAccountStr);
     const projectId = serviceAccount.project_id || "takeout-fix";
 
-    // 1. Signature Verification (if secret configured)
-    if (dodoWebhookSecret && dodoWebhookSecret !== "dodo-webhook-secret-placeholder") {
+    // Obtain Access Token for Firestore REST API
+    const token = await getGoogleAuthToken(serviceAccount);
+    const headers = {
+      "Content-Type": "application/json",
+      "Authorization": `Bearer ${token}`
+    };
+
+    // 2. Fetch webhook secret dynamically from Firestore if not hardcoded in Cloudflare env
+    if (!dodoWebhookSecret) {
+      try {
+        const secureUrl = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/settings/secure`;
+        const secureRes = await fetch(secureUrl, { method: "GET", headers });
+        if (secureRes.ok) {
+          const secureData: any = await secureRes.json();
+          const encryptedKey = secureData.fields?.dodo_webhook_key?.stringValue;
+          if (encryptedKey) {
+            dodoWebhookSecret = await decryptFirestoreValue(encryptedKey, encryptionKey);
+            console.log("Successfully fetched and decrypted Dodo Webhook Secret dynamically from Firestore.");
+          }
+        }
+      } catch (err: any) {
+        console.error("Failed to read secure settings dynamically from Firestore:", err.message);
+      }
+    }
+
+    // Default fallback placeholder
+    if (!dodoWebhookSecret) {
+      dodoWebhookSecret = "dodo-webhook-secret-placeholder";
+    }
+
+    // 3. Signature Verification
+    if (dodoWebhookSecret !== "dodo-webhook-secret-placeholder") {
       const webhookId = request.headers.get("webhook-id") || "";
       const webhookTimestamp = request.headers.get("webhook-timestamp") || "";
       const webhookSignature = request.headers.get("webhook-signature") || "";
@@ -149,38 +242,31 @@ export const POST: APIRoute = async ({ request, locals }) => {
         return new Response("Invalid signature", { status: 401 });
       }
     } else {
-      console.log("No Dodo Webhook Secret or placeholder detected. Skipping verification (TEST MODE).");
+      console.log("Placeholder secret detected. Skipping verification (TEST/LOCAL MODE).");
     }
 
-    const { type, data } = payload;
-    if (!type || !data) {
+    const { type, data: eventData } = payload;
+    if (!type || !eventData) {
       return new Response("Missing type or data", { status: 400 });
     }
 
     console.log(`Processing Dodo webhook event on Cloudflare: ${type}`);
 
     if (type === "payment.succeeded") {
-      const userId = data.metadata?.userId || data.metadata?.userid;
-      const plan = data.metadata?.plan || data.metadata?.plankey;
-      const regionCode = data.metadata?.region || data.metadata?.metadata_region || "t3";
+      const userId = eventData.metadata?.userId || eventData.metadata?.userid;
+      const plan = eventData.metadata?.plan || eventData.metadata?.plankey;
+      const regionCode = eventData.metadata?.region || eventData.metadata?.metadata_region || "t3";
 
       if (!userId || !plan) {
-        console.error("Missing userId or plan in metadata:", data.metadata);
+        console.error("Missing userId or plan in metadata:", eventData.metadata);
         return new Response("Missing metadata", { status: 400 });
       }
 
       const timestamp = Date.now();
-      const txId = data.payment_id || `TXN-DODO-${timestamp}`;
-      const userEmail = data.customer?.email || "";
-      const amount = data.total_amount || 0;
-      const currency = data.currency || "USD";
-
-      // Obtain Access Token for Firestore REST API
-      const token = await getGoogleAuthToken(serviceAccount);
-      const headers = {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${token}`
-      };
+      const txId = eventData.payment_id || `TXN-DODO-${timestamp}`;
+      const userEmail = eventData.customer?.email || "";
+      const amount = eventData.total_amount || 0;
+      const currency = eventData.currency || "USD";
 
       // 1. Create Transaction Document
       const txUrl = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/transactions?documentId=${txId}`;
