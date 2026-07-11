@@ -1834,15 +1834,59 @@ export default function AdminPaymentGateway() {
 
                   {/* Coupon Target Region Checklist Grid */}
                   <div className="pt-4 border-t" style={{ borderColor: isLight ? '#e5e7eb' : '#1f1f23' }}>
-                    <div className="flex justify-between items-center mb-3">
+                    <div className="flex justify-between items-center flex-wrap gap-2 mb-3">
                       <h4 className="text-xs font-bold text-zinc-400">Target Region & Plan mappings (Check to enable)</h4>
-                      <button
-                        type="button"
-                        onClick={() => setCouponTargets(buildAutoTargets())}
-                        className="text-[10px] text-indigo-400 font-bold hover:underline"
+                      <select
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          if (val === 'deselect') {
+                            setCouponTargets({});
+                          } else if (val === 'super') {
+                            const targets: Record<string, boolean> = {};
+                            COUPON_REGIONS.forEach(r => {
+                              targets[`${r.key}_super`] = true;
+                            });
+                            setCouponTargets(targets);
+                          } else if (val === 'pro') {
+                            const targets: Record<string, boolean> = {};
+                            COUPON_REGIONS.forEach(r => {
+                              targets[`${r.key}_pro`] = true;
+                            });
+                            setCouponTargets(targets);
+                          } else if (val === 'single') {
+                            const targets: Record<string, boolean> = {};
+                            COUPON_REGIONS.forEach(r => {
+                              targets[`${r.key}_recovery_pass`] = true;
+                            });
+                            setCouponTargets(targets);
+                          } else if (val === 'all') {
+                            const targets: Record<string, boolean> = {};
+                            COUPON_REGIONS.forEach(r => {
+                              COUPON_PLANS.forEach(p => {
+                                targets[`${r.key}_${p}`] = true;
+                              });
+                            });
+                            setCouponTargets(targets);
+                          } else if (val === 'auto') {
+                            setCouponTargets(buildAutoTargets());
+                          }
+                          // Reset selection back to default label
+                          e.target.value = "";
+                        }}
+                        className="bg-zinc-950 border border-zinc-800 text-[10px] h-7 rounded px-2 text-indigo-400 font-bold focus:outline-none cursor-pointer"
+                        style={{
+                          backgroundColor: isLight ? '#ffffff' : '#050507',
+                          borderColor: isLight ? '#d1d5db' : '#27272a',
+                        }}
                       >
-                        Auto Check Configured Regions
-                      </button>
+                        <option value="">Bulk Select / Actions...</option>
+                        <option value="auto">Auto Check Configured Regions</option>
+                        <option value="all">All Regions & Plans</option>
+                        <option value="single">Only Single (Recovery Pass)</option>
+                        <option value="pro">Only Pro</option>
+                        <option value="super">Only Super</option>
+                        <option value="deselect">Deselect All</option>
+                      </select>
                     </div>
 
                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
