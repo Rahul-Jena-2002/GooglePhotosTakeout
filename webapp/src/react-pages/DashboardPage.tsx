@@ -454,28 +454,45 @@ Your EXIF metadata recovery tools are active.
                               <div>
                                 {tx.approvedByAdmin ? (
                                   <>
-                                    <div className="font-bold text-zinc-900 dark:text-zinc-100">TakeoutFix {PLAN_LABELS[tx.plan] || tx.plan} (Admin Approved)</div>
+                                    <div className="font-bold text-zinc-200">TakeoutFix {PLAN_LABELS[tx.plan] || tx.plan} (Admin Approved)</div>
                                     <div className="text-[10px] text-zinc-400">Approved by Admin: {tx.approvedByAdmin}</div>
-                                    <div className="text-[9px] text-zinc-500">{new Date(tx.timestamp).toLocaleDateString()} • {tx.txId}</div>
                                   </>
                                 ) : (
                                   <>
-                                    <div className="font-bold text-zinc-200">TakeoutFix {PLAN_LABELS[tx.plan] || tx.plan}</div>
-                                    <div className="text-[10px] text-zinc-500">{new Date(tx.timestamp).toLocaleDateString()} • {tx.txId}</div>
+                                    <div className="font-bold text-zinc-250">TakeoutFix {PLAN_LABELS[tx.plan] || tx.plan}</div>
                                   </>
                                 )}
+                                <div className="flex items-center gap-2 mt-1">
+                                  <span className="text-[9px] text-zinc-500">{new Date(tx.timestamp).toLocaleDateString()} • {tx.txId}</span>
+                                  <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[9px] font-bold border capitalize ${
+                                    tx.status === "succeeded" ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20" :
+                                    tx.status === "processing" ? "bg-amber-500/10 text-amber-400 border-amber-500/20" :
+                                    tx.status === "cancelled" ? "bg-zinc-500/10 text-zinc-400 border-zinc-500/20" :
+                                    "bg-red-500/10 text-red-400 border-red-500/20"
+                                  }`}>
+                                    <span className={`w-1 h-1 rounded-full ${
+                                      tx.status === "succeeded" ? "bg-emerald-400" :
+                                      tx.status === "processing" ? "bg-amber-400" :
+                                      tx.status === "cancelled" ? "bg-zinc-400" :
+                                      "bg-red-400"
+                                    }`} />
+                                    {tx.status || "succeeded"}
+                                  </span>
+                                </div>
                               </div>
                               <div className="flex items-center gap-3">
                                 <span className="font-bold text-white">
                                   {tx.amount === 0 ? "Free Grant" : `₹${tx.amount}`}
                                 </span>
-                                <button 
-                                  onClick={() => downloadInvoice(tx)}
-                                  title="Download Invoice Receipt"
-                                  className="p-1.5 rounded hover:bg-zinc-800 text-zinc-400 hover:text-white transition-colors"
-                                >
-                                  <Download className="w-3.5 h-3.5" />
-                                </button>
+                                {(tx.status === "succeeded" || !tx.status) && (
+                                  <button 
+                                    onClick={() => downloadInvoice(tx)}
+                                    title="Download Invoice Receipt"
+                                    className="p-1.5 rounded hover:bg-zinc-800 text-zinc-400 hover:text-white transition-colors"
+                                  >
+                                    <Download className="w-3.5 h-3.5" />
+                                  </button>
+                                )}
                               </div>
                             </div>
                           ))}
