@@ -4,10 +4,13 @@ import tailwind from '@astrojs/tailwind';
 import sentry from '@sentry/astro';
 import { fileURLToPath } from 'url';
 
+import cloudflare from '@astrojs/cloudflare';
+
 // https://astro.build/config
 export default defineConfig({
   site: 'https://takeoutfix.pages.dev',
   output: 'static',
+  adapter: cloudflare(),
   integrations: [
     react(),
     tailwind({

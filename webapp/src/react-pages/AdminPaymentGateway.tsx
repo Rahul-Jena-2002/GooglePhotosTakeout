@@ -196,11 +196,13 @@ function resolveSyncUrl(endpoint: string, storedUrl: string): string {
   }
   if (base.endsWith('/')) base = base.slice(0, -1)
 
-  // Cloudflare Pages deployments expose functions under /api/
-  const isCloudflarePages =
+  // Cloudflare Pages deployments or localhost dev servers using Astro API route
+  const isAstroBackend =
     base.includes('pages.dev') ||
-    base.includes('takeoutfix.')
-  if (isCloudflarePages) {
+    base.includes('takeoutfix.') ||
+    base.includes('localhost') ||
+    base.includes('127.0.0.1')
+  if (isAstroBackend) {
     return `${base}/api/${endpoint}`
   }
 
