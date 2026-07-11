@@ -31,7 +31,7 @@ export default function AdminRevenue() {
   const [totalUsersCount, setTotalUsersCount] = useState(0)
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState("")
-  const [filterType, setFilterType] = useState<"all" | "pro" | "super" | "single" | "admin">("all")
+  const [filterType, setFilterType] = useState<"all" | "commercial" | "pro" | "super" | "single" | "admin">("all")
 
   const role = adminData?.role || "ADMIN"
   const isSuperAdminOrAdmin = ["SUPER_ADMIN", "ADMIN"].includes(role)
@@ -197,6 +197,8 @@ export default function AdminRevenue() {
     
     if (filterType === "admin") {
       return isAdminGrant;
+    } else if (filterType === "commercial") {
+      return !isAdminGrant;
     } else if (filterType === "pro") {
       return !isAdminGrant && t.plan === "pro";
     } else if (filterType === "super") {
@@ -410,6 +412,7 @@ export default function AdminRevenue() {
               className="bg-zinc-950 border border-zinc-850 rounded-md py-1.5 px-3 text-xs text-zinc-300 focus:outline-none focus:border-zinc-500 cursor-pointer"
             >
               <option value="all">All Transactions</option>
+              <option value="commercial">Commercial Only</option>
               <option value="pro">Pro Purchases Only</option>
               <option value="super">Super Purchases Only</option>
               <option value="single">Single Time Passes</option>
