@@ -170,6 +170,60 @@ const COUPON_REGIONS = [
 ]
 const COUPON_PLANS = ['recovery_pass', 'pro', 'super']
 
+/**
+ * Resolves the correct URL for a sync operation.
+ * - On localhost → always use local dev server (port 3001)
+ * - If no URL configured → throws with guidance to set Cloud Function URL
+ * - If URL points at a static frontend → throws with guidance to use backend URL
+ * - Otherwise → strips accidental webhook suffixes and appends the operation path
+ */
+function resolveSyncUrl(endpoint: string, storedUrl: string): string {
+  // Always use local server when developing locally
+  if (typeof window !== 'undefined' &&
+    (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')) {
+    return `http://localhost:3001/${endpoint}`
+  }
+
+  if (!storedUrl || !storedUrl.trim()) {
+    throw new Error(
+      'No Cloud Function URL configured. Go to Settings → Cloud Function URL and enter your backend gateway URL.'
+    )
+  }
+
+  let base = storedUrl.trim()
+
+  // Strip trailing webhook/api path suffixes that users accidentally paste
+  const trailingPaths = ['/api/dodo-webhook', '/dodo-webhook', '/api']
+  for (const suffix of trailingPaths) {
+    if (base.endsWith(suffix)) {
+      base = base.slice(0, -suffix.length)
+      break
+    }
+  }
+  if (base.endsWith('/')) base = base.slice(0, -1)
+
+  // Upgrade insecure cloudfunctions.net URLs
+  if (base.includes('cloudfunctions.net') && base.startsWith('http://')) {
+    base = base.replace('http://', 'https://')
+  }
+
+  // If pointing at the static frontend, it cannot handle API calls
+  const isFrontendUrl =
+    base.includes('pages.dev') ||
+    base.includes('takeoutfix.') ||
+    base.includes('github.io')
+  if (isFrontendUrl) {
+    throw new Error(
+      `Cloud Function URL is set to a static frontend (${base}), which cannot handle sync requests. ` +
+      `Go to Payment Gateway → Settings tab → Cloud Function URL and enter your backend gateway URL ` +
+      `(e.g. your Firebase Cloud Function or self-hosted backend URL).`
+    )
+  }
+
+  return `${base}/${endpoint}`
+}
+
+
 export default function AdminPaymentGateway() {
   const { adminData, loading: authLoading } = useAuth()
   const role = adminData?.role ?? "ADMIN"
@@ -589,24 +643,7 @@ export default function AdminPaymentGateway() {
       }
       const currency = currencyCode
 
-      let cfBase = (cloudFunctionUrl || "https://us-central1-gt-metadata-merger.cloudfunctions.net/geminiToolGateway").trim()
-      // Strip common suffixes that users accidentally paste
-      if (cfBase.endsWith("/dodo-webhook")) cfBase = cfBase.slice(0, -13)
-      if (cfBase.endsWith("/api/dodo-webhook")) cfBase = cfBase.slice(0, -17)
-      if (cfBase.endsWith("/api")) cfBase = cfBase.slice(0, -4)
-      if (cfBase.endsWith("/")) cfBase = cfBase.slice(0, -1)
-      // Auto-upgrade insecure cloudfunctions.net URLs
-      if (cfBase.includes("cloudfunctions.net") && cfBase.startsWith("http://")) {
-        cfBase = cfBase.replace("http://", "https://")
-      }
-      // If pointing at the Cloudflare Pages site itself, use the /api/ Pages Function paths
-      const isPagesDeployment = cfBase.includes("pages.dev") || cfBase.includes("takeoutfix.")
-      cfUrl = isPagesDeployment
-        ? `${cfBase}/api/sync-dodo-prices`
-        : `${cfBase}/sync-dodo-prices`
-      if (typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')) {
-        cfUrl = 'http://localhost:3001/sync-dodo-prices'
-      }
+      cfUrl = resolveSyncUrl('sync-dodo-prices', cloudFunctionUrl)
 
       const resp = await fetch(cfUrl, {
         method: 'POST',
@@ -898,21 +935,7 @@ export default function AdminPaymentGateway() {
       }
 
       const currency = tierData.currency_code || 'USD'
-      let cfBase = (cloudFunctionUrl || "https://us-central1-gt-metadata-merger.cloudfunctions.net/geminiToolGateway").trim()
-      if (cfBase.endsWith("/dodo-webhook")) cfBase = cfBase.slice(0, -13)
-      if (cfBase.endsWith("/api/dodo-webhook")) cfBase = cfBase.slice(0, -17)
-      if (cfBase.endsWith("/api")) cfBase = cfBase.slice(0, -4)
-      if (cfBase.endsWith("/")) cfBase = cfBase.slice(0, -1)
-      if (cfBase.includes("cloudfunctions.net") && cfBase.startsWith("http://")) {
-        cfBase = cfBase.replace("http://", "https://")
-      }
-      const isPagesDeploymentRegion = cfBase.includes("pages.dev") || cfBase.includes("takeoutfix.")
-      let cfUrl = isPagesDeploymentRegion
-        ? `${cfBase}/api/sync-dodo-prices`
-        : `${cfBase}/sync-dodo-prices`
-      if (typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')) {
-        cfUrl = 'http://localhost:3001/sync-dodo-prices'
-      }
+      const cfUrl = resolveSyncUrl('sync-dodo-prices', cloudFunctionUrl)
 
       const resp = await fetch(cfUrl, {
         method: 'POST',
@@ -1122,23 +1145,7 @@ export default function AdminPaymentGateway() {
   const handleSyncCoupon = async (couponId: string) => {
     setSyncingCoupon(true)
     try {
-      let cfBase = (cloudFunctionUrl || "https://us-central1-gt-metadata-merger.cloudfunctions.net/geminiToolGateway").trim()
-      if (cfBase.endsWith("/dodo-webhook")) {
-        cfBase = cfBase.slice(0, -13)
-      }
-      if (cfBase.endsWith("/api/dodo-webhook")) cfBase = cfBase.slice(0, -17)
-      if (cfBase.endsWith("/api")) cfBase = cfBase.slice(0, -4)
-      if (cfBase.endsWith("/")) cfBase = cfBase.slice(0, -1)
-      if (cfBase.includes("cloudfunctions.net") && cfBase.startsWith("http://")) {
-        cfBase = cfBase.replace("http://", "https://")
-      }
-      const isPagesDeploymentCoupon = cfBase.includes("pages.dev") || cfBase.includes("takeoutfix.")
-      let cfUrl = isPagesDeploymentCoupon
-        ? `${cfBase}/api/sync-coupon`
-        : `${cfBase}/sync-coupon`
-      if (typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')) {
-        cfUrl = 'http://localhost:3001/sync-coupon'
-      }
+      const cfUrl = resolveSyncUrl('sync-coupon', cloudFunctionUrl)
 
       const productIdsPayload: Record<string, Record<string, string>> = {}
       DODO_REGIONS.forEach(r => {
