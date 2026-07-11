@@ -332,7 +332,11 @@ export default function AdminTransactions() {
                     </td>
                     <td className="px-6 py-4 font-mono text-zinc-400">{tx.txId}</td>
                     <td className="px-6 py-4">
-                      <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider border bg-zinc-800/5 dark:bg-zinc-500/10 text-zinc-650 dark:text-zinc-400 border-zinc-300 dark:border-zinc-500/20">
+                      <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider border ${
+                        tx.plan === "pro" ? "bg-blue-500/10 text-blue-400 border-blue-500/20" :
+                        tx.plan === "super" ? "bg-amber-500/10 text-amber-400 border-amber-500/20" :
+                        "bg-zinc-500/10 text-zinc-400 border-zinc-500/20"
+                      }`}>
                         {PLAN_LABELS[tx.plan] || tx.plan}
                       </span>
                     </td>
