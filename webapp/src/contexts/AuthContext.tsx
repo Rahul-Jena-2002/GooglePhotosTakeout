@@ -243,7 +243,7 @@ export const COUNTRIES: CountryOption[] = [
   { code: "HK", name: "Hong Kong", tier: "t3" }
 ];
 
-const SUPER_ADMIN_EMAILS = ['rahuljena.dev@gmail.com', 'rahuljenasonu@gmail.com'];
+const SUPER_ADMIN_EMAILS = ['rahuljena.dev@gmail.com'];
 
 export const getRegionFromCountry = (countryCode: string): string => {
   const country = countryCode.toUpperCase();
