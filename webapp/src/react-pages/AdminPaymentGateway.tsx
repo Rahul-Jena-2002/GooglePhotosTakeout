@@ -588,7 +588,13 @@ export default function AdminPaymentGateway() {
       }
       const currency = currencyCode
 
-      const cfBase = cloudFunctionUrl || "https://us-central1-gt-metadata-merger.cloudfunctions.net/geminiToolGateway"
+      let cfBase = (cloudFunctionUrl || "https://us-central1-gt-metadata-merger.cloudfunctions.net/geminiToolGateway").trim()
+      if (cfBase.endsWith("/")) {
+        cfBase = cfBase.slice(0, -1)
+      }
+      if (cfBase.includes("cloudfunctions.net") && cfBase.startsWith("http://")) {
+        cfBase = cfBase.replace("http://", "https://")
+      }
       let cfUrl = `${cfBase}/sync-dodo-prices`
       if (typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')) {
         cfUrl = 'http://localhost:3001/sync-dodo-prices'
@@ -614,10 +620,10 @@ export default function AdminPaymentGateway() {
           allOk ? 'success' : 'error'
         )
       } else {
-        useToastStore.getState().addToast('Sync failed: ' + (data.error || resp.status), 'error')
+        useToastStore.getState().addToast(`Sync failed: ${data.error || resp.status} for endpoint ${cfUrl}`, 'error')
       }
     } catch (err: any) {
-      useToastStore.getState().addToast('Price sync error: ' + err.message, 'error')
+      useToastStore.getState().addToast(`Price sync error: ${err.message} (endpoint: ${cfUrl})`, 'error')
     } finally {
       setSyncingPrices(false)
     }
@@ -884,7 +890,13 @@ export default function AdminPaymentGateway() {
       }
 
       const currency = tierData.currency_code || 'USD'
-      const cfBase = cloudFunctionUrl || "https://us-central1-gt-metadata-merger.cloudfunctions.net/geminiToolGateway"
+      let cfBase = (cloudFunctionUrl || "https://us-central1-gt-metadata-merger.cloudfunctions.net/geminiToolGateway").trim()
+      if (cfBase.endsWith("/")) {
+        cfBase = cfBase.slice(0, -1)
+      }
+      if (cfBase.includes("cloudfunctions.net") && cfBase.startsWith("http://")) {
+        cfBase = cfBase.replace("http://", "https://")
+      }
       let cfUrl = `${cfBase}/sync-dodo-prices`
       if (typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')) {
         cfUrl = 'http://localhost:3001/sync-dodo-prices'
@@ -1098,7 +1110,13 @@ export default function AdminPaymentGateway() {
   const handleSyncCoupon = async (couponId: string) => {
     setSyncingCoupon(true)
     try {
-      const cfBase = cloudFunctionUrl || "https://us-central1-gt-metadata-merger.cloudfunctions.net/geminiToolGateway"
+      let cfBase = (cloudFunctionUrl || "https://us-central1-gt-metadata-merger.cloudfunctions.net/geminiToolGateway").trim()
+      if (cfBase.endsWith("/")) {
+        cfBase = cfBase.slice(0, -1)
+      }
+      if (cfBase.includes("cloudfunctions.net") && cfBase.startsWith("http://")) {
+        cfBase = cfBase.replace("http://", "https://")
+      }
       let cfUrl = `${cfBase}/sync-coupon`
       if (typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')) {
         cfUrl = 'http://localhost:3001/sync-coupon'
