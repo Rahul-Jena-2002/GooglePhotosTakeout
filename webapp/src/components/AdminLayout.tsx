@@ -64,7 +64,10 @@ export default function AdminLayout() {
   }
 
   if (!userData?.isAdmin && !adminData) {
-    return <Navigate to="/" replace />
+    if (typeof window !== "undefined") {
+      window.location.href = "/";
+    }
+    return null;
   }
 
   const role = adminData?.role ?? "ADMIN"
