@@ -921,7 +921,8 @@ app.post("/sync-dodo-prices", async (req, res) => {
   if (!dodoApiKey) {
     return res.status(500).json({ error: "Dodo API key not configured. Save it in Admin Settings → Dodo Live API Key or Dodo Test API Key." });
   }
-
+  const envMode = dodoHost && typeof dodoHost === "string" && dodoHost.includes("test.") ? "test" : "live";
+  
   // Load product ID map from Firestore
   let dodoProductsMap = {};
   try {
