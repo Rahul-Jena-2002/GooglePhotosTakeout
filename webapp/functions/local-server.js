@@ -255,7 +255,11 @@ const getFirebaseCLIToken = async () => {
 };
 
 app.use(cors({ origin: true }));
-app.use(express.json());
+app.use(express.json({
+  verify: (req, res, buf) => {
+    req.rawBody = buf.toString();
+  }
+}));
 
 // Gateway API key for authenticating local server requests
 // Set GATEWAY_API_KEY env var — this is the key you configure in Admin → Keys & Secrets → Gateway API Key
@@ -265,7 +269,61 @@ if (!GATEWAY_API_KEY) {
   process.exit(1);
 }
 
+// Verification helper for Dodo Payments Webhooks (Standard Webhooks Specification)
+const verifyDodoWebhook = (req, webhookSecret) => {
+  const webhookId = req.headers["webhook-id"];
+  const webhookTimestamp = req.headers["webhook-timestamp"];
+  const webhookSignature = req.headers["webhook-signature"];
+
+  if (!webhookId || !webhookTimestamp || !webhookSignature || !webhookSecret) {
+    return false;
+  }
+
+  let secretStr = webhookSecret;
+  if (secretStr.startsWith("whsec_")) {
+    secretStr = secretStr.substring(6);
+  }
+
+  let secretBuffer;
+  try {
+    secretBuffer = Buffer.from(secretStr, "base64");
+  } catch (err) {
+    console.error("Failed to decode webhook secret from base64:", err);
+    return false;
+  }
+
+  const rawBody = req.rawBody || JSON.stringify(req.body);
+  const signedContent = `${webhookId}.${webhookTimestamp}.${rawBody}`;
+
+  const crypto = require("crypto");
+  const computedHash = crypto
+    .createHmac("sha256", secretBuffer)
+    .update(signedContent)
+    .digest("base64");
+
+  const signatures = webhookSignature.split(" ");
+  for (const sig of signatures) {
+    const parts = sig.split(",");
+    if (parts.length === 2 && parts[0] === "v1") {
+      const signatureHash = parts[1];
+      const computedBuffer = Buffer.from(computedHash);
+      const signatureBuffer = Buffer.from(signatureHash);
+      if (computedBuffer.length === signatureBuffer.length &&
+        crypto.timingSafeEqual(computedBuffer, signatureBuffer)) {
+        return true;
+      }
+    }
+  }
+
+  return false;
+};
+
 app.use((req, res, next) => {
+  // Allow Dodo webhook bypass API key check
+  if (req.path === "/dodo-webhook") {
+    return next();
+  }
+
   const headerKey = req.headers["x-api-key"];
   let bearerKey = "";
   if (req.headers.authorization && req.headers.authorization.startsWith("Bearer ")) {
@@ -336,6 +394,179 @@ const fetchDiscountByCode = (dodoHost, dodoApiKey, code) => {
     request.end();
   });
 };
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Dodo Payments Webhook handler
+// ─────────────────────────────────────────────────────────────────────────────
+app.post("/dodo-webhook", async (req, res) => {
+  let webhookSecret = process.env.DODO_WEBHOOK_KEY;
+
+  if (!webhookSecret) {
+    try {
+      const secureSnap = await db.collection("settings").doc("secure").get();
+      if (secureSnap.exists) {
+        webhookSecret = decryptFirestoreValue(secureSnap.data().dodo_webhook_key);
+      }
+    } catch (err) {
+      console.error("Failed to read secure settings from Firestore:", err);
+    }
+  }
+
+  if (!webhookSecret) {
+    webhookSecret = "dodo-webhook-secret-placeholder";
+  }
+
+  if (webhookSecret !== "dodo-webhook-secret-placeholder") {
+    if (!verifyDodoWebhook(req, webhookSecret)) {
+      console.warn("Invalid Dodo webhook signature received.");
+      return res.status(401).json({ error: "Invalid signature" });
+    }
+  } else {
+    console.log("Placeholder secret detected. Skipping signature verification (TEST MODE).");
+  }
+
+  const { type, data } = req.body;
+  if (!type || !data) {
+    return res.status(400).json({ error: "Missing type or data in payload." });
+  }
+
+  console.log(`Processing Dodo webhook event: ${type}`);
+
+  if (type === "payment.succeeded") {
+    const userId = data.metadata?.userId || data.metadata?.userid;
+    const plan = data.metadata?.plan || data.metadata?.plankey;
+    const regionCode = data.metadata?.region || data.metadata?.metadata_region || "t3";
+
+    if (!userId || !plan) {
+      console.error("Missing userId or plan in payment metadata:", data.metadata);
+      return res.status(400).json({ error: "Missing metadata fields userId/plan in payload." });
+    }
+
+    try {
+      const timestamp = Date.now();
+      const txId = data.payment_id || `TXN-DODO-${timestamp}`;
+      const userEmail = data.customer?.email || "";
+      const amount = data.total_amount || 0;
+      const currency = data.currency || "USD";
+      const discountCode = (data.discount_code || data.coupon_code || "").toUpperCase();
+
+      // 1. Create Transaction Document
+      await db.collection("transactions").doc(txId).set({
+        txId,
+        uid: userId,
+        email: userEmail,
+        displayName: userEmail.split("@")[0] || "Dodo Customer",
+        plan,
+        amount,
+        currency,
+        displayAmount: `${currency === "INR" ? "₹" : "$"}${amount}`,
+        status: "succeeded",
+        timestamp,
+        paymentMethod: "Dodo Payments",
+        cardLast4: null
+      });
+
+      // 2. Update User Document
+      await db.collection("users").doc(userId).set({
+        plan,
+        usedBytes: 0,
+        usedFiles: 0,
+        expiresAt: null,
+        updatedAt: timestamp
+      }, { merge: true });
+
+      // 3. Find active campaign → increment currentPurchaseCount → auto-expire if cap hit
+      let activeCampaignId = null;
+      try {
+        const campaignsSnap = await db.collection("campaigns")
+          .where("isEnabled", "==", true)
+          .where("status", "==", "ACTIVE")
+          .limit(1)
+          .get();
+
+        if (!campaignsSnap.empty) {
+          const campaignDoc = campaignsSnap.docs[0];
+          activeCampaignId = campaignDoc.id;
+          const campaignRef = db.collection("campaigns").doc(campaignDoc.id);
+
+          await db.runTransaction(async (tx) => {
+            const freshSnap = await tx.get(campaignRef);
+            if (freshSnap.exists) {
+              const newCount = (freshSnap.data().currentPurchaseCount || 0) + 1;
+              const maxLimit = freshSnap.data().maxPurchaseLimit;
+              const updates = { currentPurchaseCount: newCount };
+              if (maxLimit != null && newCount >= maxLimit) {
+                updates.status = "EXPIRED";
+                updates.isEnabled = false;
+                console.log(`Campaign ${campaignDoc.id} auto-expired at limit ${maxLimit}.`);
+              }
+              tx.update(campaignRef, updates);
+            }
+          });
+          console.log(`Campaign ${campaignDoc.id} purchase count incremented.`);
+        }
+      } catch (err) {
+        console.error("Failed to update campaign purchase count:", err);
+      }
+
+      // 4. Find matching coupon → increment usedCount
+      let matchedCouponId = null;
+      if (discountCode) {
+        try {
+          const couponSnap = await db.collection("coupons")
+            .where("couponCode", "==", discountCode)
+            .limit(1)
+            .get();
+          if (!couponSnap.empty) {
+            const couponDoc = couponSnap.docs[0];
+            matchedCouponId = couponDoc.id;
+            await db.collection("coupons").doc(couponDoc.id).update({
+              usedCount: (couponDoc.data().usedCount || 0) + 1,
+              updatedAt: timestamp
+            });
+            console.log(`Coupon ${discountCode} usedCount incremented.`);
+          }
+        } catch (err) {
+          console.error("Failed to update coupon usedCount:", err);
+        }
+      }
+
+      // 5. Write to purchase_logs collection
+      await db.collection("purchase_logs").add({
+        campaignId: activeCampaignId,
+        couponId: matchedCouponId,
+        couponCode: discountCode || null,
+        productId: data.product_id || null,
+        customerEmail: userEmail,
+        userId,
+        plan,
+        regionCode,
+        amount,
+        currency,
+        purchasedAt: timestamp,
+        dodoPaymentId: txId
+      });
+
+      // 6. Admin activity log
+      await db.collection("admin_activity").add({
+        actorUid: userId,
+        actorName: userEmail || "Dodo Customer",
+        actorRole: "USER",
+        action: "PURCHASE",
+        target: plan,
+        description: `Purchased ${plan} via Dodo Payments for ${currency} ${amount}${discountCode ? ` using coupon ${discountCode}` : ""}`,
+        timestamp
+      });
+
+      console.log(`User ${userId} upgraded to ${plan}.`);
+    } catch (err) {
+      console.error("Failed to update user license in Firestore:", err);
+      return res.status(500).json({ error: "Database update failure", message: err.message });
+    }
+  }
+
+  return res.status(200).json({ received: true });
+});
 
 // Route: POST /sync-coupon
 // Rewritten to use Firebase Admin SDK (db) directly — no getFirebaseCLIToken() needed.

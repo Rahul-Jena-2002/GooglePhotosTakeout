@@ -125,6 +125,16 @@ function CheckoutPageContent() {
   const [detectedCoupon, setDetectedCoupon] = useState("")
   const [couponLookupDone, setCouponLookupDone] = useState(false)
 
+  // All state must be declared before any conditional early returns (Rules of Hooks)
+  const [isProcessing, setIsProcessing] = useState(false)
+  const [processStep, setProcessStep] = useState("")
+  const [success, setSuccess] = useState(false)
+  const [error, setError] = useState("")
+  const [activeGateway, setActiveGateway] = useState<string>("dodo")
+  const [gatewayProductIds, setGatewayProductIds] = useState<Record<string, Record<string, string>>>({})
+  const [cloudFunctionUrl, setCloudFunctionUrl] = useState("")
+  const [checkoutUrl, setCheckoutUrl] = useState<string | null>(null)
+
   useEffect(() => {
     const lookupCoupon = async () => {
       if (!user) {
@@ -287,19 +297,7 @@ function CheckoutPageContent() {
 
   const plan = getPlanDetails(planKey, normalizedRegion, firestoreConfig, getPlanPriceValue)
 
-  const [isProcessing, setIsProcessing] = useState(false)
-  const [processStep, setProcessStep] = useState("")
-  const [success, setSuccess] = useState(false)
-  const [error, setError] = useState("")
-
-  // Remove automatic redirect to pricing for unauthenticated users, we will show a sign-in block instead
-  useEffect(() => {
-    // No redirect logic here
-  }, [user, loading])
-
-  const [activeGateway, setActiveGateway] = useState<string>("dodo")
-  const [gatewayProductIds, setGatewayProductIds] = useState<Record<string, Record<string, string>>>({})
-  const [cloudFunctionUrl, setCloudFunctionUrl] = useState("")
+  // (All useState declarations have been moved above the early returns to comply with Rules of Hooks)
 
   useEffect(() => {
     const fetchGatewayConfig = async () => {
@@ -325,14 +323,32 @@ function CheckoutPageContent() {
     fetchGatewayConfig()
   }, [])
 
-  const handleUniversalRedirect = async () => {
+  // Listen for postMessage from embedded checkout iframe
+  useEffect(() => {
+    const handleMessage = (event: MessageEvent) => {
+      // Dodo Payments success/cancel events
+      if (event.data?.type === "CHECKOUT_SUCCESS" || event.data?.status === "success" || event.data?.event === "payment.succeeded") {
+        setCheckoutUrl(null)
+        setSuccess(true)
+        setTimeout(() => { window.location.href = `/dashboard?checkout_status=success&plan=${planKey}` }, 2500)
+      }
+      if (event.data?.type === "CHECKOUT_CANCEL" || event.data?.status === "cancel" || event.data?.event === "checkout.cancelled") {
+        setCheckoutUrl(null)
+        setIsProcessing(false)
+      }
+    }
+    window.addEventListener("message", handleMessage)
+    return () => window.removeEventListener("message", handleMessage)
+  }, [planKey])
+
+  const handleUniversalCheckout = async () => {
     if (!user) return
     setError("")
     setIsProcessing(true)
 
     const productId = gatewayProductIds[normalizedRegion]?.[planKey] || ""
     if (!productId) {
-      setError(`No product configured for region ${normalizedRegion} and plan ${planKey}.`)
+      setError(`No product configured for region ${normalizedRegion} and plan ${planKey}. Please contact support.`)
       setIsProcessing(false)
       return
     }
@@ -342,15 +358,14 @@ function CheckoutPageContent() {
 
     // --- GATEWAY ROUTING ---
     if (activeGateway === "stripe") {
-      setProcessStep("Redirecting to Stripe secure checkout...")
-      // If it is a full stripe payment link, redirect directly
+      setProcessStep("Loading Stripe secure checkout...")
       if (productId.startsWith("https://") || productId.includes("buy.stripe.com")) {
         const urlObj = new URL(productId)
         urlObj.searchParams.set("client_reference_id", user.uid)
         urlObj.searchParams.set("prefilled_email", user.email || "")
-        window.location.replace(urlObj.toString())
+        setCheckoutUrl(urlObj.toString())
+        setIsProcessing(false)
       } else {
-        // Otherwise, it's a Stripe price ID. Create checkout session via backend
         try {
           const cfBase = cloudFunctionUrl || "https://us-central1-gt-metadata-merger.cloudfunctions.net/geminiToolGateway"
           let cfUrl = `${cfBase}/create-stripe-session`
@@ -360,17 +375,12 @@ function CheckoutPageContent() {
           const response = await fetch(cfUrl, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              priceId: productId,
-              userId: user.uid,
-              email: user.email || "",
-              returnUrl,
-              cancelUrl
-            })
+            body: JSON.stringify({ priceId: productId, userId: user.uid, email: user.email || "", returnUrl, cancelUrl })
           })
           const data = await response.json()
           if (response.ok && data.url) {
-            window.location.replace(data.url)
+            setCheckoutUrl(data.url)
+            setIsProcessing(false)
           } else {
             throw new Error(data.error || "Failed to generate Stripe checkout session.")
           }
@@ -380,30 +390,22 @@ function CheckoutPageContent() {
         }
       }
     } else if (activeGateway === "lemonsqueezy") {
-      setProcessStep("Redirecting to Lemon Squeezy secure checkout...")
-      if (productId.startsWith("https://")) {
-        const urlObj = new URL(productId)
-        urlObj.searchParams.set("checkout[email]", user.email || "")
-        urlObj.searchParams.set("checkout[custom][userId]", user.uid)
-        window.location.replace(urlObj.toString())
-      } else {
-        const checkoutUrl = `https://takeoutfix.lemonsqueezy.com/checkout/buy/${productId}?checkout[email]=${encodeURIComponent(user.email || "")}&checkout[custom][userId]=${user.uid}`
-        window.location.replace(checkoutUrl)
-      }
+      setProcessStep("Loading Lemon Squeezy checkout...")
+      const url = productId.startsWith("https://")
+        ? (() => { const u = new URL(productId); u.searchParams.set("checkout[email]", user.email || ""); u.searchParams.set("checkout[custom][userId]", user.uid); return u.toString(); })()
+        : `https://takeoutfix.lemonsqueezy.com/checkout/buy/${productId}?checkout[email]=${encodeURIComponent(user.email || "")}&checkout[custom][userId]=${user.uid}`
+      setCheckoutUrl(url)
+      setIsProcessing(false)
     } else if (activeGateway === "paddle") {
-      setProcessStep("Redirecting to Paddle secure checkout...")
-      if (productId.startsWith("https://")) {
-        const urlObj = new URL(productId)
-        urlObj.searchParams.set("user_email", user.email || "")
-        urlObj.searchParams.set("passthrough", user.uid)
-        window.location.replace(urlObj.toString())
-      } else {
-        const checkoutUrl = `https://checkout.paddle.com/checkout/buy/${productId}?user_email=${encodeURIComponent(user.email || "")}&passthrough=${user.uid}`
-        window.location.replace(checkoutUrl)
-      }
+      setProcessStep("Loading Paddle checkout...")
+      const url = productId.startsWith("https://")
+        ? (() => { const u = new URL(productId); u.searchParams.set("user_email", user.email || ""); u.searchParams.set("passthrough", user.uid); return u.toString(); })()
+        : `https://checkout.paddle.com/checkout/buy/${productId}?user_email=${encodeURIComponent(user.email || "")}&passthrough=${user.uid}`
+      setCheckoutUrl(url)
+      setIsProcessing(false)
     } else {
-      // Default: Dodo Payments
-      setProcessStep("Redirecting to Dodo Payments secure checkout...")
+      // Default: Dodo Payments — embed in iframe
+      setProcessStep("Loading secure checkout...")
       const dodoBaseUrl = dodoTestMode
         ? "https://test.checkout.dodopayments.com/buy"
         : "https://checkout.dodopayments.com/buy"
@@ -416,48 +418,41 @@ function CheckoutPageContent() {
         metadata_userId: user.uid,
         metadata_plan: planKey,
         metadata_region: normalizedRegion,
+        embed: "true",
       })
 
-      if (selectedCountry) {
-        params.set("country", selectedCountry)
-      }
-
+      if (selectedCountry) params.set("country", selectedCountry)
       if (user.displayName) {
         const nameParts = user.displayName.trim().split(/\s+/)
         if (nameParts.length > 0) {
           params.set("firstName", nameParts[0])
-          if (nameParts.length > 1) {
-            params.set("lastName", nameParts.slice(1).join(" "))
-          }
+          if (nameParts.length > 1) params.set("lastName", nameParts.slice(1).join(" "))
         }
       }
-
       if (plan?.currency) {
-        const isUnsupported = plan.currency.toUpperCase() === "JPY" || plan.currency.toUpperCase() === "CNY";
-        params.set("currency", isUnsupported ? "USD" : plan.currency);
+        const isUnsupported = plan.currency.toUpperCase() === "JPY" || plan.currency.toUpperCase() === "CNY"
+        params.set("currency", isUnsupported ? "USD" : plan.currency)
       }
+      if (detectedCoupon) params.set("discount_code", detectedCoupon)
 
-      if (detectedCoupon) {
-        params.set("discount_code", detectedCoupon);
-      }
-
-      window.location.replace(`${dodoBaseUrl}/${productId}?${params.toString()}`)
+      setCheckoutUrl(`${dodoBaseUrl}/${productId}?${params.toString()}`)
+      setIsProcessing(false)
     }
   }
 
-  // Automatic redirect trigger: when user, plan and coupon lookup are ready, immediately redirect
+  // Auto-open checkout when everything is ready
   useEffect(() => {
     if (user && plan && Object.keys(gatewayProductIds).length > 0) {
       if (!couponLookupDone) {
         setIsProcessing(true)
-        setProcessStep("Checking for eligible promotions and coupons...")
+        setProcessStep("Checking for eligible promotions...")
         return
       }
       setIsProcessing(true)
-      setProcessStep("Opening secure checkout portal...")
+      setProcessStep("Loading secure checkout...")
       const timer = setTimeout(() => {
-        handleUniversalRedirect()
-      }, 1500)
+        handleUniversalCheckout()
+      }, 800)
       return () => clearTimeout(timer)
     }
   }, [user, plan, gatewayProductIds, couponLookupDone, detectedCoupon, activeGateway])
@@ -537,8 +532,8 @@ function CheckoutPageContent() {
           </div>
         </div>
 
-        {/* RIGHT PANEL: PAYMENT REDIRECTION CONTROL */}
-        <div className="p-8 flex flex-col justify-center min-h-[500px] bg-background">
+        {/* RIGHT PANEL: EMBEDDED CHECKOUT */}
+        <div className={`flex flex-col justify-center bg-background ${checkoutUrl ? 'p-0 min-h-[600px]' : 'p-8 min-h-[500px]'}` }>
           {!user ? (
             <div className="text-center py-8 space-y-6">
               <div className="w-12 h-12 bg-zinc-100 dark:bg-zinc-900 rounded-full flex items-center justify-center mx-auto text-zinc-505">
@@ -586,25 +581,46 @@ function CheckoutPageContent() {
               </div>
               <h2 className="text-2xl font-bold text-foreground">Payment Successful!</h2>
               <p className="text-zinc-500 text-sm">Your plan is upgraded to <span className="font-semibold text-foreground">{plan.name}</span>.</p>
-              <p className="text-zinc-400 text-xs animate-pulse">Redirecting to account dashboard...</p>
+              <p className="text-zinc-400 text-xs animate-pulse">Redirecting to your dashboard...</p>
+            </div>
+          ) : checkoutUrl ? (
+            <div className="relative w-full h-full min-h-[600px] flex flex-col">
+              <div className="flex items-center justify-between px-4 py-2.5 border-b border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900">
+                <div className="flex items-center gap-2">
+                  <Lock className="w-3.5 h-3.5 text-emerald-500" />
+                  <span className="text-xs font-semibold text-zinc-600 dark:text-zinc-400">Secure Checkout</span>
+                </div>
+                <button
+                  onClick={() => { setCheckoutUrl(null); setIsProcessing(false); }}
+                  className="text-xs text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300 transition-colors cursor-pointer"
+                >
+                  ✕ Cancel
+                </button>
+              </div>
+              <iframe
+                src={checkoutUrl}
+                className="w-full flex-1 min-h-[560px] border-0"
+                allow="payment *; camera *"
+                title="Secure Checkout"
+              />
             </div>
           ) : isProcessing ? (
             <div className="text-center py-12 space-y-6">
               <div className="w-12 h-12 border-2 border-zinc-200 dark:border-zinc-800 border-t-zinc-900 dark:border-t-zinc-100 rounded-full animate-spin mx-auto"></div>
               <div className="space-y-2">
-                <h3 className="text-lg font-semibold text-foreground">Redirecting to Payment Gate</h3>
+                <h3 className="text-lg font-semibold text-foreground">Preparing Checkout</h3>
                 <p className="text-zinc-550 font-mono text-xs">{processStep}</p>
               </div>
             </div>
           ) : (
             <div className="text-center py-8 space-y-6">
               <div className="w-12 h-12 bg-zinc-100 dark:bg-zinc-900 rounded-full flex items-center justify-center mx-auto text-zinc-500">
-                <Lock className="w-6 h-6" />
+                <CreditCard className="w-6 h-6" />
               </div>
               <div className="space-y-2">
-                <h2 className="text-xl font-bold tracking-tight text-foreground">Secure Checkout via Dodo Payments</h2>
+                <h2 className="text-xl font-bold tracking-tight text-foreground">Complete Your Purchase</h2>
                 <p className="text-zinc-500 text-xs leading-relaxed max-w-xs mx-auto">
-                  Click the button below to open the secure Dodo Payments page to complete the purchase of <span className="font-bold text-foreground">{plan.name}</span>.
+                  Your secure checkout for <span className="font-bold text-foreground">{plan.name}</span> will load right here — no redirects.
                 </p>
               </div>
 
@@ -616,14 +632,12 @@ function CheckoutPageContent() {
               )}
 
               <button
-                onClick={handleUniversalRedirect}
+                onClick={handleUniversalCheckout}
                 className="w-full max-w-xs mx-auto h-12 bg-zinc-950 dark:bg-zinc-50 text-white dark:text-black font-bold hover:bg-zinc-800 dark:hover:bg-zinc-250 transition-colors flex items-center justify-center gap-2 border border-transparent rounded-lg cursor-pointer text-sm"
               >
-                Proceed to Checkout <ChevronRight className="w-4 h-4" />
+                Open Checkout <ChevronRight className="w-4 h-4" />
               </button>
 
-
-              
               <div>
                 <a href="/pricing" className="text-xs text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-350">
                   Cancel and return to Pricing

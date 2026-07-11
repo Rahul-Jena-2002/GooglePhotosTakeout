@@ -33,3 +33,15 @@ node_modules
 # Local Node binaries
 node-v22*
 
+# Secret keys & credentials
+functions/serviceAccountKey-OLD.json
+setup-ramdisk*.cmd
+
+# Temporary inspection/testing scripts
+scripts/check-keys.js
+scripts/decrypt-keys.mjs
+scripts/inspect-global-doc.mjs
+scripts/inspect-system-doc.mjs
+scripts/toggle-test-mode.mjs
+
+
