@@ -172,21 +172,15 @@ const COUPON_PLANS = ['recovery_pass', 'pro', 'super']
 
 /**
  * Resolves the correct URL for a sync operation.
- * - On localhost → always use local dev server (port 3001)
  * - If no URL configured → throws with guidance to set Cloud Function URL
- * - If URL points at a static frontend → throws with guidance to use backend URL
- * - Otherwise → strips accidental webhook suffixes and appends the operation path
+ * - Strips accidental webhook suffixes the user may have pasted
+ * - Cloudflare Pages deployments (pages.dev, takeoutfix.*) → routes to /api/<endpoint>
+ * - Everything else → routes to <base>/<endpoint>
  */
 function resolveSyncUrl(endpoint: string, storedUrl: string): string {
-  // Always use local server when developing locally
-  if (typeof window !== 'undefined' &&
-    (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')) {
-    return `http://localhost:3001/${endpoint}`
-  }
-
   if (!storedUrl || !storedUrl.trim()) {
     throw new Error(
-      'No Cloud Function URL configured. Go to Settings → Cloud Function URL and enter your backend gateway URL.'
+      'No backend URL configured. Go to Payment Gateway → Settings tab → Cloud Function URL and enter your Cloudflare Worker / backend URL.'
     )
   }
 
@@ -202,24 +196,15 @@ function resolveSyncUrl(endpoint: string, storedUrl: string): string {
   }
   if (base.endsWith('/')) base = base.slice(0, -1)
 
-  // Upgrade insecure cloudfunctions.net URLs
-  if (base.includes('cloudfunctions.net') && base.startsWith('http://')) {
-    base = base.replace('http://', 'https://')
-  }
-
-  // If pointing at the static frontend, it cannot handle API calls
-  const isFrontendUrl =
+  // Cloudflare Pages deployments expose functions under /api/
+  const isCloudflarePages =
     base.includes('pages.dev') ||
-    base.includes('takeoutfix.') ||
-    base.includes('github.io')
-  if (isFrontendUrl) {
-    throw new Error(
-      `Cloud Function URL is set to a static frontend (${base}), which cannot handle sync requests. ` +
-      `Go to Payment Gateway → Settings tab → Cloud Function URL and enter your backend gateway URL ` +
-      `(e.g. your Firebase Cloud Function or self-hosted backend URL).`
-    )
+    base.includes('takeoutfix.')
+  if (isCloudflarePages) {
+    return `${base}/api/${endpoint}`
   }
 
+  // Cloudflare Workers or any other backend — call the endpoint directly
   return `${base}/${endpoint}`
 }
 
