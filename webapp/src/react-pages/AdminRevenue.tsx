@@ -31,6 +31,7 @@ export default function AdminRevenue() {
   const [totalUsersCount, setTotalUsersCount] = useState(0)
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState("")
+  const [filterType, setFilterType] = useState<"all" | "pro" | "super" | "single" | "admin">("all")
 
   const role = adminData?.role || "ADMIN"
   const isSuperAdminOrAdmin = ["SUPER_ADMIN", "ADMIN"].includes(role)
@@ -177,16 +178,34 @@ export default function AdminRevenue() {
     }
   }
 
-  // Filter transactions by search text
+  // Filter transactions by search text and filter type
   const filteredTransactions = transactions.filter(t => {
-    if (!search) return true
-    const s = search.toLowerCase()
-    return (
-      t.email?.toLowerCase().includes(s) ||
-      t.displayName?.toLowerCase().includes(s) ||
-      t.txId?.toLowerCase().includes(s) ||
-      t.plan?.toLowerCase().includes(s)
-    )
+    // 1. Search filter
+    if (search) {
+      const s = search.toLowerCase()
+      const matchesSearch = (
+        t.email?.toLowerCase().includes(s) ||
+        t.displayName?.toLowerCase().includes(s) ||
+        t.txId?.toLowerCase().includes(s) ||
+        t.plan?.toLowerCase().includes(s)
+      )
+      if (!matchesSearch) return false
+    }
+
+    // 2. Type filter
+    const isAdminGrant = t.approvedByAdmin != null || t.paymentMethod === "Admin Grant" || t.amount === 0;
+    
+    if (filterType === "admin") {
+      return isAdminGrant;
+    } else if (filterType === "pro") {
+      return !isAdminGrant && t.plan === "pro";
+    } else if (filterType === "super") {
+      return !isAdminGrant && t.plan === "super";
+    } else if (filterType === "single") {
+      return !isAdminGrant && t.plan === "recovery_pass";
+    }
+
+    return true; // "all"
   })
 
   // Generate historical data points for custom SVG line chart (simulating last 7 days of sales)
@@ -384,15 +403,29 @@ export default function AdminRevenue() {
             <p className="text-zinc-500 text-xs">Real-time purchase logs matching Firebase sandbox billing hooks.</p>
           </div>
           
-          <div className="relative">
-            <Search className="w-4 h-4 text-zinc-500 absolute left-3 top-1/2 -translate-y-1/2" />
-            <input
-              type="text"
-              placeholder="Search transactions..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="bg-zinc-950 border border-zinc-800 rounded-md py-1.5 pl-9 pr-3 text-xs text-white focus:outline-none focus:border-zinc-500 w-64"
-            />
+          <div className="flex items-center gap-3">
+            <select
+              value={filterType}
+              onChange={(e) => setFilterType(e.target.value as any)}
+              className="bg-zinc-950 border border-zinc-850 rounded-md py-1.5 px-3 text-xs text-zinc-300 focus:outline-none focus:border-zinc-500 cursor-pointer"
+            >
+              <option value="all">All Transactions</option>
+              <option value="pro">Pro Purchases Only</option>
+              <option value="super">Super Purchases Only</option>
+              <option value="single">Single Time Passes</option>
+              <option value="admin">Admin Grants Only</option>
+            </select>
+
+            <div className="relative">
+              <Search className="w-4 h-4 text-zinc-500 absolute left-3 top-1/2 -translate-y-1/2" />
+              <input
+                type="text"
+                placeholder="Search transactions..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="bg-zinc-950 border border-zinc-800 rounded-md py-1.5 pl-9 pr-3 text-xs text-white focus:outline-none focus:border-zinc-500 w-64"
+              />
+            </div>
           </div>
         </div>
 
