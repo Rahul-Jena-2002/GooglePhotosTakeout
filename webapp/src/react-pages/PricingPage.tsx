@@ -94,6 +94,13 @@ function PricingPageContent() {
         setIsPromoActiveLocal(false);
         return;
       }
+
+      if (campaigns.isGlobal === false && campaigns.targetRegions && Array.isArray(campaigns.targetRegions)) {
+        if (!campaigns.targetRegions.includes(region)) {
+          setIsPromoActiveLocal(false);
+          return;
+        }
+      }
       
       const condition = campaigns.expirationType || 'NONE';
       const now = Date.now();

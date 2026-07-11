@@ -233,7 +233,9 @@ export default function AdminPaymentGateway() {
   const [campaignForm, setCampaignForm] = useState({
     campaignName: '', description: '', status: 'DRAFT', isEnabled: false,
     expirationType: 'NONE', expirationDateTime: '', maxPurchaseLimit: '',
+    isGlobal: true
   })
+  const [campaignTargets, setCampaignTargets] = useState<Record<string, boolean>>({}) // key = "regionCode"
   const [campaignDiscounts, setCampaignDiscounts] = useState([
     { planCode: 'recovery_pass', discountType: 'PERCENTAGE', discountValue: 0 },
     { planCode: 'pro', discountType: 'PERCENTAGE', discountValue: 0 },
@@ -617,7 +619,12 @@ export default function AdminPaymentGateway() {
 
   // --- Campaign Manager helpers ---
   const resetCampaignForm = () => {
-    setCampaignForm({ campaignName: '', description: '', status: 'DRAFT', isEnabled: false, expirationType: 'NONE', expirationDateTime: '', maxPurchaseLimit: '' })
+    setCampaignForm({
+      campaignName: '', description: '', status: 'DRAFT', isEnabled: false,
+      expirationType: 'NONE', expirationDateTime: '', maxPurchaseLimit: '',
+      isGlobal: true
+    })
+    setCampaignTargets({})
     setCampaignDiscounts([
       { planCode: 'recovery_pass', discountType: 'PERCENTAGE', discountValue: 0 },
       { planCode: 'pro', discountType: 'PERCENTAGE', discountValue: 0 },
@@ -630,6 +637,7 @@ export default function AdminPaymentGateway() {
   const handleEditCampaign = async (camp: any) => {
     setEditingCampaign(camp)
     setShowCampaignForm(true)
+    const isGlobal = camp.isGlobal !== false
     setCampaignForm({
       campaignName: camp.campaignName || '',
       description: camp.description || '',
@@ -638,7 +646,16 @@ export default function AdminPaymentGateway() {
       expirationType: camp.expirationType || 'NONE',
       expirationDateTime: tsToDatetimeLocal(camp.expirationDateTime),
       maxPurchaseLimit: camp.maxPurchaseLimit != null ? String(camp.maxPurchaseLimit) : '',
+      isGlobal: isGlobal
     })
+
+    const initialTargets: Record<string, boolean> = {}
+    if (camp.targetRegions && Array.isArray(camp.targetRegions)) {
+      camp.targetRegions.forEach((r: string) => {
+        initialTargets[r] = true
+      })
+    }
+    setCampaignTargets(initialTargets)
 
     try {
       const discSnap = await getDocs(collection(db, 'campaigns', camp.id, 'discounts'))
@@ -677,6 +694,10 @@ export default function AdminPaymentGateway() {
         }
       }
 
+      const targetRegions = campaignForm.isGlobal
+        ? []
+        : Object.keys(campaignTargets).filter(k => campaignTargets[k])
+
       const payload: any = {
         campaignName: campaignForm.campaignName.trim(),
         description: campaignForm.description.trim(),
@@ -689,6 +710,8 @@ export default function AdminPaymentGateway() {
         maxPurchaseLimit: (campaignForm.expirationType === 'PURCHASE_LIMIT_ONLY' || campaignForm.expirationType === 'BOTH') && campaignForm.maxPurchaseLimit
           ? Number(campaignForm.maxPurchaseLimit)
           : null,
+        isGlobal: campaignForm.isGlobal,
+        targetRegions: targetRegions,
         updatedAt: serverTimestamp(),
       }
 
@@ -1803,6 +1826,20 @@ export default function AdminPaymentGateway() {
                     <div className="flex items-center gap-2 pt-5">
                       <button
                         type="button"
+                        onClick={() => setCampaignForm(prev => ({ ...prev, isGlobal: !prev.isGlobal }))}
+                        className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full transition-colors duration-200 ${
+                          campaignForm.isGlobal ? 'bg-indigo-500/20 border border-indigo-500/30' : 'bg-zinc-700/30 border border-zinc-800'
+                        }`}
+                      >
+                        <span className={`pointer-events-none absolute top-1 h-4 w-4 rounded-full bg-white shadow transition-all duration-200 ${
+                          campaignForm.isGlobal ? 'left-6' : 'left-1'
+                        }`} />
+                      </button>
+                      <span className="text-xs font-semibold text-zinc-405">Global Campaign (Applies to all regions)</span>
+                    </div>
+                    <div className="flex items-center gap-2 pt-5">
+                      <button
+                        type="button"
                         onClick={() => setCampaignForm(prev => ({ ...prev, isEnabled: !prev.isEnabled }))}
                         className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full transition-colors duration-200 ${
                           campaignForm.isEnabled ? 'bg-emerald-500/20 border border-emerald-500/30' : 'bg-rose-500/20 border border-rose-500/30'
@@ -1812,9 +1849,34 @@ export default function AdminPaymentGateway() {
                           campaignForm.isEnabled ? 'left-6' : 'left-1'
                         }`} />
                       </button>
-                      <span className="text-xs font-semibold text-zinc-400">Enable and show in portal checks</span>
+                      <span className="text-xs font-semibold text-zinc-405">Enable and show in portal checks</span>
                     </div>
                   </div>
+
+                  {!campaignForm.isGlobal && (
+                    <div className="pt-4 border-t" style={{ borderColor: isLight ? '#e5e7eb' : '#1f1f23' }}>
+                      <h4 className="text-xs font-bold text-zinc-400 mb-3">Target Regions (Check to enable)</h4>
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                        {COUPON_REGIONS.map((region) => {
+                          const isChecked = !!campaignTargets[region.key]
+                          return (
+                            <label key={region.key} className="flex items-center gap-1.5 cursor-pointer select-none p-3 border rounded-xl" style={{ borderColor: isLight ? '#e5e7eb' : '#1e1e22', backgroundColor: isLight ? '#ffffff' : '#0a0a0d' }}>
+                              <input
+                                type="checkbox"
+                                checked={isChecked}
+                                onChange={(e) => {
+                                  const checked = e.target.checked
+                                  setCampaignTargets(prev => ({ ...prev, [region.key]: checked }))
+                                }}
+                                className="w-3.5 h-3.5 rounded text-indigo-600"
+                              />
+                              <span className="text-[10px] font-semibold text-zinc-400 capitalize">{region.label}</span>
+                            </label>
+                          )
+                        })}
+                      </div>
+                    </div>
+                  )}
 
                   {/* Dynamic Campaign Discounts Mapping */}
                   <div className="pt-4 border-t" style={{ borderColor: isLight ? '#e5e7eb' : '#1f1f23' }}>
@@ -1888,7 +1950,8 @@ export default function AdminPaymentGateway() {
                           <h4 className="text-sm font-bold" style={{ color: isLight ? '#111827' : '#ffffff' }}>{camp.campaignName}</h4>
                           <p className="text-xs" style={{ color: isLight ? '#6b7280' : '#88888b' }}>{camp.description || "No description provided."}</p>
                           
-                          <div className="text-[10px] text-zinc-500 font-semibold space-y-1">
+                           <div className="text-[10px] text-zinc-500 font-semibold space-y-1">
+                            <div>Target: <strong className="text-indigo-400">{camp.isGlobal !== false ? "Global" : (camp.targetRegions?.map((r: string) => r.toUpperCase()).join(", ") || "None")}</strong></div>
                             <div>Purchases: <strong>{camp.currentPurchaseCount || 0}</strong> {camp.maxPurchaseLimit ? `/ ${camp.maxPurchaseLimit}` : ''}</div>
                             {camp.expirationDateTime && <div>Expires: <strong>{tsToDatetimeLocal(camp.expirationDateTime).substring(0, 16)}</strong></div>}
                           </div>
@@ -1981,7 +2044,36 @@ export default function AdminPaymentGateway() {
                       <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 block mb-1">Campaign Link</label>
                       <select
                         value={couponForm.campaignId}
-                        onChange={e => setCouponForm(prev => ({ ...prev, campaignId: e.target.value }))}
+                        onChange={(e) => {
+                          const campaignId = e.target.value
+                          setCouponForm(prev => ({ ...prev, campaignId }))
+                          
+                          if (campaignId) {
+                            const campaignObj = campaigns.find(c => c.id === campaignId)
+                            if (campaignObj) {
+                              const targets: Record<string, boolean> = {}
+                              
+                              // Check if campaign targets are set
+                              if (campaignObj.isGlobal === false && campaignObj.targetRegions && Array.isArray(campaignObj.targetRegions)) {
+                                campaignObj.targetRegions.forEach((rCode: string) => {
+                                  COUPON_PLANS.forEach(plan => {
+                                    targets[`${rCode}_${plan}`] = true
+                                  })
+                                })
+                              } else {
+                                // If it is global, we can check all regions that have Dodo products configured
+                                COUPON_REGIONS.forEach(r => {
+                                  COUPON_PLANS.forEach(plan => {
+                                    if (dodoProducts[r.key]?.[plan]) {
+                                      targets[`${r.key}_${plan}`] = true
+                                    }
+                                  })
+                                })
+                              }
+                              setCouponTargets(targets)
+                            }
+                          }
+                        }}
                         className="w-full h-9 border rounded-lg text-xs px-2.5"
                         style={{ backgroundColor: isLight ? '#ffffff' : '#0f0f12', color: isLight ? '#1f2937' : '#f3f4f6' }}
                       >
