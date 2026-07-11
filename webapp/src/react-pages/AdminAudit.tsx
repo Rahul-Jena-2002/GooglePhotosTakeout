@@ -14,17 +14,7 @@ interface AuditLog {
   timestamp: any;
 }
 
-const ACTION_BADGES: Record<string, string> = {
-  ROLE_CHANGE: "bg-amber-500/10 text-amber-400 border-amber-500/20",
-  UPDATE_PLAN: "bg-indigo-500/10 text-indigo-400 border-indigo-500/20",
-  SUSPEND: "bg-red-500/10 text-red-400 border-red-500/20",
-  REACTIVATE: "bg-emerald-500/10 text-emerald-400 border-emerald-500/20",
-  DELETE_USER: "bg-red-900/10 text-red-400 border-red-950",
-  REFUND: "bg-purple-500/10 text-purple-400 border-purple-500/20",
-  TICKET_REPLY: "bg-emerald-500/10 text-emerald-400 border-emerald-500/20",
-  SETTINGS_CHANGE: "bg-blue-500/10 text-blue-400 border-blue-500/20",
-  TOGGLE_SUPPORT_ADS: "badge-toggle-support-ads",
-}
+// Action badges will now use a single consistent monochromatic color theme
 
 export default function AdminAudit() {
   const [logs, setLogs] = useState<AuditLog[]>([])
@@ -180,9 +170,7 @@ export default function AdminAudit() {
                       </div>
                     </td>
                     <td className="px-6 py-4">
-                      <span className={`inline-flex items-center px-2 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider border ${
-                        ACTION_BADGES[log.action] || "bg-zinc-800 text-zinc-400 border-zinc-700"
-                      }`}>
+                      <span className="inline-flex items-center px-2 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider border border-zinc-800 bg-zinc-950/50 text-zinc-400">
                         {log.action.replace("_", " ")}
                       </span>
                     </td>
