@@ -9,6 +9,31 @@ import { ShieldCheck, Lock, CreditCard, ChevronRight, AlertCircle, Sparkles, Che
 import BrandLogo from "../components/BrandLogo"
 import { useState, useEffect } from "react"
 
+function resolveBackendUrl(endpoint: string, storedUrl: string): string {
+  const fallback = "https://us-central1-takeout-fix.cloudfunctions.net/geminiToolGateway";
+  let base = (storedUrl || fallback).trim();
+  
+  const trailingPaths = ['/api/dodo-webhook', '/dodo-webhook', '/api'];
+  for (const suffix of trailingPaths) {
+    if (base.endsWith(suffix)) {
+      base = base.slice(0, -suffix.length);
+      break;
+    }
+  }
+  if (base.endsWith('/')) base = base.slice(0, -1);
+
+  const isAstroBackend =
+    base.includes('pages.dev') ||
+    base.includes('takeoutfix.') ||
+    base.includes('localhost') ||
+    base.includes('127.0.0.1');
+
+  if (isAstroBackend) {
+    return `${base}/api/${endpoint}`;
+  }
+  return `${base}/${endpoint}`;
+}
+
 interface PlanDetails {
   name: string;
   priceVal: number;
@@ -147,13 +172,13 @@ function CheckoutPageContent() {
       if (userData?.plan === 'recovery_pass' && (planKey === 'pro' || planKey === 'super')) {
         try {
           const idToken = await user.getIdToken();
-          const cfBase = cloudFunctionUrl || "https://us-central1-takeout-fix.cloudfunctions.net/geminiToolGateway";
-          let cfUrl = `${cfBase}/create-dodo-upgrade-discount`;
-          if (typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')) {
-            cfUrl = 'http://localhost:3001/create-dodo-upgrade-discount';
+          const cfUrl = resolveBackendUrl("create-dodo-upgrade-discount", cloudFunctionUrl);
+          let finalUrl = cfUrl;
+          if (typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') && !cloudFunctionUrl) {
+            finalUrl = 'http://localhost:3001/create-dodo-upgrade-discount';
           }
           
-          const response = await fetch(cfUrl, {
+          const response = await fetch(finalUrl, {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
@@ -412,12 +437,12 @@ function CheckoutPageContent() {
         setIsProcessing(false)
       } else {
         try {
-          const cfBase = cloudFunctionUrl || "https://us-central1-takeout-fix.cloudfunctions.net/geminiToolGateway"
-          let cfUrl = `${cfBase}/create-stripe-session`
-          if (typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')) {
-            cfUrl = 'http://localhost:3001/create-stripe-session'
+          const cfUrl = resolveBackendUrl("create-stripe-session", cloudFunctionUrl);
+          let finalUrl = cfUrl;
+          if (typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') && !cloudFunctionUrl) {
+            finalUrl = 'http://localhost:3001/create-stripe-session';
           }
-          const response = await fetch(cfUrl, {
+          const response = await fetch(finalUrl, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ priceId: productId, userId: user.uid, email: user.email || "", returnUrl, cancelUrl })

@@ -39,30 +39,27 @@ export const POST: APIRoute = async ({ request, locals }) => {
     const runtimeEnv: RuntimeEnv =
       (locals as unknown as RuntimeLocals)?.runtime?.env ||
       ({} as RuntimeEnv);
+
     const CF_BASE =
       runtimeEnv.CLOUD_FUNCTION_URL ||
       import.meta.env.CLOUD_FUNCTION_URL ||
       'https://us-central1-takeout-fix.cloudfunctions.net/geminiToolGateway';
 
-    const GATEWAY_API_KEY =
-      runtimeEnv.GATEWAY_API_KEY ||
-      import.meta.env.GATEWAY_API_KEY ||
-      '';
+    const targetUrl = `${String(CF_BASE).replace(/\/$/, '')}/create-dodo-upgrade-discount`;
 
-    const targetUrl = `${CF_BASE.replace(/\/$/, '')}/sync-dodo-prices`;
+    // Forward the authorization header containing the user's Firebase ID Token
+    const authHeader = request.headers.get('authorization') || '';
 
     const upstream = await fetch(targetUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        ...(GATEWAY_API_KEY ? { 'x-api-key': GATEWAY_API_KEY } : {}),
-        ...(GATEWAY_API_KEY ? { Authorization: `Bearer ${GATEWAY_API_KEY}` } : {})
+        ...(authHeader ? { Authorization: authHeader } : {})
       },
       body: JSON.stringify(payload)
     });
 
     const text = await upstream.text();
-    // Try to preserve content-type if provided
     const contentType = upstream.headers.get('content-type') || 'application/json';
 
     return new Response(text, {
