@@ -110,7 +110,8 @@ service cloud.firestore {
     // ─── Transactions Collection ─────────────────────────────────────────────────
     match /transactions/{txId} {
       allow create: if request.auth != null && (request.resource.data.uid == request.auth.uid || isAdmin());
-      allow read: if request.auth != null && (resource.data.uid == request.auth.uid || isAdminOrAbove());
+      // Admins get full collection read access; regular users can only read their own
+      allow read: if isAdminOrAbove() || (request.auth != null && resource.data.uid == request.auth.uid);
       allow update, delete: if isSuperAdmin();
     }
 

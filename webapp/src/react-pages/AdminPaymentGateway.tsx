@@ -579,6 +579,7 @@ export default function AdminPaymentGateway() {
   const handleSyncPricesToDodo = async () => {
     setSyncingPrices(true)
     setPriceSyncResults([])
+    let cfUrl = ''
     try {
       const regionCode = selectedConfigTier
       const prices: Record<string, any> = {
@@ -589,19 +590,20 @@ export default function AdminPaymentGateway() {
       const currency = currencyCode
 
       let cfBase = (cloudFunctionUrl || "https://us-central1-gt-metadata-merger.cloudfunctions.net/geminiToolGateway").trim()
-      if (cfBase.endsWith("/dodo-webhook")) {
-        cfBase = cfBase.slice(0, -13)
-      }
-      if (cfBase.endsWith("/api")) {
-        cfBase = cfBase.slice(0, -4)
-      }
-      if (cfBase.endsWith("/")) {
-        cfBase = cfBase.slice(0, -1)
-      }
+      // Strip common suffixes that users accidentally paste
+      if (cfBase.endsWith("/dodo-webhook")) cfBase = cfBase.slice(0, -13)
+      if (cfBase.endsWith("/api/dodo-webhook")) cfBase = cfBase.slice(0, -17)
+      if (cfBase.endsWith("/api")) cfBase = cfBase.slice(0, -4)
+      if (cfBase.endsWith("/")) cfBase = cfBase.slice(0, -1)
+      // Auto-upgrade insecure cloudfunctions.net URLs
       if (cfBase.includes("cloudfunctions.net") && cfBase.startsWith("http://")) {
         cfBase = cfBase.replace("http://", "https://")
       }
-      let cfUrl = `${cfBase}/sync-dodo-prices`
+      // If pointing at the Cloudflare Pages site itself, use the /api/ Pages Function paths
+      const isPagesDeployment = cfBase.includes("pages.dev") || cfBase.includes("takeoutfix.")
+      cfUrl = isPagesDeployment
+        ? `${cfBase}/api/sync-dodo-prices`
+        : `${cfBase}/sync-dodo-prices`
       if (typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')) {
         cfUrl = 'http://localhost:3001/sync-dodo-prices'
       }
@@ -897,19 +899,17 @@ export default function AdminPaymentGateway() {
 
       const currency = tierData.currency_code || 'USD'
       let cfBase = (cloudFunctionUrl || "https://us-central1-gt-metadata-merger.cloudfunctions.net/geminiToolGateway").trim()
-      if (cfBase.endsWith("/dodo-webhook")) {
-        cfBase = cfBase.slice(0, -13)
-      }
-      if (cfBase.endsWith("/api")) {
-        cfBase = cfBase.slice(0, -4)
-      }
-      if (cfBase.endsWith("/")) {
-        cfBase = cfBase.slice(0, -1)
-      }
+      if (cfBase.endsWith("/dodo-webhook")) cfBase = cfBase.slice(0, -13)
+      if (cfBase.endsWith("/api/dodo-webhook")) cfBase = cfBase.slice(0, -17)
+      if (cfBase.endsWith("/api")) cfBase = cfBase.slice(0, -4)
+      if (cfBase.endsWith("/")) cfBase = cfBase.slice(0, -1)
       if (cfBase.includes("cloudfunctions.net") && cfBase.startsWith("http://")) {
         cfBase = cfBase.replace("http://", "https://")
       }
-      let cfUrl = `${cfBase}/sync-dodo-prices`
+      const isPagesDeploymentRegion = cfBase.includes("pages.dev") || cfBase.includes("takeoutfix.")
+      let cfUrl = isPagesDeploymentRegion
+        ? `${cfBase}/api/sync-dodo-prices`
+        : `${cfBase}/sync-dodo-prices`
       if (typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')) {
         cfUrl = 'http://localhost:3001/sync-dodo-prices'
       }
@@ -1126,16 +1126,16 @@ export default function AdminPaymentGateway() {
       if (cfBase.endsWith("/dodo-webhook")) {
         cfBase = cfBase.slice(0, -13)
       }
-      if (cfBase.endsWith("/api")) {
-        cfBase = cfBase.slice(0, -4)
-      }
-      if (cfBase.endsWith("/")) {
-        cfBase = cfBase.slice(0, -1)
-      }
+      if (cfBase.endsWith("/api/dodo-webhook")) cfBase = cfBase.slice(0, -17)
+      if (cfBase.endsWith("/api")) cfBase = cfBase.slice(0, -4)
+      if (cfBase.endsWith("/")) cfBase = cfBase.slice(0, -1)
       if (cfBase.includes("cloudfunctions.net") && cfBase.startsWith("http://")) {
         cfBase = cfBase.replace("http://", "https://")
       }
-      let cfUrl = `${cfBase}/sync-coupon`
+      const isPagesDeploymentCoupon = cfBase.includes("pages.dev") || cfBase.includes("takeoutfix.")
+      let cfUrl = isPagesDeploymentCoupon
+        ? `${cfBase}/api/sync-coupon`
+        : `${cfBase}/sync-coupon`
       if (typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')) {
         cfUrl = 'http://localhost:3001/sync-coupon'
       }
