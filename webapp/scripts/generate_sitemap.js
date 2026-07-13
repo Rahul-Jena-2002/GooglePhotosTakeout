@@ -1,9 +1,9 @@
 import fs from 'fs';
 import path from 'path';
 
-const actionKeys = ["restore", "recover", "fix", "repair", "merge", "sync", "rebuild", "reconstruct", "retrieve", "preserve", "extract", "convert", "transfer"];
-const targetKeys = ["metadata", "meta-data", "exif", "gps", "location", "timestamp", "date-taken", "creation-date", "albums", "people-tags", "camera-data", "photo-information", "video-information"];
-const sourceKeys = ["takeout", "photos", "export"];
+const actionKeys = ["restore", "fix", "recover"];
+const targetKeys = ["metadata", "exif", "gps", "date-taken", "timestamp"];
+const sourceKeys = ["takeout", "photos"];
 
 const baseUrl = "https://takeoutfix.pages.dev";
 const today = new Date().toISOString().split('T')[0];
@@ -21,6 +21,9 @@ const corePages = [
   { loc: "/metadata-fixer",               changefreq: "monthly", priority: "0.9" },
   { loc: "/google-photos-metadata-fix",   changefreq: "monthly", priority: "0.9" },
   { loc: "/google-takeout-merger",        changefreq: "monthly", priority: "0.9" },
+  { loc: "/fix-google-takeout-dates",     changefreq: "monthly", priority: "0.9" },
+  { loc: "/restore-gps-google-takeout",   changefreq: "monthly", priority: "0.9" },
+  { loc: "/google-takeout-to-apple-photos", changefreq: "monthly", priority: "0.9" },
 ];
 
 let mainXml = `<?xml version="1.0" encoding="UTF-8"?>

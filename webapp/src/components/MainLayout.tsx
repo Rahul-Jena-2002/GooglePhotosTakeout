@@ -4,7 +4,7 @@ import { useAuth } from "../contexts/AuthContext"
 import SupportWidget from "./SupportWidget"
 import { Menu, X, Bell, Sun, Moon } from "lucide-react"
 import { db } from "../firebase"
-import { collection, query, where, onSnapshot } from "firebase/firestore"
+import { collection, query, where, getDocs } from "firebase/firestore"
 import { useTelemetrySync } from "../hooks/useTelemetrySync"
 import { useToastStore } from "../store/useToastStore"
 
@@ -80,8 +80,9 @@ export default function MainLayout() {
     }
   }
   
-  // Keep platform stats in sync in the background when admin is logged in
-  useTelemetrySync()
+  // Only run telemetry sync on admin routes to avoid loading admin collection listeners for normal users
+  const isAdminRoute = location.pathname.startsWith('/admin')
+  useTelemetrySync(isAdminRoute)
   const isToolPage = location.pathname === "/tool"
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [profileMenuOpen, setProfileMenuOpen] = useState(false)
@@ -153,25 +154,33 @@ export default function MainLayout() {
     return () => document.removeEventListener('click', handleOutsideClick)
   }, [notificationMenuOpen])
 
-  // Real-time listener for support ticket notifications
+  // On-demand notification fetch — only loads when bell dropdown opens
+  // Replaces always-on onSnapshot listener to reduce Firestore reads
+  const [notificationsLoaded, setNotificationsLoaded] = useState(false)
   useEffect(() => {
-    if (!user) {
-      setNotifications([])
-      return
+    if (!notificationMenuOpen || !user || notificationsLoaded) return
+    const fetchNotifications = async () => {
+      try {
+        const q = query(
+          collection(db, "tickets"),
+          where("uid", "==", user.uid),
+          where("status", "==", "RESOLVED")
+        )
+        const snap = await getDocs(q)
+        const list = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }))
+        setNotifications(list)
+        setNotificationsLoaded(true)
+      } catch (err) {
+        console.warn("Notifications fetch error:", err)
+      }
     }
-    const q = query(
-      collection(db, "tickets"),
-      where("uid", "==", user.uid),
-      where("status", "==", "RESOLVED")
-    )
-    const unsubscribe = onSnapshot(q, (snap) => {
-      const list = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }))
-      setNotifications(list)
-    }, (err) => {
-      console.warn("Notifications listener error:", err)
-    })
-    
-    return unsubscribe
+    fetchNotifications()
+  }, [notificationMenuOpen, user, notificationsLoaded])
+
+  // Reset notification cache on user change
+  useEffect(() => {
+    setNotificationsLoaded(false)
+    setNotifications([])
   }, [user])
 
   const isAdmin = userData?.isAdmin || !!adminData

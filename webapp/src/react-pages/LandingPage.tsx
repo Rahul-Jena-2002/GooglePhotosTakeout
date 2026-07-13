@@ -1,6 +1,6 @@
 import { Link } from "react-router-dom"
 import { Button } from "../components/ui/button"
-import { motion } from "framer-motion"
+
 import { Lock, FileJson, ArrowRight, ShieldCheck, Cpu, HardDrive, CheckCircle2, XCircle, ChevronLeft, ChevronRight } from "lucide-react"
 import { useState, useEffect, useRef } from "react"
 import { db } from "../firebase"

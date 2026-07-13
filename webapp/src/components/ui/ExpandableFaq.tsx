@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from "react";
-import { motion, AnimatePresence } from "framer-motion";
 import { X } from "lucide-react";
 import { db } from "../../firebase";
 
@@ -64,12 +63,7 @@ export default function ExpandableFaq() {
     };
   }, []);
 
-  const macOsSpring = {
-    type: "spring",
-    stiffness: 300,
-    damping: 28,
-    mass: 1
-  };
+
 
   // Renders **bold**, *italic*, and <u>underline</u> markers as JSX elements
   const renderBoldText = (text: string) => {
@@ -120,9 +114,8 @@ export default function ExpandableFaq() {
       {/* GRID VIEW OF CARDS */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {faqs.map((faq) => (
-          <motion.div
+          <div
             key={faq.id}
-            layoutId={`faq-card-${faq.id}`}
             onClick={() => setActiveId(faq.id)}
             className="flex flex-col justify-between p-5 bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-900 rounded-lg cursor-pointer hover:border-zinc-400 dark:hover:border-zinc-700 transition-colors duration-200 group h-32"
           >
@@ -138,78 +131,67 @@ export default function ExpandableFaq() {
             <div className="flex items-center gap-1 text-xs font-semibold text-zinc-400 dark:text-zinc-500 group-hover:text-zinc-650 transition-colors">
               <span>Read details ➜</span>
             </div>
-          </motion.div>
+          </div>
         ))}
       </div>
 
       {/* OVERLAY POPUP MODAL ARCHITECTURE */}
-      <AnimatePresence>
-        {activeId && (() => {
-          const activeFaq = faqs.find(f => f.id === activeId);
-          if (!activeFaq) return null;
+      {activeId && (() => {
+        const activeFaq = faqs.find(f => f.id === activeId);
+        if (!activeFaq) return null;
 
-          return (
-            <div className="fixed inset-0 z-[999] flex items-center justify-center p-4">
-              
-              {/* BACKDROP: Fades in to mask the background desktop workspace */}
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                onClick={() => setActiveId(null)}
-                className="absolute inset-0 bg-black/60 backdrop-blur-md"
-              />
+        return (
+          <div className="fixed inset-0 z-[999] flex items-center justify-center p-4">
+            
+            {/* BACKDROP: Fades in to mask the background desktop workspace */}
+            <div
+              onClick={() => setActiveId(null)}
+              className="absolute inset-0 bg-black/60 backdrop-blur-md"
+              style={{ animation: 'fadeIn 200ms ease-out forwards' }}
+            />
 
-              {/* THE POPPING CONTAINER: Morphs out from the static button into a floating panel */}
-              <motion.div
-                layoutId={`faq-card-${activeFaq.id}`}
-                transition={macOsSpring}
-                initial={{ filter: "blur(4px)" }}
-                animate={{ filter: "blur(0px)" }}
-                exit={{ filter: "blur(4px)" }}
-                className="w-full max-w-lg bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-900 rounded-2xl p-6 md:p-8 relative shadow-2xl overflow-hidden pointer-events-auto flex flex-col text-left"
+            {/* THE POPPING CONTAINER */}
+            <div
+              className="w-full max-w-lg bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-900 rounded-2xl p-6 md:p-8 relative shadow-2xl overflow-hidden pointer-events-auto flex flex-col text-left"
+              style={{ animation: 'faqModalIn 300ms ease-out forwards' }}
+            >
+              {/* Native Apple close window circle button */}
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setActiveId(null);
+                }}
+                className="absolute top-4 right-4 w-6 h-6 rounded-full bg-zinc-150 dark:bg-zinc-900 hover:bg-zinc-200 dark:hover:bg-zinc-800 text-zinc-500 dark:text-zinc-400 flex items-center justify-center transition-colors cursor-pointer"
               >
-                {/* Native Apple close window circle button */}
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setActiveId(null);
-                  }}
-                  className="absolute top-4 right-4 w-6 h-6 rounded-full bg-zinc-150 dark:bg-zinc-900 hover:bg-zinc-200 dark:hover:bg-zinc-800 text-zinc-500 dark:text-zinc-400 flex items-center justify-center transition-colors cursor-pointer"
-                >
-                  <X className="w-3.5 h-3.5" />
-                </button>
+                <X className="w-3.5 h-3.5" />
+              </button>
 
-                {/* Wrap modal contents to fade out immediately on exit, preventing layout warp stutter */}
-                <motion.div
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0 }}
-                  transition={{ duration: 0.15 }}
-                  className="flex flex-col h-full"
-                >
-                  {/* Popup Badge */}
-                  <div className="flex items-center gap-2 mb-4">
-                    <span className="text-[10px] font-bold uppercase tracking-widest px-2.5 py-0.5 rounded-full border border-zinc-200 dark:border-zinc-800 bg-zinc-100 dark:bg-zinc-900/60 text-zinc-650 dark:text-zinc-400">
-                      {activeFaq.tag}
-                    </span>
-                  </div>
+              {/* Modal contents */}
+              <div
+                className="flex flex-col h-full"
+                style={{ animation: 'fadeIn 150ms ease-out forwards' }}
+              >
+                {/* Popup Badge */}
+                <div className="flex items-center gap-2 mb-4">
+                  <span className="text-[10px] font-bold uppercase tracking-widest px-2.5 py-0.5 rounded-full border border-zinc-200 dark:border-zinc-800 bg-zinc-100 dark:bg-zinc-900/60 text-zinc-650 dark:text-zinc-400">
+                    {activeFaq.tag}
+                  </span>
+                </div>
 
-                  {/* Popup Title */}
-                  <h3 className="text-xl font-bold text-zinc-900 dark:text-white pr-8 mb-4">
-                    {activeFaq.question}
-                  </h3>
+                {/* Popup Title */}
+                <h3 className="text-xl font-bold text-zinc-900 dark:text-white pr-8 mb-4">
+                  {activeFaq.question}
+                </h3>
 
-                  {/* Popup Answer Payload */}
-                  <div className="mt-2 text-sm md:text-base text-zinc-650 dark:text-zinc-400 leading-relaxed">
-                    <p>{renderBoldText(activeFaq.answer)}</p>
-                  </div>
-                </motion.div>
-              </motion.div>
+                {/* Popup Answer Payload */}
+                <div className="mt-2 text-sm md:text-base text-zinc-650 dark:text-zinc-400 leading-relaxed">
+                  <p>{renderBoldText(activeFaq.answer)}</p>
+                </div>
+              </div>
             </div>
-          );
-        })()}
-      </AnimatePresence>
+          </div>
+        );
+      })()}
     </div>
   );
 }

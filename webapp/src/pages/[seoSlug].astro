@@ -2,9 +2,9 @@
 export const prerender = true;
 
 export function getStaticPaths() {
-  const actionKeys = ["restore", "recover", "fix", "repair", "merge", "sync", "rebuild", "reconstruct", "retrieve", "preserve", "extract", "convert", "transfer"];
-  const targetKeys = ["metadata", "meta-data", "exif", "gps", "location", "timestamp", "date-taken", "creation-date", "albums", "people-tags", "camera-data", "photo-information", "video-information"];
-  const sourceKeys = ["takeout", "photos", "export"];
+  const actionKeys = ["restore", "fix", "recover"];
+  const targetKeys = ["metadata", "exif", "gps", "date-taken", "timestamp"];
+  const sourceKeys = ["takeout", "photos"];
   const paths = [];
   for (const action of actionKeys) {
     for (const target of targetKeys) {
@@ -103,6 +103,17 @@ const pageDescription = `Learn how to ${matchedAction.toLowerCase()} your ${matc
 
 <Layout title={pageTitle} description={pageDescription}>
   <div class="bg-black text-zinc-100 min-h-screen py-24 px-4 sm:px-6 lg:px-8 relative overflow-hidden font-sans">
+
+    <!-- BreadcrumbList Schema -->
+    <script type="application/ld+json" set:html={JSON.stringify({
+      "@context": "https://schema.org",
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://takeoutfix.pages.dev/" },
+        { "@type": "ListItem", "position": 2, "name": "Restore Data", "item": "https://takeoutfix.pages.dev/restore-data" },
+        { "@type": "ListItem", "position": 3, "name": pageTitle.replace(' | TakeoutFix', '') }
+      ]
+    })} />
     
     <!-- Background neon glows -->
     <div class="absolute top-0 left-1/4 w-[500px] h-[500px] bg-indigo-900/10 blur-[150px] rounded-full pointer-events-none"></div>
@@ -290,6 +301,35 @@ const pageDescription = `Learn how to ${matchedAction.toLowerCase()} your ${matc
         </div>
       </div>
 
+    </div>
+
+    <!-- Related Guides -->
+    <div class="max-w-4xl mx-auto mb-20 relative z-10">
+      <div class="bg-zinc-950/40 border border-white/5 backdrop-blur-md rounded-2xl p-8">
+        <h2 class="text-xl font-bold text-white mb-6">Related Guides</h2>
+        <div class="grid sm:grid-cols-2 md:grid-cols-3 gap-4">
+          <a href="/restore-data" class="block p-4 bg-zinc-900/50 rounded-lg border border-zinc-800 hover:border-pink-500/30 transition-colors">
+            <div class="text-sm font-semibold text-zinc-200 mb-1">Restore Data Guide</div>
+            <div class="text-xs text-zinc-500">Complete walkthrough for restoring all metadata</div>
+          </a>
+          <a href="/takeout-fix" class="block p-4 bg-zinc-900/50 rounded-lg border border-zinc-800 hover:border-pink-500/30 transition-colors">
+            <div class="text-sm font-semibold text-zinc-200 mb-1">Takeout Fix</div>
+            <div class="text-xs text-zinc-500">Fix your Google Takeout photos & restore metadata</div>
+          </a>
+          <a href="/fix-google-takeout-dates" class="block p-4 bg-zinc-900/50 rounded-lg border border-zinc-800 hover:border-pink-500/30 transition-colors">
+            <div class="text-sm font-semibold text-zinc-200 mb-1">Fix Takeout Dates</div>
+            <div class="text-xs text-zinc-500">Restore original timestamps to photos</div>
+          </a>
+          <a href="/restore-gps-google-takeout" class="block p-4 bg-zinc-900/50 rounded-lg border border-zinc-800 hover:border-pink-500/30 transition-colors">
+            <div class="text-sm font-semibold text-zinc-200 mb-1">Restore GPS Data</div>
+            <div class="text-xs text-zinc-500">Recover GPS coordinates from Google Takeout</div>
+          </a>
+          <a href="/google-takeout-to-apple-photos" class="block p-4 bg-zinc-900/50 rounded-lg border border-zinc-800 hover:border-pink-500/30 transition-colors">
+            <div class="text-sm font-semibold text-zinc-200 mb-1">Takeout → Apple Photos</div>
+            <div class="text-xs text-zinc-500">Migrate Google Takeout to Apple Photos</div>
+          </a>
+        </div>
+      </div>
     </div>
 
     <!-- Call to Action Footer -->

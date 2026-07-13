@@ -1,4 +1,4 @@
-import { motion } from "framer-motion"
+
 import { Link } from "react-router-dom"
 import { Button } from "../components/ui/button"
 import { FolderSearch, Binary, Cpu, ArrowRight, ShieldCheck, CheckCircle2 } from "lucide-react"
@@ -29,12 +29,10 @@ function DirectoryParsingDiagram() {
 
       <div className="space-y-3.5 my-4 z-10 flex-1 justify-center flex flex-col">
         {files.map((file, i) => (
-          <motion.div
+          <div
             key={i}
-            initial={{ opacity: 0, x: -15 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ delay: i * 0.15, duration: 0.4 }}
             className="flex items-center justify-between p-2.5 rounded border border-zinc-900 bg-zinc-900/30 hover:border-zinc-800/80 transition-all"
+            style={{ animation: `slideInLeft 400ms ease-out ${i * 150}ms forwards`, opacity: 0 }}
           >
             <div className="flex items-center gap-2">
               <span className={`w-1.5 h-1.5 rounded-full ${file.type === 'media' ? 'bg-zinc-400 shadow-[0_0_8px_rgba(255,255,255,0.15)]' : 'bg-zinc-600 shadow-[0_0_8px_rgba(255,255,255,0.05)]'}`}></span>
@@ -48,7 +46,7 @@ function DirectoryParsingDiagram() {
                 {file.status}
               </span>
             </div>
-          </motion.div>
+          </div>
         ))}
       </div>
 
@@ -99,12 +97,10 @@ function MetadataMatchingDiagram() {
               </div>
               <div className="relative flex-1 flex items-center justify-center h-2">
                 <div className="absolute inset-0 bg-zinc-800 rounded-full h-[1px]"></div>
-                <motion.div 
-                  initial={{ left: 0 }}
-                  animate={{ left: "100%" }}
-                  transition={{ duration: 2, repeat: Infinity, ease: "easeInOut", delay: i * 0.4 }}
+                <div 
                   className={`absolute w-2.5 h-2.5 -mt-[4px] rounded-full bg-gradient-to-r ${match.color} shadow-[0_0_8px_rgba(255,255,255,0.2)]`}
-                ></motion.div>
+                  style={{ animation: `dotTravel 2s ease-in-out ${i * 0.4}s infinite` }}
+                ></div>
               </div>
               <div className="flex-1 p-2 rounded bg-zinc-900 border border-zinc-800/50 text-zinc-400 truncate max-w-[130px] text-center text-[10px]">
                 {match.json}
@@ -152,14 +148,12 @@ function ExifHeaderInjectionDiagram() {
               <span className="text-zinc-300 font-bold">{item.name}</span>
             </div>
             <div className="flex items-center gap-2">
-              <motion.span 
-                initial={{ opacity: 0.5 }}
-                animate={{ opacity: [0.5, 1, 0.5] }}
-                transition={{ duration: 2.5, repeat: Infinity, delay: i * 0.3 }}
+              <span 
                 className="text-zinc-300 text-[10px] font-bold tracking-tight truncate max-w-[110px] md:max-w-[140px]"
+                style={{ animation: `pulseOpacity 2.5s ease-in-out ${i * 0.3}s infinite` }}
               >
                 {item.val}
-              </motion.span>
+              </span>
               <span className="text-zinc-300 text-[8px] font-bold border border-zinc-750 bg-zinc-850 px-1.5 py-0.5 rounded uppercase flex-shrink-0">
                 {item.status}
               </span>
@@ -260,31 +254,25 @@ for await (const [name, entry] of dirHandle) {
     <div className="bg-black text-zinc-100 min-h-screen py-24 px-4 sm:px-6 lg:px-8 relative overflow-hidden">
       {/* Header */}
       <div className="max-w-4xl mx-auto text-center mb-32 relative">
-        <motion.div
-          initial={{ opacity: 0, scale: 0.95 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ duration: 0.5 }}
+        <div
           className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-zinc-900 border border-zinc-800 text-xs font-semibold text-zinc-400 mb-6 font-mono"
+          style={{ animation: 'fadeInScale 500ms ease-out forwards' }}
         >
           <ShieldCheck className="w-4 h-4 text-zinc-400" />
           100% Client-Side Engine Telemetry
-        </motion.div>
-        <motion.h1
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.1 }}
+        </div>
+        <h1
           className="text-5xl md:text-7xl font-extrabold tracking-tight text-white mb-6"
+          style={{ animation: 'fadeInUp 500ms ease-out 100ms forwards', opacity: 0 }}
         >
           How It <span className="text-white">Works</span>
-        </motion.h1>
-        <motion.p
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.2 }}
+        </h1>
+        <p
           className="text-lg md:text-xl text-zinc-400 max-w-2xl mx-auto font-normal leading-relaxed"
+          style={{ animation: 'fadeInUp 500ms ease-out 200ms forwards', opacity: 0 }}
         >
           A deeply technical breakdown of the metadata restoration process. Learn how TakeoutFix reconstructs your photo metadata locally without ever compromising your security.
-        </motion.p>
+        </p>
       </div>
 
       {/* Timeline Section */}
@@ -299,13 +287,10 @@ for await (const [name, entry] of dirHandle) {
             const isEven = idx % 2 === 0;
 
             return (
-              <motion.div
+              <div
                 key={idx}
-                initial={{ opacity: 0, y: 40 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true, margin: "-100px" }}
-                transition={{ duration: 0.6 }}
                 className="relative flex flex-col lg:flex-row items-stretch gap-12 lg:gap-20"
+                style={{ animation: `fadeInUp 600ms ease-out ${idx * 150}ms forwards`, opacity: 0 }}
               >
                 {/* Timeline node marker for desktop */}
                 <div className="absolute left-[50%] -translate-x-1/2 top-4 w-10 h-10 rounded-full bg-zinc-950 border border-zinc-800 flex items-center justify-center shadow-[0_0_20px_rgba(0,0,0,0.8)] z-20 hidden lg:flex">
@@ -355,7 +340,7 @@ for await (const [name, entry] of dirHandle) {
                   </div>
                 </div>
 
-              </motion.div>
+              </div>
             )
           })}
         </div>

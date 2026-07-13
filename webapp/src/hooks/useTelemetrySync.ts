@@ -19,12 +19,12 @@ const getUserFiles = (u: any) => {
  * Background hook to keep platform_stats/global in sync with actual collection aggregates.
  * Executes only if the logged-in user is an administrator.
  */
-export function useTelemetrySync() {
+export function useTelemetrySync(enabled: boolean = true) {
   const { user, userData, adminData } = useAuth();
   const isAdmin = userData?.isAdmin || !!adminData;
 
   useEffect(() => {
-    if (!user || !isAdmin) return;
+    if (!user || !isAdmin || !enabled) return;
 
     let usersList: any[] = [];
     let recoveriesList: any[] = [];
@@ -103,5 +103,5 @@ export function useTelemetrySync() {
       unsubTickets();
       unsubGlobal();
     };
-  }, [user, isAdmin]);
+  }, [user, isAdmin, enabled]);
 }
