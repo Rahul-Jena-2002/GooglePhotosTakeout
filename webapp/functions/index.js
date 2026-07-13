@@ -197,9 +197,7 @@ app.use(express.json({
  * Security Middleware: Validates API Key header to prevent abuse.
  */
 const authenticateApiKey = (req, res, next) => {
-  // Gateway API key — set via Firebase Functions config or GATEWAY_API_KEY env var
-  // Configure in Firebase: firebase functions:config:set gateway.key="YOUR_KEY"
-  const customSecretKey = process.env.GATEWAY_API_KEY || functions.config().gateway?.key;
+  const customSecretKey = String(process.env.GATEWAY_API_KEY || functions.config().gateway?.key || "").trim();
 
   const headerKey = req.headers["x-api-key"];
   let bearerKey = "";
@@ -207,7 +205,7 @@ const authenticateApiKey = (req, res, next) => {
     bearerKey = req.headers.authorization.split("Bearer ")[1];
   }
 
-  const providedKey = headerKey || bearerKey;
+  const providedKey = String(headerKey || bearerKey || "").trim();
 
   if (!providedKey || providedKey !== customSecretKey) {
     return res.status(401).json({
@@ -495,7 +493,10 @@ app.post("/create-dodo-upgrade-discount", async (req, res) => {
     // 3. Look up Dodo Product ID from settings/global dodo_products mapping
     const globalDoc = await db.collection("settings").doc("global").get();
     const globalData = globalDoc.exists ? globalDoc.data() : {};
-    const dodoProductsMap = globalData.dodo_products || {};
+    const isTestMode = globalData.dodo_test_mode === true;
+    const dodoProductsMap = isTestMode
+      ? (globalData.dodo_products_test || {})
+      : (globalData.dodo_products_live || globalData.dodo_products || {});
     const productId = dodoProductsMap[region]?.[targetPlan] || null;
 
     if (!productId) {
@@ -570,9 +571,8 @@ app.post("/create-dodo-upgrade-discount", async (req, res) => {
 
 // Route: POST /get-dodo-product
 app.post("/get-dodo-product", async (req, res) => {
-  // Gateway API key — read from env or Firebase Functions config
-  const customSecretKey = process.env.GATEWAY_API_KEY || functions.config().gateway?.key;
-  const headerKey = req.headers["x-api-key"] || (req.headers.authorization || "").replace("Bearer ", "");
+  const customSecretKey = String(process.env.GATEWAY_API_KEY || functions.config().gateway?.key || "").trim();
+  const headerKey = String(req.headers["x-api-key"] || (req.headers.authorization || "").replace("Bearer ", "")).trim();
   if (!customSecretKey || !headerKey || headerKey !== customSecretKey) {
     return res.status(401).json({ error: "Unauthorized" });
   }
@@ -664,9 +664,8 @@ const fetchDiscountByCode = (dodoHost, dodoApiKey, code) => {
 app.post("/sync-coupon", async (req, res) => {
   // Note: authenticateApiKey middleware is applied AFTER this route so we
   // need to manually check the key here since sync-coupon is called from frontend
-  // Gateway API key — read from env or Firebase Functions config
-  const customSecretKey = process.env.GATEWAY_API_KEY || functions.config().gateway?.key;
-  const headerKey = req.headers["x-api-key"] || (req.headers.authorization || "").replace("Bearer ", "");
+  const customSecretKey = String(process.env.GATEWAY_API_KEY || functions.config().gateway?.key || "").trim();
+  const headerKey = String(req.headers["x-api-key"] || (req.headers.authorization || "").replace("Bearer ", "")).trim();
   if (!customSecretKey || !headerKey || headerKey !== customSecretKey) {
     return res.status(401).json({ error: "Unauthorized" });
   }
@@ -699,7 +698,10 @@ app.post("/sync-coupon", async (req, res) => {
       // Look up Dodo Product ID from settings/global dodo_products mapping
       const globalDoc = await db.collection("settings").doc("global").get();
       const globalData = globalDoc.exists ? globalDoc.data() : {};
-      const dodoProductsMap = globalData.dodo_products || {};
+      const isTestMode = globalData.dodo_test_mode === true;
+      const dodoProductsMap = isTestMode
+        ? (globalData.dodo_products_test || {})
+        : (globalData.dodo_products_live || globalData.dodo_products || {});
       const productId = dodoProductsMap[regionCode]?.[planCode] || null;
 
       if (!productId) {
@@ -882,9 +884,8 @@ const fetchUsdExchangeRates = () => {
  *    Ref: https://docs.dodopayments.com/miscellaneous/faq#q135
  */
 app.post("/sync-dodo-prices", async (req, res) => {
-  // Gateway API key — read from env or Firebase Functions config
-  const customSecretKey = process.env.GATEWAY_API_KEY || functions.config().gateway?.key;
-  const headerKey = req.headers["x-api-key"] || (req.headers.authorization || "").replace("Bearer ", "");
+  const customSecretKey = String(process.env.GATEWAY_API_KEY || functions.config().gateway?.key || "").trim();
+  const headerKey = String(req.headers["x-api-key"] || (req.headers.authorization || "").replace("Bearer ", "")).trim();
   if (!customSecretKey || !headerKey || headerKey !== customSecretKey) {
     return res.status(401).json({ error: "Unauthorized" });
   }
@@ -928,7 +929,10 @@ app.post("/sync-dodo-prices", async (req, res) => {
   try {
     const globalDoc = await db.collection("settings").doc("global").get();
     const globalData = globalDoc.exists ? globalDoc.data() : {};
-    dodoProductsMap = globalData.dodo_products || {};
+    const isTestMode = envMode === "test";
+    dodoProductsMap = isTestMode
+      ? (globalData.dodo_products_test || {})
+      : (globalData.dodo_products_live || globalData.dodo_products || {});
   } catch (e) {
     console.error("Failed to read settings/global:", e);
     return res.status(500).json({ error: "Failed to read settings/global", message: e.message });

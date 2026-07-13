@@ -41,6 +41,7 @@ export const POST: APIRoute = async ({ request }) => {
 
     const CF_BASE =
       (env as any).CLOUD_FUNCTION_URL ||
+      (import.meta.env.DEV ? import.meta.env.CLOUD_FUNCTION_URL : null) ||
       import.meta.env.CLOUD_FUNCTION_URL ||
       'https://us-central1-takeout-fix.cloudfunctions.net/geminiToolGateway';
 
@@ -49,7 +50,10 @@ export const POST: APIRoute = async ({ request }) => {
       import.meta.env.GATEWAY_API_KEY ||
       '';
 
+    console.log("[sync-dodo-prices] (env as any).CLOUD_FUNCTION_URL:", (env as any).CLOUD_FUNCTION_URL);
+    console.log("[sync-dodo-prices] import.meta.env.CLOUD_FUNCTION_URL:", import.meta.env.CLOUD_FUNCTION_URL);
     const targetUrl = `${CF_BASE.replace(/\/$/, '')}/sync-dodo-prices`;
+    console.log("[sync-dodo-prices] Proxying to:", targetUrl);
 
     const upstream = await fetch(targetUrl, {
       method: 'POST',

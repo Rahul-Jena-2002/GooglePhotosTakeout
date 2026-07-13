@@ -34,6 +34,12 @@ const BREADCRUMBS: Record<string, string[]> = {
   "/admin/team": ["System", "Admin Team"],
   "/admin/audit": ["System", "Audit Logs"],
   "/admin/settings": ["System", "Settings"],
+  "/admin/payment-gateway": ["System", "Payment Gateway"],
+  "/admin/keys": ["System", "Keys & Secrets"],
+  "/admin/plan-thresholds": ["System", "Plan Thresholds"],
+  "/admin/tier-features": ["System", "Tier Features"],
+  "/admin/dev": ["System", "Dev Options"],
+  "/admin/tool": ["Operations", "Tool Center"],
 }
 
 const ROLE_COLORS: Record<AdminRole, string> = {
@@ -143,13 +149,13 @@ export default function AdminTopbar({ onMenuClick }: { onMenuClick?: () => void 
         )}
         <span className="hidden sm:inline text-zinc-500 hover:text-zinc-400 transition-colors cursor-pointer">TakeoutFix</span>
         <span className="hidden sm:inline text-zinc-700">/</span>
-        <span className="text-zinc-400">{breadcrumb[0]}</span>
-        <span className="text-zinc-700">/</span>
+        <span className="hidden md:inline text-zinc-400">{breadcrumb[0]}</span>
+        <span className="hidden md:inline text-zinc-700">/</span>
         <span className="text-white font-black">{breadcrumb[1]}</span>
       </div>
 
       {/* ─── SEARCH PILL ─── */}
-      <div className="hidden md:flex items-center w-80 max-w-xs relative group">
+      <div className="hidden lg:flex items-center w-80 max-w-xs relative group">
         <Search className="w-4 h-4 text-zinc-500 absolute left-3 group-focus-within:text-zinc-300 transition-colors" />
         <input
           type="text"
@@ -164,17 +170,17 @@ export default function AdminTopbar({ onMenuClick }: { onMenuClick?: () => void 
       </div>
 
       {/* ─── RIGHT SECTION ─── */}
-      <div className="flex items-center gap-4">
+      <div className="flex items-center gap-2 sm:gap-4">
         
         {/* Admin Presence Quick Status Selector */}
         <DropdownMenu>
-          <DropdownMenuTrigger className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-zinc-900/60 hover:bg-zinc-900 border border-zinc-800 text-[11px] font-medium text-zinc-300 transition-all focus:outline-none select-none">
+          <DropdownMenuTrigger className="flex items-center gap-1 sm:gap-1.5 px-2 py-1 rounded-full bg-zinc-900/60 hover:bg-zinc-900 border border-zinc-800 text-[11px] font-medium text-zinc-300 transition-all focus:outline-none select-none">
             <span className={`w-2 h-2 rounded-full ${
               currentStatus === 'online' ? 'bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.4)]' : 
               currentStatus === 'idle' ? 'bg-amber-400' : 'bg-zinc-500'
             }`} />
-            <span className="capitalize">{currentStatus}</span>
-            <ChevronDown className="w-3 h-3 text-zinc-500" />
+            <span className="capitalize hidden sm:inline">{currentStatus}</span>
+            <ChevronDown className="w-3 h-3 text-zinc-500 hidden sm:inline" />
           </DropdownMenuTrigger>
           <DropdownMenuContent className="bg-zinc-900 border-zinc-800 text-zinc-200 min-w-[120px] p-1 shadow-2xl">
             <DropdownMenuLabel className="text-[10px] text-zinc-500 uppercase tracking-wider px-2 py-1">Set Status</DropdownMenuLabel>
@@ -197,10 +203,10 @@ export default function AdminTopbar({ onMenuClick }: { onMenuClick?: () => void 
         {/* Theme Toggle Button */}
         <button 
           onClick={() => setTheme(theme === 'light' ? 'dark' : 'light')}
-          className={`btn-theme-toggle-navbar flex p-1.5 rounded-full border hover:scale-[1.02] focus:outline-none transition-all items-center justify-center ${
+          className={`btn-theme-toggle-navbar hidden sm:flex p-1.5 rounded-full border hover:scale-[1.02] focus:outline-none transition-all items-center justify-center ${
             theme === 'light'
               ? 'bg-zinc-100 border-zinc-200 text-zinc-800 hover:bg-zinc-200 hover:text-zinc-900'
-              : 'bg-zinc-900/60 border-zinc-800 text-zinc-400 hover:text-zinc-200'
+              : 'bg-zinc-900/60 border-zinc-800 text-zinc-400 hover:text-zinc-255 hover:text-zinc-200'
           }`}
           title={theme === 'light' ? 'Switch to Dark Mode' : 'Switch to Light Mode'}
         >
@@ -212,7 +218,7 @@ export default function AdminTopbar({ onMenuClick }: { onMenuClick?: () => void 
         </button>
 
         {/* Notifications Alert Bell */}
-        <Link to="/admin/support" className="btn-notification-navbar relative p-1.5 rounded-full hover:bg-zinc-900/60 border border-transparent hover:border-zinc-800 text-zinc-400 hover:text-zinc-200 transition-all">
+        <Link to="/admin/support" className="btn-notification-navbar relative hidden sm:block p-1.5 rounded-full hover:bg-zinc-900/60 border border-transparent hover:border-zinc-800 text-zinc-400 hover:text-zinc-200 transition-all">
           <Bell className="w-4.5 h-4.5" />
           {totalAlerts > 0 && (
             <span className="absolute -top-0.5 -right-0.5 w-4 h-4 text-[9px] font-bold rounded-full flex items-center justify-center admin-notification-badge animate-bounce">
@@ -223,7 +229,7 @@ export default function AdminTopbar({ onMenuClick }: { onMenuClick?: () => void 
 
         {/* Profile Settings Dropdown */}
         <DropdownMenu>
-          <DropdownMenuTrigger className="btn-profile-trigger flex items-center gap-2 hover:bg-zinc-900/60 p-1 pr-2 rounded-full border border-transparent hover:border-zinc-800 transition-all focus:outline-none">
+          <DropdownMenuTrigger className="btn-profile-trigger flex items-center gap-2 hover:bg-zinc-900/60 p-1 sm:pr-2 rounded-full border border-transparent hover:border-zinc-800 transition-all focus:outline-none">
             {adminData?.photoURL ? (
               <img src={adminData.photoURL} alt="" className="w-7 h-7 rounded-full flex-shrink-0 border border-white/5" />
             ) : (
@@ -231,7 +237,7 @@ export default function AdminTopbar({ onMenuClick }: { onMenuClick?: () => void 
                 {adminData?.displayName?.charAt(0) || "A"}
               </div>
             )}
-            <ChevronDown className="w-3 h-3 text-zinc-500" />
+            <ChevronDown className="w-3 h-3 text-zinc-500 hidden sm:inline" />
           </DropdownMenuTrigger>
           <DropdownMenuContent className="bg-zinc-900 border-zinc-800 text-zinc-200 min-w-[200px] p-1 shadow-2xl mr-2">
             <div className="px-3 py-2 border-b border-zinc-800">

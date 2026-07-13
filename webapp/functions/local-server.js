@@ -338,8 +338,11 @@ app.use((req, res, next) => {
     bearerKey = req.headers.authorization.split("Bearer ")[1];
   }
   const providedKey = headerKey || bearerKey;
+  const cleanProvided = String(providedKey || "").trim();
+  const cleanExpected = String(GATEWAY_API_KEY || "").trim();
+  console.log("[local-server] Trimmed comparison:", JSON.stringify(cleanProvided), "vs", JSON.stringify(cleanExpected));
 
-  if (!providedKey || providedKey !== GATEWAY_API_KEY) {
+  if (!cleanProvided || cleanProvided !== cleanExpected) {
     return res.status(401).json({
       error: "Unauthorized",
       message: "Invalid or missing API key. Please check headers."
@@ -620,7 +623,11 @@ app.post("/sync-coupon", async (req, res) => {
 
     // 3. Get Dodo product map from settings/global
     const globalSnap = await db.collection("settings").doc("global").get();
-    const dodoProductsMap = globalSnap.exists ? (globalSnap.data().dodo_products || {}) : {};
+    const globalData = globalSnap.exists ? globalSnap.data() : {};
+    const isTestMode = globalData.dodo_test_mode === true;
+    const dodoProductsMap = isTestMode
+      ? (globalData.dodo_products_test || {})
+      : (globalData.dodo_products_live || globalData.dodo_products || {});
 
     // 4. Resolve Dodo API key and host
     const { dodoApiKey, dodoHost } = await resolveDodoCredentials(db);
@@ -803,7 +810,10 @@ app.post("/create-dodo-upgrade-discount", async (req, res) => {
     // 3. Look up Dodo Product ID from settings/global dodo_products mapping
     const globalDoc = await db.collection("settings").doc("global").get();
     const globalData = globalDoc.exists ? globalDoc.data() : {};
-    const dodoProductsMap = globalData.dodo_products || {};
+    const isTestMode = globalData.dodo_test_mode === true;
+    const dodoProductsMap = isTestMode
+      ? (globalData.dodo_products_test || {})
+      : (globalData.dodo_products_live || globalData.dodo_products || {});
     const productId = dodoProductsMap[region]?.[targetPlan] || null;
 
     if (!productId) {
@@ -1141,11 +1151,17 @@ app.post("/sync-dodo-prices", async (req, res) => {
     return res.status(500).json({ error: "Dodo API key not configured. Save it in Admin Settings → Dodo Live API Key or Dodo Test API Key." });
   }
 
+  const envMode = dodoHost && typeof dodoHost === "string" && dodoHost.includes("test.") ? "test" : "live";
+
   // Load product ID map from Firestore
   let dodoProductsMap = {};
   try {
     const globalDoc = await db.collection("settings").doc("global").get();
-    dodoProductsMap = globalDoc.exists ? (globalDoc.data().dodo_products || {}) : {};
+    const globalData = globalDoc.exists ? globalDoc.data() : {};
+    const isTestMode = envMode === "test";
+    dodoProductsMap = isTestMode
+      ? (globalData.dodo_products_test || {})
+      : (globalData.dodo_products_live || globalData.dodo_products || {});
   } catch (e) {
     return res.status(500).json({ error: "Failed to read settings/global: " + e.message });
   }

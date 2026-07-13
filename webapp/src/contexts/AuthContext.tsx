@@ -4,6 +4,7 @@ import { doc, getDoc, setDoc, getDocs, collection, query, where, deleteDoc, onSn
 import { auth, db } from '../firebase';
 import { indexedDbService } from '../lib/indexedDbService';
 import { useToastStore } from '../store/useToastStore';
+import { REGION_PRICING_CONFIGS, formatPrice, PLAN_PRICES, getRegionFromCountry } from '../lib/planPrices';
 
 export type PlanType = 'free' | 'recovery_pass' | 'pro' | 'super';
 export type AdminRole = 'SUPER_ADMIN' | 'ADMIN' | 'SUPPORT' | 'MODERATOR' | 'DEVELOPER';
@@ -293,7 +294,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const globalSnap = await getDoc(doc(db, "settings", "global"));
       if (globalSnap.exists()) {
         const data = globalSnap.data();
-        const stored = data.dodo_products as Record<string, Record<string, string>> | undefined;
+        const isTestMode = data.dodo_test_mode === true;
+        const stored = (isTestMode ? data.dodo_products_test : data.dodo_products_live) as Record<string, Record<string, string>> | undefined
+          || data.dodo_products as Record<string, Record<string, string>> | undefined;
         if (stored) {
           setDodoProductIds(() => {
             const merged = buildEmptyProductIds();

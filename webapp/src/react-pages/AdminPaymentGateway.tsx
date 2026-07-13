@@ -178,9 +178,14 @@ const COUPON_PLANS = ['recovery_pass', 'pro', 'super']
  * - Everything else → routes to <base>/<endpoint>
  */
 function resolveSyncUrl(endpoint: string, storedUrl: string): string {
-  // Always route through same-origin Astro proxy API endpoints to prevent CORS issues
-  // and keep API keys secure on the server side.
-  return `/api/${endpoint}`;
+  // Route through local Astro proxy endpoint in local development
+  if (import.meta.env.DEV || window.location.hostname === 'localhost') {
+    return `/api/${endpoint}`;
+  }
+  // In production (Cloudflare Pages), direct-fetch the Cloud Function since it supports CORS
+  // and static hosting has no worker backend to execute the proxy.
+  const base = (storedUrl || 'https://us-central1-takeout-fix.cloudfunctions.net/geminiToolGateway').replace(/\/$/, '');
+  return `${base}/${endpoint}`;
 }
 
 
@@ -278,6 +283,8 @@ export default function AdminPaymentGateway() {
   const [gatewayApiKey, setGatewayApiKey] = useState("")
   const [cloudFunctionUrl, setCloudFunctionUrl] = useState("")
   const [savingCfUrl, setSavingCfUrl] = useState(false)
+  const [dodoTestMode, setDodoTestMode] = useState(false)
+  const [savingTestMode, setSavingTestMode] = useState(false)
 
   // --- Theme Observer ---
   useEffect(() => {
@@ -335,7 +342,12 @@ export default function AdminPaymentGateway() {
           setActiveGateway(data.active_gateway)
           setOriginalActiveGateway(data.active_gateway)
         }
-        setDodoProducts(data.dodo_products || {})
+        const testMode = data.dodo_test_mode ?? false
+        setDodoTestMode(testMode)
+        const productsMap = testMode
+          ? (data.dodo_products_test || {})
+          : (data.dodo_products_live || data.dodo_products || {})
+        setDodoProducts(productsMap)
       }
     })
 
@@ -498,6 +510,21 @@ export default function AdminPaymentGateway() {
     }
   }
 
+  const handleToggleTestMode = async (enabled: boolean) => {
+    setSavingTestMode(true)
+    try {
+      await setDoc(doc(db, "settings", "global"), {
+        dodo_test_mode: enabled
+      }, { merge: true })
+      setDodoTestMode(enabled)
+      useToastStore.getState().addToast(`Dodo Test Mode ${enabled ? 'enabled (sandbox)' : 'disabled (live production)'}!`, "success")
+    } catch (err: any) {
+      useToastStore.getState().addToast("Failed to toggle test mode: " + err.message, "error")
+    } finally {
+      setSavingTestMode(false)
+    }
+  }
+
   const handleSaveCredential = async (def: GatewayConfig, rawVal: string) => {
     setSavingCreds(def.id)
     try {
@@ -567,10 +594,15 @@ export default function AdminPaymentGateway() {
         super_lifetime: { current: Number(superLifetimeCurrent), dodo_cfg: buildDodoCfg('super') },
       }, { merge: true })
 
-      // 2. Save active products map
-      await setDoc(doc(db, "settings", "global"), {
-        dodo_products: dodoProducts
-      }, { merge: true })
+      // 2. Save active products map depending on test mode
+      const productField = dodoTestMode ? "dodo_products_test" : "dodo_products_live"
+      const updatePayload: any = {
+        [productField]: dodoProducts
+      }
+      if (!dodoTestMode) {
+        updatePayload.dodo_products = dodoProducts
+      }
+      await setDoc(doc(db, "settings", "global"), updatePayload, { merge: true })
 
       // 3. Log admin activity
       await addDoc(collection(db, "admin_activity"), {
@@ -1170,7 +1202,7 @@ export default function AdminPaymentGateway() {
   }
 
   return (
-    <div className="space-y-8 max-w-6xl mx-auto px-4 py-8 font-sans transition-all duration-300" style={{ color: isLight ? '#1f2937' : '#f3f4f6' }}>
+    <div className="space-y-8 max-w-6xl mx-auto px-4 py-8 font-sans transition-all duration-300 w-full min-w-0" style={{ color: isLight ? '#1f2937' : '#f3f4f6' }}>
       
       {/* ── Header ── */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b pb-6" style={{ borderColor: isLight ? '#e5e7eb' : '#27272a' }}>
@@ -1237,9 +1269,9 @@ export default function AdminPaymentGateway() {
             </div>
           </div>
         ) : (
-          <div className="flex items-center gap-4 justify-between">
+          <div className="flex flex-col sm:flex-row sm:items-center gap-4 justify-between items-stretch sm:items-start">
             <div className="flex gap-3">
-              <Check className="w-5 h-5 text-emerald-500" />
+              <Check className="w-5 h-5 text-emerald-500 flex-shrink-0" />
               <div>
                 <h4 className="text-sm font-bold text-emerald-500">
                   Credentials Decrypted & Unlocked
@@ -1251,7 +1283,7 @@ export default function AdminPaymentGateway() {
             </div>
             <button
               onClick={handleMekClear}
-              className="px-4 py-1.5 rounded-lg text-xs font-bold text-white bg-red-600 hover:bg-red-500 transition-colors"
+              className="w-full sm:w-auto px-4 py-1.5 rounded-lg text-xs font-bold text-white bg-red-600 hover:bg-red-500 transition-colors text-center"
             >
               Lock Session
             </button>
@@ -1260,7 +1292,36 @@ export default function AdminPaymentGateway() {
       </div>
 
       {/* ── Navigation Tabs ── */}
-      <div className="flex border-b overflow-x-auto whitespace-nowrap scrollbar-none" style={{ borderColor: isLight ? '#e5e7eb' : '#27272a' }}>
+      {/* Mobile Select Tab Selector (Scrollable pills row) */}
+      <div className="md:hidden mb-6 overflow-x-auto whitespace-nowrap scrollbar-none pb-2 border-b" style={{ borderColor: isLight ? '#e5e7eb' : '#27272a' }}>
+        <div className="flex gap-2">
+          {[
+            { id: "providers", label: "Credentials" },
+            { id: "pricing", label: "Regional Pricing" },
+            { id: "campaigns", label: "Campaigns" },
+            { id: "coupons", label: "Coupons" }
+          ].map((t) => {
+            const isActive = activeTab === t.id
+            return (
+              <button
+                key={t.id}
+                onClick={() => setActiveTab(t.id)}
+                className="px-3.5 py-1.5 rounded-full text-xs font-bold transition-all border"
+                style={{
+                  backgroundColor: isActive ? '#6366f1' : (isLight ? '#ffffff' : '#18181b'),
+                  borderColor: isActive ? '#6366f1' : (isLight ? '#d1d5db' : '#27272a'),
+                  color: isActive ? '#ffffff' : (isLight ? '#4b5563' : '#a1a1aa')
+                }}
+              >
+                {t.label}
+              </button>
+            )
+          })}
+        </div>
+      </div>
+
+      {/* Desktop/Tablet Tab Bar */}
+      <div className="hidden md:flex border-b overflow-x-auto whitespace-nowrap scrollbar-none mb-6" style={{ borderColor: isLight ? '#e5e7eb' : '#27272a' }}>
         {[
           { id: "providers", label: "Gateway Credentials", icon: Key },
           { id: "pricing", label: "Regional Pricing & Sync", icon: DollarSign },
@@ -1291,11 +1352,11 @@ export default function AdminPaymentGateway() {
 
         {/* 1. PROVIDERS & CREDENTIALS TAB */}
         {activeTab === "providers" && (
-          <div className="grid lg:grid-cols-3 gap-8">
-            <div className="lg:col-span-2 space-y-8">
+          <div className="grid lg:grid-cols-3 gap-8 w-full min-w-0">
+            <div className="lg:col-span-2 space-y-8 w-full min-w-0">
               
               {/* Selector */}
-              <div className="p-6 rounded-2xl border" style={{ backgroundColor: isLight ? '#ffffff' : '#09090b', borderColor: isLight ? '#e5e7eb' : '#27272a' }}>
+              <div className="p-4 sm:p-6 rounded-2xl border w-full min-w-0" style={{ backgroundColor: isLight ? '#ffffff' : '#09090b', borderColor: isLight ? '#e5e7eb' : '#27272a' }}>
                 <h2 className="text-lg font-bold flex items-center gap-2" style={{ color: isLight ? '#111827' : '#ffffff' }}>
                   <Settings className="w-5 h-5 text-indigo-500" />
                   Gateway Provider Selection
@@ -1304,7 +1365,7 @@ export default function AdminPaymentGateway() {
                   Choose which merchant interface acts as the live payment gate on checkout.
                 </p>
 
-                <div className="flex flex-col sm:flex-row gap-4 items-end">
+                <div className="flex flex-col sm:flex-row gap-4 items-stretch sm:items-end">
                   <div className="flex-1 w-full">
                     <label className="text-xs font-bold block mb-2" style={{ color: isLight ? '#4b5563' : '#d1d5db' }}>
                       Select Provider
@@ -1329,7 +1390,7 @@ export default function AdminPaymentGateway() {
                   <button
                     disabled={savingGateway || activeGateway === originalActiveGateway}
                     onClick={handleSaveActiveGateway}
-                    className="h-10 px-5 rounded-lg text-xs font-bold flex items-center gap-2 hover:opacity-90 transition-opacity disabled:opacity-50"
+                    className="w-full sm:w-auto h-10 px-5 rounded-lg text-xs font-bold flex items-center justify-center gap-2 hover:opacity-90 transition-opacity disabled:opacity-50"
                     style={{
                       backgroundColor: isLight ? '#111827' : '#ffffff',
                       color: isLight ? '#ffffff' : '#000000'
@@ -1339,10 +1400,38 @@ export default function AdminPaymentGateway() {
                     Activate {activeGateway.toUpperCase()}
                   </button>
                 </div>
+
+                {activeGateway === "dodo" && (
+                  <div className="w-full pt-4 mt-4 border-t flex justify-between items-center" style={{ borderColor: isLight ? '#f3f4f6' : '#27272a' }}>
+                    <div>
+                      <label className="text-xs font-bold block" style={{ color: isLight ? '#4b5563' : '#d1d5db' }}>
+                        Dodo Sandbox / Test Mode
+                      </label>
+                      <span className="text-[10px] block mt-0.5" style={{ color: isLight ? '#6b7280' : '#a1a1aa' }}>
+                        Toggle between live payment processing and test sandbox environment.
+                      </span>
+                    </div>
+                    <button
+                      disabled={savingTestMode}
+                      onClick={() => handleToggleTestMode(!dodoTestMode)}
+                      className="flex items-center gap-1.5 focus:outline-none transition-colors hover:opacity-85"
+                      style={{ color: dodoTestMode ? '#10b981' : (isLight ? '#6b7280' : '#a1a1aa') }}
+                    >
+                      {dodoTestMode ? (
+                        <ToggleRight className="w-9 h-9" />
+                      ) : (
+                        <ToggleLeft className="w-9 h-9 text-gray-400" />
+                      )}
+                      <span className="text-xs font-bold min-w-12 select-none">
+                        {dodoTestMode ? "Active (Test)" : "Inactive (Live)"}
+                      </span>
+                    </button>
+                  </div>
+                )}
               </div>
 
               {/* Credentials Fields */}
-              <div className="p-6 rounded-2xl border" style={{ backgroundColor: isLight ? '#ffffff' : '#09090b', borderColor: isLight ? '#e5e7eb' : '#27272a' }}>
+              <div className="p-4 sm:p-6 rounded-2xl border w-full min-w-0" style={{ backgroundColor: isLight ? '#ffffff' : '#09090b', borderColor: isLight ? '#e5e7eb' : '#27272a' }}>
                 <h2 className="text-lg font-bold flex items-center gap-2" style={{ color: isLight ? '#111827' : '#ffffff' }}>
                   <Key className="w-5 h-5 text-indigo-500" />
                   API Credentials for <span className="uppercase">{activeGateway}</span>
@@ -1360,10 +1449,10 @@ export default function AdminPaymentGateway() {
                       ? (isEncrypted ? (mekKey ? decryptedVal : "") : encryptedVal)
                       : encryptedVal
                     return (
-                      <div key={def.id} className="p-4 rounded-xl border space-y-3" style={{ borderColor: isLight ? '#f3f4f6' : '#1c1c1e' }}>
-                        <div className="flex justify-between items-start">
-                          <div>
-                            <label className="text-xs font-extrabold block" style={{ color: isLight ? '#111827' : '#f3f4f6' }}>
+                      <div key={def.id} className="p-3 sm:p-4 rounded-xl border space-y-3 w-full min-w-0" style={{ borderColor: isLight ? '#f3f4f6' : '#1c1c1e' }}>
+                        <div className="flex justify-between items-start w-full min-w-0 gap-2">
+                          <div className="min-w-0 flex-1">
+                            <label className="text-xs font-extrabold block truncate" style={{ color: isLight ? '#111827' : '#f3f4f6' }}>
                               {def.label}
                             </label>
                             <span className="text-[10px] block mt-0.5" style={{ color: isLight ? '#6b7280' : '#9a9a9e' }}>
@@ -1371,7 +1460,7 @@ export default function AdminPaymentGateway() {
                             </span>
                           </div>
                           {isEncrypted && (
-                            <span className="text-[9px] font-bold px-2 py-0.5 rounded-full border"
+                            <span className="text-[9px] font-bold px-2 py-0.5 rounded-full border shrink-0"
                                   style={{
                                     backgroundColor: mekKey ? '#10b98115' : '#ef444415',
                                     borderColor: mekKey ? '#10b98130' : '#ef444430',
@@ -1382,9 +1471,9 @@ export default function AdminPaymentGateway() {
                           )}
                         </div>
 
-                        <div className="flex gap-2">
-                          <div className="relative flex-1">
-                            <div className="flex items-center rounded-lg border focus-within:ring-1 focus-within:ring-indigo-500 focus-within:border-indigo-500 transition-all overflow-hidden h-9"
+                        <div className="flex gap-2 w-full min-w-0">
+                          <div className="relative flex-1 min-w-0">
+                            <div className="flex items-center rounded-lg border focus-within:ring-1 focus-within:ring-indigo-500 focus-within:border-indigo-500 transition-all overflow-hidden h-9 w-full min-w-0"
                               style={{
                                 backgroundColor: isLight ? '#f9fafb' : '#09090b',
                                 borderColor: isLight ? '#d1d5db' : '#27272a',
@@ -1400,7 +1489,7 @@ export default function AdminPaymentGateway() {
                                 onChange={(e) => {
                                   setCredentials(prev => ({ ...prev, [def.id]: e.target.value }))
                                 }}
-                                className="flex-grow h-full px-3 border-none bg-transparent text-xs font-mono focus:outline-none disabled:opacity-60"
+                                className="w-full min-w-0 flex-grow h-full px-3 border-none bg-transparent text-xs font-mono focus:outline-none disabled:opacity-60"
                                 style={{
                                   color: isLight ? '#1f2937' : '#f3f4f6'
                                 }}
@@ -1434,8 +1523,8 @@ export default function AdminPaymentGateway() {
             </div>
 
             {/* Mappings Summary Grid */}
-            <div className="space-y-8">
-              <div className="p-6 rounded-2xl border bg-zinc-950/40 border-zinc-800" style={{ backgroundColor: isLight ? '#ffffff' : '#09090b', borderColor: isLight ? '#e5e7eb' : '#27272a' }}>
+            <div className="space-y-8 w-full min-w-0">
+              <div className="p-4 sm:p-6 rounded-2xl border bg-zinc-950/40 border-zinc-800 w-full min-w-0" style={{ backgroundColor: isLight ? '#ffffff' : '#09090b', borderColor: isLight ? '#e5e7eb' : '#27272a' }}>
                 <h2 className="text-sm font-bold flex items-center gap-2 mb-3" style={{ color: isLight ? '#111827' : '#ffffff' }}>
                   <Info className="w-4 h-4 text-indigo-400" /> Webhook Endpoints Setup
                 </h2>
@@ -1449,7 +1538,7 @@ export default function AdminPaymentGateway() {
                       value={cloudFunctionUrl}
                       onChange={(e) => setCloudFunctionUrl(e.target.value)}
                       placeholder="https://us-central1-your-project.cloudfunctions.net/geminiToolGateway"
-                      className="flex-1 px-3 py-1.5 text-xs rounded-xl bg-zinc-900/50 border border-zinc-800 focus:outline-none focus:border-indigo-500 font-mono text-[10px]"
+                      className="flex-1 w-full min-w-0 px-3 py-1.5 text-xs rounded-xl bg-zinc-900/50 border border-zinc-800 focus:outline-none focus:border-indigo-500 font-mono text-[10px]"
                       style={{
                         backgroundColor: isLight ? "#f9fafb" : "#09090b",
                         borderColor: isLight ? "#e5e7eb" : "#27272a",
@@ -1774,7 +1863,7 @@ export default function AdminPaymentGateway() {
         {activeTab === "campaigns" && (
           <Card className="bg-zinc-900/10 border-zinc-800 shadow-none md:col-span-2" style={{ borderColor: isLight ? '#e5e7eb' : '#27272a' }}>
             <CardHeader className="border-b" style={{ borderColor: isLight ? '#e5e7eb' : '#27272a' }}>
-              <div className="flex justify-between items-center">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
                   <CardTitle className="text-sm font-bold flex items-center gap-2 text-zinc-200" style={{ color: isLight ? '#1f2937' : '#ffffff' }}>
                     <Tag className="w-4 h-4 text-purple-400" /> Active Promotional Campaigns
@@ -1786,7 +1875,7 @@ export default function AdminPaymentGateway() {
                 {!showCampaignForm && (
                   <Button
                     onClick={() => { resetCampaignForm(); setShowCampaignForm(true) }}
-                    className="bg-indigo-600 hover:bg-indigo-500 text-white px-4 h-9 text-xs font-bold rounded-lg flex items-center gap-1"
+                    className="bg-indigo-600 hover:bg-indigo-500 text-white px-4 h-9 text-xs font-bold rounded-lg flex items-center justify-center gap-1 w-full sm:w-auto"
                   >
                     <Plus className="w-4 h-4" /> New Campaign
                   </Button>
@@ -2000,7 +2089,7 @@ export default function AdminPaymentGateway() {
         {activeTab === "coupons" && (
           <Card className="bg-zinc-900/10 border-zinc-800 shadow-none md:col-span-2" style={{ borderColor: isLight ? '#e5e7eb' : '#27272a' }}>
             <CardHeader className="border-b" style={{ borderColor: isLight ? '#e5e7eb' : '#27272a' }}>
-              <div className="flex justify-between items-center">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
                   <CardTitle className="text-sm font-bold flex items-center gap-2 text-zinc-200" style={{ color: isLight ? '#1f2937' : '#ffffff' }}>
                     <Gift className="w-4 h-4 text-purple-400" /> Active Coupons & Discounts
@@ -2012,7 +2101,7 @@ export default function AdminPaymentGateway() {
                 {!showCouponForm && (
                   <Button
                     onClick={() => { resetCouponForm(); setShowCouponForm(true) }}
-                    className="bg-indigo-600 hover:bg-indigo-500 text-white px-4 h-9 text-xs font-bold rounded-lg flex items-center gap-1"
+                    className="bg-indigo-600 hover:bg-indigo-500 text-white px-4 h-9 text-xs font-bold rounded-lg flex items-center justify-center gap-1 w-full sm:w-auto"
                   >
                     <Plus className="w-4 h-4" /> New Coupon
                   </Button>

@@ -41,6 +41,7 @@ export const POST: APIRoute = async ({ request }) => {
 
     const CF_BASE =
       (env as any).CLOUD_FUNCTION_URL ||
+      (import.meta.env.DEV ? import.meta.env.CLOUD_FUNCTION_URL : null) ||
       import.meta.env.CLOUD_FUNCTION_URL ||
       'https://us-central1-takeout-fix.cloudfunctions.net/geminiToolGateway';
 
