@@ -236,17 +236,17 @@ const canonicalUrl = `https://takeoutfix.pages.dev${Astro.url.pathname.replace(/
               id="hamburger-btn"
               class="lg:hidden p-1 text-white/80 hover:text-white focus:outline-none transition-colors mr-1"
             >
-              <svg id="hamburger-icon" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <svg id="hamburger-icon" class="w-5 h-5" width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16M4 18h16" />
               </svg>
-              <svg id="close-icon" class="w-5 h-5 hidden" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <svg id="close-icon" class="w-5 h-5 hidden" width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
               </svg>
             </button>
 
             <!-- Brand Logo -->
             <a href="/" class="text-[17px] font-semibold tracking-tight text-white flex items-center gap-2">
-              <svg class="w-5 h-5 md:w-6 md:h-6 flex-shrink-0" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <svg class="w-5 h-5 md:w-6 md:h-6 flex-shrink-0" width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                 <defs>
                   <linearGradient id="logo-grad-astro" x1="0%" y1="0%" x2="100%" y2="100%">
                     <stop offset="0%" stop-color="#6366f1" />
@@ -286,11 +286,11 @@ const canonicalUrl = `https://takeoutfix.pages.dev${Astro.url.pathname.replace(/
               title="Toggle Theme"
             >
               <!-- Sun Icon -->
-              <svg id="theme-sun-icon" class="w-4 h-4 hidden" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <svg id="theme-sun-icon" class="w-4 h-4 hidden" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364-6.364l-.707.707M6.343 17.657l-.707.707m0-12.728l.707.707m12.728 12.728l.707-.707M12 8a4 4 0 100 8 4 4 0 000-8z" />
               </svg>
               <!-- Moon Icon -->
-              <svg id="theme-moon-icon" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <svg id="theme-moon-icon" class="w-4 h-4" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
               </svg>
             </button>
@@ -301,7 +301,7 @@ const canonicalUrl = `https://takeoutfix.pages.dev${Astro.url.pathname.replace(/
                 id="notification-btn"
                 class="btn-notification-navbar relative p-2 rounded-full bg-zinc-900 border border-zinc-800 hover:bg-zinc-800 hover:scale-[1.02] focus:outline-none transition-all flex items-center justify-center"
               >
-                <svg class="w-4 h-4 text-white/80" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <svg class="w-4 h-4 text-white/80" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                   <path stroke-linecap="round" stroke-linejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
                 </svg>
                 <span id="notification-badge" class="absolute -top-1 -right-1 w-4 h-4 bg-red-500 rounded-full flex items-center justify-center text-[9px] font-bold text-white animate-pulse hidden">0</span>
@@ -400,10 +400,10 @@ const canonicalUrl = `https://takeoutfix.pages.dev${Astro.url.pathname.replace(/
               id="mobile-theme-toggle-btn"
               class="flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/[0.04] border border-white/10 hover:bg-white/[0.08] text-xs font-semibold text-white/80 transition-all"
             >
-              <svg class="theme-moon-svg w-3.5 h-3.5 text-zinc-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <svg class="theme-moon-svg w-3.5 h-3.5 text-zinc-400" width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
               </svg>
-              <svg class="theme-sun-svg w-3.5 h-3.5 text-amber-400 hidden" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <svg class="theme-sun-svg w-3.5 h-3.5 text-amber-400 hidden" width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364-6.364l-.707.707M6.343 17.657l-.707.707m0-12.728l.707.707m12.728 12.728l.707-.707M12 8a4 4 0 100 8 4 4 0 000-8z" />
               </svg>
               <span id="mobile-theme-text">Dark Mode</span>
@@ -411,14 +411,14 @@ const canonicalUrl = `https://takeoutfix.pages.dev${Astro.url.pathname.replace(/
           </div>
         </div>
       </nav>
-
+ 
       <!-- MAIN CONTENT OUTLET -->
       <main class="flex-1 pt-16">
         <div class="animate-page h-full">
           <slot />
         </div>
       </main>
-
+ 
       <!-- FOOTER — hidden on tool page since it's a full-screen app -->
       { !isToolPage && <footer class="w-full border-t border-white/5 bg-black/40 backdrop-blur-md mt-auto py-16">
           <div class="max-w-7xl mx-auto px-6">
@@ -427,7 +427,7 @@ const canonicalUrl = `https://takeoutfix.pages.dev${Astro.url.pathname.replace(/
               <!-- Column 1: Brand & Trademark Disclaimer -->
               <div class="space-y-4">
                 <div class="flex items-center gap-2 text-white font-bold text-base">
-                  <svg class="w-5 h-5 flex-shrink-0" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <svg class="w-5 h-5 flex-shrink-0" width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                     <defs>
                       <linearGradient id="footer-logo-grad" x1="0%" y1="0%" x2="100%" y2="100%">
                         <stop offset="0%" stop-color="#ffffff" />
@@ -539,7 +539,7 @@ const canonicalUrl = `https://takeoutfix.pages.dev${Astro.url.pathname.replace(/
             class="w-7 h-7 flex items-center justify-center text-zinc-500 hover:text-white hover:bg-white/5 rounded-full transition-all"
             aria-label="Dismiss banner"
           >
-            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <svg class="w-4 h-4" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
               <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
             </svg>
           </button>
