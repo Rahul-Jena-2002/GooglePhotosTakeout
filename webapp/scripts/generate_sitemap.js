@@ -15,6 +15,11 @@ const corePages = [
   { loc: "/pricing",                      changefreq: "monthly", priority: "0.8" },
   { loc: "/reviews",                      changefreq: "weekly",  priority: "0.7" },
   { loc: "/support",                      changefreq: "monthly", priority: "0.6" },
+  { loc: "/privacy",                      changefreq: "monthly", priority: "0.3" },
+  { loc: "/terms",                        changefreq: "monthly", priority: "0.3" },
+  { loc: "/refund",                       changefreq: "monthly", priority: "0.3" },
+  { loc: "/tool",                         changefreq: "monthly", priority: "0.9" },
+  { loc: "/download",                     changefreq: "monthly", priority: "0.8" },
   // ─── Keyword landing pages ────────────────────────────────────────────────
   { loc: "/takeout-fix",                  changefreq: "monthly", priority: "0.9" },
   { loc: "/takeout-fixer",                changefreq: "monthly", priority: "0.9" },
@@ -61,6 +66,7 @@ for (const action of actionKeys) {
 mainXml += `</urlset>\n`;
 
 const sitemapPath = path.resolve('public/sitemap.xml');
+fs.mkdirSync(path.dirname(sitemapPath), { recursive: true });
 fs.writeFileSync(sitemapPath, mainXml, 'utf8');
 
 const totalUrls = corePages.length + dynamicCount;
