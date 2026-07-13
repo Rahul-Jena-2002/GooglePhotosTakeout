@@ -65,11 +65,13 @@ async function verifyDodoSignature(
   for (const sig of signatures) {
     const parts = sig.split(",");
     if (parts.length === 2 && parts[0] === "v1") {
-      const signatureHashHex = parts[1];
-      // Convert hex signature to Uint8Array
-      const signatureBuffer = new Uint8Array(
-        signatureHashHex.match(/.{1,2}/g)!.map((byte) => parseInt(byte, 16))
-      );
+      const signatureHashBase64 = parts[1];
+      // Dodo (Standard Webhooks spec) sends the signature as base64, not hex
+      const binarySignature = atob(signatureHashBase64);
+      const signatureBuffer = new Uint8Array(binarySignature.length);
+      for (let i = 0; i < binarySignature.length; i++) {
+        signatureBuffer[i] = binarySignature.charCodeAt(i);
+      }
       const isValid = await crypto.subtle.verify(
         "HMAC",
         key,
