@@ -9,17 +9,19 @@ service cloud.firestore {
       ];
     }
 
+    function isAdmin() {
+      return request.auth != null && (
+        isSuperAdminEmail() ||
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid))
+      );
+    }
+
     function getAdminDoc() {
       return get(/databases/$(database)/documents/admins/$(request.auth.uid));
     }
 
-    function isAdmin() {
-      return isSuperAdminEmail() ||
-        (request.auth != null && exists(/databases/$(database)/documents/admins/$(request.auth.uid)));
-    }
-
     function getRole() {
-      return isSuperAdminEmail() ? 'SUPER_ADMIN' : getAdminDoc().data.role;
+      return isSuperAdminEmail() ? 'SUPER_ADMIN' : (isAdmin() ? getAdminDoc().data.role : 'USER');
     }
 
     function isSuperAdmin() {
