@@ -178,36 +178,9 @@ const COUPON_PLANS = ['recovery_pass', 'pro', 'super']
  * - Everything else → routes to <base>/<endpoint>
  */
 function resolveSyncUrl(endpoint: string, storedUrl: string): string {
-  if (!storedUrl || !storedUrl.trim()) {
-    throw new Error(
-      'No backend URL configured. Go to Payment Gateway → Settings tab → Cloud Function URL and enter your Cloudflare Worker / backend URL.'
-    )
-  }
-
-  let base = storedUrl.trim()
-
-  // Strip trailing webhook/api path suffixes that users accidentally paste
-  const trailingPaths = ['/api/dodo-webhook', '/dodo-webhook', '/api']
-  for (const suffix of trailingPaths) {
-    if (base.endsWith(suffix)) {
-      base = base.slice(0, -suffix.length)
-      break
-    }
-  }
-  if (base.endsWith('/')) base = base.slice(0, -1)
-
-  // Cloudflare Pages deployments or localhost dev servers using Astro API route
-  const isAstroBackend =
-    base.includes('pages.dev') ||
-    base.includes('takeoutfix.') ||
-    base.includes('localhost') ||
-    base.includes('127.0.0.1')
-  if (isAstroBackend) {
-    return `${base}/api/${endpoint}`
-  }
-
-  // Cloudflare Workers or any other backend — call the endpoint directly
-  return `${base}/${endpoint}`
+  // Always route through same-origin Astro proxy API endpoints to prevent CORS issues
+  // and keep API keys secure on the server side.
+  return `/api/${endpoint}`;
 }
 
 

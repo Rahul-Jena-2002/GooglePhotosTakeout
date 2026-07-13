@@ -205,7 +205,7 @@ async function run() {
     process.exit(1);
   }
 
-  const isTest = dodoApiKey.startsWith("sk_test_") || dodoApiKey.startsWith("test_");
+  const isTest = !dodoApiKey.startsWith("sk_live_") && !dodoApiKey.startsWith("live_");
   console.log(`🌐 Target Dodo Environment: ${isTest ? "TEST (test.dodopayments.com)" : "LIVE (live.dodopayments.com)"}\n`);
 
   const activeProducts = {};
@@ -292,24 +292,26 @@ async function run() {
     // Attempt Admin SDK first if configured, otherwise fallback to REST CLI
     let adminWritten = false;
     try {
-      const admin = await import('firebase-admin');
+            const { initializeApp, cert, getApps } = await import('firebase-admin/app');
+      const { getFirestore } = await import('firebase-admin/firestore');
+      
       let serviceAccountPath = process.env.GOOGLE_APPLICATION_CREDENTIALS;
       if (!serviceAccountPath && fs.existsSync('./service-account.json')) {
         serviceAccountPath = './service-account.json';
       }
 
       if (serviceAccountPath || process.env.FIREBASE_CONFIG || process.env.FIRESTORE_EMULATOR_HOST) {
-        if (admin.apps.length === 0) {
+        if (getApps().length === 0) {
           if (serviceAccountPath) {
             const serviceAccount = JSON.parse(fs.readFileSync(serviceAccountPath, 'utf8'));
-            admin.initializeApp({
-              credential: admin.credential.cert(serviceAccount)
+            initializeApp({
+              credential: cert(serviceAccount)
             });
           } else {
-            admin.initializeApp();
+            initializeApp();
           }
         }
-        const db = admin.firestore();
+        const db = getFirestore();
         await db.collection("settings").doc("global").set({
           dodo_products: activeProducts,
           dodo_products_full: fullProducts

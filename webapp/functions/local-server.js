@@ -319,8 +319,16 @@ const verifyDodoWebhook = (req, webhookSecret) => {
 };
 
 app.use((req, res, next) => {
-  // Allow Dodo webhook bypass API key check
-  if (req.path === "/dodo-webhook") {
+  // Allow specific paths to bypass API key check
+  const bypassPaths = [
+    "/dodo-webhook",
+    "/create-dodo-upgrade-discount",
+    "/create-stripe-session"
+  ];
+  
+  // Robust path parsing: extract path part, remove query parameters, convert to lowercase, and ignore trailing slash
+  const parsedPath = (req.path || "").split("?")[0].toLowerCase().replace(/\/$/, "");
+  if (bypassPaths.includes(parsedPath)) {
     return next();
   }
 
@@ -339,6 +347,7 @@ app.use((req, res, next) => {
   }
   next();
 });
+
 
 // Helper functions
 const findUser = async (identifier) => {

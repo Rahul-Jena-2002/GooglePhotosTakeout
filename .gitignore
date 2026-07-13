@@ -47,3 +47,15 @@ node/
 metadata_not_found/
 dist/
 webapp_svelte_backup/node_modules/
+
+# Secrets & credentials
+serviceAccountKey.json
+service-account.json
+.env
+
+# Agent tracking files
+.agents/
+..agents/
+PROJECT.md
+VERIFICATION.md
+server.log

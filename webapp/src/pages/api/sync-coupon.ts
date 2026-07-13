@@ -1,9 +1,9 @@
 export const prerender = false;
 import type { APIRoute } from 'astro';
 
+import { env } from 'cloudflare:workers';
+
 type JsonRecord = Record<string, unknown>;
-type RuntimeEnv = Record<string, string | undefined>;
-type RuntimeLocals = { runtime?: { env?: RuntimeEnv } };
 
 function json(status: number, data: JsonRecord): Response {
   return new Response(JSON.stringify(data), {
@@ -26,7 +26,7 @@ export const OPTIONS: APIRoute = async () => {
   });
 };
 
-export const POST: APIRoute = async ({ request, locals }) => {
+export const POST: APIRoute = async ({ request }) => {
   try {
     const raw = await request.text();
     let payload: JsonRecord = {};
@@ -39,17 +39,13 @@ export const POST: APIRoute = async ({ request, locals }) => {
       return json(400, { error: 'Invalid JSON body' });
     }
 
-    const runtimeEnv: RuntimeEnv =
-      (locals as unknown as RuntimeLocals)?.runtime?.env ||
-      ({} as RuntimeEnv);
-
     const CF_BASE =
-      runtimeEnv.CLOUD_FUNCTION_URL ||
+      (env as any).CLOUD_FUNCTION_URL ||
       import.meta.env.CLOUD_FUNCTION_URL ||
       'https://us-central1-takeout-fix.cloudfunctions.net/geminiToolGateway';
 
     const GATEWAY_API_KEY =
-      runtimeEnv.GATEWAY_API_KEY ||
+      (env as any).GATEWAY_API_KEY ||
       import.meta.env.GATEWAY_API_KEY ||
       '';
 

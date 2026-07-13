@@ -1,6 +1,7 @@
 export const prerender = false;
 import type { APIRoute } from 'astro';
 import nodeCrypto from 'node:crypto';
+import { env } from 'cloudflare:workers';
 
 // Decrypt sensitive keys stored in Firestore using AES-256-GCM
 function decryptFirestoreValue(val: string, mek: string): string {
@@ -151,16 +152,15 @@ async function getGoogleAuthToken(serviceAccount: any): Promise<string> {
   return data.access_token;
 }
 
-export const POST: APIRoute = async ({ request, locals }) => {
+export const POST: APIRoute = async ({ request }) => {
   try {
     const rawBody = await request.text();
     const payload = JSON.parse(rawBody);
 
     // Retrieve environment variables from Cloudflare context
-    const runtimeEnv = (locals as any)?.runtime?.env || {};
-    let dodoWebhookSecret = runtimeEnv.DODO_WEBHOOK_KEY || import.meta.env.DODO_WEBHOOK_KEY;
-    const serviceAccountStr = runtimeEnv.FIREBASE_SERVICE_ACCOUNT || import.meta.env.FIREBASE_SERVICE_ACCOUNT;
-    const encryptionKey = runtimeEnv.ENCRYPTION_KEY || import.meta.env.ENCRYPTION_KEY || "92elPvQ63jp_SXOmGbLyOgvfcGHVP-GfDbbiyLV4rpw";
+    let dodoWebhookSecret = (env as any).DODO_WEBHOOK_KEY || import.meta.env.DODO_WEBHOOK_KEY;
+    const serviceAccountStr = (env as any).FIREBASE_SERVICE_ACCOUNT || import.meta.env.FIREBASE_SERVICE_ACCOUNT;
+    const encryptionKey = (env as any).ENCRYPTION_KEY || import.meta.env.ENCRYPTION_KEY || "92elPvQ63jp_SXOmGbLyOgvfcGHVP-GfDbbiyLV4rpw";
 
     if (!serviceAccountStr) {
       console.error("Missing FIREBASE_SERVICE_ACCOUNT environment variable.");

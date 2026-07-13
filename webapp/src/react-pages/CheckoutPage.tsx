@@ -10,28 +10,8 @@ import BrandLogo from "../components/BrandLogo"
 import { useState, useEffect } from "react"
 
 function resolveBackendUrl(endpoint: string, storedUrl: string): string {
-  const fallback = "https://us-central1-takeout-fix.cloudfunctions.net/geminiToolGateway";
-  let base = (storedUrl || fallback).trim();
-  
-  const trailingPaths = ['/api/dodo-webhook', '/dodo-webhook', '/api'];
-  for (const suffix of trailingPaths) {
-    if (base.endsWith(suffix)) {
-      base = base.slice(0, -suffix.length);
-      break;
-    }
-  }
-  if (base.endsWith('/')) base = base.slice(0, -1);
-
-  const isAstroBackend =
-    base.includes('pages.dev') ||
-    base.includes('takeoutfix.') ||
-    base.includes('localhost') ||
-    base.includes('127.0.0.1');
-
-  if (isAstroBackend) {
-    return `${base}/api/${endpoint}`;
-  }
-  return `${base}/${endpoint}`;
+  // Always route through same-origin Astro proxy API endpoints to prevent CORS issues
+  return `/api/${endpoint}`;
 }
 
 interface PlanDetails {
@@ -173,10 +153,7 @@ function CheckoutPageContent() {
         try {
           const idToken = await user.getIdToken();
           const cfUrl = resolveBackendUrl("create-dodo-upgrade-discount", cloudFunctionUrl);
-          let finalUrl = cfUrl;
-          if (typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') && !cloudFunctionUrl) {
-            finalUrl = 'http://localhost:3001/create-dodo-upgrade-discount';
-          }
+          const finalUrl = cfUrl;
           
           const response = await fetch(finalUrl, {
             method: "POST",
@@ -438,10 +415,7 @@ function CheckoutPageContent() {
       } else {
         try {
           const cfUrl = resolveBackendUrl("create-stripe-session", cloudFunctionUrl);
-          let finalUrl = cfUrl;
-          if (typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') && !cloudFunctionUrl) {
-            finalUrl = 'http://localhost:3001/create-stripe-session';
-          }
+          const finalUrl = cfUrl;
           const response = await fetch(finalUrl, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
