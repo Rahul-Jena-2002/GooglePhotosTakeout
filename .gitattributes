@@ -1,0 +1,10 @@
+# Force LF line endings for configurations, scripts, and source files to prevent Windows/Fedora line ending conflicts
+*_redirects text eol=lf
+*.env* text eol=lf
+*.js text eol=lf
+*.ts text eol=lf
+*.tsx text eol=lf
+*.astro text eol=lf
+*.json text eol=lf
+*.rules text eol=lf
+*.md text eol=lf
