@@ -184,7 +184,14 @@ function resolveSyncUrl(endpoint: string, storedUrl: string): string {
   }
   // In production (Cloudflare Pages), direct-fetch the Cloud Function since it supports CORS
   // and static hosting has no worker backend to execute the proxy.
-  const base = (storedUrl || 'https://us-central1-takeout-fix.cloudfunctions.net/geminiToolGateway').replace(/\/$/, '');
+  let base = (storedUrl || 'https://us-central1-takeout-fix.cloudfunctions.net/geminiToolGateway').replace(/\/$/, '');
+  
+  // Strip any accidental webhook or pricing sync endpoint suffixes the user may have pasted
+  base = base.replace(/\/dodo-webhook$/, '')
+             .replace(/\/sync-dodo-prices$/, '')
+             .replace(/\/sync-coupon$/, '')
+             .replace(/\/$/, '');
+
   return `${base}/${endpoint}`;
 }
 
