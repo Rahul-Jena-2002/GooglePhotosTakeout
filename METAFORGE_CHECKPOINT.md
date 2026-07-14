@@ -1,10 +1,10 @@
-# METAFORGE WORKSPACE CHECKPOINT
+# METAFORGE WORKSPACE CHECKPOINT & HISTORY
 
-This file serves as a handoff checkpoint to align both Windows and Linux (Fedora) Antigravity AI agents on the status and resolution of the deployment and routing architecture.
+This file serves as a cumulative handoff checkpoint to align both Windows and Linux (Fedora) Antigravity AI agents on the status and historical progress of the TakeoutFix workspace.
 
 ---
 
-## 🚀 Status Summary
+## 🚀 Status Summary (Recent Session: July 14, 2026)
 
 We have migrated the Astro project from SSR/Server mode to **Static Output mode**, pre-rendering all pages (like `/pricing`, `/restore-data`, etc.) to static files. We have also resolved layout bugs, database rules crashes, and Cloudflare Pages compatibility issues on Windows and Linux.
 
@@ -35,7 +35,7 @@ All modifications are successfully committed and pushed to `main`.
 
 ---
 
-## 🛠️ Key Improvements & Fixes
+## 🛠️ Key Improvements & Fixes (July 14, 2026)
 
 ### 1. Astro Configuration Update (`output: 'static'`)
 * **File**: `webapp/astro.config.mjs`
@@ -65,6 +65,74 @@ All modifications are successfully committed and pushed to `main`.
 * **Files**: `webapp/package.json`, `webapp/scripts/append_spa_rewrite.js` (NEW)
 * **Change**: Replaced inline backslash-escaped Node commands (`node -e ...`) in the package.json build script with a clean execution of `append_spa_rewrite.js`.
 * **Why**: Escaping double quotes inside package.json scripts works on Windows CMD/PowerShell but throws shell syntax parsing errors on Linux bash (which Cloudflare Pages runs), causing deployment builds to crash on upload.
+
+---
+
+## 📜 Historical Session Summary (June 19, 2026 Overhaul)
+
+### Security & Encryption (Area A)
+
+#### A.1 Browser-Side AES-256-GCM Utilities
+- Created `/webapp/src/lib/crypto.ts` with Web Crypto API implementation
+- Functions: `deriveKeyFromPassword()`, `encrypt()`, `decrypt()`
+- Prefix: `enc:v1:` identifies encrypted values
+- Uses PBKDF2 (100k iterations) + AES-256-GCM
+
+#### A.2 Master Encryption Key (MEK) Session Management
+- Integrated MEK input banner in AdminKeys.tsx
+- Admin enters 32-byte hex MEK once per session
+- MEK stored in React state only (never localStorage/Firestore)
+- Sensitive fields:
+  - Show as locked (🔒) without MEK
+  - Decrypt and become editable with MEK
+  - Re-encrypt before saving
+- Supported fields: Gateway API Key, Dodo Live/Test API Keys, Dodo Webhook Secret, Gemini API Key
+
+#### A.3 Node.js Crypto Helper
+- Created `/webapp/functions/lib/crypto.js`
+- Uses Node.js `crypto` module for AES-256-GCM
+- Ready for integration in Cloud Functions (local-server.js, index.js)
+
+#### A.4 Hardcoded Secrets Cleanup
+- Updated `setup_dodo_products.js` to use `FIREBASE_OAUTH_CLIENT_ID`/`FIREBASE_OAUTH_CLIENT_SECRET` env vars
+- Scripts already configured for env vars:
+  - `submit_indexnow.js` - uses INDEXNOW_KEY, SITE_URL
+  - `trigger_dodo_webhook.js` - uses Firebase config env vars
+
+#### A.5 Key Management Documentation
+- Created `/webapp/docs/KEYS.md` (comprehensive reference)
+- Contents:
+  - Classification of all 19 keys (sensitive vs. plaintext)
+  - Encryption procedures & MEK generation
+  - Setup instructions & environment variables
+  - Firestore structure & security rules
+  - Key rotation & troubleshooting
+
+### Routing Fix (Area B)
+
+#### B.1 Admin Keys 404 Bug Fix
+- Fixed `/admin/keys` route returning 404 in production
+- Added `{ params: { all: 'keys' } }` to `getStaticPaths()` in `[admin/[...all].astro]
+- Now pre-renders `/admin/keys/index.html` during build
+
+### Performance Optimization (Area C)
+
+#### C.1 Firebase Firestore Lazy-Loading
+- Modified `/webapp/src/firebase.ts` to defer Firestore module loading
+- `getDb()` function handles lazy initialization
+- Functions using Firestore (`initUser`, `addCloudUsage`, `logExtractionEvent`) use dynamic imports
+- Backward-compatible export: `db` lazily initialized
+- **Expected savings:** ~120 KB gzip on landing page
+
+#### C.4 AdminRouter Code-Splitting
+- Implemented `React.lazy()` + `Suspense` for all admin routes
+- Lazy-loaded components:
+  - AdminDashboard, AdminUsers, AdminUserDashboard, AdminSupport
+  - AdminReviews, AdminTeam, AdminRevenue, AdminSettings
+  - AdminStatistics, AdminAudit, AdminKeys
+- LoadingFallback component for consistent UX
+- **Expected savings:** ~150 KB gzip on landing page bundle
+- Admin routes now load on-demand
 
 ---
 
