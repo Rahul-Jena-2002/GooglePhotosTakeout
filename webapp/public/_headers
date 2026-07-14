@@ -1,5 +1,5 @@
 /*
-  Cache-Control: public, max-age=3600, s-maxage=86400, stale-while-revalidate=604800
+  Cache-Control: no-cache, no-store, must-revalidate
   X-Content-Type-Options: nosniff
   X-Frame-Options: DENY
   Referrer-Policy: strict-origin-when-cross-origin
@@ -9,37 +9,37 @@
   X-XSS-Protection: 1; mode=block
 
 /*.html
-  Cache-Control: public, max-age=0, s-maxage=86400, stale-while-revalidate=604800
+  Cache-Control: no-cache, no-store, must-revalidate
 
 /
-  Cache-Control: public, max-age=0, s-maxage=86400, stale-while-revalidate=604800
+  Cache-Control: no-cache, no-store, must-revalidate
 
 /takeout-fix
-  Cache-Control: public, max-age=0, s-maxage=86400, stale-while-revalidate=604800
+  Cache-Control: no-cache, no-store, must-revalidate
 
 /takeout-fixer
-  Cache-Control: public, max-age=0, s-maxage=86400, stale-while-revalidate=604800
+  Cache-Control: no-cache, no-store, must-revalidate
 
 /metadata-fixer
-  Cache-Control: public, max-age=0, s-maxage=86400, stale-while-revalidate=604800
+  Cache-Control: no-cache, no-store, must-revalidate
 
 /google-photos-metadata-fix
-  Cache-Control: public, max-age=0, s-maxage=86400, stale-while-revalidate=604800
+  Cache-Control: no-cache, no-store, must-revalidate
 
 /google-takeout-merger
-  Cache-Control: public, max-age=0, s-maxage=86400, stale-while-revalidate=604800
+  Cache-Control: no-cache, no-store, must-revalidate
 
 /restore-data
-  Cache-Control: public, max-age=0, s-maxage=86400, stale-while-revalidate=604800
+  Cache-Control: no-cache, no-store, must-revalidate
 
 /pricing
-  Cache-Control: public, max-age=0, s-maxage=86400, stale-while-revalidate=604800
+  Cache-Control: no-cache, no-store, must-revalidate
 
 /reviews
-  Cache-Control: public, max-age=0, s-maxage=86400, stale-while-revalidate=604800
+  Cache-Control: no-cache, no-store, must-revalidate
 
 /how-to-*
-  Cache-Control: public, max-age=0, s-maxage=86400, stale-while-revalidate=604800
+  Cache-Control: no-cache, no-store, must-revalidate
 
 /*.js
   Cache-Control: public, max-age=31536000, immutable
