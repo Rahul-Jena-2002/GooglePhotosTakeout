@@ -12,6 +12,29 @@ All modifications are successfully committed and pushed to `main`.
 
 ---
 
+## 💻 Platform-Specific Issues & Workarounds
+
+### 🔴 Windows Issues
+1. **Wrangler `node_modules` Compilation Crash**: 
+   * **Why**: Wrangler Pages Dev's file watcher and ignore engine fails to ignore `webapp/functions/node_modules` due to path backslashes (`\`). It attempts to compile TypeScript declaration files inside `ci-info` and fails.
+   * **Workaround**: Rename or move the `webapp/functions` folder temporarily when running local Wrangler audits on Windows, or rely on Fedora for local Wrangler server route checks.
+2. **Process Port Leaking (Port 4321)**:
+   * **Why**: Spawning node commands leaves background server wrapper processes running when terminated via basic process signals on Windows.
+   * **Workaround**: We integrated process tree termination (`taskkill /F /T`) inside `check_all_routes.js` to clean up the port on exit.
+3. **PowerShell Script Execution Restrictions**:
+   * **Why**: Windows restricts script runs (e.g. blocking direct `.ps1` executions of `firebase`).
+   * **Workaround**: Always run Firebase CLI commands prepended with `npx` inside a CMD context (e.g., `cmd /c "npx firebase deploy"`).
+
+### 🔵 Fedora (Linux) Issues
+1. **Strict Case-Sensitive File Loading**:
+   * **Why**: Linux filesystems are strictly case-sensitive. Windows-created imports (like `import "./layouts/layout.astro"` referencing `Layout.astro` uppercase) will crash during compilation on Fedora.
+   * **Workaround**: Always keep all import casings identical to file name casing.
+2. **CRLF Line Ending Corruptions**:
+   * **Why**: Saving configuration files on Windows can inject CRLF (`\r\n`) line endings. When built on Linux/Fedora, files like `_redirects` or `.env` fail to parse properly, causing live routing mismatches (returning `404`).
+   * **Workaround**: Ensure your editor saves files using LF (`\n`). Git staging is now configured to automatically normalize file line-endings to LF.
+
+---
+
 ## 🛠️ Key Improvements & Fixes
 
 ### 1. Astro Configuration Update (`output: 'static'`)
@@ -37,10 +60,6 @@ All modifications are successfully committed and pushed to `main`.
 ### 5. Automated Route Audit Tool
 * **File**: `webapp/scripts/check_all_routes.js`
 * **Change**: Added a comprehensive node checker that builds the project, runs Wrangler dev server, and fetches all 65 paths (sitemap + 17 admin routes) to verify they return `200 OK` and contain valid HTML.
-* **Compatibility Notes**: 
-  - To prevent background node process leaks on Windows, it uses `taskkill /F /T`.
-  - On Windows, it handles Wrangler's Clean URL emulation (`200 OK` for redirect pages).
-  - **Linux vs Windows Caveat**: On Windows, Wrangler fails to ignore `webapp/functions` due to path backslashes (`\` vs `/`), trying to compile Firebase Functions dependencies. On Linux, it works perfectly because the path matches `**/node_modules/**` ignore patterns.
 
 ### 6. Linux/Cloudflare Build Fix
 * **Files**: `webapp/package.json`, `webapp/scripts/append_spa_rewrite.js` (NEW)
