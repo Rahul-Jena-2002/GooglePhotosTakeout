@@ -12,29 +12,31 @@ export const detectAndStoreCountry = async () => {
     }
   }
 
-  try {
-    const res = await fetch("/cdn-cgi/trace");
-    if (res.ok) {
-      const text = await res.text();
-      const lines = text.split("\n");
-      for (const line of lines) {
-        const parts = line.split("=");
-        if (parts[0] === "loc" && parts[1]) {
-          countryCode = parts[1].trim().toUpperCase();
-          break;
+  if (!isLocalhost) {
+    try {
+      const res = await fetch("/cdn-cgi/trace");
+      if (res.ok) {
+        const text = await res.text();
+        const lines = text.split("\n");
+        for (const line of lines) {
+          const parts = line.split("=");
+          if (parts[0] === "loc" && parts[1]) {
+            countryCode = parts[1].trim().toUpperCase();
+            break;
+          }
         }
       }
-    }
-  } catch (e) {}
-
-  if (!countryCode) {
-    try {
-      const res = await fetch("https://freeipapi.com/api/json");
-      if (res.ok) {
-        const data = await res.json();
-        countryCode = data.countryCode || "";
-      }
     } catch (e) {}
+
+    if (!countryCode) {
+      try {
+        const res = await fetch("https://freeipapi.com/api/json");
+        if (res.ok) {
+          const data = await res.json();
+          countryCode = data.countryCode || "";
+        }
+      } catch (e) {}
+    }
   }
 
   if (!countryCode) {

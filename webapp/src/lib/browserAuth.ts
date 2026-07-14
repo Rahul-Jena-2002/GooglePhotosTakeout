@@ -27,6 +27,9 @@ export const syncUserUI = () => {
   const mobileAdminLink = document.getElementById("mobile-admin-link");
   
   const notificationContainer = document.getElementById("notification-container");
+  const desktopMarketingLinks = document.getElementById("desktop-marketing-links");
+  const hamburgerBtn = document.getElementById("hamburger-btn");
+  const mobileMenu = document.getElementById("mobile-menu");
 
   const cachedUserStr = localStorage.getItem("takeoutfix_user_data");
   if (cachedUserStr) {
@@ -39,6 +42,15 @@ export const syncUserUI = () => {
       mobileAuthSection?.classList.remove("hidden");
       notificationContainer?.classList.remove("hidden");
       authLoading?.classList.add("hidden");
+      
+      desktopMarketingLinks?.classList.add("xl:flex", "lg:hidden");
+      desktopMarketingLinks?.classList.remove("lg:flex");
+      
+      hamburgerBtn?.classList.add("xl:hidden");
+      hamburgerBtn?.classList.remove("lg:hidden");
+      
+      mobileMenu?.classList.add("xl:hidden");
+      mobileMenu?.classList.remove("lg:hidden");
       
       if (profileNameSpan) profileNameSpan.innerText = `Hi, ${firstName}`;
       if (profileAvatarCircle) {
@@ -92,6 +104,15 @@ export const syncUserUI = () => {
     mobileAuthSection?.classList.add("hidden");
     notificationContainer?.classList.add("hidden");
     authLoading?.classList.add("hidden");
+    
+    desktopMarketingLinks?.classList.add("lg:flex");
+    desktopMarketingLinks?.classList.remove("xl:flex", "lg:hidden");
+    
+    hamburgerBtn?.classList.add("lg:hidden");
+    hamburgerBtn?.classList.remove("xl:hidden");
+    
+    mobileMenu?.classList.add("lg:hidden");
+    mobileMenu?.classList.remove("xl:hidden");
   }
 };
 

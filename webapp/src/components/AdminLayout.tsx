@@ -264,7 +264,7 @@ export default function AdminLayout() {
             </div>
           </div>
         ) : (
-          <div className="flex-grow max-w-7xl w-full mx-auto p-8 overflow-hidden">
+          <div className="flex-grow max-w-7xl w-full mx-auto p-4 sm:p-6 md:p-8 overflow-x-auto">
             <div key={location.pathname} className="animate-page h-full">
               <Outlet />
             </div>

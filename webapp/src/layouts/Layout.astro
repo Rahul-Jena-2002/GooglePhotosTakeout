@@ -66,6 +66,32 @@ const canonicalUrl = `https://takeoutfix.pages.dev${Astro.url.pathname.replace(/
         }
       })();
     </script>
+
+    <!-- Global Asset Error Handler: Auto-reload page when dynamic chunk/asset loads fail due to new deployments -->
+    <script is:inline>
+      window.addEventListener('error', (e) => {
+        if (e.target && (e.target.tagName === 'SCRIPT' || e.target.tagName === 'LINK')) {
+          const src = e.target.src || e.target.href;
+          if (src && src.includes('/_astro/')) {
+            console.warn('Dynamic asset load failed, reloading page:', src);
+            window.location.reload();
+          }
+        }
+      }, true);
+
+      window.addEventListener('unhandledrejection', (e) => {
+        if (e.reason && (
+          (e.reason.message && e.reason.message.includes('Failed to fetch dynamically imported module')) ||
+          e.reason.name === 'TypeError'
+        )) {
+          const isAstroChunk = e.reason.stack && e.reason.stack.includes('/_astro/');
+          if (isAstroChunk || (e.reason.message && e.reason.message.includes('/_astro/'))) {
+            console.warn('Failed to fetch Astro module, reloading:', e.reason);
+            window.location.reload();
+          }
+        }
+      });
+    </script>
     
     <!-- Google AdSense Account Setup -->
     <meta name="google-adsense-account" content="ca-pub-7628736172233995">
@@ -268,7 +294,7 @@ const canonicalUrl = `https://takeoutfix.pages.dev${Astro.url.pathname.replace(/
             </a>
 
             <!-- Desktop Links -->
-            <div class="hidden lg:flex gap-4 text-sm font-medium ml-4 font-sans items-center">
+            <div id="desktop-marketing-links" class="hidden lg:flex gap-4 text-sm font-medium ml-4 font-sans items-center">
               <a href="/" class="nav-link text-zinc-400 hover:text-white px-3 py-1.5 transition-colors duration-150">Home</a>
               <a href="/restore-data" class="nav-link text-zinc-400 hover:text-white px-3 py-1.5 transition-colors duration-150">Restore Guide</a>
               <a href="/pricing" class="nav-link text-zinc-400 hover:text-white px-3 py-1.5 transition-colors duration-150">Pricing</a>

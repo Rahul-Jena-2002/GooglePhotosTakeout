@@ -209,14 +209,14 @@ export default function MainLayout() {
       >
         <div className="w-full flex items-center justify-between relative z-10">
           <div className="flex items-center gap-2 md:gap-8">
-            {/* Left Hamburger Menu Icon (mobile and tablet: lg:hidden) */}
+            {/* Left Hamburger Menu Icon */}
             <button 
               onClick={() => {
                 setMobileMenuOpen(!mobileMenuOpen)
                 setProfileMenuOpen(false)
                 setNotificationMenuOpen(false)
               }}
-              className="lg:hidden p-1 text-white/80 hover:text-white focus:outline-none transition-colors mr-1"
+              className={`${user ? 'xl:hidden' : 'lg:hidden'} p-1 text-white/80 hover:text-white focus:outline-none transition-colors mr-1`}
             >
               {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
             </button>
@@ -243,8 +243,8 @@ export default function MainLayout() {
               <span className="text-base md:text-lg font-semibold tracking-tight">TakeoutFix</span>
             </Link>
 
-            {/* Marketing Links (Desktop only: lg:flex) */}
-            <div className="hidden lg:flex gap-8 text-sm font-medium ml-4">
+            {/* Marketing Links (Desktop only) */}
+            <div className={`text-sm font-medium ml-4 xl:gap-8 lg:gap-4 ${user ? 'hidden xl:flex' : 'hidden lg:flex'}`}>
               {renderNavLink("/", "Home")}
               {renderNavLink("/restore-data", "Restore Guide")}
               {renderNavLink("/pricing", "Pricing")}
@@ -441,7 +441,7 @@ export default function MainLayout() {
 
         {/* Mobile/Tablet Left Hamburger Menu Overlay */}
         {mobileMenuOpen && (
-          <div className="lg:hidden mt-4 pt-4 border-t border-white/5 flex flex-col gap-3 text-left px-2 animate-in fade-in slide-in-from-top-2 duration-200">
+          <div className={`${user ? 'xl:hidden' : 'lg:hidden'} mt-4 pt-4 border-t border-white/5 flex flex-col gap-3 text-left px-2 animate-in fade-in slide-in-from-top-2 duration-200`}>
             {/* Marketing Links (visible in hamburger for mobile and tablet) */}
             <p className="text-xs font-bold text-white/30 uppercase tracking-wider px-2 mt-1 mb-1">Navigation</p>
             <Link to="/" className="py-2 px-2 text-white/70 hover:text-white hover:bg-white/5 rounded-md text-sm font-medium transition-all" onClick={() => setMobileMenuOpen(false)}>Home</Link>
