@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "astro dev",
-    "build": "node scripts/generate_sitemap.js && astro build && node -e \"const fs = require('fs'); const paths = ['dist/client/_redirects', 'dist/_redirects']; paths.forEach(p => { if (fs.existsSync(p)) { fs.appendFileSync(p, '\\n/admin/* /admin/index.html 200\\n'); console.log('Appended SPA rewrite to ' + p); } })\"",
+    "build": "node scripts/generate_sitemap.js && astro build && node scripts/append_spa_rewrite.js",
     "preview": "astro preview",
     "lint": "eslint ."
   },
