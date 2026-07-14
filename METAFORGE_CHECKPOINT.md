@@ -32,6 +32,8 @@ All modifications are successfully committed and pushed to `main`.
 2. **CRLF Line Ending Corruptions**:
    * **Why**: Saving configuration files on Windows can inject CRLF (`\r\n`) line endings. When built on Linux/Fedora, files like `_redirects` or `.env` fail to parse properly, causing live routing mismatches (returning `404`).
    * **Workaround**: Ensure your editor saves files using LF (`\n`). Git staging is now configured to automatically normalize file line-endings to LF.
+3. **Git & SSH Access**:
+   * **Instruction**: Fedora already has a configured SSH key for GitHub access. When committing/pushing from Fedora, **always use the existing SSH credentials/agent setup** (i.e. `git@github.com:...` remote configuration). Do not attempt to configure HTTP credential helpers or prompt the user for GitHub tokens/passwords.
 
 ---
 
