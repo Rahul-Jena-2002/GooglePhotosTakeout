@@ -569,6 +569,132 @@ app.post("/create-dodo-upgrade-discount", async (req, res) => {
   }
 });
 
+// Route: POST /accept-invite
+app.post("/accept-invite", async (req, res) => {
+  const authHeader = req.headers.authorization || "";
+  if (!authHeader.startsWith("Bearer ")) {
+    return res.status(401).json({ error: "Missing or invalid authorization header." });
+  }
+
+  const idToken = authHeader.split("Bearer ")[1];
+  let userEmail;
+  let userId;
+  let userName;
+  try {
+    const decodedToken = await admin.auth().verifyIdToken(idToken);
+    userId = decodedToken.uid;
+    userEmail = decodedToken.email;
+    userName = decodedToken.name || "Admin User";
+  } catch (err) {
+    return res.status(401).json({ error: "Unauthorized ID token.", details: err.message });
+  }
+
+  const { inviteId } = req.body;
+  if (!inviteId) {
+    return res.status(400).json({ error: "inviteId is required." });
+  }
+
+  try {
+    const inviteDoc = await db.collection("adminInvites").doc(inviteId).get();
+    if (!inviteDoc.exists) {
+      return res.status(404).json({ error: "Invitation not found." });
+    }
+
+    const invite = inviteDoc.data();
+    if (invite.status !== "pending") {
+      return res.status(400).json({ error: `This invitation is already ${invite.status}.` });
+    }
+
+    if (invite.email.toLowerCase() !== userEmail.toLowerCase()) {
+      return res.status(403).json({ error: "This invitation is for a different email address." });
+    }
+
+    const now = Date.now();
+    const expiresAtMs = invite.expiresAt?.seconds ? invite.expiresAt.seconds * 1000 : new Date(invite.expiresAt).getTime();
+    if (now > expiresAtMs) {
+      await db.collection("adminInvites").doc(inviteId).update({ status: "expired" });
+      return res.status(400).json({ error: "This invitation has expired (valid for 72 hours)." });
+    }
+
+    // 1. Mark invite as accepted
+    await db.collection("adminInvites").doc(inviteId).update({
+      status: "accepted",
+      acceptedAt: now,
+      acceptedUid: userId
+    });
+
+    // 2. Create the admin document in admins collection
+    await db.collection("admins").doc(userId).set({
+      uid: userId,
+      email: userEmail,
+      displayName: userName,
+      role: invite.role || "ADMIN",
+      status: "online",
+      lastSeen: now,
+      createdAt: now
+    }, { merge: true });
+
+    // 3. Update the user document to set isAdmin: true
+    await db.collection("users").doc(userId).set({
+      isAdmin: true
+    }, { merge: true });
+
+    return res.json({ success: true, message: "Invitation accepted successfully." });
+  } catch (err) {
+    console.error("accept-invite error:", err);
+    return res.status(500).json({ error: err.message });
+  }
+});
+
+// Route: POST /decline-invite
+app.post("/decline-invite", async (req, res) => {
+  const authHeader = req.headers.authorization || "";
+  if (!authHeader.startsWith("Bearer ")) {
+    return res.status(401).json({ error: "Missing or invalid authorization header." });
+  }
+
+  const idToken = authHeader.split("Bearer ")[1];
+  let userEmail;
+  try {
+    const decodedToken = await admin.auth().verifyIdToken(idToken);
+    userEmail = decodedToken.email;
+  } catch (err) {
+    return res.status(401).json({ error: "Unauthorized ID token.", details: err.message });
+  }
+
+  const { inviteId } = req.body;
+  if (!inviteId) {
+    return res.status(400).json({ error: "inviteId is required." });
+  }
+
+  try {
+    const inviteDoc = await db.collection("adminInvites").doc(inviteId).get();
+    if (!inviteDoc.exists) {
+      return res.status(404).json({ error: "Invitation not found." });
+    }
+
+    const invite = inviteDoc.data();
+    if (invite.status !== "pending") {
+      return res.status(400).json({ error: `This invitation is already ${invite.status}.` });
+    }
+
+    if (invite.email.toLowerCase() !== userEmail.toLowerCase()) {
+      return res.status(403).json({ error: "This invitation belongs to a different email address." });
+    }
+
+    // Mark invite as declined
+    await db.collection("adminInvites").doc(inviteId).update({
+      status: "declined",
+      declinedAt: Date.now()
+    });
+
+    return res.json({ success: true, message: "Invitation declined." });
+  } catch (err) {
+    console.error("decline-invite error:", err);
+    return res.status(500).json({ error: err.message });
+  }
+});
+
 // Route: POST /get-dodo-product
 app.post("/get-dodo-product", async (req, res) => {
   const customSecretKey = String(process.env.GATEWAY_API_KEY || functions.config().gateway?.key || "").trim();

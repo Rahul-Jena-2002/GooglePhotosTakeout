@@ -2,14 +2,14 @@ import { useState, useEffect } from "react"
 import { Outlet, Link, useLocation } from "react-router-dom"
 import { useAuth } from "../contexts/AuthContext"
 import SupportWidget from "./SupportWidget"
-import { Menu, X, Bell, Sun, Moon } from "lucide-react"
+import { Menu, X, Bell, Sun, Moon, Shield } from "lucide-react"
 import { db } from "../firebase"
 import { collection, query, where, getDocs } from "firebase/firestore"
 import { useTelemetrySync } from "../hooks/useTelemetrySync"
 import { useToastStore } from "../store/useToastStore"
 
 export default function MainLayout() {
-  const { user, userData, adminData, login, logout, loading } = useAuth()
+  const { user, userData, adminData, login, logout, loading, inviteFacet } = useAuth()
   const location = useLocation()
 
   const handleLogin = async () => {
@@ -567,6 +567,37 @@ export default function MainLayout() {
       </nav>
 
       <main className="flex-1 pt-16">
+        {inviteFacet?.pendingInvite && (
+          <div className="w-full bg-gradient-to-r from-indigo-950/90 via-purple-955/90 to-indigo-950/90 border-b border-indigo-500/20 px-6 py-4 backdrop-blur-xl flex flex-col md:flex-row items-center justify-between gap-4 animate-in slide-in-from-top duration-300 relative z-30">
+            <div className="flex items-center gap-3 text-left">
+              <div className="w-10 h-10 rounded-full bg-indigo-500/10 border border-indigo-500/30 flex items-center justify-center flex-shrink-0 text-indigo-400">
+                <Shield className="w-5 h-5 animate-pulse" />
+              </div>
+              <div>
+                <p className="text-sm font-semibold text-white">
+                  You've been invited to join the TakeoutFix team!
+                </p>
+                <p className="text-xs text-zinc-400 mt-0.5">
+                  Invited by <span className="text-indigo-300 font-semibold">{inviteFacet.pendingInvite.invitedBy}</span> as a <span className="text-purple-300 font-semibold uppercase tracking-wider text-[10px]">{inviteFacet.pendingInvite.role}</span>.
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center gap-3 flex-shrink-0 w-full md:w-auto justify-end">
+              <button
+                onClick={() => inviteFacet.decline(inviteFacet.pendingInvite.id)}
+                className="px-4 py-2 text-xs font-bold rounded-lg border border-zinc-800 hover:bg-white/5 text-zinc-400 hover:text-white transition-all w-full md:w-auto cursor-pointer"
+              >
+                Decline
+              </button>
+              <button
+                onClick={() => inviteFacet.accept(inviteFacet.pendingInvite.id)}
+                className="px-5 py-2 text-xs font-bold rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg shadow-indigo-500/20 transition-all w-full md:w-auto cursor-pointer"
+              >
+                Accept Invite
+              </button>
+            </div>
+          </div>
+        )}
         <div key={location.pathname} className="animate-page h-full">
           <Outlet />
         </div>

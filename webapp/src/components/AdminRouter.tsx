@@ -88,7 +88,7 @@ function RequireDeveloper({ children }: { children: React.ReactNode }) {
 
   if (loading) return null
 
-  const isDeveloper = user?.email === 'rahuljenasonu@gmail.com'
+  const isDeveloper = user?.email === 'rahuljena.dev@gmail.com'
 
   if (!isDeveloper) {
     return (
@@ -98,7 +98,7 @@ function RequireDeveloper({ children }: { children: React.ReactNode }) {
         </div>
         <h2 className="text-lg font-bold text-white mb-2">Developer Clearance Required</h2>
         <p className="text-zinc-400 text-sm max-w-xs leading-relaxed">
-          This panel is strictly restricted to developer profile <span className="text-zinc-200 font-semibold font-mono text-xs">rahuljenasonu@gmail.com</span>.
+          This panel is strictly restricted to developer profile <span className="text-zinc-200 font-semibold font-mono text-xs">rahuljena.dev@gmail.com</span>.
         </p>
       </div>
     )

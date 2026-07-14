@@ -6,8 +6,8 @@ import { useToastStore } from "../store/useToastStore"
 import { decrypt, encrypt, deriveKeyFromPassword } from "../lib/crypto"
 import {
   CreditCard, Shield, Lock, Save, RefreshCw, Key, AlertTriangle, Check, Info, Settings,
-  Eye, EyeOff, Tag, Gift, Plus, Trash2, Sliders, DollarSign, Database, ChevronUp, ChevronDown, X,
-  Calendar, ToggleLeft, ToggleRight, Loader2, Link2
+  Eye, EyeOff, Tag, Gift, Plus, Trash2, Sliders, DollarSign, Database, ChevronUp, ChevronDown, ChevronRight, X,
+  Calendar, ToggleLeft, ToggleRight, Loader2, Link2, Copy
 } from "lucide-react"
 import { Input } from "../components/ui/input"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../components/ui/card"
@@ -289,6 +289,7 @@ export default function AdminPaymentGateway() {
   // System Settings local API gateway key
   const [gatewayApiKey, setGatewayApiKey] = useState("")
   const [cloudFunctionUrl, setCloudFunctionUrl] = useState("")
+  const [showWebhookModal, setShowWebhookModal] = useState(false)
   const [savingCfUrl, setSavingCfUrl] = useState(false)
   const [dodoTestMode, setDodoTestMode] = useState(false)
   const [savingTestMode, setSavingTestMode] = useState(false)
@@ -1565,22 +1566,17 @@ export default function AdminPaymentGateway() {
                   </div>
                 </div>
 
-                <div className="font-extrabold text-[10px] uppercase tracking-wider text-zinc-500 mb-2">Target Webhook Endpoints</div>
-                <div className="space-y-3 text-xs">
-                  {[
-                    { gw: "Stripe", path: "/webhooks/stripe" },
-                    { gw: "Dodo Payments", path: "/dodo-webhook" },
-                    { gw: "Lemon Squeezy", path: "/webhooks/lemonsqueezy" },
-                    { gw: "Paddle", path: "/webhooks/paddle" }
-                  ].map((x) => (
-                    <div key={x.gw} className="p-3 bg-zinc-900/10 border border-zinc-850 rounded-xl space-y-1">
-                      <div className="font-extrabold text-[10px] uppercase tracking-wider text-zinc-550">{x.gw} Hook URL</div>
-                      <div className="font-mono text-[10px] truncate select-all text-indigo-400">
-                        {cloudFunctionUrl ? `${cloudFunctionUrl}${x.path}` : `https://us-central1-takeout-fix.cloudfunctions.net/geminiToolGateway${x.path}`}
-                      </div>
-                    </div>
-                  ))}
-                </div>
+                <div className="font-extrabold text-[10px] uppercase tracking-wider text-zinc-550 mb-2">Target Webhook Endpoints</div>
+                <button
+                  onClick={() => setShowWebhookModal(true)}
+                  className="w-full py-3 px-4 rounded-xl border border-zinc-800 hover:border-zinc-700 bg-zinc-900/10 hover:bg-zinc-900/20 text-zinc-200 hover:text-white flex items-center justify-between text-xs font-bold transition-all group"
+                  style={{ borderColor: isLight ? '#e5e7eb' : '#27272a', color: isLight ? '#4b5563' : '#e4e4e7' }}
+                >
+                  <span className="flex items-center gap-2">
+                    <Link2 className="w-4.5 h-4.5 text-indigo-400" /> Setup & View Webhook URLs
+                  </span>
+                  <ChevronRight className="w-4 h-4 text-zinc-600 group-hover:translate-x-0.5 transition-transform" />
+                </button>
               </div>
             </div>
           </div>
@@ -2370,6 +2366,88 @@ export default function AdminPaymentGateway() {
           </Card>
         )}
       </div>
+
+      {/* Webhook Endpoints Modal */}
+      {showWebhookModal && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
+          <div 
+            className="w-full max-w-2xl bg-zinc-950 border border-zinc-800 rounded-2xl shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-200"
+            style={{ 
+              backgroundColor: isLight ? '#ffffff' : '#09090b', 
+              borderColor: isLight ? '#e5e7eb' : '#27272a',
+              boxShadow: '0 20px 50px rgba(0,0,0,0.5)'
+            }}
+          >
+            {/* Modal Header */}
+            <div className="flex items-center justify-between px-6 py-4 border-b" style={{ borderColor: isLight ? '#e5e7eb' : '#27272a' }}>
+              <div>
+                <h3 className="text-sm font-bold flex items-center gap-2" style={{ color: isLight ? '#111827' : '#ffffff' }}>
+                  <Link2 className="w-4 h-4 text-indigo-400" /> Webhook Endpoints Configuration
+                </h3>
+                <p className="text-[10px] text-zinc-550 font-medium mt-0.5">
+                  Configure these listener URLs in your payment dashboards to capture transactions and upgrades.
+                </p>
+              </div>
+              <button 
+                onClick={() => setShowWebhookModal(false)}
+                className="p-1 rounded-lg text-zinc-500 hover:text-zinc-200 hover:bg-zinc-800 transition-colors cursor-pointer"
+                style={{ color: isLight ? '#4b5563' : '#a1a1aa' }}
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div className="p-6 space-y-4 max-h-[65vh] overflow-y-auto">
+              {[
+                { gw: "Stripe", path: "/webhooks/stripe", desc: "For processing Stripe card checkout events" },
+                { gw: "Dodo Payments", path: "/dodo-webhook", desc: "For processing live/test Dodo Payments subscription & upgrade checkouts" },
+                { gw: "Lemon Squeezy", path: "/webhooks/lemonsqueezy", desc: "For Lemon Squeezy checkout webhooks" },
+                { gw: "Paddle", path: "/webhooks/paddle", desc: "For Paddle checkout subscription events" }
+              ].map((x) => {
+                const fullUrl = cloudFunctionUrl 
+                  ? `${cloudFunctionUrl.replace(/\/$/, "")}${x.path}` 
+                  : `https://us-central1-takeout-fix.cloudfunctions.net/geminiToolGateway${x.path}`;
+
+                return (
+                  <div key={x.gw} className="p-4 bg-zinc-900/10 border border-zinc-850 rounded-xl space-y-2" style={{ backgroundColor: isLight ? '#f9fafb' : 'rgba(24,24,27,0.2)', borderColor: isLight ? '#e5e7eb' : '#27272a' }}>
+                    <div className="flex items-center justify-between">
+                      <span className="font-extrabold text-[10px] uppercase tracking-wider" style={{ color: isLight ? '#374151' : '#a1a1aa' }}>{x.gw} Hook</span>
+                      <span className="text-[9px] text-zinc-500 font-medium">{x.desc}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="flex-1 font-mono text-[10px] p-2 bg-zinc-950/50 border border-zinc-900 rounded-lg overflow-x-auto whitespace-nowrap text-indigo-400 select-all scrollbar-none" style={{ backgroundColor: isLight ? '#ffffff' : '#09090b', borderColor: isLight ? '#e5e7eb' : '#27272a' }}>
+                        {fullUrl}
+                      </div>
+                      <button
+                        onClick={() => {
+                          navigator.clipboard.writeText(fullUrl);
+                          useToastStore.getState().addToast(`${x.gw} webhook URL copied!`, "success", 3000, "Copied");
+                        }}
+                        className="p-2 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white transition-all flex items-center justify-center flex-shrink-0 cursor-pointer"
+                        title="Copy to clipboard"
+                      >
+                        <Copy className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Modal Footer */}
+            <div className="flex justify-end px-6 py-4 border-t bg-zinc-950/20" style={{ borderColor: isLight ? '#e5e7eb' : '#27272a', backgroundColor: isLight ? '#f9fafb' : '#09090b' }}>
+              <button
+                onClick={() => setShowWebhookModal(false)}
+                className="px-4 py-2 text-xs font-bold rounded-xl border border-zinc-800 hover:bg-zinc-800 text-zinc-300 hover:text-white transition-all cursor-pointer"
+                style={{ borderColor: isLight ? '#e5e7eb' : '#27272a', color: isLight ? '#4b5563' : '#e4e4e7' }}
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

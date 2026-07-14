@@ -89,7 +89,7 @@ export default function AdminDev() {
             <Sliders className="w-5 h-5 text-emerald-400" /> Developer Options
           </h1>
           <p className="text-xs text-zinc-500 font-medium mt-1">
-            Exclusive tools and toggles for developer profile <span className="text-zinc-300 font-mono">rahuljenasonu@gmail.com</span>
+            Exclusive tools and toggles for developer profile <span className="text-zinc-300 font-mono">rahuljena.dev@gmail.com</span>
           </p>
         </div>
       </div>

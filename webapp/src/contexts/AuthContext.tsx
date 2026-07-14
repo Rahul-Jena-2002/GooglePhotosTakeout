@@ -125,6 +125,12 @@ export interface AdminData {
   createdAt: number;
 }
 
+export interface InviteFacet {
+  pendingInvite: any;
+  accept: (inviteId: string) => Promise<void>;
+  decline: (inviteId: string) => Promise<void>;
+}
+
 interface AuthContextType {
   user: User | null;
   userData: UserData | null;
@@ -157,6 +163,7 @@ interface AuthContextType {
   refundPolicy: string;
   comparisonRows: ComparisonRow[];
   refreshConfig: () => Promise<void>;
+  inviteFacet: InviteFacet;
 }
 
 const getPlanDeviceLimit = (plan: string): number => {
@@ -1119,6 +1126,97 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     await logout();
   };
 
+  const [pendingInvite, setPendingInvite] = useState<any>(null);
+
+  // Listen for pending invites for the logged-in user
+  useEffect(() => {
+    if (!user || !user.email) {
+      setPendingInvite(null);
+      return;
+    }
+
+    const q = query(
+      collection(db, "adminInvites"),
+      where("email", "==", user.email.toLowerCase()),
+      where("status", "==", "pending")
+    );
+
+    const unsubscribe = onSnapshot(q, (snap) => {
+      if (!snap.empty) {
+        const now = Date.now();
+        const activeInvite = snap.docs
+          .map(doc => ({ id: doc.id, ...doc.data() } as any))
+          .find(inv => {
+            const expMs = inv.expiresAt?.seconds ? inv.expiresAt.seconds * 1000 : new Date(inv.expiresAt).getTime();
+            return now < expMs;
+          });
+        setPendingInvite(activeInvite || null);
+      } else {
+        setPendingInvite(null);
+      }
+    });
+
+    return unsubscribe;
+  }, [user]);
+
+  const acceptPendingInvite = async (inviteId: string) => {
+    if (!user) return;
+    try {
+      const idToken = await user.getIdToken();
+      const response = await fetch("/api/accept-invite", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${idToken}`
+        },
+        body: JSON.stringify({ inviteId })
+      });
+
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.error || "Failed to accept invitation.");
+      }
+
+      useToastStore.getState().addToast("Team invitation accepted! You are now a team member.", "success", 5000, "Invitation Accepted");
+      // Force reload to update navbar and admin access
+      window.location.reload();
+    } catch (err: any) {
+      console.error("accept-invite error:", err);
+      useToastStore.getState().addToast(err.message || "Failed to accept invite.", "error", 5000, "Error");
+    }
+  };
+
+  const declinePendingInvite = async (inviteId: string) => {
+    if (!user) return;
+    try {
+      const idToken = await user.getIdToken();
+      const response = await fetch("/api/decline-invite", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${idToken}`
+        },
+        body: JSON.stringify({ inviteId })
+      });
+
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.error || "Failed to decline invitation.");
+      }
+
+      useToastStore.getState().addToast("Invitation declined.", "info", 4000, "Declined");
+      setPendingInvite(null);
+    } catch (err: any) {
+      console.error("decline-invite error:", err);
+    }
+  };
+
+  const inviteFacet: InviteFacet = {
+    pendingInvite,
+    accept: acceptPendingInvite,
+    decline: declinePendingInvite
+  };
+
   return (
     <AuthContext.Provider value={{
       user,
@@ -1151,7 +1249,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       tierThresholds,
       refundPolicy,
       comparisonRows,
-      refreshConfig
+      refreshConfig,
+      inviteFacet
     }}>
       {children}
       
@@ -1238,7 +1337,12 @@ export const useAuth = () => {
       tierThresholds: { free: { maxFiles: 250, maxSizeMB: 500 }, recovery_pass: { maxFiles: 3000, maxSizeMB: 3072 }, pro: { maxFiles: 50000, maxSizeMB: 51200 }, super: { maxFiles: 100000, maxSizeMB: 102400 } },
       refundPolicy: "",
       comparisonRows: DEFAULT_COMPARISON_ROWS,
-      refreshConfig: async () => {}
+      refreshConfig: async () => {},
+      inviteFacet: {
+        pendingInvite: null,
+        accept: async () => {},
+        decline: async () => {}
+      }
     };
   }
   return context;

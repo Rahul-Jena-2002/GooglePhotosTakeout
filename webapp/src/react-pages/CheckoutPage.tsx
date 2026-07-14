@@ -140,6 +140,7 @@ function CheckoutPageContent() {
   const [gatewayProductIds, setGatewayProductIds] = useState<Record<string, Record<string, string>>>({})
   const [cloudFunctionUrl, setCloudFunctionUrl] = useState("")
   const [checkoutUrl, setCheckoutUrl] = useState<string | null>(null)
+  const [agreedToTerms, setAgreedToTerms] = useState(false)
 
   useEffect(() => {
     const lookupCoupon = async () => {
@@ -390,6 +391,10 @@ function CheckoutPageContent() {
 
   const handleUniversalCheckout = async () => {
     if (!user) return
+    if (!agreedToTerms) {
+      setError("You must agree to the Terms of Service and Privacy Policy to proceed.")
+      return
+    }
     setError("")
     setIsProcessing(true)
 
@@ -484,22 +489,17 @@ function CheckoutPageContent() {
     }
   }
 
-  // Auto-open checkout when everything is ready
+  // Coupon verification gate — holds screen until discount lookup completes
   useEffect(() => {
-    if (user && plan && Object.keys(gatewayProductIds).length > 0) {
+    if (user && plan) {
       if (!couponLookupDone) {
         setIsProcessing(true)
         setProcessStep("Checking for eligible promotions...")
-        return
+      } else {
+        setIsProcessing(false)
       }
-      setIsProcessing(true)
-      setProcessStep("Loading secure checkout...")
-      const timer = setTimeout(() => {
-        handleUniversalCheckout()
-      }, 800)
-      return () => clearTimeout(timer)
     }
-  }, [user, plan, gatewayProductIds, couponLookupDone, detectedCoupon, activeGateway])
+  }, [user, plan, couponLookupDone])
 
   if (!plan) {
     return (
@@ -668,9 +668,23 @@ function CheckoutPageContent() {
               </div>
               <div className="space-y-2">
                 <h2 className="text-xl font-bold tracking-tight text-foreground">Complete Your Purchase</h2>
-                <p className="text-zinc-500 text-xs leading-relaxed max-w-xs mx-auto">
+                <p className="text-zinc-550 text-xs leading-relaxed max-w-xs mx-auto">
                   Your secure checkout for <span className="font-bold text-foreground">{plan.name}</span> will load right here — no redirects.
                 </p>
+              </div>
+
+              {/* Terms and conditions checkbox */}
+              <div className="flex items-start gap-2.5 max-w-xs mx-auto text-left bg-zinc-500/5 p-4 rounded-xl border border-zinc-500/10">
+                <input 
+                  type="checkbox" 
+                  id="agree-terms" 
+                  checked={agreedToTerms} 
+                  onChange={(e) => setAgreedToTerms(e.target.checked)}
+                  className="w-4 h-4 mt-0.5 rounded border-zinc-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer"
+                />
+                <label htmlFor="agree-terms" className="text-xs text-zinc-400 select-none cursor-pointer leading-tight">
+                  I agree to the <a href="/terms" target="_blank" className="text-indigo-400 hover:text-indigo-300 underline font-semibold">Terms of Service</a> and <a href="/privacy" target="_blank" className="text-indigo-400 hover:text-indigo-300 underline font-semibold">Privacy Policy</a> (including the 7-day verified refund guarantee).
+                </label>
               </div>
 
               {error && (
@@ -682,7 +696,8 @@ function CheckoutPageContent() {
 
               <button
                 onClick={handleUniversalCheckout}
-                className="w-full max-w-xs mx-auto h-12 bg-zinc-950 dark:bg-zinc-50 text-white dark:text-black font-bold hover:bg-zinc-800 dark:hover:bg-zinc-250 transition-colors flex items-center justify-center gap-2 border border-transparent rounded-lg cursor-pointer text-sm"
+                disabled={!agreedToTerms}
+                className="w-full max-w-xs mx-auto h-12 bg-zinc-950 dark:bg-zinc-50 text-white dark:text-black font-bold hover:bg-zinc-800 dark:hover:bg-zinc-250 transition-colors flex items-center justify-center gap-2 border border-transparent rounded-lg cursor-pointer text-sm disabled:opacity-40 disabled:cursor-not-allowed"
               >
                 Open Checkout <ChevronRight className="w-4 h-4" />
               </button>
