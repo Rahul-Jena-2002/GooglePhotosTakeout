@@ -2,6 +2,7 @@ export const prerender = false;
 import type { APIRoute } from 'astro';
 import nodeCrypto from 'node:crypto';
 import { env } from 'cloudflare:workers';
+import { DodoPayments } from 'dodopayments';
 
 // Decrypt sensitive keys stored in Firestore using AES-256-GCM
 function decryptFirestoreValue(val: string, mek: string): string {
@@ -198,13 +199,21 @@ export const POST: APIRoute = async ({ request }) => {
 
     // 1. Signature Verification (if secret configured)
     if (dodoWebhookSecret && dodoWebhookSecret !== "dodo-webhook-secret-placeholder") {
-      const webhookId = request.headers.get("webhook-id") || "";
-      const webhookTimestamp = request.headers.get("webhook-timestamp") || "";
-      const webhookSignature = request.headers.get("webhook-signature") || "";
+      const webhookHeaders = {
+        'webhook-id': request.headers.get('webhook-id') || '',
+        'webhook-signature': request.headers.get('webhook-signature') || '',
+        'webhook-timestamp': request.headers.get('webhook-timestamp') || '',
+      };
 
-      const isVerified = await verifyDodoSignature(rawBody, webhookId, webhookTimestamp, webhookSignature, dodoWebhookSecret);
-      if (!isVerified) {
-        console.warn("Invalid webhook signature received.");
+      try {
+        const dodoPaymentsClient = new DodoPayments({
+          bearerToken: "dummy_key",
+          webhookKey: dodoWebhookSecret,
+        });
+        dodoPaymentsClient.webhooks.unwrap(rawBody, { headers: webhookHeaders });
+        console.log('✅ Webhook signature verified using official SDK');
+      } catch (error) {
+        console.error('❌ Webhook verification failed using official SDK:', error);
         return new Response("Invalid signature", { status: 401 });
       }
     } else {
