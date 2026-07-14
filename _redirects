@@ -1,0 +1,22 @@
+/restore-data.html /restore-data 301
+/pricing.html /pricing 301
+/reviews.html /reviews 301
+/support.html /support 301
+/tool.html /tool 301
+/checkout.html /checkout 301
+/dashboard.html /dashboard 301
+/download.html /download 301
+/profile.html /profile 301
+/privacy.html /privacy 301
+/terms.html /terms 301
+/refund.html /refund 301
+/takeout-fix.html /takeout-fix 301
+/takeout-fixer.html /takeout-fixer 301
+/metadata-fixer.html /metadata-fixer 301
+/google-photos-metadata-fix.html /google-photos-metadata-fix 301
+/google-takeout-merger.html /google-takeout-merger 301
+/google-takeout-to-apple-photos.html /google-takeout-to-apple-photos 301
+/restore-gps-google-takeout.html /restore-gps-google-takeout 301
+/fix-google-takeout-dates.html /fix-google-takeout-dates 301
+
+/admin/* /admin.html 200
