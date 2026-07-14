@@ -11,6 +11,9 @@ export default defineConfig({
   site: 'https://takeoutfix.pages.dev',
   output: 'static',
   adapter: cloudflare(),
+  build: {
+    format: 'file'
+  },
   integrations: [
     react(),
     tailwind({
