@@ -47,9 +47,12 @@ export const POST: APIRoute = async ({ request }) => {
   try {
     const GATEWAY_API_KEY = (env as any).GATEWAY_API_KEY || import.meta.env.GATEWAY_API_KEY || '';
     const headerKey = request.headers.get('x-api-key') || request.headers.get('authorization')?.replace('Bearer ', '');
+    const isLocalDev = import.meta.env.DEV || process.env.NODE_ENV === "development";
     
-    if (!GATEWAY_API_KEY || !headerKey || headerKey !== GATEWAY_API_KEY) {
-      return json(401, { error: 'Unauthorized' });
+    if (!isLocalDev) {
+      if (!GATEWAY_API_KEY || !headerKey || headerKey !== GATEWAY_API_KEY) {
+        return json(401, { error: 'Unauthorized' });
+      }
     }
 
     const raw = await request.text();
