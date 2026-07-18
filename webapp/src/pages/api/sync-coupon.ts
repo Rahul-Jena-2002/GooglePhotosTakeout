@@ -26,7 +26,7 @@ export const OPTIONS: APIRoute = async () => {
   });
 };
 
-export const POST: APIRoute = async ({ request }) => {
+export const POST: APIRoute = async ({ request, locals }) => {
   try {
     const raw = await request.text();
     let payload: JsonRecord = {};
@@ -39,13 +39,16 @@ export const POST: APIRoute = async ({ request }) => {
       return json(400, { error: 'Invalid JSON body' });
     }
 
+    const cfEnv = (locals as any)?.runtime?.env || {};
     const CF_BASE =
+      cfEnv.CLOUD_FUNCTION_URL ||
       (env as any).CLOUD_FUNCTION_URL ||
       (import.meta.env.DEV ? import.meta.env.CLOUD_FUNCTION_URL : null) ||
       import.meta.env.CLOUD_FUNCTION_URL ||
       'https://us-central1-takeout-fix.cloudfunctions.net/geminiToolGateway';
 
     const GATEWAY_API_KEY =
+      cfEnv.GATEWAY_API_KEY ||
       (env as any).GATEWAY_API_KEY ||
       import.meta.env.GATEWAY_API_KEY ||
       '';

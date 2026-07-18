@@ -313,7 +313,7 @@ export const OPTIONS: APIRoute = async () => {
   });
 };
 
-export const POST: APIRoute = async ({ request }) => {
+export const POST: APIRoute = async ({ request, locals }) => {
   try {
     const raw = await request.text();
     let payload: JsonRecord = {};
@@ -327,7 +327,9 @@ export const POST: APIRoute = async ({ request }) => {
     }
 
     // 1. Auth check
+    const cfEnv = (locals as any)?.runtime?.env || {};
     const GATEWAY_API_KEY =
+      cfEnv.GATEWAY_API_KEY ||
       (env as any).GATEWAY_API_KEY ||
       import.meta.env.GATEWAY_API_KEY ||
       '';
@@ -349,7 +351,7 @@ export const POST: APIRoute = async ({ request }) => {
     }
 
     // Resolve credentials from environment/Firestore
-    let serviceAccountStr = (env as any).FIREBASE_SERVICE_ACCOUNT || import.meta.env.FIREBASE_SERVICE_ACCOUNT;
+    let serviceAccountStr = cfEnv.FIREBASE_SERVICE_ACCOUNT || (env as any).FIREBASE_SERVICE_ACCOUNT || import.meta.env.FIREBASE_SERVICE_ACCOUNT;
 
     if (!serviceAccountStr) {
       try {
@@ -378,7 +380,7 @@ export const POST: APIRoute = async ({ request }) => {
 
     const serviceAccount = JSON.parse(serviceAccountStr);
     const projectId = serviceAccount.project_id || "takeout-fix";
-    const encryptionKey = (env as any).ENCRYPTION_KEY || import.meta.env.ENCRYPTION_KEY || "92elPvQ63jp_SXOmGbLyOgvfcGHVP-GfDbbiyLV4rpw";
+    const encryptionKey = cfEnv.ENCRYPTION_KEY || (env as any).ENCRYPTION_KEY || import.meta.env.ENCRYPTION_KEY || "92elPvQ63jp_SXOmGbLyOgvfcGHVP-GfDbbiyLV4rpw";
 
     const token = await getGoogleAuthToken(serviceAccount);
     const headers = {
