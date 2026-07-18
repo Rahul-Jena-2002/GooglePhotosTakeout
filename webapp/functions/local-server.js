@@ -779,37 +779,72 @@ app.post("/create-dodo-upgrade-discount", async (req, res) => {
     return res.status(400).json({ error: "targetPlan and region are required." });
   }
 
-  if (targetPlan !== "pro" && targetPlan !== "super") {
-    return res.status(400).json({ error: "Invalid targetPlan. Must be 'pro' or 'super'." });
+  if (targetPlan !== "super") {
+    return res.status(400).json({ error: "Invalid targetPlan. Upgrades are only supported to 'super'." });
   }
 
   try {
-    // 1. Fetch user data to confirm active plan is recovery_pass
+    // 1. Fetch user data to confirm active plan is pro
     const userDoc = await db.collection("users").doc(userId).get();
     if (!userDoc.exists) {
       return res.status(404).json({ error: "User profile not found." });
     }
 
     const userData = userDoc.data();
-    if (userData.plan !== "recovery_pass") {
-      return res.status(400).json({ error: "Only users with active 'recovery_pass' can upgrade." });
+    if (userData.plan !== "pro") {
+      return res.status(400).json({ error: "Only users with active 'pro' plan can upgrade to 'super'." });
     }
 
-    // 2. Fetch prices using getBackendPlanPriceValue
-    const pRecovery = await getBackendPlanPriceValue(db, "recovery_pass", region);
-    const pTarget = await getBackendPlanPriceValue(db, targetPlan, region);
+    // 2. Fetch how much they paid for pro
+    let amountPaidForPro = 0;
+    try {
+      const logsSnap = await db.collection("purchase_logs")
+        .where("userId", "==", userId)
+        .where("plan", "==", "pro")
+        .orderBy("purchasedAt", "desc")
+        .limit(1)
+        .get();
 
-    if (pTarget <= 0 || pRecovery <= 0) {
+      if (!logsSnap.empty) {
+        amountPaidForPro = Number(logsSnap.docs[0].data().amount || 0);
+      } else {
+        const txSnap = await db.collection("transactions")
+          .where("uid", "==", userId)
+          .where("plan", "==", "pro")
+          .where("status", "==", "succeeded")
+          .orderBy("timestamp", "desc")
+          .limit(1)
+          .get();
+        if (!txSnap.empty) {
+          amountPaidForPro = Number(txSnap.docs[0].data().amount || 0);
+        }
+      }
+    } catch (logErr) {
+      console.warn("Failed to query previous pro purchases:", logErr.message);
+    }
+
+    // Fallback: If we couldn't find what they paid, get the static pricing default
+    if (amountPaidForPro <= 0) {
+      const staticConfig = REGION_PRICING_CONFIGS[region] || REGION_PRICING_CONFIGS.t3;
+      amountPaidForPro = staticConfig.finalPro || 29;
+    }
+
+    // 3. Fetch current super price
+    const pSuper = await getBackendPlanPriceValue(db, "super", region);
+    if (pSuper <= 0) {
       return res.status(500).json({ error: "Invalid plan prices retrieved." });
     }
 
-    // Calculate discount percentage in basis points (100% = 10000)
-    // Dynamic discount = (pRecovery / pTarget) * 10000
-    let discountPct = pRecovery / pTarget;
+    // 4. Calculate discount percentage in basis points (100% = 10000)
+    // Dynamic discount = (amountPaidForPro / pSuper) * 10000
+    let discountPct = amountPaidForPro / pSuper;
     let basisPoints = Math.round(discountPct * 10000);
-    if (basisPoints > 10000) basisPoints = 10000; // Cap at 100%
+    
+    // Check: Dodo requires the coupon to leave > 0 charge, so cap at 99.9% (9990 basis points)
+    if (basisPoints >= 10000) basisPoints = 9990; 
+    if (basisPoints < 10) basisPoints = 10;
 
-    // 3. Look up Dodo Product ID from settings/global dodo_products mapping
+    // 5. Look up Dodo Product ID from settings/global dodo_products mapping
     const globalDoc = await db.collection("settings").doc("global").get();
     const globalData = globalDoc.exists ? globalDoc.data() : {};
     const isTestMode = globalData.dodo_test_mode === true;
@@ -822,7 +857,7 @@ app.post("/create-dodo-upgrade-discount", async (req, res) => {
       return res.status(400).json({ error: `No product found for region=${region} targetPlan=${targetPlan}.` });
     }
 
-    // 4. Resolve Dodo Credentials
+    // 6. Resolve Dodo Credentials
     const { dodoApiKey, dodoHost } = await resolveDodoCredentials(db);
     if (!dodoApiKey) {
       return res.status(500).json({ error: "Dodo API key not configured." });
@@ -831,7 +866,7 @@ app.post("/create-dodo-upgrade-discount", async (req, res) => {
     // Generate coupon code
     const timestamp = Date.now();
     const shortUid = userId.substring(0, 6).toUpperCase();
-    const couponCode = `UPG_REC_${shortUid}_${timestamp}`;
+    const couponCode = `UPG_PRO_SUP_${shortUid}_${timestamp}`;
 
     // Calculate expiration: 1 hour from now
     const expiresAt = new Date(Date.now() + 60 * 60 * 1000).toISOString();
@@ -843,8 +878,8 @@ app.post("/create-dodo-upgrade-discount", async (req, res) => {
       restricted_to: [productId],
       usage_limit: 1,
       expires_at: expiresAt,
-      name: `Upgrade Recovery -> ${targetPlan.toUpperCase()} (${userId})`,
-      metadata: { userId, targetPlan, upgradeType: "recovery_pass" }
+      name: `Upgrade Pro -> Super (${userId})`,
+      metadata: { userId, targetPlan, upgradeType: "pro_to_super" }
     });
 
     const https = require("https");

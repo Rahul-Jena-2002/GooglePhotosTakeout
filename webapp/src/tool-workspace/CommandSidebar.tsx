@@ -2,6 +2,7 @@
  * CommandSidebar — left "Command Center" panel.
  * Pure display: quotas, telemetry, stats counters, upgrade banner.
  */
+import { useState, useEffect } from "react"
 import { Activity, HardDrive, FileText, Cpu, Database, CheckCircle2, AlertCircle, XCircle } from "lucide-react"
 import { Progress } from "../components/ui/progress"
 import AdUnit from "../components/AdUnit"
@@ -50,6 +51,33 @@ export function CommandSidebar({
   userData,
   resetUserQuota,
 }: CommandSidebarProps) {
+  // Countdown timer for 24-hour pass
+  const [timeLeft, setTimeLeft] = useState("")
+
+  useEffect(() => {
+    if (plan !== 'recovery_pass') return
+    
+    const calculateTimeLeft = () => {
+      const expiresAt = userData?.expiresAt || (userData?.updatedAt ? userData.updatedAt + 24 * 60 * 60 * 1000 : Date.now() + 24 * 60 * 60 * 1000)
+      const diff = expiresAt - Date.now()
+      
+      if (diff <= 0) {
+        setTimeLeft("Expired")
+        return
+      }
+      
+      const hours = Math.floor(diff / (1000 * 60 * 60))
+      const mins = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60))
+      const secs = Math.floor((diff % (1000 * 60)) / 1000)
+      
+      setTimeLeft(`${hours}h ${mins}m ${secs}s`)
+    }
+    
+    calculateTimeLeft()
+    const timer = setInterval(calculateTimeLeft, 1000)
+    return () => clearInterval(timer)
+  }, [plan, userData])
+
   return (
     <div className="w-full lg:w-[28%] lg:min-w-[340px] p-3 border-t lg:border-t-0 lg:border-r border-white/5 flex flex-col lg:h-full h-auto lg:overflow-y-auto overflow-visible scrollbar-thin scrollbar-thumb-zinc-800 order-2 lg:order-1">
 
@@ -68,43 +96,59 @@ export function CommandSidebar({
       </div>
 
       {/* Quota Progress */}
-      <div className="space-y-2 mb-3 bg-white/[0.01] border border-white/5 p-2 rounded-lg">
-        <div className="flex flex-col gap-1">
-          <div className="flex justify-between items-center text-[9px] text-white/40 font-bold uppercase tracking-wider">
-            <span className="flex items-center gap-1"><HardDrive className="w-3 h-3 text-zinc-550" /> Storage Limit Progress</span>
-            <span>{formatByteSize(limitBytes)}</span>
+      {plan === 'recovery_pass' ? (
+        <div className="space-y-2 mb-3 bg-gradient-to-r from-indigo-500/10 to-purple-500/10 border border-indigo-500/20 p-3.5 rounded-lg text-left">
+          <div className="text-[10px] font-bold text-indigo-400 uppercase tracking-wider flex items-center gap-1">
+            <span className="w-1.5 h-1.5 rounded-full bg-indigo-400 animate-ping"></span>
+            24h Recovery Pass Active
           </div>
-          <div className="text-xs font-bold text-zinc-150">
-            {formatByteSize(currentUsedBytes + sessionBytes)} / {formatByteSize(limitBytes)}
+          <div className="text-[11px] text-zinc-300 font-semibold mt-1">
+            Unlimited files & storage restoration enabled.
           </div>
-          {limitBytes !== Infinity && (
-            <Progress value={Math.min(100, ((currentUsedBytes + sessionBytes) / limitBytes) * 100)} className="h-1 bg-white/10" />
+          <div className="border-t border-indigo-500/10 pt-2.5 mt-2 flex justify-between items-center text-xs">
+            <span className="text-zinc-400 font-medium font-semibold">Time Left:</span>
+            <span className="font-mono font-black text-white bg-zinc-950/80 px-2 py-0.5 rounded border border-zinc-800 tracking-tight">{timeLeft}</span>
+          </div>
+        </div>
+      ) : (
+        <div className="space-y-2 mb-3 bg-white/[0.01] border border-white/5 p-2 rounded-lg">
+          <div className="flex flex-col gap-1">
+            <div className="flex justify-between items-center text-[9px] text-white/40 font-bold uppercase tracking-wider">
+              <span className="flex items-center gap-1"><HardDrive className="w-3 h-3 text-zinc-550" /> Storage Limit Progress</span>
+              <span>{formatByteSize(limitBytes)}</span>
+            </div>
+            <div className="text-xs font-bold text-zinc-150">
+              {formatByteSize(currentUsedBytes + sessionBytes)} / {formatByteSize(limitBytes)}
+            </div>
+            {limitBytes !== Infinity && (
+              <Progress value={Math.min(100, ((currentUsedBytes + sessionBytes) / limitBytes) * 100)} className="h-1 bg-white/10" />
+            )}
+          </div>
+
+          <div className="flex flex-col gap-1 border-t border-white/5 pt-2 mt-1">
+            <div className="flex justify-between items-center text-[9px] text-white/40 font-bold uppercase tracking-wider">
+              <span className="flex items-center gap-1"><FileText className="w-3 h-3 text-zinc-550" /> Files Limit Progress</span>
+              <span>{limitFiles === Infinity ? "Unlimited" : limitFiles.toLocaleString()}</span>
+            </div>
+            <div className="text-xs font-bold text-zinc-150">
+              {(currentUsedFiles + sessionFiles).toLocaleString()} / {limitFiles === Infinity ? "Unlimited" : limitFiles.toLocaleString()}
+            </div>
+            {limitFiles !== Infinity && (
+              <Progress value={Math.min(100, ((currentUsedFiles + sessionFiles) / limitFiles) * 100)} className="h-1 bg-white/10" />
+            )}
+          </div>
+
+          {/* Developer / Admin Reset Button */}
+          {(userData?.isAdmin || import.meta.env.DEV) && (
+            <Button 
+              onClick={resetUserQuota}
+              className="w-full mt-2 h-7 text-[9px] font-bold text-zinc-400 hover:text-white border border-white/10 hover:border-white/20 bg-white/[0.02] cursor-pointer rounded-md flex items-center justify-center gap-1"
+            >
+              ↺ Reset Usage Quota (Dev/Admin)
+            </Button>
           )}
         </div>
-
-        <div className="flex flex-col gap-1 border-t border-white/5 pt-2 mt-1">
-          <div className="flex justify-between items-center text-[9px] text-white/40 font-bold uppercase tracking-wider">
-            <span className="flex items-center gap-1"><FileText className="w-3 h-3 text-zinc-550" /> Files Limit Progress</span>
-            <span>{limitFiles === Infinity ? "Unlimited" : limitFiles.toLocaleString()}</span>
-          </div>
-          <div className="text-xs font-bold text-zinc-150">
-            {(currentUsedFiles + sessionFiles).toLocaleString()} / {limitFiles === Infinity ? "Unlimited" : limitFiles.toLocaleString()}
-          </div>
-          {limitFiles !== Infinity && (
-            <Progress value={Math.min(100, ((currentUsedFiles + sessionFiles) / limitFiles) * 100)} className="h-1 bg-white/10" />
-          )}
-        </div>
-
-        {/* Developer / Admin Reset Button */}
-        {(userData?.isAdmin || import.meta.env.DEV) && (
-          <Button 
-            onClick={resetUserQuota}
-            className="w-full mt-2 h-7 text-[9px] font-bold text-zinc-400 hover:text-white border border-white/10 hover:border-white/20 bg-white/[0.02] cursor-pointer rounded-md flex items-center justify-center gap-1"
-          >
-            ↺ Reset Usage Quota (Dev/Admin)
-          </Button>
-        )}
-      </div>
+      )}
 
       {/* Engine Resource Telemetry */}
       <div className="space-y-2.5 mb-3 bg-white/[0.01] border border-white/5 p-2.5 rounded-lg">

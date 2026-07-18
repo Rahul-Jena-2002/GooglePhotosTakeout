@@ -93,6 +93,48 @@ export default function AdminUserDashboard() {
     }
   }
 
+  const handleExtendRecoveryPass = async (userId: string) => {
+    const base = Math.max(Date.now(), targetUser?.expiresAt || 0);
+    const newExp = base + 24 * 60 * 60 * 1000;
+    try {
+      await updateDoc(doc(db, "users", userId), { expiresAt: newExp });
+      setTargetUser({ ...targetUser, expiresAt: newExp });
+      await addDoc(collection(db, "admin_activity"), {
+        actorUid: adminData?.uid || "system",
+        actorName: adminData?.displayName || "Admin",
+        actorRole: role,
+        action: "EXTEND_RECOVERY_PASS",
+        target: userId,
+        description: `Extended Recovery Pass for ${targetUser?.email || userId} by 24 hours.`,
+        timestamp: Date.now()
+      });
+      alert("Recovery pass extended by 24 hours successfully.");
+    } catch (err) {
+      alert("Failed to extend recovery pass: " + err.message);
+    }
+  };
+
+  const handleExpireRecoveryPass = async (userId: string) => {
+    if (!window.confirm("Expire user's Recovery Pass immediately?")) return;
+    const newExp = Date.now() - 1000;
+    try {
+      await updateDoc(doc(db, "users", userId), { expiresAt: newExp });
+      setTargetUser({ ...targetUser, expiresAt: newExp });
+      await addDoc(collection(db, "admin_activity"), {
+        actorUid: adminData?.uid || "system",
+        actorName: adminData?.displayName || "Admin",
+        actorRole: role,
+        action: "EXPIRE_RECOVERY_PASS",
+        target: userId,
+        description: `Expired Recovery Pass for ${targetUser?.email || userId} immediately.`,
+        timestamp: Date.now()
+      });
+      alert("Recovery pass expired immediately.");
+    } catch (err) {
+      alert("Failed to expire recovery pass: " + err.message);
+    }
+  };
+
   const handleResetQuota = async (userId: string) => {
     if (!window.confirm(`Reset usage quota for this user? This will set usedBytes and usedFiles to 0. Their plan and lifetime stats will not change.`)) return
     try {
@@ -352,6 +394,16 @@ Your EXIF metadata recovery tools are active.
                     <span className="text-xs bg-indigo-500/10 text-indigo-400 px-3 py-1 rounded-md border border-indigo-500/20 font-bold uppercase tracking-widest">
                       {PLAN_LABELS[plan] || plan} Plan
                     </span>
+                  {plan === 'recovery_pass' && (
+                    <div className="bg-zinc-955/60 border border-zinc-850 p-3.5 rounded-lg flex justify-between items-center text-xs mt-3.5">
+                      <span className="text-zinc-400 font-semibold">Pass Expiration</span>
+                      <span className="font-mono font-bold text-zinc-200 bg-zinc-900 px-2.5 py-1 rounded border border-zinc-800">
+                        {targetUser.expiresAt 
+                          ? `${new Date(targetUser.expiresAt).toLocaleString()} ${targetUser.expiresAt < Date.now() ? '(Expired)' : ''}`
+                          : 'No Expiration Set'}
+                      </span>
+                    </div>
+                  )}
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="pt-6 space-y-6">
@@ -448,6 +500,22 @@ Your EXIF metadata recovery tools are active.
                   >
                     ↺ Reset Usage Quota (usedBytes + usedFiles)
                   </button>
+                  {plan === 'recovery_pass' && (
+                    <div className="flex gap-3 mt-2">
+                      <button
+                        onClick={() => handleExtendRecoveryPass(targetUser.id)}
+                        className="flex-1 py-2 rounded-md bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 hover:bg-indigo-500/20 text-xs font-bold transition-all"
+                      >
+                        +24h Pass
+                      </button>
+                      <button
+                        onClick={() => handleExpireRecoveryPass(targetUser.id)}
+                        className="flex-1 py-2 rounded-md bg-rose-500/10 text-rose-400 border border-rose-500/20 hover:bg-rose-500/20 text-xs font-bold transition-all"
+                      >
+                        Expire Pass
+                      </button>
+                    </div>
+                  )}
 
                   <div className="flex gap-3 pt-3 border-t border-zinc-800/60">
                     <button

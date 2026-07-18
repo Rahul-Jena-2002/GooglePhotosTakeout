@@ -56,14 +56,16 @@ export default function AdminUsers() {
 
   const handleUpdatePlan = async (userId: string, newPlan: string) => {
     try {
-      await updateDoc(doc(db, "users", userId), { 
+      const updateData = { 
         plan: newPlan,
         usedBytes: 0,
-        usedFiles: 0
-      })
+        usedFiles: 0,
+        expiresAt: newPlan === 'recovery_pass' ? Date.now() + 24 * 60 * 60 * 1000 : null
+      }
+      await updateDoc(doc(db, "users", userId), updateData)
       
       const userDoc = users.find(u => u.id === userId)
-      const updatedUserDoc = { ...userDoc, plan: newPlan, usedBytes: 0, usedFiles: 0 }
+      const updatedUserDoc = { ...userDoc, ...updateData }
       if (selectedUser && selectedUser.id === userId) {
         setSelectedUser(updatedUserDoc)
       }
@@ -431,6 +433,16 @@ export default function AdminUsers() {
                     <span className="text-zinc-400">Current Plan</span>
                     <span className="font-semibold text-indigo-400 uppercase text-xs">{selectedUser.plan || 'free'}</span>
                   </div>
+                  {selectedUser.plan === 'recovery_pass' && (
+                    <div className="flex justify-between text-sm border-t border-zinc-800 pt-2.5 mt-1">
+                      <span className="text-zinc-400">Pass Expiration</span>
+                      <span className="font-mono text-zinc-200 text-xs">
+                        {selectedUser.expiresAt 
+                          ? `${new Date(selectedUser.expiresAt).toLocaleString()} ${selectedUser.expiresAt < Date.now() ? '(Expired)' : ''}`
+                          : 'No Expiration Set'}
+                      </span>
+                    </div>
+                  )}
                   <div className="flex justify-between text-sm">
                     <span className="text-zinc-400">Status</span>
                     <span className={selectedUser.suspended ? 'text-red-400 font-semibold text-xs' : 'text-emerald-400 font-semibold text-xs'}>
@@ -499,6 +511,66 @@ export default function AdminUsers() {
                     >
                       ↺ Reset Usage Quota (usedBytes + usedFiles)
                     </button>
+                    {selectedUser.plan === 'recovery_pass' && (
+                      <div className="flex gap-2.5">
+                        <button
+                          onClick={async () => {
+                            const base = Math.max(Date.now(), selectedUser.expiresAt || 0)
+                            const newExp = base + 24 * 60 * 60 * 1000
+                            try {
+                              await updateDoc(doc(db, "users", selectedUser.id), { expiresAt: newExp })
+                              const updatedUser = { ...selectedUser, expiresAt: newExp }
+                              setSelectedUser(updatedUser)
+                              setUsers(users.map(u => u.id === selectedUser.id ? updatedUser : u))
+                              
+                              await addDoc(collection(db, "admin_activity"), {
+                                actorUid: adminData?.uid || "system",
+                                actorName: adminData?.displayName || "Admin",
+                                actorRole: role,
+                                action: "EXTEND_RECOVERY_PASS",
+                                target: selectedUser.id,
+                                description: `Extended Recovery Pass for ${selectedUser.email || selectedUser.id} by 24 hours.`,
+                                timestamp: Date.now()
+                              })
+                              alert("Recovery pass extended by 24 hours successfully.")
+                            } catch (err) {
+                              alert("Failed to extend recovery pass: " + err.message)
+                            }
+                          }}
+                          className="flex-1 py-1.5 rounded bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 hover:bg-indigo-500/20 text-xs font-bold transition-all"
+                        >
+                          +24h Pass
+                        </button>
+                        <button
+                          onClick={async () => {
+                            if (!window.confirm("Expire user's Recovery Pass immediately?")) return
+                            const newExp = Date.now() - 1000
+                            try {
+                              await updateDoc(doc(db, "users", selectedUser.id), { expiresAt: newExp })
+                              const updatedUser = { ...selectedUser, expiresAt: newExp }
+                              setSelectedUser(updatedUser)
+                              setUsers(users.map(u => u.id === selectedUser.id ? updatedUser : u))
+                              
+                              await addDoc(collection(db, "admin_activity"), {
+                                actorUid: adminData?.uid || "system",
+                                actorName: adminData?.displayName || "Admin",
+                                actorRole: role,
+                                action: "EXPIRE_RECOVERY_PASS",
+                                target: selectedUser.id,
+                                description: `Expired Recovery Pass for ${selectedUser.email || selectedUser.id} immediately.`,
+                                timestamp: Date.now()
+                              })
+                              alert("Recovery pass expired immediately.")
+                            } catch (err) {
+                              alert("Failed to expire recovery pass: " + err.message)
+                            }
+                          }}
+                          className="flex-1 py-1.5 rounded bg-rose-500/10 text-rose-400 border border-rose-500/20 hover:bg-rose-500/20 text-xs font-bold transition-all"
+                        >
+                          Expire Pass
+                        </button>
+                      </div>
+                    )}
                     <Link to={`/admin/users/dashboard?uid=${selectedUser.id}`}>
                       <button className="w-full py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold rounded-md transition-colors flex items-center justify-center gap-1.5 shadow-md shadow-indigo-500/10">
                         View Complete User Dashboard &rarr;

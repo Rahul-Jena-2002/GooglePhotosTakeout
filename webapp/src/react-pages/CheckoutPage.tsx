@@ -141,6 +141,8 @@ function CheckoutPageContent() {
   const [cloudFunctionUrl, setCloudFunctionUrl] = useState("")
   const [checkoutUrl, setCheckoutUrl] = useState<string | null>(null)
   const [agreedToTerms, setAgreedToTerms] = useState(false)
+  const [upgradeBlocked, setUpgradeBlocked] = useState(false)
+  const [upgradeBlockedReason, setUpgradeBlockedReason] = useState("")
 
   useEffect(() => {
     const lookupCoupon = async () => {
@@ -149,8 +151,37 @@ function CheckoutPageContent() {
         return;
       }
 
-      // If user has recovery_pass and is upgrading to pro or super, get dynamic upgrade discount from backend
+      // Check checkout plan upgrade restrictions
       if (userData?.plan === 'recovery_pass' && (planKey === 'pro' || planKey === 'super')) {
+        setUpgradeBlocked(true);
+        setUpgradeBlockedReason("Upgrades from Recovery Pass to Pro or Super are not supported. You can purchase additional Recovery Passes to extend your active duration.");
+        setCouponLookupDone(true);
+        return;
+      }
+
+      if (userData?.plan === 'super') {
+        setUpgradeBlocked(true);
+        setUpgradeBlockedReason("You are already on the Super Lifetime plan, which is the highest tier available.");
+        setCouponLookupDone(true);
+        return;
+      }
+
+      if (userData?.plan === 'pro' && planKey === 'pro') {
+        setUpgradeBlocked(true);
+        setUpgradeBlockedReason("You are already on the Pro Lifetime plan. You can upgrade to Super Lifetime with a pro-rated discount.");
+        setCouponLookupDone(true);
+        return;
+      }
+
+      if (userData?.plan === 'pro' && planKey === 'recovery_pass') {
+        setUpgradeBlocked(true);
+        setUpgradeBlockedReason("You are on the Pro Lifetime plan, which already includes higher limits than the Recovery Pass.");
+        setCouponLookupDone(true);
+        return;
+      }
+
+      // If user is on Pro and upgrading to Super, fetch the pro-rated dynamic discount coupon code
+      if (userData?.plan === 'pro' && planKey === 'super') {
         try {
           const idToken = await user.getIdToken();
           const cfUrl = resolveBackendUrl("create-dodo-upgrade-discount", cloudFunctionUrl);
@@ -171,7 +202,6 @@ function CheckoutPageContent() {
           const data = await response.json();
           if (response.ok && data.couponCode) {
             setDetectedCoupon(data.couponCode);
-            // Dodo dynamic upgrade discounts are typically 50%
             setCouponDetails({
               couponCode: data.couponCode,
               discountType: "PERCENTAGE",
@@ -500,6 +530,19 @@ function CheckoutPageContent() {
       }
     }
   }, [user, plan, couponLookupDone])
+
+  if (upgradeBlocked) {
+    return (
+      <div className="max-w-md mx-auto mt-32 p-8 bg-zinc-955 border border-red-550/20 rounded-xl text-center shadow-lg shadow-red-550/5 relative z-10 font-sans">
+        <AlertCircle className="w-14 h-14 text-red-500 mx-auto mb-5 animate-pulse" />
+        <h2 className="text-2xl font-black text-white mb-3">Upgrade Restricted</h2>
+        <p className="text-zinc-400 text-sm leading-relaxed mb-8">{upgradeBlockedReason}</p>
+        <a href="/pricing">
+          <Button variant="outline" className="w-full h-11 font-bold border-zinc-800 text-zinc-300 hover:text-white hover:bg-zinc-900">Return to Pricing</Button>
+        </a>
+      </div>
+    )
+  }
 
   if (!plan) {
     return (

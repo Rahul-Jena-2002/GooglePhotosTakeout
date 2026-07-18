@@ -489,8 +489,10 @@ function PricingPageContent() {
             </div>
           </div>
           <div className="mt-8">
-            {userData?.plan === 'recovery_pass' ? (
-              <button disabled className="w-full py-3 rounded-xl font-bold text-xs bg-zinc-800 text-zinc-550 border border-zinc-700 cursor-not-allowed select-none transition-all">Your Active Plan</button>
+            {userData?.plan === 'recovery_pass' && userData?.expiresAt && Date.now() < userData.expiresAt ? (
+              <a href={`/checkout?plan=recovery_pass&region=${region}`} className="w-full" target="_blank" rel="noopener noreferrer">
+                <button className="btn-monochrome-primary w-full py-3 rounded-xl font-bold text-xs cursor-pointer transition-all bg-indigo-600 hover:bg-indigo-500 text-white border-transparent">Extend Recovery Pass</button>
+              </a>
             ) : (
               <a href={`/checkout?plan=recovery_pass&region=${region}`} className="w-full" target="_blank" rel="noopener noreferrer">
                 <button className="btn-monochrome-primary w-full py-3 rounded-xl font-bold text-xs cursor-pointer transition-all">Get Recovery Pass</button>
