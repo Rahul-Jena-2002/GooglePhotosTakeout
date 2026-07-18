@@ -160,6 +160,7 @@ interface AuthContextType {
   bannerText: string;
   featuresConfig: FeaturesConfig;
   tierThresholds: Record<string, { maxFiles: number; maxSizeMB: number }>;
+  recoveryPassHours: number;
   refundPolicy: string;
   comparisonRows: ComparisonRow[];
   refreshConfig: () => Promise<void>;
@@ -289,6 +290,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     pro:           { maxFiles: 50000,  maxSizeMB: 51200  },
     super:         { maxFiles: 100000, maxSizeMB: 102400 },
   });
+  const [recoveryPassHours, setRecoveryPassHours] = useState<number>(24);
   const [refundPolicy, setRefundPolicy] = useState<string>("We offer a 100% Recovery Guarantee: if a verified technical issue prevents your restoration, and our support desk is unable to resolve it, we will issue a full refund within 7 days of purchase. Refunds are not available for change of mind or successfully completed recoveries.");
   const [comparisonRows, setComparisonRows] = useState<ComparisonRow[]>(DEFAULT_COMPARISON_ROWS);
 
@@ -301,6 +303,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const globalSnap = await getDoc(doc(db, "settings", "global"));
       if (globalSnap.exists()) {
         const data = globalSnap.data();
+        if (data.recoveryPassHours !== undefined) {
+          setRecoveryPassHours(Number(data.recoveryPassHours));
+        }
         const isTestMode = data.dodo_test_mode === true;
         const stored = (isTestMode ? data.dodo_products_test : data.dodo_products_live) as Record<string, Record<string, string>> | undefined
           || data.dodo_products as Record<string, Record<string, string>> | undefined;
@@ -1247,6 +1252,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       bannerText,
       featuresConfig,
       tierThresholds,
+      recoveryPassHours,
       refundPolicy,
       comparisonRows,
       refreshConfig,
@@ -1335,6 +1341,7 @@ export const useAuth = () => {
       bannerText: "Launch Promo — 0 / 200 slots taken. Lock in your lifetime price before slots are gone!",
       featuresConfig: DEFAULT_FEATURES_CONFIG,
       tierThresholds: { free: { maxFiles: 250, maxSizeMB: 500 }, recovery_pass: { maxFiles: 3000, maxSizeMB: 3072 }, pro: { maxFiles: 50000, maxSizeMB: 51200 }, super: { maxFiles: 100000, maxSizeMB: 102400 } },
+      recoveryPassHours: 24,
       refundPolicy: "",
       comparisonRows: DEFAULT_COMPARISON_ROWS,
       refreshConfig: async () => {},

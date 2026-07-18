@@ -70,7 +70,7 @@ const getTableCellStyle = (val: string, plan: 'free' | 'recovery_pass' | 'pro' |
 };
 
 function PricingPageContent() {
-  const { user, userData, region, campaigns, activeCampaignDiscounts, getPlanPriceValue, pricingTiers, featuresConfig, tierThresholds, refundPolicy, comparisonRows } = useAuth();
+  const { user, userData, region, campaigns, activeCampaignDiscounts, getPlanPriceValue, pricingTiers, featuresConfig, tierThresholds, recoveryPassHours, refundPolicy, comparisonRows } = useAuth();
   const isPricingLoading = Object.keys(pricingTiers).length === 0;
 
   const formatThresholdLimit = (maxSizeMB?: number, maxFiles?: number) => {
@@ -302,7 +302,11 @@ function PricingPageContent() {
   };
 
   const getRecoverySubheading = () => {
-    return featuresConfig?.subheadings?.recovery_pass || 'Unlimited file restoration for 24 hours';
+    const raw = featuresConfig?.subheadings?.recovery_pass || 'Unlimited file restoration for 24 hours';
+    return raw
+      .replace(/\{hours\}/g, String(recoveryPassHours))
+      .replace(/\b24\s*(hours|hour)\b/gi, `${recoveryPassHours} hours`)
+      .replace(/\b24-hour\b/gi, `${recoveryPassHours}-hour`);
   };
 
   const getProSubheading = () => {
@@ -330,9 +334,11 @@ function PricingPageContent() {
     if (planKey === 'free' && text.toLowerCase().includes('250 files') && text.toLowerCase().includes('500mb')) {
       return `Free up to ${formatLimitText(maxFiles, maxSizeMB)}`;
     }
-    // Recovery pass is always unlimited for 24 hours – no file/size limit to display
     if (planKey === 'recovery_pass') {
-      return text;
+      return text
+        .replace(/\{hours\}/g, String(recoveryPassHours))
+        .replace(/\b24\s*(hours|hour)\b/gi, `${recoveryPassHours} hours`)
+        .replace(/\b24-hour\b/gi, `${recoveryPassHours}-hour`);
     }
     return text;
   };

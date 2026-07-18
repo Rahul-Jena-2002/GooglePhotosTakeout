@@ -17,6 +17,7 @@ export default function AdminTierFeatures() {
   const [isLight, setIsLight] = useState(false)
   const [saving, setSaving] = useState(false)
   const [resetting, setResetting] = useState(false)
+  const [recoveryPassHours, setRecoveryPassHours] = useState<number>(24)
 
   // Dynamic Features customizer states
   const [freeFeatures, setFreeFeatures] = useState<FeatureItem[]>([])
@@ -56,6 +57,9 @@ export default function AdminTierFeatures() {
     const unsub = onSnapshot(doc(db, "settings", "global"), (snap) => {
       if (snap.exists()) {
         const data = snap.data()
+        if (data.recoveryPassHours !== undefined) {
+          setRecoveryPassHours(Number(data.recoveryPassHours))
+        }
         const storedFeatures = data.features_config as FeaturesConfig | undefined
         if (storedFeatures) {
           setFreeFeatures(storedFeatures.free || DEFAULT_FEATURES_CONFIG.free)
@@ -189,7 +193,7 @@ export default function AdminTierFeatures() {
 
   const COLS = [
     { planKey: "free" as const, label: "Free Plan", color: "text-green-400", items: freeFeatures, setItems: setFreeFeatures },
-    { planKey: "recovery_pass" as const, label: "Recovery Pass", color: "text-purple-400", items: recoveryFeatures, setItems: setRecoveryFeatures },
+    { planKey: "recovery_pass" as const, label: "Recovery Pass", color: "text-cyan-400", items: recoveryFeatures, setItems: setRecoveryFeatures },
     { planKey: "pro" as const, label: "Pro Lifetime", color: "text-blue-400", items: proFeatures, setItems: setProFeatures },
     { planKey: "super" as const, label: "Super Lifetime", color: "text-amber-400", items: superFeatures, setItems: setSuperFeatures },
   ]
@@ -298,6 +302,14 @@ export default function AdminTierFeatures() {
                       color: isLight ? '#4b5563' : '#a1a1aa'
                     }}
                   />
+                  {planKey === 'recovery_pass' && (
+                    <div className="text-[9px] text-cyan-400 font-bold mt-1">
+                      Live: {subheadings.recovery_pass
+                        .replace(/\{hours\}/g, String(recoveryPassHours))
+                        .replace(/\b24\s*(hours|hour)\b/gi, `${recoveryPassHours} hours`)
+                        .replace(/\b24-hour\b/gi, `${recoveryPassHours}-hour`)}
+                    </div>
+                  )}
                 </div>
 
                 {/* Features Bullets */}
@@ -306,55 +318,65 @@ export default function AdminTierFeatures() {
                 </div>
                 <div className="space-y-2">
                   {items.map((feat, idx) => (
-                    <div key={idx} className="flex items-center gap-1.5">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          const updated = items.map((f, i) => i === idx ? { ...f, isBold: !f.isBold } : f)
-                          setItems(updated)
-                        }}
-                        className={`shrink-0 w-6 h-6 rounded text-[10px] font-black border transition-all ${
-                          feat.isBold
-                            ? "bg-indigo-600 border-indigo-500 text-white"
-                            : "bg-zinc-800 border-zinc-700 text-zinc-500 hover:border-zinc-500"
-                        }`}
-                        style={feat.isBold ? {} : {
-                          backgroundColor: isLight ? '#ffffff' : '#1f1f23',
-                          borderColor: isLight ? '#d1d5db' : '#27272a',
-                          color: isLight ? '#6b7280' : '#88888b'
-                        }}
-                        title={feat.isBold ? "Bold style: On" : "Bold style: Off"}
-                      >
-                        B
-                      </button>
-                      <input
-                        type="text"
-                        value={feat.text}
-                        onKeyDown={(e) => handleTextareaKeyDown(e, feat.text, (newText) => {
-                          const updated = items.map((f, i) => i === idx ? { ...f, text: newText } : f)
-                          setItems(updated)
-                        })}
-                        onChange={(e) => {
-                          const updated = items.map((f, i) => i === idx ? { ...f, text: e.target.value } : f)
-                          setItems(updated)
-                        }}
-                        className="flex-1 min-w-0 border rounded-lg px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500"
-                        style={{
-                          backgroundColor: isLight ? '#ffffff' : '#0f0f12',
-                          borderColor: isLight ? '#d1d5db' : '#27272a',
-                          color: isLight ? '#1f2937' : '#f3f4f6',
-                          fontWeight: feat.isBold ? "bold" : "normal"
-                        }}
-                      />
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setItems(items.filter((_, i) => i !== idx))
-                        }}
-                        className="shrink-0 w-6 h-6 rounded text-red-500 hover:bg-red-500/10 border border-transparent hover:border-red-500/20 flex items-center justify-center transition-all"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
+                    <div key={idx} className="space-y-1">
+                      <div className="flex items-center gap-1.5">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const updated = items.map((f, i) => i === idx ? { ...f, isBold: !f.isBold } : f)
+                            setItems(updated)
+                          }}
+                          className={`shrink-0 w-6 h-6 rounded text-[10px] font-black border transition-all ${
+                            feat.isBold
+                              ? "bg-indigo-600 border-indigo-500 text-white"
+                              : "bg-zinc-800 border-zinc-700 text-zinc-500 hover:border-zinc-500"
+                          }`}
+                          style={feat.isBold ? {} : {
+                            backgroundColor: isLight ? '#ffffff' : '#1f1f23',
+                            borderColor: isLight ? '#d1d5db' : '#27272a',
+                            color: isLight ? '#6b7280' : '#88888b'
+                          }}
+                          title={feat.isBold ? "Bold style: On" : "Bold style: Off"}
+                        >
+                          B
+                        </button>
+                        <input
+                          type="text"
+                          value={feat.text}
+                          onKeyDown={(e) => handleTextareaKeyDown(e, feat.text, (newText) => {
+                            const updated = items.map((f, i) => i === idx ? { ...f, text: newText } : f)
+                            setItems(updated)
+                          })}
+                          onChange={(e) => {
+                            const updated = items.map((f, i) => i === idx ? { ...f, text: e.target.value } : f)
+                            setItems(updated)
+                          }}
+                          className="flex-1 min-w-0 border rounded-lg px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                          style={{
+                            backgroundColor: isLight ? '#ffffff' : '#0f0f12',
+                            borderColor: isLight ? '#d1d5db' : '#27272a',
+                            color: isLight ? '#1f2937' : '#f3f4f6',
+                            fontWeight: feat.isBold ? "bold" : "normal"
+                          }}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setItems(items.filter((_, i) => i !== idx))
+                          }}
+                          className="shrink-0 w-6 h-6 rounded text-red-500 hover:bg-red-500/10 border border-transparent hover:border-red-500/20 flex items-center justify-center transition-all"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                      {planKey === 'recovery_pass' && (
+                        <div className="text-[9px] text-cyan-400 font-bold pl-7">
+                          Live: {feat.text
+                            .replace(/\{hours\}/g, String(recoveryPassHours))
+                            .replace(/\b24\s*(hours|hour)\b/gi, `${recoveryPassHours} hours`)
+                            .replace(/\b24-hour\b/gi, `${recoveryPassHours}-hour`)}
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>
@@ -391,7 +413,7 @@ export default function AdminTierFeatures() {
                 <tr className="border-b" style={{ borderColor: isLight ? '#e5e7eb' : '#27272a' }}>
                   <th className="py-2 pr-4 font-bold text-zinc-500 w-1/4">Feature Name</th>
                   <th className="py-2 px-2 font-bold text-green-400">Free</th>
-                  <th className="py-2 px-2 font-bold text-purple-400">Recovery Pass</th>
+                  <th className="py-2 px-2 font-bold text-cyan-400">Recovery Pass</th>
                   <th className="py-2 px-2 font-bold text-blue-400">Pro Lifetime</th>
                   <th className="py-2 px-2 font-bold text-amber-400">Super Lifetime</th>
                   <th className="py-2 pl-4 font-bold text-zinc-500 text-right">Actions</th>

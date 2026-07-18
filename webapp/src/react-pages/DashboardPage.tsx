@@ -237,7 +237,7 @@ Your EXIF metadata recovery tools are active.
                   Active Plan Details
                 </span>
                 {plan === 'pro' && <span className="text-xs bg-zinc-950 dark:bg-zinc-50 text-white dark:text-black px-2.5 py-1 rounded-md font-bold border border-zinc-200 dark:border-zinc-800">Most Popular</span>}
-                {plan === 'super' && <span className="text-xs bg-purple-500 text-white px-2.5 py-1 rounded-md flex items-center gap-1 font-bold"><ShieldCheck className="w-3.5 h-3.5"/> Premium Enabled</span>}
+                {plan === 'super' && <span className="text-xs bg-amber-500 text-white px-2.5 py-1 rounded-md flex items-center gap-1 font-bold"><ShieldCheck className="w-3.5 h-3.5"/> Premium Enabled</span>}
               </CardTitle>
             </CardHeader>
             <CardContent className="pt-6 space-y-6">
@@ -263,13 +263,13 @@ Your EXIF metadata recovery tools are active.
               {plan === 'recovery_pass' && (
                 <div className="space-y-4">
                   {passActive ? (
-                    <div className="bg-purple-500/5 border border-purple-500/20 rounded-xl p-5">
+                    <div className="bg-cyan-500/5 border border-cyan-500/20 rounded-xl p-5">
                       <div className="flex items-center justify-between mb-3">
-                        <span className="text-xs font-bold text-purple-300 uppercase tracking-widest flex items-center gap-1.5">
-                          <span className="w-1.5 h-1.5 rounded-full bg-purple-400 animate-pulse inline-block" />
+                        <span className="text-xs font-bold text-cyan-300 uppercase tracking-widest flex items-center gap-1.5">
+                          <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse inline-block" />
                           Active — Unlimited Restoration
                         </span>
-                        <a href={`/checkout?plan=recovery_pass`} className="text-[10px] font-bold text-purple-400 hover:text-purple-300 underline underline-offset-2">+ Extend</a>
+                        <a href={`/checkout?plan=recovery_pass`} className="text-[10px] font-bold text-cyan-400 hover:text-cyan-300 underline underline-offset-2">+ Extend</a>
                       </div>
                       <div className="flex items-baseline gap-1.5">
                         <span className="text-4xl font-black text-white tabular-nums">{String(remainingHrs).padStart(2, '0')}:{String(remainingMins).padStart(2, '0')}:{String(remainingSecs).padStart(2, '0')}</span>
@@ -282,14 +282,14 @@ Your EXIF metadata recovery tools are active.
                       <p className="text-sm font-bold text-red-400 mb-1">Recovery Pass Expired</p>
                       <p className="text-[11px] text-zinc-500 mb-4">Your 24-hour pass expired on {new Date(expiresAt).toLocaleString()}.</p>
                       <a href="/checkout?plan=recovery_pass">
-                        <button className="px-4 py-2 rounded-lg bg-purple-600 hover:bg-purple-500 text-white text-xs font-bold transition-all">Get New Pass</button>
+                        <button className="btn-recovery-cyan px-4 py-2 rounded-lg text-xs font-bold transition-all">Get New Pass</button>
                       </a>
                     </div>
                   ) : (
                     <div className="bg-zinc-900/60 border border-zinc-800 rounded-xl p-5 text-center">
                       <p className="text-xs text-zinc-400">No active recovery pass found. Purchase one to unlock unlimited restoration.</p>
                       <a href="/checkout?plan=recovery_pass">
-                        <button className="mt-3 px-4 py-2 rounded-lg bg-purple-600 hover:bg-purple-500 text-white text-xs font-bold transition-all">Get Recovery Pass</button>
+                        <button className="btn-recovery-cyan mt-3 px-4 py-2 rounded-lg text-xs font-bold transition-all">Get Recovery Pass</button>
                       </a>
                     </div>
                   )}
