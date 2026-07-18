@@ -113,7 +113,7 @@ const prices = PLAN_PRICES[region] || PLAN_PRICES.us;
     </section>
 
     <div class="w-full max-w-4xl mx-auto px-6 my-8">
-      <AdUnit client:visible type="horizontal" slot="1" />
+      <AdUnit client:only="react" type="horizontal" slot="1" />
     </div>
 
     <!-- 2. STATS SECTION -->
@@ -182,19 +182,19 @@ const prices = PLAN_PRICES[region] || PLAN_PRICES.us;
     </section>
 
     <div class="w-full max-w-4xl mx-auto px-6 my-8">
-      <AdUnit client:visible type="horizontal" slot="2" />
+      <AdUnit client:only="react" type="horizontal" slot="2" />
     </div>
 
     <!-- 4. SOLUTION (BEFORE / AFTER - INTERACTIVE COMPARE SLIDER) -->
     <section class="w-full py-36 relative z-10">
       <div class="max-w-7xl mx-auto px-4 text-center">
         <h2 class="text-4xl md:text-5xl font-bold tracking-tighter mb-16">The TakeoutFix Solution</h2>
-        <Compare client:visible />
+        <Compare client:only="react" />
       </div>
     </section>
 
     <div class="w-full max-w-4xl mx-auto px-6 my-8">
-      <AdUnit client:visible type="horizontal" slot="3" />
+      <AdUnit client:only="react" type="horizontal" slot="3" />
     </div>
 
     <!-- 5. PRIVACY SECTION -->
@@ -224,7 +224,7 @@ const prices = PLAN_PRICES[region] || PLAN_PRICES.us;
     </section>
 
     <div class="w-full max-w-4xl mx-auto px-6 my-8">
-      <AdUnit client:visible type="horizontal" slot="4" />
+      <AdUnit client:only="react" type="horizontal" slot="4" />
     </div>
 
     <!-- 6. HOW IT WORKS DIAGRAM -->
@@ -290,7 +290,7 @@ const prices = PLAN_PRICES[region] || PLAN_PRICES.us;
     <!-- 9. FAQ SECTION (INTERACTIVE EXPANDABLE FAQ DECK) -->
     <section class="w-full max-w-5xl mx-auto px-4 py-36 relative z-10">
       <h2 class="text-4xl font-bold tracking-tighter mb-12 text-center">Frequently Asked Questions</h2>
-      <ExpandableFaq client:visible />
+      <ExpandableFaq client:only="react" />
       <div class="mt-12 text-center">
         <a href="/support" class="inline-flex items-center justify-center min-h-[44px] min-w-[44px] px-4">
           <button class="text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 font-semibold text-sm transition-colors cursor-pointer" aria-label="View all frequently asked questions on support page">View all frequently asked questions &rarr;</button>
