@@ -112,7 +112,7 @@ export async function injectVideoMetadata(
       const cp = await import(/* @vite-ignore */ cpName);
       const path = await import(/* @vite-ignore */ pathName);
       const util = await import(/* @vite-ignore */ utilName);
-      const execPromise = util.promisify(cp.exec);
+      const execFilePromise = util.promisify(cp.execFile);
 
       if (typeof videoBufferOrPath === 'string') {
         const videoPath = videoBufferOrPath;
@@ -122,12 +122,12 @@ export async function injectVideoMetadata(
         const base = path.basename(videoPath, ext);
         const outputPath = path.join(dir, `${base}_injected${ext}`);
 
-        let command = `exiftool -overwrite_original `;
-        command += ` -AllDates="${formattedDate}"`;
-        command += ` -TrackCreateDate="${formattedDate}"`;
-        command += ` -TrackModifyDate="${formattedDate}"`;
-        command += ` -MediaCreateDate="${formattedDate}"`;
-        command += ` -MediaModifyDate="${formattedDate}"`;
+        const args = ['-overwrite_original'];
+        args.push(`-AllDates=${formattedDate}`);
+        args.push(`-TrackCreateDate=${formattedDate}`);
+        args.push(`-TrackModifyDate=${formattedDate}`);
+        args.push(`-MediaCreateDate=${formattedDate}`);
+        args.push(`-MediaModifyDate=${formattedDate}`);
 
         if (lat !== undefined && lng !== undefined) {
           const latSign = lat >= 0 ? "+" : "-";
@@ -135,12 +135,12 @@ export async function injectVideoMetadata(
           const padLat = Math.abs(lat).toFixed(4).padStart(7, '0');
           const padLng = Math.abs(lng).toFixed(4).padStart(8, '0');
           
-          command += ` -Keys:GPSCoordinates="${latSign}${padLat}${lngSign}${padLng}/"`;
-          command += ` -UserData:GPSCoordinates="${latSign}${padLat}${lngSign}${padLng}/"`;
+          args.push(`-Keys:GPSCoordinates=${latSign}${padLat}${lngSign}${padLng}/`);
+          args.push(`-UserData:GPSCoordinates=${latSign}${padLat}${lngSign}${padLng}/`);
         }
 
-        command += ` "${videoPath}" -o "${outputPath}"`;
-        await execPromise(command);
+        args.push(videoPath, '-o', outputPath);
+        await execFilePromise('exiftool', args);
         return outputPath;
       }
     } catch (err) {
@@ -162,13 +162,7 @@ function DegToDMS(deg: number): Array<[number, number]> {
 }
 
 function arrayBufferToBinaryString(buf: ArrayBuffer): string {
-  const bytes = new Uint8Array(buf);
-  let binary = '';
-  const CHUNK = 8192;
-  for (let i = 0; i < bytes.length; i += CHUNK) {
-    binary += String.fromCharCode(...bytes.subarray(i, i + CHUNK));
-  }
-  return binary;
+  return new TextDecoder("latin1").decode(new Uint8Array(buf));
 }
 
 function binaryStringToUint8Array(str: string): Uint8Array {

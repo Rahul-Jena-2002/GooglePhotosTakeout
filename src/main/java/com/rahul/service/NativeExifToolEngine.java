@@ -1,6 +1,7 @@
 package com.rahul.service;
 
 import jakarta.annotation.PostConstruct;
+import jakarta.annotation.PreDestroy;
 import org.springframework.stereotype.Service;
 
 import java.io.*;
@@ -10,6 +11,8 @@ import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
@@ -21,6 +24,7 @@ import org.apache.commons.compress.compressors.gzip.GzipCompressorInputStream;
 public class NativeExifToolEngine {
 
     private File exifToolBinary;
+    private final BlockingQueue<PersistentExifTool> pool = new LinkedBlockingQueue<>();
 
     @PostConstruct
     public void init() {
@@ -35,12 +39,32 @@ public class NativeExifToolEngine {
                 exifToolBinary = extractUnixExifTool(extractDir);
             }
             
-            if (exifToolBinary != null && !exifToolBinary.exists()) {
+            if (exifToolBinary != null && exifToolBinary.exists()) {
+                int maxProcessors = Runtime.getRuntime().availableProcessors();
+                int numWorkers = Math.max(2, Math.min(maxProcessors, 8));
+                System.out.println("Initializing ExifTool pool with " + numWorkers + " workers.");
+                for (int i = 0; i < numWorkers; i++) {
+                    try {
+                        pool.add(new PersistentExifTool(exifToolBinary));
+                    } catch (IOException e) {
+                        System.err.println("Failed to start persistent ExifTool worker: " + e.getMessage());
+                    }
+                }
+            } else {
                 System.err.println("Failed to provision ExifTool!");
             }
         } catch (Exception e) {
             System.err.println("Error initializing ExifTool engine: " + e.getMessage());
             e.printStackTrace();
+        }
+    }
+
+    @PreDestroy
+    public void cleanup() {
+        System.out.println("Cleaning up ExifTool pool...");
+        PersistentExifTool worker;
+        while ((worker = pool.poll()) != null) {
+            worker.destroy();
         }
     }
 
@@ -103,6 +127,42 @@ public class NativeExifToolEngine {
             return false;
         }
 
+        if (pool.isEmpty()) {
+            System.err.println("ExifTool pool is empty. Spawning single-use process as fallback.");
+            return executeFallback(args);
+        }
+
+        PersistentExifTool worker = null;
+        try {
+            worker = pool.take();
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            System.err.println("Interrupted waiting for ExifTool worker.");
+            return false;
+        }
+
+        boolean success = false;
+        try {
+            success = worker.runCommand(args);
+            if (!success) {
+                // Worker failed/died. Discard and recreate.
+                worker.destroy();
+                try {
+                    worker = new PersistentExifTool(exifToolBinary);
+                } catch (IOException ex) {
+                    System.err.println("Failed to recreate ExifTool worker: " + ex.getMessage());
+                    worker = null;
+                }
+            }
+        } finally {
+            if (worker != null) {
+                pool.offer(worker);
+            }
+        }
+        return success;
+    }
+
+    private boolean executeFallback(List<String> args) {
         List<String> command = new ArrayList<>();
         command.add(exifToolBinary.getAbsolutePath());
         command.addAll(args);
@@ -110,8 +170,6 @@ public class NativeExifToolEngine {
         try {
             ProcessBuilder pb = new ProcessBuilder(command);
             pb.directory(exifToolBinary.getParentFile());
-            
-            // ExifTool uses standard error for warnings, let's capture it.
             Process p = pb.start();
             boolean finished = p.waitFor(30, TimeUnit.SECONDS);
             if (!finished) {
@@ -120,8 +178,85 @@ public class NativeExifToolEngine {
             }
             return p.exitValue() == 0;
         } catch (Exception e) {
-            System.err.println("ExifTool execution failed: " + e.getMessage());
+            System.err.println("ExifTool fallback execution failed: " + e.getMessage());
             return false;
+        }
+    }
+
+    private static class PersistentExifTool {
+        private final File binary;
+        private Process process;
+        private BufferedReader reader;
+        private BufferedWriter writer;
+
+        public PersistentExifTool(File binary) throws IOException {
+            this.binary = binary;
+            start();
+        }
+
+        private void start() throws IOException {
+            List<String> command = new ArrayList<>();
+            command.add(binary.getAbsolutePath());
+            command.add("-stay_open");
+            command.add("True");
+            command.add("-@");
+            command.add("-");
+
+            ProcessBuilder pb = new ProcessBuilder(command);
+            pb.directory(binary.getParentFile());
+            pb.redirectErrorStream(true);
+            this.process = pb.start();
+
+            this.reader = new BufferedReader(new InputStreamReader(process.getInputStream(), "UTF-8"));
+            this.writer = new BufferedWriter(new OutputStreamWriter(process.getOutputStream(), "UTF-8"));
+        }
+
+        public boolean runCommand(List<String> args) {
+            try {
+                if (process == null || !process.isAlive()) {
+                    start();
+                }
+                for (String arg : args) {
+                    writer.write(arg);
+                    writer.newLine();
+                }
+                writer.write("-execute");
+                writer.newLine();
+                writer.flush();
+
+                String line;
+                while ((line = reader.readLine()) != null) {
+                    if (line.trim().equals("{ready}")) {
+                        return true;
+                    }
+                }
+                return false;
+            } catch (IOException e) {
+                System.err.println("Error in persistent ExifTool execution: " + e.getMessage());
+                destroy();
+                return false;
+            }
+        }
+
+        public void destroy() {
+            if (writer != null) {
+                try {
+                    writer.write("-leave");
+                    writer.newLine();
+                    writer.write("-execute");
+                    writer.newLine();
+                    writer.flush();
+                } catch (IOException ignored) {}
+            }
+            if (process != null) {
+                process.destroy();
+                try {
+                    process.waitFor(1, TimeUnit.SECONDS);
+                } catch (InterruptedException ignored) {}
+                if (process.isAlive()) {
+                    process.destroyForcibly();
+                }
+            }
         }
     }
 }

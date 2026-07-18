@@ -403,7 +403,7 @@ export default function MainLayout() {
                               <p className="text-xs text-indigo-400 font-semibold font-mono truncate max-w-full">@{userData.username}</p>
                             )}
                             <p className={`text-[11px] font-bold uppercase tracking-wider mt-0.5 ${
-                              userData?.plan === 'recovery_pass' ? 'text-purple-400' : 'text-indigo-400/80'
+                              userData?.plan === 'recovery_pass' ? 'text-cyan-400' : 'text-indigo-400/80'
                             }`}>
                               {userData?.plan === 'pro' ? 'Pro Tier' : userData?.plan === 'super' ? 'Super Tier' : userData?.plan === 'recovery_pass' ? 'Recovery Pass' : 'Free Tier'}
                             </p>
@@ -529,7 +529,7 @@ export default function MainLayout() {
                   <p className="text-[10px] text-indigo-400 font-semibold font-mono truncate">@{userData.username}</p>
                 )}
                 <p className={`text-[10px] font-bold uppercase tracking-wider mt-0.5 ${
-                  userData?.plan === 'recovery_pass' ? 'text-purple-400' : 'text-indigo-400'
+                  userData?.plan === 'recovery_pass' ? 'text-cyan-400' : 'text-indigo-400'
                 }`}>
                   {userData?.plan === 'pro' ? 'Pro Tier' : userData?.plan === 'super' ? 'Super Tier' : userData?.plan === 'recovery_pass' ? 'Recovery Pass' : 'Free Tier'}
                 </p>
@@ -645,7 +645,7 @@ export default function MainLayout() {
                   You've been invited to join the TakeoutFix team!
                 </p>
                 <p className="text-xs text-zinc-400 mt-0.5">
-                  Invited by <span className="text-indigo-300 font-semibold">{inviteFacet.pendingInvite.invitedBy}</span> as a <span className="text-purple-300 font-semibold uppercase tracking-wider text-[10px]">{inviteFacet.pendingInvite.role}</span>.
+                  Invited by <span className="text-indigo-300 font-semibold">{inviteFacet.pendingInvite.invitedBy}</span> as a <span className="text-cyan-300 font-semibold uppercase tracking-wider text-[10px]">{inviteFacet.pendingInvite.role}</span>.
                 </p>
               </div>
             </div>

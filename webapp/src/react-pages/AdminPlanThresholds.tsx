@@ -149,7 +149,7 @@ export default function AdminPlanThresholds() {
 
   const TIERS = [
     { key: "free", label: "Free Plan", color: "text-green-400", border: "border-green-500/25", bg: "bg-green-500/5", desc: "For new users testing out the fixer tool." },
-    { key: "recovery_pass", label: "Recovery Pass", color: "text-purple-400", border: "border-purple-500/25", bg: "bg-purple-500/5", desc: "24-hour unlimited restoration pass." },
+    { key: "recovery_pass", label: "Recovery Pass", color: "text-cyan-400", border: "border-cyan-500/25", bg: "bg-cyan-500/5", desc: "24-hour unlimited restoration pass." },
     { key: "pro", label: "Pro Lifetime", color: "text-blue-400", border: "border-blue-500/25", bg: "bg-blue-500/5", desc: "Unlimited plan for general users." },
     { key: "super", label: "Super Lifetime", color: "text-amber-400", border: "border-amber-500/25", bg: "bg-amber-500/5", desc: "Highest capacity tier for power users." },
   ]
@@ -261,7 +261,7 @@ export default function AdminPlanThresholds() {
               {/* Inline duration config — only for recovery_pass */}
               {key === 'recovery_pass' && (
                 <div className="space-y-1.5 pt-3 border-t" style={{ borderColor: isLight ? '#e5e7eb' : '#1f1f23' }}>
-                  <label className="text-[10px] font-bold uppercase tracking-wider block text-purple-400">
+                  <label className="text-[10px] font-bold uppercase tracking-wider block text-cyan-400">
                     Pass Duration (Hours)
                   </label>
                   <div className="relative flex items-center">
@@ -280,7 +280,7 @@ export default function AdminPlanThresholds() {
                       }}
                     />
                   </div>
-                  <div className="text-[10px] text-purple-400 font-bold">
+                  <div className="text-[10px] text-cyan-400 font-bold">
                     ✓ Each purchase gives <strong>{recoveryPassHours}h</strong> of unlimited restoration (stackable)
                   </div>
                 </div>

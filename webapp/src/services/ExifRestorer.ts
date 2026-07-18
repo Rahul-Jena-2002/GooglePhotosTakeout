@@ -33,14 +33,7 @@ function toExifDate(epochSec: number): string {
 
 /** Convert ArrayBuffer → binary string (needed by piexifjs) */
 function arrayBufferToBinaryString(buf: ArrayBuffer): string {
-  const bytes = new Uint8Array(buf);
-  let binary = '';
-  // Process in chunks to avoid call stack overflow on large files
-  const CHUNK = 8192;
-  for (let i = 0; i < bytes.length; i += CHUNK) {
-    binary += String.fromCharCode(...bytes.subarray(i, i + CHUNK));
-  }
-  return binary;
+  return new TextDecoder("latin1").decode(new Uint8Array(buf));
 }
 
 /** Convert binary string → Uint8Array<ArrayBuffer> */
