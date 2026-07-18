@@ -1005,12 +1005,12 @@ html:not(.light) .custom-faq-scroll::-webkit-scrollbar-thumb {
 html:not(.light) button.bg-zinc-900:not(.btn-theme-toggle-navbar):not(.btn-notification-navbar):not(.btn-profile-trigger),
 html:not(.light) button.bg-black:not(.btn-theme-toggle-navbar):not(.btn-notification-navbar):not(.btn-profile-trigger),
 html:not(.light) button.btn-solid-dark:not(.btn-theme-toggle-navbar):not(.btn-notification-navbar):not(.btn-profile-trigger),
-html:not(.light) button:not(.bg-white):not(.tool-tab-btn):not(.btn-monochrome-primary):not(.btn-monochrome-secondary):not(.btn-pricing-pro):not(.btn-pro-blue):not(.btn-super-orange):not(.btn-theme-toggle-navbar):not(.btn-notification-navbar):not(.btn-profile-trigger):not(.btn-purple-pricing) {
+html:not(.light) button:not(.bg-white):not(.tool-tab-btn):not(.btn-monochrome-primary):not(.btn-monochrome-secondary):not(.btn-pricing-pro):not(.btn-pro-blue):not(.btn-super-orange):not(.btn-recovery-cyan):not(.btn-theme-toggle-navbar):not(.btn-notification-navbar):not(.btn-profile-trigger):not(.btn-purple-pricing):not(.btn-cyan-pricing) {
   background-color: #18181b !important;
   color: #f4f4f5 !important;
 }
-html:not(.light) button:not(.bg-zinc-900):not(.bg-black):not(.btn-solid-dark):not(.bg-white):not(.btn-monochrome-primary):not(.btn-monochrome-secondary):not(.btn-pricing-pro):not(.btn-pro-blue):not(.btn-super-orange):not(.btn-theme-toggle-navbar):not(.btn-notification-navbar):not(.btn-profile-trigger):not(.btn-purple-pricing) *,
-html:not(.light) button:not(.bg-white):not(.tool-tab-btn):not(.btn-monochrome-primary):not(.btn-monochrome-secondary):not(.btn-pricing-pro):not(.btn-pro-blue):not(.btn-super-orange):not(.btn-theme-toggle-navbar):not(.btn-notification-navbar):not(.btn-profile-trigger):not(.btn-purple-pricing) * {
+html:not(.light) button:not(.bg-zinc-900):not(.bg-black):not(.btn-solid-dark):not(.bg-white):not(.btn-monochrome-primary):not(.btn-monochrome-secondary):not(.btn-pricing-pro):not(.btn-pro-blue):not(.btn-super-orange):not(.btn-recovery-cyan):not(.btn-theme-toggle-navbar):not(.btn-notification-navbar):not(.btn-profile-trigger):not(.btn-purple-pricing):not(.btn-cyan-pricing) *,
+html:not(.light) button:not(.bg-white):not(.tool-tab-btn):not(.btn-monochrome-primary):not(.btn-monochrome-secondary):not(.btn-pricing-pro):not(.btn-pro-blue):not(.btn-super-orange):not(.btn-recovery-cyan):not(.btn-theme-toggle-navbar):not(.btn-notification-navbar):not(.btn-profile-trigger):not(.btn-purple-pricing):not(.btn-cyan-pricing) * {
   color: #FFFFFF !important;
 }
 
@@ -1106,27 +1106,59 @@ html.light .btn-pricing-pro:hover {
   border-color: #27272a !important;
 }
 
-/* Purple button for Recovery Pass — works in both light and dark modes */
-.btn-purple-pricing {
-  background-color: #9333ea !important;
-  color: #ffffff !important;
-  border: 1px solid #7e22ce !important;
+/* Cyan Recovery Pass Button — mirrors btn-pro-blue / btn-super-orange exactly */
+.btn-recovery-cyan,
+button.btn-recovery-cyan,
+html.dark button.btn-recovery-cyan {
+  background-color: #ffffff !important;
+  color: #0891b2 !important; /* cyan-600 */
+  border: 1px solid #ffffff !important;
 }
-.btn-purple-pricing:hover {
-  background-color: #a855f7 !important;
-  color: #ffffff !important;
-  border-color: #9333ea !important;
+.btn-recovery-cyan *,
+button.btn-recovery-cyan *,
+html.dark button.btn-recovery-cyan * {
+  color: #0891b2 !important;
 }
-html.light .btn-purple-pricing {
-  background-color: #9333ea !important;
-  color: #ffffff !important;
-  border: 1px solid #7e22ce !important;
+.btn-recovery-cyan:hover,
+button.btn-recovery-cyan:hover,
+html.dark button.btn-recovery-cyan:hover {
+  background-color: #000000 !important;
+  color: #22d3ee !important; /* cyan-400 */
+  border-color: #22d3ee !important;
 }
-html.light .btn-purple-pricing:hover {
-  background-color: #a855f7 !important;
-  color: #ffffff !important;
-  border-color: #9333ea !important;
+.btn-recovery-cyan:hover *,
+button.btn-recovery-cyan:hover *,
+html.dark button.btn-recovery-cyan:hover * {
+  color: #22d3ee !important;
 }
+
+html.light button.btn-recovery-cyan,
+html.light button.btn-recovery-cyan * {
+  background-color: #000000 !important;
+  color: #22d3ee !important; /* cyan-400 */
+  border: 1px solid #000000 !important;
+}
+html.light button.btn-recovery-cyan:hover,
+html.light button.btn-recovery-cyan:hover *,
+html.light button.btn-recovery-cyan:focus,
+html.light button.btn-recovery-cyan:focus * {
+  background-color: #ffffff !important;
+  color: #0891b2 !important; /* cyan-600 */
+  border-color: #0891b2 !important;
+}
+
+/* Cyan color highlight for Recovery Pass features lists to override global light mode !important rules */
+.text-cyan-pricing-highlight,
+.text-cyan-pricing-highlight * {
+  color: #0891b2 !important; /* cyan-600 */
+}
+html:not(.light) .text-cyan-pricing-highlight,
+html:not(.light) .text-cyan-pricing-highlight *,
+html.dark .text-cyan-pricing-highlight,
+html.dark .text-cyan-pricing-highlight * {
+  color: #22d3ee !important; /* cyan-400 */
+}
+
 
 .btn-pricing-super {
   background-color: transparent !important;

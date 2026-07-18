@@ -304,7 +304,7 @@ export default function AdminTierFeatures() {
                   />
                   {planKey === 'recovery_pass' && (
                     <div className="text-[9px] text-cyan-400 font-bold mt-1">
-                      Live: {subheadings.recovery_pass
+                      Live: {(subheadings.recovery_pass || '')
                         .replace(/\{hours\}/g, String(recoveryPassHours))
                         .replace(/\b24\s*(hours|hour)\b/gi, `${recoveryPassHours} hours`)
                         .replace(/\b24-hour\b/gi, `${recoveryPassHours}-hour`)}
@@ -371,7 +371,7 @@ export default function AdminTierFeatures() {
                       </div>
                       {planKey === 'recovery_pass' && (
                         <div className="text-[9px] text-cyan-400 font-bold pl-7">
-                          Live: {feat.text
+                          Live: {(feat.text || '')
                             .replace(/\{hours\}/g, String(recoveryPassHours))
                             .replace(/\b24\s*(hours|hour)\b/gi, `${recoveryPassHours} hours`)
                             .replace(/\b24-hour\b/gi, `${recoveryPassHours}-hour`)}

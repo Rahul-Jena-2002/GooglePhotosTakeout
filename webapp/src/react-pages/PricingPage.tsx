@@ -328,6 +328,7 @@ function PricingPageContent() {
   };
 
   const formatFeatureText = (text: string, planKey: string) => {
+    if (!text || typeof text !== 'string') return text || "";
     if (!tierThresholds?.[planKey]) return text;
     const { maxFiles, maxSizeMB } = tierThresholds[planKey];
     
@@ -486,7 +487,7 @@ function PricingPageContent() {
                   {(featuresConfig?.recovery_pass || []).map((feat, idx) => (
                     <li key={idx} className={`flex items-center gap-1.5${idx === 0 ? ' recovery-pass-highlight' : ''}`}>
                       <span className="text-cyan-400 font-bold">✓</span>
-                      <span className={feat.isBold ? 'font-bold text-cyan-600 dark:text-cyan-400' : ''}>{renderFormattedText(formatFeatureText(feat.text, 'recovery_pass'))}</span>
+                      <span className={feat.isBold ? 'font-bold text-cyan-pricing-highlight' : ''}>{renderFormattedText(formatFeatureText(feat.text, 'recovery_pass'))}</span>
                     </li>
                   ))}
                 </ul>
