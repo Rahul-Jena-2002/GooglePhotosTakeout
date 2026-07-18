@@ -337,14 +337,50 @@ app.post("/dodo-webhook", async (req, res) => {
         cardLast4: null
       });
 
-      // 2. Update User Document
-      await db.collection("users").doc(userId).set({
-        plan,
-        usedBytes: 0,
-        usedFiles: 0,
-        expiresAt: null,
-        updatedAt: timestamp
-      }, { merge: true });
+      // 2. Update User Document — plan-aware logic
+      if (plan === 'recovery_pass') {
+        // Recovery Pass: repeatable, stackable, timed — NOT a subscription
+        // Read configured duration from Firestore settings (default 24h)
+        let passHours = 24;
+        try {
+          const settingsSnap = await db.collection("settings").doc("global").get();
+          if (settingsSnap.exists) {
+            const h = settingsSnap.data().recoveryPassHours;
+            if (typeof h === 'number' && h > 0) passHours = h;
+          }
+        } catch (e) {
+          console.warn("Could not read recoveryPassHours from settings, defaulting to 24h:", e);
+        }
+
+        const passMs = passHours * 60 * 60 * 1000;
+
+        // Fetch current user doc to check existing expiresAt
+        const userSnap = await db.collection("users").doc(userId).get();
+        const currentExpiresAt = userSnap.exists ? (userSnap.data().expiresAt || 0) : 0;
+
+        // Stack: if still active add to remaining time, otherwise start fresh from now
+        const baseTime = (currentExpiresAt > timestamp) ? currentExpiresAt : timestamp;
+        const newExpiresAt = baseTime + passMs;
+
+        await db.collection("users").doc(userId).set({
+          plan: 'recovery_pass',
+          expiresAt: newExpiresAt,
+          updatedAt: timestamp
+          // NOTE: do NOT reset usedBytes/usedFiles — quota resets per pass window are not needed
+          // since recovery_pass is now unlimited within its time window
+        }, { merge: true });
+
+        console.log(`Recovery Pass stacked for user ${userId}: +${passHours}h → expires ${new Date(newExpiresAt).toISOString()}`);
+      } else {
+        // Pro / Super: lifetime — no expiry, reset usage counters
+        await db.collection("users").doc(userId).set({
+          plan,
+          usedBytes: 0,
+          usedFiles: 0,
+          expiresAt: null,
+          updatedAt: timestamp
+        }, { merge: true });
+      }
 
       // 3. Find active campaign → increment currentPurchaseCount → auto-expire if cap hit
       let activeCampaignId = null;

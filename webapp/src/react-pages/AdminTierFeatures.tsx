@@ -189,7 +189,7 @@ export default function AdminTierFeatures() {
   const COLS = [
     { planKey: "free" as const, label: "Free Plan", color: "text-green-400", items: freeFeatures, setItems: setFreeFeatures },
     { planKey: "recovery_pass" as const, label: "Recovery Pass", color: "text-purple-400", items: recoveryFeatures, setItems: setRecoveryFeatures },
-    { planKey: "pro" as const, label: "Pro Lifetime", color: "text-violet-400", items: proFeatures, setItems: setProFeatures },
+    { planKey: "pro" as const, label: "Pro Lifetime", color: "text-blue-400", items: proFeatures, setItems: setProFeatures },
     { planKey: "super" as const, label: "Super Lifetime", color: "text-amber-400", items: superFeatures, setItems: setSuperFeatures },
   ]
 
@@ -350,8 +350,8 @@ export default function AdminTierFeatures() {
                 <tr className="border-b" style={{ borderColor: isLight ? '#e5e7eb' : '#27272a' }}>
                   <th className="py-2 pr-4 font-bold text-zinc-500 w-1/4">Feature Name</th>
                   <th className="py-2 px-2 font-bold text-green-400">Free</th>
-                  <th className="py-2 px-2 font-bold text-cyan-400">Single Pass</th>
-                  <th className="py-2 px-2 font-bold text-violet-400">Pro Lifetime</th>
+                  <th className="py-2 px-2 font-bold text-purple-400">Recovery Pass</th>
+                  <th className="py-2 px-2 font-bold text-blue-400">Pro Lifetime</th>
                   <th className="py-2 px-2 font-bold text-amber-400">Super Lifetime</th>
                   <th className="py-2 pl-4 font-bold text-zinc-500 text-right">Actions</th>
                 </tr>

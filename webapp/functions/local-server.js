@@ -489,14 +489,43 @@ app.post("/dodo-webhook", async (req, res) => {
       // ONLY fulfill plan upgrades if payment succeeded
       if (type === "payment.succeeded") {
 
-      // 2. Update User Document
-      await db.collection("users").doc(userId).set({
-        plan,
-        usedBytes: 0,
-        usedFiles: 0,
-        expiresAt: null,
-        updatedAt: timestamp
-      }, { merge: true });
+      // 2. Update User Document — plan-aware logic
+      if (plan === 'recovery_pass') {
+        // Recovery Pass: repeatable, stackable, timed — NOT a subscription
+        let passHours = 24;
+        try {
+          const settingsSnap = await db.collection("settings").doc("global").get();
+          if (settingsSnap.exists) {
+            const h = settingsSnap.data().recoveryPassHours;
+            if (typeof h === 'number' && h > 0) passHours = h;
+          }
+        } catch (e) {
+          console.warn("Could not read recoveryPassHours from settings, defaulting to 24h:", e);
+        }
+
+        const passMs = passHours * 60 * 60 * 1000;
+        const userSnap = await db.collection("users").doc(userId).get();
+        const currentExpiresAt = userSnap.exists ? (userSnap.data().expiresAt || 0) : 0;
+        const baseTime = (currentExpiresAt > timestamp) ? currentExpiresAt : timestamp;
+        const newExpiresAt = baseTime + passMs;
+
+        await db.collection("users").doc(userId).set({
+          plan: 'recovery_pass',
+          expiresAt: newExpiresAt,
+          updatedAt: timestamp
+        }, { merge: true });
+
+        console.log(`[local] Recovery Pass stacked for ${userId}: +${passHours}h → expires ${new Date(newExpiresAt).toISOString()}`);
+      } else {
+        // Pro / Super: lifetime — reset counters, no expiry
+        await db.collection("users").doc(userId).set({
+          plan,
+          usedBytes: 0,
+          usedFiles: 0,
+          expiresAt: null,
+          updatedAt: timestamp
+        }, { merge: true });
+      }
 
       // 3. Find active campaign → increment currentPurchaseCount → auto-expire if cap hit
       let activeCampaignId = null;

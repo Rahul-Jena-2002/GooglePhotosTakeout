@@ -426,11 +426,11 @@ function PricingPageContent() {
         </div>
 
         {/* RECOVERY PASS */}
-        <div className="flex flex-col bg-purple-950/10 border border-purple-500/25 rounded-2xl p-6 h-full justify-between hover:border-purple-500/40 transition-all">
+        <div className="flex flex-col bg-zinc-950/45 border border-purple-500/30 rounded-2xl p-6 h-full justify-between hover:border-purple-500/50 transition-all">
           <div>
             <div className="mb-6">
               <h2 className="text-2xl font-bold text-purple-400 font-semibold">{featuresConfig?.headings?.recovery_pass || 'Recovery Pass'}</h2>
-              <p className="text-purple-300/60 text-xs mt-1">{getRecoverySubheading()}</p>
+              <p className="text-zinc-500 text-xs mt-1">{getRecoverySubheading()}</p>
             </div>
             <div className="space-y-6">
               <div>
@@ -490,11 +490,11 @@ function PricingPageContent() {
           <div className="mt-8">
             {userData?.plan === 'recovery_pass' && (userData as any)?.expiresAt && Date.now() < (userData as any).expiresAt ? (
               <a href={`/checkout?plan=recovery_pass&region=${region}`} className="w-full" target="_blank" rel="noopener noreferrer">
-                <button className="w-full py-3 rounded-xl font-bold text-xs cursor-pointer transition-all bg-purple-600 hover:bg-purple-500 text-white">Extend Recovery Pass</button>
+                <button className="btn-monochrome-primary w-full py-3 rounded-xl font-bold text-xs cursor-pointer transition-all bg-purple-600 hover:bg-purple-500 border-purple-700 text-white">Extend Recovery Pass</button>
               </a>
             ) : (
               <a href={`/checkout?plan=recovery_pass&region=${region}`} className="w-full" target="_blank" rel="noopener noreferrer">
-                <button className="w-full py-3 rounded-xl font-bold text-xs cursor-pointer transition-all bg-purple-600 hover:bg-purple-500 text-white">Get Recovery Pass</button>
+                <button className="btn-monochrome-primary w-full py-3 rounded-xl font-bold text-xs cursor-pointer transition-all bg-purple-600 hover:bg-purple-500 border-purple-700 text-white">Get Recovery Pass</button>
               </a>
             )}
           </div>
