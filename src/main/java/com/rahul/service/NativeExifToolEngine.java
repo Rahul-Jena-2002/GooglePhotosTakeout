@@ -25,6 +25,7 @@ public class NativeExifToolEngine {
 
     private File exifToolBinary;
     private final BlockingQueue<PersistentExifTool> pool = new LinkedBlockingQueue<>();
+    private int activeWorkersCount = 0;
 
     @PostConstruct
     public void init() {
@@ -46,6 +47,7 @@ public class NativeExifToolEngine {
                 for (int i = 0; i < numWorkers; i++) {
                     try {
                         pool.add(new PersistentExifTool(exifToolBinary));
+                        activeWorkersCount++;
                     } catch (IOException e) {
                         System.err.println("Failed to start persistent ExifTool worker: " + e.getMessage());
                     }
@@ -127,8 +129,8 @@ public class NativeExifToolEngine {
             return false;
         }
 
-        if (pool.isEmpty()) {
-            System.err.println("ExifTool pool is empty. Spawning single-use process as fallback.");
+        if (activeWorkersCount == 0) {
+            System.err.println("No active ExifTool workers. Spawning single-use process as fallback.");
             return executeFallback(args);
         }
 

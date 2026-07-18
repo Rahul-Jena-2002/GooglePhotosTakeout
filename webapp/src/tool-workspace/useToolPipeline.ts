@@ -836,6 +836,7 @@ export function useToolPipeline() {
     // For ZIP: sequential processing (1 at a time) avoids ZipReader lock contention and is actually faster.
     // For folder: use user-configured maxWorkers.
     let inFlightCount = 0;
+    let isProcessingHeavy = false;
     const inflightLimit = (session.zipFile || zipModeRef.current) ? 1 : maxWorkers;
 
     const processNext = async () => {
@@ -877,9 +878,39 @@ export function useToolPipeline() {
             if (currentPage.length === 0) break;
           }
 
-          const fileRecord = currentPage[pageIndex++];
+          const fileRecord = currentPage[pageIndex];
+          if (!fileRecord) {
+            pageIndex++;
+            globalFileIndex++;
+            break;
+          }
+
+          // HEAVY FILE LOCK (UserBenchmark-style V8 Defy)
+          // If a file is massive (e.g., video > 35MB), we MUST process it completely alone
+          // to prevent V8 ArrayBuffer / Heap OOM crashing ("snapping").
+          const HEAVY_FILE_THRESHOLD = 35 * 1024 * 1024; // 35MB
+          const isHeavy = fileRecord.bytes > HEAVY_FILE_THRESHOLD;
+
+          if (isHeavy && inFlightCount > 0) {
+            // Wait for all current light tasks to finish before starting this heavy file.
+            // We just break out of this runWorker loop; the last completing task
+            // will call processNext() again and spawn us when inFlightCount is 0.
+            break;
+          }
+
+          if (!isHeavy && isProcessingHeavy) {
+            // A heavy file is currently processing, we should not spawn any new light files 
+            // until it finishes to protect the RAM.
+            break;
+          }
+
+          if (isHeavy) {
+            isProcessingHeavy = true;
+          }
+
+          // Advance indices now that we've committed to processing it
+          pageIndex++;
           globalFileIndex++;
-          if (!fileRecord) break;
 
           inFlightCount++;
           setActiveWorkersCount(inFlightCount);
@@ -1189,11 +1220,20 @@ export function useToolPipeline() {
             progressBuffer.current = Math.floor((statsBuffer.current.scanned / statsBuffer.current.total) * 100);
           } finally {
             inFlightCount--;
+            if (isHeavy) {
+              isProcessingHeavy = false;
+            }
             setActiveWorkersCount(inFlightCount);
 
             // V8 GC Yield: yield back event loop every 5 files to give GC idle time
-            if (globalFileIndex % 5 === 0) {
+            if (globalFileIndex % 5 === 0 || isHeavy) {
               await new Promise(resolve => setTimeout(resolve, 10));
+            }
+
+            // If we broke out earlier due to a Heavy file lock waiting, and we are the last
+            // worker to finish, we MUST trigger the next batch to wake up the stalled queue.
+            if (inFlightCount === 0 && isProcessingRef.current && !isPausedRef.current) {
+              setTimeout(processNext, 0);
             }
           }
         }

@@ -474,7 +474,7 @@ function PricingPageContent() {
 
 
 
-                <p className="text-[11px] text-zinc-400 mt-2.5 leading-relaxed">Unlimited file restoration for 24 hours from purchase. Repeatable.</p>
+                <p className="text-[11px] text-zinc-400 mt-2.5 leading-relaxed">Unlimited file restoration for {recoveryPassHours} hours from purchase. Repeatable.</p>
                 {priceIncludesTax && (
                   <span className="inline-flex items-center gap-1 mt-1.5 text-[9px] font-bold text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-1.5 py-0.5 rounded-md">
                     ✓ incl. tax

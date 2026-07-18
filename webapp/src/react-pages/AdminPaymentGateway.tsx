@@ -178,9 +178,14 @@ const COUPON_PLANS = ['recovery_pass', 'pro', 'super']
  * - Everything else → routes to <base>/<endpoint>
  */
 function resolveSyncUrl(endpoint: string, storedUrl: string): string {
-  // Route through same-origin Astro proxy endpoint in both development and production
-  // to completely avoid CORS or browser network security blocks
-  return `/api/${endpoint}`;
+  const hostname = window.location.hostname;
+  const isCloudflare = hostname.endsWith('.pages.dev') || hostname.endsWith('takeoutfix.com') || (hostname === 'localhost' && window.location.port === '4321');
+  if (isCloudflare) {
+    return `/api/${endpoint}`;
+  }
+  // If running on Firebase Hosting, route directly to the Cloudflare Pages deployment URL 
+  // where the Worker API endpoint is hosted (cross-origin pings are allowed by the Worker CORS headers)
+  return `https://takeoutfix.pages.dev/api/${endpoint}`;
 }
 
 
@@ -633,11 +638,12 @@ export default function AdminPaymentGateway() {
 
       cfUrl = resolveSyncUrl('sync-dodo-prices', cloudFunctionUrl)
 
-      const idToken = user ? await user.getIdToken() : ''
-
       const resp = await fetch(cfUrl, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${idToken}` },
+        headers: { 
+          'Content-Type': 'application/json', 
+          'x-api-key': gatewayApiKey 
+        },
         body: JSON.stringify({ regionCode, prices, currency })
       })
       const text = await resp.text()
@@ -649,6 +655,20 @@ export default function AdminPaymentGateway() {
       }
       if (resp.ok && data.results) {
         setPriceSyncResults(data.results)
+        
+        try {
+          await addDoc(collection(db, 'price_sync_logs'), {
+            regionCode,
+            currency: currencyCode,
+            envMode: data.envMode || 'unknown',
+            prices,
+            results: data.results,
+            syncedAt: Date.now()
+          })
+        } catch (dbErr: any) {
+          console.warn("Failed to write price sync log to Firestore:", dbErr.message);
+        }
+
         const allOk = data.results.every((r: any) => r.status === 'SUCCESS')
         useToastStore.getState().addToast(
           allOk ? `✅ All prices synced to Dodo for ${regionCode}!` : `⚠️ Partial sync — check results.`,
@@ -1138,26 +1158,31 @@ export default function AdminPaymentGateway() {
     try {
       const cfUrl = resolveSyncUrl('sync-coupon', cloudFunctionUrl)
 
-      const productIdsPayload: Record<string, Record<string, string>> = {}
-      DODO_REGIONS.forEach(r => {
-        const rp = dodoProducts[r.key] || {}
-        if (rp.recovery_pass || rp.pro || rp.super) {
-          productIdsPayload[r.key] = {
-            recovery_pass: rp.recovery_pass || '',
-            pro: rp.pro || '',
-            super: rp.super || ''
-          }
-        }
-      })
+      // Fetch coupon document from Firestore directly client-side
+      const couponDoc = await getDoc(doc(db, 'coupons', couponId))
+      if (!couponDoc.exists()) {
+        throw new Error('Coupon not found in database.')
+      }
+      const couponData = { id: couponDoc.id, ...couponDoc.data() } as any
 
-      const idToken = user ? await user.getIdToken() : ''
+      // Fetch targets subcollection from Firestore directly client-side
+      const targetsSnap = await getDocs(collection(db, 'coupons', couponId, 'targets'))
+      const targetsList = targetsSnap.docs.map(d => ({ id: d.id, ...d.data() })) as any[]
+
+      // Map targets to Dodo Product IDs using dodoProducts state
+      const mappedTargets = targetsList.map(target => {
+        const { regionCode, planCode } = target
+        const productId = dodoProducts[regionCode]?.[planCode] || null
+        return { regionCode, planCode, productId }
+      }).filter(t => t.productId)
+
       const resp = await fetch(cfUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${idToken}`
+          'x-api-key': gatewayApiKey
         },
-        body: JSON.stringify({ couponId, productIds: productIdsPayload })
+        body: JSON.stringify({ coupon: couponData, targets: mappedTargets })
       })
       const text = await resp.text()
       let result: any = {}
@@ -1166,9 +1191,37 @@ export default function AdminPaymentGateway() {
       } catch (e) {
         throw new Error(`Invalid response from server (Status ${resp.status}): ${text.substring(0, 150)}`)
       }
+
+      // Write sync logs directly to Firestore client-side
+      if (result.results && Array.isArray(result.results)) {
+        for (const resItem of result.results) {
+          const matchingTarget = targetsList.find(t => t.regionCode === resItem.regionCode && t.planCode === resItem.planCode);
+          const targetId = matchingTarget?.id || 'unknown';
+          
+          const logEntry = {
+            couponId,
+            targetId,
+            regionCode: resItem.regionCode,
+            planCode: resItem.planCode,
+            productId: resItem.productId || null,
+            dodoCouponId: resItem.dodoCouponId || null,
+            syncStatus: resItem.status,
+            errorMessage: resItem.status === 'SUCCESS' ? null : (typeof resItem.response === 'string' ? resItem.response : JSON.stringify(resItem.response || resItem.error || 'Unknown error')),
+            syncedAt: Date.now()
+          };
+
+          try {
+            await addDoc(collection(db, 'coupons', couponId, 'sync_log'), logEntry);
+          } catch (logErr: any) {
+            console.warn("Failed to write coupon sync log to Firestore:", logErr.message);
+          }
+        }
+      }
+
       const logSnap = await getDocs(collection(db, 'coupons', couponId, 'sync_log'))
       setSyncLog(logSnap.docs.map(d => ({ id: d.id, ...d.data() })))
-      if (resp.ok) {
+
+      if (resp.ok && result.success) {
         useToastStore.getState().addToast('Sync completed successfully.', 'success')
       } else {
         useToastStore.getState().addToast('Sync failed: ' + (result.error || resp.status), 'error')

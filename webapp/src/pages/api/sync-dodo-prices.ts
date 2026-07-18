@@ -1,6 +1,5 @@
 export const prerender = false;
 import type { APIRoute } from 'astro';
-import nodeCrypto from 'node:crypto';
 import { env } from 'cloudflare:workers';
 
 type JsonRecord = Record<string, unknown>;
@@ -15,169 +14,16 @@ function json(status: number, data: JsonRecord): Response {
   });
 }
 
-// Decrypt sensitive keys stored in Firestore using AES-256-GCM
-function decryptFirestoreValue(val: string, mek: string): string {
-  if (!val) return "";
-  if (!val.startsWith("enc:v1:")) return val;
-
-  try {
-    const salt = Buffer.alloc(16); // 16 bytes of zeros
-    const key = nodeCrypto.pbkdf2Sync(mek, salt, 100000, 32, "sha256");
-
-    const hex = val.slice(7);
-    const combined = Buffer.from(hex, "hex");
-
-    const iv = combined.subarray(0, 12);
-    const ciphertextAndTag = combined.subarray(12);
-    const tag = ciphertextAndTag.subarray(ciphertextAndTag.length - 16);
-    const ciphertext = ciphertextAndTag.subarray(0, ciphertextAndTag.length - 16);
-
-    const decipher = nodeCrypto.createDecipheriv("aes-256-gcm", key, iv);
-    decipher.setAuthTag(tag);
-    let decrypted = decipher.update(ciphertext, "binary", "utf8");
-    decrypted += decipher.final("utf8");
-    return decrypted;
-  } catch (err: any) {
-    console.error("❌ Failed to decrypt Firestore value:", err.message);
-    return "";
-  }
-}
-
-// Helper to sign JWT and fetch token for Firestore REST API
-async function getGoogleAuthToken(serviceAccount: any): Promise<string> {
-  const iat = Math.floor(Date.now() / 1000);
-  const exp = iat + 3600;
-  
-  const header = { alg: "RS256", typ: "JWT" };
-  const payload = {
-    iss: serviceAccount.client_email,
-    sub: serviceAccount.client_email,
-    aud: "https://oauth2.googleapis.com/token",
-    scope: "https://www.googleapis.com/auth/datastore",
-    iat,
-    exp
-  };
-
-  const base64UrlEncode = (str: string) =>
-    btoa(str).replace(/=/g, "").replace(/\+/g, "-").replace(/\//g, "_");
-
-  const unsignedToken = `${base64UrlEncode(JSON.stringify(header))}.${base64UrlEncode(JSON.stringify(payload))}`;
-
-  const pemHeader = "-----BEGIN PRIVATE KEY-----";
-  const pemFooter = "-----END PRIVATE KEY-----";
-  const pemContents = serviceAccount.private_key
-    .replace(/\\n/g, "\n")
-    .replace(pemHeader, "")
-    .replace(pemFooter, "")
-    .replace(/\s/g, "");
-  
-  console.log("[getGoogleAuthToken] pemContents length:", pemContents.length);
-  console.log("[getGoogleAuthToken] pemContents preview:", pemContents.substring(0, 30));
-  console.log("[getGoogleAuthToken] Character at index 188 to 194:", pemContents.substring(188, 194));
-
-  const binaryKey = atob(pemContents);
-  console.log("[getGoogleAuthToken] binaryKey length:", binaryKey.length);
-  const keyBuffer = new Uint8Array(binaryKey.length);
-  for (let i = 0; i < binaryKey.length; i++) {
-    keyBuffer[i] = binaryKey.charCodeAt(i);
-  }
-
-  const key = await crypto.subtle.importKey(
-    "pkcs8",
-    keyBuffer,
-    { name: "RSASSA-PKCS1-v1_5", hash: "SHA-256" },
-    false,
-    ["sign"]
-  );
-
-  const encoder = new TextEncoder();
-  const signature = await crypto.subtle.sign(
-    "RSASSA-PKCS1-v1_5",
-    key,
-    encoder.encode(unsignedToken)
-  );
-
-  const signedToken = `${unsignedToken}.${btoa(String.fromCharCode(...new Uint8Array(signature)))
-    .replace(/=/g, "")
-    .replace(/\+/g, "-")
-    .replace(/\//g, "_")}`;
-
-  const res = await fetch("https://oauth2.googleapis.com/token", {
-    method: "POST",
-    headers: { "Content-Type": "application/x-www-form-urlencoded" },
-    body: `grant_type=urn:ietf:params:oauth:grant-type:jwt-bearer&assertion=${signedToken}`
+export const OPTIONS: APIRoute = async () => {
+  return new Response(null, {
+    status: 204,
+    headers: {
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Methods': 'POST, OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type, Authorization, x-api-key'
+    }
   });
-  
-  if (!res.ok) {
-    throw new Error(`Google Auth exchange failed: ${await res.text()}`);
-  }
-
-  const data: any = await res.json();
-  return data.access_token;
-}
-
-// Helper: Parse Firestore REST values
-function parseFirestoreValue(value: any): any {
-  if (!value) return null;
-  if ('stringValue' in value) return value.stringValue;
-  if ('booleanValue' in value) return value.booleanValue;
-  if ('integerValue' in value) return parseInt(value.integerValue, 10);
-  if ('doubleValue' in value) return parseFloat(value.doubleValue);
-  if ('arrayValue' in value) {
-    return (value.arrayValue.values || []).map(parseFirestoreValue);
-  }
-  if ('mapValue' in value) {
-    const obj: any = {};
-    const fields = value.mapValue.fields || {};
-    for (const [k, v] of Object.entries(fields)) {
-      obj[k] = parseFirestoreValue(v);
-    }
-    return obj;
-  }
-  return null;
-}
-
-function parseFirestoreDocument(doc: any): any {
-  const fields = doc.fields || {};
-  const obj: any = {};
-  for (const [k, v] of Object.entries(fields)) {
-    obj[k] = parseFirestoreValue(v);
-  }
-  return obj;
-}
-
-// Helper: Convert JS object to Firestore REST fields format
-function toFirestoreValue(val: any): any {
-  if (val === null || val === undefined) return { nullValue: null };
-  if (typeof val === 'boolean') return { booleanValue: val };
-  if (typeof val === 'number') {
-    if (Number.isInteger(val)) {
-      return { integerValue: String(val) };
-    } else {
-      return { doubleValue: val };
-    }
-  }
-  if (typeof val === 'string') return { stringValue: val };
-  if (Array.isArray(val)) {
-    return { arrayValue: { values: val.map(toFirestoreValue) } };
-  }
-  if (typeof val === 'object') {
-    const fields: any = {};
-    for (const [k, v] of Object.entries(val)) {
-      fields[k] = toFirestoreValue(v);
-    }
-    return { mapValue: { fields } };
-  }
-  return { nullValue: null };
-}
-
-function toFirestoreFields(obj: Record<string, any>): any {
-  const fields: any = {};
-  for (const [k, v] of Object.entries(obj)) {
-    fields[k] = toFirestoreValue(v);
-  }
-  return { fields };
-}
+};
 
 // Helper: Fetch USD exchange rates using standard fetch
 async function fetchUsdExchangeRates(): Promise<{ JPY: number; CNY: number }> {
@@ -199,71 +45,6 @@ async function fetchUsdExchangeRates(): Promise<{ JPY: number; CNY: number }> {
     console.warn("Failed to parse exchange rate response:", e.message);
   }
   return fallback;
-}
-
-// Helper: Fetch Dodo credentials from Firestore or Env
-async function resolveDodoCredentials(
-  projectId: string,
-  headers: Record<string, string>,
-  encryptionKey: string,
-  cfEnv: any
-): Promise<{ dodoApiKey: string; dodoHost: string }> {
-  let dodoApiKey = cfEnv.DODO_API_KEY || import.meta.env.DODO_API_KEY || "";
-  let isTestMode = false;
-
-  if (!dodoApiKey) {
-    try {
-      const sysUrl = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/settings/system`;
-      const sysRes = await fetch(sysUrl, { headers });
-      if (sysRes.ok) {
-        const sysDoc = await sysRes.json();
-        const sysData = parseFirestoreDocument(sysDoc);
-
-        const liveKey = decryptFirestoreValue(sysData.dodo_api_key || "", encryptionKey);
-        const testKey = decryptFirestoreValue(sysData.dodo_test_api_key || "", encryptionKey);
-
-        const globalUrl = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/settings/global`;
-        const globalRes = await fetch(globalUrl, { headers });
-        let testModeSetting = false;
-        if (globalRes.ok) {
-          const globalDoc = await globalRes.json();
-          const globalData = parseFirestoreDocument(globalDoc);
-          testModeSetting = !!globalData.dodo_test_mode;
-        }
-
-        if (testModeSetting && testKey) {
-          dodoApiKey = testKey;
-          isTestMode = true;
-        } else if (liveKey) {
-          dodoApiKey = liveKey;
-          isTestMode = false;
-        } else if (testKey) {
-          dodoApiKey = testKey;
-          isTestMode = true;
-        }
-      }
-    } catch (e: any) {
-      console.error("Failed to read Dodo API key from Firestore:", e.message);
-    }
-  } else {
-    isTestMode = dodoApiKey.startsWith("sk_test_") || dodoApiKey.startsWith("test_");
-  }
-
-  if (dodoApiKey) {
-    if (dodoApiKey.startsWith("sk_test_") || dodoApiKey.startsWith("test_")) {
-      isTestMode = true;
-    } else if (dodoApiKey.startsWith("sk_live_") || dodoApiKey.startsWith("live_")) {
-      isTestMode = false;
-    }
-
-    if (dodoApiKey.startsWith("sk_test_")) dodoApiKey = dodoApiKey.substring(8);
-    else if (dodoApiKey.startsWith("test_")) dodoApiKey = dodoApiKey.substring(5);
-    else if (dodoApiKey.startsWith("sk_live_")) dodoApiKey = dodoApiKey.substring(8);
-    else if (dodoApiKey.startsWith("live_")) dodoApiKey = dodoApiKey.substring(5);
-  }
-
-  const dodoHost = isTestMode ? "test.dodopayments.com" : "live.dodopayments.com";
-  return { dodoApiKey, dodoHost };
 }
 
 // Helper to call PATCH /products/{product_id}
@@ -302,96 +83,59 @@ async function patchProductPrice(
   return { statusCode: response.status, body };
 }
 
-export const OPTIONS: APIRoute = async () => {
-  return new Response(null, {
-    status: 204,
-    headers: {
-      'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Methods': 'POST, OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type, Authorization, x-api-key'
-    }
-  });
-};
-
 export const POST: APIRoute = async ({ request }) => {
   try {
+    const GATEWAY_API_KEY = (env as any).GATEWAY_API_KEY || import.meta.env.GATEWAY_API_KEY || '';
+    const headerKey = request.headers.get('x-api-key') || request.headers.get('authorization')?.replace('Bearer ', '');
+    
+    if (!GATEWAY_API_KEY || !headerKey || headerKey !== GATEWAY_API_KEY) {
+      return json(401, { error: 'Unauthorized' });
+    }
+
     const raw = await request.text();
-    let payload: JsonRecord = {};
+    let payload: any = {};
     try {
-      const parsed = JSON.parse(raw || '{}');
-      if (parsed && typeof parsed === 'object') {
-        payload = parsed as JsonRecord;
-      }
+      payload = JSON.parse(raw || '{}');
     } catch {
       return json(400, { error: 'Invalid JSON body' });
     }
 
-    // 1. Auth — verify Firebase ID Token to ensure caller is an authenticated admin.
-    // This is safer than a shared gateway key and works on Cloudflare without any env var.
-    const authHeader = request.headers.get('Authorization') || '';
-    const idToken = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : (request.headers.get('x-api-key') || '');
-    const isLocalDev = import.meta.env.DEV;
-
-    if (!isLocalDev && idToken) {
-      // Verify token against Google's tokeninfo endpoint (lightweight check)
-      try {
-        const verifyRes = await fetch(`https://oauth2.googleapis.com/tokeninfo?id_token=${idToken}`);
-        if (!verifyRes.ok) {
-          return json(401, { error: 'Unauthorized: invalid Firebase ID token.' });
-        }
-        // Additional check: token must not be expired (tokeninfo handles this)
-      } catch (e: any) {
-        console.error('[sync-dodo-prices] Token verification failed:', e.message);
-        return json(401, { error: 'Unauthorized: could not verify token.' });
-      }
-    } else if (!isLocalDev && !idToken) {
-      return json(401, { error: 'Unauthorized: no auth token provided.' });
-    }
-
-    const { regionCode, prices, currency } = payload || {};
+    const { regionCode, prices, currency } = payload;
     let currencyCode = String(currency || "INR").toUpperCase();
 
     if (!regionCode || !prices || typeof prices !== "object") {
       return json(400, { error: "regionCode and prices object are required." });
     }
 
-    // Resolve credentials from environment/Firestore
-    let serviceAccountStr = (env as any).FIREBASE_SERVICE_ACCOUNT || import.meta.env.FIREBASE_SERVICE_ACCOUNT;
+    // Resolve Dodo Keys and Mode directly from Cloudflare environment
+    const dodoTestModeVal = (env as any).DODO_TEST_MODE || import.meta.env.DODO_TEST_MODE;
+    const dodoTestMode = dodoTestModeVal === 'true' || dodoTestModeVal === true || dodoTestModeVal === undefined; // default to test mode if not configured
+    
+    let dodoApiKey = dodoTestMode 
+      ? ((env as any).DODO_TEST_API_KEY || import.meta.env.DODO_TEST_API_KEY)
+      : ((env as any).DODO_API_KEY || import.meta.env.DODO_API_KEY);
 
-    if (!serviceAccountStr) {
-      try {
-        const fs = await import('node:fs');
-        const path = await import('node:path');
-        console.log("[sync-dodo-prices] process.cwd():", process.cwd());
-        let possiblePath = path.resolve(process.cwd(), 'serviceAccountKey.json');
-        console.log("[sync-dodo-prices] Try path 1:", possiblePath, "exists:", fs.existsSync(possiblePath));
-        if (!fs.existsSync(possiblePath)) {
-          possiblePath = path.resolve(process.cwd(), '..', 'serviceAccountKey.json');
-          console.log("[sync-dodo-prices] Try path 2:", possiblePath, "exists:", fs.existsSync(possiblePath));
-        }
-        if (fs.existsSync(possiblePath)) {
-          serviceAccountStr = fs.readFileSync(possiblePath, 'utf8');
-          console.log(`[sync-dodo-prices] Loaded service account from fallback file: ${possiblePath}`);
-        }
-      } catch (err: any) {
-        console.warn("[sync-dodo-prices] Local service account file fallback warning:", err.message);
-      }
+    if (!dodoApiKey) {
+      return json(500, { error: `Dodo API key not configured in Cloudflare environment (${dodoTestMode ? "DODO_TEST_API_KEY" : "DODO_API_KEY"}).` });
     }
 
-    if (!serviceAccountStr) {
-      console.error("Missing FIREBASE_SERVICE_ACCOUNT environment variable.");
-      return json(500, { error: "Missing FIREBASE_SERVICE_ACCOUNT environment variable." });
+    // Strip sk_test_ / test_ / sk_live_ / live_ prefixes if present
+    dodoApiKey = dodoApiKey
+      .replace(/^sk_test_/, '').replace(/^test_/, '')
+      .replace(/^sk_live_/, '').replace(/^live_/, '');
+
+    const dodoHost = dodoTestMode ? "test.dodopayments.com" : "live.dodopayments.com";
+    const envMode = dodoTestMode ? "test" : "live";
+
+    // Resolve Product mappings from env
+    const dodoProductsLiveStr = (env as any).DODO_PRODUCTS_LIVE || import.meta.env.DODO_PRODUCTS_LIVE || '{}';
+    const dodoProductsTestStr = (env as any).DODO_PRODUCTS_TEST || import.meta.env.DODO_PRODUCTS_TEST || '{}';
+    let dodoProductsMap: Record<string, any> = {};
+    try {
+      dodoProductsMap = dodoTestMode ? JSON.parse(dodoProductsTestStr) : JSON.parse(dodoProductsLiveStr);
+    } catch (e: any) {
+      return json(500, { error: "Invalid DODO_PRODUCTS config mapping on Cloudflare", message: e.message });
     }
-
-    const serviceAccount = JSON.parse(serviceAccountStr);
-    const projectId = serviceAccount.project_id || "takeout-fix";
-    const encryptionKey = (env as any).ENCRYPTION_KEY || import.meta.env.ENCRYPTION_KEY || "92elPvQ63jp_SXOmGbLyOgvfcGHVP-GfDbbiyLV4rpw";
-
-    const token = await getGoogleAuthToken(serviceAccount);
-    const headers = {
-      "Content-Type": "application/json",
-      "Authorization": `Bearer ${token}`
-    };
 
     // Auto-calculate to USD for JPY and CNY regions
     let finalPrices = { ...(prices as Record<string, any>) };
@@ -413,33 +157,7 @@ export const POST: APIRoute = async ({ request }) => {
       }
     }
 
-    const { dodoApiKey, dodoHost } = await resolveDodoCredentials(projectId, headers, encryptionKey, env as any);
-    if (!dodoApiKey) {
-      return json(500, { error: "Dodo API key not configured. Save it in Admin Settings → Dodo Live API Key or Dodo Test API Key." });
-    }
-    const envMode = dodoHost.includes("test.") ? "test" : "live";
-
-    // Load products map from Firestore settings/global
-    let dodoProductsMap: Record<string, any> = {};
-    try {
-      const globalUrl = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/settings/global`;
-      const globalRes = await fetch(globalUrl, { headers });
-      if (globalRes.ok) {
-        const globalDoc = await globalRes.json();
-        const globalData = parseFirestoreDocument(globalDoc);
-        const isTestMode = envMode === "test";
-        dodoProductsMap = isTestMode
-          ? (globalData.dodo_products_test || {})
-          : (globalData.dodo_products_live || globalData.dodo_products || {});
-      }
-    } catch (e: any) {
-      console.error("Failed to read settings/global:", e.message);
-      return json(500, { error: "Failed to read settings/global", message: e.message });
-    }
-
     const results = [];
-    const now = Date.now();
-
     for (const [planCode, priceVal] of Object.entries(finalPrices)) {
       try {
         const productId = dodoProductsMap?.[regionCode as string]?.[planCode] || null;
@@ -475,29 +193,6 @@ export const POST: APIRoute = async ({ request }) => {
       } catch (e: any) {
         results.push({ planCode, status: "FAILED", error: e.message });
       }
-    }
-
-    // Persist a sync log to Firestore
-    try {
-      const logUrl = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/price_sync_logs`;
-      const logBody = toFirestoreFields({
-        regionCode,
-        currency: currencyCode,
-        envMode,
-        prices: finalPrices,
-        results,
-        syncedAt: now
-      });
-      const logRes = await fetch(logUrl, {
-        method: "POST",
-        headers,
-        body: JSON.stringify(logBody)
-      });
-      if (!logRes.ok) {
-        console.warn("Failed to write price sync log:", await logRes.text());
-      }
-    } catch (e: any) {
-      console.warn("Failed to persist price_sync_logs:", e.message);
     }
 
     return json(200, {

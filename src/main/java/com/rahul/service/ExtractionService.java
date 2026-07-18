@@ -110,15 +110,19 @@ public class ExtractionService {
                     try { Thread.sleep(150); } catch (InterruptedException ignored) {}
                 }
                 try {
+                    if (cancelled) return;
                     Optional<File> json = matcher.findMatchingJson(media, dirCache);
                     if (json.isPresent()) {
+                        if (cancelled) return;
                         java.nio.file.Path relativePath = fileService.copyToOutput(media, input, output);
                         File copiedFile = new File(output, relativePath.toString());
+                        if (cancelled) return;
                         metadataInjector.injectMetadata(copiedFile, json.get());
                         restorer.restoreFromJson(copiedFile, json.get(), takeoutDate);
                         matched.incrementAndGet();
                         sendLog("SUCCESS", "[SUCCESS] Restored " + media.getName());
                     } else {
+                        if (cancelled) return;
                         unmatched.incrementAndGet();
                         sendLog("WARN", "[NO META] " + media.getName() + " -> copying to metadata_not_found");
                         fileService.copyToUnmatched(media, input, output);
@@ -153,6 +157,7 @@ public class ExtractionService {
                         try { Thread.sleep(150); } catch (InterruptedException ignored) {}
                     }
                     try {
+                        if (cancelled) return;
                         Optional<File> json = matcher.findMatchingJson(media, dirCache);
                         if (json.isPresent()) {
                             long len = media.length();
@@ -162,32 +167,39 @@ public class ExtractionService {
                                     int nextPart = matched.get() + unmatched.get() > 0 ? zipPart[0] + 1 : zipPart[0] + 1;
                                 }
                             }
+                            if (cancelled) return;
                             // Process JSON metadata first (can be done concurrently)
                             // We need to apply timestamps to the zip entry. But wait, we need to know the Instant.
                             // restorer.restoreFromJson on a temp file is inefficient. We can modify TimestampRestorer.
                             // Since we can't change restorer easily right here, let's copy to a temp dir, restore, then put into ZIP.
                             File tempCopied = File.createTempFile("tmp_takeout_", "_" + media.getName());
-                            java.nio.file.Files.copy(media.toPath(), tempCopied.toPath(), java.nio.file.StandardCopyOption.REPLACE_EXISTING);
-                            metadataInjector.injectMetadata(tempCopied, json.get());
-                            Instant applied = restorer.restoreFromJson(tempCopied, json.get(), takeoutDate);
-                            
-                            synchronized (zipLock) {
-                                if (currentZipSize[0] + len > MAX_ZIP_SIZE) {
-                                    zout[0].close();
-                                    currentZipSize[0] = 0;
-                                    zipPart[0]++; // Increment part properly inside lock
-                                    zout[0] = new java.util.zip.ZipOutputStream(new java.io.FileOutputStream(new File(output, "Restored_Takeout_Part" + zipPart[0] + ".zip")));
+                            try {
+                                if (cancelled) return;
+                                java.nio.file.Files.copy(media.toPath(), tempCopied.toPath(), java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+                                metadataInjector.injectMetadata(tempCopied, json.get());
+                                Instant applied = restorer.restoreFromJson(tempCopied, json.get(), takeoutDate);
+                                
+                                synchronized (zipLock) {
+                                    if (cancelled) return;
+                                    if (currentZipSize[0] + len > MAX_ZIP_SIZE) {
+                                        zout[0].close();
+                                        currentZipSize[0] = 0;
+                                        zipPart[0]++; // Increment part properly inside lock
+                                        zout[0] = new java.util.zip.ZipOutputStream(new java.io.FileOutputStream(new File(output, "Restored_Takeout_Part" + zipPart[0] + ".zip")));
+                                    }
+                                    java.util.zip.ZipEntry entry = new java.util.zip.ZipEntry(input.toPath().relativize(media.toPath()).toString());
+                                    entry.setLastModifiedTime(java.nio.file.attribute.FileTime.from(applied));
+                                    zout[0].putNextEntry(entry);
+                                    java.nio.file.Files.copy(tempCopied.toPath(), zout[0]);
+                                    zout[0].closeEntry();
+                                    currentZipSize[0] += tempCopied.length();
                                 }
-                                java.util.zip.ZipEntry entry = new java.util.zip.ZipEntry(input.toPath().relativize(media.toPath()).toString());
-                                entry.setLastModifiedTime(java.nio.file.attribute.FileTime.from(applied));
-                                zout[0].putNextEntry(entry);
-                                java.nio.file.Files.copy(tempCopied.toPath(), zout[0]);
-                                zout[0].closeEntry();
-                                currentZipSize[0] += tempCopied.length();
+                            } finally {
+                                tempCopied.delete();
                             }
-                            tempCopied.delete();
                             matched.incrementAndGet();
                         } else {
+                            if (cancelled) return;
                             unmatched.incrementAndGet();
                             sendLog("WARN", "[NO META] " + media.getName() + " -> ignoring in zip mode");
                         }
@@ -234,8 +246,10 @@ public class ExtractionService {
         if (limitFiles > 0) {
             long totalChecked = sessionStatsService.getTotalFiles() - offsetFiles + current;
             if (totalChecked >= limitFiles) {
-                sendLog("ERROR", "LIMIT_EXCEEDED: You have reached your tier limit of " + limitFiles + " files.");
-                cancel();
+                if (!cancelled) {
+                    sendLog("ERROR", "LIMIT_EXCEEDED: You have reached your tier limit of " + limitFiles + " files.");
+                    cancel();
+                }
             }
         }
     }

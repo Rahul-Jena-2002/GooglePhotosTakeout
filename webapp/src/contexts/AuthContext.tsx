@@ -971,10 +971,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     }
 
-    const unsubscribe = onAuthStateChanged(auth, (u) => {
+    const unsubscribe = onAuthStateChanged(auth, async (u) => {
       setUser(u);
       if (u) {
-        // Enforce 24-hour automatic logout
+        try {
+          const lastUid = localStorage.getItem("takeoutfix_last_uid");
+          if (lastUid && lastUid !== u.uid) {
+            console.warn("🔄 User account changed! Clearing local recovery state...");
+            await indexedDbService.clearAllData().catch(console.error);
+          }
+          localStorage.setItem("takeoutfix_last_uid", u.uid);
+        } catch (e) {
+          console.warn("Failed account check:", e);
+        }
+        // Enforce 1-week automatic logout
         try {
           const loginTimeKey = "takeoutfix_login_time";
           const savedLoginTime = localStorage.getItem(loginTimeKey);
@@ -982,8 +992,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             localStorage.setItem(loginTimeKey, String(Date.now()));
           } else {
             const diff = Date.now() - Number(savedLoginTime);
-            if (diff > 24 * 60 * 60 * 1000) {
-              console.log("⏰ 24-hour session expired. Logging out automatically...");
+            if (diff > 7 * 24 * 60 * 60 * 1000) {
+              console.log("⏰ 7-day session expired. Logging out automatically...");
               localStorage.removeItem(loginTimeKey);
               logout().then(() => {
                 if (typeof window !== "undefined") {
@@ -1103,6 +1113,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       localStorage.removeItem("takeoutfix_admin_data");
       localStorage.removeItem("takeoutfix_device_session_id");
       localStorage.removeItem("takeoutfix_login_time");
+      localStorage.removeItem("takeoutfix_last_uid");
+      await indexedDbService.clearAllData().catch(console.error);
     } catch (_) {}
     setSessionRegistered(false);
     setHasSeenSelfInSessions(false);

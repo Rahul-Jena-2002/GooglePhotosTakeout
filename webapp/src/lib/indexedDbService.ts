@@ -212,6 +212,13 @@ class IndexedDbService {
       request.onerror = () => reject(request.error);
     });
   }
+
+  async clearAllData(): Promise<void> {
+    const stores = ['telemetry', 'checkpoints', 'files', 'sessions'];
+    for (const store of stores) {
+      await this.clearStore(store).catch(() => {});
+    }
+  }
 }
 
 export const indexedDbService = new IndexedDbService();

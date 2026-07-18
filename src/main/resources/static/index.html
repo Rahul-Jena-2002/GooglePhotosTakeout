@@ -1779,7 +1779,7 @@
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        <tr><td style="font-weight:600;">Restore Metadata</td><td>✓ (250 files)</td><td>✓ (3,000 files)</td><td>✓ Unlimited</td><td style="color:var(--success-color);font-weight:700;">✓ Unlimited</td></tr>
+                                        <tr><td style="font-weight:600;">Restore Metadata</td><td id="table-limit-free">✓ (250 files)</td><td id="table-limit-recovery">✓ (3,000 files)</td><td>✓ Unlimited</td><td style="color:var(--success-color);font-weight:700;">✓ Unlimited</td></tr>
                                         <tr><td style="font-weight:600;">Deep Restore</td><td style="color:var(--danger-color);">✗</td><td style="color:var(--danger-color);">✗</td><td>✓</td><td style="color:var(--success-color);font-weight:700;">✓</td></tr>
                                         <tr><td style="font-weight:600;">EXIF Viewer</td><td style="color:var(--danger-color);">✗</td><td style="color:var(--danger-color);">✗</td><td style="color:var(--danger-color);">✗</td><td style="color:var(--success-color);font-weight:700;">✓</td></tr>
                                         <tr><td style="font-weight:600;">Sidecar Comparison</td><td style="color:var(--danger-color);">✗</td><td style="color:var(--danger-color);">✗</td><td style="color:var(--danger-color);">✗</td><td style="color:var(--success-color);font-weight:700;">✓</td></tr>
@@ -1913,14 +1913,14 @@
                     <!-- Recovery Pass -->
                     <div class="pricing-card">
                         <div class="pricing-card-title">Recovery Pass</div>
-                        <div class="pricing-card-subtitle">Single takeout batch up to 3,000 files or 3GB</div>
-                        <div class="pricing-card-price">₹299.00</div>
+                        <div class="pricing-card-subtitle" id="modal-recovery-pass-subtitle">Unlimited file restoration for 24 hours</div>
+                        <div class="pricing-card-price" id="modal-recovery-pass-price">₹299.00</div>
                         <div style="font-size: 9.5px; color: var(--text-secondary); margin-bottom: 10px; line-height: 1.3;">Fix one folder of photos without any subscription details.</div>
                         <div class="pricing-features-list">
                             <div class="pricing-feature-header">Everything in Free plus:</div>
                             <div class="pricing-feature-item">
                                 <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="var(--text-primary)" stroke-width="3.5"><polyline points="20 6 9 17 4 12"></polyline></svg>
-                                <span><strong>Single takeout batch up to 3,000 files or 3GB</strong></span>
+                                <span><strong id="modal-recovery-pass-feature-1">Unlimited files & storage for 24 hours</strong></span>
                             </div>
                             <div class="pricing-feature-item">
                                 <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="var(--text-primary)" stroke-width="3.5"><polyline points="20 6 9 17 4 12"></polyline></svg>
@@ -1939,7 +1939,7 @@
                         <div class="pricing-card-badge">Most Popular</div>
                         <div class="pricing-card-title" style="color: var(--primary);">Pro Lifetime</div>
                         <div class="pricing-card-subtitle">Unlimited photos and videos. 2 devices. Lifetime.</div>
-                        <div class="pricing-card-price">₹849.15</div>
+                        <div class="pricing-card-price" id="modal-pro-price">₹849.15</div>
                         <div class="pricing-card-strike">₹999.00</div>
                         <div class="pricing-badge-row">
                             <span class="pricing-badge-promo green">15% OFF</span>
@@ -1971,7 +1971,7 @@
                     <div class="pricing-card" style="border-color: rgba(245, 158, 11, 0.4); background: rgba(245, 158, 11, 0.015);">
                         <div class="pricing-card-title" style="color: #f59e0b;">Super Lifetime</div>
                         <div class="pricing-card-subtitle">Unlimited + duplicate finder, before/after logs, ad-free. 3 devices. Lifetime.</div>
-                        <div class="pricing-card-price" style="color: #f59e0b;">₹1619.10</div>
+                        <div class="pricing-card-price" id="modal-super-price" style="color: #f59e0b;">₹1619.10</div>
                         <div class="pricing-card-strike">₹1799.00</div>
                         <div class="pricing-badge-row">
                             <span class="pricing-badge-promo green">10% OFF</span>
@@ -2018,18 +2018,36 @@
         let currentUser = null;
         let currentUserPlan = 'free';
 
+        // Scopes localStorage keys by user UID to support multiple accounts without cross-account pollution/exploits
+        function getPrefixedKey(key) {
+            const uid = (currentUser && currentUser.uid) ? currentUser.uid : 'anon';
+            // Scopes user-specific keys. Theme, last_uid, and offline license remain global to the machine/browser.
+            const globalKeys = ['takeoutfix_theme', 'takeoutfix_last_uid', 'takeoutfix_premium_licensed'];
+            if (globalKeys.includes(key)) return key;
+            return `tf_${uid}_${key}`;
+        }
+        function getLocalItem(key, def = null) {
+            return localStorage.getItem(getPrefixedKey(key)) ?? def;
+        }
+        function setLocalItem(key, val) {
+            localStorage.setItem(getPrefixedKey(key), val);
+        }
+        function removeLocalItem(key) {
+            localStorage.removeItem(getPrefixedKey(key));
+        }
+
         // Live per-session stat counters updated from log messages
         let sessionStats = { matched: 0, unmatched: 0, errors: 0 };
 
         // Firebase Web Config (fetched from local secrets)
         const firebaseConfig = {
-            apiKey: "AIzaSyBAQFr7OeHkaLDk8yfNyGl6YD2qhdlnoXk",
-            authDomain: "gt-metadata-merger.firebaseapp.com",
-            projectId: "gt-metadata-merger",
-            storageBucket: "gt-metadata-merger.firebasestorage.app",
-            messagingSenderId: "198090983108",
-            appId: "1:198090983108:web:a90faac4214ecd91d76b91",
-            measurementId: "G-P0DY1QKD63"
+            apiKey: "AIzaSyDBTj1lcAbftiAYwnv5upjHK7ET_sNgZNk",
+            authDomain: "takeout-fix.firebaseapp.com",
+            projectId: "takeout-fix",
+            storageBucket: "takeout-fix.firebasestorage.app",
+            messagingSenderId: "1089411779683",
+            appId: "1:1089411779683:web:a0afa9043f9f7cecdabc56",
+            measurementId: "G-YNTVCXYR6N"
         };
 
         // Initialize Firebase safely
@@ -2070,8 +2088,8 @@
         // Seed limit bars: localStorage first (instant), then server (authoritative)
         function loadSessionStats() {
             // 1. Instant paint from localStorage cache
-            const cachedFiles = parseInt(localStorage.getItem('tf_total_files') || '0');
-            const cachedBytes = parseInt(localStorage.getItem('tf_total_bytes') || '0');
+            const cachedFiles = parseInt(getLocalItem('tf_total_files') || '0');
+            const cachedBytes = parseInt(getLocalItem('tf_total_bytes') || '0');
             applySessionStatsToUI(cachedFiles, cachedBytes);
 
             // 2. Fetch server-side totals (survives localStorage clears)
@@ -2085,8 +2103,8 @@
                     const files = Math.max(cachedFiles, serverFiles);
                     const bytes = Math.max(cachedBytes, serverBytes);
                     // Sync localStorage to server value
-                    localStorage.setItem('tf_total_files', files);
-                    localStorage.setItem('tf_total_bytes', bytes);
+                    setLocalItem('tf_total_files', files);
+                    setLocalItem('tf_total_bytes', bytes);
                     applySessionStatsToUI(files, bytes);
                 })
                 .catch(() => { /* Spring Boot not running — localStorage already applied */ });
@@ -2094,6 +2112,8 @@
 
         let currentTierFiles = 250;
         let currentTierBytes = 500 * 1024 * 1024;
+        let recoveryPassFilesLimit = 3000;
+        let recoveryPassBytesLimit = Infinity;
         
         async function fetchDynamicLimits() {
             if (!db) return;
@@ -2101,10 +2121,38 @@
                 const doc = await db.collection('settings').doc('global').get();
                 if (doc.exists) {
                     const data = doc.data();
+                    const parseLimit = (val, def) => val === 0 ? Infinity : (val ?? def);
                     if (data.tierThresholds && data.tierThresholds.free) {
-                        const parseLimit = (val, def) => val === 0 ? Infinity : (val ?? def);
                         currentTierFiles = parseLimit(data.tierThresholds.free.maxFiles, 250);
                         currentTierBytes = parseLimit(data.tierThresholds.free.maxSizeMB, 500) * 1024 * 1024;
+                        const freeTd = document.getElementById('table-limit-free');
+                        if (freeTd) freeTd.innerText = `✓ (${currentTierFiles.toLocaleString()} files)`;
+                    }
+                    if (data.tierThresholds && data.tierThresholds.recovery_pass) {
+                        recoveryPassFilesLimit = parseLimit(data.tierThresholds.recovery_pass.maxFiles, 3000);
+                        const mb = parseLimit(data.tierThresholds.recovery_pass.maxSizeMB, 3072);
+                        recoveryPassBytesLimit = mb === Infinity ? Infinity : mb * 1024 * 1024;
+                        const recTd = document.getElementById('table-limit-recovery');
+                        if (recTd) recTd.innerText = `✓ (${recoveryPassFilesLimit === Infinity ? 'Unlimited' : recoveryPassFilesLimit.toLocaleString() + ' files'})`;
+                    }
+                    if (data.recoveryPassHours) {
+                        const hr = data.recoveryPassHours;
+                        const subEl = document.getElementById('modal-recovery-pass-subtitle');
+                        if (subEl) subEl.innerText = `Unlimited file restoration for ${hr} hours`;
+                        const featEl = document.getElementById('modal-recovery-pass-feature-1');
+                        if (featEl) featEl.innerText = `Unlimited files & storage for ${hr} hours`;
+                    }
+                    if (data.in_recovery_pass) {
+                        const priceEl = document.getElementById('modal-recovery-pass-price');
+                        if (priceEl) priceEl.innerText = `₹${data.in_recovery_pass}.00`;
+                    }
+                    if (data.in_pro) {
+                        const priceEl = document.getElementById('modal-pro-price');
+                        if (priceEl) priceEl.innerText = `₹${data.in_pro}.00`;
+                    }
+                    if (data.in_super) {
+                        const priceEl = document.getElementById('modal-super-price');
+                        if (priceEl) priceEl.innerText = `₹${data.in_super}.00`;
                     }
                 }
             } catch(e) {
@@ -2113,7 +2161,7 @@
         }
 
         function applySessionStatsToUI(totalFiles, totalBytes) {
-            const isLocalPremium = localStorage.getItem('takeoutfix_premium_licensed') === 'true';
+            const isLocalPremium = getLocalItem('takeoutfix_premium_licensed') === 'true';
             let limitFiles = currentTierFiles;
             let limitBytes = currentTierBytes;
 
@@ -2121,12 +2169,12 @@
                 limitFiles = Infinity;
                 limitBytes = Infinity;
             } else if (currentUserPlan === 'recovery_pass') {
-                limitFiles = 3000;
-                limitBytes = Infinity;
+                limitFiles = recoveryPassFilesLimit;
+                limitBytes = recoveryPassBytesLimit;
             }
 
-            const offsetFiles = parseInt(localStorage.getItem('tf_recovery_pass_offset_files') || '0');
-            const offsetBytes = parseInt(localStorage.getItem('tf_recovery_pass_offset_bytes') || '0');
+            const offsetFiles = parseInt(getLocalItem('tf_recovery_pass_offset_files') || '0');
+            const offsetBytes = parseInt(getLocalItem('tf_recovery_pass_offset_bytes') || '0');
 
             const activeFiles = Math.max(0, totalFiles - offsetFiles);
             const activeBytes = Math.max(0, totalBytes - offsetBytes);
@@ -2136,7 +2184,7 @@
 
         // Theme Manager
         function initTheme() {
-            const savedTheme = localStorage.getItem('takeoutfix_theme');
+            const savedTheme = getLocalItem('takeoutfix_theme');
             const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
             const isDark = savedTheme === 'dark' || (!savedTheme && prefersDark);
             
@@ -2155,7 +2203,7 @@
             } else {
                 document.documentElement.setAttribute('data-theme', 'dark');
             }
-            localStorage.setItem('takeoutfix_theme', !isDark ? 'dark' : 'light');
+            setLocalItem('takeoutfix_theme', !isDark ? 'dark' : 'light');
             updateThemeIcon();
         }
 
@@ -2197,13 +2245,19 @@
                     await fetchDynamicLimits();
                     if (doc.exists) {
                         const userData = doc.data();
-                        currentUserPlan = userData.plan || 'free';
+                        let resolvedPlan = userData.plan;
+                        if (!resolvedPlan) {
+                            if (userData.licenseType === 'lifetime') resolvedPlan = 'pro';
+                            else if (userData.licenseType === '24hour' || userData.licenseType === '15gb') resolvedPlan = 'recovery_pass';
+                            else resolvedPlan = 'free';
+                        }
+                        currentUserPlan = resolvedPlan;
                         
                         // Pull online resource usage from Firestore as authoritative
                         const onlineFiles = userData.filesProcessed || 0;
                         const onlineBytes = userData.bytesProcessed || 0;
-                        localStorage.setItem('tf_total_files', onlineFiles.toString());
-                        localStorage.setItem('tf_total_bytes', onlineBytes.toString());
+                        setLocalItem('tf_total_files', onlineFiles.toString());
+                        setLocalItem('tf_total_bytes', onlineBytes.toString());
 
                         // Sync to local Spring Boot database to prevent limit resets on reinstall
                         fetch('/api/system/session-stats/sync', {
@@ -2214,29 +2268,31 @@
 
                         // Multiple recovery pass resets logic
                         const firestoreCount = userData.recoveryPassCount || 1;
-                        const localCount = parseInt(localStorage.getItem('takeoutfix_recovery_pass_count') || '0');
+                        const localCount = parseInt(getLocalItem('takeoutfix_recovery_pass_count') || '0');
                         
                         if (currentUserPlan === 'recovery_pass' && firestoreCount > localCount) {
-                            localStorage.setItem('takeoutfix_recovery_pass_count', firestoreCount.toString());
+                            setLocalItem('takeoutfix_recovery_pass_count', firestoreCount.toString());
                             // Save current progress as offset so limit check starts at 0
-                            localStorage.setItem('tf_recovery_pass_offset_files', onlineFiles.toString());
-                            localStorage.setItem('tf_recovery_pass_offset_bytes', onlineBytes.toString());
+                            setLocalItem('tf_recovery_pass_offset_files', onlineFiles.toString());
+                            setLocalItem('tf_recovery_pass_offset_bytes', onlineBytes.toString());
                             console.log(`Recovery pass limit offset reset. Offset files: ${onlineFiles}, Bytes: ${onlineBytes}`);
                         } else if (currentUserPlan !== 'recovery_pass') {
                             // Clear offsets if no longer on recovery pass
-                            localStorage.removeItem('takeoutfix_recovery_pass_count');
-                            localStorage.removeItem('tf_recovery_pass_offset_files');
-                            localStorage.removeItem('tf_recovery_pass_offset_bytes');
+                            removeLocalItem('takeoutfix_recovery_pass_count');
+                            removeLocalItem('tf_recovery_pass_offset_files');
+                            removeLocalItem('tf_recovery_pass_offset_bytes');
                         }
                         
-                        localStorage.setItem('takeoutfix_cached_plan', currentUserPlan);
+                        setLocalItem('takeoutfix_cached_plan', currentUserPlan);
                         applyAccessGates();
                         updatePremiumBadgeState();
+                        resolve();
+                    } else {
                         resolve();
                     }
                 }, (error) => {
                     console.warn("Firestore snapshot listener failed, fallback to cache", error);
-                    currentUserPlan = localStorage.getItem('takeoutfix_cached_plan') || 'free';
+                    currentUserPlan = getLocalItem('takeoutfix_cached_plan') || 'free';
                     applyAccessGates();
                     updatePremiumBadgeState();
                     resolve();
@@ -2286,6 +2342,20 @@
 
                 if (user) {
                     currentUser = user;
+                    
+                    // Detect user account changes to prevent resume limit bypass
+                    const lastUid = getLocalItem('takeoutfix_last_uid');
+                    if (lastUid && lastUid !== user.uid) {
+                        console.warn("User account changed on companion app. Clearing local progress...");
+                        removeLocalItem('tf_total_files');
+                        removeLocalItem('tf_total_bytes');
+                        removeLocalItem('tf_recovery_pass_offset_files');
+                        removeLocalItem('tf_recovery_pass_offset_bytes');
+                        removeLocalItem('takeoutfix_recovery_pass_count');
+                        fetch('/api/system/session-stats/reset', { method: 'POST' }).catch(() => {});
+                    }
+                    setLocalItem('takeoutfix_last_uid', user.uid);
+
                     userAvatar.src = user.photoURL || 'https://www.gravatar.com/avatar/?d=mp';
                     userName.innerText = user.displayName || user.email || 'Operator';
                     userProfile.style.display = 'flex';
@@ -2300,10 +2370,15 @@
                         userDocListener();
                         userDocListener = null;
                     }
-                    localStorage.removeItem('takeoutfix_cached_plan');
-                    localStorage.removeItem('takeoutfix_recovery_pass_count');
-                    localStorage.removeItem('tf_recovery_pass_offset_files');
-                    localStorage.removeItem('tf_recovery_pass_offset_bytes');
+                    removeLocalItem('takeoutfix_cached_plan');
+                    removeLocalItem('takeoutfix_recovery_pass_count');
+                    removeLocalItem('tf_recovery_pass_offset_files');
+                    removeLocalItem('tf_recovery_pass_offset_bytes');
+                    removeLocalItem('tf_total_files');
+                    removeLocalItem('tf_total_bytes');
+                    removeLocalItem('takeoutfix_last_uid');
+                    fetch('/api/system/session-stats/reset', { method: 'POST' }).catch(() => {});
+                    
                     userProfile.style.display = 'none';
                     btnLogin.style.display = 'block';
                     btnLogout.style.display = 'none';
@@ -2318,7 +2393,7 @@
             const isLoggedIn = !!currentUser;
             const isSuper = ['super'].includes(currentUserPlan);
             const hasPremium = ['pro', 'super', 'recovery_pass'].includes(currentUserPlan)
-                || localStorage.getItem('takeoutfix_premium_licensed') === 'true';
+                || getLocalItem('takeoutfix_premium_licensed') === 'true';
 
             // --- RESTORE TAB ---
             const restoreAuthWarning = document.getElementById('restoreAuthWarning');
@@ -2423,7 +2498,7 @@
             if (!currentUser) return;
             const planLabels = { free: 'Free', recovery_pass: 'Recovery Pass', pro: 'Pro', super: 'Super ✦' };
             const planColors = { free: 'var(--text-secondary)', recovery_pass: 'var(--warning-color)', pro: '#6366f1', super: 'var(--success-color)' };
-            const planFileLimits = { free: '250 files', recovery_pass: '3,000 files', pro: 'Unlimited', super: 'Unlimited' };
+            const planFileLimits = { free: currentTierFiles.toLocaleString() + ' files', recovery_pass: (recoveryPassFilesLimit === Infinity ? 'Unlimited' : recoveryPassFilesLimit.toLocaleString() + ' files'), pro: 'Unlimited', super: 'Unlimited' };
 
             const plan = currentUserPlan || 'free';
             const isSuper = plan === 'super';
@@ -2441,12 +2516,12 @@
             document.getElementById('dashPlan').innerText = planLabels[plan] || plan;
             document.getElementById('dashPlan').style.color = planColors[plan] || 'var(--text-primary)';
 
-            const totalFiles = parseInt(localStorage.getItem('tf_total_files') || '0');
-            const offsetFiles = parseInt(localStorage.getItem('tf_recovery_pass_offset_files') || '0');
+            const totalFiles = parseInt(getLocalItem('tf_total_files') || '0');
+            const offsetFiles = parseInt(getLocalItem('tf_recovery_pass_offset_files') || '0');
             const activeFiles = Math.max(0, totalFiles - offsetFiles);
 
             if (plan === 'recovery_pass') {
-                document.getElementById('dashFilesLimit').innerText = `${activeFiles.toLocaleString()} / 3,000 files`;
+                document.getElementById('dashFilesLimit').innerText = `${activeFiles.toLocaleString()} / ${recoveryPassFilesLimit === Infinity ? 'Unlimited' : recoveryPassFilesLimit.toLocaleString() + ' files'}`;
             } else {
                 document.getElementById('dashFilesLimit').innerText = planFileLimits[plan] || '250';
             }
@@ -2476,6 +2551,7 @@
             }
             try {
                 await auth.signInWithPopup(googleProvider);
+                window.location.reload();
             } catch (e) {
                 alert("Sign-in failed: " + e.message);
             }
@@ -2485,13 +2561,14 @@
             if (!auth) return;
             try {
                 await auth.signOut();
+                window.location.reload();
             } catch (e) {
                 console.error("Sign-out failed", e);
             }
         }
 
         function updatePremiumBadgeState() {
-            const isLocalPremium = localStorage.getItem('takeoutfix_premium_licensed') === 'true';
+            const isLocalPremium = getLocalItem('takeoutfix_premium_licensed') === 'true';
             const hasPremium = isLocalPremium || ['pro', 'super', 'recovery_pass'].includes(currentUserPlan);
             
             const btnUpgrade = document.getElementById('btnUpgrade');
@@ -2511,8 +2588,8 @@
                 limitBytes = Infinity;
                 label = currentUserPlan === 'super' ? 'SUPER' : 'PRO';
             } else if (currentUserPlan === 'recovery_pass') {
-                limitFiles = 3000;
-                limitBytes = Infinity;
+                limitFiles = recoveryPassFilesLimit;
+                limitBytes = recoveryPassBytesLimit;
                 label = 'SINGLE PASS';
             }
 
@@ -2548,15 +2625,15 @@
                 if (limitFiles === Infinity) {
                     planStatusMsg.innerText = 'Premium active — unlimited file and storage restorations.';
                 } else if (currentUserPlan === 'recovery_pass') {
-                    planStatusMsg.innerText = 'Recovery Pass active — 3,000 files limit.';
+                    planStatusMsg.innerText = 'Recovery Pass active — ' + (recoveryPassFilesLimit === Infinity ? 'unlimited' : recoveryPassFilesLimit.toLocaleString() + ' files') + ' limit.';
                 } else {
-                    planStatusMsg.innerText = 'Free tier — 250 files limit. Upgrade to remove restrictions.';
+                    planStatusMsg.innerText = 'Free tier — ' + currentTierFiles.toLocaleString() + ' files limit. Upgrade to remove restrictions.';
                 }
             }
  
             // Update limit progress bars using offsets
-            const persistedFiles = parseInt(localStorage.getItem('tf_total_files') || '0');
-            const persistedBytes = parseInt(localStorage.getItem('tf_total_bytes') || '0');
+            const persistedFiles = parseInt(getLocalItem('tf_total_files') || '0');
+            const persistedBytes = parseInt(getLocalItem('tf_total_bytes') || '0');
             applySessionStatsToUI(persistedFiles, persistedBytes);
         }
 
@@ -2748,7 +2825,7 @@
             }
 
             // Enforce limit pre-flight
-            const isLocalPremium = localStorage.getItem('takeoutfix_premium_licensed') === 'true';
+            const isLocalPremium = getLocalItem('takeoutfix_premium_licensed') === 'true';
             let limitFiles = currentTierFiles;
             let limitBytes = currentTierBytes;
 
@@ -2756,15 +2833,15 @@
                 limitFiles = Infinity;
                 limitBytes = Infinity;
             } else if (currentUserPlan === 'recovery_pass') {
-                limitFiles = 3000;
-                limitBytes = Infinity;
+                limitFiles = recoveryPassFilesLimit;
+                limitBytes = recoveryPassBytesLimit;
             }
             
-            const prevFiles = parseInt(localStorage.getItem('tf_total_files') || '0');
-            const prevBytes = parseInt(localStorage.getItem('tf_total_bytes') || '0');
+            const prevFiles = parseInt(getLocalItem('tf_total_files') || '0');
+            const prevBytes = parseInt(getLocalItem('tf_total_bytes') || '0');
 
-            const offsetFiles = parseInt(localStorage.getItem('tf_recovery_pass_offset_files') || '0');
-            const offsetBytes = parseInt(localStorage.getItem('tf_recovery_pass_offset_bytes') || '0');
+            const offsetFiles = parseInt(getLocalItem('tf_recovery_pass_offset_files') || '0');
+            const offsetBytes = parseInt(getLocalItem('tf_recovery_pass_offset_bytes') || '0');
 
             const activeFiles = Math.max(0, prevFiles - offsetFiles);
             const activeBytes = Math.max(0, prevBytes - offsetBytes);
@@ -2845,12 +2922,12 @@
                 
                 // Save current progress to stats
                 const current = parseInt(document.getElementById('statScanned').innerText) || 0;
-                const prevFiles = parseInt(localStorage.getItem('tf_total_files') || '0');
-                const prevBytes = parseInt(localStorage.getItem('tf_total_bytes') || '0');
+                const prevFiles = parseInt(getLocalItem('tf_total_files') || '0');
+                const prevBytes = parseInt(getLocalItem('tf_total_bytes') || '0');
                 const approxNewBytes = current * 1024 * 1024;
                 
-                localStorage.setItem('tf_total_files', prevFiles + current);
-                localStorage.setItem('tf_total_bytes', prevBytes + approxNewBytes);
+                setLocalItem('tf_total_files', prevFiles + current);
+                setLocalItem('tf_total_bytes', prevBytes + approxNewBytes);
 
                 // Update Firestore if online
                 if (currentUser && db) {
@@ -2933,7 +3010,7 @@
             stats.innerText = `${current} / ${total} (${pct}%)`;
             fill.style.width = `${pct}%`;
 
-            const isLocalPremium = localStorage.getItem('takeoutfix_premium_licensed') === 'true';
+            const isLocalPremium = getLocalItem('takeoutfix_premium_licensed') === 'true';
             let limitFiles = currentTierFiles;
             let limitBytes = currentTierBytes;
 
@@ -2941,15 +3018,15 @@
                 limitFiles = Infinity;
                 limitBytes = Infinity;
             } else if (currentUserPlan === 'recovery_pass') {
-                limitFiles = 3000;
-                limitBytes = Infinity;
+                limitFiles = recoveryPassFilesLimit;
+                limitBytes = recoveryPassBytesLimit;
             }
 
-            const prevFiles = parseInt(localStorage.getItem('tf_total_files') || '0');
-            const prevBytes = parseInt(localStorage.getItem('tf_total_bytes') || '0');
+            const prevFiles = parseInt(getLocalItem('tf_total_files') || '0');
+            const prevBytes = parseInt(getLocalItem('tf_total_bytes') || '0');
 
-            const offsetFiles = parseInt(localStorage.getItem('tf_recovery_pass_offset_files') || '0');
-            const offsetBytes = parseInt(localStorage.getItem('tf_recovery_pass_offset_bytes') || '0');
+            const offsetFiles = parseInt(getLocalItem('tf_recovery_pass_offset_files') || '0');
+            const offsetBytes = parseInt(getLocalItem('tf_recovery_pass_offset_bytes') || '0');
 
             const activeFiles = Math.max(0, prevFiles - offsetFiles);
             const activeBytes = Math.max(0, prevBytes - offsetBytes);
@@ -2984,10 +3061,10 @@
                     const newBytes = 0; // byte tracking not yet wired in backend
 
                     // Accumulate in localStorage
-                    const prevFiles = parseInt(localStorage.getItem('tf_total_files') || '0');
-                    const prevBytes = parseInt(localStorage.getItem('tf_total_bytes') || '0');
-                    localStorage.setItem('tf_total_files', prevFiles + newFiles);
-                    localStorage.setItem('tf_total_bytes', prevBytes + newBytes);
+                    const prevFiles = parseInt(getLocalItem('tf_total_files') || '0');
+                    const prevBytes = parseInt(getLocalItem('tf_total_bytes') || '0');
+                    setLocalItem('tf_total_files', prevFiles + newFiles);
+                    setLocalItem('tf_total_bytes', prevBytes + newBytes);
 
                     // Update Firestore if online
                     if (currentUser && db) {

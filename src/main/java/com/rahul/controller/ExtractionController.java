@@ -16,7 +16,7 @@ import java.io.FileInputStream;
 
 @RestController
 @RequestMapping("/api/extraction")
-@CrossOrigin(origins = "*")
+@CrossOrigin(originPatterns = {"http://localhost:*", "https://takeoutfix.com", "https://*.pages.dev"})
 public class ExtractionController {
 
     @Autowired
