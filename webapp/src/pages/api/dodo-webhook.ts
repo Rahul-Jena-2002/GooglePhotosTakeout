@@ -172,13 +172,28 @@ export const POST: APIRoute = async ({ request }) => {
 
     const serviceAccount = JSON.parse(serviceAccountStr);
     const projectId = serviceAccount.project_id || "takeout-fix";
-
     // Obtain Access Token for Firestore REST API
     const token = await getGoogleAuthToken(serviceAccount);
     const headers = {
       "Content-Type": "application/json",
       "Authorization": `Bearer ${token}`
     };
+
+    // Fetch global config to determine dodo host and test mode
+    let dodoHost = "live.dodopayments.com";
+    let isTestMode = false;
+    try {
+      const globalUrl = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/settings/global`;
+      const globalRes = await fetch(globalUrl, { headers });
+      if (globalRes.ok) {
+        const globalData: any = await globalRes.json();
+        dodoHost = globalData.fields?.dodo_host?.stringValue || "live.dodopayments.com";
+        isTestMode = globalData.fields?.dodo_test_mode?.booleanValue === true;
+      }
+    } catch (err: any) {
+      console.warn("Failed to fetch settings/global in webhook:", err.message);
+    }
+    const envMode = isTestMode ? "test" : "live";
 
     // Backup: If webhook secret is not set in Cloudflare env, fetch and decrypt it from Firestore settings/secure
     if (!dodoWebhookSecret) {
@@ -251,9 +266,6 @@ export const POST: APIRoute = async ({ request }) => {
       else if (type === "payment.cancelled") txStatus = "cancelled";
       else if (type === "payment.processing") txStatus = "processing";
 
-      // Reuse the access token and headers generated above
-
-
       // 1. Create Transaction Document
       const txUrl = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/transactions?documentId=${txId}`;
       const txBody = {
@@ -268,7 +280,8 @@ export const POST: APIRoute = async ({ request }) => {
           displayAmount: { stringValue: `${currency === "INR" ? "₹" : "$"}${amount}` },
           status: { stringValue: txStatus },
           timestamp: { integerValue: String(timestamp) },
-          paymentMethod: { stringValue: "Dodo Payments" }
+          paymentMethod: { stringValue: "Dodo Payments" },
+          envMode: { stringValue: envMode }
         }
       };
       const txRes = await fetch(txUrl, { method: "POST", headers, body: JSON.stringify(txBody) });
@@ -292,10 +305,148 @@ export const POST: APIRoute = async ({ request }) => {
           return new Response("Database update failed", { status: 500 });
         }
 
-        // 3. Create Purchase Log and Admin Activity Log Documents (in parallel)
+        // 3. Find active campaign → increment currentPurchaseCount → auto-expire if cap hit
+        let activeCampaignId: string | null = null;
+        try {
+          const runQueryUrl = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents:runQuery`;
+          const campaignQueryBody = {
+            structuredQuery: {
+              from: [{ collectionId: "campaigns" }],
+              where: {
+                compositeFilter: {
+                  op: "AND",
+                  filters: [
+                    {
+                      fieldFilter: {
+                        field: { fieldPath: "isEnabled" },
+                        op: "EQUAL",
+                        value: { booleanValue: true }
+                      }
+                    },
+                    {
+                      fieldFilter: {
+                        field: { fieldPath: "status" },
+                        op: "EQUAL",
+                        value: { stringValue: "ACTIVE" }
+                      }
+                    }
+                  ]
+                }
+              },
+              limit: 1
+            }
+          };
+
+          const campRes = await fetch(runQueryUrl, {
+            method: "POST",
+            headers,
+            body: JSON.stringify(campaignQueryBody)
+          });
+
+          if (campRes.ok) {
+            const campResults = await campRes.json() as any[];
+            if (Array.isArray(campResults) && campResults.length > 0 && campResults[0].document) {
+              const doc = campResults[0].document;
+              const parts = doc.name.split("/");
+              activeCampaignId = parts[parts.length - 1];
+              const activeCampaignData = doc.fields;
+              
+              const currentCount = parseInt(activeCampaignData.currentPurchaseCount?.integerValue || "0") + 1;
+              const maxLimit = activeCampaignData.maxPurchaseLimit?.integerValue ? parseInt(activeCampaignData.maxPurchaseLimit.integerValue) : null;
+              
+              const updateFields: any = {
+                currentPurchaseCount: { integerValue: String(currentCount) }
+              };
+              let updateMask = "updateMask.fieldPaths=currentPurchaseCount";
+              
+              if (maxLimit !== null && currentCount >= maxLimit) {
+                updateFields.status = { stringValue: "EXPIRED" };
+                updateFields.isEnabled = { booleanValue: false };
+                updateMask += "&updateMask.fieldPaths=status&updateMask.fieldPaths=isEnabled";
+                console.log(`Campaign ${activeCampaignId} auto-expired at limit ${maxLimit}`);
+              }
+              
+              const updateUrl = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/campaigns/${activeCampaignId}?${updateMask}`;
+              const updateRes = await fetch(updateUrl, {
+                method: "PATCH",
+                headers,
+                body: JSON.stringify({ fields: updateFields })
+              });
+              if (!updateRes.ok) console.warn("Failed to update campaign purchase count:", await updateRes.text());
+              else console.log(`Campaign ${activeCampaignId} purchase count incremented to ${currentCount}.`);
+            }
+          }
+        } catch (campErr: any) {
+          console.error("Campaign update error in webhook:", campErr.message);
+        }
+
+        // 4. Find matching coupon → increment usedCount
+        const discountCode = String(data.discount_code || data.coupon_code || "").toUpperCase();
+        let matchedCouponId: string | null = null;
+        
+        if (discountCode) {
+          try {
+            const runQueryUrl = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents:runQuery`;
+            const couponQueryBody = {
+              structuredQuery: {
+                from: [{ collectionId: "coupons" }],
+                where: {
+                  fieldFilter: {
+                    field: { fieldPath: "couponCode" },
+                    op: "EQUAL",
+                    value: { stringValue: discountCode }
+                  }
+                },
+                limit: 1
+              }
+            };
+            
+            const coupRes = await fetch(runQueryUrl, {
+              method: "POST",
+              headers,
+              body: JSON.stringify(couponQueryBody)
+            });
+            
+            if (coupRes.ok) {
+              const coupResults = await coupRes.json() as any[];
+              if (Array.isArray(coupResults) && coupResults.length > 0 && coupResults[0].document) {
+                const doc = coupResults[0].document;
+                const parts = doc.name.split("/");
+                matchedCouponId = parts[parts.length - 1];
+                const couponData = doc.fields;
+                
+                const currentUsed = parseInt(couponData.usedCount?.integerValue || "0") + 1;
+                
+                const updateUrl = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/coupons/${matchedCouponId}?updateMask.fieldPaths=usedCount&updateMask.fieldPaths=updatedAt`;
+                const updateBody = {
+                  fields: {
+                    usedCount: { integerValue: String(currentUsed) },
+                    updatedAt: { integerValue: String(timestamp) }
+                  }
+                };
+                
+                const updateRes = await fetch(updateUrl, {
+                  method: "PATCH",
+                  headers,
+                  body: JSON.stringify(updateBody)
+                });
+                if (!updateRes.ok) console.warn("Failed to update coupon usage:", await updateRes.text());
+                else console.log(`Coupon ${discountCode} usedCount incremented to ${currentUsed}.`);
+              }
+            }
+          } catch (coupErr: any) {
+            console.error("Coupon update error in webhook:", coupErr.message);
+          }
+        }
+
+        // 5. Create Purchase Log and Admin Activity Log Documents (in parallel)
         const logUrl = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/purchase_logs`;
         const logBody = {
           fields: {
+            campaignId: activeCampaignId ? { stringValue: activeCampaignId } : { nullValue: null },
+            couponId: matchedCouponId ? { stringValue: matchedCouponId } : { nullValue: null },
+            couponCode: discountCode ? { stringValue: discountCode } : { nullValue: null },
+            productId: data.product_id ? { stringValue: data.product_id } : { nullValue: null },
             customerEmail: { stringValue: userEmail },
             userId: { stringValue: userId },
             plan: { stringValue: plan },
@@ -315,7 +466,7 @@ export const POST: APIRoute = async ({ request }) => {
             actorRole: { stringValue: "USER" },
             action: { stringValue: "PURCHASE" },
             target: { stringValue: plan },
-            description: { stringValue: `Purchased ${plan} via Dodo Payments for ${currency} ${amount}` },
+            description: { stringValue: `Purchased ${plan} via Dodo Payments for ${currency} ${amount}${discountCode ? ` using coupon ${discountCode}` : ""}` },
             timestamp: { integerValue: String(timestamp) }
           }
         };

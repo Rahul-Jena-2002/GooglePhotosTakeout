@@ -141,19 +141,18 @@ export default function AdminTransactions() {
       if (!matchesSearch) return false
     }
 
-    // 2. Type filter
-    const isAdminGrant = t.approvedByAdmin != null || t.paymentMethod === "Admin Grant" || t.amount === 0;
+    const isNonCommercial = t.approvedByAdmin != null || t.paymentMethod === "Admin Grant" || t.amount === 0 || t.envMode === "test" || (t.txId && t.txId.includes("TEST"));
     
     if (filterType === "admin") {
-      return isAdminGrant;
+      return t.approvedByAdmin != null || t.paymentMethod === "Admin Grant" || t.amount === 0;
     } else if (filterType === "commercial") {
-      return !isAdminGrant;
+      return !isNonCommercial;
     } else if (filterType === "pro") {
-      return !isAdminGrant && t.plan === "pro";
+      return !isNonCommercial && t.plan === "pro";
     } else if (filterType === "super") {
-      return !isAdminGrant && t.plan === "super";
+      return !isNonCommercial && t.plan === "super";
     } else if (filterType === "single") {
-      return !isAdminGrant && t.plan === "recovery_pass";
+      return !isNonCommercial && t.plan === "recovery_pass";
     } else if (filterType === "refunded") {
       return t.status === "refunded";
     } else if (filterType === "processing") {
@@ -210,7 +209,7 @@ export default function AdminTransactions() {
     "Stripe"
 
   // KPI stats from filters
-  const commercialTx = transactions.filter(t => !(t.approvedByAdmin != null || t.paymentMethod === "Admin Grant" || t.amount === 0))
+  const commercialTx = transactions.filter(t => !(t.approvedByAdmin != null || t.paymentMethod === "Admin Grant" || t.amount === 0 || t.envMode === "test" || (t.txId && t.txId.includes("TEST"))))
   const succeededCount = commercialTx.filter(t => t.status === "succeeded").length
   const failedOrCancelledCount = commercialTx.filter(t => t.status === "failed" || t.status === "cancelled").length
 

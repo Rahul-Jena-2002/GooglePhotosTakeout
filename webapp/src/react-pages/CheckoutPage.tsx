@@ -175,7 +175,7 @@ function CheckoutPageContent() {
             setCouponDetails({
               couponCode: data.couponCode,
               discountType: "PERCENTAGE",
-              discountValue: 50
+              discountValue: parseFloat(data.discountPct || "50")
             });
           } else {
             console.warn("Failed to generate dynamic upgrade coupon:", data.error || "Unknown error");
