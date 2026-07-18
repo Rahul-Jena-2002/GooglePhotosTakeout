@@ -155,16 +155,15 @@ async function getGoogleAuthToken(serviceAccount: any): Promise<string> {
   return data.access_token;
 }
 
-export const POST: APIRoute = async ({ request, locals }) => {
+export const POST: APIRoute = async ({ request }) => {
   try {
     const rawBody = await request.text();
     const payload = JSON.parse(rawBody);
 
     // Retrieve environment variables from Cloudflare context
-    const cfEnv = (locals as any)?.runtime?.env || {};
-    let dodoWebhookSecret = cfEnv.DODO_WEBHOOK_KEY || (env as any).DODO_WEBHOOK_KEY || import.meta.env.DODO_WEBHOOK_KEY;
-    const serviceAccountStr = cfEnv.FIREBASE_SERVICE_ACCOUNT || (env as any).FIREBASE_SERVICE_ACCOUNT || import.meta.env.FIREBASE_SERVICE_ACCOUNT;
-    const encryptionKey = cfEnv.ENCRYPTION_KEY || (env as any).ENCRYPTION_KEY || import.meta.env.ENCRYPTION_KEY || "92elPvQ63jp_SXOmGbLyOgvfcGHVP-GfDbbiyLV4rpw";
+    let dodoWebhookSecret = (env as any).DODO_WEBHOOK_KEY || import.meta.env.DODO_WEBHOOK_KEY;
+    const serviceAccountStr = (env as any).FIREBASE_SERVICE_ACCOUNT || import.meta.env.FIREBASE_SERVICE_ACCOUNT;
+    const encryptionKey = (env as any).ENCRYPTION_KEY || import.meta.env.ENCRYPTION_KEY || "92elPvQ63jp_SXOmGbLyOgvfcGHVP-GfDbbiyLV4rpw";
 
     if (!serviceAccountStr) {
       console.error("Missing FIREBASE_SERVICE_ACCOUNT environment variable.");
