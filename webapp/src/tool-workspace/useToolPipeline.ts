@@ -1290,9 +1290,9 @@ export function useToolPipeline() {
     if (storageExceeded && filesExceeded) {
       limitReason = "both your storage and file count limits"
     } else if (storageExceeded) {
-      limitReason = `your storage limit of ${plan === 'free' ? '500 MB' : '3 GB'}`
+      limitReason = `your storage limit of ${plan === 'free' ? '500 MB' : 'unlimited storage'}`
     } else {
-      limitReason = `your file count limit of ${plan === 'free' ? '250 files' : '3,000 files'}`
+      limitReason = `your file count limit of ${plan === 'free' ? '250 files' : 'unlimited files'}`
     }
 
     setQuotaAlert({
@@ -1870,9 +1870,9 @@ export function useToolPipeline() {
       if (currentUsedFiles >= limitFiles && currentUsedBytes >= limitBytes) {
         limitReason = "both your storage and file count limits"
       } else if (currentUsedBytes >= limitBytes) {
-        limitReason = `your storage limit of ${plan === 'free' ? '500 MB' : '3 GB'}`
+        limitReason = `your storage limit of ${plan === 'free' ? '500 MB' : 'unlimited storage'}`
       } else {
-        limitReason = `your file count limit of ${plan === 'free' ? '250 files' : '3,000 files'}`
+        limitReason = `your file count limit of ${plan === 'free' ? '250 files' : 'unlimited files'}`
       }
 
       setQuotaAlert({

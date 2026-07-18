@@ -302,9 +302,7 @@ function PricingPageContent() {
   };
 
   const getRecoverySubheading = () => {
-    if (!tierThresholds?.recovery_pass) return featuresConfig?.subheadings?.recovery_pass || 'Single takeout batch up to 3,000 files or 3GB';
-    const { maxFiles, maxSizeMB } = tierThresholds.recovery_pass;
-    return `Single takeout batch up to ${formatLimitText(maxFiles, maxSizeMB)}`;
+    return featuresConfig?.subheadings?.recovery_pass || 'Unlimited file restoration for 24 hours';
   };
 
   const getProSubheading = () => {
@@ -332,8 +330,9 @@ function PricingPageContent() {
     if (planKey === 'free' && text.toLowerCase().includes('250 files') && text.toLowerCase().includes('500mb')) {
       return `Free up to ${formatLimitText(maxFiles, maxSizeMB)}`;
     }
-    if (planKey === 'recovery_pass' && text.toLowerCase().includes('3,000 files') && text.toLowerCase().includes('3gb')) {
-      return `Single takeout batch up to ${formatLimitText(maxFiles, maxSizeMB)}`;
+    // Recovery pass is always unlimited for 24 hours – no file/size limit to display
+    if (planKey === 'recovery_pass') {
+      return text;
     }
     return text;
   };
@@ -427,11 +426,11 @@ function PricingPageContent() {
         </div>
 
         {/* RECOVERY PASS */}
-        <div className="flex flex-col bg-zinc-950/45 border border-zinc-900 rounded-2xl p-6 h-full justify-between hover:border-zinc-800 transition-all">
+        <div className="flex flex-col bg-purple-950/10 border border-purple-500/25 rounded-2xl p-6 h-full justify-between hover:border-purple-500/40 transition-all">
           <div>
             <div className="mb-6">
-              <h2 className="text-2xl font-bold text-white font-semibold">{featuresConfig?.headings?.recovery_pass || 'Recovery Pass'}</h2>
-              <p className="text-zinc-550 text-xs mt-1">{getRecoverySubheading()}</p>
+              <h2 className="text-2xl font-bold text-purple-400 font-semibold">{featuresConfig?.headings?.recovery_pass || 'Recovery Pass'}</h2>
+              <p className="text-purple-300/60 text-xs mt-1">{getRecoverySubheading()}</p>
             </div>
             <div className="space-y-6">
               <div>
@@ -468,7 +467,7 @@ function PricingPageContent() {
 
 
 
-                <p className="text-[11px] text-zinc-400 mt-2.5 leading-relaxed">Fix one folder of photos without any subscription details.</p>
+                <p className="text-[11px] text-zinc-400 mt-2.5 leading-relaxed">Unlimited file restoration for 24 hours from purchase. Repeatable.</p>
                 {priceIncludesTax && (
                   <span className="inline-flex items-center gap-1 mt-1.5 text-[9px] font-bold text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-1.5 py-0.5 rounded-md">
                     ✓ incl. tax
@@ -476,12 +475,12 @@ function PricingPageContent() {
                 )}
               </div>
               <div className="space-y-2.5">
-                <div className="text-[10px] text-zinc-400 uppercase tracking-widest font-bold mb-1">Everything in Free plus:</div>
-                <ul className="space-y-2 text-xs text-zinc-350 dark:text-zinc-300">
+                <div className="text-[10px] text-purple-400/70 uppercase tracking-widest font-bold mb-1">Everything in Free plus:</div>
+                <ul className="space-y-2 text-xs text-zinc-300">
                   {(featuresConfig?.recovery_pass || []).map((feat, idx) => (
                     <li key={idx} className={`flex items-center gap-1.5${idx === 0 ? ' recovery-pass-highlight' : ''}`}>
-                      <span className={idx === 0 ? 'font-bold' : 'text-zinc-600 dark:text-zinc-400 font-bold'}>✓</span>
-                      <span className={feat.isBold ? 'font-bold' : ''}>{renderFormattedText(formatFeatureText(feat.text, 'recovery_pass'))}</span>
+                      <span className="text-purple-400 font-bold">✓</span>
+                      <span className={feat.isBold ? 'font-bold text-purple-200' : ''}>{renderFormattedText(formatFeatureText(feat.text, 'recovery_pass'))}</span>
                     </li>
                   ))}
                 </ul>
@@ -489,13 +488,13 @@ function PricingPageContent() {
             </div>
           </div>
           <div className="mt-8">
-            {userData?.plan === 'recovery_pass' && userData?.expiresAt && Date.now() < userData.expiresAt ? (
+            {userData?.plan === 'recovery_pass' && (userData as any)?.expiresAt && Date.now() < (userData as any).expiresAt ? (
               <a href={`/checkout?plan=recovery_pass&region=${region}`} className="w-full" target="_blank" rel="noopener noreferrer">
-                <button className="btn-monochrome-primary w-full py-3 rounded-xl font-bold text-xs cursor-pointer transition-all bg-indigo-600 hover:bg-indigo-500 text-white border-transparent">Extend Recovery Pass</button>
+                <button className="w-full py-3 rounded-xl font-bold text-xs cursor-pointer transition-all bg-purple-600 hover:bg-purple-500 text-white">Extend Recovery Pass</button>
               </a>
             ) : (
               <a href={`/checkout?plan=recovery_pass&region=${region}`} className="w-full" target="_blank" rel="noopener noreferrer">
-                <button className="btn-monochrome-primary w-full py-3 rounded-xl font-bold text-xs cursor-pointer transition-all">Get Recovery Pass</button>
+                <button className="w-full py-3 rounded-xl font-bold text-xs cursor-pointer transition-all bg-purple-600 hover:bg-purple-500 text-white">Get Recovery Pass</button>
               </a>
             )}
           </div>

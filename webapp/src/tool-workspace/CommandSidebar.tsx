@@ -97,15 +97,15 @@ export function CommandSidebar({
 
       {/* Quota Progress */}
       {plan === 'recovery_pass' ? (
-        <div className="space-y-2 mb-3 bg-gradient-to-r from-indigo-500/10 to-purple-500/10 border border-indigo-500/20 p-3.5 rounded-lg text-left">
-          <div className="text-[10px] font-bold text-indigo-400 uppercase tracking-wider flex items-center gap-1">
-            <span className="w-1.5 h-1.5 rounded-full bg-indigo-400 animate-ping"></span>
+        <div className="space-y-2 mb-3 bg-gradient-to-r from-purple-500/10 to-violet-500/10 border border-purple-500/20 p-3.5 rounded-lg text-left">
+          <div className="text-[10px] font-bold text-purple-400 uppercase tracking-wider flex items-center gap-1">
+            <span className="w-1.5 h-1.5 rounded-full bg-purple-400 animate-ping"></span>
             24h Recovery Pass Active
           </div>
           <div className="text-[11px] text-zinc-300 font-semibold mt-1">
             Unlimited files & storage restoration enabled.
           </div>
-          <div className="border-t border-indigo-500/10 pt-2.5 mt-2 flex justify-between items-center text-xs">
+          <div className="border-t border-purple-500/10 pt-2.5 mt-2 flex justify-between items-center text-xs">
             <span className="text-zinc-400 font-medium font-semibold">Time Left:</span>
             <span className="font-mono font-black text-white bg-zinc-950/80 px-2 py-0.5 rounded border border-zinc-800 tracking-tight">{timeLeft}</span>
           </div>

@@ -58,7 +58,7 @@ export const DEFAULT_FEATURES_CONFIG: FeaturesConfig = {
   },
   subheadings: {
     free: "Free up to 250 files or 500MB",
-    recovery_pass: "Single takeout batch up to 3,000 files or 3GB",
+    recovery_pass: "Unlimited file restoration for 24 hours",
     pro: "Unlimited photos and videos. 2 devices. Lifetime.",
     super: "Unlimited + duplicate finder, before/after logs, ad-free. 3 devices. Lifetime."
   },
@@ -69,7 +69,7 @@ export const DEFAULT_FEATURES_CONFIG: FeaturesConfig = {
     { text: "Photos stay 100% private", isBold: false }
   ],
   recovery_pass: [
-    { text: "Single takeout batch up to 3,000 files or 3GB", isBold: true },
+    { text: "Unlimited files & storage for 24 hours", isBold: true },
     { text: "Friendly support help desk", isBold: false },
     { text: "Download clean file update logs", isBold: false }
   ],

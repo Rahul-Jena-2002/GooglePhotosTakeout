@@ -59,9 +59,9 @@ const getPlanDetails = (
   const details: Record<string, { name: string; description: string; features: string[] }> = {
     recovery_pass: {
       name: "Recovery Pass",
-      description: "One-time metadata recovery for up to 3,000 files (3 GB)",
+      description: "Unlimited file restoration for 24 hours from purchase",
       features: [
-        "3 GB or 3,000 Files limit (whichever comes first)",
+        "Unlimited files & storage for 24 hours",
         "Full folder organization structure",
         "Standard support access (24-48 business hours)",
         "Uses identical high-precision EXIF injection engine"

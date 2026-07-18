@@ -88,6 +88,13 @@ export default function MainLayout() {
   const [profileMenuOpen, setProfileMenuOpen] = useState(false)
   const [notifications, setNotifications] = useState<any[]>([])
   const [notificationMenuOpen, setNotificationMenuOpen] = useState(false)
+  const [now, setNow] = useState(Date.now())
+
+  // Tick every second for recovery pass countdown
+  useEffect(() => {
+    const timer = setInterval(() => setNow(Date.now()), 1000)
+    return () => clearInterval(timer)
+  }, [])
   const [theme, setTheme] = useState<'light' | 'dark'>(() => {
     if (typeof window !== 'undefined') {
       const saved = localStorage.getItem("takeoutfix_theme")
@@ -395,8 +402,10 @@ export default function MainLayout() {
                             {userData?.username && (
                               <p className="text-xs text-indigo-400 font-semibold font-mono truncate max-w-full">@{userData.username}</p>
                             )}
-                            <p className="text-[11px] text-indigo-400/80 font-bold uppercase tracking-wider mt-0.5">
-                              {userData?.plan === 'pro' ? 'Pro Tier' : userData?.plan === 'super' ? 'Super Tier' : userData?.plan === 'recovery_pass' ? 'Single Pass' : 'Free Tier'}
+                            <p className={`text-[11px] font-bold uppercase tracking-wider mt-0.5 ${
+                              userData?.plan === 'recovery_pass' ? 'text-purple-400' : 'text-indigo-400/80'
+                            }`}>
+                              {userData?.plan === 'pro' ? 'Pro Tier' : userData?.plan === 'super' ? 'Super Tier' : userData?.plan === 'recovery_pass' ? 'Recovery Pass' : 'Free Tier'}
                             </p>
                           </div>
 
@@ -519,8 +528,10 @@ export default function MainLayout() {
                 {userData?.username && (
                   <p className="text-[10px] text-indigo-400 font-semibold font-mono truncate">@{userData.username}</p>
                 )}
-                <p className="text-[10px] text-indigo-400 font-bold uppercase tracking-wider mt-0.5">
-                  {userData?.plan === 'pro' ? 'Pro Tier' : userData?.plan === 'super' ? 'Super Tier' : userData?.plan === 'recovery_pass' ? 'Single Pass' : 'Free Tier'}
+                <p className={`text-[10px] font-bold uppercase tracking-wider mt-0.5 ${
+                  userData?.plan === 'recovery_pass' ? 'text-purple-400' : 'text-indigo-400'
+                }`}>
+                  {userData?.plan === 'pro' ? 'Pro Tier' : userData?.plan === 'super' ? 'Super Tier' : userData?.plan === 'recovery_pass' ? 'Recovery Pass' : 'Free Tier'}
                 </p>
               </div>
             </div>
@@ -566,7 +577,63 @@ export default function MainLayout() {
         )}
       </nav>
 
-      <main className="flex-1 pt-16">
+      {/* Recovery Pass Timer Banner */}
+      {userData?.plan === 'recovery_pass' && (userData as any)?.expiresAt && (() => {
+        const expiresAt: number = (userData as any).expiresAt
+        const remainingMs = Math.max(0, expiresAt - now)
+        const isExpired = remainingMs <= 0
+        const hrs = Math.floor(remainingMs / (1000 * 60 * 60))
+        const mins = Math.floor((remainingMs % (1000 * 60 * 60)) / (1000 * 60))
+        const secs = Math.floor((remainingMs % (1000 * 60)) / 1000)
+
+        // Color thresholds: green >12h, amber 2-12h, red <2h
+        const isGreen = !isExpired && hrs >= 12
+        const isAmber = !isExpired && hrs < 12 && hrs >= 2
+        const isRed   = isExpired || (hrs < 2)
+
+        const bannerBg = isGreen
+          ? 'bg-emerald-950/70 border-emerald-500/25'
+          : isAmber
+          ? 'bg-amber-950/70 border-amber-500/25'
+          : 'bg-red-950/70 border-red-500/25'
+        const dotColor = isGreen ? 'bg-emerald-400' : isAmber ? 'bg-amber-400' : 'bg-red-400'
+        const textColor = isGreen ? 'text-emerald-300' : isAmber ? 'text-amber-300' : 'text-red-300'
+        const mutedColor = isGreen ? 'text-emerald-400/70' : isAmber ? 'text-amber-400/70' : 'text-red-400/70'
+        const timeStr = isExpired
+          ? 'Pass Expired'
+          : `${String(hrs).padStart(2, '0')}:${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`
+
+        return (
+          <div className={`fixed top-[52px] left-0 right-0 z-40 border-b backdrop-blur-md px-4 py-1.5 flex items-center justify-between gap-3 ${bannerBg}`}>
+            <div className="flex items-center gap-2.5 min-w-0">
+              <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${dotColor} ${!isExpired ? 'animate-pulse' : ''}`} />
+              <span className={`text-[11px] font-bold uppercase tracking-widest ${textColor} hidden sm:block flex-shrink-0`}>
+                {isExpired ? 'Recovery Pass Expired' : isRed ? 'Expiring Soon!' : isAmber ? 'Recovery Pass Active' : 'Recovery Pass Active'}
+              </span>
+              <span className={`text-[11px] font-mono font-black ${textColor} tabular-nums`}>
+                {timeStr}
+              </span>
+              {!isExpired && (
+                <span className={`text-[10px] ${mutedColor} truncate hidden md:block`}>
+                  — unlimited until {new Date(expiresAt).toLocaleTimeString()}
+                </span>
+              )}
+            </div>
+            <a
+              href="/checkout?plan=recovery_pass"
+              className={`text-[10px] font-bold flex-shrink-0 px-2.5 py-1 rounded-md border transition-all ${
+                isGreen ? 'border-emerald-500/30 text-emerald-300 hover:bg-emerald-500/10'
+                : isAmber ? 'border-amber-500/30 text-amber-300 hover:bg-amber-500/10'
+                : 'border-red-500/30 text-red-300 hover:bg-red-500/10 animate-pulse'
+              }`}
+            >
+              {isExpired ? 'Get New Pass' : '+ Extend'}
+            </a>
+          </div>
+        )
+      })()}
+
+      <main className={`flex-1 ${userData?.plan === 'recovery_pass' && (userData as any)?.expiresAt ? 'pt-[82px]' : 'pt-16'}`}>
         {inviteFacet?.pendingInvite && (
           <div className="w-full bg-gradient-to-r from-indigo-950/90 via-purple-955/90 to-indigo-950/90 border-b border-indigo-500/20 px-6 py-4 backdrop-blur-xl flex flex-col md:flex-row items-center justify-between gap-4 animate-in slide-in-from-top duration-300 relative z-30">
             <div className="flex items-center gap-3 text-left">

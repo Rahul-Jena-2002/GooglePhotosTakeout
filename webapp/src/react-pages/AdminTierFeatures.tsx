@@ -188,7 +188,7 @@ export default function AdminTierFeatures() {
 
   const COLS = [
     { planKey: "free" as const, label: "Free Plan", color: "text-green-400", items: freeFeatures, setItems: setFreeFeatures },
-    { planKey: "recovery_pass" as const, label: "Recovery Pass", color: "text-cyan-400", items: recoveryFeatures, setItems: setRecoveryFeatures },
+    { planKey: "recovery_pass" as const, label: "Recovery Pass", color: "text-purple-400", items: recoveryFeatures, setItems: setRecoveryFeatures },
     { planKey: "pro" as const, label: "Pro Lifetime", color: "text-violet-400", items: proFeatures, setItems: setProFeatures },
     { planKey: "super" as const, label: "Super Lifetime", color: "text-amber-400", items: superFeatures, setItems: setSuperFeatures },
   ]

@@ -11,7 +11,7 @@ import { motion } from "framer-motion"
 
 const PLAN_LABELS: Record<string, string> = {
   free: "Free",
-  recovery_pass: "Single Time",
+  recovery_pass: "Recovery Pass",
   pro: "Pro",
   super: "Super",
 }
@@ -35,6 +35,13 @@ function DashboardPageContent() {
   const [txLoading, setTxLoading] = useState(true)
   const [history, setHistory] = useState<any[]>([])
   const [historyLoading, setHistoryLoading] = useState(true)
+  const [now, setNow] = useState(Date.now())
+
+  // Tick every second to keep countdown live
+  useEffect(() => {
+    const timer = setInterval(() => setNow(Date.now()), 1000)
+    return () => clearInterval(timer)
+  }, [])
 
   useEffect(() => {
     if (!user) return
@@ -131,16 +138,25 @@ function DashboardPageContent() {
     (userData as any)?.lifetimeFiles || 0
   ) + legacyFiles
 
-  // Storage Quota
-  const maxQuotaGB = plan === 'free' ? 0.5 : plan === 'recovery_pass' ? 3 : Infinity
+  // Storage Quota (recovery_pass is unlimited for 24h)
+  const maxQuotaGB = plan === 'free' ? 0.5 : Infinity
   const usedBytesVal = plan === 'free' ? totalBytesVal : (userData?.usedBytes || 0)
   const usedGB = usedBytesVal / (1024 ** 3)
   const quotaPct = maxQuotaGB === Infinity ? 0 : Math.min(100, (usedGB / maxQuotaGB) * 100)
 
-  // Files Quota
-  const maxQuotaFiles = plan === 'free' ? 250 : plan === 'recovery_pass' ? 3000 : Infinity
+  // Files Quota (recovery_pass is unlimited for 24h)
+  const maxQuotaFiles = plan === 'free' ? 250 : Infinity
   const usedFiles = plan === 'free' ? totalFilesVal : (userData?.usedFiles || 0)
   const fileQuotaPct = maxQuotaFiles === Infinity ? 0 : Math.min(100, (usedFiles / maxQuotaFiles) * 100)
+
+  // Recovery pass countdown
+  const expiresAt: number = (userData as any)?.expiresAt || 0
+  const passActive = plan === 'recovery_pass' && expiresAt > now
+  const passExpired = plan === 'recovery_pass' && expiresAt > 0 && expiresAt <= now
+  const remainingMs = Math.max(0, expiresAt - now)
+  const remainingHrs = Math.floor(remainingMs / (1000 * 60 * 60))
+  const remainingMins = Math.floor((remainingMs % (1000 * 60 * 60)) / (1000 * 60))
+  const remainingSecs = Math.floor((remainingMs % (1000 * 60)) / 1000)
 
   // Receipt builder
   const downloadInvoice = (tx: any) => {
@@ -245,25 +261,42 @@ Your EXIF metadata recovery tools are active.
               )}
 
               {plan === 'recovery_pass' && (
-                <div className="grid md:grid-cols-2 gap-6">
-                  <div className="bg-white/[0.01] border border-white/5 rounded-xl p-4 space-y-3">
-                    <div className="flex justify-between text-xs text-white/60">
-                      <span className="flex items-center gap-1.5 font-semibold"><HardDrive className="w-3.5 h-3.5 text-zinc-500" /> Remaining Capacity</span>
-                      <span>{(3 - usedGB).toFixed(2)} GB / 3.00 GB</span>
+                <div className="space-y-4">
+                  {passActive ? (
+                    <div className="bg-purple-500/5 border border-purple-500/20 rounded-xl p-5">
+                      <div className="flex items-center justify-between mb-3">
+                        <span className="text-xs font-bold text-purple-300 uppercase tracking-widest flex items-center gap-1.5">
+                          <span className="w-1.5 h-1.5 rounded-full bg-purple-400 animate-pulse inline-block" />
+                          Active — Unlimited Restoration
+                        </span>
+                        <a href={`/checkout?plan=recovery_pass`} className="text-[10px] font-bold text-purple-400 hover:text-purple-300 underline underline-offset-2">+ Extend</a>
+                      </div>
+                      <div className="flex items-baseline gap-1.5">
+                        <span className="text-4xl font-black text-white tabular-nums">{String(remainingHrs).padStart(2, '0')}:{String(remainingMins).padStart(2, '0')}:{String(remainingSecs).padStart(2, '0')}</span>
+                        <span className="text-xs text-zinc-500 font-semibold">remaining</span>
+                      </div>
+                      <p className="text-[11px] text-zinc-500 mt-2">Unlimited files & storage until {new Date(expiresAt).toLocaleString()}</p>
                     </div>
-                    <Progress value={quotaPct} className="h-1.5 bg-white/10" />
-                  </div>
-                  <div className="bg-white/[0.01] border border-white/5 rounded-xl p-4 space-y-3">
-                    <div className="flex justify-between text-xs text-white/60">
-                      <span className="flex items-center gap-1.5 font-semibold"><FileText className="w-3.5 h-3.5 text-zinc-500" /> Remaining Files</span>
-                      <span>{3000 - usedFiles} / 3,000 files</span>
+                  ) : passExpired ? (
+                    <div className="bg-red-500/5 border border-red-500/20 rounded-xl p-5 text-center">
+                      <p className="text-sm font-bold text-red-400 mb-1">Recovery Pass Expired</p>
+                      <p className="text-[11px] text-zinc-500 mb-4">Your 24-hour pass expired on {new Date(expiresAt).toLocaleString()}.</p>
+                      <a href="/checkout?plan=recovery_pass">
+                        <button className="px-4 py-2 rounded-lg bg-purple-600 hover:bg-purple-500 text-white text-xs font-bold transition-all">Get New Pass</button>
+                      </a>
                     </div>
-                    <Progress value={fileQuotaPct} className="h-1.5 bg-white/10" />
-                  </div>
+                  ) : (
+                    <div className="bg-zinc-900/60 border border-zinc-800 rounded-xl p-5 text-center">
+                      <p className="text-xs text-zinc-400">No active recovery pass found. Purchase one to unlock unlimited restoration.</p>
+                      <a href="/checkout?plan=recovery_pass">
+                        <button className="mt-3 px-4 py-2 rounded-lg bg-purple-600 hover:bg-purple-500 text-white text-xs font-bold transition-all">Get Recovery Pass</button>
+                      </a>
+                    </div>
+                  )}
                 </div>
               )}
 
-              {(plan === 'free' || plan === 'recovery_pass') && (
+              {plan === 'free' && (
                 <p className="text-[11px] text-zinc-500 italic">
                   * Limits are enforced on a "whichever comes first" basis (either storage capacity or file count).
                 </p>

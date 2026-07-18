@@ -25,7 +25,7 @@ export default function AdminPlanThresholds() {
 
   const [tierThresholds, setTierThresholds] = useState<Record<string, ThresholdCfg>>({
     free:          { maxFiles: "250",    maxSizeMB: "500"    },
-    recovery_pass: { maxFiles: "3000",   maxSizeMB: "3072"   },
+    recovery_pass: { maxFiles: "0",     maxSizeMB: "0"      },
     pro:           { maxFiles: "50000",  maxSizeMB: "51200"  },
     super:         { maxFiles: "100000", maxSizeMB: "102400" },
   })
@@ -54,8 +54,8 @@ export default function AdminPlanThresholds() {
               maxSizeMB: String(stored.free?.maxSizeMB ?? "500"),
             },
             recovery_pass: {
-              maxFiles: String(stored.recovery_pass?.maxFiles ?? "3000"),
-              maxSizeMB: String(stored.recovery_pass?.maxSizeMB ?? "3072"),
+              maxFiles: String(stored.recovery_pass?.maxFiles ?? "0"),
+              maxSizeMB: String(stored.recovery_pass?.maxSizeMB ?? "0"),
             },
             pro: {
               maxFiles: String(stored.pro?.maxFiles ?? "50000"),
@@ -143,7 +143,7 @@ export default function AdminPlanThresholds() {
 
   const TIERS = [
     { key: "free", label: "Free Plan", color: "text-green-400", border: "border-green-500/25", bg: "bg-green-500/5", desc: "For new users testing out the fixer tool." },
-    { key: "recovery_pass", label: "Recovery Pass", color: "text-cyan-400", border: "border-cyan-500/25", bg: "bg-cyan-500/5", desc: "One-off basic recovery tier." },
+    { key: "recovery_pass", label: "Recovery Pass", color: "text-purple-400", border: "border-purple-500/25", bg: "bg-purple-500/5", desc: "24-hour unlimited restoration pass." },
     { key: "pro", label: "Pro Lifetime", color: "text-violet-400", border: "border-violet-500/25", bg: "bg-violet-500/5", desc: "Unlimited plan for general users." },
     { key: "super", label: "Super Lifetime", color: "text-amber-400", border: "border-amber-500/25", bg: "bg-amber-500/5", desc: "Highest capacity tier for power users." },
   ]
