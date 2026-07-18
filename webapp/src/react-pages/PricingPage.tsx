@@ -57,12 +57,12 @@ const getTableCellStyle = (val: string, plan: 'free' | 'recovery_pass' | 'pro' |
       lowerVal.includes("complete") || 
       lowerVal.includes("100%")
     ) {
-      // Unlocked pro limits - purple/violet (no emerald green)
-      return "text-purple-600 dark:text-purple-400 font-bold";
+      // Unlocked pro limits - blue (no emerald green)
+      return "text-blue-600 dark:text-blue-400 font-bold";
     }
-    // Capacity or size limits (e.g., 50 GB) - violet
+    // Capacity or size limits (e.g., 50 GB) - blue
     const isBold = /\d/.test(lowerVal) || lowerVal.length > 2;
-    return `${isBold ? 'font-bold text-violet-600 dark:text-violet-400' : 'text-zinc-700 dark:text-zinc-300'}`;
+    return `${isBold ? 'font-bold text-blue-600 dark:text-blue-400' : 'text-zinc-700 dark:text-zinc-300'}`;
   }
   
   const isBold = lowerVal.includes("device") || /\d/.test(lowerVal);
@@ -432,10 +432,10 @@ function PricingPageContent() {
         </div>
 
         {/* RECOVERY PASS */}
-        <div className="flex flex-col bg-zinc-950/45 border border-purple-500/30 rounded-2xl p-6 h-full justify-between hover:border-purple-500/50 transition-all">
+        <div className="flex flex-col bg-zinc-950/45 border border-cyan-500/30 rounded-2xl p-6 h-full justify-between hover:border-cyan-500/50 transition-all">
           <div>
             <div className="mb-6">
-              <h2 className="text-2xl font-bold text-purple-400 font-semibold">{featuresConfig?.headings?.recovery_pass || 'Recovery Pass'}</h2>
+              <h2 className="text-2xl font-bold text-cyan-400 font-semibold">{featuresConfig?.headings?.recovery_pass || 'Recovery Pass'}</h2>
               <p className="text-zinc-500 text-xs mt-1">{getRecoverySubheading()}</p>
             </div>
             <div className="space-y-6">
@@ -481,12 +481,12 @@ function PricingPageContent() {
                 )}
               </div>
               <div className="space-y-2.5">
-                <div className="text-[10px] text-purple-400/70 uppercase tracking-widest font-bold mb-1">Everything in Free plus:</div>
+                <div className="text-[10px] text-cyan-400/70 uppercase tracking-widest font-bold mb-1">Everything in Free plus:</div>
                 <ul className="space-y-2 text-xs text-zinc-300">
                   {(featuresConfig?.recovery_pass || []).map((feat, idx) => (
                     <li key={idx} className={`flex items-center gap-1.5${idx === 0 ? ' recovery-pass-highlight' : ''}`}>
-                      <span className="text-purple-400 font-bold">✓</span>
-                      <span className={feat.isBold ? 'font-bold text-purple-200' : ''}>{renderFormattedText(formatFeatureText(feat.text, 'recovery_pass'))}</span>
+                      <span className="text-cyan-400 font-bold">✓</span>
+                      <span className={feat.isBold ? 'font-bold text-cyan-200' : ''}>{renderFormattedText(formatFeatureText(feat.text, 'recovery_pass'))}</span>
                     </li>
                   ))}
                 </ul>
@@ -496,11 +496,11 @@ function PricingPageContent() {
           <div className="mt-8">
             {userData?.plan === 'recovery_pass' && (userData as any)?.expiresAt && Date.now() < (userData as any).expiresAt ? (
               <a href={`/checkout?plan=recovery_pass&region=${region}`} className="w-full" target="_blank" rel="noopener noreferrer">
-                <button className="btn-purple-pricing w-full py-3 rounded-xl font-bold text-xs cursor-pointer transition-all">Extend Recovery Pass</button>
+                <button className="btn-recovery-cyan w-full py-3 rounded-xl font-bold text-xs cursor-pointer transition-all">Extend Recovery Pass</button>
               </a>
             ) : (
               <a href={`/checkout?plan=recovery_pass&region=${region}`} className="w-full" target="_blank" rel="noopener noreferrer">
-                <button className="btn-purple-pricing w-full py-3 rounded-xl font-bold text-xs cursor-pointer transition-all">Get Recovery Pass</button>
+                <button className="btn-recovery-cyan w-full py-3 rounded-xl font-bold text-xs cursor-pointer transition-all">Get Recovery Pass</button>
               </a>
             )}
           </div>
