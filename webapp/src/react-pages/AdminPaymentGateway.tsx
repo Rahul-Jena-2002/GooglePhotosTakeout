@@ -185,7 +185,7 @@ function resolveSyncUrl(endpoint: string, storedUrl: string): string {
 
 
 export default function AdminPaymentGateway() {
-  const { adminData, loading: authLoading } = useAuth()
+  const { user, adminData, loading: authLoading } = useAuth()
   const role = adminData?.role ?? "ADMIN"
   const isSuperAdmin = role === "SUPER_ADMIN"
   const isDev = import.meta.env.DEV
@@ -633,9 +633,11 @@ export default function AdminPaymentGateway() {
 
       cfUrl = resolveSyncUrl('sync-dodo-prices', cloudFunctionUrl)
 
+      const idToken = user ? await user.getIdToken() : ''
+
       const resp = await fetch(cfUrl, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'x-api-key': gatewayApiKey },
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${idToken}` },
         body: JSON.stringify({ regionCode, prices, currency })
       })
       const text = await resp.text()
@@ -925,9 +927,10 @@ export default function AdminPaymentGateway() {
       const currency = tierData.currency_code || 'USD'
       const cfUrl = resolveSyncUrl('sync-dodo-prices', cloudFunctionUrl)
 
+      const idToken = user ? await user.getIdToken() : ''
       const resp = await fetch(cfUrl, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'x-api-key': gatewayApiKey },
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${idToken}` },
         body: JSON.stringify({ regionCode, prices, currency })
       })
       if (!resp.ok) {
@@ -1147,11 +1150,12 @@ export default function AdminPaymentGateway() {
         }
       })
 
+      const idToken = user ? await user.getIdToken() : ''
       const resp = await fetch(cfUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'x-api-key': gatewayApiKey
+          Authorization: `Bearer ${idToken}`
         },
         body: JSON.stringify({ couponId, productIds: productIdsPayload })
       })
