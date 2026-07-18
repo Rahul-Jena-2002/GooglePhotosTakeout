@@ -110,6 +110,7 @@ async function getGoogleAuthToken(serviceAccount: any): Promise<string> {
   const pemHeader = "-----BEGIN PRIVATE KEY-----";
   const pemFooter = "-----END PRIVATE KEY-----";
   const pemContents = serviceAccount.private_key
+    .replace(/\\n/g, "\n")
     .replace(pemHeader, "")
     .replace(pemFooter, "")
     .replace(/\s/g, "");

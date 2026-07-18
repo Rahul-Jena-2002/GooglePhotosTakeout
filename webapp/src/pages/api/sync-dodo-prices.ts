@@ -66,11 +66,17 @@ async function getGoogleAuthToken(serviceAccount: any): Promise<string> {
   const pemHeader = "-----BEGIN PRIVATE KEY-----";
   const pemFooter = "-----END PRIVATE KEY-----";
   const pemContents = serviceAccount.private_key
+    .replace(/\\n/g, "\n")
     .replace(pemHeader, "")
     .replace(pemFooter, "")
     .replace(/\s/g, "");
   
+  console.log("[getGoogleAuthToken] pemContents length:", pemContents.length);
+  console.log("[getGoogleAuthToken] pemContents preview:", pemContents.substring(0, 30));
+  console.log("[getGoogleAuthToken] Character at index 188 to 194:", pemContents.substring(188, 194));
+
   const binaryKey = atob(pemContents);
+  console.log("[getGoogleAuthToken] binaryKey length:", binaryKey.length);
   const keyBuffer = new Uint8Array(binaryKey.length);
   for (let i = 0; i < binaryKey.length; i++) {
     keyBuffer[i] = binaryKey.charCodeAt(i);
