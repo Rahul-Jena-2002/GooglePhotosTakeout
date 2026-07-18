@@ -178,21 +178,9 @@ const COUPON_PLANS = ['recovery_pass', 'pro', 'super']
  * - Everything else → routes to <base>/<endpoint>
  */
 function resolveSyncUrl(endpoint: string, storedUrl: string): string {
-  // Route through local Astro proxy endpoint in local development
-  if (import.meta.env.DEV || window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
-    return `/api/${endpoint}`;
-  }
-  // In production (Cloudflare Pages), direct-fetch the Cloud Function since it supports CORS
-  // and static hosting has no worker backend to execute the proxy.
-  let base = (storedUrl || 'https://us-central1-takeout-fix.cloudfunctions.net/geminiToolGateway').replace(/\/$/, '');
-  
-  // Strip any accidental webhook or pricing sync endpoint suffixes the user may have pasted
-  base = base.replace(/\/dodo-webhook$/, '')
-             .replace(/\/sync-dodo-prices$/, '')
-             .replace(/\/sync-coupon$/, '')
-             .replace(/\/$/, '');
-
-  return `${base}/${endpoint}`;
+  // Route through same-origin Astro proxy endpoint in both development and production
+  // to completely avoid CORS or browser network security blocks
+  return `/api/${endpoint}`;
 }
 
 
