@@ -16,6 +16,7 @@ export default function AdminTierFeatures() {
 
   const [isLight, setIsLight] = useState(false)
   const [saving, setSaving] = useState(false)
+  const [resetting, setResetting] = useState(false)
 
   // Dynamic Features customizer states
   const [freeFeatures, setFreeFeatures] = useState<FeatureItem[]>([])
@@ -206,6 +207,46 @@ export default function AdminTierFeatures() {
             Customize the card headings, subheadings, and bullet feature lists visible to customers on the landing pricing matrix.
           </p>
         </div>
+        <button
+          type="button"
+          onClick={async () => {
+            setResetting(true)
+            try {
+              // Reset local state to defaults
+              setFreeFeatures([...DEFAULT_FEATURES_CONFIG.free])
+              setRecoveryFeatures([...DEFAULT_FEATURES_CONFIG.recovery_pass])
+              setProFeatures([...DEFAULT_FEATURES_CONFIG.pro])
+              setSuperFeatures([...DEFAULT_FEATURES_CONFIG.super])
+              setHeadings({ ...DEFAULT_FEATURES_CONFIG.headings })
+              setSubheadings({ ...DEFAULT_FEATURES_CONFIG.subheadings })
+              // Immediately persist to Firestore
+              await setDoc(
+                doc(db, 'settings', 'global'),
+                {
+                  features_config: {
+                    free: DEFAULT_FEATURES_CONFIG.free,
+                    recovery_pass: DEFAULT_FEATURES_CONFIG.recovery_pass,
+                    pro: DEFAULT_FEATURES_CONFIG.pro,
+                    super: DEFAULT_FEATURES_CONFIG.super,
+                    headings: DEFAULT_FEATURES_CONFIG.headings,
+                    subheadings: DEFAULT_FEATURES_CONFIG.subheadings,
+                  }
+                },
+                { merge: true }
+              )
+              useToastStore.getState().addToast('Features reset to defaults and saved.', 'success')
+            } catch (e) {
+              useToastStore.getState().addToast('Reset failed.', 'error')
+            } finally {
+              setResetting(false)
+            }
+          }}
+          disabled={resetting}
+          className="text-[11px] font-bold px-3 py-1.5 rounded-lg border border-amber-500/30 text-amber-400 hover:bg-amber-500/10 transition-all flex-shrink-0 flex items-center gap-1.5 cursor-pointer"
+        >
+          {resetting ? <div className="w-3 h-3 border-2 border-amber-400 border-t-transparent rounded-full animate-spin" /> : '↺'}
+          Reset to Defaults
+        </button>
       </div>
 
       <Card className="bg-zinc-900 border-zinc-800 shadow-none" style={{ borderColor: isLight ? '#e5e7eb' : '#27272a', backgroundColor: isLight ? '#ffffff' : '#09090b' }}>

@@ -1005,11 +1005,12 @@ html:not(.light) .custom-faq-scroll::-webkit-scrollbar-thumb {
 html:not(.light) button.bg-zinc-900:not(.btn-theme-toggle-navbar):not(.btn-notification-navbar):not(.btn-profile-trigger),
 html:not(.light) button.bg-black:not(.btn-theme-toggle-navbar):not(.btn-notification-navbar):not(.btn-profile-trigger),
 html:not(.light) button.btn-solid-dark:not(.btn-theme-toggle-navbar):not(.btn-notification-navbar):not(.btn-profile-trigger),
-html:not(.light) button:not(.bg-white):not(.tool-tab-btn):not(.btn-monochrome-primary):not(.btn-monochrome-secondary):not(.btn-pricing-pro):not(.btn-pro-blue):not(.btn-super-orange):not(.btn-theme-toggle-navbar):not(.btn-notification-navbar):not(.btn-profile-trigger) {
-  color: #FFFFFF !important;
+html:not(.light) button:not(.bg-white):not(.tool-tab-btn):not(.btn-monochrome-primary):not(.btn-monochrome-secondary):not(.btn-pricing-pro):not(.btn-pro-blue):not(.btn-super-orange):not(.btn-theme-toggle-navbar):not(.btn-notification-navbar):not(.btn-profile-trigger):not(.btn-purple-pricing) {
+  background-color: #18181b !important;
+  color: #f4f4f5 !important;
 }
-html:not(.light) button:not(.bg-zinc-900):not(.bg-black):not(.btn-solid-dark):not(.bg-white):not(.btn-monochrome-primary):not(.btn-monochrome-secondary):not(.btn-pricing-pro):not(.btn-pro-blue):not(.btn-super-orange):not(.btn-theme-toggle-navbar):not(.btn-notification-navbar):not(.btn-profile-trigger) *,
-html:not(.light) button:not(.bg-white):not(.tool-tab-btn):not(.btn-monochrome-primary):not(.btn-monochrome-secondary):not(.btn-pricing-pro):not(.btn-pro-blue):not(.btn-super-orange):not(.btn-theme-toggle-navbar):not(.btn-notification-navbar):not(.btn-profile-trigger) * {
+html:not(.light) button:not(.bg-zinc-900):not(.bg-black):not(.btn-solid-dark):not(.bg-white):not(.btn-monochrome-primary):not(.btn-monochrome-secondary):not(.btn-pricing-pro):not(.btn-pro-blue):not(.btn-super-orange):not(.btn-theme-toggle-navbar):not(.btn-notification-navbar):not(.btn-profile-trigger):not(.btn-purple-pricing) *,
+html:not(.light) button:not(.bg-white):not(.tool-tab-btn):not(.btn-monochrome-primary):not(.btn-monochrome-secondary):not(.btn-pricing-pro):not(.btn-pro-blue):not(.btn-super-orange):not(.btn-theme-toggle-navbar):not(.btn-notification-navbar):not(.btn-profile-trigger):not(.btn-purple-pricing) * {
   color: #FFFFFF !important;
 }
 
@@ -1103,6 +1104,28 @@ html.light .btn-pricing-pro:hover {
   background-color: #27272a !important;
   color: #FFFFFF !important;
   border-color: #27272a !important;
+}
+
+/* Purple button for Recovery Pass — works in both light and dark modes */
+.btn-purple-pricing {
+  background-color: #9333ea !important;
+  color: #ffffff !important;
+  border: 1px solid #7e22ce !important;
+}
+.btn-purple-pricing:hover {
+  background-color: #a855f7 !important;
+  color: #ffffff !important;
+  border-color: #9333ea !important;
+}
+html.light .btn-purple-pricing {
+  background-color: #9333ea !important;
+  color: #ffffff !important;
+  border: 1px solid #7e22ce !important;
+}
+html.light .btn-purple-pricing:hover {
+  background-color: #a855f7 !important;
+  color: #ffffff !important;
+  border-color: #9333ea !important;
 }
 
 .btn-pricing-super {

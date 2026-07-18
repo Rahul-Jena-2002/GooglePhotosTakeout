@@ -258,52 +258,40 @@ export default function AdminPlanThresholds() {
                 </div>
               </div>
 
+              {/* Inline duration config — only for recovery_pass */}
+              {key === 'recovery_pass' && (
+                <div className="space-y-1.5 pt-3 border-t" style={{ borderColor: isLight ? '#e5e7eb' : '#1f1f23' }}>
+                  <label className="text-[10px] font-bold uppercase tracking-wider block text-purple-400">
+                    Pass Duration (Hours)
+                  </label>
+                  <div className="relative flex items-center">
+                    <ArrowLeftRight className="w-4 h-4 text-zinc-500 absolute left-3" />
+                    <Input
+                      type="number"
+                      min="1"
+                      max="720"
+                      value={recoveryPassHours}
+                      onChange={(e) => setRecoveryPassHours(e.target.value)}
+                      className="pl-10 text-xs h-9"
+                      style={{
+                        backgroundColor: isLight ? '#f9fafb' : '#0f0f12',
+                        borderColor: isLight ? '#d1d5db' : '#27272a',
+                        color: isLight ? '#1f2937' : '#f3f4f6'
+                      }}
+                    />
+                  </div>
+                  <div className="text-[10px] text-purple-400 font-bold">
+                    ✓ Each purchase gives <strong>{recoveryPassHours}h</strong> of unlimited restoration (stackable)
+                  </div>
+                </div>
+              )}
+
             </CardContent>
           </Card>
         ))}
       </div>
 
       {/* Recovery Pass Duration */}
-      <Card className="shadow-none border mt-2" style={{ backgroundColor: isLight ? '#ffffff' : '#09090b', borderColor: isLight ? '#e5e7eb' : '#27272a' }}>
-        <CardHeader className="border-b" style={{ borderColor: isLight ? '#e5e7eb' : '#1f1f23' }}>
-          <div className="flex justify-between items-start">
-            <div>
-              <CardTitle className="text-sm font-bold text-purple-400">Recovery Pass — Duration Config</CardTitle>
-              <CardDescription className="text-xs mt-1" style={{ color: isLight ? '#6b7280' : '#88888b' }}>
-                Set how long a Recovery Pass stays active after purchase. Users get this many hours of unlimited restoration.
-              </CardDescription>
-            </div>
-            <span className="text-[9px] font-extrabold px-2 py-0.5 rounded-full border border-purple-500/25 bg-purple-500/5 text-purple-400">TIMED</span>
-          </div>
-        </CardHeader>
-        <CardContent className="pt-6">
-          <div className="space-y-1.5 max-w-xs">
-            <label className="text-[10px] font-bold uppercase tracking-wider block" style={{ color: isLight ? '#4b5563' : '#a1a1aa' }}>
-              Active Duration (Hours)
-            </label>
-            <div className="relative flex items-center">
-              <ArrowLeftRight className="w-4 h-4 text-zinc-500 absolute left-3" />
-              <Input
-                type="number"
-                min="1"
-                max="720"
-                value={recoveryPassHours}
-                onChange={(e) => setRecoveryPassHours(e.target.value)}
-                className="pl-10 text-xs h-9"
-                style={{
-                  backgroundColor: isLight ? '#f9fafb' : '#0f0f12',
-                  borderColor: isLight ? '#d1d5db' : '#27272a',
-                  color: isLight ? '#1f2937' : '#f3f4f6'
-                }}
-              />
-            </div>
-            <div className="text-[10px] text-purple-400 font-bold">
-              ✓ Users get <strong>{recoveryPassHours}h</strong> of unlimited restoration after purchase
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
       {/* Save Button */}
       <div className="flex justify-end pt-4 border-t" style={{ borderColor: isLight ? '#e5e7eb' : '#27272a' }}>
         <Button
