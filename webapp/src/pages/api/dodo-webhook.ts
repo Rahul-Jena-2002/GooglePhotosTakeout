@@ -95,7 +95,8 @@ async function getGoogleAuthToken(serviceAccount: any): Promise<string> {
   const payload = {
     iss: serviceAccount.client_email,
     sub: serviceAccount.client_email,
-    aud: "https://firestore.googleapis.com/google.firestore.v1.Firestore",
+    aud: "https://oauth2.googleapis.com/token",
+    scope: "https://www.googleapis.com/auth/datastore",
     iat,
     exp
   };
@@ -290,7 +291,7 @@ export const POST: APIRoute = async ({ request }) => {
           return new Response("Database update failed", { status: 500 });
         }
 
-        // 3. Create Purchase Log Document
+        // 3. Create Purchase Log and Admin Activity Log Documents (in parallel)
         const logUrl = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/purchase_logs`;
         const logBody = {
           fields: {
@@ -304,10 +305,7 @@ export const POST: APIRoute = async ({ request }) => {
             dodoPaymentId: { stringValue: txId }
           }
         };
-        const logRes = await fetch(logUrl, { method: "POST", headers, body: JSON.stringify(logBody) });
-        if (!logRes.ok) console.warn("Failed to write purchase log:", await logRes.text());
 
-        // 4. Create Admin Activity Log Document
         const activityUrl = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/admin_activity`;
         const activityBody = {
           fields: {
@@ -320,7 +318,13 @@ export const POST: APIRoute = async ({ request }) => {
             timestamp: { integerValue: String(timestamp) }
           }
         };
-        const activityRes = await fetch(activityUrl, { method: "POST", headers, body: JSON.stringify(activityBody) });
+
+        const [logRes, activityRes] = await Promise.all([
+          fetch(logUrl, { method: "POST", headers, body: JSON.stringify(logBody) }),
+          fetch(activityUrl, { method: "POST", headers, body: JSON.stringify(activityBody) })
+        ]);
+
+        if (!logRes.ok) console.warn("Failed to write purchase log:", await logRes.text());
         if (!activityRes.ok) console.warn("Failed to write admin activity log:", await activityRes.text());
 
         console.log(`Successfully completed payment webhook upgrade on Cloudflare for user ${userId} to plan ${plan}`);

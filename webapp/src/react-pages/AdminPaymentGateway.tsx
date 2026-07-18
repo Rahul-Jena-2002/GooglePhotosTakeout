@@ -179,7 +179,7 @@ const COUPON_PLANS = ['recovery_pass', 'pro', 'super']
  */
 function resolveSyncUrl(endpoint: string, storedUrl: string): string {
   // Route through local Astro proxy endpoint in local development
-  if (import.meta.env.DEV || window.location.hostname === 'localhost') {
+  if (import.meta.env.DEV || window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
     return `/api/${endpoint}`;
   }
   // In production (Cloudflare Pages), direct-fetch the Cloud Function since it supports CORS

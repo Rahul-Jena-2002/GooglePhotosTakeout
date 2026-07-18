@@ -23,7 +23,8 @@ async function getGoogleAuthToken(serviceAccount: any): Promise<string> {
   const payload = {
     iss: serviceAccount.client_email,
     sub: serviceAccount.client_email,
-    aud: "https://firestore.googleapis.com/google.firestore.v1.Firestore",
+    aud: "https://oauth2.googleapis.com/token",
+    scope: "https://www.googleapis.com/auth/datastore",
     iat,
     exp
   };

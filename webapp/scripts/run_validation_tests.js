@@ -73,7 +73,10 @@ async function runTests() {
   try {
     const res = await fetch(`${ASTRO_SERVER}/api/sync-dodo-prices`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 
+        'Content-Type': 'application/json',
+        'x-api-key': GATEWAY_API_KEY
+      },
       body: JSON.stringify({ regionCode: 'in', prices: { pro: 799 }, currency: 'INR' })
     });
     const bodyText = await res.text();
