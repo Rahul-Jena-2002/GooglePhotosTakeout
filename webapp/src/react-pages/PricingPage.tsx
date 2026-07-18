@@ -481,12 +481,12 @@ function PricingPageContent() {
                 )}
               </div>
               <div className="space-y-2.5">
-                <div className="text-[10px] text-cyan-400/70 uppercase tracking-widest font-bold mb-1">Everything in Free plus:</div>
+                <div className="text-[10px] text-zinc-400 uppercase tracking-widest font-bold mb-1">Everything in Free plus:</div>
                 <ul className="space-y-2 text-xs text-zinc-300">
                   {(featuresConfig?.recovery_pass || []).map((feat, idx) => (
                     <li key={idx} className={`flex items-center gap-1.5${idx === 0 ? ' recovery-pass-highlight' : ''}`}>
                       <span className="text-cyan-400 font-bold">✓</span>
-                      <span className={feat.isBold ? 'font-bold text-cyan-200' : ''}>{renderFormattedText(formatFeatureText(feat.text, 'recovery_pass'))}</span>
+                      <span className={feat.isBold ? 'font-bold text-cyan-600 dark:text-cyan-400' : ''}>{renderFormattedText(formatFeatureText(feat.text, 'recovery_pass'))}</span>
                     </li>
                   ))}
                 </ul>
