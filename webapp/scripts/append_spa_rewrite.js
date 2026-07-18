@@ -1,31 +1,11 @@
 import fs from 'fs';
 import path from 'path';
 
-// 1. Append SPA redirect rules
+// 1. Append SPA redirect rule first
 const redirectsFile = path.resolve('dist/client/_redirects');
 if (fs.existsSync(redirectsFile)) {
-  // All known admin sub-routes → serve /admin.html (the SPA shell) with 200
-  // These must come BEFORE the wildcard rule so they take priority.
-  const adminRoutes = [
-    'tool', 'users', 'users/dashboard', 'support', 'reviews', 'team',
-    'revenue', 'settings', 'statistics', 'audit', 'keys',
-    'payment-gateway', 'plan-thresholds', 'tier-features', 'payments', 'dev'
-  ];
-
-  const lines = ['\n'];
-  for (const route of adminRoutes) {
-    // Serve the specific pre-rendered HTML file directly (already exists)
-    // so refresh on /admin/team goes to /admin/team.html with 200
-    lines.push(`/admin/${route} /admin/${route}.html 200`);
-  }
-  // Wildcard fallback for anything else under /admin/*
-  lines.push('/admin /admin.html 200');
-  lines.push('/admin/ /admin.html 200');
-  lines.push('/admin/* /admin.html 200');
-  lines.push('');
-
-  fs.appendFileSync(redirectsFile, lines.join('\n'));
-  console.log('Appended SPA admin rewrites to ' + redirectsFile);
+  fs.appendFileSync(redirectsFile, '\n/admin/* /admin.html 200\n');
+  console.log('Appended SPA rewrite to ' + redirectsFile);
 }
 
 // 2. Recursively move everything from dist/client/ to dist/
