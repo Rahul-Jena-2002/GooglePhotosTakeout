@@ -1,18 +1,12 @@
 {
-  "$schema": "node_modules/wrangler/config-schema.json",
-  "name": "takeoutfix",
-  "main": "@astrojs/cloudflare/entrypoints/server",
-  "compatibility_date": "2026-04-15",
-  "compatibility_flags": [
-    "nodejs_compat"
-  ],
-  "assets": {
-    "directory": "dist/client"
-  },
-  "kv_namespaces": [
-    {
-      "binding": "SESSION",
-      "id": "dummy_id"
-    }
-  ]
+	"$schema": "node_modules/wrangler/config-schema.json",
+	"name": "takeoutfix",
+	"main": "@astrojs/cloudflare/entrypoints/server",
+	"compatibility_date": "2026-04-15",
+	"compatibility_flags": [
+		"nodejs_compat"
+	],
+	"assets": {
+		"directory": "dist/client"
+	}
 }

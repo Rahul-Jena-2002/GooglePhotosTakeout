@@ -30,8 +30,9 @@ function moveDirSync(src, dest) {
   fs.rmdirSync(src);
 }
 
-if (fs.existsSync(srcDir)) {
-  console.log('Moving static assets from dist/client/ to dist/ for Cloudflare Pages static hosting...');
-  moveDirSync(srcDir, destDir);
-  console.log('Static assets moved successfully.');
-}
+// Disable directory moving in server mode deployment since wrangler expects dist/client
+// if (fs.existsSync(srcDir)) {
+//   console.log('Moving static assets from dist/client/ to dist/ for Cloudflare Pages static hosting...');
+//   moveDirSync(srcDir, destDir);
+//   console.log('Static assets moved successfully.');
+// }
