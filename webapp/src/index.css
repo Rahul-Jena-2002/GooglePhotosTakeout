@@ -1749,22 +1749,22 @@ html.light .tool-tab-btn.active {
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1) !important;
 }
 
-/* Recovery Pass bold black/white highlight */
+/* Recovery Pass bold black/white highlight — updated to cyan */
 .recovery-pass-highlight {
   font-weight: 800 !important;
-  color: #000000 !important;
+  color: #0891b2 !important; /* cyan-600 */
 }
 .recovery-pass-highlight * {
   font-weight: 800 !important;
-  color: #000000 !important;
+  color: #0891b2 !important;
 }
 html.dark .recovery-pass-highlight,
 html.dark .recovery-pass-highlight * {
-  color: #ffffff !important;
+  color: #22d3ee !important; /* cyan-400 */
 }
 html:not(.light) .recovery-pass-highlight,
 html:not(.light) .recovery-pass-highlight * {
-  color: #ffffff !important;
+  color: #22d3ee !important; /* cyan-400 */
 }
 
 /* Blue Pro Button */
