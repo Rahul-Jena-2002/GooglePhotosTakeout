@@ -52,6 +52,8 @@ export default function AdminUserDashboard() {
   const [historyLoading, setHistoryLoading] = useState(true)
   const [transactions, setTransactions] = useState<any[]>([])
   const [txLoading, setTxLoading] = useState(true)
+  const [historyPage, setHistoryPage] = useState(0)
+  const HISTORY_PAGE_SIZE = 8
 
   const handleUpdatePlan = async (userId: string, newPlan: string) => {
     try {
@@ -255,9 +257,24 @@ export default function AdminUserDashboard() {
       collection(db, "recoveryHistory", uid, "sessions"),
       orderBy("timestamp", "desc")
     )
+    const STALE_MS = 24 * 60 * 60 * 1000
     const unsubHist = onSnapshot(qHist, (snap) => {
-      setHistory(snap.docs.map(d => ({ id: d.id, ...d.data() })))
+      const sessions = snap.docs.map(d => ({ id: d.id, ...d.data() }))
+      setHistory(sessions)
       setHistoryLoading(false)
+
+      // Auto-resolve stale 'processing' sessions (>24h) → 'failed' in Firestore
+      const now = Date.now()
+      snap.docs.forEach(d => {
+        const data = d.data()
+        if (
+          (data.status || '').toLowerCase() === 'processing' &&
+          now - (data.timestamp || 0) > STALE_MS
+        ) {
+          updateDoc(doc(db, 'recoveryHistory', uid, 'sessions', d.id), { status: 'failed' })
+            .catch(err => console.warn('Failed to mark stale session as failed:', err))
+        }
+      })
     }, (err) => {
       console.error("Failed to load user recovery sessions:", err)
       setHistoryLoading(false)
@@ -346,6 +363,28 @@ Your EXIF metadata recovery tools are active.
     show: { opacity: 1, y: 0, transition: { type: "spring" as const, stiffness: 100, damping: 15 } }
   }
 
+  const historyTotalPages = Math.ceil(history.length / HISTORY_PAGE_SIZE)
+  const historySlice = history.slice(historyPage * HISTORY_PAGE_SIZE, (historyPage + 1) * HISTORY_PAGE_SIZE)
+
+  // Sessions stuck in 'processing' for > 24 h are shown as 'failed' (display only, no DB write)
+  const effectiveStatus = (h: any): string => {
+    if ((h.status || '').toLowerCase() === 'processing') {
+      const age = Date.now() - (h.timestamp || 0)
+      if (age > 24 * 60 * 60 * 1000) return 'failed'
+    }
+    return (h.status || 'completed').toLowerCase()
+  }
+
+  const statusStyle = (s: string) => {
+    switch (s) {
+      case 'completed':  return 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30'
+      case 'processing': return 'bg-amber-500/15 text-amber-300 border-amber-500/30'
+      case 'cancelled':  return 'bg-zinc-500/15 text-zinc-300 border-zinc-500/30'
+      case 'failed':     return 'bg-red-500/15 text-red-300 border-red-500/30'
+      default:           return 'bg-red-500/15 text-red-300 border-red-500/30'
+    }
+  }
+
   return (
     <div className="max-w-5xl mx-auto px-4 py-6 relative font-sans text-zinc-100">
       
@@ -379,293 +418,331 @@ Your EXIF metadata recovery tools are active.
           </div>
         </motion.div>
 
-        {/* PLAN, QUOTA & CONTROLS GRID */}
-        <div className="grid md:grid-cols-2 gap-8">
-          {/* ACTIVE PLAN & QUOTA */}
-          <motion.div variants={itemVariants} className="h-full">
-            <Card className="bg-zinc-900 border-zinc-800 shadow-none overflow-hidden h-full flex flex-col justify-between">
-              <div>
-                <CardHeader className="border-b border-zinc-800 py-4">
-                  <CardTitle className="text-base font-semibold flex justify-between items-center">
-                    <span className="flex items-center gap-2 text-zinc-200">
-                      <ShieldCheck className="w-5 h-5 text-indigo-400" />
-                      Subscription details & telemetry quotas
+        {/* ── BAND 1: SUBSCRIPTION + QUOTA (Full Width, Slim) ── */}
+        <motion.div variants={itemVariants}>
+          <Card className="bg-zinc-900 border-zinc-800 shadow-none overflow-hidden">
+            <CardHeader className="border-b border-zinc-800 py-3 px-5">
+              <CardTitle className="text-sm font-semibold flex items-center justify-between">
+                <span className="flex items-center gap-2 text-zinc-200">
+                  <ShieldCheck className="w-4 h-4 text-indigo-400" />
+                  Subscription details & telemetry quotas
+                </span>
+                <div className="flex items-center gap-2">
+                  {plan === 'recovery_pass' && targetUser.expiresAt && (
+                    <span className="text-[10px] font-mono text-zinc-400 bg-zinc-950 px-2 py-0.5 rounded border border-zinc-800">
+                      Expires {new Date(targetUser.expiresAt).toLocaleDateString()}
+                      {targetUser.expiresAt < Date.now() ? ' · Expired' : ''}
                     </span>
-                    <span className="text-xs bg-indigo-500/10 text-indigo-400 px-3 py-1 rounded-md border border-indigo-500/20 font-bold uppercase tracking-widest">
-                      {PLAN_LABELS[plan] || plan} Plan
-                    </span>
-                  {plan === 'recovery_pass' && (
-                    <div className="bg-zinc-955/60 border border-zinc-850 p-3.5 rounded-lg flex justify-between items-center text-xs mt-3.5">
-                      <span className="text-zinc-400 font-semibold">Pass Expiration</span>
-                      <span className="font-mono font-bold text-zinc-200 bg-zinc-900 px-2.5 py-1 rounded border border-zinc-800">
-                        {targetUser.expiresAt 
-                          ? `${new Date(targetUser.expiresAt).toLocaleString()} ${targetUser.expiresAt < Date.now() ? '(Expired)' : ''}`
-                          : 'No Expiration Set'}
-                      </span>
-                    </div>
                   )}
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="pt-6 space-y-6">
-                  
-                  <div className="grid sm:grid-cols-2 gap-4">
-                    {/* Storage Quota Card */}
-                    <div className="bg-zinc-950 border border-zinc-850 rounded-xl p-4 space-y-3">
-                      <div className="flex justify-between text-xs text-zinc-400">
-                        <span className="flex items-center gap-1.5 font-semibold"><HardDrive className="w-3.5 h-3.5 text-zinc-500" /> Storage Capacity</span>
-                        <span className="font-mono">{usedGB.toFixed(2)} GB / {maxQuotaGB === Infinity ? 'Unlimited' : `${maxQuotaGB}.00 GB`}</span>
-                      </div>
-                      {maxQuotaGB !== Infinity && (
-                        <Progress value={quotaPct} className="h-1.5 bg-zinc-850" />
-                      )}
-                    </div>
-
-                    {/* Files Quota Card */}
-                    <div className="bg-zinc-950 border border-zinc-850 rounded-xl p-4 space-y-3">
-                      <div className="flex justify-between text-xs text-zinc-400">
-                        <span className="flex items-center gap-1.5 font-semibold"><FileText className="w-3.5 h-3.5 text-zinc-500" /> Files Processed</span>
-                        <span className="font-mono">{usedFiles.toLocaleString()} / {maxQuotaFiles === Infinity ? 'Unlimited' : maxQuotaFiles.toLocaleString()}</span>
-                      </div>
-                      {maxQuotaFiles !== Infinity && (
-                        <Progress value={fileQuotaPct} className="h-1.5 bg-zinc-850" />
-                      )}
-                    </div>
+                  <span className="text-xs bg-indigo-500/10 text-indigo-400 px-3 py-1 rounded-md border border-indigo-500/20 font-bold uppercase tracking-widest">
+                    {PLAN_LABELS[plan] || plan} Plan
+                  </span>
+                </div>
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="px-5 py-4">
+              {/* Quota bars row */}
+              <div className="grid sm:grid-cols-2 gap-3 mb-4">
+                <div className="bg-zinc-950 border border-zinc-850 rounded-lg px-4 py-3 space-y-2">
+                  <div className="flex justify-between text-xs text-zinc-400">
+                    <span className="flex items-center gap-1.5 font-semibold"><HardDrive className="w-3 h-3 text-zinc-500" /> Storage Capacity</span>
+                    <span className="font-mono">{usedGB.toFixed(2)} GB / {maxQuotaGB === Infinity ? 'Unlimited' : `${maxQuotaGB}.00 GB`}</span>
                   </div>
+                  {maxQuotaGB !== Infinity && <Progress value={quotaPct} className="h-1 bg-zinc-850" />}
+                </div>
+                <div className="bg-zinc-950 border border-zinc-850 rounded-lg px-4 py-3 space-y-2">
+                  <div className="flex justify-between text-xs text-zinc-400">
+                    <span className="flex items-center gap-1.5 font-semibold"><FileText className="w-3 h-3 text-zinc-500" /> Files Processed</span>
+                    <span className="font-mono">{usedFiles.toLocaleString()} / {maxQuotaFiles === Infinity ? 'Unlimited' : maxQuotaFiles.toLocaleString()}</span>
+                  </div>
+                  {maxQuotaFiles !== Infinity && <Progress value={fileQuotaPct} className="h-1 bg-zinc-850" />}
+                </div>
+              </div>
+              {/* Stat boxes — single horizontal row */}
+              <div className="grid grid-cols-4 gap-2">
+                {[
+                  { label: "Lifetime Bytes", val: formatBytes(getUserBytes(targetUser)) },
+                  { label: "Lifetime Files", val: getUserFiles(targetUser).toLocaleString() },
+                  { label: "Session Bytes", val: formatBytes(targetUser.usedBytes || 0) },
+                  { label: "Session Files", val: (targetUser.usedFiles || 0).toLocaleString() }
+                ].map((stat, i) => (
+                  <div key={i} className="bg-zinc-950/40 border border-zinc-850 px-3 py-2.5 rounded-lg text-center">
+                    <div className="text-[9px] font-bold text-zinc-500 uppercase tracking-wider mb-0.5">{stat.label}</div>
+                    <div className="text-sm font-semibold text-white">{stat.val}</div>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        </motion.div>
 
-                  {/* Global counters for the user */}
-                  <div className="grid grid-cols-2 gap-3 pt-2">
-                    {[
-                      { label: "Lifetime Bytes", val: formatBytes(getUserBytes(targetUser)) },
-                      { label: "Lifetime Files", val: getUserFiles(targetUser).toLocaleString() },
-                      { label: "Current Session Bytes", val: formatBytes(targetUser.usedBytes || 0) },
-                      { label: "Current Session Files", val: (targetUser.usedFiles || 0).toLocaleString() }
-                    ].map((stat, i) => (
-                      <div key={i} className="bg-zinc-950/40 border border-zinc-850 p-2.5 rounded-lg text-center">
-                        <div className="text-[9px] font-bold text-zinc-500 uppercase tracking-wider mb-1">{stat.label}</div>
-                        <div className="text-sm font-semibold text-white">{stat.val}</div>
+        {/* ── BAND 2: ADMIN CONTROLS | BILLING (50/50) ── */}
+        <div className="grid md:grid-cols-2 gap-6">
+          {/* ADMINISTRATIVE CONTROLS */}
+          <motion.div variants={itemVariants} className="h-full">
+            <Card className="bg-zinc-900 border-zinc-800 shadow-none h-full flex flex-col">
+              <CardHeader className="border-b border-zinc-800 py-3 px-5">
+                <CardTitle className="text-sm font-semibold flex items-center gap-2 text-zinc-200">
+                  <ShieldAlert className="w-4 h-4 text-red-400" />
+                  Administrative Controls
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="px-5 pt-5 space-y-4 flex-1">
+                <div>
+                  <label className="block text-xs text-zinc-400 mb-1.5 font-medium uppercase tracking-wider">Change Subscription Plan</label>
+                  <select
+                    value={plan}
+                    onChange={(e) => handleUpdatePlan(targetUser.id, e.target.value)}
+                    className="w-full bg-zinc-950 border border-zinc-850 rounded-md py-2 px-3 text-sm text-white focus:outline-none focus:border-indigo-500 cursor-pointer"
+                  >
+                    <option value="free">Free</option>
+                    <option value="recovery_pass">Single Time (Recovery Pass)</option>
+                    <option value="pro">Pro</option>
+                    <option value="super">Super</option>
+                  </select>
+                </div>
+
+                {plan === "super" && (
+                  <div className="flex items-center justify-between border border-zinc-800/60 rounded-lg p-3">
+                    <div className="text-left pr-4">
+                      <label className="block text-xs text-zinc-200 font-bold uppercase tracking-wider">Support with Ads</label>
+                      <span className="text-[10px] text-zinc-400 block leading-tight mt-0.5">Show ads even though user is Super</span>
+                    </div>
+                    <input
+                      type="checkbox"
+                      checked={targetUser.supportWithAds || false}
+                      onChange={(e) => handleToggleSupportWithAds(targetUser.id, e.target.checked)}
+                      className="w-4 h-4 rounded border-zinc-800 bg-zinc-900 text-indigo-500 focus:ring-indigo-500 cursor-pointer"
+                    />
+                  </div>
+                )}
+
+                <button
+                  onClick={() => handleResetQuota(targetUser.id)}
+                  className="w-full py-2 rounded-md text-xs font-semibold border transition-all bg-amber-500/10 text-amber-400 border-amber-500/20 hover:bg-amber-500/20"
+                >
+                  ↺ Reset Usage Quota (usedBytes + usedFiles)
+                </button>
+
+                {plan === 'recovery_pass' && (
+                  <div className="flex gap-3">
+                    <button
+                      onClick={() => handleExtendRecoveryPass(targetUser.id)}
+                      className="flex-1 py-2 rounded-md bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 hover:bg-indigo-500/20 text-xs font-bold transition-all"
+                    >
+                      +24h Pass
+                    </button>
+                    <button
+                      onClick={() => handleExpireRecoveryPass(targetUser.id)}
+                      className="flex-1 py-2 rounded-md bg-rose-500/10 text-rose-400 border border-rose-500/20 hover:bg-rose-500/20 text-xs font-bold transition-all"
+                    >
+                      Expire Pass
+                    </button>
+                  </div>
+                )}
+
+                <div className="flex gap-3 pt-2 border-t border-zinc-800/60">
+                  <button
+                    onClick={() => handleToggleSuspension(targetUser.id, !targetUser.suspended)}
+                    className={`flex-1 py-2 rounded-md text-xs font-semibold border transition-all ${
+                      targetUser.suspended
+                        ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20 hover:bg-emerald-500/20'
+                        : 'bg-red-500/10 text-red-400 border-red-500/20 hover:bg-red-500/20'
+                    }`}
+                  >
+                    {targetUser.suspended ? 'Reactivate Account' : 'Suspend Account'}
+                  </button>
+                  <button
+                    onClick={() => handleDeleteUser(targetUser.id, targetUser.email)}
+                    className="px-3 py-2 rounded-md bg-red-900/20 hover:bg-red-950 text-red-400 border border-red-900/30 hover:border-red-900/50 transition-colors"
+                    title="Delete Account Document"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </div>
+              </CardContent>
+            </Card>
+          </motion.div>
+
+          {/* BILLING & INVOICES */}
+          <motion.div variants={itemVariants} className="h-full">
+            <Card className="bg-zinc-900 border-zinc-800 shadow-none h-full flex flex-col">
+              <CardHeader className="border-b border-zinc-800 py-3 px-5 flex-row items-center justify-between flex">
+                <CardTitle className="text-sm font-semibold flex items-center gap-2 text-zinc-200">
+                  <CreditCard className="w-4 h-4 text-indigo-400" />
+                  Billing & Invoices
+                </CardTitle>
+                {!txLoading && (
+                  <span className="text-[10px] font-bold bg-zinc-950 px-2 py-0.5 rounded-full border border-zinc-800 text-indigo-400">
+                    {transactions.length} Payment{transactions.length !== 1 ? 's' : ''}
+                  </span>
+                )}
+              </CardHeader>
+              <CardContent className="px-5 pt-5 flex-1">
+                {txLoading ? (
+                  <div className="text-center py-10 text-xs text-zinc-500">Syncing transaction log...</div>
+                ) : transactions.length === 0 ? (
+                  <div className="text-center py-10 text-xs text-zinc-500">No transaction records found for this account.</div>
+                ) : (
+                  <div className="space-y-2.5">
+                    {transactions.map((tx) => (
+                      <div key={tx.id} className="flex items-center justify-between p-3 bg-zinc-950/40 border border-zinc-850 rounded-xl text-xs">
+                        <div>
+                          {tx.approvedByAdmin ? (
+                            <>
+                              <div className="font-bold text-indigo-400">TakeoutFix {PLAN_LABELS[tx.plan] || tx.plan} <span className="text-[9px] text-zinc-500">(Admin Approved)</span></div>
+                              <div className="text-[10px] text-zinc-500 mt-0.5">By: {tx.approvedByAdmin}</div>
+                            </>
+                          ) : (
+                            <div className="font-bold text-zinc-200">TakeoutFix {PLAN_LABELS[tx.plan] || tx.plan}</div>
+                          )}
+                          <div className="flex items-center gap-2 mt-1">
+                            <span className="text-[9px] text-zinc-500">{new Date(tx.timestamp).toLocaleDateString()} · {tx.txId}</span>
+                            <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[9px] font-bold border capitalize ${
+                              tx.status === "succeeded" ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20" :
+                              tx.status === "processing" ? "bg-amber-500/10 text-amber-400 border-amber-500/20" :
+                              tx.status === "cancelled" ? "bg-zinc-500/10 text-zinc-400 border-zinc-500/20" :
+                              "bg-red-500/10 text-red-400 border-red-500/20"
+                            }`}>
+                              {tx.status || 'succeeded'}
+                            </span>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="font-bold text-white">{tx.amount === 0 ? 'Free Grant' : `₹${tx.amount}`}</span>
+                          {(tx.status === 'succeeded' || !tx.status) && (
+                            <button
+                              onClick={() => downloadInvoice(tx)}
+                              title="Download Invoice"
+                              className="p-1.5 rounded hover:bg-zinc-800 text-zinc-400 hover:text-white transition-colors"
+                            >
+                              <Download className="w-3.5 h-3.5" />
+                            </button>
+                          )}
+                        </div>
                       </div>
                     ))}
                   </div>
-
-                </CardContent>
-              </div>
-            </Card>
-          </motion.div>
-
-          {/* ADMINISTRATIVE CONTROLS */}
-          <motion.div variants={itemVariants} className="h-full">
-            <Card className="bg-zinc-900 border-zinc-800 shadow-none overflow-hidden h-full flex flex-col justify-between">
-              <div>
-                <CardHeader className="border-b border-zinc-800 py-4">
-                  <CardTitle className="text-base font-semibold flex items-center gap-2 text-zinc-200">
-                    <ShieldAlert className="w-5 h-5 text-red-400" />
-                    Administrative Controls
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="pt-6 space-y-4">
-                  <div>
-                    <label className="block text-xs text-zinc-400 mb-1.5 font-medium uppercase tracking-wider">Change Subscription Plan</label>
-                    <select
-                      value={plan}
-                      onChange={(e) => handleUpdatePlan(targetUser.id, e.target.value)}
-                      className="w-full bg-zinc-950 border border-zinc-850 rounded-md py-2 px-3 text-sm text-white focus:outline-none focus:border-indigo-500 cursor-pointer"
-                    >
-                      <option value="free">Free</option>
-                      <option value="recovery_pass">Single Time (Recovery Pass)</option>
-                      <option value="pro">Pro</option>
-                      <option value="super">Super</option>
-                    </select>
-                  </div>
-
-                  {plan === "super" && (
-                    <div className="flex items-center justify-between border-t border-zinc-800/60 pt-3.5">
-                      <div className="text-left pr-4">
-                        <label className="block text-xs text-zinc-850 dark:text-zinc-200 font-bold uppercase tracking-wider">Support with Ads</label>
-                        <span className="text-[10px] text-zinc-600 dark:text-zinc-400 block leading-tight mt-0.5 font-medium">Show website ads to support developer even though user is Super</span>
-                      </div>
-                      <input 
-                        type="checkbox"
-                        checked={targetUser.supportWithAds || false}
-                        onChange={(e) => handleToggleSupportWithAds(targetUser.id, e.target.checked)}
-                        className="w-4 h-4 rounded border-zinc-800 bg-zinc-900 text-indigo-500 focus:ring-indigo-500 cursor-pointer"
-                      />
-                    </div>
-                  )}
-
-
-
-                  <button
-                    onClick={() => handleResetQuota(targetUser.id)}
-                    className="w-full py-2 mt-1 rounded-md text-xs font-semibold border transition-all bg-amber-500/10 text-amber-400 border-amber-500/20 hover:bg-amber-500/20"
-                  >
-                    ↺ Reset Usage Quota (usedBytes + usedFiles)
-                  </button>
-                  {plan === 'recovery_pass' && (
-                    <div className="flex gap-3 mt-2">
-                      <button
-                        onClick={() => handleExtendRecoveryPass(targetUser.id)}
-                        className="flex-1 py-2 rounded-md bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 hover:bg-indigo-500/20 text-xs font-bold transition-all"
-                      >
-                        +24h Pass
-                      </button>
-                      <button
-                        onClick={() => handleExpireRecoveryPass(targetUser.id)}
-                        className="flex-1 py-2 rounded-md bg-rose-500/10 text-rose-400 border border-rose-500/20 hover:bg-rose-500/20 text-xs font-bold transition-all"
-                      >
-                        Expire Pass
-                      </button>
-                    </div>
-                  )}
-
-                  <div className="flex gap-3 pt-3 border-t border-zinc-800/60">
-                    <button
-                      onClick={() => handleToggleSuspension(targetUser.id, !targetUser.suspended)}
-                      className={`flex-1 py-2 rounded-md text-xs font-semibold border transition-all ${
-                        targetUser.suspended 
-                          ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20 hover:bg-emerald-500/20' 
-                          : 'bg-red-500/10 text-red-400 border-red-500/20 hover:bg-red-500/20'
-                      }`}
-                    >
-                      {targetUser.suspended ? 'Reactivate Account' : 'Suspend Account'}
-                    </button>
-                    <button
-                      onClick={() => handleDeleteUser(targetUser.id, targetUser.email)}
-                      className="px-3 py-2 rounded-md bg-red-900/20 hover:bg-red-950 text-red-400 border border-red-900/30 hover:border-red-900/50 transition-colors"
-                      title="Delete Account Document"
-                    >
-                      <Trash2 className="w-4.5 h-4.5" />
-                    </button>
-                  </div>
-
-                </CardContent>
-              </div>
+                )}
+              </CardContent>
             </Card>
           </motion.div>
         </div>
 
-        {/* DETAILS GRID */}
-        <div className="grid md:grid-cols-2 gap-8">
-          
-          {/* USER RECOVERY HISTORY */}
-          <motion.div variants={itemVariants}>
-            <Card className="bg-zinc-900 border-zinc-800 shadow-none flex flex-col justify-between">
-              <div>
-                <CardHeader className="border-b border-zinc-800 py-4 flex flex-row items-center justify-between">
-                  <CardTitle className="text-sm font-semibold flex items-center gap-2 text-zinc-200">
-                    <History className="w-4 h-4 text-indigo-400" />
-                    User Recovery History
-                  </CardTitle>
-                  {!historyLoading && (
-                    <span className="text-[10px] font-bold bg-zinc-950 px-2 py-0.5 rounded-full border border-zinc-800 text-indigo-400">
-                      {history.length} Session{history.length !== 1 ? 's' : ''}
+        {/* ── BAND 3: RECOVERY HISTORY (Full Width, Paginated) ── */}
+        <motion.div variants={itemVariants}>
+          <Card className="bg-zinc-900 border-zinc-800 shadow-none">
+            <CardHeader className="border-b border-zinc-800 py-3 px-5 flex-row items-center justify-between flex">
+              <CardTitle className="text-sm font-semibold flex items-center gap-2 text-zinc-200">
+                <History className="w-4 h-4 text-indigo-400" />
+                User Recovery History
+              </CardTitle>
+              <div className="flex items-center gap-3">
+                {!historyLoading && (
+                  <span className="text-[10px] font-bold bg-zinc-950 px-2 py-0.5 rounded-full border border-zinc-800 text-indigo-400">
+                    {history.length} Session{history.length !== 1 ? 's' : ''}
+                  </span>
+                )}
+                {historyTotalPages > 1 && (
+                  <div className="flex items-center gap-1">
+                    <button
+                      onClick={() => setHistoryPage(p => Math.max(0, p - 1))}
+                      disabled={historyPage === 0}
+                      className="px-2 py-1 rounded text-[10px] font-semibold border border-zinc-800 bg-zinc-950 text-zinc-400 hover:text-white hover:border-zinc-700 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+                    >← Prev</button>
+                    <span className="text-[10px] text-zinc-500 font-mono px-1">
+                      {historyPage + 1} / {historyTotalPages}
                     </span>
-                  )}
-                </CardHeader>
-                <CardContent className="pt-6">
-                  {historyLoading ? (
-                    <div className="text-center py-8 text-xs text-zinc-500">Syncing user history...</div>
-                  ) : history.length === 0 ? (
-                    <div className="text-center py-8 text-xs text-zinc-500">No recovery history records found.</div>
-                  ) : (
-                    <div className="space-y-3 max-h-[260px] overflow-y-auto pr-1">
-                      {history.map((h) => (
-                        <div key={h.id} className="flex justify-between items-center p-3.5 bg-zinc-950/40 rounded-xl border border-zinc-850">
-                          <div>
-                            <div className="font-mono text-xs font-semibold mb-0.5 text-zinc-200">{h.archiveName}</div>
-                            <div className="text-[11px] text-zinc-400">
-                              Restored {h.matched || h.recovered || 0} / {h.filesProcessed || 0} files • {formatBytes(h.bytesProcessed || 0)}
-                            </div>
-                            <div className="text-[9px] text-zinc-600 mt-1">{new Date(h.timestamp).toLocaleString()}</div>
-                          </div>
-                          <div className="text-[10px] font-bold text-green-400 bg-green-400/10 px-2.5 py-0.5 rounded-full border border-green-500/20 capitalize">
-                            {h.status || 'completed'}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </CardContent>
+                    <button
+                      onClick={() => setHistoryPage(p => Math.min(historyTotalPages - 1, p + 1))}
+                      disabled={historyPage >= historyTotalPages - 1}
+                      className="px-2 py-1 rounded text-[10px] font-semibold border border-zinc-800 bg-zinc-950 text-zinc-400 hover:text-white hover:border-zinc-700 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+                    >Next →</button>
+                  </div>
+                )}
               </div>
-            </Card>
-          </motion.div>
-
-          {/* USER BILLING LOGS */}
-          <motion.div variants={itemVariants}>
-            <Card className="bg-zinc-900 border-zinc-800 shadow-none flex flex-col justify-between">
-              <div>
-                <CardHeader className="border-b border-zinc-800 py-4 flex flex-row items-center justify-between">
-                  <CardTitle className="text-sm font-semibold flex items-center gap-2 text-zinc-200">
-                    <CreditCard className="w-4 h-4 text-indigo-400" />
-                    Billing & Invoices
-                  </CardTitle>
-                  {!txLoading && (
-                    <span className="text-[10px] font-bold bg-zinc-950 px-2 py-0.5 rounded-full border border-zinc-800 text-indigo-400">
-                      {transactions.length} Payment{transactions.length !== 1 ? 's' : ''}
-                    </span>
-                  )}
-                </CardHeader>
-                <CardContent className="pt-6">
-                  {txLoading ? (
-                    <div className="text-center py-8 text-xs text-zinc-500">Syncing transaction log...</div>
-                  ) : transactions.length === 0 ? (
-                    <div className="text-center py-8 text-xs text-zinc-500">No transaction records found for this account.</div>
-                  ) : (
-                    <div className="space-y-3 max-h-[260px] overflow-y-auto pr-1">
-                      {transactions.map((tx) => (
-                        <div key={tx.id} className="flex items-center justify-between p-3.5 bg-zinc-950/40 border border-zinc-850 rounded-xl text-xs">
-                          <div>
-                            {tx.approvedByAdmin ? (
-                              <>
-                                <div className="font-bold text-indigo-400">TakeoutFix {PLAN_LABELS[tx.plan] || tx.plan} (Admin Approved)</div>
-                                <div className="text-[10px] text-zinc-400">Approved by Admin: {tx.approvedByAdmin}</div>
-                              </>
-                            ) : (
-                              <>
-                                <div className="font-bold text-zinc-200">TakeoutFix {PLAN_LABELS[tx.plan] || tx.plan}</div>
-                              </>
-                            )}
-                            <div className="flex items-center gap-2 mt-1">
-                              <span className="text-[9px] text-zinc-500">{new Date(tx.timestamp).toLocaleDateString()} • {tx.txId}</span>
-                              <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[9px] font-bold border capitalize ${
-                                tx.status === "succeeded" ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20" :
-                                tx.status === "processing" ? "bg-amber-500/10 text-amber-400 border-amber-500/20" :
-                                tx.status === "cancelled" ? "bg-zinc-500/10 text-zinc-400 border-zinc-500/20" :
-                                "bg-red-500/10 text-red-400 border-red-500/20"
-                              }`}>
-                                <span className={`w-1 h-1 rounded-full ${
-                                  tx.status === "succeeded" ? "bg-emerald-400" :
-                                  tx.status === "processing" ? "bg-amber-400" :
-                                  tx.status === "cancelled" ? "bg-zinc-400" :
-                                  "bg-red-400"
-                                }`} />
-                                {tx.status || "succeeded"}
-                              </span>
-                            </div>
+            </CardHeader>
+            <CardContent className="p-0">
+              {historyLoading ? (
+                <div className="text-center py-10 text-xs text-zinc-500">Syncing user history...</div>
+              ) : history.length === 0 ? (
+                <div className="text-center py-10 text-xs text-zinc-500">No recovery history records found.</div>
+              ) : (
+                <>
+                  {/* Table header */}
+                  <div className="grid grid-cols-[minmax(0,2.5fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1.2fr)_120px] gap-4 px-6 py-3 border-b border-zinc-700/60 bg-zinc-800/40">
+                    <span className="text-[10px] font-extrabold text-zinc-400 uppercase tracking-widest">Archive</span>
+                    <span className="text-[10px] font-extrabold text-zinc-400 uppercase tracking-widest">Files</span>
+                    <span className="text-[10px] font-extrabold text-zinc-400 uppercase tracking-widest">Bytes</span>
+                    <span className="text-[10px] font-extrabold text-zinc-400 uppercase tracking-widest">Date</span>
+                    <span className="text-[10px] font-extrabold text-zinc-400 uppercase tracking-widest text-right">Status</span>
+                  </div>
+                  {/* Table rows */}
+                  <div className="divide-y divide-zinc-800/60">
+                    {historySlice.map((h, idx) => {
+                      const status = effectiveStatus(h)
+                      return (
+                        <div
+                          key={h.id}
+                          className={`grid grid-cols-[minmax(0,2.5fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1.2fr)_120px] gap-4 px-6 py-3.5 items-center transition-colors hover:bg-zinc-800/30 ${
+                            idx % 2 !== 0 ? 'bg-zinc-900/60' : ''
+                          }`}
+                        >
+                          <div className="text-sm font-medium text-zinc-100 truncate" title={h.archiveName}>
+                            {h.archiveName || '—'}
                           </div>
-                          <div className="flex items-center gap-3">
-                            <span className="font-bold text-white">
-                              {tx.amount === 0 ? "Free Grant" : `₹${tx.amount}`}
+                          <div className="text-sm text-zinc-300 tabular-nums font-mono">
+                            {(h.matched || h.recovered || 0).toLocaleString()} <span className="text-zinc-500">/</span> {(h.filesProcessed || 0).toLocaleString()}
+                          </div>
+                          <div className="text-sm text-zinc-300 tabular-nums font-mono">{formatBytes(h.bytesProcessed || 0)}</div>
+                          <div className="text-xs text-zinc-400 font-mono">
+                            {new Date(h.timestamp).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' })}
+                          </div>
+                          <div className="flex justify-end">
+                            <span className={`text-[11px] font-bold px-2.5 py-1 rounded-full border capitalize whitespace-nowrap ${statusStyle(status)}`}>
+                              {status}
                             </span>
-                            {(tx.status === "succeeded" || !tx.status) && (
-                              <button 
-                                onClick={() => downloadInvoice(tx)}
-                                title="Download Invoice"
-                                className="p-1.5 rounded hover:bg-zinc-800 text-zinc-400 hover:text-white transition-colors"
-                              >
-                                <Download className="w-3.5 h-3.5" />
-                              </button>
-                            )}
                           </div>
                         </div>
-                      ))}
+                      )
+                    })}
+                  </div>
+                  {/* Pagination footer */}
+                  {historyTotalPages > 1 && (
+                    <div className="flex items-center justify-between px-5 py-3 border-t border-zinc-800/60 bg-zinc-950/20">
+                      <span className="text-[10px] text-zinc-500">
+                        Showing {historyPage * HISTORY_PAGE_SIZE + 1}–{Math.min((historyPage + 1) * HISTORY_PAGE_SIZE, history.length)} of {history.length} sessions
+                      </span>
+                      <div className="flex items-center gap-1">
+                        <button
+                          onClick={() => setHistoryPage(0)}
+                          disabled={historyPage === 0}
+                          className="px-2 py-1 rounded text-[10px] border border-zinc-800 bg-zinc-950 text-zinc-400 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+                        >«</button>
+                        <button
+                          onClick={() => setHistoryPage(p => Math.max(0, p - 1))}
+                          disabled={historyPage === 0}
+                          className="px-2 py-1 rounded text-[10px] border border-zinc-800 bg-zinc-950 text-zinc-400 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+                        >‹ Prev</button>
+                        <span className="text-[10px] text-zinc-400 font-mono px-2">{historyPage + 1} of {historyTotalPages}</span>
+                        <button
+                          onClick={() => setHistoryPage(p => Math.min(historyTotalPages - 1, p + 1))}
+                          disabled={historyPage >= historyTotalPages - 1}
+                          className="px-2 py-1 rounded text-[10px] border border-zinc-800 bg-zinc-950 text-zinc-400 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+                        >Next ›</button>
+                        <button
+                          onClick={() => setHistoryPage(historyTotalPages - 1)}
+                          disabled={historyPage >= historyTotalPages - 1}
+                          className="px-2 py-1 rounded text-[10px] border border-zinc-800 bg-zinc-950 text-zinc-400 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+                        >»</button>
+                      </div>
                     </div>
                   )}
-                </CardContent>
-              </div>
-            </Card>
-          </motion.div>
-
-        </div>
+                </>
+              )}
+            </CardContent>
+          </Card>
+        </motion.div>
 
       </motion.div>
     </div>

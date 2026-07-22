@@ -40,7 +40,20 @@ jobs:
       - name: Create Native App Image (Windows)
         if: matrix.os == 'windows-latest'
         run: |
-          jpackage --type app-image --name TakeoutFix --input jpackage-input --main-jar GTakeout-1.0.0.jar --main-class com.rahul.TakeoutApplication --icon icons/icon.ico --dest dist --verbose
+          jpackage `
+            --type app-image `
+            --name TakeoutFix `
+            --input jpackage-input `
+            --main-jar GTakeout-1.0.0.jar `
+            --main-class com.rahul.TakeoutApplication `
+            --icon icons/icon.ico `
+            --dest dist `
+            --vendor "TakeoutFix" `
+            --app-version "1.0.0" `
+            --description "Google Takeout Photo Metadata Restorer" `
+            --about-url "https://takeoutfix.com" `
+            --win-console `
+            --verbose
           Compress-Archive -Path dist/TakeoutFix -DestinationPath TakeoutFix-Windows-Portable.zip
 
       - name: Create Native App Image (macOS)

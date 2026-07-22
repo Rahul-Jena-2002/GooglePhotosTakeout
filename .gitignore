@@ -1,4 +1,5 @@
 target/
+*.jar
 !.mvn/wrapper/maven-wrapper.jar
 !**/src/main/**/target/
 !**/src/test/**/target/
@@ -58,3 +59,10 @@ service-account.json
 PROJECT.md
 VERIFICATION.md
 server.log
+
+# Agent brain, logs, scratch
+brain/
+logs/
+scratch/
+PROJECT_STATE.md
+docs/session_logs/

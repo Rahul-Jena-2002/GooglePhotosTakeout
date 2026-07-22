@@ -17,8 +17,11 @@ export class WorkerPool {
   private maxWorkers: number;
   private terminated = false;
 
-  constructor(maxWorkers: number) {
+  private workerType: 'piexifjs' | 'wasm';
+
+  constructor(maxWorkers: number, workerType: 'piexifjs' | 'wasm' = 'piexifjs') {
     this.maxWorkers = maxWorkers;
+    this.workerType = workerType;
     this.initPool();
   }
 
@@ -26,10 +29,11 @@ export class WorkerPool {
     for (let i = 0; i < this.maxWorkers; i++) {
       try {
         // Vite and Astro support relative URL resolution for module workers
-        const worker = new Worker(
-          new URL('../workers/ProcessWorker.ts', import.meta.url),
-          { type: 'module' }
-        );
+        const workerUrl = this.workerType === 'wasm' 
+          ? new URL('../workers/WasmProcessWorker.ts', import.meta.url)
+          : new URL('../workers/ProcessWorker.ts', import.meta.url);
+          
+        const worker = new Worker(workerUrl, { type: 'module' });
         this.instances.push({ worker, busy: false });
       } catch (err) {
         console.error("Failed to initialize Web Worker thread:", err);
@@ -85,10 +89,10 @@ export class WorkerPool {
       } catch {}
 
       try {
-        idleInstance.worker = new Worker(
-          new URL('../workers/ProcessWorker.ts', import.meta.url),
-          { type: 'module' }
-        );
+        const workerUrl = this.workerType === 'wasm' 
+          ? new URL('../workers/WasmProcessWorker.ts', import.meta.url)
+          : new URL('../workers/ProcessWorker.ts', import.meta.url);
+        idleInstance.worker = new Worker(workerUrl, { type: 'module' });
       } catch (e) {
         console.error("Failed to recycle worker after crash:", e);
       }

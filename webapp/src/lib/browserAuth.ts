@@ -77,6 +77,37 @@ export const syncUserUI = () => {
       else if (cachedUser.plan === "recovery_pass") planLabel = "Single Pass";
       if (dropdownPlan) dropdownPlan.innerText = planLabel;
       
+      // Floating 24h Pass Timer on Home Page only for Single Pass users
+      const homePassBadge = document.getElementById("home-pass-timer-floating");
+      const homePassVal = document.getElementById("home-pass-timer-val");
+      const isHomePage = window.location.pathname === "/" || window.location.pathname === "";
+      if (isHomePage && cachedUser.plan === "recovery_pass" && homePassBadge && homePassVal) {
+        homePassBadge.classList.remove("hidden");
+        homePassBadge.classList.add("flex");
+        const expiresAt = cachedUser.expiresAt || (cachedUser.startedAt ? cachedUser.startedAt + 24*3600*1000 : Date.now() + 24*3600*1000);
+        const updateTimer = () => {
+          const remainingMs = Math.max(0, expiresAt - Date.now());
+          if (remainingMs <= 0) {
+            homePassBadge.classList.add("hidden");
+            homePassBadge.classList.remove("flex");
+            return;
+          }
+          const hrs = Math.floor(remainingMs / (1000 * 60 * 60));
+          const mins = Math.floor((remainingMs % (1000 * 60 * 60)) / (1000 * 60));
+          const secs = Math.floor((remainingMs % (1000 * 60)) / 1000);
+          const pad = (n: number) => n.toString().padStart(2, '0');
+          homePassVal.innerText = `${pad(hrs)}h ${pad(mins)}m ${pad(secs)}s`;
+        };
+        updateTimer();
+        if ((window as any).__homePassTimerInterval) clearInterval((window as any).__homePassTimerInterval);
+        (window as any).__homePassTimerInterval = setInterval(updateTimer, 1000);
+      } else {
+        if (homePassBadge) {
+          homePassBadge.classList.add("hidden");
+          homePassBadge.classList.remove("flex");
+        }
+      }
+      
       const isAdmin = cachedUser.isAdmin === true || (cachedUser.email && SUPER_ADMIN_EMAILS.includes(cachedUser.email));
       if (isAdmin) {
         desktopDashboardLink?.classList.add("hidden");

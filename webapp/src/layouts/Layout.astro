@@ -69,12 +69,13 @@ const canonicalUrl = `https://takeoutfix.pages.dev${Astro.url.pathname.replace(/
 
     <!-- Global Asset Error Handler: Auto-reload page when dynamic chunk/asset loads fail due to new deployments -->
     <script is:inline>
+      const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
       window.addEventListener('error', (e) => {
         if (e.target && (e.target.tagName === 'SCRIPT' || e.target.tagName === 'LINK')) {
           const src = e.target.src || e.target.href;
           if (src && src.includes('/_astro/')) {
-            console.warn('Dynamic asset load failed, reloading page:', src);
-            window.location.reload();
+            console.warn('Dynamic asset load failed:', src);
+            if (!isLocalhost) window.location.reload();
           }
         }
       }, true);
@@ -86,12 +87,13 @@ const canonicalUrl = `https://takeoutfix.pages.dev${Astro.url.pathname.replace(/
         )) {
           const isAstroChunk = e.reason.stack && e.reason.stack.includes('/_astro/');
           if (isAstroChunk || (e.reason.message && e.reason.message.includes('/_astro/'))) {
-            console.warn('Failed to fetch Astro module, reloading:', e.reason);
-            window.location.reload();
+            console.warn('Failed to fetch Astro module:', e.reason);
+            if (!isLocalhost) window.location.reload();
           }
         }
       });
     </script>
+
     
     <!-- Google AdSense Account Setup -->
     <meta name="google-adsense-account" content="ca-pub-7628736172233995">
@@ -397,6 +399,16 @@ const canonicalUrl = `https://takeoutfix.pages.dev${Astro.url.pathname.replace(/
                     <button id="logout-btn" class="flex items-center px-4 py-2 text-sm text-red-400 hover:text-red-300 hover:bg-red-500/5 transition-colors text-left w-full font-medium">Sign Out</button>
                   </div>
                 </div>
+
+                <!-- Desktop Floating 24h Pass Timer (Homepage Only for Single Time Users) -->
+                <div 
+                  id="home-pass-timer-floating" 
+                  class="hidden absolute right-0 top-full mt-3 px-3 py-1.5 rounded-full bg-cyan-950/90 dark:bg-cyan-950/90 bg-cyan-100 text-cyan-950 dark:text-cyan-300 border border-cyan-500/40 shadow-xl backdrop-blur-md items-center gap-2 text-xs font-mono font-bold z-[80] whitespace-nowrap"
+                >
+                  <span class="w-2 h-2 rounded-full bg-cyan-500 dark:bg-cyan-400 animate-ping"></span>
+                  <span>Time Left:</span>
+                  <span id="home-pass-timer-val" class="tracking-tight">23h 59m 59s</span>
+                </div>
               </div>
             </div>
           </div>
@@ -624,6 +636,39 @@ const canonicalUrl = `https://takeoutfix.pages.dev${Astro.url.pathname.replace(/
         dsn: "https://789a81283ea0ec0d1f762a19102c7a91@o4507198765277184.ingest.us.sentry.io/4508912384729182",
       });
 
+      // Dev Console Live Logger to browser_console.log
+      if (import.meta.env.DEV) {
+        const sendDevLog = (type: string, args: any[]) => {
+          try {
+            const message = args.map(a => {
+              if (a instanceof Error) return a.stack || a.message;
+              if (typeof a === 'object') {
+                try { return JSON.stringify(a); } catch { return String(a); }
+              }
+              return String(a);
+            }).join(' ');
+            if (message.includes('/api/dev-log')) return;
+            fetch('/api/dev-log', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ type, message }),
+              keepalive: true
+            }).catch(() => {});
+          } catch {}
+        };
+
+        const _log = console.log;
+        const _warn = console.warn;
+        const _error = console.error;
+
+        console.log = (...args) => { _log(...args); sendDevLog('LOG', args); };
+        console.warn = (...args) => { _warn(...args); sendDevLog('WARN', args); };
+        console.error = (...args) => { _error(...args); sendDevLog('ERROR', args); };
+
+        window.addEventListener('error', (e) => sendDevLog('UNCAUGHT', [e.message, e.filename, e.lineno, e.colno]));
+        window.addEventListener('unhandledrejection', (e) => sendDevLog('UNHANDLED_REJECTION', [e.reason?.stack || e.reason?.message || e.reason]));
+      }
+
       const setupInteractionEvents = () => {
         setupThemeEvents();
         setupNavDropdowns();
@@ -659,7 +704,7 @@ const canonicalUrl = `https://takeoutfix.pages.dev${Astro.url.pathname.replace(/
 
       // Stage 2: Wait for folder selection or restore button click
       window.addEventListener('takeoutfix-action-triggered', () => {
-        hasUserInteracted = true;
+        setUserInteracted(true);
         checkAdBlock();
       });
 

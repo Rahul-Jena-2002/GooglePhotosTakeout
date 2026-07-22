@@ -42,6 +42,10 @@ export interface FileRecord {
 export class SessionManager {
   private currentSession: ActiveSession | null = null;
 
+  public setCurrentSession(session: ActiveSession | null) {
+    this.currentSession = session;
+  }
+
   public async getActiveSession(): Promise<ActiveSession | null> {
     try {
       const sessions = await indexedDbService.getAll('sessions') as ActiveSession[];
@@ -375,7 +379,11 @@ export class SessionManager {
    * @param limit  - Maximum records to return per page (default 200)
    */
   public async getPendingFilesPage(lastId: string | null, limit: number = 200): Promise<FileRecord[]> {
-    return indexedDbService.getPendingFilesPage(lastId, limit) as Promise<FileRecord[]>;
+    const allPending = await indexedDbService.getAllByIndex('files', 'status', 'pending') as FileRecord[];
+    if (!lastId) return allPending.slice(0, limit);
+    const idx = allPending.findIndex(f => f.id === lastId);
+    if (idx === -1) return allPending.slice(0, limit);
+    return allPending.slice(idx + 1, idx + 1 + limit);
   }
 
   public async getPendingFiles(): Promise<FileRecord[]> {

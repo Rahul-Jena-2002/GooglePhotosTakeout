@@ -73,6 +73,7 @@ export function injectExifDate(
   lng?: number,
   description?: string,
   people?: string[],
+  albumName?: string
 ): ExifInjectResult {
   const binary = arrayBufferToBinaryString(jpegBuffer);
   const dateStr = toExifDate(epochSec);
@@ -123,10 +124,20 @@ export function injectExifDate(
       exifObj['0th'][piexif.ImageIFD.ImageDescription] = description;
     }
 
-    if (people && people.length > 0) {
-      const peopleStr = people.join(', ');
-      exifObj['Exif'][piexif.ExifIFD.UserComment] = "People: " + peopleStr;
-      exifObj['0th'][piexif.ImageIFD.XPKeywords] = toUtf16Array(peopleStr);
+    if ((people && people.length > 0) || albumName) {
+      const parts: string[] = [];
+      const keywords: string[] = [];
+      if (people && people.length > 0) {
+        const peopleStr = people.join(', ');
+        parts.push("People: " + peopleStr);
+        keywords.push(peopleStr);
+      }
+      if (albumName) {
+        parts.push("Album: " + albumName);
+        keywords.push("Album: " + albumName);
+      }
+      exifObj['Exif'][piexif.ExifIFD.UserComment] = "ASCII\0\0\0" + parts.join(' | ');
+      exifObj['0th'][piexif.ImageIFD.XPKeywords] = toUtf16Array(keywords.join(', '));
     }
 
     const exifBytes  = piexif.dump(exifObj);

@@ -1,32 +1,43 @@
 import { defineConfig } from 'astro/config';
 import react from '@astrojs/react';
 import tailwind from '@astrojs/tailwind';
-import sentry from '@sentry/astro';
 import { fileURLToPath } from 'url';
-
 import cloudflare from '@astrojs/cloudflare';
+
+const srcPath = fileURLToPath(new URL('./src', import.meta.url)).replace(/\\/g, '/');
 
 // https://astro.build/config
 export default defineConfig({
   site: 'https://takeoutfix.pages.dev',
   output: 'server',
-  adapter: cloudflare(),
+  adapter: cloudflare({
+    imageService: 'passthrough'
+  }),
   build: {
     format: 'file'
   },
   integrations: [
     react(),
     tailwind({
-      applyBaseStyles: false
+      applyBaseStyles: true
     })
   ],
   vite: {
     resolve: {
       alias: {
-        '@': fileURLToPath(new URL('./src', import.meta.url))
+        '@': srcPath
       }
     },
     optimizeDeps: {
+      exclude: [
+        'astro:transitions',
+        'astro/virtual-modules/transitions',
+        'astro/virtual-modules/transitions-router.js',
+        'astro/virtual-modules/transitions-types.js',
+        'astro/virtual-modules/transitions-events.js',
+        'astro/virtual-modules/transitions-swap-functions.js',
+        '@uswriting/exiftool'
+      ],
       include: [
         'react',
         'react-dom',
@@ -41,10 +52,8 @@ export default defineConfig({
       ]
     },
     ssr: {
-      external: ['@sentry/astro'],
+      external: ['@sentry/astro', '@uswriting/exiftool', 'react', 'react-dom'],
       noExternal: [
-        'react',
-        'react-dom',
         'react-router-dom',
         'lucide-react',
         'firebase',

@@ -18,6 +18,83 @@ public class MetadataInjector {
     @Autowired
     private NativeExifToolEngine exifToolEngine;
 
+    /**
+     * Injects ALL metadata (EXIF dates, GPS, description, title, AND album name) in a SINGLE ExifTool call.
+     * This is the preferred method — ~2x faster than calling injectMetadata + injectAlbumName separately.
+     */
+    public boolean injectMetadataAndAlbum(File mediaFile, File jsonFile, String albumName) {
+        try {
+            String jsonContent = Files.readString(jsonFile.toPath());
+            JSONObject json = new JSONObject(jsonContent);
+
+            List<String> args = new ArrayList<>();
+            args.add("-overwrite_original");
+
+            // 1. Photo Taken Time
+            if (json.has("photoTakenTime") && !json.isNull("photoTakenTime")) {
+                JSONObject pt = json.getJSONObject("photoTakenTime");
+                if (pt.has("timestamp")) {
+                    long timestamp = pt.getLong("timestamp");
+                    String formattedDate = formatExifDate(timestamp);
+                    args.add("-AllDates=" + formattedDate);
+                }
+            }
+
+            // 2. GPS Data
+            if (json.has("geoData") && !json.isNull("geoData")) {
+                JSONObject geo = json.getJSONObject("geoData");
+                double lat = geo.optDouble("latitude", 0.0);
+                double lon = geo.optDouble("longitude", 0.0);
+                if (lat != 0.0 || lon != 0.0) {
+                    args.add("-GPSLatitude=" + Math.abs(lat));
+                    args.add("-GPSLatitudeRef=" + (lat >= 0 ? "N" : "S"));
+                    args.add("-GPSLongitude=" + Math.abs(lon));
+                    args.add("-GPSLongitudeRef=" + (lon >= 0 ? "E" : "W"));
+                    double alt = geo.optDouble("altitude", 0.0);
+                    if (alt != 0.0) {
+                        args.add("-GPSAltitude=" + Math.abs(alt));
+                        args.add("-GPSAltitudeRef=" + (alt >= 0 ? "0" : "1"));
+                    }
+                }
+            }
+
+            // 3. Description
+            if (json.has("description") && !json.isNull("description")) {
+                String desc = json.getString("description").trim();
+                if (!desc.isEmpty()) {
+                    args.add("-Description=" + desc);
+                    args.add("-ImageDescription=" + desc);
+                }
+            }
+
+            // 4. Title
+            if (json.has("title") && !json.isNull("title")) {
+                String title = json.getString("title").trim();
+                if (!title.isEmpty()) {
+                    args.add("-Title=" + title);
+                    args.add("-ObjectName=" + title);
+                }
+            }
+
+            // 5. Album Name (merged — avoids a second ExifTool call)
+            if (albumName != null && !albumName.isBlank()) {
+                args.add("-XMP-dc:Subject+=" + albumName);
+                args.add("-IPTC:Keywords+=" + albumName);
+                args.add("-XMP-lr:HierarchicalSubject+=Albums|" + albumName);
+            }
+
+            if (args.size() > 2) {
+                args.add(mediaFile.getAbsolutePath());
+                return exifToolEngine.execute(args);
+            }
+            return true;
+
+        } catch (Exception e) {
+            System.err.println("Failed to inject metadata for " + mediaFile.getName() + ": " + e.getMessage());
+            return false;
+        }
+    }
+
     public boolean injectMetadata(File mediaFile, File jsonFile) {
         try {
             String jsonContent = Files.readString(jsonFile.toPath());
@@ -25,7 +102,6 @@ public class MetadataInjector {
 
             List<String> args = new ArrayList<>();
             args.add("-overwrite_original");
-            args.add("-q");
 
             // 1. Photo Taken Time
             if (json.has("photoTakenTime") && !json.isNull("photoTakenTime")) {
@@ -86,6 +162,23 @@ public class MetadataInjector {
             System.err.println("Failed to inject metadata for " + mediaFile.getName() + ": " + e.getMessage());
             return false;
         }
+    }
+
+    public boolean injectAlbumName(File mediaFile, String albumName) {
+        List<String> args = new ArrayList<>();
+        args.add("-overwrite_original");
+        
+        // XMP Subject (recognized by Lightroom, digiKam, Apple Photos)
+        args.add("-XMP-dc:Subject+=" + albumName);
+        
+        // IPTC Keywords (recognized by most photo management apps)
+        args.add("-IPTC:Keywords+=" + albumName);
+        
+        // Lightroom Hierarchical Subject (Albums|AlbumName format)
+        args.add("-XMP-lr:HierarchicalSubject+=Albums|" + albumName);
+        
+        args.add(mediaFile.getAbsolutePath());
+        return exifToolEngine.execute(args);
     }
 
     private String formatExifDate(long unixTimestamp) {

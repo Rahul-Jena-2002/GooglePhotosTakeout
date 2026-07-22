@@ -6,6 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../co
 import { Button } from "../components/ui/button"
 import { Shield, Settings, MessageSquare, ChevronUp, ChevronDown, Plus, Trash2, X } from "lucide-react"
 import { useToastStore } from "../store/useToastStore"
+import { useSettingsStore } from "../store/useSettingsStore"
 
 export default function AdminSettings() {
   const { adminData } = useAuth()
@@ -32,6 +33,8 @@ export default function AdminSettings() {
   const [reviewAutoApprove, setReviewAutoApprove] = useState(true)
   const [ticketSlaHours, setTicketSlaHours] = useState("24")
   const [freeQuotaMB, setFreeQuotaMB] = useState("500")
+  
+  const { exifEngine, setExifEngine } = useSettingsStore()
 
   const [savingGlobal, setSavingGlobal] = useState(false)
   const role = adminData?.role || "ADMIN"
@@ -204,6 +207,37 @@ export default function AdminSettings() {
               >
                 <span className={`pointer-events-none absolute top-1 h-4 w-4 rounded-full bg-white shadow transition-all duration-200 ${reviewAutoApprove ? 'left-6' : 'left-1'}`} />
               </button>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Local Settings */}
+        <Card className="bg-zinc-900 border-zinc-800 shadow-none">
+          <CardHeader>
+            <CardTitle className="text-sm font-semibold flex items-center gap-2 text-zinc-200">
+              <Settings className="w-4 h-4 text-emerald-400" /> Local Processing Engine
+            </CardTitle>
+            <CardDescription className="text-zinc-500 text-xs">Test the new WebAssembly engine. (Saves locally to your browser)</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-5">
+            <div className="flex flex-col gap-2 p-4 bg-zinc-950/40 border border-zinc-800/80 rounded-xl">
+              <div className="text-xs font-bold text-zinc-200">EXIF Processing Engine</div>
+              <div className="text-[10px] text-zinc-500 mb-2">Switch between the legacy piexifjs engine and the new WASM-powered ExifTool/FFmpeg engine.</div>
+              
+              <div className="flex gap-2 mt-2">
+                <button
+                  onClick={() => setExifEngine('piexifjs')}
+                  className={`flex-1 py-2 rounded-lg text-[11px] font-semibold border transition-all ${exifEngine === 'piexifjs' ? 'bg-indigo-600 text-white border-indigo-700 shadow-sm' : 'bg-zinc-100 dark:bg-zinc-900/50 text-zinc-600 dark:text-zinc-400 border-zinc-200 dark:border-zinc-800/80 hover:bg-zinc-200 dark:hover:bg-zinc-800'}`}
+                >
+                  piexifjs (Legacy JS)
+                </button>
+                <button
+                  onClick={() => setExifEngine('wasm')}
+                  className={`flex-1 py-2 rounded-lg text-[11px] font-semibold border transition-all ${exifEngine === 'wasm' ? 'bg-emerald-600 text-white border-emerald-700 shadow-sm' : 'bg-zinc-100 dark:bg-zinc-900/50 text-zinc-600 dark:text-zinc-400 border-zinc-200 dark:border-zinc-800/80 hover:bg-zinc-200 dark:hover:bg-zinc-800'}`}
+                >
+                  ExifTool / FFmpeg (WASM)
+                </button>
+              </div>
             </div>
           </CardContent>
         </Card>

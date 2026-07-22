@@ -200,14 +200,13 @@ Your EXIF metadata recovery tools are active.
       }
     }
   }
-
   const itemVariants = {
     hidden: { opacity: 0, y: 15 },
     show: { opacity: 1, y: 0, transition: { type: "spring" as const, stiffness: 100, damping: 15 } }
   }
 
   return (
-    <div className="max-w-5xl mx-auto px-4 py-12 mt-16 relative">
+    <div className="w-full max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 py-8 mt-16 relative">
       
       <motion.div 
         variants={containerVariants}
@@ -432,9 +431,9 @@ Your EXIF metadata recovery tools are active.
                   
                   {activeTab === "history" ? (
                     <div>
-                      {plan === 'free' || plan === 'recovery_pass' ? (
+                      {plan === 'free' ? (
                         <div className="text-center py-8">
-                          <p className="text-xs text-white/50 mb-4">Detailed history logs are only available on Pro and Super plans.</p>
+                          <p className="text-xs text-white/50 mb-4">Detailed history logs are available for all paid plan subscribers.</p>
                           <a href="/pricing">
                             <Button variant="outline" className="border-zinc-200 dark:border-zinc-800 text-zinc-900 dark:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-900 text-xs rounded-lg">
                               Upgrade to View History
@@ -455,21 +454,35 @@ Your EXIF metadata recovery tools are active.
                             </span>
                           </div>
 
-                          <div className="space-y-3 max-h-[180px] overflow-y-auto pr-1">
-                            {history.map((h) => (
-                              <div key={h.id} className="flex justify-between items-center p-3.5 bg-white/[0.02] rounded-xl border border-white/5">
-                                <div>
-                                  <div className="font-mono text-xs font-semibold mb-0.5">{h.archiveName}</div>
-                                  <div className="text-[11px] text-white/55 font-mono">
-                                    Restored {h.matched || h.recovered || 0} / {h.filesProcessed || 0} files • {formatBytes(h.bytesProcessed || 0)}
+                          <div className="space-y-3 max-h-[220px] overflow-y-auto pr-1">
+                            {history.map((h: any, idx: number) => {
+                              const title = h.archiveName || h.title || 'Takeout Batch';
+                              const restored = h.matched ?? h.recovered ?? h.files ?? 0;
+                              const totalFiles = h.filesProcessed ?? h.files ?? restored;
+                              const bytes = h.bytesProcessed ?? h.bytes ?? 0;
+                              const dateStr = h.date ? `${h.date}, ${h.time}` : (h.timestamp || h.ts ? new Date(h.timestamp || h.ts).toLocaleString() : 'Recent Session');
+                              const isDesktop = (h.source || 'Desktop').toLowerCase().includes('desktop');
+
+                              return (
+                                <div key={h.id || idx} className="flex justify-between items-center p-3.5 bg-white/[0.02] rounded-xl border border-white/5">
+                                  <div>
+                                    <div className="font-mono text-xs font-semibold mb-0.5 text-zinc-200">{title}</div>
+                                    <div className="text-[11px] text-zinc-400 font-mono">
+                                      Restored {restored.toLocaleString()} / {totalFiles.toLocaleString()} files • {formatBytes(bytes)}
+                                    </div>
+                                    <div className="text-[9px] text-zinc-500 mt-1">{dateStr}</div>
                                   </div>
-                                  <div className="text-[9px] text-white/40 mt-1">{new Date(h.timestamp).toLocaleString()}</div>
+                                  <div className="flex items-center gap-2">
+                                    <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full border ${isDesktop ? 'text-purple-400 bg-purple-400/10 border-purple-500/20' : 'text-cyan-400 bg-cyan-400/10 border-cyan-500/20'}`}>
+                                      {isDesktop ? '🖥️ Desktop' : '🌐 Web Engine'}
+                                    </span>
+                                    <div className="text-[10px] font-bold text-green-400 bg-green-400/10 px-2.5 py-0.5 rounded-full border border-green-500/20 capitalize">
+                                      {h.status || 'completed'}
+                                    </div>
+                                  </div>
                                 </div>
-                                <div className="text-[10px] font-bold text-green-400 bg-green-400/10 px-2.5 py-0.5 rounded-full border border-green-500/20 capitalize">
-                                  {h.status || 'completed'}
-                                </div>
-                              </div>
-                            ))}
+                              );
+                            })}
                           </div>
                         </div>
                       )}

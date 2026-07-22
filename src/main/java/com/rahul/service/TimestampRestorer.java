@@ -77,6 +77,40 @@ public class TimestampRestorer {
         return Optional.empty();
     }
 
+    public void applyInstant(File file, Instant when) {
+        applyFileTimes(file.toPath(), when);
+    }
+
+    public Optional<Instant> parseJsonTimestamp(File json, Optional<Instant> takeoutRef) {
+        try {
+            String jsonText = Files.readString(json.toPath());
+            final Instant takeoutDateStartOfDay = takeoutRef.orElse(null);
+
+            Optional<Long> takenTs = findEpoch(jsonText, PHOTO_TAKEN_PATTERN);
+            Optional<Long> creationTs = findEpoch(jsonText, CREATION_TIME_PATTERN);
+            Optional<Long> modificationTs = findEpoch(jsonText, MODIFICATION_TIME_PATTERN);
+
+            Optional<Long> creationTsFiltered = creationTs.filter(ts -> {
+                if (takeoutDateStartOfDay == null) return true;
+                Instant creationInstant = Instant.ofEpochSecond(ts).truncatedTo(java.time.temporal.ChronoUnit.DAYS);
+                return !creationInstant.equals(takeoutDateStartOfDay);
+            });
+
+            Optional<Long> modificationTsFiltered = modificationTs.filter(ts -> {
+                if (takeoutDateStartOfDay == null) return true;
+                Instant modInstant = Instant.ofEpochSecond(ts).truncatedTo(java.time.temporal.ChronoUnit.DAYS);
+                return !modInstant.equals(takeoutDateStartOfDay);
+            });
+
+            long chosen = takenTs
+                    .or(() -> creationTsFiltered)
+                    .or(() -> modificationTsFiltered)
+                    .orElse(-1L);
+            if (chosen > 0) return Optional.of(Instant.ofEpochSecond(chosen));
+        } catch (Exception ignored) {}
+        return Optional.empty();
+    }
+
     private void applyFileTimes(Path path, Instant when) {
         FileTime ft = FileTime.from(when);
 

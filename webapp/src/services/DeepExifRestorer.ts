@@ -1,8 +1,9 @@
 import piexif from 'piexifjs';
+import { memoryGuard } from './MemoryGuard';
 
 /**
- * Deep injects timestamp and GPS data directly into the image binary payload (JPEGs)
- * while preserving existing metadata.
+ * Deep injects timestamp and GPS data directly into the image binary payload
+ * (supports JPEG, PNG, WebP, HEIC, DNG, TIFF) while preserving existing metadata.
  */
 function toUtf16Array(str: string): number[] {
   const arr: number[] = [];
@@ -14,14 +15,72 @@ function toUtf16Array(str: string): number[] {
   return arr;
 }
 
+// Global singleton cache for ExifTool Wasm instance
+let exiftoolWasmInstance: any = null;
+
+async function getExifToolWasmInstance() {
+  if (exiftoolWasmInstance) return exiftoolWasmInstance;
+  try {
+    const mod = await import(/* @vite-ignore */ '@uswriting/exiftool');
+    if (mod && mod.ExifTool) {
+      exiftoolWasmInstance = new mod.ExifTool();
+      if (typeof exiftoolWasmInstance.init === 'function') {
+        await exiftoolWasmInstance.init();
+      }
+    }
+  } catch (err) {
+    console.warn("ExifTool Wasm initialization fallback:", err);
+    exiftoolWasmInstance = null;
+  }
+  return exiftoolWasmInstance;
+}
+
 export async function injectImageExif(
   imageBuffer: ArrayBuffer,
   epochSeconds: number,
   lat?: number,
   lng?: number,
   description?: string,
-  people?: string[]
+  people?: string[],
+  albumName?: string
 ): Promise<ArrayBuffer> {
+  // Yield control briefly to garbage collector to maintain dynamic memory bounds
+  await memoryGuard.yieldForGC();
+
+  // Try ExifTool Wasm deep injection first for universal multi-format support
+  const exiftool = await getExifToolWasmInstance();
+  if (exiftool) {
+    try {
+      const d = new Date(epochSeconds * 1000);
+      const formattedDate = d.toISOString();
+      const tags: Record<string, any> = {
+        DateTimeOriginal: formattedDate,
+        CreateDate: formattedDate,
+        ModifyDate: formattedDate
+      };
+
+      if (lat !== undefined && lng !== undefined) {
+        tags.GPSLatitude = lat;
+        tags.GPSLongitude = lng;
+      }
+      if (description) {
+        tags.ImageDescription = description;
+      }
+      if (people && people.length > 0) {
+        tags.Keywords = people.join(', ');
+      }
+
+      const uint8Input = new Uint8Array(imageBuffer);
+      const modifiedBytes = await exiftool.write(uint8Input, tags);
+      if (modifiedBytes && modifiedBytes.length > 0) {
+        return modifiedBytes.buffer as ArrayBuffer;
+      }
+    } catch (wasmErr) {
+      console.warn("ExifTool Wasm write failed, attempting piexif fallback:", wasmErr);
+    }
+  }
+
+  // Fallback: piexifjs binary injection for JPEGs
   const binary = arrayBufferToBinaryString(imageBuffer);
 
   // Load existing EXIF or create empty object
@@ -72,10 +131,20 @@ export async function injectImageExif(
       exifObj['0th'][piexif.ImageIFD.ImageDescription] = description;
     }
 
-    if (people && people.length > 0) {
-      const peopleStr = people.join(', ');
-      exifObj['Exif'][piexif.ExifIFD.UserComment] = "People: " + peopleStr;
-      exifObj['0th'][piexif.ImageIFD.XPKeywords] = toUtf16Array(peopleStr);
+    if ((people && people.length > 0) || albumName) {
+      const parts: string[] = [];
+      const keywords: string[] = [];
+      if (people && people.length > 0) {
+        const peopleStr = people.join(', ');
+        parts.push("People: " + peopleStr);
+        keywords.push(peopleStr);
+      }
+      if (albumName) {
+        parts.push("Album: " + albumName);
+        keywords.push("Album: " + albumName);
+      }
+      exifObj['Exif'][piexif.ExifIFD.UserComment] = "ASCII\0\0\0" + parts.join(' | ');
+      exifObj['0th'][piexif.ImageIFD.XPKeywords] = toUtf16Array(keywords.join(', '));
     }
 
     const exifBytes = piexif.dump(exifObj);
@@ -84,10 +153,6 @@ export async function injectImageExif(
     const resultBytes = binaryStringToUint8Array(newBinary);
     return resultBytes.buffer as ArrayBuffer;
   } catch {
-    // piexifjs throws "Cannot set property writable of #<cA> which has only a
-    // getter" on certain Snapchat / non-standard JPEG files whose EXIF IFD is
-    // read-only at the JS engine level. Fall back to returning original bytes
-    // unchanged so the file is still saved rather than counted as an error.
     return imageBuffer;
   }
 }
@@ -171,4 +236,3 @@ function binaryStringToUint8Array(str: string): Uint8Array {
   for (let i = 0; i < str.length; i++) arr[i] = str.charCodeAt(i);
   return arr;
 }
-

@@ -50,9 +50,42 @@ export default function AdminUsers() {
   const [filter, setFilter] = useState("all")
   const [search, setSearch] = useState("")
   const [selectedUser, setSelectedUser] = useState<any | null>(null)
+  const [pendingPlans, setPendingPlans] = useState<Record<string, string>>({})
+  const [isSaving, setIsSaving] = useState(false)
 
   const { adminData } = useAuth()
   const role = adminData?.role || "ADMIN"
+
+  const handleStagePlan = (userId: string, newPlan: string) => {
+    const userDoc = users.find(u => u.id === userId)
+    const currentPlan = userDoc?.plan || 'free'
+    setPendingPlans(prev => {
+      const updated = { ...prev }
+      if (newPlan === currentPlan) {
+        delete updated[userId]
+      } else {
+        updated[userId] = newPlan
+      }
+      return updated
+    })
+  }
+
+  const handleCommitAllPlans = async () => {
+    const pendingIds = Object.keys(pendingPlans)
+    if (pendingIds.length === 0) return
+    setIsSaving(true)
+    try {
+      for (const userId of pendingIds) {
+        await handleUpdatePlan(userId, pendingPlans[userId])
+      }
+      setPendingPlans({})
+      useToastStore.getState().addToast(`Successfully updated ${pendingIds.length} user plan(s).`, "success")
+    } catch (err: any) {
+      console.error(err)
+    } finally {
+      setIsSaving(false)
+    }
+  }
 
   const handleUpdatePlan = async (userId: string, newPlan: string) => {
     try {
@@ -270,6 +303,15 @@ export default function AdminUsers() {
             <option value="pro">Pro</option>
             <option value="super">Super</option>
           </select>
+          {Object.keys(pendingPlans).length > 0 && (
+            <button
+              onClick={handleCommitAllPlans}
+              disabled={isSaving}
+              className="px-4 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs rounded-md shadow-lg transition-all flex items-center gap-1.5 animate-pulse"
+            >
+              {isSaving ? "Saving..." : `Save Changes (${Object.keys(pendingPlans).length})`}
+            </button>
+          )}
         </div>
       </div>
 
@@ -326,21 +368,27 @@ export default function AdminUsers() {
                       </div>
                     </td>
                     <td className="px-6 py-4" onClick={(e) => e.stopPropagation()}>
-                      <select
-                        value={u.plan || 'free'}
-                        onChange={(e) => handleUpdatePlan(u.id, e.target.value)}
-                        className={`inline-flex items-center px-2 py-1 rounded-md text-xs font-semibold uppercase tracking-wider bg-zinc-950 border border-zinc-800 text-zinc-350 focus:outline-none focus:ring-1 focus:ring-zinc-600 cursor-pointer ${
-                          u.plan === 'pro' ? 'text-zinc-200 border-zinc-700 bg-zinc-800/40' :
-                          u.plan === 'super' ? 'text-white border-zinc-600 bg-zinc-850 font-bold' :
-                          u.plan === 'recovery_pass' ? 'text-zinc-300 border-zinc-750 bg-zinc-900/60' :
-                          'text-zinc-450 border-zinc-800 bg-zinc-950/20'
-                        }`}
-                      >
-                        <option value="free" className="bg-zinc-900 text-zinc-400">Free</option>
-                        <option value="recovery_pass" className="bg-zinc-900 text-zinc-300">Single Time</option>
-                        <option value="pro" className="bg-zinc-900 text-zinc-250">Pro</option>
-                        <option value="super" className="bg-zinc-900 text-white font-bold">Super</option>
-                      </select>
+                      <div className="flex items-center gap-2">
+                        <select
+                          value={pendingPlans[u.id] !== undefined ? pendingPlans[u.id] : (u.plan || 'free')}
+                          onChange={(e) => handleStagePlan(u.id, e.target.value)}
+                          className={`inline-flex items-center px-2 py-1 rounded-md text-xs font-semibold uppercase tracking-wider bg-zinc-950 border text-zinc-350 focus:outline-none cursor-pointer transition-all ${
+                            pendingPlans[u.id] !== undefined ? 'border-amber-500 ring-2 ring-amber-500/30 font-bold' :
+                            u.plan === 'pro' ? 'text-zinc-200 border-zinc-700 bg-zinc-800/40' :
+                            u.plan === 'super' ? 'text-white border-zinc-600 bg-zinc-850 font-bold' :
+                            u.plan === 'recovery_pass' ? 'text-zinc-300 border-zinc-750 bg-zinc-900/60' :
+                            'text-zinc-450 border-zinc-800 bg-zinc-950/20'
+                          }`}
+                        >
+                          <option value="free" className="bg-zinc-900 text-zinc-400">Free</option>
+                          <option value="recovery_pass" className="bg-zinc-900 text-zinc-300">Single Time</option>
+                          <option value="pro" className="bg-zinc-900 text-zinc-250">Pro</option>
+                          <option value="super" className="bg-zinc-900 text-white font-bold">Super</option>
+                        </select>
+                        {pendingPlans[u.id] !== undefined && (
+                          <span className="text-[10px] font-bold text-amber-400 bg-amber-500/10 px-1.5 py-0.5 rounded border border-amber-500/20 uppercase tracking-wider">Unsaved</span>
+                        )}
+                      </div>
                     </td>
                     <td className="px-6 py-4 text-zinc-300">
                       {formatBytes(getUserBytes(u))}
@@ -480,8 +528,8 @@ export default function AdminUsers() {
                   <div>
                     <label className="block text-xs text-zinc-400 mb-1.5 font-medium uppercase tracking-wider">Change Subscription Plan</label>
                     <select
-                      value={selectedUser.plan || 'free'}
-                      onChange={(e) => handleUpdatePlan(selectedUser.id, e.target.value)}
+                      value={pendingPlans[selectedUser.id] !== undefined ? pendingPlans[selectedUser.id] : (selectedUser.plan || 'free')}
+                      onChange={(e) => handleStagePlan(selectedUser.id, e.target.value)}
                       className="w-full bg-zinc-900 border border-zinc-800 rounded-md py-1.5 px-3 text-sm text-white focus:outline-none focus:border-indigo-500"
                     >
                       <option value="free">Free</option>

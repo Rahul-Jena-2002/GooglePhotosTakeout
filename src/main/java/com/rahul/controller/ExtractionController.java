@@ -84,6 +84,7 @@ public class ExtractionController {
 
             int limitFiles = Integer.parseInt(params.getOrDefault("limitFiles", "250"));
             int offsetFiles = Integer.parseInt(params.getOrDefault("offsetFiles", "0"));
+            boolean interpolateMissing = Boolean.parseBoolean(params.getOrDefault("interpolateMissing", "false"));
 
             extractionService.startExtraction(
                     inputPath,
@@ -93,7 +94,8 @@ public class ExtractionController {
                     isTemp,
                     outputZip,
                     limitFiles,
-                    offsetFiles
+                    offsetFiles,
+                    interpolateMissing
             );
 
             return ResponseEntity.ok(Map.of("status", "started"));

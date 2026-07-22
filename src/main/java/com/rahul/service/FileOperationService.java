@@ -32,6 +32,27 @@ public class FileOperationService {
     }
 
     /**
+     * Copies an estimated/interpolated media file to the "estimated_metadata" folder in the output directory.
+     *
+     * @param media The source media file.
+     * @param inputRoot The root of the input directory.
+     * @param outputRoot The root of the output directory.
+     * @return The copied destination file.
+     * @throws IOException If the copy operation fails.
+     */
+    public File copyToEstimated(File media, File inputRoot, File outputRoot) throws IOException {
+        Path sourceFile = media.toPath();
+        Path estimatedRoot = outputRoot.toPath().resolve("estimated_metadata");
+        Path relativePath = inputRoot.toPath().relativize(sourceFile);
+        Path destinationFile = estimatedRoot.resolve(relativePath);
+
+        Files.createDirectories(destinationFile.getParent());
+        Files.copy(sourceFile, destinationFile, StandardCopyOption.REPLACE_EXISTING);
+
+        return destinationFile.toFile();
+    }
+
+    /**
      * Copies an unmatched media file to the "metadata_not_found" folder in the output directory.
      *
      * @param media The source media file.

@@ -10,12 +10,15 @@
     "lint": "eslint ."
   },
   "dependencies": {
+    "@ffmpeg/core": "^0.12.10",
+    "@ffmpeg/ffmpeg": "^0.12.15",
     "@radix-ui/react-alert-dialog": "^1.1.16",
     "@radix-ui/react-dropdown-menu": "^2.1.17",
     "@radix-ui/react-progress": "^1.1.9",
     "@radix-ui/react-slot": "^1.2.5",
     "@radix-ui/react-tooltip": "^1.2.9",
     "@sentry/cloudflare": "^10.57.0",
+    "@uswriting/exiftool": "^1.0.9",
     "@zip.js/zip.js": "^2.8.26",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",

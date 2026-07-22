@@ -42,58 +42,64 @@ public class MetadataMatcher {
     // Group 1: Separator (. or _), Group 2: Keyword, Group 3: Optional (N)
     private static final Pattern META_SUFFIX_PATTERN = Pattern.compile("([._])(" + DYNAMIC_REGEX + ")(\\(\\d+\\))?$", Pattern.CASE_INSENSITIVE);
 
+    // Per-directory in-memory name→File maps, built once and reused by all threads
+    private final java.util.concurrent.ConcurrentHashMap<String, Map<String, File>> nameMapCache =
+        new java.util.concurrent.ConcurrentHashMap<>();
+
     /**
      * Searches for a matching JSON file for the given media file.
+     * All lookups are in-memory against the cached directory listing — zero filesystem I/O.
      *
-     * @param media The media file.
-     * @param dirCache A cache of directory listings to improve performance.
+     * @param media    The media file.
+     * @param dirCache A cache of raw directory listings (File[]) keyed by parent path.
      * @return An Optional containing the matching JSON file if found.
      */
     public Optional<File> findMatchingJson(File media, Map<String, File[]> dirCache) {
         File parent = media.getParentFile();
         if (parent == null) return Optional.empty();
 
-        // 1. Try exact match based on Google's common patterns first (fast path)
-        Optional<File> exact = findExactMatch(media, parent);
-        if (exact.isPresent()) return exact;
+        String parentPath = parent.getAbsolutePath();
 
-        // 2. Check all generated candidate names (handles truncation and numbering correctly)
-        for (String candidate : getJsonCandidates(media.getName())) {
-            File f = new File(parent, candidate);
-            if (f.isFile()) {
-                return Optional.of(f);
-            }
-        }
+        // Get or populate the raw file listing (one listFiles() call per directory)
+        File[] files = dirCache.computeIfAbsent(parentPath, k -> {
+            File[] listing = parent.listFiles();
+            return listing != null ? listing : new File[0];
+        });
+        if (files.length == 0) return Optional.empty();
 
-        // 3. Fallback: Scan folder for files that "look like" metadata for this media
-        return findDynamicMatch(media, parent, dirCache);
-    }
+        // Build an in-memory name→File map so ALL candidate lookups are O(1) — zero filesystem I/O
+        Map<String, File> filesByName = nameMapCache.computeIfAbsent(parentPath, k -> {
+            Map<String, File> map = new HashMap<>(files.length * 2);
+            for (File f : files) map.put(f.getName(), f);
+            return map;
+        });
 
-    private Optional<File> findExactMatch(File media, File parent) {
         String name = media.getName();
-        // Standard modern case: name.ext.supplemental-metadata.json
-        File standard = new File(parent, name + ".supplemental-metadata.json");
-        if (standard.isFile()) return Optional.of(standard);
-
-        // Basename case: name.supplemental-metadata.json
         int lastDot = name.lastIndexOf('.');
         String nameNoExt = (lastDot > 0 ? name.substring(0, lastDot) : name);
-        File baseStandard = new File(parent, nameNoExt + ".supplemental-metadata.json");
-        if (baseStandard.isFile()) return Optional.of(baseStandard);
 
-        return Optional.empty();
+        // 1. Exact match (fast path — in-memory O(1))
+        File f;
+        f = filesByName.get(name + ".supplemental-metadata.json");
+        if (f != null) return Optional.of(f);
+
+        f = filesByName.get(nameNoExt + ".supplemental-metadata.json");
+        if (f != null) return Optional.of(f);
+
+        // 2. All generated candidate names — in-memory map lookup, zero I/O
+        for (String candidate : getJsonCandidates(name)) {
+            f = filesByName.get(candidate);
+            if (f != null) return Optional.of(f);
+        }
+
+        // 3. Fallback: scan cached files array for dynamic suffix match (still in-memory, no I/O)
+        return findDynamicMatch(media, name, nameNoExt, files);
     }
 
-    private Optional<File> findDynamicMatch(File media, File parent, Map<String, File[]> dirCache) {
-        String parentPath = parent.getAbsolutePath();
-        File[] files = dirCache.computeIfAbsent(parentPath, k -> parent.listFiles());
-        if (files == null) return Optional.empty();
-
-        String mediaName = media.getName();
-        String nameNoExt = mediaName.contains(".") ? mediaName.substring(0, mediaName.lastIndexOf('.')) : mediaName;
+    private Optional<File> findDynamicMatch(File media, String mediaName, String nameNoExt, File[] files) {
         String nameTruncated = nameNoExt.length() > MAX_STEM ? nameNoExt.substring(0, MAX_STEM) : nameNoExt;
         String nameTruncated47 = nameNoExt.length() > 47 ? nameNoExt.substring(0, 47) : nameNoExt;
-        
+
         String numberedBase = null;
         Matcher numMatcher = NUMBERED_PATTERN.matcher(mediaName);
         if (numMatcher.matches()) {
@@ -107,14 +113,11 @@ public class MetadataMatcher {
             String fileName = f.getName();
             if (!fileName.toLowerCase().endsWith(".json")) continue;
 
-            // The core logic: Does the JSON filename start with the media name, normalized base, or truncated base
-            // AND follow with a recognized metadata suffix?
-            if (fileName.startsWith(mediaName) || fileName.startsWith(nameNoExt) 
+            if (fileName.startsWith(mediaName) || fileName.startsWith(nameNoExt)
                 || fileName.startsWith(nameTruncated) || fileName.startsWith(nameTruncated47)
                 || (numberedBase != null && fileName.startsWith(numberedBase))) {
                 Matcher m = META_SUFFIX_PATTERN.matcher(fileName);
                 if (m.find()) {
-                    // Score based on length of match to prefer more specific filenames
                     int score = fileName.length();
                     if (score > maxScore) {
                         maxScore = score;

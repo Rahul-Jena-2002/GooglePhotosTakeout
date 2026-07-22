@@ -6,18 +6,18 @@ self.onmessage = async (e: MessageEvent) => {
   if (!action) return;
 
   if (action === 'inject_exif') {
-    const { buffer, epochSec, lat, lng, filename, description, people } = payload;
+    const { buffer, epochSec, lat, lng, filename, description, people, albumName } = payload;
     try {
       if (lat !== undefined && lng !== undefined) {
         // Perform CPU-heavy deep EXIF and GPS injection inside the worker thread
-        const resultBuffer: ArrayBuffer = await injectImageExif(buffer, epochSec, lat, lng, description, people);
+        const resultBuffer: ArrayBuffer = await injectImageExif(buffer, epochSec, lat, lng, description, people, albumName);
         (self as any).postMessage(
           { success: true, buffer: resultBuffer, filename },
           [resultBuffer]
         );
       } else {
         // Standard EXIF date-only injection — returns {bytes, success, reason}
-        const result = injectExifDate(buffer, epochSec, undefined, undefined, description, people);
+        const result = injectExifDate(buffer, epochSec, undefined, undefined, description, people, albumName);
         const resultBuffer = result.bytes.buffer as ArrayBuffer;
         (self as any).postMessage(
           { success: result.success, error: result.reason, buffer: resultBuffer, filename },

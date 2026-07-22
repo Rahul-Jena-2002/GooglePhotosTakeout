@@ -2,6 +2,7 @@
  * useToolPipeline — all processing engine state and logic for the TakeoutFix workspace.
  * Extracted from ToolWorkspace.tsx to keep that file focused on layout/routing only.
  */
+// Tool pipeline hook for TakeoutFix workspace
 import { useRef, useEffect, useState } from "react"
 import { useAuth } from "../contexts/AuthContext"
 import { useToolStore } from "../store/useToolStore"
@@ -17,6 +18,7 @@ import { detectAdBlock } from "../services/AdBlockDetector"
 import { SessionManager, type ActiveSession, type FileRecord } from "../lib/SessionManager"
 import { WorkerPool } from "../lib/WorkerPool"
 import { ZipReader, BlobReader, Uint8ArrayWriter, Writer, ZipWriter, BlobWriter } from "@zip.js/zip.js"
+import { useSettingsStore } from "../store/useSettingsStore";
 import { normalizeZipPath } from "../services/ZipMetadataMatcher"
 
 // ---------------------------------------------------------------------------
@@ -254,6 +256,10 @@ export function useToolPipeline() {
 
   // Concurrency processing pool implementation
   const [maxWorkers, setMaxWorkers] = useState(1)
+  const maxWorkersRef = useRef(1)
+  useEffect(() => {
+    maxWorkersRef.current = maxWorkers
+  }, [maxWorkers])
   const [activeWorkersCount, setActiveWorkersCount] = useState(0)
   const [popupModal, setPopupModal] = useState<{ title: string; message: string; type: 'error' | 'warning' } | null>(null)
 
@@ -710,6 +716,7 @@ export function useToolPipeline() {
   };
 
   const proceedResume = async (session: ActiveSession) => {
+    sessionManagerRef.current.setCurrentSession(session);
     setPendingSession(null);
     setTakeoutFolder(session.takeoutHandle);
     setZipFile(session.zipFile);
@@ -778,8 +785,10 @@ export function useToolPipeline() {
   };
 
   const processRestorePipeline = async (session: ActiveSession, sessionManager: SessionManager) => {
-    // 1. Initialize WorkerPool
-    const pool = new WorkerPool(maxWorkers);
+    // 1. Initialize WorkerPool with selected engine
+    const engine = useSettingsStore.getState().exifEngine;
+    console.log('[PIPELINE ENGINE SELECTED]', engine);
+    const pool = new WorkerPool(maxWorkersRef.current, engine);
     workerPoolRef.current = pool;
 
     // 2. Open ZIP Reader if ZIP source
@@ -981,6 +990,7 @@ export function useToolPipeline() {
             let lng: number | undefined = undefined;
             let description: string | undefined = undefined;
             let people: string[] | undefined = undefined;
+            let albumName: string | undefined = undefined;
 
             if (fileHandle && parentDirHandle) {
               // Folder source: resolve sidecar on-demand during restoration
@@ -1006,6 +1016,18 @@ export function useToolPipeline() {
                   }
                 } catch {}
               }
+              
+              // Also try to resolve album metadata
+              if (parentDirHandle.name && !/^Photos from \d{4}$/.test(parentDirHandle.name)) {
+                try {
+                  const metaHandle = await parentDirHandle.getFileHandle('metadata.json');
+                  const metaFile = await metaHandle.getFile();
+                  const metaParsed = safeParseJson(await metaFile.text());
+                  if (metaParsed && typeof metaParsed.title === 'string' && metaParsed.title.trim() && !/^Photos from \d{4}$/.test(metaParsed.title.trim())) {
+                    albumName = metaParsed.title.trim();
+                  }
+                } catch {}
+              }
             } else if (fileRecord.zipPath) {
               // ZIP source: metadata was pre-cached during the scan phase — use it directly!
               epochSec = fileRecord.epochSec;
@@ -1015,6 +1037,27 @@ export function useToolPipeline() {
               }
               description = fileRecord.description;
               people = fileRecord.people;
+              
+              // Try to resolve album metadata from zip
+              const normalizedPath = normalizeZipPath(fileRecord.zipPath);
+              const parts = normalizedPath.split('/');
+              parts.pop(); // remove filename
+              const dirPath = parts.join('/');
+              const folderName = parts[parts.length - 1] || '';
+              if (!/^Photos from \d{4}$/.test(folderName) && zipEntryMap) {
+                const metaZipPath = (dirPath ? `${dirPath}/metadata.json` : 'metadata.json').normalize('NFC');
+                const metaEntry = zipEntryMap.get(metaZipPath);
+                if (metaEntry && metaEntry.getData) {
+                  try {
+                    const textWriter = new TextWriter();
+                    const jsonText = await metaEntry.getData(textWriter);
+                    const metaParsed = safeParseJson(jsonText);
+                    if (metaParsed && typeof metaParsed.title === 'string' && metaParsed.title.trim() && !/^Photos from \d{4}$/.test(metaParsed.title.trim())) {
+                      albumName = metaParsed.title.trim();
+                    }
+                  } catch {}
+                }
+              }
             }
 
             // 4. Process buffer / inject EXIF if applicable
@@ -1042,7 +1085,11 @@ export function useToolPipeline() {
             // 5. Read, process, and write output directly using streams where possible
             let writable: any = null;
             try {
-              if (epochSec && isJpeg(fileRecord.filename)) {
+              const engine = useSettingsStore.getState().exifEngine;
+              const isVideo = fileRecord.filename.toLowerCase().endsWith('.mp4') || fileRecord.filename.toLowerCase().endsWith('.mov');
+              const isSupported = isJpeg(fileRecord.filename) || (engine === 'wasm' && isVideo);
+
+              if (epochSec && isSupported) {
                 actionStr = 'Restored';
                 levelStr = 'success';
 
@@ -1059,19 +1106,22 @@ export function useToolPipeline() {
 
                 if (bufferOrBlob) {
                   // Run EXIF injection in the background Worker
-                  const res = await pool.runTask('inject_exif', {
+                  const taskName = engine === 'wasm' ? 'inject_wasm' : 'inject_exif';
+                  const res = await pool.runTask(taskName, {
                     buffer: bufferOrBlob,
                     epochSec,
                     lat,
                     lng,
                     filename: fileRecord.filename,
                     description,
-                    people
+                    people,
+                    albumName,
+                    type: isVideo ? 'video' : 'image'
                   }, [bufferOrBlob]);
 
                   bufferOrBlob = res.buffer;
                   if (res.success) {
-                    actionStr = 'Deep Injected';
+                    actionStr = engine === 'wasm' ? 'WASM Injected' : 'Deep Injected';
                   } else {
                     // File was still saved — only the EXIF injection failed.
                     // Count as exifFailed (warn), not a hard error.
@@ -1887,7 +1937,17 @@ export function useToolPipeline() {
 
     window.dispatchEvent(new CustomEvent('takeoutfix-action-triggered'))
     const sourceName = zipFile ? zipFile.name : (takeoutFolder ? takeoutFolder.name : '');
-    if (!sourceName || (!outputFolder && !useZip)) return
+    if (!sourceName) {
+      console.warn("Cannot start processing: No source folder or ZIP file selected.");
+      useToastStore.getState().addToast("Please select a Source Folder or ZIP archive first.", "error");
+      return;
+    }
+
+    if (!outputFolder && !useZip) {
+      console.warn("Cannot start processing: No destination folder selected.");
+      useToastStore.getState().addToast("Please select a Destination Output Folder first.", "error");
+      return;
+    }
 
     try {
       if (takeoutFolder && outputFolder && !useZip) {
@@ -2045,6 +2105,12 @@ export function useToolPipeline() {
 
   const cancelProcessing = async () => {
     setActiveWorkersCount(0)
+
+    // Terminate the worker pool immediately so in-flight tasks don't block
+    if (workerPoolRef.current) {
+      workerPoolRef.current.terminate()
+      workerPoolRef.current = null
+    }
 
     if (currentZipWriterRef.current) {
       try {
@@ -2217,7 +2283,8 @@ export function useToolPipeline() {
       timeString = "Less than 15 seconds";
     }
 
-    return `⏱️ Est. restoration time: ${timeString}${scannedFiles > 0 ? ' remaining' : ''}`;
+    const speedText = bytesPerSec > 0 ? ` @ ${formatByteSize(bytesPerSec)}/s` : '';
+    return `⏱️ Est. restoration time: ${timeString}${scannedFiles > 0 ? ' remaining' : ''}${speedText}`;
   };
 
   const resetUserQuota = async () => {
