@@ -716,13 +716,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const docRef = doc(db, 'users', currentUser.uid);
     const adminRef = doc(db, 'admins', currentUser.uid);
 
-    // Fetch user and admin records in parallel to reduce database RTT latency
+    // Fetch user and admin records in parallel with catch handlers so Firestore 429/quota errors never crash auth initialization
     const [snap, adminSnap] = await Promise.all([
-      getDoc(docRef),
-      getDoc(adminRef)
+      getDoc(docRef).catch((err) => {
+        console.warn("Firestore getDoc(users) quota/network error:", err?.message || err);
+        return null;
+      }),
+      getDoc(adminRef).catch((err) => {
+        console.warn("Firestore getDoc(admins) quota/network error:", err?.message || err);
+        return null;
+      })
     ]);
 
-    const isAdminUser = adminSnap.exists() || isSuperAdmin || isDev;
+    const isAdminUser = (adminSnap && adminSnap.exists()) || isSuperAdmin || isDev;
 
     const profileData = {
       email: currentUser.email,
@@ -732,7 +738,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     const pendingUpdates: any = {};
 
-    if (snap.exists()) {
+    if (snap && snap.exists()) {
       const data = snap.data() as UserData & { sessionIds?: string[] };
       
       // 1. Sync isAdmin flag if needed
@@ -833,16 +839,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
       }
     } else {
-      // New user registration
+      // New user registration or Firestore 429 quota fallback
       const displayName = currentUser.displayName || '';
       const email = currentUser.email || '';
       const nameParts = displayName.trim().split(/\s+/);
       const extractedFirstName = nameParts[0] || '';
       const extractedLastName = nameParts.slice(1).join(' ') || '';
-      const defaultUsername = await generateUniqueUsername(email, displayName, currentUser.uid);
+      const defaultUsername = email ? email.split('@')[0] : 'user';
 
       const newData = {
-        plan: 'free' as PlanType,
+        plan: (isSuperAdmin ? 'super' : 'free') as PlanType,
         usedBytes: 0,
         usedFiles: 0,
         totalBytesProcessed: 0,
@@ -857,12 +863,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         createdAt: Date.now(),
         sessionIds: [deviceSessionId]
       };
-      await setDoc(docRef, newData);
+      if (snap) {
+        await setDoc(docRef, newData).catch(() => {});
+        const globalRef = doc(db, 'platform_stats', 'global');
+        await setDoc(globalRef, { usersCount: increment(1) }, { merge: true }).catch(console.error);
+      }
       setUserData(newData as any);
       setSessionRegistered(true);
-
-      const globalRef = doc(db, 'platform_stats', 'global');
-      await setDoc(globalRef, { usersCount: increment(1) }, { merge: true }).catch(console.error);
     }
 
     if (isSuperAdmin || isDev) {
@@ -874,12 +881,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         role: isSuperAdmin ? 'SUPER_ADMIN' : 'ADMIN',
         status: 'online',
         lastSeen: Date.now(),
-        createdAt: adminSnap.exists() ? adminSnap.data().createdAt : Date.now(),
+        createdAt: (adminSnap && adminSnap.exists()) ? adminSnap.data().createdAt : Date.now(),
       };
       
       // Only write to admins collection if the record is missing or outdated
-      let adminNeedsWrite = !adminSnap.exists();
-      if (adminSnap.exists()) {
+      let adminNeedsWrite = !adminSnap || !adminSnap.exists();
+      if (adminSnap && adminSnap.exists()) {
         const existingAdmin = adminSnap.data();
         if (existingAdmin.email !== adminRecord.email ||
             existingAdmin.displayName !== adminRecord.displayName ||
@@ -893,7 +900,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         await setDoc(adminRef, adminRecord, { merge: true }).catch(console.error);
       }
       setAdminData(adminRecord);
-    } else if (adminSnap.exists()) {
+    } else if (adminSnap && adminSnap.exists()) {
       const adminRecord = adminSnap.data() as AdminData;
       if (currentUser.photoURL && adminRecord.photoURL !== currentUser.photoURL) {
         adminRecord.photoURL = currentUser.photoURL;

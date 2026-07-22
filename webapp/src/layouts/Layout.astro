@@ -67,6 +67,39 @@ const canonicalUrl = `https://takeoutfix.pages.dev${Astro.url.pathname.replace(/
       })();
     </script>
 
+    <!-- Production Code Protection & Anti-Inspect Script -->
+    <script is:inline>
+      (() => {
+        const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+        if (isLocalhost) return;
+
+        // 1. Disable Right Click (Context Menu)
+        document.addEventListener('contextmenu', (e) => e.preventDefault());
+
+        // 2. Block Inspect Keyboard Shortcuts (F12, Ctrl+Shift+I/J/C, Ctrl+U/S)
+        document.addEventListener('keydown', (e) => {
+          if (
+            e.key === 'F12' ||
+            (e.ctrlKey && e.shiftKey && ['I','i','J','j','C','c'].includes(e.key)) ||
+            (e.ctrlKey && ['U','u','S','s'].includes(e.key))
+          ) {
+            e.preventDefault();
+            e.stopPropagation();
+            return false;
+          }
+        });
+
+        // 3. Anti-DevTools Debug Loop
+        setInterval(() => {
+          const startTime = performance.now();
+          (function() { return false; })['constructor']('debugger')();
+          if (performance.now() - startTime > 100) {
+            console.clear();
+          }
+        }, 1000);
+      })();
+    </script>
+
     <!-- Global Asset Error Handler: Auto-reload page when dynamic chunk/asset loads fail due to new deployments -->
     <script is:inline>
       const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';

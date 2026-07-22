@@ -23,6 +23,13 @@ export default defineConfig({
     })
   ],
   vite: {
+    esbuild: {
+      drop: ['console', 'debugger'],
+      legalComments: 'none'
+    },
+    build: {
+      sourcemap: false
+    },
     resolve: {
       alias: {
         '@': srcPath
