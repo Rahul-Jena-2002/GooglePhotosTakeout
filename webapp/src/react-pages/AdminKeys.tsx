@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from "react"
 import { doc, getDoc, setDoc, onSnapshot } from "firebase/firestore"
 import { db } from "../firebase"
 import { useAuth } from "../contexts/AuthContext"
+import { isSuperAdminEmail } from "../lib/adminAuth"
 import { useToastStore } from "../store/useToastStore"
 import { decrypt, encrypt, deriveKeyFromPassword } from "../lib/crypto"
 import {
@@ -792,8 +793,8 @@ const INDEXNOW_KEY = "${indexNowKeyValue}";
   }, [])
 
   const isDev = import.meta.env.DEV
-  const isSuperAdminEmail = (user?.email || adminData?.email) === 'rahuljena.dev@gmail.com'
-  const hasAccess = isDev || isSuperAdminEmail || (adminData && adminData.role === "SUPER_ADMIN")
+  const isSuperAdminEmailMatch = isSuperAdminEmail(user?.email || adminData?.email)
+  const hasAccess = isDev || isSuperAdminEmailMatch || (adminData && adminData.role === "SUPER_ADMIN")
 
   if (authLoading && !isDev) {
     return (

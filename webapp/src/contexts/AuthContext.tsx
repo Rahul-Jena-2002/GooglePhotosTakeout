@@ -91,7 +91,7 @@ export const DEFAULT_FEATURES_CONFIG: FeaturesConfig = {
 export type { PlanPrices, RegionPricingConfig, CountryOption } from '../lib/planPrices';
 export { REGION_PRICING_CONFIGS, formatPrice, getActivePrice, PLAN_PRICES, COUNTRIES, getRegionFromCountry } from '../lib/planPrices';
 
-const SUPER_ADMIN_EMAILS = ['rahuljena.dev@gmail.com'];
+import { isSuperAdminEmail } from '../lib/adminAuth';
 
 export interface UserData {
   plan: PlanType;
@@ -428,7 +428,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   // Auto-register developer as superadmin on Firestore when on localhost
   useEffect(() => {
-    if (import.meta.env.DEV && user && user.email && SUPER_ADMIN_EMAILS.includes(user.email)) {
+    if (import.meta.env.DEV && user && user.email && isSuperAdminEmail(user.email)) {
       const registerLocalAdmin = async () => {
         try {
           await setDoc(doc(db, "admins", user.uid), {
@@ -711,7 +711,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
 
     const isDev = import.meta.env.DEV;
-    const isSuperAdmin = SUPER_ADMIN_EMAILS.includes(currentUser.email || '');
+    const isSuperAdmin = isSuperAdminEmail(currentUser.email);
 
     const docRef = doc(db, 'users', currentUser.uid);
     const adminRef = doc(db, 'admins', currentUser.uid);

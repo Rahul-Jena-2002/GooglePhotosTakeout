@@ -2,7 +2,7 @@ import { auth, db, googleProvider, signInWithPopup, signOut } from "../firebase"
 import { setAdFree, setUserInteracted, checkAdBlock, hideBanner } from "./browserAdblock";
 import { bindNotificationFetch } from "./browserNotifications";
 
-const SUPER_ADMIN_EMAILS = ['rahuljena.dev@gmail.com'];
+import { isSuperAdminEmail } from "./adminAuth";
 let unsubUserDoc: any = null;
 let isAuthListenerInitialized = false;
 
@@ -108,7 +108,7 @@ export const syncUserUI = () => {
         }
       }
       
-      const isAdmin = cachedUser.isAdmin === true || (cachedUser.email && SUPER_ADMIN_EMAILS.includes(cachedUser.email));
+      const isAdmin = cachedUser.isAdmin === true || isSuperAdminEmail(cachedUser.email);
       if (isAdmin) {
         desktopDashboardLink?.classList.add("hidden");
         mobileDashboardLink?.classList.add("hidden");

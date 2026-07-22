@@ -1,6 +1,7 @@
 import { useState } from "react"
 import { Link, Outlet, useLocation, Navigate } from "react-router-dom"
 import { useAuth } from "../contexts/AuthContext"
+import { isSuperAdminEmail as checkSuperAdminEmail } from "../lib/adminAuth"
 import { useAdminPresence } from "../hooks/useAdminPresence"
 import { useTelemetrySync } from "../hooks/useTelemetrySync"
 import AdminTopbar from "./AdminTopbar"
@@ -70,7 +71,7 @@ export default function AdminLayout() {
     return null;
   }
 
-  const isSuperAdminEmail = (user?.email || adminData?.email) === 'rahuljena.dev@gmail.com'
+  const isSuperAdminEmail = checkSuperAdminEmail(user?.email || adminData?.email)
   const role = isSuperAdminEmail ? "SUPER_ADMIN" : (adminData?.role ?? "ADMIN")
   const isSuperAdmin = role === "SUPER_ADMIN" || isSuperAdminEmail
   const isAdminOrAbove = ["SUPER_ADMIN", "ADMIN"].includes(role) || isSuperAdminEmail

@@ -37,6 +37,8 @@ export default defineConfig({
     },
     optimizeDeps: {
       exclude: [
+        'astro',
+        'astro/compiler-runtime',
         'astro:transitions',
         'astro/virtual-modules/transitions',
         'astro/virtual-modules/transitions-router.js',
