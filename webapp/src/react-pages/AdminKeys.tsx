@@ -792,7 +792,8 @@ const INDEXNOW_KEY = "${indexNowKeyValue}";
   }, [])
 
   const isDev = import.meta.env.DEV
-  const hasAccess = isDev || (adminData && adminData.role === "SUPER_ADMIN")
+  const isSuperAdminEmail = ['rahuljena.dev@gmail.com', 'rahuljena.dav@gmail.com', 'rahuljenasonu@gmail.com'].includes(user?.email || adminData?.email || '')
+  const hasAccess = isDev || isSuperAdminEmail || (adminData && adminData.role === "SUPER_ADMIN")
 
   if (authLoading && !isDev) {
     return (

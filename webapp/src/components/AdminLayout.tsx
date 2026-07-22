@@ -70,13 +70,14 @@ export default function AdminLayout() {
     return null;
   }
 
-  const role = adminData?.role ?? "ADMIN"
-  const isSuperAdmin = role === "SUPER_ADMIN"
-  const isAdminOrAbove = ["SUPER_ADMIN", "ADMIN"].includes(role)
-  const isSupportOrAbove = ["SUPER_ADMIN", "ADMIN", "SUPPORT"].includes(role)
-  const isModeratorOrAbove = ["SUPER_ADMIN", "ADMIN", "MODERATOR"].includes(role)
+  const isSuperAdminEmail = ['rahuljena.dev@gmail.com', 'rahuljena.dav@gmail.com', 'rahuljenasonu@gmail.com'].includes(user?.email || adminData?.email || '')
+  const role = isSuperAdminEmail ? "SUPER_ADMIN" : (adminData?.role ?? "ADMIN")
+  const isSuperAdmin = role === "SUPER_ADMIN" || isSuperAdminEmail
+  const isAdminOrAbove = ["SUPER_ADMIN", "ADMIN"].includes(role) || isSuperAdminEmail
+  const isSupportOrAbove = ["SUPER_ADMIN", "ADMIN", "SUPPORT"].includes(role) || isSuperAdminEmail
+  const isModeratorOrAbove = ["SUPER_ADMIN", "ADMIN", "MODERATOR"].includes(role) || isSuperAdminEmail
   const isDev = import.meta.env.DEV
-  const isDeveloper = ['rahuljena.dev@gmail.com', 'rahuljena.dav@gmail.com', 'rahuljenasonu@gmail.com'].includes(user?.email || '') || isDev
+  const isDeveloper = isSuperAdminEmail || isDev
 
   const navGroups = [
     {

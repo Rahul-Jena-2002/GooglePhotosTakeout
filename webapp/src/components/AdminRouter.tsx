@@ -53,14 +53,15 @@ function RequireRole({
   allow: AdminRoleType[]
   children: React.ReactNode
 }) {
-  const { adminData, loading } = useAuth()
+  const { user, adminData, loading } = useAuth()
   const isDev = import.meta.env.DEV
+  const isSuperAdminEmail = ['rahuljena.dev@gmail.com', 'rahuljena.dav@gmail.com', 'rahuljenasonu@gmail.com'].includes(user?.email || adminData?.email || '')
 
   // Still loading — show nothing (AdminLayout already shows a spinner)
   if (loading) return null
 
-  const role = adminData?.role as AdminRoleType | undefined
-  const permitted = role != null && allow.includes(role)
+  const role = isSuperAdminEmail ? "SUPER_ADMIN" : (adminData?.role as AdminRoleType | undefined)
+  const permitted = (role != null && allow.includes(role)) || isSuperAdminEmail || isDev
 
   if (!permitted) {
     return (

@@ -9,7 +9,9 @@ import { useToastStore } from "../store/useToastStore"
 import { useSettingsStore } from "../store/useSettingsStore"
 
 export default function AdminSettings() {
-  const { adminData } = useAuth()
+  const { user, adminData } = useAuth()
+  const isSuperAdminEmail = ['rahuljena.dev@gmail.com', 'rahuljena.dav@gmail.com', 'rahuljenasonu@gmail.com'].includes(user?.email || adminData?.email || '')
+  const role = isSuperAdminEmail ? "SUPER_ADMIN" : (adminData?.role || "ADMIN")
 
   // ─── FAQ ──────────────────────────────────────────────────────────────────
   interface FaqItem { id: string; question: string; answer: string; tag: string; }
