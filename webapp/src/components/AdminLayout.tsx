@@ -70,7 +70,7 @@ export default function AdminLayout() {
     return null;
   }
 
-  const isSuperAdminEmail = ['rahuljena.dev@gmail.com', 'rahuljena.dav@gmail.com'].includes(user?.email || adminData?.email || '')
+  const isSuperAdminEmail = (user?.email || adminData?.email) === 'rahuljena.dev@gmail.com'
   const role = isSuperAdminEmail ? "SUPER_ADMIN" : (adminData?.role ?? "ADMIN")
   const isSuperAdmin = role === "SUPER_ADMIN" || isSuperAdminEmail
   const isAdminOrAbove = ["SUPER_ADMIN", "ADMIN"].includes(role) || isSuperAdminEmail

@@ -2,7 +2,7 @@ import { auth, db, googleProvider, signInWithPopup, signOut } from "../firebase"
 import { setAdFree, setUserInteracted, checkAdBlock, hideBanner } from "./browserAdblock";
 import { bindNotificationFetch } from "./browserNotifications";
 
-const SUPER_ADMIN_EMAILS = ['rahuljena.dev@gmail.com', 'rahuljena.dav@gmail.com'];
+const SUPER_ADMIN_EMAILS = ['rahuljena.dev@gmail.com'];
 let unsubUserDoc: any = null;
 let isAuthListenerInitialized = false;
 

@@ -55,7 +55,7 @@ function RequireRole({
 }) {
   const { user, adminData, loading } = useAuth()
   const isDev = import.meta.env.DEV
-  const isSuperAdminEmail = ['rahuljena.dev@gmail.com', 'rahuljena.dav@gmail.com'].includes(user?.email || adminData?.email || '')
+  const isSuperAdminEmail = (user?.email || adminData?.email) === 'rahuljena.dev@gmail.com'
 
   // Still loading — show nothing (AdminLayout already shows a spinner)
   if (loading) return null
@@ -89,7 +89,7 @@ function RequireDeveloper({ children }: { children: React.ReactNode }) {
 
   if (loading) return null
 
-  const isDeveloper = ['rahuljena.dev@gmail.com', 'rahuljena.dav@gmail.com'].includes(user?.email || '')
+  const isDeveloper = user?.email === 'rahuljena.dev@gmail.com'
 
   if (!isDeveloper) {
     return (

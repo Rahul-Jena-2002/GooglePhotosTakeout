@@ -10,7 +10,7 @@ import { useSettingsStore } from "../store/useSettingsStore"
 
 export default function AdminSettings() {
   const { user, adminData } = useAuth()
-  const isSuperAdminEmail = ['rahuljena.dev@gmail.com', 'rahuljena.dav@gmail.com'].includes(user?.email || adminData?.email || '')
+  const isSuperAdminEmail = (user?.email || adminData?.email) === 'rahuljena.dev@gmail.com'
   const role = isSuperAdminEmail ? "SUPER_ADMIN" : (adminData?.role || "ADMIN")
 
   // ─── FAQ ──────────────────────────────────────────────────────────────────
