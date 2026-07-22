@@ -191,7 +191,7 @@ function resolveSyncUrl(endpoint: string, storedUrl: string): string {
 
 export default function AdminPaymentGateway() {
   const { user, adminData, loading: authLoading } = useAuth()
-  const isSuperAdminEmail = ['rahuljena.dev@gmail.com', 'rahuljena.dav@gmail.com', 'rahuljenasonu@gmail.com'].includes(user?.email || adminData?.email || '')
+  const isSuperAdminEmail = ['rahuljena.dev@gmail.com', 'rahuljena.dav@gmail.com'].includes(user?.email || adminData?.email || '')
   const role = isSuperAdminEmail ? "SUPER_ADMIN" : (adminData?.role ?? "ADMIN")
   const isSuperAdmin = role === "SUPER_ADMIN" || isSuperAdminEmail
   const isDev = import.meta.env.DEV

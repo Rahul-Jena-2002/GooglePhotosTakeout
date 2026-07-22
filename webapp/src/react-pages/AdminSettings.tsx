@@ -10,7 +10,7 @@ import { useSettingsStore } from "../store/useSettingsStore"
 
 export default function AdminSettings() {
   const { user, adminData } = useAuth()
-  const isSuperAdminEmail = ['rahuljena.dev@gmail.com', 'rahuljena.dav@gmail.com', 'rahuljenasonu@gmail.com'].includes(user?.email || adminData?.email || '')
+  const isSuperAdminEmail = ['rahuljena.dev@gmail.com', 'rahuljena.dav@gmail.com'].includes(user?.email || adminData?.email || '')
   const role = isSuperAdminEmail ? "SUPER_ADMIN" : (adminData?.role || "ADMIN")
 
   // ─── FAQ ──────────────────────────────────────────────────────────────────
@@ -39,7 +39,6 @@ export default function AdminSettings() {
   const { exifEngine, setExifEngine } = useSettingsStore()
 
   const [savingGlobal, setSavingGlobal] = useState(false)
-  const role = adminData?.role || "ADMIN"
 
   // Load global settings and FAQs in real-time
   useEffect(() => {
