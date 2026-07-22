@@ -88,7 +88,7 @@ function RequireDeveloper({ children }: { children: React.ReactNode }) {
 
   if (loading) return null
 
-  const isDeveloper = user?.email === 'rahuljena.dev@gmail.com'
+  const isDeveloper = ['rahuljena.dev@gmail.com', 'rahuljena.dav@gmail.com', 'rahuljenasonu@gmail.com'].includes(user?.email || '')
 
   if (!isDeveloper) {
     return (

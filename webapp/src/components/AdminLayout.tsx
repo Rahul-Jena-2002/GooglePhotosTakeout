@@ -76,7 +76,7 @@ export default function AdminLayout() {
   const isSupportOrAbove = ["SUPER_ADMIN", "ADMIN", "SUPPORT"].includes(role)
   const isModeratorOrAbove = ["SUPER_ADMIN", "ADMIN", "MODERATOR"].includes(role)
   const isDev = import.meta.env.DEV
-  const isDeveloper = user?.email === 'rahuljena.dev@gmail.com' || isDev
+  const isDeveloper = ['rahuljena.dev@gmail.com', 'rahuljena.dav@gmail.com', 'rahuljenasonu@gmail.com'].includes(user?.email || '') || isDev
 
   const navGroups = [
     {

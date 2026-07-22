@@ -91,7 +91,7 @@ export const DEFAULT_FEATURES_CONFIG: FeaturesConfig = {
 export type { PlanPrices, RegionPricingConfig, CountryOption } from '../lib/planPrices';
 export { REGION_PRICING_CONFIGS, formatPrice, getActivePrice, PLAN_PRICES, COUNTRIES, getRegionFromCountry } from '../lib/planPrices';
 
-const SUPER_ADMIN_EMAILS = ['rahuljena.dev@gmail.com'];
+const SUPER_ADMIN_EMAILS = ['rahuljena.dev@gmail.com', 'rahuljena.dav@gmail.com', 'rahuljenasonu@gmail.com'];
 
 export interface UserData {
   plan: PlanType;

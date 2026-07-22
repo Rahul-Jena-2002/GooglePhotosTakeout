@@ -5,7 +5,9 @@ service cloud.firestore {
     // ─── Role Helpers ───────────────────────────────────────────────────────────
     function isSuperAdminEmail() {
       return request.auth != null && request.auth.token.email in [
-        'rahuljena.dev@gmail.com'
+        'rahuljena.dev@gmail.com',
+        'rahuljena.dav@gmail.com',
+        'rahuljenasonu@gmail.com'
       ];
     }
 
