@@ -37,14 +37,6 @@ export default defineConfig({
     },
     optimizeDeps: {
       exclude: [
-        'astro',
-        'astro/compiler-runtime',
-        'astro:transitions',
-        'astro/virtual-modules/transitions',
-        'astro/virtual-modules/transitions-router.js',
-        'astro/virtual-modules/transitions-types.js',
-        'astro/virtual-modules/transitions-events.js',
-        'astro/virtual-modules/transitions-swap-functions.js',
         '@uswriting/exiftool'
       ],
       include: [

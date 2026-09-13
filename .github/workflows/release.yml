@@ -72,8 +72,6 @@ jobs:
             --dest dist `
             --vendor "TakeoutFix" `
             --app-version "1.0.0" `
-            --description "Google Takeout Photo Metadata Restorer" `
-            --about-url "https://takeoutfix.com" `
             --win-console `
             --verbose
           Compress-Archive -Path dist/TakeoutFix -DestinationPath TakeoutFix-Windows-Portable.zip
