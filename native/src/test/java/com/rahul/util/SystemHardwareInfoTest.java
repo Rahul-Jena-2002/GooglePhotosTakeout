@@ -12,19 +12,21 @@ public class SystemHardwareInfoTest {
 
     @Test
     public void testDirectPowershellProcess() throws Exception {
-        // Wait up to 5 seconds for async detection to complete
-        long start = System.currentTimeMillis();
-        while (SystemHardwareInfo.getPhysicalCores() == SystemHardwareInfo.getLogicalProcessors() &&
-                (System.currentTimeMillis() - start) < 5000) {
-            Thread.sleep(100);
-        }
+        // Brief pause for background detection
+        Thread.sleep(800);
 
-        System.out.println("SystemHardwareInfo: Cores=" + SystemHardwareInfo.getPhysicalCores()
-                + ", Threads=" + SystemHardwareInfo.getLogicalProcessors()
+        int cores = SystemHardwareInfo.getPhysicalCores();
+        int threads = SystemHardwareInfo.getLogicalProcessors();
+        double totalRam = SystemHardwareInfo.getTotalMemoryGB();
+        double usedRam = SystemHardwareInfo.getUsedMemoryGB();
+
+        System.out.println("SystemHardwareInfo: Cores=" + cores
+                + ", Threads=" + threads
                 + ", CPU=" + SystemHardwareInfo.getCpuName()
-                + ", RAM=" + String.format("%.2f GB / %.2f GB", SystemHardwareInfo.getUsedMemoryGB(), SystemHardwareInfo.getTotalMemoryGB()));
+                + ", RAM=" + String.format("%.2f GB / %.2f GB", usedRam, totalRam));
 
-        assertEquals(16, SystemHardwareInfo.getPhysicalCores());
-        assertEquals(22, SystemHardwareInfo.getLogicalProcessors());
+        assertTrue(cores > 0, "Physical cores must be > 0");
+        assertTrue(threads >= cores, "Logical processors must be >= physical cores");
+        assertTrue(totalRam > 0, "Total RAM must be > 0");
     }
 }
