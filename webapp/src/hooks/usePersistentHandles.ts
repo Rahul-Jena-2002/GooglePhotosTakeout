@@ -17,7 +17,7 @@ import {
   loadHandles, saveHandles, clearHandles,
   requestHandlePermission, queryHandlePermission,
   requestStoragePersistence, type StoredHandles
-} from './handleStore';
+} from '../lib/handleStore';
 
 export type ReGrantState = 'idle' | 'checking' | 'needs_grant' | 'granting' | 'granted' | 'failed';
 
