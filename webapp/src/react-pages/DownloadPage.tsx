@@ -6,10 +6,6 @@ import {
   WifiOff, 
   HardDrive, 
   Terminal, 
-  CheckCircle2, 
-  ArrowRight,
-  Info,
-  Server,
   AlertCircle
 } from "lucide-react";
 
