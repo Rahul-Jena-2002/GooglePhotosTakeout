@@ -1,7 +1,7 @@
 globalThis.process ??= {};
 globalThis.process.env ??= {};
 import { b5 as removeQueryString, A as AstroError, b6 as NoImageMetadata, b7 as FailedToFetchRemoteImageDimensions, b8 as RemoteImageNotAllowed, ay as joinPaths, b9 as ExpectedImage, ba as isRemotePath, bb as LocalImageUsedWrongly, bc as MissingImageDimension, bd as UnsupportedImageFormat, be as IncompatibleDescriptorOptions, bf as UnsupportedImageConversion, bg as ExpectedImageOptions, bh as ExpectedNotESMImage, bi as InvalidImageService, bj as ImageMissingAlt, v as maybeRenderHead, a0 as addAttribute, K as renderTemplate, bk as FontFamilyNotFound, bl as unescapeHTML, bm as MissingGetFontFileRequestUrl } from "./sequence_DYiE4MAZ.mjs";
-import { i as isRemoteAllowed, s as spreadAttributes } from "./worker-entry_DDy5quKC.mjs";
+import { i as isRemoteAllowed, s as spreadAttributes } from "./worker-entry_BEUSWNn3.mjs";
 import { c as createComponent } from "./astro-component_SX49-S6w.mjs";
 import { env } from "cloudflare:workers";
 const VALID_SUPPORTED_FORMATS = [
@@ -1509,7 +1509,7 @@ async function getConfiguredImageService() {
   if (!globalThis?.astroAsset?.imageService) {
     const { default: service } = await import(
       // @ts-expect-error
-      "./noop_jleerAYF.mjs"
+      "./noop_2HubPGla.mjs"
     ).catch((e) => {
       const error = new AstroError(InvalidImageService);
       error.cause = e;
