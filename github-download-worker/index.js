@@ -22,8 +22,8 @@ export default {
       targetFileName = "TakeoutFix-Linux.rpm";
     } else if (path === "/download/linux/portable" || path === "/download/linux/tar") {
       targetFileName = "TakeoutFix-Linux-Portable.tar.gz";
-    } else if (path === "/download/linux") {
-      targetFileName = "TakeoutFix-Linux.deb";
+    } else if (path === "/" || path === "/download") {
+      return Response.redirect("https://takeoutfix.com/download", 302);
     } else {
       return new Response("Not Found. Available routes:\n- /download/windows/installer (MSI)\n- /download/windows/portable (.zip)\n- /download/macos/installer (.dmg)\n- /download/macos/portable (.zip)\n- /download/linux/deb (.deb)\n- /download/linux/rpm (.rpm)\n- /download/linux/portable (.tar.gz)", {
         status: 404,
