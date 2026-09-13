@@ -1,5 +1,6 @@
 package com.rahul.gui.components;
 
+import com.rahul.gui.service.SystemHardwareInfo;
 import com.rahul.gui.service.UserSyncBridgeService;
 import com.rahul.gui.theme.ThemeColors;
 import com.rahul.service.SessionStatsService;
@@ -574,17 +575,22 @@ public class CommandCenterPanel extends JPanel {
     }
 
     private void startHardwareMonitor() {
-        Timer timer = new Timer(2000, e -> {
+        Timer timer = new Timer(1500, e -> {
             try {
-                long totalMem = Runtime.getRuntime().totalMemory() / (1024 * 1024);
-                long freeMem = Runtime.getRuntime().freeMemory() / (1024 * 1024);
-                long usedMem = totalMem - freeMem;
-                int threads = Thread.activeCount();
-                int cores = Runtime.getRuntime().availableProcessors();
+                double usedRamGB = SystemHardwareInfo.getUsedMemoryGB();
+                double totalRamGB = SystemHardwareInfo.getTotalMemoryGB();
+                int physicalCores = SystemHardwareInfo.getPhysicalCores();
+                int logicalThreads = SystemHardwareInfo.getLogicalProcessors();
+                String cpuName = SystemHardwareInfo.getCpuName();
 
-                ramLabel.setText(String.format("RAM: %d MB", usedMem));
-                cpuLabel.setText(String.format("Cores: %d", cores));
-                threadLabel.setText(String.format("Threads: %d", threads));
+                ramLabel.setText(String.format("RAM: %.1f GB", usedRamGB));
+                ramLabel.setToolTipText(String.format("Physical System RAM: %.1f GB / %.1f GB used", usedRamGB, totalRamGB));
+
+                cpuLabel.setText(String.format("Cores: %d", physicalCores));
+                cpuLabel.setToolTipText(cpuName.isEmpty() ? "Physical CPU Cores: " + physicalCores : cpuName + " (" + physicalCores + " Cores)");
+
+                threadLabel.setText(String.format("Threads: %d", logicalThreads));
+                threadLabel.setToolTipText(String.format("Logical Processors / Threads: %d (Task Manager)", logicalThreads));
             } catch (Exception ignored) {}
         });
         timer.start();

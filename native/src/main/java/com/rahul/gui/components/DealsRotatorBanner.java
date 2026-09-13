@@ -1,5 +1,6 @@
 package com.rahul.gui.components;
 
+import com.rahul.gui.service.SystemHardwareInfo;
 import com.rahul.gui.theme.ThemeColors;
 
 import javax.swing.*;
@@ -69,14 +70,17 @@ public class DealsRotatorBanner extends JPanel {
     private void startTelemetryMonitor() {
         scheduler.scheduleAtFixedRate(() -> {
             try {
-                int cores = Runtime.getRuntime().availableProcessors();
-                long totalMemMB = Runtime.getRuntime().totalMemory() / (1024 * 1024);
-                long freeMemMB = Runtime.getRuntime().freeMemory() / (1024 * 1024);
-                long usedMemMB = totalMemMB - freeMemMB;
-                int activeThreads = Thread.activeCount();
+                int cores = SystemHardwareInfo.getPhysicalCores();
+                int threads = SystemHardwareInfo.getLogicalProcessors();
+                double usedRamGB = SystemHardwareInfo.getUsedMemoryGB();
+                double totalRamGB = SystemHardwareInfo.getTotalMemoryGB();
+                double cpuLoad = SystemHardwareInfo.getCpuLoadPercent();
+                String cpuName = SystemHardwareInfo.getCpuName();
 
+                String header = cpuName.isEmpty() ? "Hardware" : cpuName;
                 SwingUtilities.invokeLater(() -> {
-                    telemetryLabel.setText(String.format("Hardware: %d Cores | RAM %d MB / %d MB | Threads: %d", cores, usedMemMB, totalMemMB, activeThreads));
+                    telemetryLabel.setText(String.format("%s (%d Cores / %d Threads) | RAM: %.1f / %.1f GB | CPU: %.0f%%",
+                            header, cores, threads, usedRamGB, totalRamGB, cpuLoad));
                 });
             } catch (Exception ignored) {}
         }, 1, 2, TimeUnit.SECONDS);

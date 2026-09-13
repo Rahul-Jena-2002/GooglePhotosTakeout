@@ -1,5 +1,6 @@
 package com.rahul.controller;
 
+import com.rahul.gui.service.SystemHardwareInfo;
 import com.rahul.service.SessionStatsService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
@@ -163,41 +164,20 @@ public class SystemController {
 
     @GetMapping("/telemetry")
     public ResponseEntity<Map<String, Object>> getTelemetry() {
-        double cpuLoadPercent = 0.0;
-        long totalMemoryMB = 0;
-        long usedMemoryMB = 0;
-
-        java.lang.management.OperatingSystemMXBean baseBean = java.lang.management.ManagementFactory.getOperatingSystemMXBean();
-        if (baseBean instanceof com.sun.management.OperatingSystemMXBean sunBean) {
-            double load = sunBean.getCpuLoad();
-            if (load < 0) load = sunBean.getProcessCpuLoad();
-            if (load < 0) load = 0.0;
-            cpuLoadPercent = load * 100.0;
-            long totalPhysical = sunBean.getTotalMemorySize();
-            long freePhysical = sunBean.getFreeMemorySize();
-            if (totalPhysical > 0) {
-                totalMemoryMB = totalPhysical / (1024 * 1024);
-                usedMemoryMB = (totalPhysical - freePhysical) / (1024 * 1024);
-            }
-        }
-
-        // Fallback for JVM memory if physical RAM is unavailable
-        if (usedMemoryMB <= 0) {
-            long jvmTotal = Runtime.getRuntime().totalMemory();
-            long freeMemory = Runtime.getRuntime().freeMemory();
-            usedMemoryMB = (jvmTotal - freeMemory) / (1024 * 1024);
-            if (totalMemoryMB <= 0) totalMemoryMB = jvmTotal / (1024 * 1024);
-        }
-
-        int cores = Runtime.getRuntime().availableProcessors();
-        int threads = Math.max(1, (int) Math.round(cores * 0.80));
+        int cores = SystemHardwareInfo.getPhysicalCores();
+        int threads = SystemHardwareInfo.getLogicalProcessors();
+        double cpuLoadPercent = SystemHardwareInfo.getCpuLoadPercent();
+        long totalMemoryMB = SystemHardwareInfo.getTotalPhysicalMemoryBytes() / (1024 * 1024);
+        long usedMemoryMB = SystemHardwareInfo.getUsedPhysicalMemoryBytes() / (1024 * 1024);
+        String cpuName = SystemHardwareInfo.getCpuName();
 
         return ResponseEntity.ok(Map.of(
                 "cores", cores,
                 "threads", threads,
                 "cpuLoad", cpuLoadPercent,
                 "totalMemoryMB", totalMemoryMB,
-                "usedMemoryMB", usedMemoryMB
+                "usedMemoryMB", usedMemoryMB,
+                "cpuName", cpuName
         ));
     }
 
