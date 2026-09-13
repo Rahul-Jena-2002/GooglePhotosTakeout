@@ -2,6 +2,7 @@
   "name": "webapp",
   "private": true,
   "version": "0.0.0",
+  "license": "UNLICENSED",
   "type": "module",
   "scripts": {
     "dev": "astro dev",
@@ -10,6 +11,7 @@
     "lint": "eslint ."
   },
   "dependencies": {
+    "@emailjs/browser": "^4.4.1",
     "@ffmpeg/core": "^0.12.10",
     "@ffmpeg/ffmpeg": "^0.12.15",
     "@radix-ui/react-alert-dialog": "^1.1.16",

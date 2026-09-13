@@ -4,13 +4,14 @@
  */
 
 import { useState } from "react"
-import { FolderUp, HardDrive, Play, Square, Pause, Activity, Database, CheckCircle2, AlertCircle, AlertTriangle, Download, Eye, Layers, Copy, Lock, FileImage, FileJson, Search, Zap, Sparkles, ShieldCheck } from "lucide-react"
+import { FolderUp, HardDrive, Play, Square, Pause, Activity, Database, CheckCircle2, AlertCircle, AlertTriangle, Download, Eye, Layers, Copy, Lock, FileImage, FileJson, Search, Zap, Sparkles, ShieldCheck, RotateCcw } from "lucide-react"
 import { Button } from "../components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "../components/ui/card"
 import { Progress } from "../components/ui/progress"
 import AdUnit from "../components/AdUnit"
 import { getPlanCardStyles, type LogEntry } from "./useToolPipeline"
 import type { ActiveSession } from "../lib/SessionManager"
+import { usePersistentHandles } from "../hooks/usePersistentHandles"
 
 interface RestorePanelProps {
   // Tool tab routing
@@ -159,12 +160,9 @@ export function RestorePanel({
   handleSelectOutput,
   handleReGrantPermissions,
   startProcessing,
-  zipMode,
   cancelProcessing,
   pauseProcessing,
   resumeProcessing,
-  resetForNewRestore,
-  setShowCompareModal,
   viewerFile,
   viewerExif,
   viewerLoading,
@@ -183,8 +181,43 @@ export function RestorePanel({
 }: RestorePanelProps) {
   const [agreedToTerms, setAgreedToTerms] = useState(false);
 
+  // Persistent handle restore — auto-re-grants on tab reopen (VS Code model)
+  const { needsReGrant, storedFolderName, reGrantState, reGrantAccess } = usePersistentHandles()
+
+  // When re-grant succeeds, push handles into tool state
+  const handleReGrantBanner = async () => {
+    const handles = await reGrantAccess()
+    if (handles?.takeout) setTakeoutFolder(handles.takeout)
+    if (handles?.output) {
+      // outputFolder setter lives in useToolStore — dispatch via pipeline
+      // (RestorePanel receives setTakeoutFolder but not setOutputFolder — use window event)
+      window.dispatchEvent(new CustomEvent('takeoutfix-restore-output', { detail: handles.output }))
+    }
+  }
+
   return (
     <div className="flex-grow w-full lg:w-[72%] bg-black flex flex-col lg:h-full h-auto overflow-hidden order-1 lg:order-2">
+
+      {/* ── Persistent Handle Re-grant Banner (VS Code model) ──────────── */}
+      {needsReGrant && !takeoutFolder && (
+        <div className="flex items-center justify-between gap-3 px-4 py-2.5 bg-indigo-950/60 border-b border-indigo-500/20 text-sm">
+          <div className="flex items-center gap-2 min-w-0">
+            <FolderUp className="w-4 h-4 text-indigo-400 flex-shrink-0" />
+            <span className="text-zinc-300 truncate">
+              Previous workspace{storedFolderName ? <> — <strong className="text-white">{storedFolderName}</strong></> : ''} needs access to resume.
+            </span>
+          </div>
+          <button
+            onClick={handleReGrantBanner}
+            disabled={reGrantState === 'granting'}
+            className="flex items-center gap-1.5 flex-shrink-0 px-3 py-1 rounded-lg bg-indigo-600 hover:bg-indigo-500 disabled:opacity-60 text-white text-xs font-bold transition-all"
+          >
+            {reGrantState === 'granting'
+              ? <><RotateCcw className="w-3 h-3 animate-spin" /> Restoring...</>
+              : 'Re-grant Access'}
+          </button>
+        </div>
+      )}
 
       {/* ── Tab Header ────────────────────────────────────────────────── */}
       <div className="p-4 border-b border-white/5 bg-white/[0.01] flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">

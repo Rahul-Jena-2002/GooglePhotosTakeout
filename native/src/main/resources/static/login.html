@@ -1,0 +1,462 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TakeoutFix — Sign In</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <!-- Firebase App & Auth SDKs -->
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
+  <style>
+    :root {
+      --bg: #050505;
+      --card-bg: #0d0d0d;
+      --card-border: #222222;
+      --card-inner-border: rgba(255, 255, 255, 0.07);
+      --text-high: #f5f5f5;
+      --text-mid: #a3a3a3;
+      --text-muted: #525252;
+      --surface-elevated: #171717;
+      --surface-hover: #1f1f1f;
+      --mono-accent: #ffffff;
+      --mono-accent-text: #000000;
+    }
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+    }
+    body {
+      background-color: var(--bg);
+      background-image: 
+        radial-gradient(circle at 50% 0%, #1f1f1f 0%, transparent 65%),
+        radial-gradient(circle at 50% 100%, #121212 0%, transparent 70%);
+      color: var(--text-high);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      overflow-x: hidden;
+    }
+    .auth-container {
+      width: 100%;
+      max-width: 420px;
+      position: relative;
+    }
+    .auth-card {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 20px;
+      padding: 40px 32px;
+      box-shadow: 
+        0 30px 60px -15px rgba(0, 0, 0, 0.9),
+        inset 0 1px 0 var(--card-inner-border);
+      text-align: center;
+      position: relative;
+    }
+    .brand-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 24px;
+      padding: 4px 12px 4px 5px;
+      background: #141414;
+      border: 1px solid #262626;
+      border-radius: 100px;
+    }
+    .brand-logo {
+      background: #ffffff;
+      color: #000000;
+      font-weight: 900;
+      font-size: 11px;
+      letter-spacing: -0.5px;
+      padding: 3px 7px;
+      border-radius: 100px;
+      display: inline-block;
+    }
+    .brand-title {
+      font-size: 12px;
+      font-weight: 600;
+      letter-spacing: 0.5px;
+      color: #d4d4d4;
+      text-transform: uppercase;
+    }
+    h1 {
+      font-size: 22px;
+      font-weight: 700;
+      letter-spacing: -0.5px;
+      margin-bottom: 8px;
+      color: #ffffff;
+    }
+    p.desc {
+      font-size: 13px;
+      color: var(--text-mid);
+      line-height: 1.5;
+      margin-bottom: 30px;
+      font-weight: 400;
+    }
+    .btn-google {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      width: 100%;
+      padding: 13px 20px;
+      background: var(--mono-accent);
+      color: var(--mono-accent-text);
+      font-size: 14px;
+      font-weight: 700;
+      border: 1px solid #ffffff;
+      border-radius: 12px;
+      cursor: pointer;
+      transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+      text-decoration: none;
+      box-shadow: 0 4px 14px rgba(255, 255, 255, 0.1);
+    }
+    .btn-google:hover {
+      background: #eaeaea;
+      border-color: #eaeaea;
+      transform: translateY(-1px);
+      box-shadow: 0 6px 20px rgba(255, 255, 255, 0.15);
+    }
+    .btn-google:active {
+      transform: translateY(0);
+    }
+    .btn-google:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+    .google-icon {
+      width: 18px;
+      height: 18px;
+      fill: #000000;
+    }
+    .status-box {
+      margin-top: 20px;
+      padding: 12px 16px;
+      border-radius: 10px;
+      font-size: 12px;
+      display: none;
+      line-height: 1.4;
+      text-align: left;
+    }
+    .status-box.loading {
+      display: block;
+      background: #141414;
+      color: #d4d4d4;
+      border: 1px solid #262626;
+    }
+    .status-box.success {
+      display: block;
+      background: #121212;
+      color: #ffffff;
+      border: 1px solid #383838;
+    }
+    .status-box.error {
+      display: block;
+      background: #141414;
+      color: #e5e5e5;
+      border: 1px solid #404040;
+    }
+    .user-info {
+      display: none;
+      margin-top: 20px;
+      padding: 16px;
+      background: #141414;
+      border: 1px solid #262626;
+      border-radius: 12px;
+      text-align: left;
+    }
+    .user-info-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 8px;
+      font-size: 12px;
+    }
+    .user-info-row:last-child {
+      margin-bottom: 0;
+    }
+    .badge {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 6px;
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      background: #262626;
+      color: #ffffff;
+      border: 1px solid #333333;
+    }
+    .footer-note {
+      margin-top: 28px;
+      font-size: 11px;
+      color: var(--text-muted);
+      line-height: 1.5;
+      letter-spacing: -0.2px;
+    }
+    .footer-note code {
+      font-family: 'JetBrains Mono', monospace;
+      color: #737373;
+      background: #141414;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 10px;
+    }
+  </style>
+</head>
+<body>
+  <div class="auth-container">
+    <div class="auth-card">
+      <div class="brand-badge">
+        <span class="brand-logo">TF</span>
+        <span class="brand-title">TakeoutFix</span>
+      </div>
+
+      <h1>Sign In with Google</h1>
+      <p class="desc">
+        Authenticate your account to unlock desktop restoration tools and synchronize your quotas.
+      </p>
+
+      <div id="accountPickerContainer" style="display:none; margin-bottom: 20px;">
+        <div style="background:#141414; border:1px solid #262626; border-radius:14px; padding:16px; margin-bottom:14px; text-align:left;">
+          <div style="font-size:11px; color:#888; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:6px;">Current Session</div>
+          <div id="detectedEmail" style="font-size:14px; font-weight:700; color:#ffffff; word-break:break-all;"></div>
+        </div>
+        <button id="btnContinueCurrent" class="btn-google" style="margin-bottom:10px;" onclick="continueWithCurrentAccount()">
+          Continue with this Account
+        </button>
+        <button id="btnSwitchAccount" class="btn-google" style="background:#171717; color:#f5f5f5; border:1px solid #333;" onclick="switchGoogleAccount()">
+          Use a Different Google Account
+        </button>
+      </div>
+
+      <button id="btnGoogleSignIn" class="btn-google" onclick="triggerGoogleSignIn()">
+        <svg class="google-icon" viewBox="0 0 24 24">
+          <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+          <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+          <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/>
+          <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/>
+        </svg>
+        Continue with Google
+      </button>
+
+      <div id="statusBox" class="status-box"></div>
+
+      <div id="userInfo" class="user-info">
+        <div class="user-info-row">
+          <span style="color:var(--text-mid);">Account:</span>
+          <strong id="userEmail" style="color:#ffffff;">user@example.com</strong>
+        </div>
+        <div class="user-info-row">
+          <span style="color:var(--text-mid);">Plan Tier:</span>
+          <span id="userPlanBadge" class="badge">FREE</span>
+        </div>
+        <div class="user-info-row">
+          <span style="color:var(--text-mid);">Desktop Instance:</span>
+          <strong style="color:#ffffff;">Connected & Synced</strong>
+        </div>
+      </div>
+
+      <div class="footer-note">
+        Direct connection to TakeoutFix Native Desktop Instance <code>http://localhost:8081</code>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Firebase Configuration
+    const firebaseConfig = {
+      apiKey: "AIzaSyDBTj1lcAbftiAYwnv5upjHK7ET_sNgZNk",
+      authDomain: "takeout-fix.firebaseapp.com",
+      projectId: "takeout-fix",
+      storageBucket: "takeout-fix.firebasestorage.app",
+      messagingSenderId: "1089411779683",
+      appId: "1:1089411779683:web:a0afa9043f9f7cecdabc56",
+      measurementId: "G-YNTVCXYR6N"
+    };
+
+    firebase.initializeApp(firebaseConfig);
+    const auth = firebase.auth();
+    const db = firebase.firestore();
+
+    const btn = document.getElementById('btnGoogleSignIn');
+    const accountPickerContainer = document.getElementById('accountPickerContainer');
+    const detectedEmail = document.getElementById('detectedEmail');
+    const statusBox = document.getElementById('statusBox');
+    const userInfo = document.getElementById('userInfo');
+    const userEmailEl = document.getElementById('userEmail');
+    const userPlanBadgeEl = document.getElementById('userPlanBadge');
+
+    const urlParams = new URLSearchParams(window.location.search);
+    const forceAccountSelect = urlParams.get('select_account') === 'true' || urlParams.get('prompt') === 'select_account';
+
+    let cachedUser = null;
+
+    function setStatus(msg, type) {
+      statusBox.className = 'status-box ' + type;
+      statusBox.innerHTML = msg;
+    }
+
+    async function syncWithDesktop(user) {
+      setStatus('Synchronizing credentials with TakeoutFix Desktop...', 'loading');
+      try {
+        let plan = 'free';
+        let usedFiles = 0;
+        let usedBytes = 0;
+        let lifetimeFiles = 0;
+        let lifetimeBytes = 0;
+
+        try {
+          const docRef = db.collection('users').doc(user.uid);
+          const snap = await docRef.get();
+          if (snap.exists) {
+            const data = snap.data();
+            plan = (data.plan || 'free').toLowerCase();
+
+            const rawFiles = Number(data.usedFiles || 0);
+            const procFiles = Number(data.totalFilesProcessed || 0);
+            const lifeFiles = Number(data.lifetimeFiles || 0);
+            // Match webapp quota logic exactly:
+            usedFiles = Math.max(rawFiles, procFiles, lifeFiles);
+
+            const rawBytes = Number(data.usedBytes || 0);
+            const procBytes = Number(data.totalBytesProcessed || 0);
+            const lifeBytes = Number(data.lifetimeBytes || 0);
+            usedBytes = Math.max(rawBytes, procBytes, lifeBytes);
+
+            // Check if user is Admin in Firestore (or has isAdmin flag)
+            let isAdmin = Boolean(data.isAdmin);
+            try {
+              const adminSnap = await db.collection('admins').doc(user.uid).get();
+              if (adminSnap && adminSnap.exists) {
+                isAdmin = true;
+              }
+            } catch (_) {}
+
+            if (isAdmin) {
+              plan = 'super';
+            }
+
+            lifetimeFiles = lifeFiles;
+            lifetimeBytes = lifeBytes;
+          }
+        } catch (dbErr) {
+          console.warn('Firestore fetch fallback:', dbErr);
+        }
+
+        const idToken = await user.getIdToken();
+        const refreshToken = user.refreshToken || '';
+
+        const payload = {
+          uid: user.uid,
+          email: user.email,
+          displayName: user.displayName || user.email.split('@')[0],
+          photoURL: user.photoURL || '',
+          plan: plan,
+          usedFiles: usedFiles,
+          usedBytes: usedBytes,
+          totalFilesProcessed: usedFiles,
+          totalBytesProcessed: usedBytes,
+          lifetimeFiles: lifetimeFiles,
+          lifetimeBytes: lifetimeBytes,
+          idToken: idToken,
+          refreshToken: refreshToken
+        };
+
+        const res = await fetch('/api/user/sync', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+
+        if (res.ok) {
+          btn.style.display = 'none';
+          accountPickerContainer.style.display = 'none';
+          userEmailEl.textContent = user.email;
+          userPlanBadgeEl.textContent = plan.toUpperCase();
+          userInfo.style.display = 'block';
+
+          setStatus('<strong>Authentication Successful</strong><br>TakeoutFix Desktop is now synchronized. You can return to the desktop app.', 'success');
+
+          setTimeout(() => {
+            try { window.close(); } catch (_) {}
+          }, 2500);
+        } else {
+          setStatus('Desktop sync response status: ' + res.status + '. Ensure TakeoutFix Native App is open.', 'error');
+        }
+      } catch (err) {
+        console.error('Sync failed:', err);
+        setStatus('Failed to connect to local desktop server on port 8081: ' + err.message, 'error');
+      }
+    }
+
+    async function triggerGoogleSignIn() {
+      setStatus('Opening Google Account Chooser...', 'loading');
+      btn.disabled = true;
+      try {
+        const provider = new firebase.auth.GoogleAuthProvider();
+        provider.setCustomParameters({ prompt: 'select_account' });
+        const result = await auth.signInWithPopup(provider);
+        if (result && result.user) {
+          await syncWithDesktop(result.user);
+        }
+      } catch (err) {
+        console.error('Google Sign-In error:', err);
+        btn.disabled = false;
+        setStatus('Sign-in cancelled or failed: ' + (err.message || err.code), 'error');
+      }
+    }
+
+    async function continueWithCurrentAccount() {
+      if (cachedUser) {
+        await syncWithDesktop(cachedUser);
+      }
+    }
+
+    async function switchGoogleAccount() {
+      setStatus('Switching account...', 'loading');
+      try {
+        await auth.signOut();
+        cachedUser = null;
+        accountPickerContainer.style.display = 'none';
+        btn.style.display = 'flex';
+        await triggerGoogleSignIn();
+      } catch (e) {
+        console.error('Sign-out error:', e);
+        await triggerGoogleSignIn();
+      }
+    }
+
+    // Auth State Detection
+    auth.onAuthStateChanged(async user => {
+      if (user) {
+        cachedUser = user;
+        if (forceAccountSelect) {
+          // If explicitly asked to select/switch account, sign out and show Google account chooser
+          await auth.signOut();
+          cachedUser = null;
+          btn.style.display = 'flex';
+          accountPickerContainer.style.display = 'none';
+        } else {
+          // Show choice instead of force auto-signing
+          btn.style.display = 'none';
+          detectedEmail.textContent = user.email;
+          accountPickerContainer.style.display = 'block';
+        }
+      } else {
+        cachedUser = null;
+        btn.style.display = 'flex';
+        accountPickerContainer.style.display = 'none';
+      }
+    });
+  </script>
+</body>
+</html>

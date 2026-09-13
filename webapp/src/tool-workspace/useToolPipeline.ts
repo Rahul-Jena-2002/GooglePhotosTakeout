@@ -3,7 +3,7 @@
  * Extracted from ToolWorkspace.tsx to keep that file focused on layout/routing only.
  */
 // Tool pipeline hook for TakeoutFix workspace
-import { useRef, useEffect, useState } from "react"
+import React, { useRef, useEffect, useState } from "react"
 import { useAuth } from "../contexts/AuthContext"
 import { useToolStore } from "../store/useToolStore"
 import { useToastStore } from "../store/useToastStore"
@@ -17,9 +17,10 @@ import piexif from "piexifjs"
 import { detectAdBlock } from "../services/AdBlockDetector"
 import { SessionManager, type ActiveSession, type FileRecord } from "../lib/SessionManager"
 import { WorkerPool } from "../lib/WorkerPool"
-import { ZipReader, BlobReader, Uint8ArrayWriter, Writer, ZipWriter, BlobWriter } from "@zip.js/zip.js"
+import { ZipReader, BlobReader, Uint8ArrayWriter, Writer, ZipWriter, BlobWriter, TextWriter } from "@zip.js/zip.js"
 import { useSettingsStore } from "../store/useSettingsStore";
 import { normalizeZipPath } from "../services/ZipMetadataMatcher"
+import { saveHandles } from "../lib/handleStore"
 
 // ---------------------------------------------------------------------------
 // Streaming zip.js writer that pipes directly to a FileSystemWritableFileStream
@@ -33,7 +34,7 @@ export class FileSystemWritableFileStreamWriter extends Writer<void> {
     this.writableStream = writableStream;
   }
 
-  override async writeUint8Array(array: Uint8Array): Promise<void> {
+  async writeUint8Array(array: Uint8Array): Promise<void> {
     await this.writableStream.write(array);
   }
 }
@@ -300,7 +301,7 @@ export function useToolPipeline() {
   const [modalContext, setModalContext] = useState<'source' | 'destination' | null>(null)
   const [pendingFolderHandle, setPendingFolderHandle] = useState<FileSystemDirectoryHandle | null>(null)
 
-  const handleDragOver = (e: React.DragEvent) => {
+  const handleDragOver = (e: React.DragEvent<HTMLElement>) => {
     e.preventDefault()
     setIsDragOver(true)
   }
@@ -309,7 +310,7 @@ export function useToolPipeline() {
     setIsDragOver(false)
   }
 
-  const handleDrop = async (e: React.DragEvent) => {
+  const handleDrop = async (e: React.DragEvent<HTMLElement>) => {
     e.preventDefault()
     setIsDragOver(false)
 
@@ -374,27 +375,31 @@ export function useToolPipeline() {
 
   // Calculate optimal threads based on hardwareConcurrency, device memory, and headroom
   const getOptimalThreadCount = () => {
-    const isMobile = /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent)
-    const cores = navigator.hardwareConcurrency || 4
-    let optimal = isMobile
-      ? Math.max(2, Math.floor(cores * 0.5))
-      : cores <= 4
-      ? Math.max(2, cores - 1)
-      : cores <= 12
-      ? Math.floor(cores * 0.75)
-      : Math.floor(cores * 0.8)
-
+    const isMobile = /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent);
+    const cores = navigator.hardwareConcurrency || 4;
+    let mem = 8;
     if ('deviceMemory' in navigator) {
-      const mem = (navigator as unknown as { deviceMemory: number }).deviceMemory
-      if (mem >= 8) {
-        return Math.min(24, optimal)
-      }
-      if (mem < 4) {
-        optimal = Math.max(1, Math.min(optimal, Math.floor(mem)))
-      }
+      mem = (navigator as unknown as { deviceMemory: number }).deviceMemory || 8;
     }
-    return Math.min(16, optimal)
-  }
+
+    if (isMobile) {
+      return Math.max(2, Math.min(cores, Math.floor(cores * 0.75)));
+    }
+
+    // High performance desktop mode: maximize CPU core saturation
+    let optimal = cores;
+    if (mem >= 16) {
+      optimal = Math.min(32, cores);
+    } else if (mem >= 8) {
+      optimal = Math.min(24, cores);
+    } else if (mem >= 4) {
+      optimal = Math.min(8, Math.max(2, Math.floor(cores * 0.85)));
+    } else {
+      optimal = Math.max(1, Math.min(cores, Math.floor(mem)));
+    }
+
+    return Math.max(1, optimal);
+  };
 
   useEffect(() => {
     const initTelemetryAndSession = async () => {
@@ -420,10 +425,24 @@ export function useToolPipeline() {
         commitSessionUsage()
       }
     }
+
+    // Restore output handle when re-grant banner succeeds
+    const handleRestoreOutput = (e: Event) => {
+      const handle = (e as CustomEvent<FileSystemDirectoryHandle>).detail
+      if (handle) setOutputFolder(handle)
+    }
+
+    // SW background sync: flush pending Firestore usage when reconnected after offline
+    const handleFlushUsage = () => { commitSessionUsage() }
+
     window.addEventListener('beforeunload', handleBeforeUnload)
+    window.addEventListener('takeoutfix-restore-output', handleRestoreOutput)
+    window.addEventListener('takeoutfix-flush-usage', handleFlushUsage)
 
     return () => {
       window.removeEventListener('beforeunload', handleBeforeUnload)
+      window.removeEventListener('takeoutfix-restore-output', handleRestoreOutput)
+      window.removeEventListener('takeoutfix-flush-usage', handleFlushUsage)
       commitSessionUsage()
       if (flushInterval.current) window.clearInterval(flushInterval.current)
       if (workerPoolRef.current) workerPoolRef.current.terminate()
@@ -894,10 +913,9 @@ export function useToolPipeline() {
             break;
           }
 
-          // HEAVY FILE LOCK (UserBenchmark-style V8 Defy)
-          // If a file is massive (e.g., video > 35MB), we MUST process it completely alone
-          // to prevent V8 ArrayBuffer / Heap OOM crashing ("snapping").
-          const HEAVY_FILE_THRESHOLD = 35 * 1024 * 1024; // 35MB
+          // Dynamic heavy file threshold scaled with device RAM
+          const deviceMem = ('deviceMemory' in navigator) ? (navigator as unknown as { deviceMemory: number }).deviceMemory || 4 : 4;
+          const HEAVY_FILE_THRESHOLD = (deviceMem >= 8 ? 150 : deviceMem >= 4 ? 75 : 35) * 1024 * 1024;
           const isHeavy = fileRecord.bytes > HEAVY_FILE_THRESHOLD;
 
           if (isHeavy && inFlightCount > 0) {
@@ -926,7 +944,7 @@ export function useToolPipeline() {
 
           try {
             // Check quota limits
-            const isBypass = userData?.isAdmin || import.meta.env.DEV;
+            const isBypass = userData?.isAdmin || (import.meta as any).env?.DEV;
             if (!isBypass && (currentUsedBytesRef.current + sessionBytesRef.current > limitBytesRef.current || currentUsedFilesRef.current + sessionFilesRef.current > limitFilesRef.current)) {
               if (zipReader) {
                 try { await zipReader.close(); } catch {}
@@ -1001,16 +1019,16 @@ export function useToolPipeline() {
                 try {
                   const jsonHandle = await parentDirHandle.getFileHandle(jsonName);
                   const jsonFile = await jsonHandle.getFile();
-                  const parsed = safeParseJson(await jsonFile.text());
+                  const parsed: any = safeParseJson(await jsonFile.text());
                   if (parsed) {
                     epochSec = extractTimestamp(parsed);
-                    const geoData = (parsed as any).geoData;
+                    const geoData = parsed.geoData;
                     if (geoData && (geoData.latitude !== 0 || geoData.longitude !== 0)) {
                       lat = geoData.latitude;
                       lng = geoData.longitude;
                     }
-                    description = parsed.description || undefined;
-                    if (parsed.people) {
+                    description = (parsed.description as string) || undefined;
+                    if (Array.isArray(parsed.people)) {
                       people = parsed.people.map((p: any) => p.name).filter(Boolean);
                     }
                   }
@@ -1152,6 +1170,7 @@ export function useToolPipeline() {
                   await writable.write(bufferOrBlob);
                   await writable.close();
                   writable = null; // Mark as closed successfully
+                  bufferOrBlob = null; // Immediately release RAM for garbage collection
                 }
               } else {
                 // Zero-RAM Copying: stream file directly to output handle!
@@ -1675,7 +1694,7 @@ export function useToolPipeline() {
   }
 
   const handleSelectDupFolder = async () => {
-    if (typeof window === 'undefined' || !window.showDirectoryPicker) {
+    if (typeof window === 'undefined' || !(window as any).showDirectoryPicker) {
       useToastStore.getState().addToast(
         "Your browser does not support selecting folders directly. Please use a desktop version of Google Chrome, Brave, or Microsoft Edge.",
         "error",
@@ -1794,7 +1813,7 @@ export function useToolPipeline() {
 
   const handleSelectTakeout = async () => {
     if (takeoutLock) return
-    if (typeof window === 'undefined' || !window.showDirectoryPicker) {
+    if (typeof window === 'undefined' || !(window as any).showDirectoryPicker) {
       useToastStore.getState().addToast(
         "Your browser engine blocks local workspace streaming. Please migrate to Chromium.",
         "error",
@@ -1807,13 +1826,15 @@ export function useToolPipeline() {
     try {
       const dirHandle = (await (window as unknown as { showDirectoryPicker: () => Promise<unknown> }).showDirectoryPicker()) as FileSystemDirectoryHandle
 
-      const status = await dirHandle.queryPermission({ mode: 'read' })
+      const status = await (dirHandle as any).queryPermission({ mode: 'read' })
       if (status === 'prompt') {
         setPendingFolderHandle(dirHandle)
         setModalContext('source')
       } else {
         setTakeoutFolder(dirHandle)
         setZipFile(null)
+        // Persist handle so it survives tab close
+        saveHandles(dirHandle, outputFolder).catch(() => {})
         window.dispatchEvent(new CustomEvent('takeoutfix-action-triggered'))
       }
     } catch (err: any) {
@@ -1843,7 +1864,7 @@ export function useToolPipeline() {
 
   const handleSelectOutput = async () => {
     if (outputLock) return
-    if (typeof window === 'undefined' || !window.showDirectoryPicker) {
+    if (typeof window === 'undefined' || !(window as any).showDirectoryPicker) {
       useToastStore.getState().addToast(
         "Your browser engine blocks local workspace streaming. Please migrate to Chromium.",
         "error",
@@ -1856,12 +1877,14 @@ export function useToolPipeline() {
     try {
       const dirHandle = (await (window as unknown as { showDirectoryPicker: (options?: { mode?: 'read' | 'readwrite' }) => Promise<unknown> }).showDirectoryPicker()) as FileSystemDirectoryHandle
 
-      const status = await dirHandle.queryPermission({ mode: 'readwrite' })
+      const status = await (dirHandle as any).queryPermission({ mode: 'readwrite' })
       if (status === 'prompt') {
         setPendingFolderHandle(dirHandle)
         setModalContext('destination')
       } else if (status === 'granted') {
         setOutputFolder(dirHandle)
+        // Persist handle so it survives tab close
+        saveHandles(takeoutFolder, dirHandle).catch(() => {})
         window.dispatchEvent(new CustomEvent('takeoutfix-action-triggered'))
       }
     } catch (err: any) {
@@ -1898,8 +1921,12 @@ export function useToolPipeline() {
         if (modalContext === 'source') {
           setTakeoutFolder(pendingFolderHandle)
           setZipFile(null)
+          // Persist handle so it survives tab close
+          saveHandles(pendingFolderHandle, outputFolder).catch(() => {})
         } else {
           setOutputFolder(pendingFolderHandle)
+          // Persist handle so it survives tab close
+          saveHandles(takeoutFolder, pendingFolderHandle).catch(() => {})
         }
         window.dispatchEvent(new CustomEvent('takeoutfix-action-triggered'))
       } else {
@@ -1920,19 +1947,14 @@ export function useToolPipeline() {
   }
 
   const startProcessing = async (useZip: boolean = false) => {
-    // Whitelist Enforcement: Only start restoration process if not blocked by ad blocker
+    // Soft reminder: trigger polite banner if ad blocker detected without hard-blocking restoration
     const isAdFree = userData?.plan === "super" && !userData?.supportWithAds;
     if (!isAdFree) {
-      const isBlocked = await detectAdBlock();
-      if (isBlocked) {
-        window.dispatchEvent(new CustomEvent('takeoutfix-action-triggered'));
-        setPopupModal({
-          title: "Ad Blocker Detected",
-          message: "To start the restoration process, please disable your ad blocker or whitelist TakeoutFix.\n\nAlternatively, upgrade to Super for an ad-free experience.",
-          type: "warning"
-        });
-        return;
-      }
+      detectAdBlock().then((isBlocked) => {
+        if (isBlocked) {
+          window.dispatchEvent(new CustomEvent('takeoutfix-action-triggered'));
+        }
+      }).catch(() => {});
     }
 
     window.dispatchEvent(new CustomEvent('takeoutfix-action-triggered'))
@@ -1964,7 +1986,7 @@ export function useToolPipeline() {
       console.warn("Failed to check directory handles:", err)
     }
 
-    const isBypass = userData?.isAdmin || import.meta.env.DEV;
+    const isBypass = userData?.isAdmin || (import.meta as any).env?.DEV;
     if (!isBypass && (currentUsedFiles >= limitFiles || currentUsedBytes >= limitBytes)) {
       let limitReason = ""
       if (currentUsedFiles >= limitFiles && currentUsedBytes >= limitBytes) {

@@ -50,6 +50,13 @@ const canonicalUrl = `https://takeoutfix.pages.dev${Astro.url.pathname.replace(/
     <link rel="icon" type="image/png" sizes="192x192" href="/favicon-192x192.png" />
     <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
     <link rel="shortcut icon" href="/favicon.ico" />
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <meta name="theme-color" content="#09090b" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="TakeoutFix" />
+    <meta name="application-name" content="TakeoutFix" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     
     <!-- Theme Initialization Script -->
@@ -585,9 +592,9 @@ const canonicalUrl = `https://takeoutfix.pages.dev${Astro.url.pathname.replace(/
         class="fixed top-0 left-0 right-0 z-[9999] bg-zinc-950/95 border-b border-red-500/20 px-4 py-3 sm:py-2.5 backdrop-blur-lg shadow-xl transition-all duration-500 transform -translate-y-full flex flex-col sm:flex-row items-center justify-between gap-3 text-center sm:text-left hidden"
       >
         <div class="flex items-center gap-2 text-zinc-200 text-xs sm:text-sm font-medium">
-          <span class="text-amber-500 text-base sm:text-lg">⚠️</span>
+          <span class="text-amber-500 text-base sm:text-lg">👋</span>
           <span>
-            Ads keep TakeoutFix free. Please whitelist us, or upgrade to <span class="text-indigo-400 font-bold uppercase tracking-wider text-[10px]">Super</span> for an ad-free experience.
+            Friendly reminder: Ads help keep TakeoutFix free and fast for everyone. Please consider turning off your ad blocker or whitelisting us. Thank you!
           </span>
         </div>
         
@@ -740,6 +747,13 @@ const canonicalUrl = `https://takeoutfix.pages.dev${Astro.url.pathname.replace(/
         setUserInteracted(true);
         checkAdBlock();
       });
+
+      // PWA Service Worker Registration
+      if ("serviceWorker" in navigator) {
+        window.addEventListener("load", () => {
+          navigator.serviceWorker.register("/sw.js").catch(() => {});
+        });
+      }
 
       // Code Protection & Copy-paste deterrent (Production Only)
       if (window.location.hostname !== "localhost" && window.location.hostname !== "127.0.0.1") {

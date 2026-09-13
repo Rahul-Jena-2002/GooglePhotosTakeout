@@ -88,6 +88,7 @@ export const DEFAULT_FEATURES_CONFIG: FeaturesConfig = {
 
 // Re-export static pricing data from standalone module to avoid duplicating definitions.
 // Astro pages should import directly from '../lib/planPrices' to avoid pulling Firebase into the build graph.
+import type { PlanPrices } from '../lib/planPrices';
 export type { PlanPrices, RegionPricingConfig, CountryOption } from '../lib/planPrices';
 export { REGION_PRICING_CONFIGS, formatPrice, getActivePrice, PLAN_PRICES, COUNTRIES, getRegionFromCountry } from '../lib/planPrices';
 
@@ -99,6 +100,8 @@ export interface UserData {
   usedFiles: number;
   totalBytesProcessed: number;
   totalFilesProcessed: number;
+  lifetimeFiles?: number;
+  lifetimeBytes?: number;
   expiresAt: number | null;
   isAdmin: boolean;
   email?: string | null;
@@ -501,7 +504,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   // DYNAMIC CALCULATIONS: Replaced all old hardcoded switch lookups
-  const getDynamicPrices = (regionKey: string, useLaunchIfFounding: boolean): PlanPrices => {
+  const getDynamicPrices = (regionKey: string, _useLaunchIfFounding: boolean): PlanPrices => {
     const docId = REGION_DOC_IDS[regionKey] || REGION_DOC_IDS.t3;
     const firestoreConfig = pricingTiers[docId];
     const staticConfig = REGION_PRICING_CONFIGS[regionKey] || REGION_PRICING_CONFIGS.t3;
@@ -785,23 +788,23 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
 
       // 5. Generate and sync names if missing
-      let needsNameUpdate = false;
+      let _needsNameUpdate = false;
       if (!data.firstName && data.firstName !== '') {
         const nameParts = (data.displayName || currentUser.displayName || '').trim().split(/\s+/);
         pendingUpdates.firstName = nameParts[0] || '';
         data.firstName = pendingUpdates.firstName;
-        needsNameUpdate = true;
+        _needsNameUpdate = true;
       }
       if (!data.lastName && data.lastName !== '') {
         const nameParts = (data.displayName || currentUser.displayName || '').trim().split(/\s+/);
         pendingUpdates.lastName = nameParts.slice(1).join(' ') || '';
         data.lastName = pendingUpdates.lastName;
-        needsNameUpdate = true;
+        _needsNameUpdate = true;
       }
       if (!data.username) {
         data.username = await generateUniqueUsername(data.email || currentUser.email || '', data.displayName || currentUser.displayName || '', currentUser.uid);
         pendingUpdates.username = data.username;
-        needsNameUpdate = true;
+        _needsNameUpdate = true;
       }
 
       // 6. Device session tracking
@@ -1076,6 +1079,39 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
 
         setUserData(data);
+
+        // Auto-sync Google user credentials and real tier/quota to TakeoutFix Native Desktop App
+        try {
+          const compUsedFiles = Math.max(
+            typeof data.usedFiles === 'number' ? data.usedFiles : 0,
+            typeof data.totalFilesProcessed === 'number' ? data.totalFilesProcessed : 0,
+            typeof data.lifetimeFiles === 'number' ? data.lifetimeFiles : 0
+          );
+          const compUsedBytes = Math.max(
+            typeof data.usedBytes === 'number' ? data.usedBytes : 0,
+            typeof data.totalBytesProcessed === 'number' ? data.totalBytesProcessed : 0,
+            typeof data.lifetimeBytes === 'number' ? data.lifetimeBytes : 0
+          );
+
+          fetch('http://localhost:8081/api/user/sync', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              uid: user.uid,
+              email: user.email,
+              displayName: user.displayName,
+              photoURL: user.photoURL,
+              plan: data.plan || 'free',
+              usedFiles: compUsedFiles,
+              usedBytes: compUsedBytes,
+              totalFilesProcessed: data.totalFilesProcessed || 0,
+              totalBytesProcessed: data.totalBytesProcessed || 0,
+              lifetimeFiles: data.lifetimeFiles || 0,
+              lifetimeBytes: data.lifetimeBytes || 0,
+              isAdmin: Boolean(data.isAdmin)
+            })
+          }).catch(() => {});
+        } catch (_) {}
       }
     }, (err) => {
       console.warn("Session listener error:", err);
@@ -1115,6 +1151,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     }
     await signOut(auth);
+    try {
+      fetch('http://localhost:8081/api/user/logout', { method: 'POST' }).catch(() => {});
+    } catch (_) {}
     try {
       localStorage.removeItem("takeoutfix_user_data");
       localStorage.removeItem("takeoutfix_admin_data");

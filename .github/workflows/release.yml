@@ -1,4 +1,4 @@
-name: Build Native Portable Apps
+name: Build Native Portable Apps & MSI Installers
 
 on:
   push:
@@ -11,8 +11,26 @@ permissions:
   contents: write
 
 jobs:
+  test:
+    name: Run Automated Tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Java 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+          cache: 'maven'
+
+      - name: Run Test Suite
+        run: mvn clean test
+
   build:
     name: Build on ${{ matrix.os }}
+    needs: test
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
@@ -33,20 +51,24 @@ jobs:
         run: mvn clean package -DskipTests
 
       - name: Prepare Clean Packaging Input
+        shell: bash
         run: |
-          mkdir jpackage-input
-          cp target/GTakeout-1.0.0.jar jpackage-input/
+          mkdir -p jpackage-input
+          cp native/target/GTakeout-1.0.0.jar jpackage-input/
+          cp native/target/GTakeout-1.0.0.jar ./TakeoutFix-Universal.jar
 
-      - name: Create Native App Image (Windows)
+      - name: Create Native App Image & MSI Installer (Windows)
         if: matrix.os == 'windows-latest'
+        shell: pwsh
         run: |
+          # 1. Portable App Folder & Zip
           jpackage `
             --type app-image `
             --name TakeoutFix `
             --input jpackage-input `
             --main-jar GTakeout-1.0.0.jar `
             --main-class com.rahul.TakeoutApplication `
-            --icon icons/icon.ico `
+            --icon native/icons/icon.ico `
             --dest dist `
             --vendor "TakeoutFix" `
             --app-version "1.0.0" `
@@ -56,85 +78,187 @@ jobs:
             --verbose
           Compress-Archive -Path dist/TakeoutFix -DestinationPath TakeoutFix-Windows-Portable.zip
 
-      - name: Create Native App Image (macOS)
+          # 2. Windows MSI Installer (per-user install, runs without admin certificate restriction)
+          jpackage `
+            --type msi `
+            --name TakeoutFix `
+            --input jpackage-input `
+            --main-jar GTakeout-1.0.0.jar `
+            --main-class com.rahul.TakeoutApplication `
+            --icon native/icons/icon.ico `
+            --dest dist-msi `
+            --vendor "TakeoutFix" `
+            --app-version "1.0.0" `
+            --description "Google Takeout Photo Metadata Restorer" `
+            --about-url "https://takeoutfix.com" `
+            --win-dir-chooser `
+            --win-menu `
+            --win-shortcut `
+            --win-per-user-install `
+            --verbose
+          Move-Item dist-msi/*.msi ./TakeoutFix-Setup.msi
+
+      - name: Create Native App Image & Installers (macOS)
         if: matrix.os == 'macos-latest'
         run: |
-          jpackage --type app-image --name TakeoutFix --input jpackage-input --main-jar GTakeout-1.0.0.jar --main-class com.rahul.TakeoutApplication --icon icons/icon.icns --dest dist --mac-package-identifier com.takeoutfix.desktop --verbose
-          cd dist
-          zip -r ../TakeoutFix-macOS-Portable.zip TakeoutFix.app
+          # 1. Portable App Image & Zip
+          jpackage \
+            --type app-image \
+            --name TakeoutFix \
+            --input jpackage-input \
+            --main-jar GTakeout-1.0.0.jar \
+            --main-class com.rahul.TakeoutApplication \
+            --icon native/icons/icon.icns \
+            --dest dist \
+            --mac-package-identifier com.takeoutfix.desktop \
+            --vendor "TakeoutFix" \
+            --app-version "1.0.0" \
+            --verbose
 
-      - name: Create Native App Image (Linux)
+          # Zero-certificate launcher script removing quarantine attribute so Gatekeeper allows immediate launch
+          cat << 'EOF' > dist/Run-TakeoutFix.command
+#!/bin/bash
+DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+xattr -cr "$DIR/TakeoutFix.app" 2>/dev/null || true
+open "$DIR/TakeoutFix.app"
+EOF
+          chmod +x dist/Run-TakeoutFix.command
+          cd dist
+          zip -r ../TakeoutFix-macOS-Portable.zip TakeoutFix.app Run-TakeoutFix.command
+          cd ..
+
+          # 2. Native macOS DMG Installer
+          jpackage \
+            --type dmg \
+            --name TakeoutFix \
+            --input jpackage-input \
+            --main-jar GTakeout-1.0.0.jar \
+            --main-class com.rahul.TakeoutApplication \
+            --icon native/icons/icon.icns \
+            --dest dist-dmg \
+            --mac-package-identifier com.takeoutfix.desktop \
+            --vendor "TakeoutFix" \
+            --app-version "1.0.0" \
+            --description "Google Takeout Photo Metadata Restorer" \
+            --verbose
+          mv dist-dmg/*.dmg ./TakeoutFix-macOS.dmg
+
+      - name: Create Native App Image & Packages (Linux)
         if: matrix.os == 'ubuntu-latest'
         run: |
-          jpackage --type app-image --name TakeoutFix --input jpackage-input --main-jar GTakeout-1.0.0.jar --main-class com.rahul.TakeoutApplication --icon icons/icon.png --dest dist --verbose
+          # Install rpm tools for generating .rpm package
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq rpm fakeroot
+
+          # 1. Portable App Image & Tarball
+          jpackage \
+            --type app-image \
+            --name TakeoutFix \
+            --input jpackage-input \
+            --main-jar GTakeout-1.0.0.jar \
+            --main-class com.rahul.TakeoutApplication \
+            --icon native/icons/icon.png \
+            --dest dist \
+            --vendor "TakeoutFix" \
+            --app-version "1.0.0" \
+            --verbose
+
+          cat << 'EOF' > dist/TakeoutFix/run.sh
+#!/bin/bash
+DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+exec "$DIR/bin/TakeoutFix" "$@"
+EOF
+          chmod +x dist/TakeoutFix/run.sh
+          chmod +x dist/TakeoutFix/bin/TakeoutFix
           cd dist
           tar -czvf ../TakeoutFix-Linux-Portable.tar.gz TakeoutFix
+          cd ..
+
+          # 2. Debian / Ubuntu .deb Package
+          jpackage \
+            --type deb \
+            --name takeoutfix \
+            --input jpackage-input \
+            --main-jar GTakeout-1.0.0.jar \
+            --main-class com.rahul.TakeoutApplication \
+            --icon native/icons/icon.png \
+            --dest dist-deb \
+            --vendor "TakeoutFix" \
+            --app-version "1.0.0" \
+            --description "Google Takeout Photo Metadata Restorer" \
+            --linux-shortcut \
+            --linux-menu-group "Utility" \
+            --verbose
+          mv dist-deb/*.deb ./TakeoutFix-Linux.deb
+
+          # 3. Fedora / RHEL / openSUSE .rpm Package
+          jpackage \
+            --type rpm \
+            --name takeoutfix \
+            --input jpackage-input \
+            --main-jar GTakeout-1.0.0.jar \
+            --main-class com.rahul.TakeoutApplication \
+            --icon native/icons/icon.png \
+            --dest dist-rpm \
+            --vendor "TakeoutFix" \
+            --app-version "1.0.0" \
+            --description "Google Takeout Photo Metadata Restorer" \
+            --linux-shortcut \
+            --linux-menu-group "Utility" \
+            --verbose
+          mv dist-rpm/*.rpm ./TakeoutFix-Linux.rpm
 
       - name: Upload Windows Asset to Release
         if: matrix.os == 'windows-latest' && github.event_name == 'release'
         uses: softprops/action-gh-release@v2
         with:
-          files: TakeoutFix-Windows-Portable.zip
+          files: |
+            TakeoutFix-Setup.msi
+            TakeoutFix-Windows-Portable.zip
+            TakeoutFix-Universal.jar
 
-      - name: Upload Windows Artifact
+      - name: Upload Windows Artifacts
         if: matrix.os == 'windows-latest'
         uses: actions/upload-artifact@v4
         with:
           name: TakeoutFix-Windows
-          path: TakeoutFix-Windows-Portable.zip
-
-      - name: Upload Windows to Cloudflare R2
-        if: matrix.os == 'windows-latest' && env.R2_ENDPOINT != ''
-        env:
-          R2_ENDPOINT: ${{ secrets.R2_ENDPOINT }}
-          R2_BUCKET: ${{ secrets.R2_BUCKET }}
-          AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
-          AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
-          AWS_DEFAULT_REGION: auto
-        run: aws s3 cp TakeoutFix-Windows-Portable.zip s3://${{ env.R2_BUCKET }}/windows/TakeoutFix-Windows-Portable.zip --endpoint-url ${{ env.R2_ENDPOINT }}
+          path: |
+            TakeoutFix-Setup.msi
+            TakeoutFix-Windows-Portable.zip
+            TakeoutFix-Universal.jar
 
       - name: Upload macOS Asset to Release
         if: matrix.os == 'macos-latest' && github.event_name == 'release'
         uses: softprops/action-gh-release@v2
         with:
-          files: TakeoutFix-macOS-Portable.zip
+          files: |
+            TakeoutFix-macOS.dmg
+            TakeoutFix-macOS-Portable.zip
 
       - name: Upload macOS Artifact
         if: matrix.os == 'macos-latest'
         uses: actions/upload-artifact@v4
         with:
           name: TakeoutFix-macOS
-          path: TakeoutFix-macOS-Portable.zip
-
-      - name: Upload macOS to Cloudflare R2
-        if: matrix.os == 'macos-latest' && env.R2_ENDPOINT != ''
-        env:
-          R2_ENDPOINT: ${{ secrets.R2_ENDPOINT }}
-          R2_BUCKET: ${{ secrets.R2_BUCKET }}
-          AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
-          AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
-          AWS_DEFAULT_REGION: auto
-        run: aws s3 cp TakeoutFix-macOS-Portable.zip s3://${{ env.R2_BUCKET }}/macos/TakeoutFix-macOS-Portable.zip --endpoint-url ${{ env.R2_ENDPOINT }}
+          path: |
+            TakeoutFix-macOS.dmg
+            TakeoutFix-macOS-Portable.zip
 
       - name: Upload Linux Asset to Release
         if: matrix.os == 'ubuntu-latest' && github.event_name == 'release'
         uses: softprops/action-gh-release@v2
         with:
-          files: TakeoutFix-Linux-Portable.tar.gz
+          files: |
+            TakeoutFix-Linux.deb
+            TakeoutFix-Linux.rpm
+            TakeoutFix-Linux-Portable.tar.gz
 
       - name: Upload Linux Artifact
         if: matrix.os == 'ubuntu-latest'
         uses: actions/upload-artifact@v4
         with:
           name: TakeoutFix-Linux
-          path: TakeoutFix-Linux-Portable.tar.gz
-
-      - name: Upload Linux to Cloudflare R2
-        if: matrix.os == 'ubuntu-latest' && env.R2_ENDPOINT != ''
-        env:
-          R2_ENDPOINT: ${{ secrets.R2_ENDPOINT }}
-          R2_BUCKET: ${{ secrets.R2_BUCKET }}
-          AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
-          AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
-          AWS_DEFAULT_REGION: auto
-        run: aws s3 cp TakeoutFix-Linux-Portable.tar.gz s3://${{ env.R2_BUCKET }}/linux/TakeoutFix-Linux-Portable.tar.gz --endpoint-url ${{ env.R2_ENDPOINT }}
+          path: |
+            TakeoutFix-Linux.deb
+            TakeoutFix-Linux.rpm
+            TakeoutFix-Linux-Portable.tar.gz

@@ -4,9 +4,10 @@ import { useAuth } from "../contexts/AuthContext"
 import SupportWidget from "./SupportWidget"
 import { Menu, X, Bell, Sun, Moon, Shield } from "lucide-react"
 import { db } from "../firebase"
-import { collection, query, where, getDocs } from "firebase/firestore"
+import { collection, query, where, onSnapshot, updateDoc, doc, Timestamp } from "firebase/firestore"
 import { useTelemetrySync } from "../hooks/useTelemetrySync"
 import { useToastStore } from "../store/useToastStore"
+import { registerServiceWorker } from "../lib/swRegister"
 
 export default function MainLayout() {
   const { user, userData, adminData, login, logout, loading, inviteFacet } = useAuth()
@@ -90,6 +91,26 @@ export default function MainLayout() {
   const [notificationMenuOpen, setNotificationMenuOpen] = useState(false)
   const [now, setNow] = useState(Date.now())
 
+  // Register Service Worker once on mount — enables offline + PWA install
+  useEffect(() => {
+    registerServiceWorker({
+      onFlushUsage: () => {
+        // SW background sync fired (reconnected after offline) — signal tool to commit usage
+        window.dispatchEvent(new CustomEvent('takeoutfix-flush-usage'))
+      },
+      onUpdateAvailable: (applyUpdate) => {
+        useToastStore.getState().addToast(
+          'A new version of TakeoutFix is available.',
+          'info',
+          0,           // no auto-dismiss — user must act
+          'Update Ready',
+        )
+        // Store so user can trigger it
+        ;(window as any).__tfApplyUpdate = applyUpdate
+      }
+    })
+  }, [])
+
   // Tick every second for recovery pass countdown
   useEffect(() => {
     const timer = setInterval(() => setNow(Date.now()), 1000)
@@ -161,33 +182,60 @@ export default function MainLayout() {
     return () => document.removeEventListener('click', handleOutsideClick)
   }, [notificationMenuOpen])
 
-  // On-demand notification fetch — only loads when bell dropdown opens
-  // Replaces always-on onSnapshot listener to reduce Firestore reads
-  const [notificationsLoaded, setNotificationsLoaded] = useState(false)
+  // Real-time notification listener — merges resolved tickets + notifications collection
+  // Fires instantly when admin sends an invite, no dropdown open required
   useEffect(() => {
-    if (!notificationMenuOpen || !user || notificationsLoaded) return
-    const fetchNotifications = async () => {
-      try {
-        const q = query(
-          collection(db, "tickets"),
-          where("uid", "==", user.uid),
-          where("status", "==", "RESOLVED")
-        )
-        const snap = await getDocs(q)
-        const list = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }))
-        setNotifications(list)
-        setNotificationsLoaded(true)
-      } catch (err) {
-        console.warn("Notifications fetch error:", err)
-      }
+    if (!user) {
+      setNotifications([])
+      return
     }
-    fetchNotifications()
-  }, [notificationMenuOpen, user, notificationsLoaded])
+    const email = user.email?.toLowerCase() || ""
 
-  // Reset notification cache on user change
-  useEffect(() => {
-    setNotificationsLoaded(false)
-    setNotifications([])
+    // Track items from each source separately so we can merge
+    let ticketItems: any[] = []
+    let notifItems: any[] = []
+
+    const merge = () => {
+      const combined = [...notifItems, ...ticketItems].sort(
+        (a, b) => (b._ts || 0) - (a._ts || 0)
+      )
+      setNotifications(combined)
+    }
+
+    // 1. Resolved support tickets
+    const unsubTickets = onSnapshot(
+      query(collection(db, "tickets"), where("uid", "==", user.uid), where("status", "==", "RESOLVED")),
+      snap => {
+        ticketItems = snap.docs.map(d => ({
+          id: d.id,
+          _type: "ticket_resolved",
+          _ts: d.data().createdAt instanceof Timestamp ? d.data().createdAt.toMillis() : 0,
+          ...d.data()
+        }))
+        merge()
+      },
+      () => {}
+    )
+
+    // 2. Real-time notifications (admin invites, system alerts)
+    const unsubNotifs = email ? onSnapshot(
+      query(collection(db, "notifications"), where("recipientEmail", "==", email)),
+      snap => {
+        notifItems = snap.docs
+          .map(d => ({
+            id: d.id,
+            _type: d.data().type || "system",
+            _ts: d.data().createdAt instanceof Timestamp ? d.data().createdAt.toMillis() : 0,
+            _read: !!d.data().read,
+            ...d.data()
+          }))
+          .filter(n => !n._read) // only unread in-app notifications
+        merge()
+      },
+      () => {}
+    ) : () => {}
+
+    return () => { unsubTickets(); unsubNotifs() }
   }, [user])
 
   const isAdmin = userData?.isAdmin || !!adminData
@@ -317,27 +365,48 @@ export default function MainLayout() {
                               No new notifications
                             </div>
                           ) : (
-                            notifications.map(n => (
-                              <Link 
-                                key={n.id} 
-                                to="/support?tab=tickets" 
-                                className="block px-4 py-2.5 hover:bg-white/5 text-left border-b border-white/5 last:border-0 transition-colors"
-                                onClick={() => setNotificationMenuOpen(false)}
-                              >
-                                <div className="text-[11px] font-bold text-white truncate flex items-center gap-1.5">
-                                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
-                                  Ticket Resolved: {n.ticketId}
-                                </div>
-                                <p className="text-xs text-white/60 truncate mt-0.5">{n.subject}</p>
-                                <span className="text-[9px] text-white/30 block mt-1">Click to view resolution</span>
-                              </Link>
-                            ))
+                            notifications.map(n => {
+                              const isInvite = n._type === "ADMIN_INVITE"
+                              const dest = isInvite ? "/tool" : "/support?tab=tickets"
+                              const dotColor = isInvite ? "bg-indigo-400" : "bg-emerald-500"
+                              const typeLabel = isInvite
+                                ? <span className="text-[9px] font-bold text-indigo-400 uppercase tracking-wide block mb-0.5">Admin Invite</span>
+                                : <span className="text-[9px] font-bold text-emerald-400 uppercase tracking-wide block mb-0.5">Ticket Resolved</span>
+                              const title = isInvite
+                                ? (n.title || "You've been invited to the Admin Team")
+                                : `Ticket Resolved: ${n.ticketId || n.id?.slice(0, 8)}`
+                              const body = isInvite
+                                ? (n.message || "Sign in to accept the invitation.")
+                                : (n.subject || "Your support ticket has been resolved.")
+
+                              return (
+                                <Link
+                                  key={n.id}
+                                  to={dest}
+                                  className="block px-4 py-2.5 hover:bg-white/5 text-left border-b border-white/5 last:border-0 transition-colors"
+                                  onClick={async () => {
+                                    setNotificationMenuOpen(false)
+                                    // Mark admin invite notifications as read
+                                    if (isInvite && n.id) {
+                                      try { await updateDoc(doc(db, "notifications", n.id), { read: true }) } catch { /* ignore */ }
+                                    }
+                                  }}
+                                >
+                                  {typeLabel}
+                                  <div className="text-[11px] font-bold text-white truncate flex items-center gap-1.5">
+                                    <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${dotColor}`} />
+                                    {title}
+                                  </div>
+                                  <p className="text-xs text-white/60 truncate mt-0.5 ml-3">{body}</p>
+                                </Link>
+                              )
+                            })
                           )}
                         </div>
 
                         <div className="border-t border-white/5 mt-1.5 pt-2 px-3">
-                          <Link 
-                            to="/support?tab=tickets" 
+                          <Link
+                            to="/support?tab=tickets"
                             className="block text-center text-[10px] font-bold text-indigo-400 hover:text-indigo-300 uppercase tracking-wider py-1.5 bg-white/5 rounded-md hover:bg-white/10 transition-all"
                             onClick={() => setNotificationMenuOpen(false)}
                           >

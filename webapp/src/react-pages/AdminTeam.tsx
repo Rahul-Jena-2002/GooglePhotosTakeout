@@ -11,6 +11,7 @@ import {
   Send, Check, AlertCircle
 } from "lucide-react"
 import { useToastStore } from "../store/useToastStore"
+import { createAdminInviteNotification, sendAdminInviteEmail } from "../lib/adminNotify"
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -375,22 +376,48 @@ export default function AdminTeam() {
   }
 
   const handleSendInvite = async (email: string, role: AdminRole) => {
+    // Check for duplicate pending invite
     const existing = await getDocs(
       query(collection(db, "adminInvites"), where("email", "==", email), where("status", "==", "pending"))
     )
     if (!existing.empty) throw new Error("A pending invite already exists for this email.")
 
+    const inviterName = user?.displayName ?? adminData?.displayName ?? "Admin"
     const expiresAt = Timestamp.fromMillis(Date.now() + 72 * 60 * 60 * 1000)
+
+    // 1. Write invite record to Firestore
     await addDoc(collection(db, "adminInvites"), {
       email,
       role,
       invitedBy: user?.uid ?? "unknown",
-      invitedByName: user?.displayName ?? adminData?.displayName ?? "Admin",
+      invitedByName: inviterName,
       createdAt: serverTimestamp(),
       expiresAt,
       status: "pending",
     })
-    addToast(`Invite sent to ${email} as ${role.replace("_", " ")}.`, "success")
+
+    // 2. Write in-app notification (real-time bell badge for logged-in user)
+    try {
+      await createAdminInviteNotification(email, role, inviterName, expiresAt)
+    } catch (e) {
+      console.warn("[AdminTeam] Failed to create in-app notification:", e)
+    }
+
+    // 3. Send email via EmailJS
+    const emailResult = await sendAdminInviteEmail(email, role, inviterName, expiresAt)
+
+    if (emailResult.success) {
+      addToast(`Invite sent to ${email} — email delivered and in-app notification created.`, "success")
+    } else {
+      // Email not configured or failed — in-app notification was still created
+      addToast(
+        `Invite created for ${email} as ${role.replace("_", " ")}. In-app notification sent.` +
+        (emailResult.error === "EmailJS not configured"
+          ? " (Email not configured — set VITE_EMAILJS_* env vars to enable)"
+          : ` Email delivery failed: ${emailResult.error}`),
+        emailResult.error === "EmailJS not configured" ? "info" : "warning"
+      )
+    }
   }
 
   const handleRevokeInvite = async (invite: AdminInvite) => {

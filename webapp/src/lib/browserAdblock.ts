@@ -1,8 +1,16 @@
 import { detectAdBlock } from "../services/AdBlockDetector";
 
+const isDismissedInSession = (): boolean => {
+  try {
+    return sessionStorage.getItem("takeoutfix_adblock_dismissed") === "true";
+  } catch (_) {
+    return false;
+  }
+};
+
 export let adblockState = {
   isAdFree: false,
-  isBannerDismissed: false,
+  isBannerDismissed: isDismissedInSession(),
   hasUserInteracted: false,
 };
 
@@ -15,6 +23,7 @@ export const setUserInteracted = (val: boolean) => {
 };
 
 export const showBanner = () => {
+  if (adblockState.isBannerDismissed || isDismissedInSession()) return;
   const banner = document.getElementById("adblock-banner");
   if (banner) {
     banner.classList.remove("hidden");
@@ -35,18 +44,13 @@ export const hideBanner = () => {
 };
 
 export const checkAdBlock = async () => {
-  const isToolPage = window.location.pathname.replace(/\/$/, '') === "/tool";
-  if (!isToolPage) return;
-
-  if (adblockState.isAdFree || adblockState.isBannerDismissed) {
+  if (adblockState.isAdFree || adblockState.isBannerDismissed || isDismissedInSession()) {
     hideBanner();
     return;
   }
 
-  if (!adblockState.hasUserInteracted) return;
-
   const isBlocked = await detectAdBlock();
-  if (isBlocked) {
+  if (isBlocked && !adblockState.isBannerDismissed && !isDismissedInSession()) {
     showBanner();
   } else {
     hideBanner();
@@ -57,20 +61,29 @@ export const setupAdblockEvents = () => {
   const whitelistBtn = document.getElementById("adblock-whitelist-btn");
   const closeBtn = document.getElementById("adblock-close-btn");
 
-  whitelistBtn?.addEventListener("click", async () => {
-    whitelistBtn.classList.add("animate-pulse");
-    adblockState.hasUserInteracted = true;
-    const isBlocked = await detectAdBlock();
-    if (isBlocked && !adblockState.isAdFree) {
-      (window as any).showVanillaToast("Ad blocker is still active. Please disable it for TakeoutFix or refresh the page.", "error");
-    } else {
+  if (closeBtn && !closeBtn.dataset.bound) {
+    closeBtn.dataset.bound = "true";
+    closeBtn.addEventListener("click", () => {
+      adblockState.isBannerDismissed = true;
+      try {
+        sessionStorage.setItem("takeoutfix_adblock_dismissed", "true");
+      } catch (_) {}
       hideBanner();
-    }
-    whitelistBtn.classList.remove("animate-pulse");
-  });
+    });
+  }
 
-  closeBtn?.addEventListener("click", () => {
-    adblockState.isBannerDismissed = true;
-    hideBanner();
-  });
+  if (whitelistBtn && !whitelistBtn.dataset.bound) {
+    whitelistBtn.dataset.bound = "true";
+    whitelistBtn.addEventListener("click", async () => {
+      whitelistBtn.classList.add("animate-pulse");
+      const isBlocked = await detectAdBlock();
+      if (isBlocked && !adblockState.isAdFree) {
+        (window as any).showVanillaToast("Ad blocker is still active. Please disable it for TakeoutFix or refresh the page.", "error");
+      } else {
+        (window as any).showVanillaToast("Thank you for supporting TakeoutFix!", "success");
+        hideBanner();
+      }
+      whitelistBtn.classList.remove("animate-pulse");
+    });
+  }
 };
