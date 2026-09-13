@@ -56,7 +56,6 @@ jobs:
         run: |
           mkdir -p jpackage-input
           cp native/target/GTakeout-1.0.0.jar jpackage-input/
-          cp native/target/GTakeout-1.0.0.jar ./TakeoutFix-Universal.jar
 
       - name: Create Native App Image & MSI Installer (Windows)
         if: matrix.os == 'windows-latest'
@@ -210,7 +209,6 @@ jobs:
           files: |
             TakeoutFix-Setup.msi
             TakeoutFix-Windows-Portable.zip
-            TakeoutFix-Universal.jar
 
       - name: Upload Windows Artifacts
         if: matrix.os == 'windows-latest'
@@ -220,7 +218,6 @@ jobs:
           path: |
             TakeoutFix-Setup.msi
             TakeoutFix-Windows-Portable.zip
-            TakeoutFix-Universal.jar
 
       - name: Upload macOS Asset to Release
         if: matrix.os == 'macos-latest' && github.event_name == 'release'
