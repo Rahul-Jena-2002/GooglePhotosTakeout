@@ -116,12 +116,10 @@ jobs:
             --verbose
 
           # Zero-certificate launcher script removing quarantine attribute so Gatekeeper allows immediate launch
-          cat << 'EOF' > dist/Run-TakeoutFix.command
-#!/bin/bash
-DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
-xattr -cr "$DIR/TakeoutFix.app" 2>/dev/null || true
-open "$DIR/TakeoutFix.app"
-EOF
+          echo '#!/bin/bash' > dist/Run-TakeoutFix.command
+          echo 'DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"' >> dist/Run-TakeoutFix.command
+          echo 'xattr -cr "$DIR/TakeoutFix.app" 2>/dev/null || true' >> dist/Run-TakeoutFix.command
+          echo 'open "$DIR/TakeoutFix.app"' >> dist/Run-TakeoutFix.command
           chmod +x dist/Run-TakeoutFix.command
           cd dist
           zip -r ../TakeoutFix-macOS-Portable.zip TakeoutFix.app Run-TakeoutFix.command
@@ -163,11 +161,9 @@ EOF
             --app-version "1.0.0" \
             --verbose
 
-          cat << 'EOF' > dist/TakeoutFix/run.sh
-#!/bin/bash
-DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
-exec "$DIR/bin/TakeoutFix" "$@"
-EOF
+          echo '#!/bin/bash' > dist/TakeoutFix/run.sh
+          echo 'DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"' >> dist/TakeoutFix/run.sh
+          echo 'exec "$DIR/bin/TakeoutFix" "$@"' >> dist/TakeoutFix/run.sh
           chmod +x dist/TakeoutFix/run.sh
           chmod +x dist/TakeoutFix/bin/TakeoutFix
           cd dist
