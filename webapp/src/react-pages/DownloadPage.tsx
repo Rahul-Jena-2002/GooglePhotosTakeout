@@ -265,19 +265,10 @@ export default function DownloadPage() {
                 </div>
 
                 <div className="pt-2 flex flex-col sm:flex-row gap-3">
-                  <a href={activeOption.url} className="flex-1">
+                  <a href={activeOption.url} className="w-full">
                     <button className="primary-saas w-full h-11 text-xs font-bold rounded-xl flex items-center justify-center gap-2 cursor-pointer shadow-md">
                       <Download className="w-4 h-4" /> Download {activeOption.title}
                     </button>
-                  </a>
-                  <a 
-                    href={activeOption.directUrl} 
-                    target="_blank" 
-                    rel="noopener noreferrer"
-                    title="Direct GitHub Releases download mirror"
-                    className="flex-shrink-0 px-4 h-11 rounded-xl border border-white/10 hover:border-white/20 bg-white/[0.02] hover:bg-white/[0.05] text-xs font-semibold text-zinc-300 hover:text-white flex items-center justify-center gap-1.5 transition-colors"
-                  >
-                    GitHub Mirror
                   </a>
                 </div>
               </div>
