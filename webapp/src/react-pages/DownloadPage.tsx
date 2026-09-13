@@ -13,50 +13,133 @@ import {
   AlertCircle
 } from "lucide-react";
 
+interface DownloadOption {
+  title: string;
+  badge: string;
+  desc: string;
+  file: string;
+  url: string;
+  directUrl: string;
+  primary: boolean;
+  instructions: string[];
+}
+
 export default function DownloadPage() {
   const [selectedOS, setSelectedOS] = useState<"win" | "mac" | "linux">("win");
+  const [selectedType, setSelectedType] = useState<number>(0);
 
-  const downloadUrls = {
-    win: "https://takeoutfix-download.takeoutfix.workers.dev/download/windows",
-    mac: "https://takeoutfix-download.takeoutfix.workers.dev/download/macos",
-    linux: "https://takeoutfix-download.takeoutfix.workers.dev/download/linux"
+  const downloadOptions: Record<"win" | "mac" | "linux", DownloadOption[]> = {
+    win: [
+      {
+        title: "Windows Installer (.msi)",
+        badge: "Recommended",
+        desc: "Official Windows installer with Start Menu shortcut and per-user automatic setup.",
+        file: "TakeoutFix-Setup.msi",
+        url: "https://takeoutfix-download.takeoutfix.workers.dev/download/windows/installer",
+        directUrl: "https://github.com/Rahul-Jena-2002/GooglePhotosTakeout/releases/latest/download/TakeoutFix-Setup.msi",
+        primary: true,
+        instructions: [
+          "Download the 'TakeoutFix-Setup.msi' installer using the button below.",
+          "Double-click to install (runs cleanly per-user without requiring admin administrator prompt).",
+          "Launch TakeoutFix directly from your Windows Start Menu or Desktop search.",
+          "If Windows SmartScreen prompts on first run, click 'More info' and select 'Run anyway'."
+        ]
+      },
+      {
+        title: "Windows Portable (.zip)",
+        badge: "Portable / Zero-Install",
+        desc: "Standalone folder. Extract anywhere and launch immediately without installing anything.",
+        file: "TakeoutFix-Windows-Portable.zip",
+        url: "https://takeoutfix-download.takeoutfix.workers.dev/download/windows/portable",
+        directUrl: "https://github.com/Rahul-Jena-2002/GooglePhotosTakeout/releases/latest/download/TakeoutFix-Windows-Portable.zip",
+        primary: false,
+        instructions: [
+          "Download the 'TakeoutFix-Windows-Portable.zip' archive below.",
+          "Right-click the zip and select 'Extract All...'.",
+          "Double-click 'TakeoutFix.exe' in the extracted folder to launch immediately.",
+          "Use 'Run-Debug.bat' if you ever need to view real-time troubleshooting terminal output."
+        ]
+      }
+    ],
+    mac: [
+      {
+        title: "macOS Installer (.dmg)",
+        badge: "Recommended",
+        desc: "Native Apple disk image with Applications folder drag-and-drop installer.",
+        file: "TakeoutFix-macOS.dmg",
+        url: "https://takeoutfix-download.takeoutfix.workers.dev/download/macos/installer",
+        directUrl: "https://github.com/Rahul-Jena-2002/GooglePhotosTakeout/releases/latest/download/TakeoutFix-macOS.dmg",
+        primary: true,
+        instructions: [
+          "Download 'TakeoutFix-macOS.dmg' disk image below.",
+          "Double-click the DMG file to mount it.",
+          "Drag 'TakeoutFix.app' into your Applications folder.",
+          "Launch TakeoutFix from Launchpad, Spotlight, or your Applications folder."
+        ]
+      },
+      {
+        title: "macOS Portable (.zip)",
+        badge: "Portable / Zero-Install",
+        desc: "Standalone app bundle with zero-certificate launcher script to bypass Gatekeeper quarantine.",
+        file: "TakeoutFix-macOS-Portable.zip",
+        url: "https://takeoutfix-download.takeoutfix.workers.dev/download/macos/portable",
+        directUrl: "https://github.com/Rahul-Jena-2002/GooglePhotosTakeout/releases/latest/download/TakeoutFix-macOS-Portable.zip",
+        primary: false,
+        instructions: [
+          "Download and unzip 'TakeoutFix-macOS-Portable.zip'.",
+          "Double-click 'Run-TakeoutFix.command' to automatically clear quarantine and start the app.",
+          "Or right-click 'TakeoutFix.app' and click 'Open' to confirm macOS security prompt."
+        ]
+      }
+    ],
+    linux: [
+      {
+        title: "Debian / Ubuntu (.deb)",
+        badge: "Debian / Ubuntu",
+        desc: "Native package for Ubuntu, Debian, Linux Mint, Pop!_OS, and derivatives.",
+        file: "TakeoutFix-Linux.deb",
+        url: "https://takeoutfix-download.takeoutfix.workers.dev/download/linux/deb",
+        directUrl: "https://github.com/Rahul-Jena-2002/GooglePhotosTakeout/releases/latest/download/TakeoutFix-Linux.deb",
+        primary: true,
+        instructions: [
+          "Download 'TakeoutFix-Linux.deb' package below.",
+          "Install via terminal: sudo dpkg -i TakeoutFix-Linux.deb (or double-click to install via Software Center).",
+          "Launch 'TakeoutFix' from your Applications menu."
+        ]
+      },
+      {
+        title: "Fedora / RHEL (.rpm)",
+        badge: "Fedora / RHEL",
+        desc: "Native package for Fedora, Red Hat Enterprise Linux, CentOS, Rocky Linux, and openSUSE.",
+        file: "TakeoutFix-Linux.rpm",
+        url: "https://takeoutfix-download.takeoutfix.workers.dev/download/linux/rpm",
+        directUrl: "https://github.com/Rahul-Jena-2002/GooglePhotosTakeout/releases/latest/download/TakeoutFix-Linux.rpm",
+        primary: false,
+        instructions: [
+          "Download 'TakeoutFix-Linux.rpm' package below.",
+          "Install via terminal: sudo rpm -i TakeoutFix-Linux.rpm (or sudo dnf install ./TakeoutFix-Linux.rpm).",
+          "Launch 'TakeoutFix' from your Applications menu."
+        ]
+      },
+      {
+        title: "Linux Portable (.tar.gz)",
+        badge: "Portable / Tarball",
+        desc: "Standalone compressed archive. Compatible with any modern x86_64 Linux distribution.",
+        file: "TakeoutFix-Linux-Portable.tar.gz",
+        url: "https://takeoutfix-download.takeoutfix.workers.dev/download/linux/portable",
+        directUrl: "https://github.com/Rahul-Jena-2002/GooglePhotosTakeout/releases/latest/download/TakeoutFix-Linux-Portable.tar.gz",
+        primary: false,
+        instructions: [
+          "Download and extract: tar -xzf TakeoutFix-Linux-Portable.tar.gz",
+          "Navigate into directory: cd TakeoutFix",
+          "Launch directly: ./run.sh"
+        ]
+      }
+    ]
   };
 
-  const osInfo = {
-    win: {
-      title: "Windows Standalone",
-      desc: "Compatible with Windows 10 & 11 (64-bit). No installer required.",
-      file: "TakeoutFix-Windows-Portable.zip",
-      instructions: [
-        "Download the ZIP archive using the link below.",
-        "Right-click the downloaded folder and select 'Extract All...'.",
-        "Open the extracted directory and double-click the 'GTMetadataMerger.exe' file.",
-        "If Windows SmartScreen prompts a warning (since it's a new standalone release), click 'More info' and select 'Run anyway'."
-      ]
-    },
-    mac: {
-      title: "macOS Application",
-      desc: "Supports Intel & Apple Silicon (M1/M2/M3) chips. macOS 12+.",
-      file: "TakeoutFix-macOS-Portable.zip",
-      instructions: [
-        "Download the macOS archive file.",
-        "Double-click to extract the ZIP archive.",
-        "Drag the extracted 'GTMetadataMerger.app' into your Applications folder.",
-        "Right-click the app icon and select 'Open' to launch it. Confirm the security prompt by clicking 'Open' again."
-      ]
-    },
-    linux: {
-      title: "Linux Executable",
-      desc: "Compatible with modern x86_64 distributions (Ubuntu, Fedora, Arch).",
-      file: "TakeoutFix-Linux-Portable.tar.gz",
-      instructions: [
-        "Download the Linux compressed tarball.",
-        "Extract it using your archive manager or run: tar -xzf TakeoutFix-Linux-Portable.tar.gz",
-        "Navigate into the folder and mark the main executable as runnable: chmod +x GTMetadataMerger",
-        "Launch the tool directly from terminal or double-click to start: ./GTMetadataMerger"
-      ]
-    }
-  };
+  const currentOptions = downloadOptions[selectedOS];
+  const activeOption = currentOptions[selectedType] || currentOptions[0];
 
   return (
     <div className="min-h-screen text-white relative py-12 px-6">
@@ -86,7 +169,7 @@ export default function DownloadPage() {
               {/* Tab headers */}
               <div className="flex border-b border-white/5 pb-4 mb-6 justify-between gap-2 overflow-x-auto">
                 <button 
-                  onClick={() => setSelectedOS("win")}
+                  onClick={() => { setSelectedOS("win"); setSelectedType(0); }}
                   className={`flex-1 min-w-[90px] py-2.5 px-4 rounded-xl text-xs font-bold transition-all border text-center flex items-center justify-center gap-1.5 ${
                     selectedOS === "win" 
                       ? "bg-white text-black border-transparent shadow-md"
@@ -97,7 +180,7 @@ export default function DownloadPage() {
                   <span>Windows</span>
                 </button>
                 <button 
-                  onClick={() => setSelectedOS("mac")}
+                  onClick={() => { setSelectedOS("mac"); setSelectedType(0); }}
                   className={`flex-1 min-w-[90px] py-2.5 px-4 rounded-xl text-xs font-bold transition-all border text-center flex items-center justify-center gap-1.5 ${
                     selectedOS === "mac" 
                       ? "bg-white text-black border-transparent shadow-md"
@@ -115,7 +198,7 @@ export default function DownloadPage() {
                   <span>macOS</span>
                 </button>
                 <button 
-                  onClick={() => setSelectedOS("linux")}
+                  onClick={() => { setSelectedOS("linux"); setSelectedType(0); }}
                   className={`flex-1 min-w-[90px] py-2.5 px-4 rounded-xl text-xs font-bold transition-all border text-center flex items-center justify-center gap-1.5 ${
                     selectedOS === "linux" 
                       ? "bg-white text-black border-transparent shadow-md"
@@ -127,17 +210,56 @@ export default function DownloadPage() {
                 </button>
               </div>
 
-              {/* Instructions list */}
-              <div className="space-y-6">
+              {/* Package Format Selector Pills */}
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <span className="text-[11px] font-bold uppercase tracking-wider text-zinc-400">Choose Package Format</span>
+                  <span className="text-[10px] text-zinc-500">{currentOptions.length} format{currentOptions.length > 1 ? 's' : ''} available</span>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                  {currentOptions.map((opt, idx) => {
+                    const isSelected = selectedType === idx;
+                    return (
+                      <button
+                        key={idx}
+                        onClick={() => setSelectedType(idx)}
+                        className={`p-3 rounded-xl border text-left transition-all relative ${
+                          isSelected
+                            ? "bg-indigo-500/10 border-indigo-500/40 text-white shadow-sm ring-1 ring-indigo-500/20"
+                            : "bg-white/[0.02] border-white/5 text-zinc-400 hover:border-white/10 hover:text-zinc-200"
+                        }`}
+                      >
+                        <div className="flex items-center justify-between mb-1">
+                          <span className={`text-xs font-bold ${isSelected ? "text-indigo-300" : "text-white"}`}>{opt.title}</span>
+                          <span className={`text-[9px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider ${
+                            opt.primary 
+                              ? "bg-indigo-500/20 text-indigo-300 border border-indigo-500/30" 
+                              : "bg-zinc-800 text-zinc-400 border border-white/5"
+                          }`}>
+                            {opt.badge}
+                          </span>
+                        </div>
+                        <p className="text-[10.5px] text-zinc-400 line-clamp-2 leading-relaxed">{opt.desc}</p>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Active Selection Details & Download Action */}
+              <div className="space-y-6 pt-6 border-t border-white/5 mt-6">
                 <div>
-                  <h3 className="text-lg font-bold text-white">{osInfo[selectedOS].title}</h3>
-                  <p className="text-xs text-zinc-400 mt-1">{osInfo[selectedOS].desc}</p>
+                  <h3 className="text-base font-bold text-white flex items-center gap-2">
+                    {activeOption.title}
+                    <span className="text-[10px] px-2 py-0.5 rounded bg-zinc-800 text-zinc-300 font-mono font-normal">{activeOption.file}</span>
+                  </h3>
+                  <p className="text-xs text-zinc-400 mt-1">{activeOption.desc}</p>
                 </div>
 
-                <div className="space-y-4">
+                <div className="space-y-3">
                   <h4 className="text-[10px] font-bold uppercase tracking-wider text-zinc-500">Installation Steps</h4>
-                  <ol className="space-y-3.5 pl-0.5">
-                    {osInfo[selectedOS].instructions.map((step, idx) => (
+                  <ol className="space-y-2.5 pl-0.5">
+                    {activeOption.instructions.map((step, idx) => (
                       <li key={idx} className="flex gap-3 text-xs text-zinc-300 leading-relaxed font-medium">
                         <span className="flex-shrink-0 w-5 h-5 rounded-full bg-zinc-900 border border-white/10 flex items-center justify-center text-[10px] font-bold text-white/50">{idx + 1}</span>
                         <span>{step}</span>
@@ -146,11 +268,20 @@ export default function DownloadPage() {
                   </ol>
                 </div>
 
-                <div className="pt-4 flex flex-col sm:flex-row gap-3">
-                  <a href={downloadUrls[selectedOS]} className="flex-1">
+                <div className="pt-2 flex flex-col sm:flex-row gap-3">
+                  <a href={activeOption.url} className="flex-1">
                     <button className="primary-saas w-full h-11 text-xs font-bold rounded-xl flex items-center justify-center gap-2 cursor-pointer shadow-md">
-                      <Download className="w-4 h-4" /> Download Standalone ({osInfo[selectedOS].file})
+                      <Download className="w-4 h-4" /> Download {activeOption.title}
                     </button>
+                  </a>
+                  <a 
+                    href={activeOption.directUrl} 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    title="Direct GitHub Releases download mirror"
+                    className="flex-shrink-0 px-4 h-11 rounded-xl border border-white/10 hover:border-white/20 bg-white/[0.02] hover:bg-white/[0.05] text-xs font-semibold text-zinc-300 hover:text-white flex items-center justify-center gap-1.5 transition-colors"
+                  >
+                    GitHub Mirror
                   </a>
                 </div>
               </div>

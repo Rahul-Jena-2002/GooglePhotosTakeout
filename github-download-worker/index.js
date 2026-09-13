@@ -6,27 +6,35 @@ export default {
     const url = new URL(request.url);
     const path = url.pathname.toLowerCase();
 
-    // Map download paths to expected file names
+    // Map download paths to expected file names (separate portable and installer packages)
     let targetFileName = "";
-    if (path === "/download/windows") {
+    if (path === "/download/windows/portable" || path === "/download/windows/zip") {
       targetFileName = "TakeoutFix-Windows-Portable.zip";
-    } else if (path === "/download/macos") {
+    } else if (path === "/download/windows" || path === "/download/windows/installer" || path === "/download/windows/msi") {
+      targetFileName = "TakeoutFix-Setup.msi";
+    } else if (path === "/download/macos/portable" || path === "/download/macos/zip") {
       targetFileName = "TakeoutFix-macOS-Portable.zip";
-    } else if (path === "/download/linux") {
+    } else if (path === "/download/macos" || path === "/download/macos/installer" || path === "/download/macos/dmg") {
+      targetFileName = "TakeoutFix-macOS.dmg";
+    } else if (path === "/download/linux/deb") {
+      targetFileName = "TakeoutFix-Linux.deb";
+    } else if (path === "/download/linux/rpm") {
+      targetFileName = "TakeoutFix-Linux.rpm";
+    } else if (path === "/download/linux/portable" || path === "/download/linux/tar") {
       targetFileName = "TakeoutFix-Linux-Portable.tar.gz";
+    } else if (path === "/download/linux") {
+      targetFileName = "TakeoutFix-Linux.deb";
     } else {
-      return new Response("Not Found. Use /download/windows, /download/macos, or /download/linux", {
+      return new Response("Not Found. Available routes:\n- /download/windows/installer (MSI)\n- /download/windows/portable (.zip)\n- /download/macos/installer (.dmg)\n- /download/macos/portable (.zip)\n- /download/linux/deb (.deb)\n- /download/linux/rpm (.rpm)\n- /download/linux/portable (.tar.gz)", {
         status: 404,
         headers: { "Content-Type": "text/plain" }
       });
     }
 
     const token = env.GITHUB_PAT;
+    // If no token is provided, redirect directly to GitHub latest release download (zero configuration needed)
     if (!token) {
-      return new Response("Server Configuration Error: Missing GITHUB_PAT", {
-        status: 500,
-        headers: { "Content-Type": "text/plain" }
-      });
+      return Response.redirect(`https://github.com/${REPO_OWNER}/${REPO_NAME}/releases/latest/download/${targetFileName}`, 302);
     }
 
     try {

@@ -67,13 +67,22 @@ jobs:
             --name TakeoutFix `
             --input jpackage-input `
             --main-jar GTakeout-1.0.0.jar `
-            --main-class com.rahul.TakeoutApplication `
             --icon native/icons/icon.ico `
             --dest dist `
             --vendor "TakeoutFix" `
             --app-version "1.0.0" `
-            --win-console `
             --verbose
+
+          # Add helper debug launcher for Windows portable
+          @"
+          @echo off
+          echo [TakeoutFix] Launching in debug console mode...
+          "%~dp0TakeoutFix.exe"
+          echo.
+          echo [TakeoutFix] Application terminated with exit code %ERRORLEVEL%.
+          pause
+          "@ | Set-Content -Path dist/TakeoutFix/Run-Debug.bat -Encoding ASCII
+
           Compress-Archive -Path dist/TakeoutFix -DestinationPath TakeoutFix-Windows-Portable.zip
 
           # 2. Windows MSI Installer (per-user install, runs without admin certificate restriction)
@@ -82,7 +91,6 @@ jobs:
             --name TakeoutFix `
             --input jpackage-input `
             --main-jar GTakeout-1.0.0.jar `
-            --main-class com.rahul.TakeoutApplication `
             --icon native/icons/icon.ico `
             --dest dist-msi `
             --vendor "TakeoutFix" `
@@ -105,7 +113,6 @@ jobs:
             --name TakeoutFix \
             --input jpackage-input \
             --main-jar GTakeout-1.0.0.jar \
-            --main-class com.rahul.TakeoutApplication \
             --icon native/icons/icon.icns \
             --dest dist \
             --mac-package-identifier com.takeoutfix.desktop \
@@ -129,7 +136,6 @@ jobs:
             --name TakeoutFix \
             --input jpackage-input \
             --main-jar GTakeout-1.0.0.jar \
-            --main-class com.rahul.TakeoutApplication \
             --icon native/icons/icon.icns \
             --dest dist-dmg \
             --mac-package-identifier com.takeoutfix.desktop \
@@ -152,7 +158,6 @@ jobs:
             --name TakeoutFix \
             --input jpackage-input \
             --main-jar GTakeout-1.0.0.jar \
-            --main-class com.rahul.TakeoutApplication \
             --icon native/icons/icon.png \
             --dest dist \
             --vendor "TakeoutFix" \
@@ -174,7 +179,6 @@ jobs:
             --name takeoutfix \
             --input jpackage-input \
             --main-jar GTakeout-1.0.0.jar \
-            --main-class com.rahul.TakeoutApplication \
             --icon native/icons/icon.png \
             --dest dist-deb \
             --vendor "TakeoutFix" \
@@ -191,7 +195,6 @@ jobs:
             --name takeoutfix \
             --input jpackage-input \
             --main-jar GTakeout-1.0.0.jar \
-            --main-class com.rahul.TakeoutApplication \
             --icon native/icons/icon.png \
             --dest dist-rpm \
             --vendor "TakeoutFix" \
@@ -210,14 +213,19 @@ jobs:
             TakeoutFix-Setup.msi
             TakeoutFix-Windows-Portable.zip
 
-      - name: Upload Windows Artifacts
+      - name: Upload Windows Portable Artifact
         if: matrix.os == 'windows-latest'
         uses: actions/upload-artifact@v4
         with:
-          name: TakeoutFix-Windows
-          path: |
-            TakeoutFix-Setup.msi
-            TakeoutFix-Windows-Portable.zip
+          name: TakeoutFix-Windows-Portable
+          path: TakeoutFix-Windows-Portable.zip
+
+      - name: Upload Windows Installer Artifact
+        if: matrix.os == 'windows-latest'
+        uses: actions/upload-artifact@v4
+        with:
+          name: TakeoutFix-Windows-Installer
+          path: TakeoutFix-Setup.msi
 
       - name: Upload macOS Asset to Release
         if: matrix.os == 'macos-latest' && github.event_name == 'release'
@@ -227,14 +235,19 @@ jobs:
             TakeoutFix-macOS.dmg
             TakeoutFix-macOS-Portable.zip
 
-      - name: Upload macOS Artifact
+      - name: Upload macOS Portable Artifact
         if: matrix.os == 'macos-latest'
         uses: actions/upload-artifact@v4
         with:
-          name: TakeoutFix-macOS
-          path: |
-            TakeoutFix-macOS.dmg
-            TakeoutFix-macOS-Portable.zip
+          name: TakeoutFix-macOS-Portable
+          path: TakeoutFix-macOS-Portable.zip
+
+      - name: Upload macOS Installer Artifact
+        if: matrix.os == 'macos-latest'
+        uses: actions/upload-artifact@v4
+        with:
+          name: TakeoutFix-macOS-Installer
+          path: TakeoutFix-macOS.dmg
 
       - name: Upload Linux Asset to Release
         if: matrix.os == 'ubuntu-latest' && github.event_name == 'release'
@@ -245,12 +258,18 @@ jobs:
             TakeoutFix-Linux.rpm
             TakeoutFix-Linux-Portable.tar.gz
 
-      - name: Upload Linux Artifact
+      - name: Upload Linux Portable Artifact
         if: matrix.os == 'ubuntu-latest'
         uses: actions/upload-artifact@v4
         with:
-          name: TakeoutFix-Linux
+          name: TakeoutFix-Linux-Portable
+          path: TakeoutFix-Linux-Portable.tar.gz
+
+      - name: Upload Linux Packages Artifact
+        if: matrix.os == 'ubuntu-latest'
+        uses: actions/upload-artifact@v4
+        with:
+          name: TakeoutFix-Linux-Packages
           path: |
             TakeoutFix-Linux.deb
             TakeoutFix-Linux.rpm
-            TakeoutFix-Linux-Portable.tar.gz
