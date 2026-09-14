@@ -8,19 +8,19 @@ export default {
 
     // Map download paths to expected file names (separate portable and installer packages)
     let targetFileName = "";
-    if (path === "/download/windows/portable" || path === "/download/windows/zip") {
+    if (path === "/download/windows" || path === "/download/windows/portable" || path === "/download/windows/zip") {
       targetFileName = "TakeoutFix-Windows-Portable.zip";
-    } else if (path === "/download/windows" || path === "/download/windows/installer" || path === "/download/windows/msi") {
+    } else if (path === "/download/windows/installer" || path === "/download/windows/msi") {
       targetFileName = "TakeoutFix-Setup.msi";
-    } else if (path === "/download/macos/portable" || path === "/download/macos/zip") {
+    } else if (path === "/download/macos" || path === "/download/macos/portable" || path === "/download/macos/zip") {
       targetFileName = "TakeoutFix-macOS-Portable.zip";
-    } else if (path === "/download/macos" || path === "/download/macos/installer" || path === "/download/macos/dmg") {
+    } else if (path === "/download/macos/installer" || path === "/download/macos/dmg") {
       targetFileName = "TakeoutFix-macOS.dmg";
     } else if (path === "/download/linux/deb") {
       targetFileName = "TakeoutFix-Linux.deb";
     } else if (path === "/download/linux/rpm") {
       targetFileName = "TakeoutFix-Linux.rpm";
-    } else if (path === "/download/linux/portable" || path === "/download/linux/tar") {
+    } else if (path === "/download/linux" || path === "/download/linux/portable" || path === "/download/linux/tar") {
       targetFileName = "TakeoutFix-Linux-Portable.tar.gz";
     } else if (path === "/" || path === "/download") {
       return Response.redirect("https://takeoutfix.pages.dev/download", 302);
