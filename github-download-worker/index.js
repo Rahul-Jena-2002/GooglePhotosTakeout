@@ -57,23 +57,18 @@ export default {
       const releaseData = await releaseResponse.json();
       const assets = releaseData.assets || [];
 
-      // 2. Find the asset matching our target file name, with smart fallback to portable archive
-      let targetAsset = assets.find(asset => asset.name === targetFileName);
-      if (!targetAsset) {
-        if (targetFileName.toLowerCase().includes("windows")) {
-          targetAsset = assets.find(asset => asset.name.toLowerCase().includes("windows"));
-        } else if (targetFileName.toLowerCase().includes("macos")) {
-          targetAsset = assets.find(asset => asset.name.toLowerCase().includes("macos"));
-        } else if (targetFileName.toLowerCase().includes("linux")) {
-          targetAsset = assets.find(asset => asset.name.toLowerCase().includes("linux"));
-        }
-      }
+      // 2. Find the exact asset matching the requested target file name (no mixing portable and installer)
+      const targetAsset = assets.find(asset => asset.name.toLowerCase() === targetFileName.toLowerCase());
 
       if (!targetAsset) {
-        return new Response(`File ${targetFileName} not found in the latest release (${releaseData.tag_name || 'latest'}). Available release assets: ${assets.map(a => a.name).join(', ')}`, {
-          status: 404,
-          headers: { "Content-Type": "text/plain" }
-        });
+        return new Response(
+          `The requested file '${targetFileName}' was not found in release '${releaseData.tag_name || 'latest'}'.\n\n` +
+          `Available assets in this release:\n${assets.map(a => '- ' + a.name).join('\n')}`,
+          {
+            status: 404,
+            headers: { "Content-Type": "text/plain" }
+          }
+        );
       }
 
       // 3. Request the asset binary from GitHub
