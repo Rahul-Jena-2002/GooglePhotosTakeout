@@ -1,6 +1,7 @@
 globalThis.process ??= {};
 globalThis.process.env ??= {};
 import { env } from "cloudflare:workers";
+const __vite_import_meta_env__ = { "ASSETS_PREFIX": void 0, "BASE_URL": "/", "DEV": false, "MODE": "production", "PROD": true, "SITE": "https://takeoutfix.pages.dev", "SSR": true };
 const prerender = false;
 function json(status, data) {
   return new Response(JSON.stringify(data), {
@@ -23,15 +24,15 @@ async function getGoogleAuthToken(serviceAccount) {
     iat,
     exp
   };
-  const base64UrlEncode = (str) => btoa(str).replace(/=/g, "").replace(/\+/g, "-").replace(/\//g, "_");
+  const base64UrlEncode = (str) => btoa(str).replaceAll("=", "").replaceAll("+", "-").replaceAll("/", "_");
   const unsignedToken = `${base64UrlEncode(JSON.stringify(header))}.${base64UrlEncode(JSON.stringify(payload))}`;
   const pemHeader = "-----BEGIN PRIVATE KEY-----";
   const pemFooter = "-----END PRIVATE KEY-----";
-  const pemContents = serviceAccount.private_key.replace(/\\n/g, "\n").replace(pemHeader, "").replace(pemFooter, "").replace(/\s/g, "");
+  const pemContents = serviceAccount.private_key.replaceAll(String.raw`\n`, "\n").replaceAll(pemHeader, "").replaceAll(pemFooter, "").replaceAll(/\s/g, "");
   const binaryKey = atob(pemContents);
   const keyBuffer = new Uint8Array(binaryKey.length);
   for (let i = 0; i < binaryKey.length; i++) {
-    keyBuffer[i] = binaryKey.charCodeAt(i);
+    keyBuffer[i] = binaryKey.codePointAt(i) ?? 0;
   }
   const key = await crypto.subtle.importKey(
     "pkcs8",
@@ -46,7 +47,7 @@ async function getGoogleAuthToken(serviceAccount) {
     key,
     encoder.encode(unsignedToken)
   );
-  const signedToken = `${unsignedToken}.${btoa(String.fromCharCode(...new Uint8Array(signature))).replace(/=/g, "").replace(/\+/g, "-").replace(/\//g, "_")}`;
+  const signedToken = `${unsignedToken}.${btoa(String.fromCodePoint(...new Uint8Array(signature))).replaceAll("=", "").replaceAll("+", "-").replaceAll("/", "_")}`;
   const res = await fetch("https://oauth2.googleapis.com/token", {
     method: "POST",
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
@@ -68,7 +69,7 @@ const OPTIONS = async () => {
     }
   });
 };
-const POST = async ({ request }) => {
+const POST = async ({ request, locals }) => {
   try {
     const authHeader = request.headers.get("authorization") || "";
     if (!authHeader.startsWith("Bearer ")) {
@@ -79,7 +80,8 @@ const POST = async ({ request }) => {
     if (!inviteId) {
       return json(400, { error: "inviteId is required." });
     }
-    const serviceAccountStr = env.FIREBASE_SERVICE_ACCOUNT || void 0;
+    const runtimeEnv = locals?.runtime?.env;
+    const serviceAccountStr = env?.FIREBASE_SERVICE_ACCOUNT || runtimeEnv?.FIREBASE_SERVICE_ACCOUNT || Object.assign(__vite_import_meta_env__, { _: "/opt/hostedtoolcache/node/22.23.2/x64/bin/npm" })?.FIREBASE_SERVICE_ACCOUNT || process.env?.FIREBASE_SERVICE_ACCOUNT;
     if (!serviceAccountStr) {
       return json(500, { error: "Server configuration error: missing service account credentials." });
     }
@@ -97,35 +99,20 @@ const POST = async ({ request }) => {
     const inviteDoc = await inviteRes.json();
     const inviteFields = inviteDoc.fields;
     const status = inviteFields.status?.stringValue;
-    const expiresAtStr = inviteFields.expiresAt?.timestampValue || inviteFields.expiresAt?.stringValue;
-    const role = inviteFields.role?.stringValue || "ADMIN";
     if (status !== "pending") {
       return json(400, { error: `This invitation is already ${status}.` });
     }
     const now = Date.now();
-    const expiresAtMs = new Date(expiresAtStr).getTime();
-    if (now > expiresAtMs) {
-      return json(400, { error: "This invitation has expired." });
-    }
-    const tokenParts = idToken.split(".");
-    if (tokenParts.length !== 3) {
-      return json(400, { error: "Invalid token format." });
-    }
-    const tokenPayload = JSON.parse(atob(tokenParts[1]));
-    const userId = tokenPayload.user_id || tokenPayload.sub;
-    const userEmail = tokenPayload.email;
-    const userName = tokenPayload.name || "Admin User";
     const adminToken = await getGoogleAuthToken(serviceAccount);
     const adminHeaders = {
       "Authorization": `Bearer ${adminToken}`,
       "Content-Type": "application/json"
     };
-    const updateInviteUrl = `${inviteUrl}?updateMask.fieldPaths=status&updateMask.fieldPaths=acceptedAt&updateMask.fieldPaths=acceptedUid`;
+    const updateInviteUrl = `${inviteUrl}?updateMask.fieldPaths=status&updateMask.fieldPaths=declinedAt`;
     const updateInviteBody = {
       fields: {
-        status: { stringValue: "accepted" },
-        acceptedAt: { integerValue: String(now) },
-        acceptedUid: { stringValue: userId }
+        status: { stringValue: "declined" },
+        declinedAt: { integerValue: String(now) }
       }
     };
     const updateInviteRes = await fetch(updateInviteUrl, {
@@ -134,43 +121,9 @@ const POST = async ({ request }) => {
       body: JSON.stringify(updateInviteBody)
     });
     if (!updateInviteRes.ok) {
-      return json(500, { error: "Failed to update invitation status.", details: await updateInviteRes.text() });
+      return json(500, { error: "Failed to decline invitation.", details: await updateInviteRes.text() });
     }
-    const adminUrl = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/admins/${userId}`;
-    const adminBody = {
-      fields: {
-        uid: { stringValue: userId },
-        email: { stringValue: userEmail },
-        displayName: { stringValue: userName },
-        role: { stringValue: role },
-        status: { stringValue: "online" },
-        lastSeen: { integerValue: String(now) },
-        createdAt: { integerValue: String(now) }
-      }
-    };
-    const createAdminRes = await fetch(adminUrl, {
-      method: "PATCH",
-      headers: adminHeaders,
-      body: JSON.stringify(adminBody)
-    });
-    if (!createAdminRes.ok) {
-      return json(500, { error: "Failed to provision admin profile.", details: await createAdminRes.text() });
-    }
-    const userUrl = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/users/${userId}?updateMask.fieldPaths=isAdmin`;
-    const userBody = {
-      fields: {
-        isAdmin: { booleanValue: true }
-      }
-    };
-    const updateUserRes = await fetch(userUrl, {
-      method: "PATCH",
-      headers: adminHeaders,
-      body: JSON.stringify(userBody)
-    });
-    if (!updateUserRes.ok) {
-      return json(500, { error: "Failed to set admin flag on user profile.", details: await updateUserRes.text() });
-    }
-    return json(200, { success: true, message: "Invitation accepted successfully." });
+    return json(200, { success: true, message: "Invitation declined successfully." });
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     return json(500, { error: "ServerError", message });
