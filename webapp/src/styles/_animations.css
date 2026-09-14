@@ -1,0 +1,224 @@
+/* --- Apple-style Transition & Physics (Highly Damped) --- */
+button,
+a.btn,
+.btn,
+.primary-saas,
+.secondary-saas,
+.glass-card,
+.compare-card,
+.faq-item button,
+.nav-link,
+.mobile-nav-link,
+#theme-toggle-btn,
+#mobile-theme-toggle-btn {
+  transition: transform 150ms ease-out, 
+              box-shadow 150ms ease-out, 
+              background-color 150ms ease-out, 
+              border-color 150ms ease-out, 
+              color 150ms ease-out !important;
+}
+
+/* Subtle Apple-style Lift and Press animations */
+button:hover,
+a.btn:hover,
+.btn:hover,
+.primary-saas:hover,
+.secondary-saas:hover,
+#theme-toggle-btn:hover,
+#mobile-theme-toggle-btn:hover {
+  transform: scale(1.02) !important;
+}
+
+button:active,
+a.btn:active,
+.btn:active,
+.primary-saas:active,
+.secondary-saas:active,
+#theme-toggle-btn:active,
+#mobile-theme-toggle-btn:active {
+  transform: scale(0.97) !important;
+}
+
+.glass-card:hover,
+.compare-card:hover {
+  transform: translateY(-2px) scale(1.005) !important;
+  box-shadow: none !important;
+}
+
+html.dark .glass-card:hover,
+html.dark .compare-card:hover {
+  box-shadow: none !important;
+}
+
+/* --- Apple-style Subtle Page Transitions --- */
+@keyframes pageFadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.animate-page {
+  animation: pageFadeIn 0.3s ease-out forwards;
+  will-change: opacity;
+}
+
+/* --- FLOW STEPS TIMELINE SEQUENTIAL ANIMATIONS --- */
+@keyframes flowStep1 {
+  0%, 15% {
+    transform: translateY(-4px) scale(1.03);
+    box-shadow: 0 10px 20px -5px rgba(255, 255, 255, 0.15);
+    border-color: rgba(255, 255, 255, 0.5) !important;
+  }
+  20%, 100% {
+    transform: translateY(0) scale(1);
+    box-shadow: none;
+    border-color: rgba(255, 255, 255, 0.1) !important;
+  }
+}
+@keyframes flowStep2 {
+  0%, 20% {
+    transform: translateY(0) scale(1);
+    box-shadow: none;
+    border-color: rgba(255, 255, 255, 0.1) !important;
+  }
+  25%, 40% {
+    transform: translateY(-4px) scale(1.03);
+    box-shadow: 0 10px 20px -5px rgba(99, 102, 241, 0.25);
+    border-color: rgba(99, 102, 241, 0.6) !important;
+  }
+  45%, 100% {
+    transform: translateY(0) scale(1);
+    box-shadow: none;
+    border-color: rgba(255, 255, 255, 0.1) !important;
+  }
+}
+@keyframes flowStep3 {
+  0%, 45% {
+    transform: translateY(0) scale(1);
+    box-shadow: none;
+    border-color: rgba(255, 255, 255, 0.1) !important;
+  }
+  50%, 65% {
+    transform: translateY(-4px) scale(1.03);
+    box-shadow: 0 10px 20px -5px rgba(168, 85, 247, 0.25);
+    border-color: rgba(168, 85, 247, 0.6) !important;
+  }
+  70%, 100% {
+    transform: translateY(0) scale(1);
+    box-shadow: none;
+    border-color: rgba(255, 255, 255, 0.1) !important;
+  }
+}
+@keyframes flowStep4 {
+  0%, 70% {
+    transform: translateY(0) scale(1);
+    box-shadow: none;
+    border-color: rgba(255, 255, 255, 0.1) !important;
+  }
+  75%, 90% {
+    transform: translateY(-4px) scale(1.03);
+    box-shadow: 0 10px 20px -5px rgba(16, 185, 129, 0.25);
+    border-color: rgba(16, 185, 129, 0.6) !important;
+  }
+  95%, 100% {
+    transform: translateY(0) scale(1);
+    box-shadow: none;
+    border-color: rgba(255, 255, 255, 0.1) !important;
+  }
+}
+@keyframes flowArrow1 {
+  0%, 12% { opacity: 0.2; transform: scale(1); }
+  15%, 22% { opacity: 1; color: #818cf8 !important; transform: scale(1.15); }
+  25%, 100% { opacity: 0.2; transform: scale(1); }
+}
+@keyframes flowArrow2 {
+  0%, 37% { opacity: 0.2; transform: scale(1); }
+  40%, 47% { opacity: 1; color: #c084fc !important; transform: scale(1.15); }
+  50%, 100% { opacity: 0.2; transform: scale(1); }
+}
+@keyframes flowArrow3 {
+  0%, 62% { opacity: 0.2; transform: scale(1); }
+  65%, 72% { opacity: 1; color: #34d399 !important; transform: scale(1.15); }
+  75%, 100% { opacity: 0.2; transform: scale(1); }
+}
+
+.flow-card-1 { animation: flowStep1 8s infinite ease-in-out; }
+.flow-card-2 { animation: flowStep2 8s infinite ease-in-out; }
+.flow-card-3 { animation: flowStep3 8s infinite ease-in-out; }
+.flow-card-4 { animation: flowStep4 8s infinite ease-in-out; }
+.flow-arrow-1 { animation: flowArrow1 8s infinite ease-in-out; }
+.flow-arrow-2 { animation: flowArrow2 8s infinite ease-in-out; }
+.flow-arrow-3 { animation: flowArrow3 8s infinite ease-in-out; }
+
+html.light .flow-card-1,
+html.light .flow-card-2,
+html.light .flow-card-3,
+html.light .flow-card-4 {
+  background-color: #ffffff !important;
+}
+html.light .flow-card-1 {
+  border-color: #e4e4e7 !important;
+  color: #18181b !important;
+}
+html.light .flow-card-2 {
+  border-color: #e0e7ff !important;
+  color: #4f46e5 !important;
+}
+html.light .flow-card-3 {
+  border-color: #f3e8ff !important;
+  color: #7e22ce !important;
+}
+html.light .flow-card-4 {
+  border-color: #dcfce7 !important;
+  color: #16a34a !important;
+}
+html.light .flow-card-1 *,
+html.light .flow-card-2 *,
+html.light .flow-card-3 *,
+html.light .flow-card-4 * {
+  color: inherit !important;
+}
+html.light .flow-card-1 .text-white\/50,
+html.light .flow-card-2 .text-white\/50,
+html.light .flow-card-3 .text-white\/50,
+html.light .flow-card-4 .text-white\/50 {
+  color: #71717a !important;
+}
+
+/* --- Right-to-Left Slide Toast Animation --- */
+.toast-right-slide {
+  transform: translateX(120%);
+  opacity: 0;
+  transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275), opacity 0.3s ease;
+  width: 320px;
+  max-width: 100%;
+}
+
+.toast-right-slide.show {
+  transform: translateX(0);
+  opacity: 1;
+}
+
+@keyframes fadeInUp {
+  0% { opacity: 0; transform: translateY(20px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+@keyframes fadeInScale {
+  0% { opacity: 0; transform: scale(0.95); }
+  100% { opacity: 1; transform: scale(1); }
+}
+@keyframes fadeIn {
+  0% { opacity: 0; }
+  100% { opacity: 1; }
+}
+@keyframes supportWidgetIn {
+  0% { opacity: 0; transform: translateY(10px) scale(0.95); }
+  100% { opacity: 1; transform: translateY(0) scale(1); }
+}
+@keyframes faqModalIn {
+  0% { opacity: 0; transform: scale(0.95); }
+  100% { opacity: 1; transform: scale(1); }
+}

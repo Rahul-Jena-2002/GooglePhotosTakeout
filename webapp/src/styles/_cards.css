@@ -1,0 +1,196 @@
+/* Guarantee that dark buttons are solid black with white text in light mode */
+html.light button.bg-black,
+html.light a.bg-black,
+html.light button.bg-zinc-900,
+html.light a.bg-zinc-900,
+html.light button.btn-solid-dark,
+html.light a.btn-solid-dark,
+html.light button.primary-saas,
+html.light a.primary-saas {
+  background-color: #000000 !important;
+  color: #FFFFFF !important;
+  border-color: #000000 !important;
+}
+
+html.light button.bg-black *,
+html.light a.bg-black *,
+html.light button.bg-zinc-900 *,
+html.light a.bg-zinc-900 *,
+html.light button.btn-solid-dark *,
+html.light a.btn-solid-dark *,
+html.light button.primary-saas *,
+html.light a.primary-saas * {
+  color: #FFFFFF !important;
+}
+
+html.light button.bg-black:hover,
+html.light a.bg-black:hover,
+html.light button.bg-zinc-900:hover,
+html.light a.bg-zinc-900:hover,
+html.light button.btn-solid-dark:hover,
+html.light a.btn-solid-dark:hover {
+  background-color: #ffffff !important;
+  color: #000000 !important;
+  border-color: #000000 !important;
+}
+
+html.light button.bg-black:hover *,
+html.light a.bg-black:hover *,
+html.light button.bg-zinc-900:hover *,
+html.light a.bg-zinc-900:hover *,
+html.light button.btn-solid-dark:hover *,
+html.light a.btn-solid-dark:hover * {
+  color: #000000 !important;
+}
+
+/* active indigo buttons (like FAQ sidebar tabs) keep white text and indigo background */
+html.light button.bg-indigo-500,
+html.light a.bg-indigo-500,
+html.light button.bg-indigo-600,
+html.light a.bg-indigo-600,
+html.light button.bg-indigo-500 *,
+html.light a.bg-indigo-500 *,
+html.light button.bg-indigo-600 *,
+html.light a.bg-indigo-600 * {
+  background-color: #4f46e5 !important;
+  color: #FFFFFF !important;
+  border-color: #4f46e5 !important;
+}
+
+/* Mapped background tints for indigo steps (Fuzzy Logic box) */
+html.light .bg-indigo-500\/5 {
+  background-color: rgba(67, 56, 202, 0.03) !important;
+}
+
+html.light .bg-indigo-500\/10 {
+  background-color: rgba(67, 56, 202, 0.08) !important;
+}
+
+/* High contrast colored borders for steps in light mode */
+html.light .border-indigo-500\/30 {
+  border-color: rgba(67, 56, 202, 0.4) !important;
+}
+html.light .border-purple-500\/30 {
+  border-color: rgba(107, 33, 168, 0.4) !important;
+}
+html.light .border-green-500\/30 {
+  border-color: rgba(21, 128, 61, 0.4) !important;
+}
+
+/* FAQ dropdown cards in light mode: pure white background, no shading/gradients, solid thin gray border, black text */
+html.light .faq-dropdown-card {
+  background-color: #FFFFFF !important;
+  background-image: none !important;
+  box-shadow: none !important;
+  border: 1px solid #E5E7EB !important;
+}
+
+html.light .faq-dropdown-card button {
+  background-color: #FFFFFF !important;
+}
+
+html.light .faq-dropdown-card button:hover {
+  background-color: #F9FAFB !important;
+}
+
+html.light .faq-dropdown-card button span.text-white {
+  color: #000000 !important;
+}
+
+html.light .faq-dropdown-card p.text-white\/60 {
+  color: #374151 !important; /* Darker gray/black body text */
+}
+
+html.light .faq-dropdown-card .border-t {
+  border-color: #F3F4F6 !important;
+}
+
+/* Custom premium scrollbar for FAQs */
+.custom-faq-scroll::-webkit-scrollbar {
+  width: 6px;
+}
+.custom-faq-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+.custom-faq-scroll::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.15);
+  border-radius: 3px;
+}
+html:not(.light) .custom-faq-scroll::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.2) !important;
+}
+
+/* Dark mode button contrast guarantees */
+html:not(.light) button.bg-zinc-900:not(.btn-theme-toggle-navbar):not(.btn-notification-navbar):not(.btn-profile-trigger),
+html:not(.light) button.bg-black:not(.btn-theme-toggle-navbar):not(.btn-notification-navbar):not(.btn-profile-trigger),
+html:not(.light) button.btn-solid-dark:not(.btn-theme-toggle-navbar):not(.btn-notification-navbar):not(.btn-profile-trigger),
+html:not(.light) button:not(.bg-white):not(.tool-tab-btn):not(.btn-monochrome-primary):not(.btn-monochrome-secondary):not(.btn-pricing-pro):not(.btn-pro-blue):not(.btn-super-orange):not(.btn-recovery-cyan):not(.btn-theme-toggle-navbar):not(.btn-notification-navbar):not(.btn-profile-trigger):not(.btn-purple-pricing):not(.btn-cyan-pricing) {
+  background-color: #18181b !important;
+  color: #f4f4f5 !important;
+}
+html:not(.light) button:not(.bg-zinc-900):not(.bg-black):not(.btn-solid-dark):not(.bg-white):not(.btn-monochrome-primary):not(.btn-monochrome-secondary):not(.btn-pricing-pro):not(.btn-pro-blue):not(.btn-super-orange):not(.btn-recovery-cyan):not(.btn-theme-toggle-navbar):not(.btn-notification-navbar):not(.btn-profile-trigger):not(.btn-purple-pricing):not(.btn-cyan-pricing) *,
+html:not(.light) button:not(.bg-white):not(.tool-tab-btn):not(.btn-monochrome-primary):not(.btn-monochrome-secondary):not(.btn-pricing-pro):not(.btn-pro-blue):not(.btn-super-orange):not(.btn-recovery-cyan):not(.btn-theme-toggle-navbar):not(.btn-notification-navbar):not(.btn-profile-trigger):not(.btn-purple-pricing):not(.btn-cyan-pricing) * {
+  color: #FFFFFF !important;
+}
+
+html:not(.light) button.bg-white {
+  background-color: #FFFFFF !important;
+  color: #000000 !important;
+}
+html:not(.light) button.bg-white * {
+  color: #000000 !important;
+}
+
+
+/* Global light mode card shadow removal for a flat, modern, high-contrast monochrome aesthetic */
+html.light .rounded-lg.border.bg-card,
+html.light .shadow-sm,
+html.light .shadow,
+html.light .shadow-md,
+html.light .shadow-lg,
+html.light .glass-card,
+html.light .compare-card,
+html.light .pricing-most-popular-card,
+html.light div[class*="shadow-"],
+html.light .admin-card,
+html.light .dashboard-card {
+  box-shadow: none !important;
+}
+
+
+/* --- Aceternity UI Grid & Overlay Aesthetics --- */
+.aceternity-grid {
+  position: relative;
+}
+.aceternity-grid::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image: 
+    linear-gradient(to right, rgba(255, 255, 255, 0.02) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(255, 255, 255, 0.02) 1px, transparent 1px);
+  background-size: 40px 40px;
+  mask-image: radial-gradient(ellipse at center, transparent 20%, black 80%);
+  -webkit-mask-image: radial-gradient(ellipse at center, transparent 20%, black 80%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+html.light .aceternity-grid::before {
+  background-image: 
+    linear-gradient(to right, rgba(0, 0, 0, 0.03) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(0, 0, 0, 0.03) 1px, transparent 1px);
+  mask-image: radial-gradient(ellipse at center, transparent 20%, white 80%);
+  -webkit-mask-image: radial-gradient(ellipse at center, transparent 20%, white 80%);
+}
+
+
+/* --- Global Capsule & Circle Overrides --- */
+/* Override all circles and capsules (rounded-full) to have standard button curves */
+/* Exclude spinners/loaders and radio elements from the overrides to preserve browser standards */
+[class*="rounded-full"]:not(.animate-spin):not([class*="spinner"]):not(.loading-spinner):not([type="radio"]),
+.rounded-full:not(.animate-spin):not([class*="spinner"]):not(.loading-spinner):not([type="radio"]),
+.compare-handle-circle,
+.avatar {
+  border-radius: var(--radius) !important;
+}

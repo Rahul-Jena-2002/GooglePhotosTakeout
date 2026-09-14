@@ -1,0 +1,77 @@
+/* --- Premium Docked Navbar & Solid Buttons (Apple Style) --- */
+
+.nav-header {
+  background-color: #0b0b0c;
+  border-bottom: 1px solid #1f1f22;
+}
+
+html.light .nav-header {
+  background-color: #FFFFFF !important;
+  border-bottom: 1px solid #E5E5E7 !important;
+}
+
+.btn-solid-dark {
+  background-color: #1c1c1e !important;
+  color: #ffffff !important;
+  border: 1px solid #2c2c2e !important;
+  border-radius: 8px !important;
+  transition: all 0.15s ease-in-out !important;
+}
+.btn-solid-dark:hover {
+  background-color: #2c2c2e !important;
+  border-color: #3a3a3c !important;
+}
+
+html.light .btn-solid-dark {
+  background-color: #f2f2f7 !important;
+  color: #1c1c1e !important;
+  border: 1px solid #d1d1d6 !important;
+}
+html.light .btn-solid-dark:hover {
+  background-color: #e5e5ea !important;
+  border-color: #c7c7cc !important;
+}
+
+.btn-solid-primary {
+  background-color: #0071e3 !important;
+  color: #ffffff !important;
+  border: none !important;
+  border-radius: 8px !important;
+  transition: all 0.15s ease-in-out !important;
+}
+.btn-solid-primary:hover {
+  background-color: #0077ed !important;
+}
+
+html.light .btn-solid-primary {
+  background-color: #1d1d1f !important;
+  color: #ffffff !important;
+}
+html.light .btn-solid-primary:hover {
+  background-color: #000000 !important;
+}
+
+.glass-capsule, .glass-card {
+  background: #09090b;
+  border: 1px solid #27272a;
+  transition: all 150ms ease-out;
+  position: relative;
+}
+
+.glass-capsule {
+  border-radius: 9999px;
+}
+
+.glass-card {
+  border-radius: 24px;
+}
+
+.glass-capsule.interactive:hover, .glass-card.interactive:hover, button.glass-capsule:hover, a.glass-capsule:hover {
+  transform: translateY(-2px);
+  background: #18181b;
+}
+
+/* The Secret Sauce Top Highlight */
+.glass-capsule::before, .glass-card::before {
+  display: none !important;
+}

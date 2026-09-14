@@ -10,7 +10,7 @@ interface Props {
 
 const { 
   title = "TakeoutFix: Restore Google Takeout Photo & Video EXIF Metadata",
-  description = "Restore missing EXIF dates, GPS coordinates, timestamps, and other metadata from Google Takeout archives. Everything runs locally in your browser—your files never leave your device.",
+  description = "Restore missing EXIF dates, GPS coordinates, timestamps, and other metadata from Google Takeout archives. Everything runs locally in your browser—your files never leave your device. Not affiliated with Google.",
   isToolPage = false 
 } = Astro.props;
 
@@ -95,15 +95,6 @@ const canonicalUrl = `https://takeoutfix.pages.dev${Astro.url.pathname.replace(/
             return false;
           }
         });
-
-        // 3. Anti-DevTools Debug Loop
-        setInterval(() => {
-          const startTime = performance.now();
-          (function() { return false; })['constructor']('debugger')();
-          if (performance.now() - startTime > 100) {
-            console.clear();
-          }
-        }, 1000);
       })();
     </script>
 
@@ -185,7 +176,7 @@ const canonicalUrl = `https://takeoutfix.pages.dev${Astro.url.pathname.replace(/
           "EXIF Fixer", "Photo Metadata Fixer"
         ],
         "url": "https://takeoutfix.pages.dev",
-        "description": "Restore missing dates, GPS locations, and EXIF metadata from your Google Takeout photos and videos locally in your browser. The best take out fix tool, takeout fixer, and metadata fixer available.",
+        "description": "Restore missing dates, GPS locations, and EXIF metadata from your Google Takeout photos and videos locally in your browser. Independent utility — not affiliated with Google LLC.",
         "applicationCategory": "MultimediaApplication",
         "operatingSystem": "All",
         "browserRequirements": "Requires HTML5 File System Access API (Google Chrome, Microsoft Edge, Brave recommended)",
@@ -528,9 +519,6 @@ const canonicalUrl = `https://takeoutfix.pages.dev${Astro.url.pathname.replace(/
                 <p class="text-xs text-zinc-400 leading-relaxed">
                   Fast, secure, and private browser-based restoration utility for Google Takeout photo archives. Restores original timestamps and GPS tags entirely on your local CPU.
                 </p>
-                <p class="text-[10px] text-zinc-500 leading-normal">
-                  Google Takeout and Google Photos are trademarks of Google LLC. TakeoutFix is an independent utility and is not affiliated with Google.
-                </p>
               </div>
 
               <!-- Column 2: Product Actions -->
@@ -573,15 +561,27 @@ const canonicalUrl = `https://takeoutfix.pages.dev${Astro.url.pathname.replace(/
 
             </div>
 
-            <!-- Bottom Row: Copyright & Build details -->
-            <div class="border-t border-white/5 pt-8 flex flex-col md:flex-row items-center justify-between gap-4 text-[11px] text-zinc-550 dark:text-zinc-500">
-              <div>
-                &copy; {new Date().getFullYear()} TakeoutFix System Core. All rights reserved.
-              </div>
-              <div class="flex items-center gap-4">
-                <span>Version 1.0.5</span>
-                <span class="w-1 h-1 rounded-full bg-zinc-800"></span>
-                <span>Build: 2026-06-14</span>
+            <!-- Bottom Row: Copyright, Trademark Disclaimer & Build details -->
+            <div class="border-t border-white/5 pt-8 flex flex-col gap-3 text-[11px] text-zinc-500">
+              <!-- Trademark Disclaimer — visible for Google Ads Reseller/Informational Site compliance -->
+              <p class="text-xs text-zinc-400 leading-relaxed border border-zinc-700/40 rounded-lg px-4 py-3 bg-zinc-900/30">
+                <strong class="text-zinc-300 font-semibold">Disclosure:</strong> Google Takeout™ and Google Photos™ are trademarks of Google LLC.
+                TakeoutFix is an independent software utility and is <strong class="text-zinc-300 font-semibold">not affiliated with, endorsed by, or sponsored by Google LLC</strong> in any way.
+                This tool is designed to work with files exported from Google services and does not represent or provide official Google support.
+              </p>
+              <div class="flex flex-col md:flex-row items-center justify-between gap-4">
+                <div>
+                  &copy; {new Date().getFullYear()} TakeoutFix. All rights reserved. &middot;
+                  <a href="/privacy" class="hover:text-zinc-300 transition-colors ml-1">Privacy Policy</a> &middot;
+                  <a href="/terms" class="hover:text-zinc-300 transition-colors ml-1">Terms of Service</a> &middot;
+                  <a href="/refund" class="hover:text-zinc-300 transition-colors ml-1">Refund Policy</a> &middot;
+                  <a href="mailto:takeoutfix.support@gmail.com" class="hover:text-zinc-300 transition-colors ml-1">Contact Support</a>
+                </div>
+                <div class="flex items-center gap-4">
+                  <span>Version 1.0.5</span>
+                  <span class="w-1 h-1 rounded-full bg-zinc-800"></span>
+                  <span>Build: 2026-06-14</span>
+                </div>
               </div>
             </div>
           </div>
@@ -755,20 +755,6 @@ const canonicalUrl = `https://takeoutfix.pages.dev${Astro.url.pathname.replace(/
         });
       }
 
-      // Code Protection & Copy-paste deterrent (Production Only)
-      if (window.location.hostname !== "localhost" && window.location.hostname !== "127.0.0.1") {
-        document.addEventListener("contextmenu", (e) => e.preventDefault());
-        document.addEventListener("keydown", (e) => {
-          if (
-            e.key === "F12" ||
-            (e.ctrlKey && e.shiftKey && (e.key === "I" || e.key === "J" || e.key === "C" || e.key === "K")) ||
-            (e.ctrlKey && (e.key === "u" || e.key === "U" || e.key === "s" || e.key === "S"))
-          ) {
-            e.preventDefault();
-            return false;
-          }
-        });
-      }
     </script>
   </body>
 </html>

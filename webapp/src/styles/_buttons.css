@@ -1,0 +1,407 @@
+/* Premium SaaS Button Styling */
+.primary-saas {
+  background-color: #0071e3 !important;
+  color: #FFFFFF !important;
+  border: none !important;
+  transition: all 0.15s ease-in-out !important;
+  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05) !important;
+}
+.primary-saas:hover {
+  background-color: #0077ed !important;
+}
+
+.secondary-saas {
+  background-color: transparent !important;
+  color: #FFFFFF !important;
+  border: 1px solid rgba(255, 255, 255, 0.2) !important;
+  transition: all 0.15s ease-in-out !important;
+}
+.secondary-saas:hover {
+  background-color: rgba(255, 255, 255, 0.05) !important;
+  border-color: rgba(255, 255, 255, 0.4) !important;
+}
+
+html.light .primary-saas {
+  background-color: #1d1d1f !important;
+  color: #FFFFFF !important;
+}
+html.light .primary-saas:hover {
+  background-color: #000000 !important;
+}
+
+html.light .secondary-saas {
+  background-color: #FFFFFF !important;
+  color: #1d1d1f !important;
+  border: 1px solid #D2D2D7 !important;
+}
+html.light .secondary-saas:hover {
+  background-color: #F5F5F7 !important;
+  border-color: #86868b !important;
+}
+
+html.light .bg-zinc-900\/20 {
+  background-color: #F5F5F7 !important;
+}
+
+html.light .text-indigo-200\/60 {
+  color: #1d1d1f !important;
+}
+
+html.light .bg-indigo-500\/5 {
+  background-color: rgba(0, 0, 0, 0.03) !important;
+}
+
+html.light .bg-indigo-500\/10 {
+  background-color: rgba(0, 0, 0, 0.05) !important;
+}
+
+
+/* Universal Button Contrast Protection: any button with dark bg MUST have white text in both themes */
+button.bg-black,
+button.bg-black *,
+a.bg-black,
+a.bg-black *,
+button.bg-zinc-900,
+button.bg-zinc-900 *,
+a.bg-zinc-900,
+a.bg-zinc-900 *,
+button.bg-indigo-500,
+button.bg-indigo-500 *,
+a.bg-indigo-500,
+a.bg-indigo-500 *,
+button.bg-indigo-600,
+button.bg-indigo-600 *,
+a.bg-indigo-600,
+a.bg-indigo-600 *,
+button.btn-solid-dark,
+button.btn-solid-dark *,
+a.btn-solid-dark,
+a.btn-solid-dark * {
+  color: #FFFFFF !important;
+}
+
+/* Pricing Page: Badge & Button overrides */
+.pricing-badge-most-popular {
+  background-color: #FFFFFF !important;
+  color: #000000 !important;
+}
+html.light .pricing-badge-most-popular {
+  background-color: #000000 !important;
+  color: #FFFFFF !important;
+}
+
+/* Support closed badge colors */
+.badge-closed {
+  background-color: rgba(168, 85, 247, 0.08) !important; /* Translucent light purple */
+  color: #6b21a8 !important; /* Dark purple text */
+  border-color: rgba(168, 85, 247, 0.25) !important;
+}
+html:not(.light) .badge-closed {
+  background-color: rgba(168, 85, 247, 0.1) !important; /* Translucent dark purple */
+  color: #c084fc !important; /* Light purple text */
+  border-color: rgba(168, 85, 247, 0.2) !important;
+}
+
+/* Admin Team page: You badge & invite button overrides */
+.you-badge {
+  background-color: #27272a !important;
+  color: #FFFFFF !important;
+  font-weight: 700 !important;
+}
+.btn-admin-invite,
+.btn-admin-invite * {
+  color: #FFFFFF !important;
+  font-weight: 700 !important;
+}
+
+/* Audit logs: TOGGLE SUPPORT_ADS badge */
+.badge-toggle-support-ads {
+  background-color: rgba(79, 70, 229, 0.08) !important;
+  color: #4f46e5 !important;
+  border-color: rgba(79, 70, 229, 0.25) !important;
+}
+.badge-toggle-support-ads,
+.badge-toggle-support-ads * {
+  color: #4f46e5 !important;
+}
+html:not(.light) .badge-toggle-support-ads {
+  background-color: rgba(99, 102, 241, 0.1) !important;
+  color: #a5b4fc !important;
+  border-color: rgba(99, 102, 241, 0.2) !important;
+}
+html:not(.light) .badge-toggle-support-ads,
+html:not(.light) .badge-toggle-support-ads * {
+  color: #a5b4fc !important;
+}
+
+
+/* Custom AdUnit CTA Button style to override Tailwind */
+.ad-unit-cta-btn {
+  background-color: #000000 !important;
+  color: #FFFFFF !important;
+  border: 1px solid #18181b !important;
+  transition: all 0.2s ease-in-out !important;
+}
+
+.ad-unit-cta-btn:hover {
+  background-color: #18181b !important;
+  border-color: #27272a !important;
+}
+
+html.light .ad-unit-cta-btn {
+  background-color: #18181b !important;
+  color: #FFFFFF !important;
+  border-color: #18181b !important;
+}
+
+html.light .ad-unit-cta-btn:hover {
+  background-color: #000000 !important;
+  border-color: #000000 !important;
+}
+
+/* Custom Outline Button Style for Shadcn theme consistency */
+html.light .btn-outline-custom {
+  background-color: #FFFFFF !important;
+  color: #18181b !important;
+  border: 1px solid #e4e4e7 !important;
+}
+
+html.light .btn-outline-custom:hover {
+  background-color: #f4f4f5 !important;
+  color: #000000 !important;
+}
+
+html:not(.light) .btn-outline-custom {
+  background-color: #09090b !important;
+  color: #fafafa !important;
+  border: 1px solid #27272a !important;
+}
+
+html:not(.light) .btn-outline-custom:hover {
+  background-color: #27272a !important;
+  color: #ffffff !important;
+}
+
+/* Custom High-Contrast Monochromatic Button Styles */
+.btn-monochrome-primary {
+  background-color: #000000 !important;
+  color: #ffffff !important;
+  border: 1px solid #000000 !important;
+}
+.btn-monochrome-primary:hover {
+  background-color: #ffffff !important;
+  color: #000000 !important;
+  border-color: #000000 !important;
+}
+
+html.dark .btn-monochrome-primary {
+  background-color: #ffffff !important;
+  color: #000000 !important;
+  border: 1px solid #ffffff !important;
+}
+html.dark .btn-monochrome-primary:hover {
+  background-color: #000000 !important;
+  color: #ffffff !important;
+  border-color: #ffffff !important;
+}
+
+.btn-monochrome-secondary {
+  background-color: #ffffff !important;
+  color: #000000 !important;
+  border: 1px solid #000000 !important;
+}
+.btn-monochrome-secondary:hover {
+  background-color: #000000 !important;
+  color: #ffffff !important;
+  border-color: #000000 !important;
+}
+
+html.dark .btn-monochrome-secondary {
+  background-color: #000000 !important;
+  color: #ffffff !important;
+  border: 1px solid #ffffff !important;
+}
+html.dark .btn-monochrome-secondary:hover {
+  background-color: #ffffff !important;
+  color: #000000 !important;
+  border-color: #ffffff !important;
+}
+
+/* Specific overrides to prevent global dark mode button selector from breaking monochromatic buttons */
+html:not(.light) button.btn-monochrome-primary,
+html:not(.light) button.btn-monochrome-primary *,
+html.dark button.btn-monochrome-primary,
+html.dark button.btn-monochrome-primary *,
+html:not(.light) button.btn-pricing-pro,
+html:not(.light) button.btn-pricing-pro *,
+html.dark button.btn-pricing-pro,
+html.dark button.btn-pricing-pro * {
+  background-color: #ffffff !important;
+  color: #000000 !important;
+}
+html:not(.light) button.btn-monochrome-primary:hover,
+html:not(.light) button.btn-monochrome-primary:hover *,
+html.dark button.btn-monochrome-primary:hover,
+html.dark button.btn-monochrome-primary:hover *,
+html:not(.light) button.btn-pricing-pro:hover,
+html:not(.light) button.btn-pricing-pro:hover *,
+html.dark button.btn-pricing-pro:hover,
+html.dark button.btn-pricing-pro:hover * {
+  background-color: #000000 !important;
+  color: #ffffff !important;
+}
+html:not(.light) button.btn-monochrome-secondary,
+html:not(.light) button.btn-monochrome-secondary *,
+html.dark button.btn-monochrome-secondary,
+html.dark button.btn-monochrome-secondary * {
+  background-color: #000000 !important;
+  color: #ffffff !important;
+}
+html:not(.light) button.btn-monochrome-secondary:hover,
+html:not(.light) button.btn-monochrome-secondary:hover *,
+html.dark button.btn-monochrome-secondary:hover,
+html.dark button.btn-monochrome-secondary:hover * {
+  background-color: #ffffff !important;
+  color: #000000 !important;
+}
+
+/* Quick Tab Selector Monochromatic Theme Styling */
+.tool-tab-container {
+  background-color: rgba(255, 255, 255, 0.02) !important;
+  border: 1px solid rgba(255, 255, 255, 0.05) !important;
+}
+
+html.light .tool-tab-container {
+  background-color: #f5f5f7 !important;
+  border-color: #d2d2d7 !important;
+}
+
+.tool-tab-btn {
+  color: #a1a1aa !important; /* text-zinc-400 */
+  transition: all 150ms ease-out !important;
+}
+
+.tool-tab-btn:hover {
+  color: #fafafa !important; /* text-zinc-100 */
+}
+
+html.light .tool-tab-btn {
+  color: #6e6e73 !important; /* Apple secondary text */
+}
+
+html.light .tool-tab-btn:hover {
+  color: #1d1d1f !important;
+}
+
+/* Active tab style: white in dark mode, black in light mode */
+.tool-tab-btn.active {
+  background-color: #ffffff !important;
+  color: #000000 !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1) !important;
+}
+
+html.light .tool-tab-btn.active {
+  background-color: #000000 !important;
+  color: #ffffff !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1) !important;
+}
+
+/* Recovery Pass bold black/white highlight — updated to cyan */
+.recovery-pass-highlight {
+  font-weight: 800 !important;
+  color: #0891b2 !important; /* cyan-600 */
+}
+.recovery-pass-highlight * {
+  font-weight: 800 !important;
+  color: #0891b2 !important;
+}
+html.dark .recovery-pass-highlight,
+html.dark .recovery-pass-highlight * {
+  color: #22d3ee !important; /* cyan-400 */
+}
+html:not(.light) .recovery-pass-highlight,
+html:not(.light) .recovery-pass-highlight * {
+  color: #22d3ee !important; /* cyan-400 */
+}
+
+/* Blue Pro Button */
+.btn-pro-blue,
+button.btn-pro-blue,
+html.dark button.btn-pro-blue {
+  background-color: #ffffff !important;
+  color: #2563eb !important; /* blue-600 */
+  border: 1px solid #ffffff !important;
+}
+.btn-pro-blue *,
+button.btn-pro-blue *,
+html.dark button.btn-pro-blue * {
+  color: #2563eb !important;
+}
+.btn-pro-blue:hover,
+button.btn-pro-blue:hover,
+html.dark button.btn-pro-blue:hover {
+  background-color: #000000 !important;
+  color: #3b82f6 !important; /* blue-500 */
+  border-color: #3b82f6 !important;
+}
+.btn-pro-blue:hover *,
+button.btn-pro-blue:hover *,
+html.dark button.btn-pro-blue:hover * {
+  color: #3b82f6 !important;
+}
+
+html.light button.btn-pro-blue,
+html.light button.btn-pro-blue * {
+  background-color: #000000 !important;
+  color: #3b82f6 !important; /* blue-500 */
+  border: 1px solid #000000 !important;
+}
+html.light button.btn-pro-blue:hover,
+html.light button.btn-pro-blue:hover *,
+html.light button.btn-pro-blue:focus,
+html.light button.btn-pro-blue:focus * {
+  background-color: #ffffff !important;
+  color: #2563eb !important; /* blue-600 */
+  border-color: #2563eb !important;
+}
+
+/* Orange Super Button */
+.btn-super-orange,
+button.btn-super-orange,
+html.dark button.btn-super-orange {
+  background-color: #ffffff !important;
+  color: #ea580c !important; /* orange-600 */
+  border: 1px solid #ffffff !important;
+}
+.btn-super-orange *,
+button.btn-super-orange *,
+html.dark button.btn-super-orange * {
+  color: #ea580c !important;
+}
+.btn-super-orange:hover,
+button.btn-super-orange:hover,
+html.dark button.btn-super-orange:hover {
+  background-color: #000000 !important;
+  color: #f97316 !important; /* orange-500 */
+  border-color: #f97316 !important;
+}
+.btn-super-orange:hover *,
+button.btn-super-orange:hover *,
+html.dark button.btn-super-orange:hover * {
+  color: #f97316 !important;
+}
+
+html.light button.btn-super-orange,
+html.light button.btn-super-orange * {
+  background-color: #000000 !important;
+  color: #f97316 !important; /* orange-500 */
+  border: 1px solid #000000 !important;
+}
+html.light button.btn-super-orange:hover,
+html.light button.btn-super-orange:hover *,
+html.light button.btn-super-orange:focus,
+html.light button.btn-super-orange:focus * {
+  background-color: #ffffff !important;
+  color: #ea580c !important; /* orange-600 */
+  border-color: #ea580c !important;
+}

@@ -13,7 +13,7 @@ const prices = PLAN_PRICES[region] || PLAN_PRICES.us;
 
 <Layout 
   title="TakeoutFix – Take Out Fix, Takeout Fixer & Metadata Fixer for Google Photos"
-  description="The #1 take out fix tool. TakeoutFixer restores photo dates, GPS, and EXIF tags stripped by Google Takeout. Works as a metadata fixer, meta data fix tool, and Google Takeout merger — entirely in your browser."
+  description="TakeoutFixer restores photo dates, GPS, and EXIF tags stripped by Google Takeout. Works as a metadata fixer, meta data fix tool, and Google Takeout merger — entirely in your browser. Not affiliated with Google."
 >
   <div class="flex flex-col items-center bg-background text-foreground w-full overflow-x-hidden aceternity-grid">
     
@@ -113,9 +113,7 @@ const prices = PLAN_PRICES[region] || PLAN_PRICES.us;
       </div>
     </section>
 
-    <div class="w-full max-w-4xl mx-auto px-6 my-8">
-      <AdUnit client:only="react" type="horizontal" slot="1" />
-    </div>
+
 
     <!-- 2. STATS SECTION -->
     <section class="w-full relative z-10">
@@ -138,13 +136,14 @@ const prices = PLAN_PRICES[region] || PLAN_PRICES.us;
         </div>
         <div class="glass-card p-5 sm:p-10 flex flex-col items-center justify-center">
           <div id="stat-success" class="text-2xl sm:text-4xl md:text-5xl font-black mb-2 sm:mb-4 text-foreground">100.0%</div>
-          <div class="text-[10px] sm:text-xs md:text-sm font-bold text-zinc-400 uppercase tracking-widest">Success Rate</div>
+          <div class="text-[10px] sm:text-xs md:text-sm font-bold text-zinc-400 uppercase tracking-widest">Recovery Accuracy*</div>
         </div>
         <div class="glass-card p-5 sm:p-10 flex flex-col items-center justify-center col-span-2 lg:col-span-1">
           <div id="stat-resolved" class="text-2xl sm:text-4xl md:text-5xl font-black mb-2 sm:mb-4 text-foreground">1</div>
           <div class="text-[10px] sm:text-xs md:text-sm font-bold text-zinc-400 uppercase tracking-widest">Tickets Resolved</div>
         </div>
       </div>
+      <p class="text-[10px] text-zinc-600 text-center pb-4 px-4">* Recovery accuracy based on standard Google Takeout exports with complete JSON sidecar files. Results may vary with partial or corrupted exports.</p>
     </section>
 
     <!-- 3. PROBLEM SECTION -->

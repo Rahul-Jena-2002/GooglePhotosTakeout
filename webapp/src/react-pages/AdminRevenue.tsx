@@ -1,9 +1,7 @@
 import { useEffect, useState } from "react"
-import { collection, query, orderBy, onSnapshot, doc, updateDoc, setDoc, addDoc, getDoc } from "firebase/firestore"
+import { collection, query, orderBy, onSnapshot } from "firebase/firestore"
 import { db } from "../firebase"
-import { useAuth } from "../contexts/AuthContext"
-import { DollarSign, Users, Award, TrendingUp, RotateCcw, Search } from "lucide-react"
-import { useToastStore } from "../store/useToastStore"
+import { DollarSign, Users, Award, TrendingUp } from "lucide-react"
 
 interface Transaction {
   id: string;
@@ -18,21 +16,10 @@ interface Transaction {
   paymentMethod: string;
 }
 
-const PLAN_LABELS: Record<string, string> = {
-  free: "Free",
-  recovery_pass: "Single Time",
-  pro: "Pro",
-  super: "Super",
-}
-
 export default function AdminRevenue() {
-  const { adminData } = useAuth()
   const [transactions, setTransactions] = useState<Transaction[]>([])
   const [totalUsersCount, setTotalUsersCount] = useState(0)
   const [loading, setLoading] = useState(true)
-
-  const role = adminData?.role || "ADMIN"
-  const isSuperAdminOrAdmin = ["SUPER_ADMIN", "ADMIN"].includes(role)
 
   useEffect(() => {
     // 1. Listen to real-time transactions
@@ -98,8 +85,8 @@ export default function AdminRevenue() {
   const drawChartPoints = () => {
     if (activeTx.length === 0) return "50,85 150,85 250,85 350,85 450,85 550,85"
     
-    const days = Array(7).fill(0)
-    const dayLabels = Array(7).fill("")
+    const days = new Array(7).fill(0)
+    const dayLabels = new Array(7).fill("")
     
     for (let i = 0; i < 7; i++) {
       const dayStart = now - (6 - i) * 24 * 60 * 60 * 1000
@@ -124,6 +111,14 @@ export default function AdminRevenue() {
   }
 
   const chartData = drawChartPoints()
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="w-8 h-8 border-4 border-emerald-500/30 border-t-emerald-500 rounded-full animate-spin" />
+      </div>
+    )
+  }
 
   return (
     <div className="space-y-8">
@@ -210,7 +205,7 @@ export default function AdminRevenue() {
                     const x = 50 + idx * 100
                     const y = 140 - (val / chartData.maxVal) * 110
                     return (
-                      <g key={idx} className="group cursor-pointer">
+                      <g key={`chart-node-${chartData.dayLabels[idx] || idx}`} className="group cursor-pointer">
                         <circle cx={x} cy={y} r="5" fill="currentColor" className="transition-all duration-300 group-hover:r-7" />
                         <circle cx={x} cy={y} r="10" stroke="currentColor" strokeWidth="1.5" fill="none" className="opacity-0 group-hover:opacity-100 animate-ping" />
                       </g>
@@ -220,7 +215,7 @@ export default function AdminRevenue() {
                 {/* Labels */}
                 <div className="flex justify-between pl-10 pr-4 mt-2 font-mono text-[10px] text-zinc-500">
                   {typeof chartData === "object" && chartData.dayLabels.map((lbl, idx) => (
-                    <div key={idx} className="text-center w-12">
+                    <div key={`chart-lbl-${lbl || idx}`} className="text-center w-12">
                       <div>{lbl}</div>
                       <div className="text-zinc-400 font-bold">₹{chartData.days[idx]}</div>
                     </div>

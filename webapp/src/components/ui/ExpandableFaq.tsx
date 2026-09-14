@@ -146,14 +146,12 @@ export default function ExpandableFaq() {
             {/* BACKDROP: Fades in to mask the background desktop workspace */}
             <div
               onClick={() => setActiveId(null)}
-              className="absolute inset-0 bg-black/60 backdrop-blur-md"
-              style={{ animation: 'fadeIn 200ms ease-out forwards' }}
+              className="absolute inset-0 bg-black/60 backdrop-blur-md t-animate-fade-in"
             />
 
             {/* THE POPPING CONTAINER */}
             <div
-              className="w-full max-w-lg bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-900 rounded-2xl p-6 md:p-8 relative shadow-2xl overflow-hidden pointer-events-auto flex flex-col text-left"
-              style={{ animation: 'faqModalIn 300ms ease-out forwards' }}
+              className="w-full max-w-lg bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-900 rounded-2xl p-6 md:p-8 relative shadow-2xl overflow-hidden pointer-events-auto flex flex-col text-left t-animate-faq-modal"
             >
               {/* Native Apple close window circle button */}
               <button
@@ -168,8 +166,7 @@ export default function ExpandableFaq() {
 
               {/* Modal contents */}
               <div
-                className="flex flex-col h-full"
-                style={{ animation: 'fadeIn 150ms ease-out forwards' }}
+                className="flex flex-col h-full t-animate-fade-in-fast"
               >
                 {/* Popup Badge */}
                 <div className="flex items-center gap-2 mb-4">

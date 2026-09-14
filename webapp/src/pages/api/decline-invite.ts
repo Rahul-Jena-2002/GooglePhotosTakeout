@@ -30,22 +30,22 @@ async function getGoogleAuthToken(serviceAccount: any): Promise<string> {
   };
 
   const base64UrlEncode = (str: string) =>
-    btoa(str).replace(/=/g, "").replace(/\+/g, "-").replace(/\//g, "_");
+    btoa(str).replaceAll("=", "").replaceAll("+", "-").replaceAll("/", "_");
 
   const unsignedToken = `${base64UrlEncode(JSON.stringify(header))}.${base64UrlEncode(JSON.stringify(payload))}`;
 
   const pemHeader = "-----BEGIN PRIVATE KEY-----";
   const pemFooter = "-----END PRIVATE KEY-----";
   const pemContents = serviceAccount.private_key
-    .replace(/\\n/g, "\n")
-    .replace(pemHeader, "")
-    .replace(pemFooter, "")
-    .replace(/\s/g, "");
+    .replaceAll(String.raw`\n`, "\n")
+    .replaceAll(pemHeader, "")
+    .replaceAll(pemFooter, "")
+    .replaceAll(/\s/g, "");
   
   const binaryKey = atob(pemContents);
   const keyBuffer = new Uint8Array(binaryKey.length);
   for (let i = 0; i < binaryKey.length; i++) {
-    keyBuffer[i] = binaryKey.charCodeAt(i);
+    keyBuffer[i] = binaryKey.codePointAt(i) ?? 0;
   }
 
   const key = await crypto.subtle.importKey(
@@ -63,10 +63,10 @@ async function getGoogleAuthToken(serviceAccount: any): Promise<string> {
     encoder.encode(unsignedToken)
   );
 
-  const signedToken = `${unsignedToken}.${btoa(String.fromCharCode(...new Uint8Array(signature)))
-    .replace(/=/g, "")
-    .replace(/\+/g, "-")
-    .replace(/\//g, "_")}`;
+  const signedToken = `${unsignedToken}.${btoa(String.fromCodePoint(...new Uint8Array(signature)))
+    .replaceAll("=", "")
+    .replaceAll("+", "-")
+    .replaceAll("/", "_")}`;
 
   const res = await fetch("https://oauth2.googleapis.com/token", {
     method: "POST",
@@ -93,7 +93,7 @@ export const OPTIONS: APIRoute = async () => {
   });
 };
 
-export const POST: APIRoute = async ({ request }) => {
+export const POST: APIRoute = async ({ request, locals }) => {
   try {
     const authHeader = request.headers.get('authorization') || '';
     if (!authHeader.startsWith('Bearer ')) {
@@ -107,7 +107,12 @@ export const POST: APIRoute = async ({ request }) => {
       return json(400, { error: 'inviteId is required.' });
     }
 
-    const serviceAccountStr = (env as any).FIREBASE_SERVICE_ACCOUNT || import.meta.env.FIREBASE_SERVICE_ACCOUNT;
+    const runtimeEnv = (locals as any)?.runtime?.env;
+    const serviceAccountStr =
+      (env as any)?.FIREBASE_SERVICE_ACCOUNT ||
+      runtimeEnv?.FIREBASE_SERVICE_ACCOUNT ||
+      (import.meta as any).env?.FIREBASE_SERVICE_ACCOUNT ||
+      (process.env as any)?.FIREBASE_SERVICE_ACCOUNT;
     if (!serviceAccountStr) {
       return json(500, { error: 'Server configuration error: missing service account credentials.' });
     }

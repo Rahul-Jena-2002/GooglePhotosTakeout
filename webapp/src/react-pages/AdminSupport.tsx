@@ -5,6 +5,19 @@ import { useAuth } from "../contexts/AuthContext"
 import { Search, AlertCircle, X, Mail, CheckCircle2, Clock, Inbox } from "lucide-react"
 import { useToastStore } from "../store/useToastStore"
 
+function getStatusBadgeClass(status: string): string {
+  switch (status) {
+    case 'OPEN':
+      return 'bg-red-500/10 text-red-400 border border-red-500/20'
+    case 'IN_PROGRESS':
+      return 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
+    case 'RESOLVED':
+      return 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
+    default:
+      return 'badge-closed border'
+  }
+}
+
 export default function AdminSupport() {
   const { adminData } = useAuth()
   const [tickets, setTickets] = useState<any[]>([])
@@ -13,9 +26,9 @@ export default function AdminSupport() {
   const [search, setSearch] = useState("")
   
   // Drawer states
-  const [selectedTicket, setSelectedTicket] = useState<any | null>(null)
+  const [selectedTicket, setSelectedTicket] = useState<any>(null)
   const [replyBody, setReplyBody] = useState("")
-  const [ticketUser, setTicketUser] = useState<any | null>(null)
+  const [ticketUser, setTicketUser] = useState<any>(null)
   const [adminsList, setAdminsList] = useState<any[]>([])
 
   // Gemini AI Helpers for Admin Support Responses
@@ -94,7 +107,7 @@ export default function AdminSupport() {
     }
   }
 
-  const handleTextareaKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>, val: string, setVal: (s: string) => void) => {
+  const handleTextareaKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>, setVal: (s: string) => void) => {
     const isCtrl = e.ctrlKey || e.metaKey
     if (!isCtrl) return
 
@@ -321,6 +334,62 @@ Polished response:`
 
   const activePriority = ticketUser ? getTicketPriority(ticketUser.plan || "free") : getTicketPriority("free")
 
+  let tableRows: React.ReactNode = null
+  if (loading) {
+    tableRows = (
+      <tr>
+        <td colSpan={5} className="px-6 py-8 text-center text-zinc-500">Loading tickets...</td>
+      </tr>
+    )
+  } else if (filteredTickets.length === 0) {
+    tableRows = (
+      <tr>
+        <td colSpan={5} className="px-6 py-8 text-center text-zinc-500">
+          <AlertCircle className="w-8 h-8 text-zinc-700 mx-auto mb-2" />
+          No tickets found in the queue.
+        </td>
+      </tr>
+    )
+  } else {
+    tableRows = filteredTickets.map((t) => (
+      <tr 
+        key={t.id} 
+        onClick={() => openTicketDetails(t)}
+        className="hover:bg-zinc-800/40 cursor-pointer transition-colors"
+      >
+        <td className="px-6 py-4">
+          <div className="font-semibold text-zinc-200 mb-0.5 max-w-[300px] truncate" title={t.subject}>
+            {t.subject}
+          </div>
+          <div className="text-[10px] text-zinc-400 font-mono font-bold">{t.ticketId || `#${t.id.slice(0, 8)}`}</div>
+        </td>
+        <td className="px-6 py-4">
+          <div className="text-zinc-300 font-medium">{t.email}</div>
+        </td>
+        <td className="px-6 py-4 text-zinc-400 text-xs">
+          {new Date(t.createdAt).toLocaleString()}
+        </td>
+        <td className="px-6 py-4">
+          <span className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${getStatusBadgeClass(t.status)}`}>
+            {t.status}
+          </span>
+        </td>
+        <td className="px-6 py-4 text-right" onClick={(e) => e.stopPropagation()}>
+          <select 
+            value={t.status}
+            onChange={(e) => handleStatusChange(t.id, e.target.value)}
+            className="bg-zinc-950 border border-zinc-800 rounded text-xs px-2.5 py-1 text-zinc-300 focus:outline-none cursor-pointer"
+          >
+            <option value="OPEN">Open</option>
+            <option value="IN_PROGRESS">In Progress</option>
+            <option value="RESOLVED">Resolve</option>
+            <option value="CLOSED">Close</option>
+          </select>
+        </td>
+      </tr>
+    ))
+  }
+
   return (
     <div className="relative font-sans text-zinc-100">
       
@@ -372,61 +441,7 @@ Polished response:`
               </tr>
             </thead>
             <tbody className="divide-y divide-zinc-800">
-              {loading ? (
-                <tr>
-                  <td colSpan={5} className="px-6 py-8 text-center text-zinc-500">Loading tickets...</td>
-                </tr>
-              ) : filteredTickets.length === 0 ? (
-                <tr>
-                  <td colSpan={5} className="px-6 py-8 text-center text-zinc-500">
-                    <AlertCircle className="w-8 h-8 text-zinc-700 mx-auto mb-2" />
-                    No tickets found in the queue.
-                  </td>
-                </tr>
-              ) : (
-                filteredTickets.map((t) => (
-                  <tr 
-                    key={t.id} 
-                    onClick={() => openTicketDetails(t)}
-                    className="hover:bg-zinc-800/40 cursor-pointer transition-colors"
-                  >
-                    <td className="px-6 py-4">
-                      <div className="font-semibold text-zinc-200 mb-0.5 max-w-[300px] truncate" title={t.subject}>
-                        {t.subject}
-                      </div>
-                      <div className="text-[10px] text-zinc-400 font-mono font-bold">{t.ticketId || `#${t.id.slice(0, 8)}`}</div>
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="text-zinc-300 font-medium">{t.email}</div>
-                    </td>
-                    <td className="px-6 py-4 text-zinc-400 text-xs">
-                      {new Date(t.createdAt).toLocaleString()}
-                    </td>
-                    <td className="px-6 py-4">
-                      <span className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${
-                        t.status === 'OPEN' ? 'bg-red-500/10 text-red-400 border border-red-500/20' :
-                        t.status === 'IN_PROGRESS' ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20' :
-                        t.status === 'RESOLVED' ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' :
-                        'badge-closed border'
-                      }`}>
-                        {t.status}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 text-right" onClick={(e) => e.stopPropagation()}>
-                      <select 
-                        value={t.status}
-                        onChange={(e) => handleStatusChange(t.id, e.target.value)}
-                        className="bg-zinc-950 border border-zinc-800 rounded text-xs px-2.5 py-1 text-zinc-300 focus:outline-none cursor-pointer"
-                      >
-                        <option value="OPEN">Open</option>
-                        <option value="IN_PROGRESS">In Progress</option>
-                        <option value="RESOLVED">Resolve</option>
-                        <option value="CLOSED">Close</option>
-                      </select>
-                    </td>
-                  </tr>
-                ))
-              )}
+              {tableRows}
             </tbody>
           </table>
         </div>
@@ -436,8 +451,10 @@ Polished response:`
       {selectedTicket && (
         <div className="fixed inset-0 z-50 flex justify-end">
           {/* Backdrop blur clickoff */}
-          <div 
-            className="fixed inset-0 bg-black/60 backdrop-blur-sm transition-opacity" 
+          <button 
+            type="button"
+            aria-label="Close modal backdrop"
+            className="fixed inset-0 bg-black/60 backdrop-blur-sm transition-opacity border-0 p-0 cursor-default" 
             onClick={() => setSelectedTicket(null)}
           />
 
@@ -547,11 +564,11 @@ Polished response:`
                       </div>
                     )}
 
-                    {selectedTicket.replies && selectedTicket.replies.map((reply: any, rIdx: number) => {
+                    {selectedTicket.replies?.map((reply: any, rIdx: number) => {
                       const isUserReply = reply.sender === 'user'
                       return (
                         <div 
-                          key={rIdx} 
+                          key={`reply-${reply.timestamp || rIdx}`} 
                           className={`p-3.5 rounded-xl ${
                             isUserReply 
                               ? 'bg-zinc-900 border border-zinc-800/80 mr-6' 
@@ -592,7 +609,7 @@ Polished response:`
                         placeholder="Write response that resolves user's issue... Use Ctrl+B/I/U to format selection."
                         value={replyBody}
                         onChange={(e) => setReplyBody(e.target.value)}
-                        onKeyDown={(e) => handleTextareaKeyDown(e, replyBody, setReplyBody)}
+                        onKeyDown={(e) => handleTextareaKeyDown(e, setReplyBody)}
                         rows={5}
                         disabled={aiLoading}
                         className="w-full bg-zinc-950 border border-zinc-800 rounded-xl p-3 text-xs text-white focus:outline-none focus:border-zinc-500 focus:bg-zinc-950 transition-all font-sans leading-relaxed resize-none disabled:opacity-50"

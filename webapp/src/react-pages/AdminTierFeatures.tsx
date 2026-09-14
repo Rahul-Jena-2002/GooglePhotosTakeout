@@ -15,7 +15,6 @@ export default function AdminTierFeatures() {
   const isDev = import.meta.env.DEV
   const hasAccess = isDev || isSuperAdmin || role === "ADMIN"
 
-  const [isLight, setIsLight] = useState(false)
   const [saving, setSaving] = useState(false)
   const [resetting, setResetting] = useState(false)
   const [recoveryPassHours, setRecoveryPassHours] = useState<number>(24)
@@ -41,17 +40,6 @@ export default function AdminTierFeatures() {
     pro: DEFAULT_FEATURES_CONFIG.subheadings.pro,
     super: DEFAULT_FEATURES_CONFIG.subheadings.super,
   })
-
-  // Theme observer
-  useEffect(() => {
-    const checkTheme = () => {
-      setIsLight(document.documentElement.classList.contains("light"))
-    }
-    checkTheme()
-    const observer = new MutationObserver(checkTheme)
-    observer.observe(document.documentElement, { attributes: true, attributeFilter: ["class"] })
-    return () => observer.disconnect()
-  }, [])
 
   // Listen to features configurations in Firestore
   useEffect(() => {
@@ -200,15 +188,15 @@ export default function AdminTierFeatures() {
   ]
 
   return (
-    <div className="space-y-8 max-w-7xl mx-auto px-4 py-8 font-sans transition-all duration-300" style={{ color: isLight ? '#1f2937' : '#f3f4f6' }}>
+    <div className="space-y-8 max-w-7xl mx-auto px-4 py-8 font-sans transition-all duration-300 t-text-primary">
       
       {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b pb-6" style={{ borderColor: isLight ? '#e5e7eb' : '#27272a' }}>
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b pb-6 t-border">
         <div>
-          <h1 className="text-3xl font-black tracking-tight flex items-center gap-2" style={{ color: isLight ? '#111827' : '#ffffff' }}>
+          <h1 className="text-3xl font-black tracking-tight flex items-center gap-2 t-heading">
             <Settings className="w-8 h-8 text-indigo-500" /> Tier Features Customizer
           </h1>
-          <p className="text-sm mt-1" style={{ color: isLight ? '#6b7280' : '#a1a1aa' }}>
+          <p className="text-sm mt-1 t-text-muted">
             Customize the card headings, subheadings, and bullet feature lists visible to customers on the landing pricing matrix.
           </p>
         </div>
@@ -254,9 +242,9 @@ export default function AdminTierFeatures() {
         </button>
       </div>
 
-      <Card className="bg-zinc-900 border-zinc-800 shadow-none" style={{ borderColor: isLight ? '#e5e7eb' : '#27272a', backgroundColor: isLight ? '#ffffff' : '#09090b' }}>
-        <CardHeader className="border-b pb-4" style={{ borderColor: isLight ? '#e5e7eb' : '#1f1f23' }}>
-          <CardTitle className="text-sm font-semibold flex items-center gap-2 text-zinc-200" style={{ color: isLight ? '#111827' : '#ffffff' }}>
+      <Card className="shadow-none border t-card">
+        <CardHeader className="border-b pb-4 t-border-subtle">
+          <CardTitle className="text-sm font-semibold flex items-center gap-2 t-heading">
             Pricing Matrix Layout Customizer
           </CardTitle>
           <CardDescription className="text-zinc-500 text-xs">
@@ -266,8 +254,8 @@ export default function AdminTierFeatures() {
         <CardContent className="pt-6">
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
             {COLS.map(({ planKey, label, color, items, setItems }) => (
-              <div key={planKey} className="bg-zinc-950/30 border rounded-xl p-4 space-y-4" style={{ borderColor: isLight ? '#e5e7eb' : '#27272a', backgroundColor: isLight ? '#f9fafb' : '#050508' }}>
-                <div className={`text-xs font-bold border-b pb-2 ${color}`} style={{ borderColor: isLight ? '#e5e7eb' : '#1f1f23' }}>
+              <div key={planKey} className="border rounded-xl p-4 space-y-4 t-surface-subtle">
+                <div className={`text-xs font-bold border-b pb-2 ${color} t-border-subtle`}>
                   {label}
                 </div>
 
@@ -279,12 +267,7 @@ export default function AdminTierFeatures() {
                     value={headings[planKey]}
                     onChange={(e) => setHeadings(prev => ({ ...prev, [planKey]: e.target.value }))}
                     placeholder="Card heading..."
-                    className="w-full border rounded-lg px-3 py-1.5 text-xs font-bold focus:outline-none focus:ring-1 focus:ring-indigo-500"
-                    style={{
-                      backgroundColor: isLight ? '#ffffff' : '#0e0e11',
-                      borderColor: isLight ? '#d1d5db' : '#27272a',
-                      color: isLight ? '#1f2937' : '#ffffff'
-                    }}
+                    className="w-full border rounded-lg px-3 py-1.5 text-xs font-bold focus:outline-none focus:ring-1 focus:ring-indigo-500 t-input-subtle-white"
                   />
                 </div>
 
@@ -296,12 +279,7 @@ export default function AdminTierFeatures() {
                     value={subheadings[planKey]}
                     onChange={(e) => setSubheadings(prev => ({ ...prev, [planKey]: e.target.value }))}
                     placeholder="Card subheading..."
-                    className="w-full border rounded-lg px-3 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500"
-                    style={{
-                      backgroundColor: isLight ? '#ffffff' : '#0e0e11',
-                      borderColor: isLight ? '#d1d5db' : '#27272a',
-                      color: isLight ? '#4b5563' : '#a1a1aa'
-                    }}
+                    className="w-full border rounded-lg px-3 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500 t-input-subtle-muted"
                   />
                   {planKey === 'recovery_pass' && (
                     <div className="text-[9px] text-cyan-400 font-bold mt-1">
@@ -314,7 +292,7 @@ export default function AdminTierFeatures() {
                 </div>
 
                 {/* Features Bullets */}
-                <div className="text-[10px] text-zinc-500 uppercase tracking-widest font-bold pt-2 border-t" style={{ borderColor: isLight ? '#e5e7eb' : '#1f1f23' }}>
+                <div className="text-[10px] text-zinc-500 uppercase tracking-widest font-bold pt-2 border-t t-border-subtle">
                   Bullets
                 </div>
                 <div className="space-y-2">
@@ -330,13 +308,8 @@ export default function AdminTierFeatures() {
                           className={`shrink-0 w-6 h-6 rounded text-[10px] font-black border transition-all ${
                             feat.isBold
                               ? "bg-indigo-600 border-indigo-500 text-white"
-                              : "bg-zinc-800 border-zinc-700 text-zinc-500 hover:border-zinc-500"
+                              : "t-bold-toggle-off hover:border-zinc-500"
                           }`}
-                          style={feat.isBold ? {} : {
-                            backgroundColor: isLight ? '#ffffff' : '#1f1f23',
-                            borderColor: isLight ? '#d1d5db' : '#27272a',
-                            color: isLight ? '#6b7280' : '#88888b'
-                          }}
                           title={feat.isBold ? "Bold style: On" : "Bold style: Off"}
                         >
                           B
@@ -352,13 +325,9 @@ export default function AdminTierFeatures() {
                             const updated = items.map((f, i) => i === idx ? { ...f, text: e.target.value } : f)
                             setItems(updated)
                           }}
-                          className="flex-1 min-w-0 border rounded-lg px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500"
-                          style={{
-                            backgroundColor: isLight ? '#ffffff' : '#0f0f12',
-                            borderColor: isLight ? '#d1d5db' : '#27272a',
-                            color: isLight ? '#1f2937' : '#f3f4f6',
-                            fontWeight: feat.isBold ? "bold" : "normal"
-                          }}
+                          className={`flex-1 min-w-0 border rounded-lg px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500 t-input-surface-12 ${
+                            feat.isBold ? "font-bold" : "font-normal"
+                          }`}
                         />
                         <button
                           type="button"
@@ -398,9 +367,9 @@ export default function AdminTierFeatures() {
       </Card>
 
       {/* Compare Plans Table Customizer */}
-      <Card className="bg-zinc-900 border-zinc-800 shadow-none mt-6" style={{ borderColor: isLight ? '#e5e7eb' : '#27272a', backgroundColor: isLight ? '#ffffff' : '#09090b' }}>
-        <CardHeader className="border-b pb-4" style={{ borderColor: isLight ? '#e5e7eb' : '#1f1f23' }}>
-          <CardTitle className="text-sm font-semibold flex items-center gap-2 text-zinc-200" style={{ color: isLight ? '#111827' : '#ffffff' }}>
+      <Card className="shadow-none border mt-6 t-card">
+        <CardHeader className="border-b pb-4 t-border-subtle">
+          <CardTitle className="text-sm font-semibold flex items-center gap-2 t-heading">
             Compare Plans Table Customizer
           </CardTitle>
           <CardDescription className="text-zinc-500 text-xs">
@@ -411,7 +380,7 @@ export default function AdminTierFeatures() {
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse text-xs">
               <thead>
-                <tr className="border-b" style={{ borderColor: isLight ? '#e5e7eb' : '#27272a' }}>
+                <tr className="border-b t-border">
                   <th className="py-2 pr-4 font-bold text-zinc-500 w-1/4">Feature Name</th>
                   <th className="py-2 px-2 font-bold text-green-400">Free</th>
                   <th className="py-2 px-2 font-bold text-cyan-400">Recovery Pass</th>
@@ -422,7 +391,7 @@ export default function AdminTierFeatures() {
               </thead>
               <tbody>
                 {comparisonRows.map((row, idx) => (
-                  <tr key={idx} className="border-b" style={{ borderColor: isLight ? '#e5e7eb' : '#1f1f23' }}>
+                  <tr key={idx} className="border-b t-border-subtle">
                     <td className="py-3 pr-4">
                       <input
                         type="text"
@@ -432,12 +401,7 @@ export default function AdminTierFeatures() {
                           setComparisonRows(updated)
                         }}
                         placeholder="Feature name..."
-                        className="w-full border rounded-lg px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500 font-bold"
-                        style={{
-                          backgroundColor: isLight ? '#ffffff' : '#0e0e11',
-                          borderColor: isLight ? '#d1d5db' : '#27272a',
-                          color: isLight ? '#1f2937' : '#ffffff'
-                        }}
+                        className="w-full border rounded-lg px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500 font-bold t-input-subtle-white"
                       />
                       <div className="flex items-center gap-1.5 mt-1.5">
                         <input
@@ -469,12 +433,7 @@ export default function AdminTierFeatures() {
                         })}
                         placeholder="Value..."
                         rows={1}
-                        className="w-full border rounded-lg px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500 resize-none disabled:opacity-35"
-                        style={{
-                          backgroundColor: isLight ? '#ffffff' : '#0e0e11',
-                          borderColor: isLight ? '#d1d5db' : '#27272a',
-                          color: isLight ? '#1f2937' : '#f3f4f6'
-                        }}
+                        className="w-full border rounded-lg px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500 resize-none disabled:opacity-35 t-input-subtle"
                       />
                     </td>
                     <td className="py-3 px-2">
@@ -491,12 +450,7 @@ export default function AdminTierFeatures() {
                         })}
                         placeholder="Value..."
                         rows={1}
-                        className="w-full border rounded-lg px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500 resize-none disabled:opacity-35"
-                        style={{
-                          backgroundColor: isLight ? '#ffffff' : '#0e0e11',
-                          borderColor: isLight ? '#d1d5db' : '#27272a',
-                          color: isLight ? '#1f2937' : '#f3f4f6'
-                        }}
+                        className="w-full border rounded-lg px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500 resize-none disabled:opacity-35 t-input-subtle"
                       />
                     </td>
                     <td className="py-3 px-2">
@@ -513,12 +467,7 @@ export default function AdminTierFeatures() {
                         })}
                         placeholder="Value..."
                         rows={1}
-                        className="w-full border rounded-lg px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500 resize-none disabled:opacity-35 font-bold"
-                        style={{
-                          backgroundColor: isLight ? '#ffffff' : '#0e0e11',
-                          borderColor: isLight ? '#d1d5db' : '#27272a',
-                          color: isLight ? '#1f2937' : '#f3f4f6'
-                        }}
+                        className="w-full border rounded-lg px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500 resize-none disabled:opacity-35 font-bold t-input-subtle"
                       />
                     </td>
                     <td className="py-3 px-2">
@@ -535,12 +484,7 @@ export default function AdminTierFeatures() {
                         })}
                         placeholder="Value..."
                         rows={1}
-                        className="w-full border rounded-lg px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500 resize-none disabled:opacity-35 font-bold"
-                        style={{
-                          backgroundColor: isLight ? '#ffffff' : '#0e0e11',
-                          borderColor: isLight ? '#d1d5db' : '#27272a',
-                          color: isLight ? '#1f2937' : '#f3f4f6'
-                        }}
+                        className="w-full border rounded-lg px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500 resize-none disabled:opacity-35 font-bold t-input-subtle"
                       />
                     </td>
                     <td className="py-3 pl-4 text-right">
@@ -572,9 +516,9 @@ export default function AdminTierFeatures() {
         </CardContent>
       </Card>
 
-      <Card className="bg-zinc-900 border-zinc-800 shadow-none mt-6" style={{ borderColor: isLight ? '#e5e7eb' : '#27272a', backgroundColor: isLight ? '#ffffff' : '#09090b' }}>
-        <CardHeader className="border-b pb-4" style={{ borderColor: isLight ? '#e5e7eb' : '#1f1f23' }}>
-          <CardTitle className="text-sm font-semibold flex items-center gap-2 text-zinc-200" style={{ color: isLight ? '#111827' : '#ffffff' }}>
+      <Card className="shadow-none border mt-6 t-card">
+        <CardHeader className="border-b pb-4 t-border-subtle">
+          <CardTitle className="text-sm font-semibold flex items-center gap-2 t-heading">
             Refund Policy Customizer
           </CardTitle>
           <CardDescription className="text-zinc-500 text-xs">
@@ -585,7 +529,7 @@ export default function AdminTierFeatures() {
           <div className="space-y-1.5">
             <div className="flex items-center justify-between">
               <label className="text-[10px] text-zinc-500 uppercase tracking-widest font-bold">Refund Policy Text</label>
-              <span className="text-[9px] text-zinc-500 font-mono select-none" style={{ color: isLight ? '#6b7280' : '#88888b' }}>
+              <span className="text-[9px] font-mono select-none t-text-hint">
                 Ctrl+B = <strong>bold</strong> | Ctrl+I = <em>italic</em> | Ctrl+U = <u>underline</u>
               </span>
             </div>
@@ -595,19 +539,14 @@ export default function AdminTierFeatures() {
               onKeyDown={(e) => handleTextareaKeyDown(e, refundPolicy, setRefundPolicy)}
               rows={4}
               placeholder="Refund policy text... Use Ctrl+B/I/U to format selection."
-              className="w-full border rounded-lg px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500 font-medium"
-              style={{
-                backgroundColor: isLight ? '#ffffff' : '#0e0e11',
-                borderColor: isLight ? '#d1d5db' : '#27272a',
-                color: isLight ? '#1f2937' : '#f3f4f6'
-              }}
+              className="w-full border rounded-lg px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500 font-medium t-input-subtle"
             />
           </div>
         </CardContent>
       </Card>
 
       {/* Save Button */}
-      <div className="flex justify-end pt-4 border-t" style={{ borderColor: isLight ? '#e5e7eb' : '#27272a' }}>
+      <div className="flex justify-end pt-4 border-t t-border">
         <Button
           onClick={handleSave}
           disabled={saving}

@@ -349,8 +349,7 @@ export default function MainLayout() {
                     {/* Notification Dropdown Menu */}
                     {notificationMenuOpen && (
                       <div 
-                        className="absolute right-0 top-full mt-2 w-72 bg-zinc-950/95 border border-white/10 rounded-xl py-2.5 shadow-2xl backdrop-blur-xl z-[100] animate-in fade-in slide-in-from-top-2 duration-200"
-                        style={{ boxShadow: '0 10px 40px rgba(0,0,0,0.6)' }}
+                        className="absolute right-0 top-full mt-2 w-72 bg-zinc-950/95 border border-white/10 rounded-xl py-2.5 shadow-2xl backdrop-blur-xl z-[100] animate-in fade-in slide-in-from-top-2 duration-200 t-nav-shadow"
                       >
                         <div className="px-4 py-2 border-b border-white/5 mb-1.5 text-left flex justify-between items-center">
                           <p className="text-xs text-white/40 font-bold uppercase tracking-wider">Notifications</p>
@@ -457,8 +456,7 @@ export default function MainLayout() {
                       {/* Profile Dropdown Menu - anchored directly below (Desktop Only) */}
                       {profileMenuOpen && (
                         <div 
-                          className="hidden lg:block absolute right-0 top-full mt-2 w-56 bg-zinc-950/95 border border-white/10 rounded-xl py-2 shadow-2xl backdrop-blur-xl z-[100] animate-in fade-in slide-in-from-top-2 duration-200"
-                          style={{ boxShadow: '0 10px 40px rgba(0,0,0,0.6)' }}
+                          className="hidden lg:block absolute right-0 top-full mt-2 w-56 bg-zinc-950/95 border border-white/10 rounded-xl py-2 shadow-2xl backdrop-blur-xl z-[100] animate-in fade-in slide-in-from-top-2 duration-200 t-nav-shadow"
                         >
                           {/* User Header */}
                           <div className="px-4 py-2 border-b border-white/5 mb-1.5 text-left">

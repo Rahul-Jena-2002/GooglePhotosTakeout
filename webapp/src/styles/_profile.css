@@ -1,0 +1,171 @@
+/* --- Monochromatic Profile Styling (Black in Light Mode, White in Dark Mode) --- */
+
+/* 1. Navbar Profile trigger button */
+.btn-profile-trigger {
+  background-color: #000000 !important;
+  border: 1px solid #000000 !important;
+  color: #ffffff !important;
+  transition: all 0.15s ease-in-out !important;
+}
+.btn-profile-trigger *,
+.btn-profile-trigger span {
+  color: #ffffff !important;
+  stroke: #ffffff !important;
+  transition: all 0.15s ease-in-out !important;
+}
+.btn-profile-trigger .profile-avatar-circle {
+  background-color: #1c1c1e !important;
+  color: #ffffff !important;
+  border: 1px solid rgba(255, 255, 255, 0.2) !important;
+  transition: all 0.15s ease-in-out !important;
+}
+.btn-profile-trigger:hover {
+  background-color: #ffffff !important;
+  border-color: #000000 !important;
+  color: #000000 !important;
+}
+.btn-profile-trigger:hover *,
+.btn-profile-trigger:hover span {
+  color: #000000 !important;
+  stroke: #000000 !important;
+}
+.btn-profile-trigger:hover .profile-avatar-circle {
+  background-color: #f4f4f5 !important;
+  color: #000000 !important;
+  border-color: rgba(0, 0, 0, 0.2) !important;
+}
+
+html.dark .btn-profile-trigger,
+html:not(.light) .btn-profile-trigger {
+  background-color: #ffffff !important;
+  border: 1px solid #ffffff !important;
+  color: #000000 !important;
+}
+html.dark .btn-profile-trigger *,
+html.dark .btn-profile-trigger span,
+html:not(.light) .btn-profile-trigger *,
+html:not(.light) .btn-profile-trigger span {
+  color: #000000 !important;
+  stroke: #000000 !important;
+}
+html.dark .btn-profile-trigger .profile-avatar-circle,
+html:not(.light) .btn-profile-trigger .profile-avatar-circle {
+  background-color: #e5e5e7 !important;
+  color: #000000 !important;
+  border: 1px solid rgba(0, 0, 0, 0.2) !important;
+}
+html.dark .btn-profile-trigger:hover,
+html:not(.light) .btn-profile-trigger:hover {
+  background-color: #000000 !important;
+  border-color: #ffffff !important;
+  color: #ffffff !important;
+}
+html.dark .btn-profile-trigger:hover *,
+html.dark .btn-profile-trigger:hover span,
+html:not(.light) .btn-profile-trigger:hover *,
+html:not(.light) .btn-profile-trigger:hover span {
+  color: #ffffff !important;
+  stroke: #ffffff !important;
+}
+html.dark .btn-profile-trigger:hover .profile-avatar-circle,
+html:not(.light) .btn-profile-trigger:hover .profile-avatar-circle {
+  background-color: #1c1c1e !important;
+  color: #ffffff !important;
+  border-color: rgba(255, 255, 255, 0.2) !important;
+}
+
+/* 2. Profile page avatar background */
+.profile-avatar-mono {
+  background-color: #ffffff !important;
+  border-color: #e4e4e7 !important;
+  color: #000000 !important;
+}
+.profile-avatar-mono svg {
+  color: #000000 !important;
+}
+html.dark .profile-avatar-mono,
+html:not(.light) .profile-avatar-mono {
+  background-color: #000000 !important;
+  border-color: #27272a !important;
+  color: #ffffff !important;
+}
+html.dark .profile-avatar-mono svg,
+html:not(.light) .profile-avatar-mono svg {
+  color: #ffffff !important;
+}
+
+/* 3. Profile page card container background */
+.profile-card-mono {
+  background-color: #ffffff !important;
+  border-color: #e4e4e7 !important;
+  color: #000000 !important;
+}
+.profile-card-mono *,
+.profile-card-mono div,
+.profile-card-mono span,
+.profile-card-mono p,
+.profile-card-mono h2,
+.profile-card-mono h3,
+.profile-card-mono label {
+  color: #000000 !important;
+}
+.profile-card-mono input,
+.profile-card-mono select,
+.profile-card-mono textarea {
+  background-color: #f4f4f5 !important;
+  color: #000000 !important;
+  border-color: #e4e4e7 !important;
+}
+.profile-card-mono button:not(.btn-monochrome-secondary):not(.btn-monochrome-primary) {
+  border-color: rgba(0, 0, 0, 0.2) !important;
+  color: #000000 !important;
+  background-color: transparent !important;
+}
+.profile-card-mono button:not(.btn-monochrome-secondary):not(.btn-monochrome-primary):hover {
+  background-color: rgba(0, 0, 0, 0.08) !important;
+}
+
+html.dark .profile-card-mono,
+html:not(.light) .profile-card-mono {
+  background-color: #000000 !important;
+  border-color: #27272a !important;
+  color: #ffffff !important;
+}
+html.dark .profile-card-mono *,
+html.dark .profile-card-mono div,
+html.dark .profile-card-mono span,
+html.dark .profile-card-mono p,
+html.dark .profile-card-mono h2,
+html.dark .profile-card-mono h3,
+html.dark .profile-card-mono label,
+html:not(.light) .profile-card-mono *,
+html:not(.light) .profile-card-mono div,
+html:not(.light) .profile-card-mono span,
+html:not(.light) .profile-card-mono p,
+html:not(.light) .profile-card-mono h2,
+html:not(.light) .profile-card-mono h3,
+html:not(.light) .profile-card-mono label {
+  color: #ffffff !important;
+}
+html.dark .profile-card-mono input,
+html.dark .profile-card-mono select,
+html.dark .profile-card-mono textarea,
+html:not(.light) .profile-card-mono input,
+html:not(.light) .profile-card-mono select,
+html:not(.light) .profile-card-mono textarea {
+  background-color: #18181b !important;
+  color: #ffffff !important;
+  border-color: #27272a !important;
+}
+html.dark .profile-card-mono button:not(.btn-monochrome-secondary):not(.btn-monochrome-primary),
+html.dark .profile-card-mono button:not(.btn-monochrome-secondary):not(.btn-monochrome-primary):hover,
+html:not(.light) .profile-card-mono button:not(.btn-monochrome-secondary):not(.btn-monochrome-primary),
+html:not(.light) .profile-card-mono button:not(.btn-monochrome-secondary):not(.btn-monochrome-primary):hover {
+  border-color: rgba(255, 255, 255, 0.2) !important;
+  color: #ffffff !important;
+  background-color: transparent !important;
+}
+html.dark .profile-card-mono button:not(.btn-monochrome-secondary):not(.btn-monochrome-primary):hover,
+html:not(.light) .profile-card-mono button:not(.btn-monochrome-secondary):not(.btn-monochrome-primary):hover {
+  background-color: rgba(255, 255, 255, 0.08) !important;
+}

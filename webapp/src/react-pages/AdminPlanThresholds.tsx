@@ -21,7 +21,6 @@ export default function AdminPlanThresholds() {
   const isDev = import.meta.env.DEV
   const hasAccess = isDev || isSuperAdmin || role === "ADMIN"
 
-  const [isLight, setIsLight] = useState(false)
   const [saving, setSaving] = useState(false)
   const [recoveryPassHours, setRecoveryPassHours] = useState("24")
 
@@ -31,17 +30,6 @@ export default function AdminPlanThresholds() {
     pro:           { maxFiles: "50000",  maxSizeMB: "51200"  },
     super:         { maxFiles: "100000", maxSizeMB: "102400" },
   })
-
-  // Theme observer
-  useEffect(() => {
-    const checkTheme = () => {
-      setIsLight(document.documentElement.classList.contains("light"))
-    }
-    checkTheme()
-    const observer = new MutationObserver(checkTheme)
-    observer.observe(document.documentElement, { attributes: true, attributeFilter: ["class"] })
-    return () => observer.disconnect()
-  }, [])
 
   // Listen to thresholds configurations in Firestore
   useEffect(() => {
@@ -156,27 +144,22 @@ export default function AdminPlanThresholds() {
   ]
 
   return (
-    <div className="space-y-8 max-w-5xl mx-auto px-4 py-8 font-sans transition-all duration-300" style={{ color: isLight ? '#1f2937' : '#f3f4f6' }}>
+    <div className="space-y-8 max-w-5xl mx-auto px-4 py-8 font-sans transition-all duration-300 t-text-primary">
       
       {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b pb-6" style={{ borderColor: isLight ? '#e5e7eb' : '#27272a' }}>
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b pb-6 t-border">
         <div>
-          <h1 className="text-3xl font-black tracking-tight flex items-center gap-2" style={{ color: isLight ? '#111827' : '#ffffff' }}>
+          <h1 className="text-3xl font-black tracking-tight flex items-center gap-2 t-heading">
             <Sliders className="w-8 h-8 text-indigo-500" /> Plan Tool Thresholds
           </h1>
-          <p className="text-sm mt-1" style={{ color: isLight ? '#6b7280' : '#a1a1aa' }}>
+          <p className="text-sm mt-1 t-text-muted">
             Set custom file count and folder size (MB) limit parameters enforced at runtime on the client work area.
           </p>
         </div>
       </div>
 
       {/* Info Alert */}
-      <div className="p-4 rounded-xl border flex gap-3 text-xs"
-           style={{
-             backgroundColor: isLight ? '#f0fdf4' : '#022c22',
-             borderColor: isLight ? '#bbf7d0' : '#115e59',
-             color: isLight ? '#166534' : '#34d399'
-           }}>
+      <div className="p-4 rounded-xl border flex gap-3 text-xs t-green-banner">
         <Info className="w-4 h-4 shrink-0 mt-0.5" />
         <div>
           <strong>Operational Guideline:</strong> The client-side extractor validates total uncompressed sizes against these values when starting a fixes queue. Setting a threshold higher gives users larger allowance per session.
@@ -185,12 +168,12 @@ export default function AdminPlanThresholds() {
 
       <div className="grid md:grid-cols-2 gap-6">
         {TIERS.map(({ key, label, color, border, bg, desc }) => (
-          <Card key={key} className="shadow-none border" style={{ backgroundColor: isLight ? '#ffffff' : '#09090b', borderColor: isLight ? '#e5e7eb' : '#27272a' }}>
-            <CardHeader className="border-b" style={{ borderColor: isLight ? '#e5e7eb' : '#1f1f23' }}>
+          <Card key={key} className="shadow-none border t-card">
+            <CardHeader className="border-b t-border-subtle">
               <div className="flex justify-between items-start">
                 <div>
                   <CardTitle className={`text-sm font-bold ${color}`}>{label}</CardTitle>
-                  <CardDescription className="text-xs mt-1" style={{ color: isLight ? '#6b7280' : '#88888b' }}>{desc}</CardDescription>
+                  <CardDescription className="text-xs mt-1 t-text-hint">{desc}</CardDescription>
                 </div>
                 <span className={`text-[9px] font-extrabold px-2 py-0.5 rounded-full border ${border} ${bg} ${color}`}>
                   {key.toUpperCase()}
@@ -201,7 +184,7 @@ export default function AdminPlanThresholds() {
               
               {/* Max Files */}
               <div className="space-y-1.5">
-                <label className="text-[10px] font-bold uppercase tracking-wider block" style={{ color: isLight ? '#4b5563' : '#a1a1aa' }}>
+                <label className="text-[10px] font-bold uppercase tracking-wider block t-text-secondary">
                   Max File Count
                 </label>
                 <div className="relative flex items-center">
@@ -214,12 +197,7 @@ export default function AdminPlanThresholds() {
                       ...prev,
                       [key]: { ...prev[key], maxFiles: e.target.value }
                     }))}
-                    className="pl-10 text-xs h-9"
-                    style={{
-                      backgroundColor: isLight ? '#f9fafb' : '#0f0f12',
-                      borderColor: isLight ? '#d1d5db' : '#27272a',
-                      color: isLight ? '#1f2937' : '#f3f4f6'
-                    }}
+                    className="pl-10 text-xs h-9 t-input"
                   />
                 </div>
                 <div className="text-[10px] text-zinc-550 dark:text-zinc-500 font-medium">
@@ -229,7 +207,7 @@ export default function AdminPlanThresholds() {
 
               {/* Max Size */}
               <div className="space-y-1.5">
-                <label className="text-[10px] font-bold uppercase tracking-wider block" style={{ color: isLight ? '#4b5563' : '#a1a1aa' }}>
+                <label className="text-[10px] font-bold uppercase tracking-wider block t-text-secondary">
                   Max Size Quota (MB)
                 </label>
                 <div className="relative flex items-center">
@@ -242,12 +220,7 @@ export default function AdminPlanThresholds() {
                       ...prev,
                       [key]: { ...prev[key], maxSizeMB: e.target.value }
                     }))}
-                    className="pl-10 text-xs h-9"
-                    style={{
-                      backgroundColor: isLight ? '#f9fafb' : '#0f0f12',
-                      borderColor: isLight ? '#d1d5db' : '#27272a',
-                      color: isLight ? '#1f2937' : '#f3f4f6'
-                    }}
+                    className="pl-10 text-xs h-9 t-input"
                   />
                 </div>
                 <div className="text-[10px] text-zinc-550 dark:text-zinc-500 font-medium">
@@ -261,7 +234,7 @@ export default function AdminPlanThresholds() {
 
               {/* Inline duration config — only for recovery_pass */}
               {key === 'recovery_pass' && (
-                <div className="space-y-1.5 pt-3 border-t" style={{ borderColor: isLight ? '#e5e7eb' : '#1f1f23' }}>
+                <div className="space-y-1.5 pt-3 border-t t-border-subtle">
                   <label className="text-[10px] font-bold uppercase tracking-wider block text-cyan-400">
                     Pass Duration (Hours)
                   </label>
@@ -273,12 +246,7 @@ export default function AdminPlanThresholds() {
                       max="720"
                       value={recoveryPassHours}
                       onChange={(e) => setRecoveryPassHours(e.target.value)}
-                      className="pl-10 text-xs h-9"
-                      style={{
-                        backgroundColor: isLight ? '#f9fafb' : '#0f0f12',
-                        borderColor: isLight ? '#d1d5db' : '#27272a',
-                        color: isLight ? '#1f2937' : '#f3f4f6'
-                      }}
+                      className="pl-10 text-xs h-9 t-input"
                     />
                   </div>
                   <div className="text-[10px] text-cyan-400 font-bold">
@@ -294,7 +262,7 @@ export default function AdminPlanThresholds() {
 
       {/* Recovery Pass Duration */}
       {/* Save Button */}
-      <div className="flex justify-end pt-4 border-t" style={{ borderColor: isLight ? '#e5e7eb' : '#27272a' }}>
+      <div className="flex justify-end pt-4 border-t t-border">
         <Button
           onClick={handleSave}
           disabled={saving}

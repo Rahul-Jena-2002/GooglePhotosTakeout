@@ -1,0 +1,809 @@
+/* ==========================================================================
+   THEME UTILITY CLASSES (Light/Dark Monochromatic Theme Utilities)
+   Extracted from inline styles across TSX files
+   Default is Dark mode; overrides are activated via html.light
+   ========================================================================== */
+
+/* ─── Typography & Text Colors ────────────────────────────────────────── */
+.t-heading {
+  color: #ffffff;
+}
+html.light .t-heading {
+  color: #111827;
+}
+
+.t-heading-light {
+  color: #f4f4f5;
+}
+html.light .t-heading-light {
+  color: #1f2937;
+}
+
+.t-text-primary {
+  color: #f3f4f6;
+}
+html.light .t-text-primary {
+  color: #1f2937;
+}
+
+.t-text-primary-white {
+  color: #ffffff;
+}
+html.light .t-text-primary-white {
+  color: #1f2937;
+}
+
+.t-text-secondary {
+  color: #a1a1aa;
+}
+html.light .t-text-secondary {
+  color: #4b5563;
+}
+
+.t-text-muted {
+  color: #a1a1aa;
+}
+html.light .t-text-muted {
+  color: #6b7280;
+}
+
+.t-text-dim {
+  color: #71717a;
+}
+html.light .t-text-dim {
+  color: #9ca3af;
+}
+
+.t-text-faint {
+  color: #4b5563;
+}
+html.light .t-text-faint {
+  color: #9ca3af;
+}
+
+.t-text-hint {
+  color: #88888b;
+}
+html.light .t-text-hint {
+  color: #6b7280;
+}
+
+.t-text-subtle-hint {
+  color: #9a9a9e;
+}
+html.light .t-text-subtle-hint {
+  color: #6b7280;
+}
+
+.t-text-subtle-label {
+  color: #86868b;
+}
+html.light .t-text-subtle-label {
+  color: #71717a;
+}
+
+.t-text-label-soft {
+  color: #d1d5db;
+}
+html.light .t-text-label-soft {
+  color: #4b5563;
+}
+
+.t-text-contrast-dark {
+  color: #d1d5db;
+}
+html.light .t-text-contrast-dark {
+  color: #374151;
+}
+
+.t-text-contrast-dark-subtle {
+  color: #a1a1aa;
+}
+html.light .t-text-contrast-dark-subtle {
+  color: #374151;
+}
+
+.t-text-desc {
+  color: #d4d4d8;
+}
+html.light .t-text-desc {
+  color: #4b5563;
+}
+
+.t-text-body {
+  color: #d4d4d8;
+}
+html.light .t-text-body {
+  color: #374151;
+}
+
+.t-text-code {
+  color: #f4f4f5;
+}
+html.light .t-text-code {
+  color: #111827;
+}
+
+.t-text-mono {
+  color: #e1e4e8;
+}
+html.light .t-text-mono {
+  color: #24292e;
+}
+
+/* ─── Amber / Warning States ─────────────────────────────────────────── */
+.t-amber-text {
+  color: #fbbf24;
+}
+html.light .t-amber-text {
+  color: #d97706;
+}
+
+.t-amber-title {
+  color: #fef3c7;
+}
+html.light .t-amber-title {
+  color: #92400e;
+}
+
+.t-amber-desc {
+  color: #fcd34d;
+}
+html.light .t-amber-desc {
+  color: #b45309;
+}
+
+.t-amber-muted {
+  color: #a8a29e;
+}
+html.light .t-amber-muted {
+  color: #78350f;
+}
+
+.t-amber-sub {
+  color: #d6d3d1;
+}
+html.light .t-amber-sub {
+  color: #b45309;
+}
+
+.t-amber-highlight {
+  color: #f59e0b;
+}
+html.light .t-amber-highlight {
+  color: #92400e;
+}
+
+.t-badge-amber {
+  background-color: rgba(217, 119, 6, 0.1);
+  color: #fbbf24;
+  border-color: rgba(217, 119, 6, 0.2);
+}
+html.light .t-badge-amber {
+  background-color: #fffdeb;
+  color: #b45309;
+  border-color: #fef3c7;
+}
+
+.t-banner-amber {
+  background-color: rgba(146, 64, 14, 0.1);
+  border-color: rgba(217, 119, 6, 0.2);
+}
+html.light .t-banner-amber {
+  background-color: #fffbeb;
+  border-color: #fef3c7;
+}
+
+.t-callout-amber {
+  background-color: #1c1917;
+  border-color: #44403c;
+}
+html.light .t-callout-amber {
+  background-color: #fffbeb;
+  border-color: #fde68a;
+}
+
+/* ─── Green / Success States ─────────────────────────────────────────── */
+.t-green-text {
+  color: #34d399;
+}
+html.light .t-green-text {
+  color: #047857;
+}
+
+.t-green-banner {
+  background-color: #022c22;
+  border-color: #115e59;
+  color: #34d399;
+}
+html.light .t-green-banner {
+  background-color: #f0fdf4;
+  border-color: #bbf7d0;
+  color: #166534;
+}
+
+.t-badge-green {
+  background-color: rgba(16, 185, 129, 0.1);
+  border-color: rgba(16, 185, 129, 0.2);
+}
+html.light .t-badge-green {
+  background-color: #ecfdf5;
+  border-color: #a7f3d0;
+}
+
+.t-pill-health-good {
+  background-color: rgba(16, 185, 129, 0.1);
+  color: #34d399;
+  border-color: rgba(16, 185, 129, 0.2);
+}
+html.light .t-pill-health-good {
+  background-color: #ecfdf5;
+  color: #047857;
+  border-color: #a7f3d0;
+}
+
+.t-pill-health-warn {
+  background-color: rgba(245, 158, 11, 0.1);
+  color: #fbbf24;
+  border-color: rgba(245, 158, 11, 0.2);
+}
+html.light .t-pill-health-warn {
+  background-color: #fffbeb;
+  color: #b45309;
+  border-color: #fde68a;
+}
+
+.t-card-unsaved {
+  border-color: #78350f;
+}
+html.light .t-card-unsaved {
+  border-color: #fde68a;
+}
+
+/* ─── Red / Error States ─────────────────────────────────────────────── */
+.t-badge-red {
+  background-color: rgba(239, 68, 68, 0.15);
+  color: #f87171;
+  border: 1px solid rgba(239, 68, 68, 0.2);
+}
+html.light .t-badge-red {
+  background-color: #fee2e2;
+  color: #b91c1c;
+  border-color: #fecaca;
+}
+
+/* ─── Indigo / Links ─────────────────────────────────────────────────── */
+.t-indigo-link {
+  color: #4f46e5;
+}
+
+.t-indigo-banner {
+  background-color: #1e1b4b;
+  border-color: #312e81;
+  color: #c7d2fe;
+}
+html.light .t-indigo-banner {
+  background-color: #f3f4f6;
+  border-color: #e5e7eb;
+  color: #374151;
+}
+
+/* ─── Cards & Surfaces ───────────────────────────────────────────────── */
+.t-card-bg {
+  background-color: #09090b;
+}
+html.light .t-card-bg {
+  background-color: #ffffff;
+}
+
+.t-card {
+  background-color: #09090b;
+  border-color: #27272a;
+}
+html.light .t-card {
+  background-color: #ffffff;
+  border-color: #e5e7eb;
+}
+
+.t-card-zinc {
+  background-color: #09090b;
+  border-color: #27272a;
+}
+html.light .t-card-zinc {
+  background-color: #ffffff;
+  border-color: #e4e4e7;
+}
+
+.t-card-raised {
+  background-color: #1c1c1e;
+  border: 1px solid #27272a;
+  color: #d1d5db;
+}
+html.light .t-card-raised {
+  background-color: #ffffff;
+  border-color: #e4e4e7;
+  color: #374151;
+}
+
+.t-card-raised-input {
+  background-color: #1c1c1e;
+  border-color: #27272a;
+  color: #d1d5db;
+}
+html.light .t-card-raised-input {
+  background-color: #ffffff;
+  border-color: #d1d5db;
+  color: #4b5563;
+}
+
+.t-card-raised-text {
+  background-color: #1c1c1e;
+  border-color: #27272a;
+  color: #d1d5db;
+}
+html.light .t-card-raised-text {
+  background-color: #ffffff;
+  border-color: #d1d5db;
+  color: #374151;
+}
+
+.t-card-surface {
+  background-color: #0e0e11;
+  border-color: #1c1c1e;
+}
+html.light .t-card-surface {
+  background-color: #fafafa;
+  border-color: #f4f4f5;
+}
+
+.t-surface-subtle {
+  background-color: #050508;
+  border-color: #27272a;
+}
+html.light .t-surface-subtle {
+  background-color: #f9fafb;
+  border-color: #e5e7eb;
+}
+
+.t-surface-subtle-2 {
+  background-color: #050507;
+  border-color: #27272a;
+}
+html.light .t-surface-subtle-2 {
+  background-color: #f9fafb;
+  border-color: #e5e7eb;
+}
+
+.t-surface-subtle-3 {
+  background-color: #0e0e11;
+  border-color: #27272a;
+}
+html.light .t-surface-subtle-3 {
+  background-color: #f9fafb;
+  border-color: #e5e7eb;
+}
+
+.t-surface-subtle-4 {
+  background-color: #09090b;
+  border-color: #27272a;
+}
+html.light .t-surface-subtle-4 {
+  background-color: #f9fafb;
+  border-color: #e5e7eb;
+}
+
+.t-surface-muted {
+  background-color: #18181b;
+  border-color: #27272a;
+  color: #a1a1aa;
+}
+html.light .t-surface-muted {
+  background-color: #f4f4f5;
+  border-color: #e4e4e7;
+  color: #71717a;
+}
+
+.t-surface-dim {
+  background-color: #09090b;
+  border-color: #1f1f23;
+  color: #4b5563;
+}
+html.light .t-surface-dim {
+  background-color: #f3f4f6;
+  border-color: #e5e7eb;
+  color: #9ca3af;
+}
+
+.t-surface-code {
+  background-color: #27272a;
+  color: #f4f4f5;
+}
+html.light .t-surface-code {
+  background-color: #f4f4f5;
+  color: #111827;
+}
+
+.t-surface-pre {
+  background-color: #09090b;
+  color: #e1e4e8;
+}
+html.light .t-surface-pre {
+  background-color: #fcfcfd;
+  color: #24292e;
+}
+
+.t-surface-badge {
+  background-color: #1c1c1e;
+  color: #a1a1aa;
+  border-color: #27272a;
+}
+html.light .t-surface-badge {
+  background-color: #f4f4f5;
+  color: #4b5563;
+  border-color: #e4e4e7;
+}
+
+.t-surface-banner-subtle {
+  background-color: rgba(39, 39, 42, 0.2);
+  border-color: rgba(63, 63, 70, 0.3);
+}
+html.light .t-surface-banner-subtle {
+  background-color: #f4f4f5;
+  border-color: #e4e4e7;
+}
+
+.t-card-modal {
+  background-color: #09090b;
+  border-color: #27272a;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
+}
+html.light .t-card-modal {
+  background-color: #ffffff;
+  border-color: #e5e7eb;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.1);
+}
+
+.t-banner-tint {
+  background-color: rgba(24, 24, 27, 0.2);
+  border-color: #27272a;
+}
+html.light .t-banner-tint {
+  background-color: #f9fafb;
+  border-color: #e5e7eb;
+}
+
+/* ─── Borders & Dividers ─────────────────────────────────────────────── */
+.t-border {
+  border-color: #27272a;
+}
+html.light .t-border {
+  border-color: #e5e7eb;
+}
+
+.t-border-subtle {
+  border-color: #1f1f23;
+}
+html.light .t-border-subtle {
+  border-color: #e5e7eb;
+}
+
+.t-border-zinc {
+  border-color: #27272a;
+}
+html.light .t-border-zinc {
+  border-color: #e4e4e7;
+}
+
+.t-border-alt {
+  border-color: #1c1c1e;
+}
+html.light .t-border-alt {
+  border-color: #f3f4f6;
+}
+
+.t-border-alt2 {
+  border-color: #27272a;
+}
+html.light .t-border-alt2 {
+  border-color: #f3f4f6;
+}
+
+.t-border-soft-1 {
+  border-color: #1e1e22;
+}
+html.light .t-border-soft-1 {
+  border-color: #e5e7eb;
+}
+
+.t-border-soft-2 {
+  border-color: #1e1e21;
+}
+html.light .t-border-soft-2 {
+  border-color: #e5e7eb;
+}
+
+.t-border-soft-3 {
+  border-color: #1b1b1e;
+}
+html.light .t-border-soft-3 {
+  border-color: #e5e7eb;
+}
+
+.t-border-input-muted {
+  border-color: #27272a;
+}
+html.light .t-border-input-muted {
+  border-color: #d1d5db;
+}
+
+.t-divider {
+  background-color: #27272a;
+}
+html.light .t-divider {
+  background-color: #e4e4e7;
+}
+
+.t-border-text-secondary {
+  border-color: #27272a;
+  color: #e4e4e7;
+}
+html.light .t-border-text-secondary {
+  border-color: #e5e7eb;
+  color: #4b5563;
+}
+
+.t-border-text-muted {
+  border-color: #27272a;
+  color: #a1a1aa;
+}
+html.light .t-border-text-muted {
+  border-color: #d1d5db;
+  color: #4b5563;
+}
+
+/* ─── Form Controls & Inputs ─────────────────────────────────────────── */
+.t-input {
+  background-color: #0f0f12;
+  border-color: #27272a;
+  color: #f3f4f6;
+}
+html.light .t-input {
+  background-color: #f9fafb;
+  border-color: #d1d5db;
+  color: #1f2937;
+}
+
+.t-input-subtle {
+  background-color: #0e0e11;
+  border-color: #27272a;
+  color: #f3f4f6;
+}
+html.light .t-input-subtle {
+  background-color: #ffffff;
+  border-color: #d1d5db;
+  color: #1f2937;
+}
+
+.t-input-subtle-white {
+  background-color: #0e0e11;
+  border-color: #27272a;
+  color: #ffffff;
+}
+html.light .t-input-subtle-white {
+  background-color: #ffffff;
+  border-color: #d1d5db;
+  color: #1f2937;
+}
+
+.t-input-subtle-muted {
+  background-color: #0e0e11;
+  border-color: #27272a;
+  color: #a1a1aa;
+}
+html.light .t-input-subtle-muted {
+  background-color: #ffffff;
+  border-color: #d1d5db;
+  color: #4b5563;
+}
+
+.t-input-pure {
+  background-color: #09090b;
+  border-color: #27272a;
+  color: #f3f4f6;
+}
+html.light .t-input-pure {
+  background-color: #ffffff;
+  border-color: #d1d5db;
+  color: #1f2937;
+}
+
+.t-input-pure-border {
+  background-color: #09090b;
+  border-color: #27272a;
+}
+html.light .t-input-pure-border {
+  background-color: #ffffff;
+  border-color: #d1d5db;
+}
+
+.t-input-surface-7 {
+  background-color: #050507;
+  border-color: #27272a;
+  color: #f3f4f6;
+}
+html.light .t-input-surface-7 {
+  background-color: #ffffff;
+  border-color: #d1d5db;
+  color: #1f2937;
+}
+
+.t-input-surface-7-border {
+  background-color: #050507;
+  border-color: #27272a;
+}
+html.light .t-input-surface-7-border {
+  background-color: #ffffff;
+  border-color: #d1d5db;
+}
+
+.t-input-surface-12 {
+  background-color: #0f0f12;
+  color: #f3f4f6;
+}
+html.light .t-input-surface-12 {
+  background-color: #ffffff;
+  color: #1f2937;
+}
+
+.t-input-dark-card {
+  background-color: #0a0a0c;
+  border-color: #27272a;
+  color: #f3f4f6;
+}
+html.light .t-input-dark-card {
+  background-color: #ffffff;
+  border-color: #d1d5db;
+  color: #1f2937;
+}
+
+.t-input-subtle-card {
+  background-color: #18181b;
+  border-color: #27272a;
+  color: #f3f4f6;
+}
+html.light .t-input-subtle-card {
+  background-color: #ffffff;
+  border-color: #d1d5db;
+  color: #1f2937;
+}
+
+.t-input-subtle-card-2 {
+  background-color: #09090b;
+  border-color: #27272a;
+}
+html.light .t-input-subtle-card-2 {
+  background-color: #f9fafb;
+  border-color: #d1d5db;
+}
+
+.t-input-subtle-card-3 {
+  background-color: #09090b;
+  border-color: #27272a;
+  color: #ffffff;
+}
+html.light .t-input-subtle-card-3 {
+  background-color: #f9fafb;
+  border-color: #e5e7eb;
+  color: #111827;
+}
+
+.t-input-card-soft-1 {
+  background-color: #0a0a0d;
+  border-color: #1e1e22;
+}
+html.light .t-input-card-soft-1 {
+  background-color: #ffffff;
+  border-color: #e5e7eb;
+}
+
+.t-input-card-soft-2 {
+  background-color: #0b0b0e;
+  border-color: #1f1f23;
+}
+html.light .t-input-card-soft-2 {
+  background-color: #ffffff;
+  border-color: #e5e7eb;
+}
+
+.t-input-card-soft-3 {
+  background-color: #0a0a0c;
+  border-color: #1e1e21;
+}
+html.light .t-input-card-soft-3 {
+  background-color: #ffffff;
+  border-color: #e5e7eb;
+}
+
+/* ─── Inverted / Action Buttons ──────────────────────────────────────── */
+.t-btn-inverted {
+  background-color: #ffffff;
+  color: #0f0f11;
+}
+html.light .t-btn-inverted {
+  background-color: #1f2937;
+  color: #ffffff;
+}
+
+.t-btn-inverted-pure {
+  background-color: #ffffff;
+  color: #000000;
+}
+html.light .t-btn-inverted-pure {
+  background-color: #111827;
+  color: #ffffff;
+}
+
+.t-btn-amber-solid {
+  background-color: #d97706;
+  color: #ffffff;
+}
+
+.t-bold-toggle-off {
+  background-color: #1f1f23;
+  border-color: #27272a;
+  color: #88888b;
+}
+html.light .t-bold-toggle-off {
+  background-color: #ffffff;
+  border-color: #d1d5db;
+  color: #6b7280;
+}
+
+/* ─── Static Shadows, Animations & Layout Helpers ────────────────────── */
+.t-nav-shadow {
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.6);
+}
+
+.t-carousel-snap {
+  -webkit-overflow-scrolling: touch;
+  scroll-snap-type: x mandatory;
+  scrollbar-width: none;
+}
+.t-carousel-snap::-webkit-scrollbar {
+  display: none;
+}
+
+.t-animate-support-widget {
+  animation: supportWidgetIn 200ms ease-out forwards;
+}
+
+.t-animate-faq-modal {
+  animation: faqModalIn 300ms ease-out forwards;
+}
+
+.t-animate-fade-in {
+  animation: fadeIn 200ms ease-out forwards;
+}
+
+.t-animate-fade-in-fast {
+  animation: fadeIn 150ms ease-out forwards;
+}
+
+.t-animate-fade-in-scale {
+  animation: fadeInScale 500ms ease-out forwards;
+}
+
+.t-animate-fade-in-up-100 {
+  animation: fadeInUp 500ms ease-out 100ms forwards;
+  opacity: 0;
+}
+
+.t-animate-fade-in-up-200 {
+  animation: fadeInUp 500ms ease-out 200ms forwards;
+  opacity: 0;
+}
+
+.t-animate-fade-in-up-300 {
+  animation: fadeInUp 500ms ease-out 300ms forwards;
+  opacity: 0;
+}

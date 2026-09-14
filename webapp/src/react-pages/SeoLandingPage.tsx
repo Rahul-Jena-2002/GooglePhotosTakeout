@@ -3,7 +3,7 @@ import { useParams, Link, useNavigate } from "react-router-dom"
 
 import { Button } from "../components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card"
-import { ShieldCheck, ArrowRight, CheckCircle2, AlertTriangle, Cpu, HardDrive, Eye, XCircle } from "lucide-react"
+import { ShieldCheck, ArrowRight, CheckCircle2, Cpu, HardDrive, Eye, XCircle } from "lucide-react"
 
 // SEO Keyword Permutation Dictionary
 const actions: Record<string, string> = {
@@ -122,30 +122,26 @@ export default function SeoLandingPage() {
       {/* Hero Section */}
       <div className="max-w-4xl mx-auto text-center mb-20 relative z-10">
         <div
-          className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-zinc-900 border border-zinc-800 text-xs font-semibold text-indigo-400 mb-6 font-mono"
-          style={{ animation: 'fadeInScale 500ms ease-out forwards' }}
+          className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-zinc-900 border border-zinc-800 text-xs font-semibold text-indigo-400 mb-6 font-mono t-animate-fade-in-scale"
         >
           <ShieldCheck className="w-4 h-4 text-indigo-400" />
           100% Local Browser Engine · HIPAA Compliant
         </div>
         
         <h1
-          className="text-4xl md:text-6xl font-extrabold tracking-tight text-white mb-6 leading-tight"
-          style={{ animation: 'fadeInUp 500ms ease-out 100ms forwards', opacity: 0 }}
+          className="text-4xl md:text-6xl font-extrabold tracking-tight text-white mb-6 leading-tight t-animate-fade-in-up-100"
         >
           {matchedAction} <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 via-purple-400 to-pink-500">{matchedTarget}</span> from {matchedSource}
         </h1>
         
         <p
-          className="text-lg md:text-xl text-zinc-400 max-w-3xl mx-auto font-normal leading-relaxed mb-8"
-          style={{ animation: 'fadeInUp 500ms ease-out 200ms forwards', opacity: 0 }}
+          className="text-lg md:text-xl text-zinc-400 max-w-3xl mx-auto font-normal leading-relaxed mb-8 t-animate-fade-in-up-200"
         >
           Did your {matchedSource} export strip out original dates, camera info, or GPS coordinates? TakeoutFix automatically merges the separate JSON metadata sidecar files back into your photos and videos offline on your device.
         </p>
 
         <div
-          className="flex justify-center"
-          style={{ animation: 'fadeInUp 500ms ease-out 300ms forwards', opacity: 0 }}
+          className="flex justify-center t-animate-fade-in-up-300"
         >
           <Link to="/tool">
             <Button size="lg" className="rounded-full bg-gradient-to-r from-indigo-500 to-purple-600 hover:opacity-90 text-white border-0 shadow-[0_0_35px_rgba(99,102,241,0.4)] px-10 h-14 font-semibold text-sm">

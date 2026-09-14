@@ -1,0 +1,46 @@
+/* Chart light mode contrast fixes */
+html.light .bg-zinc-900\/40 {
+  background-color: #FFFFFF !important;
+  border-color: #e4e4e7 !important;
+}
+html.light .bg-zinc-900\/40 text {
+  fill: #71717a !important;
+}
+html.light .bg-zinc-900\/40 g.stroke-zinc-800\/60 {
+  stroke: #e4e4e7 !important;
+}
+
+/* AdBlock Banner Light Mode Overrides */
+html.light #adblock-banner {
+  background-color: #F5F5F7 !important;
+  border-color: #D2D2D7 !important;
+}
+
+html.light #adblock-banner .text-zinc-200 {
+  color: #1d1d1f !important;
+}
+
+html.light #adblock-whitelist-btn {
+  background-color: #1d1d1f !important;
+  color: #FFFFFF !important;
+  border: 1px solid #1d1d1f !important;
+}
+
+html.light #adblock-whitelist-btn:hover {
+  background-color: #000000 !important;
+  border-color: #000000 !important;
+}
+
+/* Disable global/layout footer when a card modal is open */
+footer {
+  transition: opacity 0.2s cubic-bezier(0.4, 0, 0.2, 1), 
+              visibility 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  opacity: 1;
+  visibility: visible;
+}
+
+html.faq-modal-open footer {
+  opacity: 0 !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
+}

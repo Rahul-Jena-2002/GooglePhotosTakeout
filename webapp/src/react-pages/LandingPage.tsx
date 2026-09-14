@@ -424,8 +424,7 @@ export default function LandingPage() {
             {/* Scrollable Track */}
             <div 
               ref={trackRef}
-              className="flex items-center gap-6 overflow-x-auto no-scrollbar py-12 px-[calc(50%-128px)] scroll-smooth select-none cursor-grab active:cursor-grabbing"
-              style={{ WebkitOverflowScrolling: 'touch', scrollSnapType: 'x mandatory', scrollbarWidth: 'none' }}
+              className="flex items-center gap-6 overflow-x-auto no-scrollbar py-12 px-[calc(50%-128px)] scroll-smooth select-none cursor-grab active:cursor-grabbing t-carousel-snap"
             >
               <div className="slider-card bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 p-8 rounded-lg w-64 min-w-[256px] h-48 flex-shrink-0 flex flex-col justify-center items-center text-center transition-all duration-300 scroll-snap-align-center" data-step="0">
                 <div className="text-3xl font-black text-foreground mb-2 tracking-tight">Takeout</div>

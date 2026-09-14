@@ -2,7 +2,7 @@ import { useEffect, useState } from "react"
 import { collection, query, orderBy, onSnapshot, doc, updateDoc, setDoc, addDoc } from "firebase/firestore"
 import { db } from "../firebase"
 import { useAuth } from "../contexts/AuthContext"
-import { Search, RotateCcw, Download, Eye, MoreVertical, Sliders, FileSpreadsheet, ChevronLeft, ChevronRight, Copy, CheckCircle2 } from "lucide-react"
+import { Search, RotateCcw, MoreVertical, FileSpreadsheet, ChevronLeft, ChevronRight, Copy } from "lucide-react"
 import { useToastStore } from "../store/useToastStore"
 import {
   DropdownMenu,
@@ -25,6 +25,7 @@ interface Transaction {
   timestamp: number;
   paymentMethod: string;
   approvedByAdmin?: string;
+  envMode?: string;
 }
 
 const PLAN_LABELS: Record<string, string> = {
@@ -32,6 +33,27 @@ const PLAN_LABELS: Record<string, string> = {
   recovery_pass: "Single Time",
   pro: "Pro",
   super: "Super",
+}
+
+function getPlanBadgeClass(plan: string): string {
+  if (plan === "pro") return "bg-blue-500/10 text-blue-400 border-blue-500/20"
+  if (plan === "super") return "bg-amber-500/10 text-amber-400 border-amber-500/20"
+  return "bg-zinc-500/10 text-zinc-400 border-zinc-500/20"
+}
+
+function getStatusBadgeStyle(status: Transaction["status"]) {
+  switch (status) {
+    case "succeeded":
+      return { badge: "bg-emerald-500/10 text-emerald-400 border-emerald-500/20", dot: "bg-emerald-400" }
+    case "refunded":
+      return { badge: "bg-purple-500/10 text-purple-400 border-purple-500/20", dot: "bg-purple-400" }
+    case "processing":
+      return { badge: "bg-amber-500/10 text-amber-400 border-amber-500/20", dot: "bg-amber-400" }
+    case "cancelled":
+      return { badge: "bg-zinc-500/10 text-zinc-400 border-zinc-500/20", dot: "bg-zinc-400" }
+    default:
+      return { badge: "bg-red-500/10 text-red-400 border-red-500/20", dot: "bg-red-400" }
+  }
 }
 
 export default function AdminTransactions() {
@@ -85,7 +107,7 @@ export default function AdminTransactions() {
     
     const pctStr = window.prompt(`Enter refund percentage (10-100%):`, "100")
     if (pctStr === null) return
-    const pct = parseInt(pctStr) || 100
+    const pct = Number.parseInt(pctStr, 10) || 100
     
     if (pct < 10 || pct > 100) {
       alert("Invalid percentage. Must be between 10 and 100.")
@@ -141,7 +163,7 @@ export default function AdminTransactions() {
       if (!matchesSearch) return false
     }
 
-    const isNonCommercial = t.approvedByAdmin != null || t.paymentMethod === "Admin Grant" || t.amount === 0 || t.envMode === "test" || (t.txId && t.txId.includes("TEST"));
+    const isNonCommercial = t.approvedByAdmin != null || t.paymentMethod === "Admin Grant" || t.amount === 0 || t.envMode === "test" || Boolean(t.txId?.includes("TEST"));
     
     if (filterType === "admin") {
       return t.approvedByAdmin != null || t.paymentMethod === "Admin Grant" || t.amount === 0;
@@ -199,19 +221,114 @@ export default function AdminTransactions() {
     link.setAttribute("download", `TakeoutFix_Transactions_Export_${Date.now()}.csv`);
     document.body.appendChild(link);
     link.click();
-    document.body.removeChild(link);
+    link.remove();
   }
 
-  const gatewayLabel = 
-    activeGateway === "dodo" ? "Dodo Payments" : 
-    activeGateway === "lemonsqueezy" ? "Lemon Squeezy" : 
-    activeGateway === "paddle" ? "Paddle" : 
-    "Stripe"
+  const GATEWAY_NAMES: Record<string, string> = {
+    dodo: "Dodo Payments",
+    lemonsqueezy: "Lemon Squeezy",
+    paddle: "Paddle",
+    stripe: "Stripe"
+  }
+  const gatewayLabel = GATEWAY_NAMES[activeGateway] || "Stripe"
 
   // KPI stats from filters
-  const commercialTx = transactions.filter(t => !(t.approvedByAdmin != null || t.paymentMethod === "Admin Grant" || t.amount === 0 || t.envMode === "test" || (t.txId && t.txId.includes("TEST"))))
+  const commercialTx = transactions.filter(t => !(t.approvedByAdmin != null || t.paymentMethod === "Admin Grant" || t.amount === 0 || t.envMode === "test" || Boolean(t.txId?.includes("TEST"))))
   const succeededCount = commercialTx.filter(t => t.status === "succeeded").length
   const failedOrCancelledCount = commercialTx.filter(t => t.status === "failed" || t.status === "cancelled").length
+
+  let tableRows: React.ReactNode = null
+  if (loading) {
+    tableRows = (
+      <tr>
+        <td colSpan={7} className="px-6 py-12 text-center text-zinc-500">Syncing transaction registry...</td>
+      </tr>
+    )
+  } else if (paginatedTransactions.length === 0) {
+    tableRows = (
+      <tr>
+        <td colSpan={7} className="px-6 py-12 text-center text-zinc-500">No transaction records found.</td>
+      </tr>
+    )
+  } else {
+    tableRows = paginatedTransactions.map((tx) => {
+      const statusStyle = getStatusBadgeStyle(tx.status)
+      const planClass = getPlanBadgeClass(tx.plan)
+      return (
+        <tr key={tx.id} className="hover:bg-zinc-800/10 transition-colors">
+          <td className="px-6 py-4">
+            <div className="flex items-center gap-3">
+              <div className="w-7 h-7 rounded-full bg-zinc-850 flex items-center justify-center font-bold text-zinc-200 border border-zinc-800">
+                {tx.displayName?.charAt(0).toUpperCase() || tx.email?.charAt(0).toUpperCase() || "U"}
+              </div>
+              <div>
+                <div className="font-semibold text-zinc-250">{tx.displayName || 'Unknown user'}</div>
+                <div className="text-zinc-500 text-[10px]">{tx.email}</div>
+              </div>
+            </div>
+          </td>
+          <td className="px-6 py-4 font-mono text-zinc-400">{tx.txId}</td>
+          <td className="px-6 py-4">
+            <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider border ${planClass}`}>
+              {PLAN_LABELS[tx.plan] || tx.plan}
+            </span>
+          </td>
+          <td className="px-6 py-4 font-bold text-white">
+            {tx.amount === 0 ? (
+              <span className="text-[10px] text-zinc-500 font-semibold font-sans italic">Free Grant</span>
+            ) : (
+              `₹${tx.amount.toLocaleString("en-IN")}.00`
+            )}
+          </td>
+          <td className="px-6 py-4 text-zinc-400">
+            {new Date(tx.timestamp).toLocaleString("en-IN", {
+              day: "numeric",
+              month: "short",
+              hour: "numeric",
+              minute: "2-digit",
+              hour12: true
+            })}
+          </td>
+          <td className="px-6 py-4">
+            <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full font-semibold border ${statusStyle.badge}`}>
+              <span className={`w-1.5 h-1.5 rounded-full ${statusStyle.dot}`}></span>
+              {tx.status}
+            </span>
+          </td>
+          <td className="px-6 py-4 text-right">
+            <DropdownMenu>
+              <DropdownMenuTrigger className="p-1 rounded hover:bg-zinc-800 text-zinc-400 hover:text-white transition-colors focus:outline-none select-none">
+                <MoreVertical className="w-4 h-4" />
+              </DropdownMenuTrigger>
+              <DropdownMenuContent className="bg-zinc-900 border-zinc-800 text-zinc-200 min-w-[150px] p-1 shadow-2xl mr-4">
+                <DropdownMenuLabel className="text-[10px] text-zinc-500 uppercase tracking-wider px-2 py-1">Actions</DropdownMenuLabel>
+                <DropdownMenuSeparator className="bg-zinc-800" />
+                <DropdownMenuItem 
+                  onClick={() => {
+                    navigator.clipboard.writeText(tx.txId);
+                    useToastStore.getState().addToast("Transaction ID copied to clipboard!", "success");
+                  }}
+                  className="flex items-center gap-2 px-2 py-1.5 text-xs text-zinc-400 hover:text-zinc-200 focus:bg-zinc-800 rounded cursor-pointer"
+                >
+                  <Copy className="w-3.5 h-3.5" />
+                  Copy ID
+                </DropdownMenuItem>
+                {tx.status === "succeeded" && (
+                  <DropdownMenuItem 
+                    onClick={() => handleRefund(tx)}
+                    className="flex items-center gap-2 px-2 py-1.5 text-xs text-red-400 hover:text-red-300 focus:bg-red-500/10 rounded cursor-pointer"
+                  >
+                    <RotateCcw className="w-3.5 h-3.5" />
+                    Refund
+                  </DropdownMenuItem>
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </td>
+        </tr>
+      )
+    })
+  }
 
   return (
     <div className="space-y-8 font-sans text-zinc-100 pb-12">
@@ -307,105 +424,7 @@ export default function AdminTransactions() {
               </tr>
             </thead>
             <tbody className="divide-y divide-zinc-800/60">
-              {loading ? (
-                <tr>
-                  <td colSpan={7} className="px-6 py-12 text-center text-zinc-500">Syncing transaction registry...</td>
-                </tr>
-              ) : paginatedTransactions.length === 0 ? (
-                <tr>
-                  <td colSpan={7} className="px-6 py-12 text-center text-zinc-500">No transaction records found.</td>
-                </tr>
-              ) : (
-                paginatedTransactions.map((tx) => (
-                  <tr key={tx.id} className="hover:bg-zinc-800/10 transition-colors">
-                    <td className="px-6 py-4">
-                      <div className="flex items-center gap-3">
-                        <div className="w-7 h-7 rounded-full bg-zinc-850 flex items-center justify-center font-bold text-zinc-200 border border-zinc-800">
-                          {tx.displayName?.charAt(0).toUpperCase() || tx.email?.charAt(0).toUpperCase() || "U"}
-                        </div>
-                        <div>
-                          <div className="font-semibold text-zinc-250">{tx.displayName || 'Unknown user'}</div>
-                          <div className="text-zinc-500 text-[10px]">{tx.email}</div>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 font-mono text-zinc-400">{tx.txId}</td>
-                    <td className="px-6 py-4">
-                      <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider border ${
-                        tx.plan === "pro" ? "bg-blue-500/10 text-blue-400 border-blue-500/20" :
-                        tx.plan === "super" ? "bg-amber-500/10 text-amber-400 border-amber-500/20" :
-                        "bg-zinc-500/10 text-zinc-400 border-zinc-500/20"
-                      }`}>
-                        {PLAN_LABELS[tx.plan] || tx.plan}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 font-bold text-white">
-                      {tx.amount === 0 ? (
-                        <span className="text-[10px] text-zinc-500 font-semibold font-sans italic">Free Grant</span>
-                      ) : (
-                        `₹${tx.amount.toLocaleString("en-IN")}.00`
-                      )}
-                    </td>
-                    <td className="px-6 py-4 text-zinc-400">
-                      {new Date(tx.timestamp).toLocaleString("en-IN", {
-                        day: "numeric",
-                        month: "short",
-                        hour: "numeric",
-                        minute: "2-digit",
-                        hour12: true
-                      })}
-                    </td>
-                    <td className="px-6 py-4">
-                      <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full font-semibold border ${
-                        tx.status === "succeeded" ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20" :
-                        tx.status === "refunded" ? "bg-purple-500/10 text-purple-400 border-purple-500/20" :
-                        tx.status === "processing" ? "bg-amber-500/10 text-amber-400 border-amber-500/20" :
-                        tx.status === "cancelled" ? "bg-zinc-500/10 text-zinc-550 dark:text-zinc-450 border-zinc-500/20" :
-                        "bg-red-500/10 text-red-400 border-red-500/20"
-                      }`}>
-                        <span className={`w-1.5 h-1.5 rounded-full ${
-                          tx.status === "succeeded" ? "bg-emerald-400" :
-                          tx.status === "refunded" ? "bg-purple-400" :
-                          tx.status === "processing" ? "bg-amber-400" :
-                          tx.status === "cancelled" ? "bg-zinc-400" :
-                          "bg-red-400"
-                        }`}></span>
-                        {tx.status}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 text-right">
-                      <DropdownMenu>
-                        <DropdownMenuTrigger className="p-1 rounded hover:bg-zinc-800 text-zinc-400 hover:text-white transition-colors focus:outline-none select-none">
-                          <MoreVertical className="w-4 h-4" />
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent className="bg-zinc-900 border-zinc-800 text-zinc-200 min-w-[150px] p-1 shadow-2xl mr-4">
-                          <DropdownMenuLabel className="text-[10px] text-zinc-500 uppercase tracking-wider px-2 py-1">Actions</DropdownMenuLabel>
-                          <DropdownMenuSeparator className="bg-zinc-800" />
-                          <DropdownMenuItem 
-                            onClick={() => {
-                              navigator.clipboard.writeText(tx.txId);
-                              useToastStore.getState().addToast("Transaction ID copied to clipboard!", "success");
-                            }}
-                            className="flex items-center gap-2 px-2 py-1.5 text-xs text-zinc-400 hover:text-zinc-200 focus:bg-zinc-800 rounded cursor-pointer"
-                          >
-                            <Copy className="w-3.5 h-3.5" />
-                            Copy ID
-                          </DropdownMenuItem>
-                          {tx.status === "succeeded" && (
-                            <DropdownMenuItem 
-                              onClick={() => handleRefund(tx)}
-                              className="flex items-center gap-2 px-2 py-1.5 text-xs text-red-400 hover:text-red-300 focus:bg-red-500/10 rounded cursor-pointer"
-                            >
-                              <RotateCcw className="w-3.5 h-3.5" />
-                              Refund
-                            </DropdownMenuItem>
-                          )}
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </td>
-                  </tr>
-                ))
-              )}
+              {tableRows}
             </tbody>
           </table>
         </div>
@@ -418,7 +437,7 @@ export default function AdminTransactions() {
               <select
                 value={rowsPerPage}
                 onChange={(e) => {
-                  setRowsPerPage(parseInt(e.target.value))
+                  setRowsPerPage(Number.parseInt(e.target.value, 10))
                   setCurrentPage(1)
                 }}
                 className="bg-zinc-950 border border-zinc-800 rounded px-2 py-1 text-zinc-300 focus:outline-none cursor-pointer"

@@ -1,0 +1,62 @@
+/* --- Monochromatic Navbar Control Buttons (Theme Toggle, Notifications) --- */
+.btn-theme-toggle-navbar,
+.btn-notification-navbar {
+  background-color: #000000 !important;
+  color: #ffffff !important;
+  border: 1px solid #000000 !important;
+  transition: all 0.15s ease-in-out !important;
+}
+.btn-theme-toggle-navbar svg,
+.btn-notification-navbar svg {
+  color: #ffffff !important;
+  stroke: #ffffff !important;
+}
+.btn-theme-toggle-navbar:hover,
+.btn-notification-navbar:hover {
+  background-color: #ffffff !important;
+  color: #000000 !important;
+  border-color: #000000 !important;
+}
+.btn-theme-toggle-navbar:hover svg,
+.btn-notification-navbar:hover svg {
+  color: #000000 !important;
+  stroke: #000000 !important;
+}
+
+html.dark .btn-theme-toggle-navbar,
+html.dark .btn-notification-navbar,
+html:not(.light) .btn-theme-toggle-navbar,
+html:not(.light) .btn-notification-navbar {
+  background-color: rgba(255, 255, 255, 0.08) !important;
+  color: #f3f4f6 !important;
+  border: 1px solid rgba(255, 255, 255, 0.15) !important;
+}
+html.dark .btn-theme-toggle-navbar svg,
+html.dark .btn-notification-navbar svg,
+html:not(.light) .btn-theme-toggle-navbar svg,
+html:not(.light) .btn-notification-navbar svg {
+  color: #f3f4f6 !important;
+  stroke: #f3f4f6 !important;
+}
+html.dark .btn-theme-toggle-navbar:hover,
+html.dark .btn-notification-navbar:hover,
+html:not(.light) .btn-theme-toggle-navbar:hover,
+html:not(.light) .btn-notification-navbar:hover {
+  background-color: rgba(255, 255, 255, 0.15) !important;
+  color: #ffffff !important;
+  border-color: rgba(255, 255, 255, 0.25) !important;
+}
+html.dark .btn-theme-toggle-navbar:hover svg,
+html.dark .btn-notification-navbar:hover svg,
+html:not(.light) .btn-theme-toggle-navbar:hover svg,
+html:not(.light) .btn-notification-navbar:hover svg {
+  color: #ffffff !important;
+  stroke: #ffffff !important;
+}
+
+
+/* Force white text in both light and dark themes */
+.text-white-force,
+html.light .text-white-force {
+  color: #ffffff !important;
+}

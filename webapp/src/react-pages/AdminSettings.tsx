@@ -4,7 +4,7 @@ import { db } from "../firebase"
 import { doc, setDoc, onSnapshot, collection, addDoc } from "firebase/firestore"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../components/ui/card"
 import { Button } from "../components/ui/button"
-import { Shield, Settings, MessageSquare, ChevronUp, ChevronDown, Plus, Trash2, X } from "lucide-react"
+import { Shield, Settings, MessageSquare, ChevronUp, ChevronDown, Plus, Trash2 } from "lucide-react"
 import { useToastStore } from "../store/useToastStore"
 import { useSettingsStore } from "../store/useSettingsStore"
 
@@ -288,8 +288,8 @@ export default function AdminSettings() {
 
               {/* Question */}
               <div>
-                <label className="text-[10px] text-zinc-500 uppercase tracking-widest font-semibold block mb-1">Question</label>
-                <input type="text" value={faq.question}
+                <label htmlFor={`faq-q-${idx}`} className="text-[10px] text-zinc-500 uppercase tracking-widest font-semibold block mb-1">Question</label>
+                <input id={`faq-q-${idx}`} type="text" value={faq.question}
                   onChange={(e) => updateFaq(idx, 'question', e.target.value)}
                   placeholder="e.g. Why are my JSON metadata files missing?"
                   className="w-full bg-zinc-950 border border-zinc-800 rounded-lg px-3 py-1.5 text-[12px] font-semibold text-zinc-100 focus:outline-none focus:border-cyan-500 transition-colors" />
@@ -298,12 +298,12 @@ export default function AdminSettings() {
               {/* Answer */}
               <div>
                  <div className="flex items-center justify-between mb-1">
-                  <label className="text-[10px] text-zinc-500 uppercase tracking-widest font-semibold">Answer</label>
+                  <label htmlFor={`faq-a-${idx}`} className="text-[10px] text-zinc-500 uppercase tracking-widest font-semibold">Answer</label>
                   <span className="text-[9px] text-zinc-650 bg-zinc-950 border border-zinc-850 rounded px-1.5 py-0.5 font-mono select-none">
                     Ctrl+B = <strong>bold</strong> | Ctrl+I = <em>italic</em> | Ctrl+U = <u>underline</u>
                   </span>
                 </div>
-                <textarea value={faq.answer}
+                <textarea id={`faq-a-${idx}`} value={faq.answer}
                   onChange={(e) => updateFaq(idx, 'answer', e.target.value)}
                   onKeyDown={(e) => handleAnswerKeyDown(e, idx)}
                   placeholder="Write answer... Use Ctrl+B/I/U to format selection."

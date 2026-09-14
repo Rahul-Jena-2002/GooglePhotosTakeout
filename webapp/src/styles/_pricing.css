@@ -1,0 +1,158 @@
+/* Pricing Page Specific Card & Button Styles */
+.pricing-most-popular-card {
+  background-color: #09090b !important;
+  background-image: none !important;
+  border-color: #ffffff !important;
+  border-width: 2px !important;
+}
+.pricing-most-popular-card,
+.pricing-most-popular-card * {
+  color: #FFFFFF !important;
+}
+.pricing-most-popular-card:hover {
+  border-color: #e4e4e7 !important;
+}
+
+html.light .pricing-most-popular-card {
+  background-color: #ffffff !important;
+  background-image: none !important;
+  border-color: #000000 !important;
+  border-width: 2px !important;
+}
+html.light .pricing-most-popular-card,
+html.light .pricing-most-popular-card * {
+  color: #000000 !important;
+}
+html.light .pricing-most-popular-card:hover {
+  border-color: #27272a !important;
+}
+
+.btn-pricing-free {
+  background-color: #1f2937 !important;
+  color: #ffffff !important;
+  border: 1px solid #374151 !important;
+}
+.btn-pricing-free:hover {
+  background-color: #374151 !important;
+}
+html.light .btn-pricing-free {
+  background-color: #f3f4f6 !important;
+  color: #1f2937 !important;
+  border: 1px solid #d1d5db !important;
+}
+html.light .btn-pricing-free:hover {
+  background-color: #e5e7eb !important;
+}
+
+.btn-pricing-pass {
+  background-color: #1f2937 !important;
+  color: #ffffff !important;
+  border: 1px solid #374151 !important;
+}
+.btn-pricing-pass:hover {
+  background-color: #374151 !important;
+}
+html.light .btn-pricing-pass {
+  background-color: #f3f4f6 !important;
+  color: #1f2937 !important;
+  border: 1px solid #d1d5db !important;
+}
+html.light .btn-pricing-pass:hover {
+  background-color: #e5e7eb !important;
+}
+
+.btn-pricing-pro {
+  background-color: #FFFFFF !important;
+  color: #000000 !important;
+  border: 1px solid #FFFFFF !important;
+}
+.btn-pricing-pro:hover {
+  background-color: #e4e4e7 !important;
+  color: #000000 !important;
+  border-color: #e4e4e7 !important;
+}
+html.light .btn-pricing-pro {
+  background-color: #000000 !important;
+  color: #FFFFFF !important;
+  border: 1px solid #000000 !important;
+}
+html.light .btn-pricing-pro:hover {
+  background-color: #27272a !important;
+  color: #FFFFFF !important;
+  border-color: #27272a !important;
+}
+
+/* Cyan Recovery Pass Button — mirrors btn-pro-blue / btn-super-orange exactly */
+.btn-recovery-cyan,
+button.btn-recovery-cyan,
+html.dark button.btn-recovery-cyan {
+  background-color: #ffffff !important;
+  color: #0891b2 !important; /* cyan-600 */
+  border: 1px solid #ffffff !important;
+}
+.btn-recovery-cyan *,
+button.btn-recovery-cyan *,
+html.dark button.btn-recovery-cyan * {
+  color: #0891b2 !important;
+}
+.btn-recovery-cyan:hover,
+button.btn-recovery-cyan:hover,
+html.dark button.btn-recovery-cyan:hover {
+  background-color: #000000 !important;
+  color: #22d3ee !important; /* cyan-400 */
+  border-color: #22d3ee !important;
+}
+.btn-recovery-cyan:hover *,
+button.btn-recovery-cyan:hover *,
+html.dark button.btn-recovery-cyan:hover * {
+  color: #22d3ee !important;
+}
+
+html.light button.btn-recovery-cyan,
+html.light button.btn-recovery-cyan * {
+  background-color: #000000 !important;
+  color: #22d3ee !important; /* cyan-400 */
+  border: 1px solid #000000 !important;
+}
+html.light button.btn-recovery-cyan:hover,
+html.light button.btn-recovery-cyan:hover *,
+html.light button.btn-recovery-cyan:focus,
+html.light button.btn-recovery-cyan:focus * {
+  background-color: #ffffff !important;
+  color: #0891b2 !important; /* cyan-600 */
+  border-color: #0891b2 !important;
+}
+
+/* Cyan color highlight for Recovery Pass features lists to override global light mode !important rules */
+.text-cyan-pricing-highlight,
+.text-cyan-pricing-highlight * {
+  color: #0891b2 !important; /* cyan-600 */
+}
+html:not(.light) .text-cyan-pricing-highlight,
+html:not(.light) .text-cyan-pricing-highlight *,
+html.dark .text-cyan-pricing-highlight,
+html.dark .text-cyan-pricing-highlight * {
+  color: #22d3ee !important; /* cyan-400 */
+}
+
+
+.btn-pricing-super {
+  background-color: transparent !important;
+  color: #ffffff !important;
+  border: 1px solid #27272a !important;
+}
+.btn-pricing-super:hover {
+  background-color: #18181b !important;
+  border-color: #3f3f46 !important;
+  color: #ffffff !important;
+}
+html.light .btn-pricing-super {
+  background-color: transparent !important;
+  color: #000000 !important;
+  border: 1px solid #e4e4e7 !important;
+}
+html.light .btn-pricing-super:hover {
+  background-color: #f4f4f5 !important;
+  border-color: #d4d4d8 !important;
+  color: #000000 !important;
+}

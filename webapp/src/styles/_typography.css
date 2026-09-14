@@ -1,0 +1,40 @@
+/* --- High Contrast Gray & Opacity Text Overrides (Dark Mode) --- */
+.text-white\/30 {
+  color: #707085 !important;
+}
+.text-white\/40 {
+  color: #9090A8 !important;
+}
+.text-white\/50 {
+  color: #B8B8CC !important;
+}
+.text-white\/60 {
+  color: #E8E8F0 !important;
+}
+.text-white\/70 {
+  color: #E8E8F0 !important;
+}
+.text-white\/80 {
+  color: #E8E8F0 !important;
+}
+.text-zinc-400 {
+  color: #B8B8CC !important;
+}
+.text-zinc-500 {
+  color: #9090A8 !important;
+}
+.text-zinc-600 {
+  color: #707085 !important;
+}
+.faq-answer {
+  color: #E8E8F0 !important;
+}
+
+/* Limit paragraph width for maximum typography readability (Apple/Premium style) */
+p {
+  max-width: 65ch;
+  color: #E8E8F0;
+}
+html.light p {
+  color: #111827;
+}

@@ -255,21 +255,18 @@ for await (const [name, entry] of dirHandle) {
       {/* Header */}
       <div className="max-w-4xl mx-auto text-center mb-32 relative">
         <div
-          className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-zinc-900 border border-zinc-800 text-xs font-semibold text-zinc-400 mb-6 font-mono"
-          style={{ animation: 'fadeInScale 500ms ease-out forwards' }}
+          className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-zinc-900 border border-zinc-800 text-xs font-semibold text-zinc-400 mb-6 font-mono t-animate-fade-in-scale"
         >
           <ShieldCheck className="w-4 h-4 text-zinc-400" />
           100% Client-Side Engine Telemetry
         </div>
         <h1
-          className="text-5xl md:text-7xl font-extrabold tracking-tight text-white mb-6"
-          style={{ animation: 'fadeInUp 500ms ease-out 100ms forwards', opacity: 0 }}
+          className="text-5xl md:text-7xl font-extrabold tracking-tight text-white mb-6 t-animate-fade-in-up-100"
         >
           How It <span className="text-white">Works</span>
         </h1>
         <p
-          className="text-lg md:text-xl text-zinc-400 max-w-2xl mx-auto font-normal leading-relaxed"
-          style={{ animation: 'fadeInUp 500ms ease-out 200ms forwards', opacity: 0 }}
+          className="text-lg md:text-xl text-zinc-400 max-w-2xl mx-auto font-normal leading-relaxed t-animate-fade-in-up-200"
         >
           A deeply technical breakdown of the metadata restoration process. Learn how TakeoutFix reconstructs your photo metadata locally without ever compromising your security.
         </p>

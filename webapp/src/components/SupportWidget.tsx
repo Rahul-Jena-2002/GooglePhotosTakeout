@@ -30,8 +30,7 @@ export default function SupportWidget() {
       
       {isOpen && (
         <div
-          className="mb-4 w-80 bg-black/80 backdrop-blur-3xl border border-white/10 shadow-[0_8px_32px_rgba(0,0,0,0.5)] rounded-2xl overflow-hidden"
-          style={{ animation: 'supportWidgetIn 200ms ease-out forwards' }}
+          className="mb-4 w-80 bg-black/80 backdrop-blur-3xl border border-white/10 shadow-[0_8px_32px_rgba(0,0,0,0.5)] rounded-2xl overflow-hidden t-animate-support-widget"
         >
           <div className="p-4 bg-indigo-500/10 border-b border-white/10 flex justify-between items-center">
             <div className="flex items-center gap-2">

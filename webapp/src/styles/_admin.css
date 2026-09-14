@@ -1,0 +1,169 @@
+/* --- MONOCHROMATIC ADMIN OPS CENTER THEME --- */
+
+/* Sidebar wrapper */
+.admin-sidebar {
+  background-color: #000000 !important;
+  border-color: #1f1f22 !important;
+}
+html.light .admin-sidebar {
+  background-color: #FFFFFF !important;
+  border-color: #E5E5E7 !important;
+}
+
+/* Header/Topbar wrapper */
+.admin-topbar {
+  background-color: rgba(9, 9, 11, 0.6) !important;
+  border-color: #1f1f22 !important;
+}
+html.light .admin-topbar {
+  background-color: rgba(255, 255, 255, 0.8) !important;
+  border-color: #E5E5E7 !important;
+}
+
+/* Brand logo */
+.admin-brand-logo {
+  background-color: #ffffff !important;
+  border-color: #ffffff !important;
+  color: #000000 !important;
+}
+html.light .admin-brand-logo {
+  background-color: #000000 !important;
+  border-color: #000000 !important;
+  color: #ffffff !important;
+}
+
+/* Navigation Links */
+.admin-nav-link {
+  transition: all 150ms ease-out;
+}
+.admin-nav-link-active {
+  background-color: rgba(255, 255, 255, 0.08) !important;
+  color: #ffffff !important;
+}
+.admin-nav-link-active .admin-nav-icon {
+  color: #ffffff !important;
+}
+.admin-nav-link-inactive {
+  color: #a1a1aa !important;
+}
+.admin-nav-link-inactive .admin-nav-icon {
+  color: #71717a !important;
+}
+.admin-nav-link-inactive:hover {
+  background-color: rgba(255, 255, 255, 0.04) !important;
+  color: #f4f4f5 !important;
+}
+.admin-nav-link-inactive:hover .admin-nav-icon {
+  color: #e4e4e7 !important;
+}
+
+html.light .admin-nav-link-active {
+  background-color: rgba(0, 0, 0, 0.06) !important;
+  color: #000000 !important;
+}
+html.light .admin-nav-link-active .admin-nav-icon {
+  color: #000000 !important;
+}
+html.light .admin-nav-link-inactive {
+  color: #71717a !important;
+}
+html.light .admin-nav-link-inactive .admin-nav-icon {
+  color: #a1a1aa !important;
+}
+html.light .admin-nav-link-inactive:hover {
+  background-color: rgba(0, 0, 0, 0.03) !important;
+  color: #18181b !important;
+}
+html.light .admin-nav-link-inactive:hover .admin-nav-icon {
+  color: #18181b !important;
+}
+
+/* Notification badge */
+.admin-notification-badge {
+  background-color: #ffffff !important;
+  color: #000000 !important;
+  border-color: #000000 !important;
+  box-shadow: 0 0 6px rgba(255, 255, 255, 0.3) !important;
+}
+html.light .admin-notification-badge {
+  background-color: #000000 !important;
+  color: #ffffff !important;
+  border-color: #ffffff !important;
+  box-shadow: 0 0 6px rgba(0, 0, 0, 0.1) !important;
+}
+
+/* Admin Role Badges */
+.admin-role-super-admin,
+.admin-role-admin,
+.admin-role-support,
+.admin-role-moderator,
+.admin-role-developer {
+  display: inline-flex;
+  align-items: center;
+  font-weight: 700;
+  border-radius: 4px;
+  border-width: 1px;
+}
+
+/* Dark mode role styles */
+.admin-role-super-admin {
+  background-color: #ffffff !important;
+  color: #000000 !important;
+  border-color: #ffffff !important;
+}
+.admin-role-admin {
+  background-color: rgba(255, 255, 255, 0.1) !important;
+  color: #e4e4e7 !important;
+  border-color: rgba(255, 255, 255, 0.15) !important;
+}
+.admin-role-support {
+  background-color: rgba(255, 255, 255, 0.05) !important;
+  color: #a1a1aa !important;
+  border-color: rgba(255, 255, 255, 0.08) !important;
+}
+.admin-role-moderator {
+  background-color: transparent !important;
+  color: #71717a !important;
+  border-color: rgba(255, 255, 255, 0.05) !important;
+}
+.admin-role-developer {
+  background-color: rgba(99, 102, 241, 0.1) !important;
+  color: #818cf8 !important;
+  border-color: rgba(99, 102, 241, 0.15) !important;
+}
+
+/* Light mode role styles */
+html.light .admin-role-super-admin {
+  background-color: #000000 !important;
+  color: #ffffff !important;
+  border-color: #000000 !important;
+}
+html.light .admin-role-admin {
+  background-color: rgba(0, 0, 0, 0.08) !important;
+  color: #27272a !important;
+  border-color: rgba(0, 0, 0, 0.12) !important;
+}
+html.light .admin-role-support {
+  background-color: rgba(0, 0, 0, 0.04) !important;
+  color: #71717a !important;
+  border-color: rgba(0, 0, 0, 0.06) !important;
+}
+html.light .admin-role-moderator {
+  background-color: transparent !important;
+  color: #a1a1aa !important;
+  border-color: rgba(0, 0, 0, 0.04) !important;
+}
+html.light .admin-role-developer {
+  background-color: rgba(99, 102, 241, 0.08) !important;
+  color: #4f46e5 !important;
+  border-color: rgba(99, 102, 241, 0.12) !important;
+}
+
+/* General clean up to prevent colored background highlight bleed inside admin containers */
+.admin-layout-root div[class*="from-indigo-"],
+.admin-layout-root div[class*="from-purple-"],
+.admin-layout-root div[class*="to-purple-"],
+.admin-layout-root div[class*="via-purple-"],
+.admin-layout-root div[class*="to-indigo-"] {
+  background-image: none !important;
+}

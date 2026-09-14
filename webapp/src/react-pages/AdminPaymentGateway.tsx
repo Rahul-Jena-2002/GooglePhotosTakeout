@@ -1,17 +1,21 @@
-import { useState, useEffect, useCallback } from "react"
-import { doc, getDoc, setDoc, onSnapshot, collection, addDoc, getDocs, deleteDoc, updateDoc, serverTimestamp, Timestamp, query, where } from "firebase/firestore"
+import { useState, useEffect } from "react"
+import { doc, getDoc, setDoc, onSnapshot, collection, addDoc, getDocs, deleteDoc, updateDoc, serverTimestamp, Timestamp } from "firebase/firestore"
 import { db } from "../firebase"
 import { useAuth } from "../contexts/AuthContext"
 import { useToastStore } from "../store/useToastStore"
 import { decrypt, encrypt, deriveKeyFromPassword } from "../lib/crypto"
 import {
-  CreditCard, Shield, Lock, Save, RefreshCw, Key, AlertTriangle, Check, Info, Settings,
-  Eye, EyeOff, Tag, Gift, Plus, Trash2, Sliders, DollarSign, Database, ChevronUp, ChevronDown, ChevronRight, X,
-  Calendar, ToggleLeft, ToggleRight, Loader2, Link2, Copy
+  Shield, Lock, Save, RefreshCw, Key, Check, Info, Settings,
+  Eye, EyeOff, Tag, Gift, Plus, DollarSign, ChevronRight, X,
+  ToggleLeft, ToggleRight, Link2, Copy
 } from "lucide-react"
 import { Input } from "../components/ui/input"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../components/ui/card"
 import { Button } from "../components/ui/button"
+import { PaymentHeader } from "../components/admin/payment/PaymentHeader"
+import { PaymentMekBanner } from "../components/admin/payment/PaymentMekBanner"
+import { PaymentNavTabs } from "../components/admin/payment/PaymentNavTabs"
+import { WebhookModal } from "../components/admin/payment/WebhookModal"
 
 // --- Config Types & Constants ---
 interface GatewayConfig {
@@ -177,7 +181,7 @@ const COUPON_PLANS = ['recovery_pass', 'pro', 'super']
  * - Cloudflare Pages deployments (pages.dev, takeoutfix.*) → routes to /api/<endpoint>
  * - Everything else → routes to <base>/<endpoint>
  */
-function resolveSyncUrl(endpoint: string, storedUrl: string): string {
+function resolveSyncUrl(endpoint: string, _storedUrl?: string): string {
   const hostname = window.location.hostname;
   const isCloudflare = hostname.endsWith('.pages.dev') || hostname.endsWith('takeoutfix.com') || (hostname === 'localhost' && window.location.port === '4321');
   if (isCloudflare) {
@@ -215,7 +219,6 @@ export default function AdminPaymentGateway() {
   const [decryptedValues, setDecryptedValues] = useState<Record<string, string>>({})
   const [visibleKeys, setVisibleKeys] = useState<Record<string, boolean>>({})
   const [savingCreds, setSavingCreds] = useState<string | null>(null)
-  const [showDodoApiKey, setShowDodoApiKey] = useState(false)
 
   const toggleVisibility = (id: string) => {
     setVisibleKeys(prev => ({ ...prev, [id]: !prev[id] }))
@@ -261,8 +264,6 @@ export default function AdminPaymentGateway() {
     { planCode: 'pro', discountType: 'PERCENTAGE', discountValue: 0 },
     { planCode: 'super', discountType: 'PERCENTAGE', discountValue: 0 },
   ])
-  const [deletingCampaignId, setDeletingCampaignId] = useState<string | null>(null)
-  const [confirmDeleteCampaignId, setConfirmDeleteCampaignId] = useState<string | null>(null)
 
   // --- Coupon Manager state ---
   const [coupons, setCoupons] = useState<any[]>([])
@@ -277,8 +278,6 @@ export default function AdminPaymentGateway() {
   })
   const [couponTargets, setCouponTargets] = useState<Record<string, boolean>>({}) // key = "regionCode_planCode"
   const [syncLog, setSyncLog] = useState<any[]>([])
-  const [deletingCouponId, setDeletingCouponId] = useState<string | null>(null)
-  const [confirmDeleteCouponId, setConfirmDeleteCouponId] = useState<string | null>(null)
 
   // System Settings local API gateway key
   const [gatewayApiKey, setGatewayApiKey] = useState("")
@@ -465,7 +464,7 @@ export default function AdminPaymentGateway() {
   const tsToDatetimeLocal = (ts: any): string => {
     if (!ts) return ''
     const d = ts.seconds ? new Date(ts.seconds * 1000) : new Date(ts)
-    if (isNaN(d.getTime())) return ''
+    if (Number.isNaN(d.getTime())) return ''
     const pad = (n: number) => String(n).padStart(2, '0')
     return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
   }
@@ -821,7 +820,6 @@ export default function AdminPaymentGateway() {
   }
 
   const handleDeleteCampaign = async (campaignId: string) => {
-    setDeletingCampaignId(campaignId)
     try {
       const discSnap = await getDocs(collection(db, 'campaigns', campaignId, 'discounts'))
       for (const d of discSnap.docs) await deleteDoc(d.ref)
@@ -834,9 +832,6 @@ export default function AdminPaymentGateway() {
       useToastStore.getState().addToast('Campaign deleted.', 'success')
     } catch (err: any) {
       useToastStore.getState().addToast('Failed to delete campaign: ' + err.message, 'error')
-    } finally {
-      setDeletingCampaignId(null)
-      setConfirmDeleteCampaignId(null)
     }
   }
 
@@ -1112,7 +1107,6 @@ export default function AdminPaymentGateway() {
   }
 
   const handleDeleteCoupon = async (couponId: string) => {
-    setDeletingCouponId(couponId)
     try {
       const couponDoc = await getDoc(doc(db, 'coupons', couponId))
       const campaignId = couponDoc.exists() ? couponDoc.data()?.campaignId : null
@@ -1134,9 +1128,6 @@ export default function AdminPaymentGateway() {
       useToastStore.getState().addToast('Coupon deleted and synced successfully.', 'success')
     } catch (err: any) {
       useToastStore.getState().addToast('Failed to delete coupon: ' + err.message, 'error')
-    } finally {
-      setDeletingCouponId(null)
-      setConfirmDeleteCouponId(null)
     }
   }
 
@@ -1256,150 +1247,23 @@ export default function AdminPaymentGateway() {
   }
 
   return (
-    <div className="space-y-8 max-w-6xl mx-auto px-4 py-8 font-sans transition-all duration-300 w-full min-w-0" style={{ color: isLight ? '#1f2937' : '#f3f4f6' }}>
+    <div className="space-y-8 max-w-6xl mx-auto px-4 py-8 font-sans transition-all duration-300 w-full min-w-0 t-text-primary">
       
       {/* ── Header ── */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b pb-6" style={{ borderColor: isLight ? '#e5e7eb' : '#27272a' }}>
-        <div>
-          <h1 className="text-3xl font-black tracking-tight" style={{ color: isLight ? '#111827' : '#ffffff' }}>
-            Universal Payment Gateway
-          </h1>
-          <p className="text-sm mt-1" style={{ color: isLight ? '#6b7280' : '#a1a1aa' }}>
-            Manage merchant integrations, localized regional pricing tiers, promotions, campaigns, and dynamic coupons.
-          </p>
-        </div>
-        
-        <div className="flex items-center gap-2.5 px-4 py-2 rounded-xl border text-xs font-semibold"
-             style={{
-               backgroundColor: isLight ? '#f3f4f6' : '#1e1b4b',
-               borderColor: isLight ? '#e5e7eb' : '#312e81',
-               color: isLight ? '#374151' : '#c7d2fe'
-             }}>
-          <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-          Active Gateway: <strong className="uppercase">{originalActiveGateway}</strong>
-        </div>
-      </div>
+      <PaymentHeader originalActiveGateway={originalActiveGateway} />
 
       {/* ── MEK Input Banner ── */}
-      <div className="p-5 rounded-2xl border transition-all"
-           style={{
-             backgroundColor: isLight ? '#fffbeb' : '#1c1917',
-             borderColor: isLight ? '#fde68a' : '#44403c'
-           }}>
-        {!mek ? (
-          <div className="flex flex-col sm:flex-row sm:items-center gap-4 justify-between">
-            <div className="flex gap-3">
-              <Lock className="w-5 h-5 text-amber-500 flex-shrink-0 mt-0.5" />
-              <div>
-                <h4 className="text-sm font-bold" style={{ color: isLight ? '#92400e' : '#f59e0b' }}>
-                  Credentials Locked (No Session Key)
-                </h4>
-                <p className="text-xs mt-0.5" style={{ color: isLight ? '#b45309' : '#d6d3d1' }}>
-                  Enter your 32-byte hex MEK to decrypt and edit sensitive keys. Secrets will not be readable otherwise.
-                </p>
-              </div>
-            </div>
-            
-            <div className="flex gap-2">
-              <input
-                type="password"
-                placeholder="Enter 32-byte hex key..."
-                className="px-3.5 py-1.5 rounded-lg border text-xs font-mono w-full sm:w-64 focus:outline-none"
-                style={{
-                  backgroundColor: isLight ? '#ffffff' : '#09090b',
-                  borderColor: isLight ? '#d1d5db' : '#27272a',
-                  color: isLight ? '#1f2937' : '#f3f4f6'
-                }}
-                value={mekInput}
-                onChange={(e) => setMekInput(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && handleMekSubmit()}
-              />
-              <button
-                onClick={handleMekSubmit}
-                className="px-4 py-1.5 rounded-lg text-xs font-bold text-black bg-amber-500 hover:bg-amber-400 transition-colors"
-              >
-                Unlock
-              </button>
-            </div>
-          </div>
-        ) : (
-          <div className="flex flex-col sm:flex-row sm:items-center gap-4 justify-between items-stretch sm:items-start">
-            <div className="flex gap-3">
-              <Check className="w-5 h-5 text-emerald-500 flex-shrink-0" />
-              <div>
-                <h4 className="text-sm font-bold text-emerald-500">
-                  Credentials Decrypted & Unlocked
-                </h4>
-                <p className="text-xs mt-0.5" style={{ color: isLight ? '#78350f' : '#a8a29e' }}>
-                  Active session key is active. Saving sensitive inputs will encrypt them dynamically.
-                </p>
-              </div>
-            </div>
-            <button
-              onClick={handleMekClear}
-              className="w-full sm:w-auto px-4 py-1.5 rounded-lg text-xs font-bold text-white bg-red-600 hover:bg-red-500 transition-colors text-center"
-            >
-              Lock Session
-            </button>
-          </div>
-        )}
-      </div>
+      <PaymentMekBanner
+        mek={mek}
+        mekInput={mekInput}
+        onMekInputChange={setMekInput}
+        onMekInputKeyDown={(e) => e.key === "Enter" && handleMekSubmit()}
+        onSubmit={handleMekSubmit}
+        onClear={handleMekClear}
+      />
 
       {/* ── Navigation Tabs ── */}
-      {/* Mobile Select Tab Selector (Scrollable pills row) */}
-      <div className="md:hidden mb-6 overflow-x-auto whitespace-nowrap scrollbar-none pb-2 border-b" style={{ borderColor: isLight ? '#e5e7eb' : '#27272a' }}>
-        <div className="flex gap-2">
-          {[
-            { id: "providers", label: "Credentials" },
-            { id: "pricing", label: "Regional Pricing" },
-            { id: "campaigns", label: "Campaigns" },
-            { id: "coupons", label: "Coupons" }
-          ].map((t) => {
-            const isActive = activeTab === t.id
-            return (
-              <button
-                key={t.id}
-                onClick={() => setActiveTab(t.id)}
-                className="px-3.5 py-1.5 rounded-full text-xs font-bold transition-all border"
-                style={{
-                  backgroundColor: isActive ? '#6366f1' : (isLight ? '#ffffff' : '#18181b'),
-                  borderColor: isActive ? '#6366f1' : (isLight ? '#d1d5db' : '#27272a'),
-                  color: isActive ? '#ffffff' : (isLight ? '#4b5563' : '#a1a1aa')
-                }}
-              >
-                {t.label}
-              </button>
-            )
-          })}
-        </div>
-      </div>
-
-      {/* Desktop/Tablet Tab Bar */}
-      <div className="hidden md:flex border-b overflow-x-auto whitespace-nowrap scrollbar-none mb-6" style={{ borderColor: isLight ? '#e5e7eb' : '#27272a' }}>
-        {[
-          { id: "providers", label: "Gateway Credentials", icon: Key },
-          { id: "pricing", label: "Regional Pricing & Sync", icon: DollarSign },
-          { id: "campaigns", label: "Campaign Manager", icon: Tag },
-          { id: "coupons", label: "Coupon Manager", icon: Gift }
-        ].map((t) => {
-          const Icon = t.icon
-          const isActive = activeTab === t.id
-          return (
-            <button
-              key={t.id}
-              onClick={() => setActiveTab(t.id)}
-              className="flex items-center gap-2 px-6 py-3 border-b-2 text-xs font-bold transition-all"
-              style={{
-                borderColor: isActive ? '#6366f1' : 'transparent',
-                color: isActive ? (isLight ? '#4f46e5' : '#a5b4fc') : (isLight ? '#6b7280' : '#9a9a9e')
-              }}
-            >
-              <Icon className="w-4 h-4" />
-              {t.label}
-            </button>
-          )
-        })}
-      </div>
+      <PaymentNavTabs activeTab={activeTab} onSelectTab={setActiveTab} />
 
       {/* ── TAB CONTENT ── */}
       <div className="space-y-6">
@@ -1410,29 +1274,24 @@ export default function AdminPaymentGateway() {
             <div className="lg:col-span-2 space-y-8 w-full min-w-0">
               
               {/* Selector */}
-              <div className="p-4 sm:p-6 rounded-2xl border w-full min-w-0" style={{ backgroundColor: isLight ? '#ffffff' : '#09090b', borderColor: isLight ? '#e5e7eb' : '#27272a' }}>
-                <h2 className="text-lg font-bold flex items-center gap-2" style={{ color: isLight ? '#111827' : '#ffffff' }}>
+              <div className="p-4 sm:p-6 rounded-2xl border w-full min-w-0 t-card">
+                <h2 className="text-lg font-bold flex items-center gap-2 t-heading">
                   <Settings className="w-5 h-5 text-indigo-500" />
                   Gateway Provider Selection
                 </h2>
-                <p className="text-xs mt-1 mb-6" style={{ color: isLight ? '#6b7280' : '#a1a1aa' }}>
+                <p className="text-xs mt-1 mb-6 t-text-muted">
                   Choose which merchant interface acts as the live payment gate on checkout.
                 </p>
 
                 <div className="flex flex-col sm:flex-row gap-4 items-stretch sm:items-end">
                   <div className="flex-1 w-full">
-                    <label className="text-xs font-bold block mb-2" style={{ color: isLight ? '#4b5563' : '#d1d5db' }}>
+                    <label className="text-xs font-bold block mb-2 t-text-label-soft">
                       Select Provider
                     </label>
                     <select
                       value={activeGateway}
                       onChange={(e) => setActiveGateway(e.target.value)}
-                      className="w-full h-10 px-3 rounded-lg border text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500"
-                      style={{
-                        backgroundColor: isLight ? '#ffffff' : '#18181b',
-                        borderColor: isLight ? '#d1d5db' : '#27272a',
-                        color: isLight ? '#1f2937' : '#f3f4f6'
-                      }}
+                      className="w-full h-10 px-3 rounded-lg border text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500 t-input-subtle-card"
                     >
                       <option value="dodo">Dodo Payments (Merchant of Record - Default)</option>
                       <option value="stripe">Stripe (Direct Checkout Sessions)</option>
@@ -1444,11 +1303,7 @@ export default function AdminPaymentGateway() {
                   <button
                     disabled={savingGateway || activeGateway === originalActiveGateway}
                     onClick={handleSaveActiveGateway}
-                    className="w-full sm:w-auto h-10 px-5 rounded-lg text-xs font-bold flex items-center justify-center gap-2 hover:opacity-90 transition-opacity disabled:opacity-50"
-                    style={{
-                      backgroundColor: isLight ? '#111827' : '#ffffff',
-                      color: isLight ? '#ffffff' : '#000000'
-                    }}
+                    className="w-full sm:w-auto h-10 px-5 rounded-lg text-xs font-bold flex items-center justify-center gap-2 hover:opacity-90 transition-opacity disabled:opacity-50 t-btn-inverted-pure"
                   >
                     {savingGateway ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
                     Activate {activeGateway.toUpperCase()}
@@ -1456,12 +1311,12 @@ export default function AdminPaymentGateway() {
                 </div>
 
                 {activeGateway === "dodo" && (
-                  <div className="w-full pt-4 mt-4 border-t flex justify-between items-center" style={{ borderColor: isLight ? '#f3f4f6' : '#27272a' }}>
+                  <div className="w-full pt-4 mt-4 border-t flex justify-between items-center t-border-alt2">
                     <div>
-                      <label className="text-xs font-bold block" style={{ color: isLight ? '#4b5563' : '#d1d5db' }}>
+                      <label className="text-xs font-bold block t-text-label-soft">
                         Dodo Sandbox / Test Mode
                       </label>
-                      <span className="text-[10px] block mt-0.5" style={{ color: isLight ? '#6b7280' : '#a1a1aa' }}>
+                      <span className="text-[10px] block mt-0.5 t-text-muted">
                         Toggle between live payment processing and test sandbox environment.
                       </span>
                     </div>
@@ -1469,7 +1324,7 @@ export default function AdminPaymentGateway() {
                       disabled={savingTestMode}
                       onClick={() => handleToggleTestMode(!dodoTestMode)}
                       className="flex items-center gap-1.5 focus:outline-none transition-colors hover:opacity-85"
-                      style={{ color: dodoTestMode ? '#10b981' : (isLight ? '#6b7280' : '#a1a1aa') }}
+                      
                     >
                       {dodoTestMode ? (
                         <ToggleRight className="w-9 h-9" />
@@ -1485,12 +1340,12 @@ export default function AdminPaymentGateway() {
               </div>
 
               {/* Credentials Fields */}
-              <div className="p-4 sm:p-6 rounded-2xl border w-full min-w-0" style={{ backgroundColor: isLight ? '#ffffff' : '#09090b', borderColor: isLight ? '#e5e7eb' : '#27272a' }}>
-                <h2 className="text-lg font-bold flex items-center gap-2" style={{ color: isLight ? '#111827' : '#ffffff' }}>
+              <div className="p-4 sm:p-6 rounded-2xl border w-full min-w-0 t-card">
+                <h2 className="text-lg font-bold flex items-center gap-2 t-heading">
                   <Key className="w-5 h-5 text-indigo-500" />
                   API Credentials for <span className="uppercase">{activeGateway}</span>
                 </h2>
-                <p className="text-xs mt-1 mb-6" style={{ color: isLight ? '#6b7280' : '#a1a1aa' }}>
+                <p className="text-xs mt-1 mb-6 t-text-muted">
                   Configure keys and signature validators required for transaction initialization.
                 </p>
 
@@ -1503,23 +1358,19 @@ export default function AdminPaymentGateway() {
                       ? (isEncrypted ? (mekKey ? decryptedVal : "") : encryptedVal)
                       : encryptedVal
                     return (
-                      <div key={def.id} className="p-3 sm:p-4 rounded-xl border space-y-3 w-full min-w-0" style={{ borderColor: isLight ? '#f3f4f6' : '#1c1c1e' }}>
+                      <div key={def.id} className="p-3 sm:p-4 rounded-xl border space-y-3 w-full min-w-0 t-border-alt">
                         <div className="flex justify-between items-start w-full min-w-0 gap-2">
                           <div className="min-w-0 flex-1">
-                            <label className="text-xs font-extrabold block truncate" style={{ color: isLight ? '#111827' : '#f3f4f6' }}>
+                            <label className="text-xs font-extrabold block truncate t-heading-light">
                               {def.label}
                             </label>
-                            <span className="text-[10px] block mt-0.5" style={{ color: isLight ? '#6b7280' : '#9a9a9e' }}>
+                            <span className="text-[10px] block mt-0.5 t-text-subtle-hint">
                               {def.description}
                             </span>
                           </div>
                           {isEncrypted && (
                             <span className="text-[9px] font-bold px-2 py-0.5 rounded-full border shrink-0"
-                                  style={{
-                                    backgroundColor: mekKey ? '#10b98115' : '#ef444415',
-                                    borderColor: mekKey ? '#10b98130' : '#ef444430',
-                                    color: mekKey ? '#10b981' : '#ef4444'
-                                  }}>
+                                  >
                               {mekKey ? "🔓 Decrypted" : "🔒 Encrypted"}
                             </span>
                           )}
@@ -1527,11 +1378,7 @@ export default function AdminPaymentGateway() {
 
                         <div className="flex gap-2 w-full min-w-0">
                           <div className="relative flex-1 min-w-0">
-                            <div className="flex items-center rounded-lg border focus-within:ring-1 focus-within:ring-indigo-500 focus-within:border-indigo-500 transition-all overflow-hidden h-9 w-full min-w-0"
-                              style={{
-                                backgroundColor: isLight ? '#f9fafb' : '#09090b',
-                                borderColor: isLight ? '#d1d5db' : '#27272a',
-                              }}
+                            <div className="flex items-center rounded-lg border focus-within:ring-1 focus-within:ring-indigo-500 focus-within:border-indigo-500 transition-all overflow-hidden h-9 w-full min-w-0 t-input-subtle-card-2"
                             >
                               <input
                                 type={def.sensitive && !visibleKeys[def.id] ? "password" : "text"}
@@ -1543,10 +1390,7 @@ export default function AdminPaymentGateway() {
                                 onChange={(e) => {
                                   setCredentials(prev => ({ ...prev, [def.id]: e.target.value }))
                                 }}
-                                className="w-full min-w-0 flex-grow h-full px-3 border-none bg-transparent text-xs font-mono focus:outline-none disabled:opacity-60"
-                                style={{
-                                  color: isLight ? '#1f2937' : '#f3f4f6'
-                                }}
+                                className="w-full min-w-0 flex-grow h-full px-3 border-none bg-transparent text-xs font-mono focus:outline-none disabled:opacity-60 t-text-primary"
                               />
                             </div>
                             {def.sensitive && (!(isEncrypted && !mekKey)) && (
@@ -1578,8 +1422,8 @@ export default function AdminPaymentGateway() {
 
             {/* Mappings Summary Grid */}
             <div className="space-y-8 w-full min-w-0">
-              <div className="p-4 sm:p-6 rounded-2xl border bg-zinc-950/40 border-zinc-800 w-full min-w-0" style={{ backgroundColor: isLight ? '#ffffff' : '#09090b', borderColor: isLight ? '#e5e7eb' : '#27272a' }}>
-                <h2 className="text-sm font-bold flex items-center gap-2 mb-3" style={{ color: isLight ? '#111827' : '#ffffff' }}>
+              <div className="p-4 sm:p-6 rounded-2xl border bg-zinc-950/40 border-zinc-800 w-full min-w-0 t-card">
+                <h2 className="text-sm font-bold flex items-center gap-2 mb-3 t-heading">
                   <Info className="w-4 h-4 text-indigo-400" /> Webhook Endpoints Setup
                 </h2>
                 
@@ -1592,12 +1436,7 @@ export default function AdminPaymentGateway() {
                       value={cloudFunctionUrl}
                       onChange={(e) => setCloudFunctionUrl(e.target.value)}
                       placeholder="https://us-central1-your-project.cloudfunctions.net/geminiToolGateway"
-                      className="flex-1 w-full min-w-0 px-3 py-1.5 text-xs rounded-xl bg-zinc-900/50 border border-zinc-800 focus:outline-none focus:border-indigo-500 font-mono text-[10px]"
-                      style={{
-                        backgroundColor: isLight ? "#f9fafb" : "#09090b",
-                        borderColor: isLight ? "#e5e7eb" : "#27272a",
-                        color: isLight ? "#111827" : "#ffffff",
-                      }}
+                      className="flex-1 w-full min-w-0 px-3 py-1.5 text-xs rounded-xl bg-zinc-900/50 border border-zinc-800 focus:outline-none focus:border-indigo-500 font-mono text-[10px] t-input-subtle-card-3"
                     />
                     <button
                       onClick={handleSaveCloudFunctionUrl}
@@ -1615,8 +1454,7 @@ export default function AdminPaymentGateway() {
                 <div className="font-extrabold text-[10px] uppercase tracking-wider text-zinc-550 mb-2">Target Webhook Endpoints</div>
                 <button
                   onClick={() => setShowWebhookModal(true)}
-                  className="w-full py-3 px-4 rounded-xl border border-zinc-800 hover:border-zinc-700 bg-zinc-900/10 hover:bg-zinc-900/20 text-zinc-200 hover:text-white flex items-center justify-between text-xs font-bold transition-all group"
-                  style={{ borderColor: isLight ? '#e5e7eb' : '#27272a', color: isLight ? '#4b5563' : '#e4e4e7' }}
+                  className="w-full py-3 px-4 rounded-xl border border-zinc-800 hover:border-zinc-700 bg-zinc-900/10 hover:bg-zinc-900/20 text-zinc-200 hover:text-white flex items-center justify-between text-xs font-bold transition-all group t-border-text-secondary"
                 >
                   <span className="flex items-center gap-2">
                     <Link2 className="w-4.5 h-4.5 text-indigo-400" /> Setup & View Webhook URLs
@@ -1630,9 +1468,9 @@ export default function AdminPaymentGateway() {
 
         {/* 2. REGIONAL PRICING & SYNC TAB */}
         {activeTab === "pricing" && (
-          <Card className="bg-zinc-900/10 border-zinc-800 shadow-none md:col-span-2" style={{ borderColor: isLight ? '#e5e7eb' : '#27272a' }}>
-            <CardHeader className="border-b" style={{ borderColor: isLight ? '#e5e7eb' : '#27272a' }}>
-              <CardTitle className="text-sm font-bold flex items-center gap-2 text-zinc-200" style={{ color: isLight ? '#1f2937' : '#ffffff' }}>
+          <Card className="bg-zinc-900/10 border-zinc-800 shadow-none md:col-span-2 t-border">
+            <CardHeader className="border-b t-border">
+              <CardTitle className="text-sm font-bold flex items-center gap-2 text-zinc-200 t-text-primary-white">
                 <DollarSign className="w-4 h-4 text-emerald-400" /> Dynamic Regional Pricing Configurator
               </CardTitle>
               <CardDescription className="text-zinc-500 text-xs font-medium">
@@ -1668,7 +1506,7 @@ export default function AdminPaymentGateway() {
               </div>
 
               {/* Currency Code & Currency Symbol & Webhook secret key */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 border-b pb-6" style={{ borderColor: isLight ? '#e5e7eb' : '#27272a' }}>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 border-b pb-6 t-border">
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 block mb-1">Currency Code</label>
@@ -1677,12 +1515,7 @@ export default function AdminPaymentGateway() {
                       value={currencyCode} 
                       onChange={(e) => setCurrencyCode(e.target.value.toUpperCase())}
                       placeholder="USD"
-                      className="bg-zinc-955 border-zinc-800 text-zinc-100 text-xs h-9 font-mono" 
-                      style={{
-                        backgroundColor: isLight ? '#ffffff' : '#0a0a0c',
-                        borderColor: isLight ? '#d1d5db' : '#27272a',
-                        color: isLight ? '#1f2937' : '#f3f4f6'
-                      }}
+                      className="bg-zinc-955 border-zinc-800 text-zinc-100 text-xs h-9 font-mono t-input-dark-card"
                     />
                   </div>
                   <div>
@@ -1692,12 +1525,7 @@ export default function AdminPaymentGateway() {
                       value={currencySymbol} 
                       onChange={(e) => setCurrencySymbol(e.target.value)}
                       placeholder="$"
-                      className="bg-zinc-955 border-zinc-800 text-zinc-100 text-xs h-9 font-mono" 
-                      style={{
-                        backgroundColor: isLight ? '#ffffff' : '#0a0a0c',
-                        borderColor: isLight ? '#d1d5db' : '#27272a',
-                        color: isLight ? '#1f2937' : '#f3f4f6'
-                      }}
+                      className="bg-zinc-955 border-zinc-800 text-zinc-100 text-xs h-9 font-mono t-input-dark-card"
                     />
                   </div>
                 </div>
@@ -1716,7 +1544,7 @@ export default function AdminPaymentGateway() {
                         priceIncludesTax ? 'translate-x-3' : 'translate-x-0'
                       }`} />
                     </span>
-                    <span className="text-[10px] font-bold" style={{ color: priceIncludesTax ? '#10b981' : '#6b7280' }}>
+                    <span className="text-[10px] font-bold" >
                       {priceIncludesTax ? 'Prices include tax (GST/VAT)' : 'Prices exclude tax'}
                     </span>
                   </button>
@@ -1732,8 +1560,8 @@ export default function AdminPaymentGateway() {
                   const cfg = dodoPriceCfg[planKey] || defaultDodoPlanCfg()
 
                   return (
-                    <div key={planKey} className="p-4 border rounded-xl space-y-3" style={{ borderColor: isLight ? '#e5e7eb' : '#27272a', backgroundColor: isLight ? '#f9fafb' : '#0e0e11' }}>
-                      <div className="text-xs font-bold border-b pb-2" style={{ color: isLight ? '#1f2937' : '#ffffff', borderColor: isLight ? '#e5e7eb' : '#1f1f23' }}>
+                    <div key={planKey} className="p-4 border rounded-xl space-y-3 t-surface-subtle-3">
+                      <div className="text-xs font-bold border-b pb-2 t-heading-light t-border-subtle">
                         {label}
                       </div>
 
@@ -1743,12 +1571,7 @@ export default function AdminPaymentGateway() {
                         <div className="relative flex items-center">
                           <span className="text-zinc-550 absolute left-3 text-xs">{currencySymbol}</span>
                           <Input type="number" step="any" value={rateVal} onChange={e => setRate(e.target.value)}
-                            className="bg-zinc-950 border-zinc-800 text-zinc-100 text-xs pl-6 h-9" 
-                            style={{
-                              backgroundColor: isLight ? '#ffffff' : '#050507',
-                              borderColor: isLight ? '#d1d5db' : '#27272a',
-                              color: isLight ? '#1f2937' : '#f3f4f6'
-                            }}
+                            className="bg-zinc-950 border-zinc-800 text-zinc-100 text-xs pl-6 h-9 t-input-surface-7"
                           />
                         </div>
                       </div>
@@ -1765,17 +1588,12 @@ export default function AdminPaymentGateway() {
                             }))
                           }}
                           placeholder="pdt_..." 
-                          className="bg-zinc-950 border-zinc-800 text-zinc-100 text-xs h-9 font-mono" 
-                          style={{
-                            backgroundColor: isLight ? '#ffffff' : '#050507',
-                            borderColor: isLight ? '#d1d5db' : '#27272a',
-                            color: isLight ? '#1f2937' : '#f3f4f6'
-                          }}
+                          className="bg-zinc-950 border-zinc-800 text-zinc-100 text-xs h-9 font-mono t-input-surface-7"
                         />
                       </div>
 
                       {/* Dodo Configuration Toggles */}
-                      <div className="pt-2 border-t space-y-2" style={{ borderColor: isLight ? '#e5e7eb' : '#1f1f23' }}>
+                      <div className="pt-2 border-t space-y-2 t-border-subtle">
                         <div className="text-[9px] font-extrabold uppercase tracking-wider text-zinc-550">Gateway Details (Dodo)</div>
 
                         {/* Tax Inclusive */}
@@ -1793,12 +1611,7 @@ export default function AdminPaymentGateway() {
                           <div className="relative w-16">
                             <Input type="number" min="0" step="1" value={String(cfg.discount)}
                               onChange={e => updatePlanCfg(planKey, 'discount', Number(e.target.value))}
-                              className="bg-zinc-950 border-zinc-800 text-zinc-100 text-[10px] h-6 pr-4 text-right" 
-                              style={{
-                                backgroundColor: isLight ? '#ffffff' : '#050507',
-                                borderColor: isLight ? '#d1d5db' : '#27272a',
-                                color: isLight ? '#1f2937' : '#f3f4f6'
-                              }}
+                              className="bg-zinc-950 border-zinc-800 text-zinc-100 text-[10px] h-6 pr-4 text-right t-input-surface-7"
                             />
                             <span className="absolute right-1 text-[9px] text-zinc-500 top-1.5">%</span>
                           </div>
@@ -1830,12 +1643,7 @@ export default function AdminPaymentGateway() {
                               <span className="absolute left-1 top-1 text-[9px] text-zinc-500">{currencySymbol}</span>
                               <Input type="number" min="0" step="any" value={cfg.suggestedPrice}
                                 onChange={e => updatePlanCfg(planKey, 'suggestedPrice', e.target.value)}
-                                className="bg-zinc-950 border-zinc-800 text-zinc-100 text-[10px] h-6 pl-4" 
-                                style={{
-                                  backgroundColor: isLight ? '#ffffff' : '#050507',
-                                  borderColor: isLight ? '#d1d5db' : '#27272a',
-                                  color: isLight ? '#1f2937' : '#f3f4f6'
-                                }}
+                                className="bg-zinc-950 border-zinc-800 text-zinc-100 text-[10px] h-6 pl-4 t-input-surface-7"
                               />
                             </div>
                           </div>
@@ -1847,7 +1655,7 @@ export default function AdminPaymentGateway() {
               </div>
 
               {/* Overview grid */}
-              <div className="p-4 rounded-xl border" style={{ borderColor: isLight ? '#e5e7eb' : '#27272a', backgroundColor: isLight ? '#f9fafb' : '#050507' }}>
+              <div className="p-4 rounded-xl border t-surface-subtle-2">
                 <div className="text-[10px] font-extrabold uppercase tracking-wider text-zinc-550 mb-3">Gateway Mapping Summary</div>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-[10px]">
                   {DODO_REGIONS.map(r => {
@@ -1871,7 +1679,7 @@ export default function AdminPaymentGateway() {
               </div>
 
               {/* Action Buttons */}
-              <div className="pt-6 border-t flex items-center justify-between flex-wrap gap-4" style={{ borderColor: isLight ? '#e5e7eb' : '#27272a' }}>
+              <div className="pt-6 border-t flex items-center justify-between flex-wrap gap-4 t-border">
                 <div className="flex gap-2">
                   {priceSyncResults.map((r) => (
                     <span key={r.planCode} className={`inline-flex items-center gap-1 text-[9px] font-bold px-2 py-0.5 rounded border ${
@@ -1910,11 +1718,11 @@ export default function AdminPaymentGateway() {
 
         {/* 3. CAMPAIGN MANAGER TAB */}
         {activeTab === "campaigns" && (
-          <Card className="bg-zinc-900/10 border-zinc-800 shadow-none md:col-span-2" style={{ borderColor: isLight ? '#e5e7eb' : '#27272a' }}>
-            <CardHeader className="border-b" style={{ borderColor: isLight ? '#e5e7eb' : '#27272a' }}>
+          <Card className="bg-zinc-900/10 border-zinc-800 shadow-none md:col-span-2 t-border">
+            <CardHeader className="border-b t-border">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
-                  <CardTitle className="text-sm font-bold flex items-center gap-2 text-zinc-200" style={{ color: isLight ? '#1f2937' : '#ffffff' }}>
+                  <CardTitle className="text-sm font-bold flex items-center gap-2 text-zinc-200 t-text-primary-white">
                     <Tag className="w-4 h-4 text-purple-400" /> Active Promotional Campaigns
                   </CardTitle>
                   <CardDescription className="text-zinc-500 text-xs">
@@ -1935,8 +1743,8 @@ export default function AdminPaymentGateway() {
 
               {/* Form panel */}
               {showCampaignForm && (
-                <div className="p-5 border rounded-2xl mb-6 space-y-4" style={{ borderColor: isLight ? '#e5e7eb' : '#27272a', backgroundColor: isLight ? '#f9fafb' : '#050507' }}>
-                  <div className="flex justify-between items-center border-b pb-3 mb-2" style={{ borderColor: isLight ? '#e5e7eb' : '#1f1f23' }}>
+                <div className="p-5 border rounded-2xl mb-6 space-y-4 t-surface-subtle-2">
+                  <div className="flex justify-between items-center border-b pb-3 mb-2 t-border-subtle">
                     <h3 className="text-sm font-bold">{editingCampaign ? "Edit Campaign details" : "Create New Campaign"}</h3>
                     <button onClick={resetCampaignForm} className="text-zinc-500 hover:text-zinc-300">
                       <X className="w-4 h-4" />
@@ -1949,8 +1757,7 @@ export default function AdminPaymentGateway() {
                       <Input
                         value={campaignForm.campaignName}
                         onChange={e => setCampaignForm(prev => ({ ...prev, campaignName: e.target.value }))}
-                        className="h-9 text-xs"
-                        style={{ backgroundColor: isLight ? '#ffffff' : '#0f0f12', color: isLight ? '#1f2937' : '#f3f4f6' }}
+                        className="h-9 text-xs t-input-surface-12"
                       />
                     </div>
                     <div>
@@ -1958,8 +1765,7 @@ export default function AdminPaymentGateway() {
                       <Input
                         value={campaignForm.description}
                         onChange={e => setCampaignForm(prev => ({ ...prev, description: e.target.value }))}
-                        className="h-9 text-xs"
-                        style={{ backgroundColor: isLight ? '#ffffff' : '#0f0f12', color: isLight ? '#1f2937' : '#f3f4f6' }}
+                        className="h-9 text-xs t-input-surface-12"
                       />
                     </div>
                     <div>
@@ -1967,8 +1773,7 @@ export default function AdminPaymentGateway() {
                       <select
                         value={campaignForm.status}
                         onChange={e => setCampaignForm(prev => ({ ...prev, status: e.target.value }))}
-                        className="w-full h-9 border rounded-lg text-xs px-2.5"
-                        style={{ backgroundColor: isLight ? '#ffffff' : '#0f0f12', color: isLight ? '#1f2937' : '#f3f4f6' }}
+                        className="w-full h-9 border rounded-lg text-xs px-2.5 t-input-surface-12"
                       >
                         <option value="DRAFT">DRAFT</option>
                         <option value="ACTIVE">ACTIVE (One Active at a time)</option>
@@ -2007,13 +1812,13 @@ export default function AdminPaymentGateway() {
                   </div>
 
                   {!campaignForm.isGlobal && (
-                    <div className="pt-4 border-t" style={{ borderColor: isLight ? '#e5e7eb' : '#1f1f23' }}>
+                    <div className="pt-4 border-t t-border-subtle">
                       <h4 className="text-xs font-bold text-zinc-400 mb-3">Target Regions (Check to enable)</h4>
                       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
                         {COUPON_REGIONS.map((region) => {
                           const isChecked = !!campaignTargets[region.key]
                           return (
-                            <label key={region.key} className="flex items-center gap-1.5 cursor-pointer select-none p-3 border rounded-xl" style={{ borderColor: isLight ? '#e5e7eb' : '#1e1e22', backgroundColor: isLight ? '#ffffff' : '#0a0a0d' }}>
+                            <label key={region.key} className="flex items-center gap-1.5 cursor-pointer select-none p-3 border rounded-xl t-input-card-soft-1">
                               <input
                                 type="checkbox"
                                 checked={isChecked}
@@ -2032,11 +1837,11 @@ export default function AdminPaymentGateway() {
                   )}
 
                   {/* Dynamic Campaign Discounts Mapping */}
-                  <div className="pt-4 border-t" style={{ borderColor: isLight ? '#e5e7eb' : '#1f1f23' }}>
+                  <div className="pt-4 border-t t-border-subtle">
                     <h4 className="text-xs font-bold text-zinc-400 mb-3">Configure Campaign Plan Discounts %</h4>
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                       {campaignDiscounts.map((disc, idx) => (
-                        <div key={disc.planCode} className="p-3 border rounded-xl" style={{ borderColor: isLight ? '#e5e7eb' : '#1f1f23', backgroundColor: isLight ? '#ffffff' : '#0b0b0e' }}>
+                        <div key={disc.planCode} className="p-3 border rounded-xl t-input-card-soft-2">
                           <div className="text-[10px] font-extrabold text-zinc-500 uppercase mb-2">{PLAN_LABELS[disc.planCode]}</div>
                           <div className="relative">
                             <Input
@@ -2057,7 +1862,7 @@ export default function AdminPaymentGateway() {
                     </div>
                   </div>
 
-                  <div className="flex justify-end gap-2 pt-4 border-t" style={{ borderColor: isLight ? '#e5e7eb' : '#1f1f23' }}>
+                  <div className="flex justify-end gap-2 pt-4 border-t t-border-subtle">
                     <Button onClick={resetCampaignForm} variant="outline" className="h-8 text-xs font-bold">
                       Cancel
                     </Button>
@@ -2087,7 +1892,7 @@ export default function AdminPaymentGateway() {
                       EXPIRED: 'bg-red-500/10 text-red-400 border-red-500/20',
                     }
                     return (
-                      <div key={camp.id} className="p-4 border rounded-2xl flex flex-col justify-between" style={{ borderColor: isLight ? '#e5e7eb' : '#1e1e21', backgroundColor: isLight ? '#ffffff' : '#0a0a0c' }}>
+                      <div key={camp.id} className="p-4 border rounded-2xl flex flex-col justify-between t-input-card-soft-3">
                         <div className="space-y-2">
                           <div className="flex items-center justify-between gap-2">
                             <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full border ${statusColors[camp.status] || 'bg-zinc-800'}`}>
@@ -2100,8 +1905,8 @@ export default function AdminPaymentGateway() {
                               {camp.isEnabled ? <ToggleRight className="w-5 h-5 text-indigo-500" /> : <ToggleLeft className="w-5 h-5 text-zinc-600" />}
                             </button>
                           </div>
-                          <h4 className="text-sm font-bold" style={{ color: isLight ? '#111827' : '#ffffff' }}>{camp.campaignName}</h4>
-                          <p className="text-xs" style={{ color: isLight ? '#6b7280' : '#88888b' }}>{camp.description || "No description provided."}</p>
+                          <h4 className="text-sm font-bold t-heading">{camp.campaignName}</h4>
+                          <p className="text-xs t-text-hint">{camp.description || "No description provided."}</p>
                           
                            <div className="text-[10px] text-zinc-500 font-semibold space-y-1">
                             <div>Target: <strong className="text-indigo-400">{camp.isGlobal !== false ? "Global" : (camp.targetRegions?.map((r: string) => r.toUpperCase()).join(", ") || "None")}</strong></div>
@@ -2110,11 +1915,10 @@ export default function AdminPaymentGateway() {
                           </div>
                         </div>
 
-                        <div className="flex justify-end gap-2 pt-4 border-t mt-4" style={{ borderColor: isLight ? '#e5e7eb' : '#1b1b1e' }}>
+                        <div className="flex justify-end gap-2 pt-4 border-t mt-4 t-border-soft-3">
                           <button
                             onClick={() => handleEditCampaign(camp)}
-                            className="px-2.5 py-1.5 rounded-lg border text-[10px] font-bold hover:bg-zinc-800 hover:text-white"
-                            style={{ borderColor: isLight ? '#d1d5db' : '#27272a', color: isLight ? '#4b5563' : '#a1a1aa' }}
+                            className="px-2.5 py-1.5 rounded-lg border text-[10px] font-bold hover:bg-zinc-800 hover:text-white t-border-text-muted"
                           >
                             Edit Config
                           </button>
@@ -2136,11 +1940,11 @@ export default function AdminPaymentGateway() {
 
         {/* 4. COUPON MANAGER TAB */}
         {activeTab === "coupons" && (
-          <Card className="bg-zinc-900/10 border-zinc-800 shadow-none md:col-span-2" style={{ borderColor: isLight ? '#e5e7eb' : '#27272a' }}>
-            <CardHeader className="border-b" style={{ borderColor: isLight ? '#e5e7eb' : '#27272a' }}>
+          <Card className="bg-zinc-900/10 border-zinc-800 shadow-none md:col-span-2 t-border">
+            <CardHeader className="border-b t-border">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
-                  <CardTitle className="text-sm font-bold flex items-center gap-2 text-zinc-200" style={{ color: isLight ? '#1f2937' : '#ffffff' }}>
+                  <CardTitle className="text-sm font-bold flex items-center gap-2 text-zinc-200 t-text-primary-white">
                     <Gift className="w-4 h-4 text-purple-400" /> Active Coupons & Discounts
                   </CardTitle>
                   <CardDescription className="text-zinc-500 text-xs">
@@ -2161,8 +1965,8 @@ export default function AdminPaymentGateway() {
 
               {/* Coupon Form */}
               {showCouponForm && (
-                <div className="p-5 border rounded-2xl mb-6 space-y-4" style={{ borderColor: isLight ? '#e5e7eb' : '#27272a', backgroundColor: isLight ? '#f9fafb' : '#050507' }}>
-                  <div className="flex justify-between items-center border-b pb-3 mb-2" style={{ borderColor: isLight ? '#e5e7eb' : '#1f1f23' }}>
+                <div className="p-5 border rounded-2xl mb-6 space-y-4 t-surface-subtle-2">
+                  <div className="flex justify-between items-center border-b pb-3 mb-2 t-border-subtle">
                     <h3 className="text-sm font-bold">{editingCoupon ? "Edit Coupon Settings" : "Create New Discount Coupon"}</h3>
                     <button onClick={resetCouponForm} className="text-zinc-500 hover:text-zinc-300">
                       <X className="w-4 h-4" />
@@ -2175,9 +1979,8 @@ export default function AdminPaymentGateway() {
                       <Input
                         value={couponForm.couponCode}
                         onChange={e => setCouponForm(prev => ({ ...prev, couponCode: e.target.value.toUpperCase() }))}
-                        className="h-9 text-xs font-mono font-bold"
+                        className="h-9 text-xs font-mono font-bold t-input-surface-12"
                         placeholder="SUMMER50"
-                        style={{ backgroundColor: isLight ? '#ffffff' : '#0f0f12', color: isLight ? '#1f2937' : '#f3f4f6' }}
                       />
                     </div>
                     <div>
@@ -2187,8 +1990,7 @@ export default function AdminPaymentGateway() {
                           type="number"
                           value={couponForm.discountValue}
                           onChange={e => setCouponForm(prev => ({ ...prev, discountValue: Number(e.target.value) }))}
-                          className="h-9 text-xs pr-5 text-right font-mono"
-                          style={{ backgroundColor: isLight ? '#ffffff' : '#0f0f12', color: isLight ? '#1f2937' : '#f3f4f6' }}
+                          className="h-9 text-xs pr-5 text-right font-mono t-input-surface-12"
                         />
                         <span className="absolute right-2 top-2.5 text-xs text-zinc-500">%</span>
                       </div>
@@ -2227,8 +2029,7 @@ export default function AdminPaymentGateway() {
                             }
                           }
                         }}
-                        className="w-full h-9 border rounded-lg text-xs px-2.5"
-                        style={{ backgroundColor: isLight ? '#ffffff' : '#0f0f12', color: isLight ? '#1f2937' : '#f3f4f6' }}
+                        className="w-full h-9 border rounded-lg text-xs px-2.5 t-input-surface-12"
                       >
                         <option value="">[None] Static Coupon (Uses date limits below)</option>
                         {campaigns.map(c => (
@@ -2241,7 +2042,7 @@ export default function AdminPaymentGateway() {
                   </div>
 
                   {/* Coupon Target Region Checklist Grid */}
-                  <div className="pt-4 border-t" style={{ borderColor: isLight ? '#e5e7eb' : '#1f1f23' }}>
+                  <div className="pt-4 border-t t-border-subtle">
                     <div className="flex justify-between items-center flex-wrap gap-2 mb-3">
                       <h4 className="text-xs font-bold text-zinc-400">Target Region & Plan mappings (Check to enable)</h4>
                       <select
@@ -2281,11 +2082,7 @@ export default function AdminPaymentGateway() {
                           // Reset selection back to default label
                           e.target.value = "";
                         }}
-                        className="bg-zinc-950 border border-zinc-800 text-[10px] h-7 rounded px-2 text-indigo-400 font-bold focus:outline-none cursor-pointer"
-                        style={{
-                          backgroundColor: isLight ? '#ffffff' : '#050507',
-                          borderColor: isLight ? '#d1d5db' : '#27272a',
-                        }}
+                        className="bg-zinc-950 border border-zinc-800 text-[10px] h-7 rounded px-2 text-indigo-400 font-bold focus:outline-none cursor-pointer t-input-surface-7-border"
                       >
                         <option value="">Bulk Select / Actions...</option>
                         <option value="auto">Auto Check Configured Regions</option>
@@ -2299,7 +2096,7 @@ export default function AdminPaymentGateway() {
 
                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
                       {COUPON_REGIONS.map((region) => (
-                        <div key={region.key} className="p-3 border rounded-xl space-y-2" style={{ borderColor: isLight ? '#e5e7eb' : '#1e1e22', backgroundColor: isLight ? '#ffffff' : '#0a0a0d' }}>
+                        <div key={region.key} className="p-3 border rounded-xl space-y-2 t-input-card-soft-1">
                           <div className="text-[9px] font-extrabold text-zinc-500 uppercase">{region.label}</div>
                           <div className="space-y-1.5">
                             {COUPON_PLANS.map(plan => {
@@ -2326,7 +2123,20 @@ export default function AdminPaymentGateway() {
                     </div>
                   </div>
 
-                  <div className="flex justify-end gap-2 pt-4 border-t" style={{ borderColor: isLight ? '#e5e7eb' : '#1f1f23' }}>
+                  {syncLog.length > 0 && (
+                    <div className="p-3 bg-zinc-950/80 rounded-xl border border-zinc-800 text-[11px] space-y-1">
+                      <div className="font-semibold text-zinc-400">Gateway Sync Records ({syncLog.length})</div>
+                      <div className="max-h-20 overflow-y-auto space-y-0.5 text-[10px] font-mono text-zinc-500">
+                        {syncLog.slice(0, 5).map((log, idx) => (
+                          <div key={log.id || idx}>
+                            {log.timestamp ? new Date(log.timestamp).toLocaleTimeString() : 'Recent'} · {log.action || 'Synced'}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="flex justify-end gap-2 pt-4 border-t t-border-subtle">
                     <Button onClick={resetCouponForm} variant="outline" className="h-8 text-xs font-bold">
                       Cancel
                     </Button>
@@ -2353,23 +2163,30 @@ export default function AdminPaymentGateway() {
                     const campaignObj = hasCampaign ? campaigns.find(c => c.id === coup.campaignId) : null
 
                     return (
-                      <div key={coup.id} className="p-4 border rounded-2xl flex flex-col md:flex-row md:items-center justify-between gap-4" style={{ borderColor: isLight ? '#e5e7eb' : '#1e1e21', backgroundColor: isLight ? '#ffffff' : '#0a0a0c' }}>
+                      <div key={coup.id} className="p-4 border rounded-2xl flex flex-col md:flex-row md:items-center justify-between gap-4 t-input-card-soft-3">
                         <div className="space-y-1">
                           <div className="flex items-center gap-2">
                             <span className="text-xs font-black font-mono tracking-wider px-2 py-0.5 rounded bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">
                               {coup.couponCode}
                             </span>
-                            <span className="text-xs font-bold" style={{ color: isLight ? '#1f2937' : '#f3f4f6' }}>
+                            <span className="text-xs font-bold t-text-primary">
                               {coup.discountValue}% Off
                             </span>
-                            {coup.active ? (
-                              <span className="text-[9px] font-extrabold px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/25">ACTIVE</span>
-                            ) : (
-                              <span className="text-[9px] font-extrabold px-1.5 py-0.5 rounded bg-zinc-700/30 text-zinc-500 border border-zinc-800">DISABLED</span>
-                            )}
+                            <button
+                              type="button"
+                              onClick={() => handleToggleCouponActive(coup)}
+                              title={coup.active ? "Click to disable coupon" : "Click to activate coupon"}
+                              className="focus:outline-none cursor-pointer hover:opacity-80 transition-opacity"
+                            >
+                              {coup.active ? (
+                                <span className="text-[9px] font-extrabold px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/25">ACTIVE</span>
+                              ) : (
+                                <span className="text-[9px] font-extrabold px-1.5 py-0.5 rounded bg-zinc-700/30 text-zinc-500 border border-zinc-800">DISABLED</span>
+                              )}
+                            </button>
                           </div>
-                          <h5 className="text-xs font-bold" style={{ color: isLight ? '#374151' : '#d1d5db' }}>{coup.title || "Discount Coupon"}</h5>
-                          <p className="text-[11px]" style={{ color: isLight ? '#6b7280' : '#88888b' }}>{coup.description || "Valid on checkout pass products."}</p>
+                          <h5 className="text-xs font-bold t-text-contrast-dark">{coup.title || "Discount Coupon"}</h5>
+                          <p className="text-[11px] t-text-hint">{coup.description || "Valid on checkout pass products."}</p>
                           
                           <div className="text-[9px] text-zinc-500 font-semibold">
                             {hasCampaign ? (
@@ -2391,8 +2208,7 @@ export default function AdminPaymentGateway() {
                           </button>
                           <button
                             onClick={() => handleEditCoupon(coup)}
-                            className="px-2.5 py-1.5 rounded-lg border text-[10px] font-bold hover:bg-zinc-800 hover:text-white"
-                            style={{ borderColor: isLight ? '#d1d5db' : '#27272a', color: isLight ? '#4b5563' : '#a1a1aa' }}
+                            className="px-2.5 py-1.5 rounded-lg border text-[10px] font-bold hover:bg-zinc-800 hover:text-white t-border-text-muted"
                           >
                             Edit
                           </button>
@@ -2415,84 +2231,10 @@ export default function AdminPaymentGateway() {
 
       {/* Webhook Endpoints Modal */}
       {showWebhookModal && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
-          <div 
-            className="w-full max-w-2xl bg-zinc-950 border border-zinc-800 rounded-2xl shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-200"
-            style={{ 
-              backgroundColor: isLight ? '#ffffff' : '#09090b', 
-              borderColor: isLight ? '#e5e7eb' : '#27272a',
-              boxShadow: '0 20px 50px rgba(0,0,0,0.5)'
-            }}
-          >
-            {/* Modal Header */}
-            <div className="flex items-center justify-between px-6 py-4 border-b" style={{ borderColor: isLight ? '#e5e7eb' : '#27272a' }}>
-              <div>
-                <h3 className="text-sm font-bold flex items-center gap-2" style={{ color: isLight ? '#111827' : '#ffffff' }}>
-                  <Link2 className="w-4 h-4 text-indigo-400" /> Webhook Endpoints Configuration
-                </h3>
-                <p className="text-[10px] text-zinc-550 font-medium mt-0.5">
-                  Configure these listener URLs in your payment dashboards to capture transactions and upgrades.
-                </p>
-              </div>
-              <button 
-                onClick={() => setShowWebhookModal(false)}
-                className="p-1 rounded-lg text-zinc-500 hover:text-zinc-200 hover:bg-zinc-800 transition-colors cursor-pointer"
-                style={{ color: isLight ? '#4b5563' : '#a1a1aa' }}
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-
-            {/* Modal Body */}
-            <div className="p-6 space-y-4 max-h-[65vh] overflow-y-auto">
-              {[
-                { gw: "Stripe", path: "/webhooks/stripe", desc: "For processing Stripe card checkout events" },
-                { gw: "Dodo Payments", path: "/dodo-webhook", desc: "For processing live/test Dodo Payments subscription & upgrade checkouts" },
-                { gw: "Lemon Squeezy", path: "/webhooks/lemonsqueezy", desc: "For Lemon Squeezy checkout webhooks" },
-                { gw: "Paddle", path: "/webhooks/paddle", desc: "For Paddle checkout subscription events" }
-              ].map((x) => {
-                const fullUrl = cloudFunctionUrl 
-                  ? `${cloudFunctionUrl.replace(/\/$/, "")}${x.path}` 
-                  : `https://us-central1-takeout-fix.cloudfunctions.net/geminiToolGateway${x.path}`;
-
-                return (
-                  <div key={x.gw} className="p-4 bg-zinc-900/10 border border-zinc-850 rounded-xl space-y-2" style={{ backgroundColor: isLight ? '#f9fafb' : 'rgba(24,24,27,0.2)', borderColor: isLight ? '#e5e7eb' : '#27272a' }}>
-                    <div className="flex items-center justify-between">
-                      <span className="font-extrabold text-[10px] uppercase tracking-wider" style={{ color: isLight ? '#374151' : '#a1a1aa' }}>{x.gw} Hook</span>
-                      <span className="text-[9px] text-zinc-500 font-medium">{x.desc}</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <div className="flex-1 font-mono text-[10px] p-2 bg-zinc-950/50 border border-zinc-900 rounded-lg overflow-x-auto whitespace-nowrap text-indigo-400 select-all scrollbar-none" style={{ backgroundColor: isLight ? '#ffffff' : '#09090b', borderColor: isLight ? '#e5e7eb' : '#27272a' }}>
-                        {fullUrl}
-                      </div>
-                      <button
-                        onClick={() => {
-                          navigator.clipboard.writeText(fullUrl);
-                          useToastStore.getState().addToast(`${x.gw} webhook URL copied!`, "success", 3000, "Copied");
-                        }}
-                        className="p-2 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white transition-all flex items-center justify-center flex-shrink-0 cursor-pointer"
-                        title="Copy to clipboard"
-                      >
-                        <Copy className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-
-            {/* Modal Footer */}
-            <div className="flex justify-end px-6 py-4 border-t bg-zinc-950/20" style={{ borderColor: isLight ? '#e5e7eb' : '#27272a', backgroundColor: isLight ? '#f9fafb' : '#09090b' }}>
-              <button
-                onClick={() => setShowWebhookModal(false)}
-                className="px-4 py-2 text-xs font-bold rounded-xl border border-zinc-800 hover:bg-zinc-800 text-zinc-300 hover:text-white transition-all cursor-pointer"
-                style={{ borderColor: isLight ? '#e5e7eb' : '#27272a', color: isLight ? '#4b5563' : '#e4e4e7' }}
-              >
-                Close
-              </button>
-            </div>
-          </div>
-        </div>
+        <WebhookModal
+          cloudFunctionUrl={cloudFunctionUrl}
+          onClose={() => setShowWebhookModal(false)}
+        />
       )}
     </div>
   )
