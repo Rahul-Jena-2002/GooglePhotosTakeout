@@ -55,7 +55,7 @@ jobs:
         shell: bash
         run: |
           mkdir -p jpackage-input
-          cp native/target/GTakeout-1.0.0.jar jpackage-input/
+          cp native/target/takeoutfix.jar jpackage-input/
 
       - name: Create Native App Image & MSI Installer (Windows)
         if: matrix.os == 'windows-latest'
@@ -66,7 +66,8 @@ jobs:
             --type app-image `
             --name TakeoutFix `
             --input jpackage-input `
-            --main-jar GTakeout-1.0.0.jar `
+            --main-jar takeoutfix.jar `
+            --main-class com.rahul.TakeoutApplication `
             --icon native/icons/icon.ico `
             --dest dist `
             --vendor "TakeoutFix" `
@@ -90,7 +91,8 @@ jobs:
             --type msi `
             --name TakeoutFix `
             --input jpackage-input `
-            --main-jar GTakeout-1.0.0.jar `
+            --main-jar takeoutfix.jar `
+            --main-class com.rahul.TakeoutApplication `
             --icon native/icons/icon.ico `
             --dest dist-msi `
             --vendor "TakeoutFix" `
@@ -112,7 +114,8 @@ jobs:
             --type app-image \
             --name TakeoutFix \
             --input jpackage-input \
-            --main-jar GTakeout-1.0.0.jar \
+            --main-jar takeoutfix.jar \
+            --main-class com.rahul.TakeoutApplication \
             --icon native/icons/icon.icns \
             --dest dist \
             --mac-package-identifier com.takeoutfix.desktop \
@@ -135,7 +138,8 @@ jobs:
             --type dmg \
             --name TakeoutFix \
             --input jpackage-input \
-            --main-jar GTakeout-1.0.0.jar \
+            --main-jar takeoutfix.jar \
+            --main-class com.rahul.TakeoutApplication \
             --icon native/icons/icon.icns \
             --dest dist-dmg \
             --mac-package-identifier com.takeoutfix.desktop \
@@ -157,7 +161,8 @@ jobs:
             --type app-image \
             --name TakeoutFix \
             --input jpackage-input \
-            --main-jar GTakeout-1.0.0.jar \
+            --main-jar takeoutfix.jar \
+            --main-class com.rahul.TakeoutApplication \
             --icon native/icons/icon.png \
             --dest dist \
             --vendor "TakeoutFix" \
@@ -178,7 +183,8 @@ jobs:
             --type deb \
             --name takeoutfix \
             --input jpackage-input \
-            --main-jar GTakeout-1.0.0.jar \
+            --main-jar takeoutfix.jar \
+            --main-class com.rahul.TakeoutApplication \
             --icon native/icons/icon.png \
             --dest dist-deb \
             --vendor "TakeoutFix" \
@@ -194,7 +200,8 @@ jobs:
             --type rpm \
             --name takeoutfix \
             --input jpackage-input \
-            --main-jar GTakeout-1.0.0.jar \
+            --main-jar takeoutfix.jar \
+            --main-class com.rahul.TakeoutApplication \
             --icon native/icons/icon.png \
             --dest dist-rpm \
             --vendor "TakeoutFix" \

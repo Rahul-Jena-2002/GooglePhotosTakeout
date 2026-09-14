@@ -1,9 +1,5 @@
 package com.rahul.service;
 
-import jakarta.annotation.PostConstruct;
-import jakarta.annotation.PreDestroy;
-import org.springframework.stereotype.Service;
-
 import java.io.*;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -20,18 +16,20 @@ import org.apache.commons.compress.archivers.tar.TarArchiveEntry;
 import org.apache.commons.compress.archivers.tar.TarArchiveInputStream;
 import org.apache.commons.compress.compressors.gzip.GzipCompressorInputStream;
 
-@Service
 public class NativeExifToolEngine {
 
     private File exifToolBinary;
     private final BlockingQueue<PersistentExifTool> pool = new LinkedBlockingQueue<>();
     private int activeWorkersCount = 0;
 
-    @PostConstruct
+    public NativeExifToolEngine() {
+        init();
+    }
+
     public void init() {
         try {
             String os = System.getProperty("os.name").toLowerCase();
-            Path extractDir = Paths.get(System.getProperty("user.home"), ".gtakeout", "bin");
+            Path extractDir = Paths.get(System.getProperty("user.home"), ".takeoutfix", "bin");
             Files.createDirectories(extractDir);
 
             if (os.contains("win")) {
@@ -52,6 +50,7 @@ public class NativeExifToolEngine {
                         System.err.println("Failed to start persistent ExifTool worker: " + e.getMessage());
                     }
                 }
+                Runtime.getRuntime().addShutdownHook(new Thread(this::cleanup));
             } else {
                 System.err.println("Failed to provision ExifTool!");
             }
@@ -61,7 +60,6 @@ public class NativeExifToolEngine {
         }
     }
 
-    @PreDestroy
     public void cleanup() {
         System.out.println("Cleaning up ExifTool pool...");
         PersistentExifTool worker;

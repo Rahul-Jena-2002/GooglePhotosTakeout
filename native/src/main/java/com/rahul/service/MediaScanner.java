@@ -1,6 +1,5 @@
 package com.rahul.service;
 
-import org.springframework.stereotype.Service;
 import java.io.File;
 import java.util.*;
 import java.util.regex.Pattern;
@@ -8,7 +7,6 @@ import java.util.regex.Pattern;
 /**
  * Responsible for recursively scanning the filesystem for supported media files.
  */
-@Service
 public class MediaScanner {
     private static final Pattern MEDIA_PATTERN = Pattern.compile("(?i).+\\.(jpg|jpeg|png|gif|bmp|webp|heic|heif|tiff|tif|dng|cr2|nef|arw|rw2|orf|pef|raf|mp4|mov|m4v|3gp|mkv|avi|wmv|flv|mpg|mpeg|m2ts|mts)$");
 

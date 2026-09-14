@@ -5,7 +5,6 @@ import com.rahul.gui.theme.ThemeColors;
 
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
-import javax.swing.border.LineBorder;
 import java.awt.*;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
@@ -32,7 +31,7 @@ public class DealsRotatorBanner extends JPanel {
         engineStatusBadge = UiFactory.createBadge("READY", ThemeColors.successLight(), ThemeColors.success());
         leftPanel.add(engineStatusBadge);
 
-        apiStatusLabel = new JLabel("TakeoutFix Engine v1.0.0  |  Local API: http://localhost:8081  |  Background Services Active");
+        apiStatusLabel = new JLabel("TakeoutFix Engine v1.0.0  |  Native Desktop Core  |  High-Performance Mode");
         apiStatusLabel.setFont(new Font("Segoe UI", Font.PLAIN, 11));
         apiStatusLabel.setForeground(ThemeColors.textSecondary());
         leftPanel.add(apiStatusLabel);

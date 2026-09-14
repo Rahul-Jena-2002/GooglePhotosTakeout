@@ -5,7 +5,6 @@ import com.rahul.gui.service.UserSyncBridgeService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.mockito.Mockito;
 
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -19,6 +18,7 @@ class UserSyncBridgeServiceTest {
     @BeforeEach
     void setUp() {
         UserController.getCurrentUserProfile().clear();
+        UserController.setUserService(null);
         bridgeService = new UserSyncBridgeService();
     }
 
@@ -54,9 +54,7 @@ class UserSyncBridgeServiceTest {
             }
         });
 
-        UserService mockUserService = Mockito.mock(UserService.class);
-        UserController userController = new UserController(mockUserService);
-        userController.syncUser(Map.of("email", "test@example.com", "plan", "pro"));
+        UserController.syncUser(Map.of("email", "test@example.com", "plan", "pro"));
 
         assertTrue(updated.get(), "Listener should have been triggered with new email");
     }

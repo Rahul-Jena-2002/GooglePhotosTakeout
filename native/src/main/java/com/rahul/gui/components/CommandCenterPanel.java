@@ -39,6 +39,10 @@ public class CommandCenterPanel extends JPanel {
     private final UserSyncBridgeService userService;
     private final SessionStatsService statsService;
 
+    public SessionStatsService getStatsService() {
+        return statsService;
+    }
+
     public CommandCenterPanel(UserSyncBridgeService userService, SessionStatsService statsService) {
         this.userService = userService;
         this.statsService = statsService;

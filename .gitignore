@@ -66,3 +66,14 @@ logs/
 scratch/
 PROJECT_STATE.md
 docs/session_logs/
+
+# Build artifacts & local test directories
+dist-exe/
+dist-msi/
+jpackage-input/
+test-portable/
+test-portable.zip
+wix-tools/
+*.log
+rel_*.json
+latest_runs.json

@@ -1,9 +1,5 @@
 package com.rahul.service;
 
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.messaging.simp.SimpMessagingTemplate;
-import org.springframework.stereotype.Service;
-
 import java.io.File;
 import java.nio.file.Files;
 import java.time.Instant;
@@ -19,17 +15,37 @@ import java.util.concurrent.Executors;
 import com.rahul.util.FilenameDateParser;
 import java.util.concurrent.atomic.AtomicLong;
 
-@Service
 public class ExtractionService {
 
-    @Autowired private MediaScanner scanner;
-    @Autowired private MetadataMatcher matcher;
-    @Autowired private TimestampRestorer restorer;
-    @Autowired private MetadataInjector metadataInjector;
-    @Autowired private FileOperationService fileService;
-    @Autowired private SimpMessagingTemplate messagingTemplate;
-    @Autowired private SessionStatsService sessionStatsService;
-    @Autowired(required = false) private UserService userService;
+    private MediaScanner scanner;
+    private MetadataMatcher matcher;
+    private TimestampRestorer restorer;
+    private MetadataInjector metadataInjector;
+    private FileOperationService fileService;
+    private SessionStatsService sessionStatsService;
+    private UserService userService;
+
+    public ExtractionService() {
+        this.scanner = new MediaScanner();
+        this.matcher = new MetadataMatcher();
+        this.restorer = new TimestampRestorer();
+        this.metadataInjector = new MetadataInjector();
+        this.fileService = new FileOperationService();
+        this.sessionStatsService = new SessionStatsService();
+        this.userService = new UserService();
+    }
+
+    public ExtractionService(MediaScanner scanner, MetadataMatcher matcher, TimestampRestorer restorer,
+                             MetadataInjector metadataInjector, FileOperationService fileService,
+                             SessionStatsService sessionStatsService, UserService userService) {
+        this.scanner = scanner;
+        this.matcher = matcher;
+        this.restorer = restorer;
+        this.metadataInjector = metadataInjector;
+        this.fileService = fileService;
+        this.sessionStatsService = sessionStatsService;
+        this.userService = userService;
+    }
 
     private volatile boolean paused = false;
     private volatile boolean cancelled = false;
@@ -424,8 +440,6 @@ public class ExtractionService {
     private static final org.slf4j.Logger logger = org.slf4j.LoggerFactory.getLogger(ExtractionService.class);
 
     private void sendLog(String level, String message) {
-        messagingTemplate.convertAndSend("/topic/logs", new LogMessage(level, message));
-        
         if ("ERROR".equalsIgnoreCase(level)) {
             logger.error(message);
         } else if ("WARN".equalsIgnoreCase(level)) {
@@ -450,7 +464,6 @@ public class ExtractionService {
         int current = processed.get();
         if (current == totalFiles || current == 1 || now - lastProgressTime.get() >= 50) {
             lastProgressTime.set(now);
-            messagingTemplate.convertAndSend("/topic/progress", new ProgressUpdate(current, totalFiles, processedBytes.get()));
         }
     }
 
@@ -605,5 +618,13 @@ public class ExtractionService {
 
     public long getProcessedBytes() {
         return processedBytes.get();
+    }
+
+    public SessionStatsService getSessionStatsService() {
+        return sessionStatsService;
+    }
+
+    public int getOffsetFiles() {
+        return offsetFiles;
     }
 }

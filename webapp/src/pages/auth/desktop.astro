@@ -1,0 +1,12 @@
+---
+export const prerender = false;
+import Layout from "../../layouts/Layout.astro";
+import DesktopAuthBridge from "../../react-pages/DesktopAuthBridge";
+---
+
+<Layout
+  title="TakeoutFix | Desktop Sign-In Bridge"
+  description="Connect TakeoutFix Desktop application with your Google Account."
+>
+  <DesktopAuthBridge client:only="react" />
+</Layout>

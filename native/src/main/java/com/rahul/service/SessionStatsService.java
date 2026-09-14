@@ -1,19 +1,16 @@
 package com.rahul.service;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import org.springframework.stereotype.Service;
+import org.json.JSONObject;
 
 import java.io.File;
-import java.io.IOException;
-import java.util.Map;
+import java.nio.file.Files;
 import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * Tracks cumulative restoration stats (total files and bytes processed)
  * across all sessions. Stats are persisted to a JSON file in the user's
- * home directory so they survive Spring Boot restarts.
+ * home directory so they survive application restarts.
  */
-@Service
 public class SessionStatsService {
 
     private static final File STATS_FILE = new File(
@@ -21,7 +18,6 @@ public class SessionStatsService {
 
     private final AtomicLong totalFiles = new AtomicLong(0);
     private final AtomicLong totalBytes = new AtomicLong(0);
-    private final ObjectMapper mapper = new ObjectMapper();
 
     public SessionStatsService() {
         load();
@@ -53,16 +49,14 @@ public class SessionStatsService {
 
     // ── persistence ───────────────────────────────────────────────────────────
 
-    @SuppressWarnings("unchecked")
     private void load() {
         if (!STATS_FILE.exists()) return;
         try {
-            Map<String, Object> data = mapper.readValue(STATS_FILE, Map.class);
-            if (data.containsKey("totalFiles")) {
-                totalFiles.set(((Number) data.get("totalFiles")).longValue());
-            }
-            if (data.containsKey("totalBytes")) {
-                totalBytes.set(((Number) data.get("totalBytes")).longValue());
+            String content = Files.readString(STATS_FILE.toPath());
+            if (content != null && !content.isBlank()) {
+                JSONObject json = new JSONObject(content);
+                totalFiles.set(json.optLong("totalFiles", 0));
+                totalBytes.set(json.optLong("totalBytes", 0));
             }
         } catch (Exception ignored) {
             // Corrupt or unreadable — start fresh
@@ -71,8 +65,10 @@ public class SessionStatsService {
 
     private void save() {
         try {
-            mapper.writeValue(STATS_FILE,
-                    Map.of("totalFiles", totalFiles.get(), "totalBytes", totalBytes.get()));
-        } catch (IOException ignored) {}
+            JSONObject json = new JSONObject();
+            json.put("totalFiles", totalFiles.get());
+            json.put("totalBytes", totalBytes.get());
+            Files.writeString(STATS_FILE.toPath(), json.toString(2));
+        } catch (Exception ignored) {}
     }
 }

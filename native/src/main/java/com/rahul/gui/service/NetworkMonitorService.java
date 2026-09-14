@@ -1,7 +1,5 @@
 package com.rahul.gui.service;
 
-import org.springframework.stereotype.Service;
-
 import java.net.URL;
 import java.net.URLConnection;
 import java.util.List;
@@ -15,7 +13,6 @@ import java.util.function.Consumer;
  * Microservice dedicated to continuous network connectivity monitoring.
  * Dispatches status updates to UI listeners.
  */
-@Service
 public class NetworkMonitorService {
 
     private volatile boolean online = true;

@@ -3,7 +3,6 @@ package com.rahul.util;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
-import java.time.format.DateTimeFormatter;
 import java.util.Optional;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -22,9 +21,6 @@ public class FilenameDateParser {
 
     // Pattern 3: WhatsApp format IMG-YYYYMMDD-WAxxxx or VID-YYYYMMDD-WAxxxx
     private static final Pattern PATTERN_WHATSAPP = Pattern.compile("(?:IMG|VID)-(\\d{4})(\\d{2})(\\d{2})-WA\\d+");
-
-    // Pattern 4: Plain date YYYYMMDD (e.g. 20250513_120000.jpg)
-    private static final Pattern PATTERN_PLAIN_DATE = Pattern.compile("(?:IMG_|VID_)?(\\d{4})(\\d{2})(\\d{2})");
 
     public static Optional<Instant> parse(String filename) {
         if (filename == null || filename.isBlank()) {

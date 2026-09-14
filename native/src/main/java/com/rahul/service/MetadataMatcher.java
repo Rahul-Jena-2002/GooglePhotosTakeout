@@ -1,6 +1,5 @@
 package com.rahul.service;
 
-import org.springframework.stereotype.Service;
 import java.io.File;
 import java.util.*;
 import java.util.regex.Matcher;
@@ -10,7 +9,6 @@ import java.util.regex.Pattern;
  * Handles the complex logic for matching media files to their corresponding
  * Google Photos JSON metadata files based on specific naming rules.
  */
-@Service
 public class MetadataMatcher {
 
     private static final int MAX_STEM = 46;

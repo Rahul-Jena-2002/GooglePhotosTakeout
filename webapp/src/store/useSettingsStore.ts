@@ -15,7 +15,7 @@ export const useSettingsStore = create<SettingsState>()(
       setExifEngine: (engine) => set({ exifEngine: engine }),
     }),
     {
-      name: 'gtakeout-settings',
+      name: 'takeoutfix-settings',
     }
   )
 );

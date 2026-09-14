@@ -21,6 +21,10 @@ public class SignInDialog extends JDialog {
     private final Consumer<Map<String, Object>> authListener;
     private final UserSyncBridgeService userService;
 
+    public UserSyncBridgeService getUserService() {
+        return userService;
+    }
+
     public SignInDialog(Frame owner, UserSyncBridgeService userService) {
         super(owner, "Sign In with Google - TakeoutFix", true);
         this.userService = userService;

@@ -4,9 +4,6 @@ import com.rahul.controller.UserController;
 import org.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.scheduling.annotation.Scheduled;
-import org.springframework.stereotype.Service;
-
 import java.io.File;
 import java.net.URI;
 import java.net.URLEncoder;
@@ -18,6 +15,9 @@ import java.nio.file.Files;
 import java.time.Duration;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 
 /**
  * Direct Firebase & Firestore Cloud Sync for TakeoutFix Native Desktop App.
@@ -27,7 +27,6 @@ import java.util.Map;
  * in sync with cloud quotas, tier changes, and admin status even when
  * the webapp is closed.
  */
-@Service
 public class FirebaseSyncService {
 
     private static final Logger log = LoggerFactory.getLogger(FirebaseSyncService.class);
@@ -44,10 +43,17 @@ public class FirebaseSyncService {
 
     private volatile String currentIdToken = "";
     private volatile String currentRefreshToken = "";
+    private final ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor();
 
     public FirebaseSyncService() {
         // Bootstrap tokens from session.json if present
         loadTokensFromSession();
+        // Initial sync at 3 seconds, then a relaxed 10-minute heartbeat (600s) to conserve Firestore quotas
+        scheduler.scheduleWithFixedDelay(this::syncWithFirebase, 3, 600, TimeUnit.SECONDS);
+    }
+
+    public void triggerImmediateSync() {
+        scheduler.submit(this::syncWithFirebase);
     }
 
     private void loadTokensFromSession() {
@@ -64,10 +70,8 @@ public class FirebaseSyncService {
     }
 
     /**
-     * Runs every 15 seconds in the background to silently synchronize user quota
-     * and tier directly from Firestore.
+     * Synchronizes user quota and tier directly from Firestore.
      */
-    @Scheduled(fixedDelay = 15000, initialDelay = 4000)
     public synchronized void syncWithFirebase() {
         Map<String, Object> profile = UserController.getCurrentUserProfile();
         String uid = (String) profile.getOrDefault("uid", profile.getOrDefault("googleId", ""));

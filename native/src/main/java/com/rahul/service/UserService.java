@@ -3,9 +3,6 @@ package com.rahul.service;
 import com.rahul.controller.UserController;
 import com.rahul.model.User;
 import com.rahul.repository.UserRepository;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Service;
-
 import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.Map;
@@ -14,12 +11,14 @@ import java.util.Optional;
 /**
  * Authoritative business service for authentication, user management, and quota limits.
  */
-@Service
 public class UserService {
 
     private final UserRepository userRepository;
 
-    @Autowired
+    public UserService() {
+        this(new UserRepository());
+    }
+
     public UserService(UserRepository userRepository) {
         this.userRepository = userRepository;
 

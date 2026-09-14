@@ -1,68 +1,61 @@
 <p align="center">
-  <img src="icons/icon.png" alt="GT Metadata Merger Logo" width="200"/>
+  <img src="native/icons/icon.png" alt="TakeoutFix Logo" width="160"/>
 </p>
 
-# 📸 GT Metadata Merger
+# 📸 TakeoutFix
 
-A privacy-first, completely offline desktop application that restores original "Date Taken" timestamps to your Google Photos Takeout exports. 
+A privacy-first, ultra-fast native desktop application that restores original "Date Taken" EXIF timestamps, GPS coordinates, and camera metadata to your Google Photos Takeout archives.
 
-When you export your photos from Google Takeout, Google strips the original creation dates from your files and places them inside separate `.json` files. This tool acts as an automated engine that reads those JSON files, perfectly matches them to your photos and videos (handling all of Google's weird naming conventions and character limits), and securely embeds the correct original timestamp back into your media.
+When you export your photos from Google Takeout, Google strips the original creation dates from your files and places them inside separate `.json` files. TakeoutFix reads those JSON sidecar files, matches them to your photos and videos (handling Google's character truncation, duplicate numbering, and edited suffixes), and embeds the authentic metadata directly back into your media files.
 
 ### ✨ Features
-- **100% Local & Private**: No cloud uploads. Your photos never leave your device.
-- **Dynamic Suffix Matching**: Automatically detects dynamically truncated Google Takeout JSON files (e.g., `IMG_2023.jpg.supplem.json`).
-- **Native OS File Picker**: Easily browse your local file system using native dialogs.
-- **Real-Time Streaming Logs**: Watch the restoration process live in the beautiful React UI.
-- **Power Management**: Automatically keeps your computer awake during massive multi-hour extraction processes, and optionally shuts down the PC when finished.
+- **100% Local & Private**: No cloud uploads. Your photos and videos never leave your computer.
+- **Embedded Multi-Core ExifTool Engine**: Dynamically manages parallel ExifTool workers utilizing up to 80% of your CPU cores.
+- **Smart Timestamp & GPS Restoration**: Restores Date Taken, digitized date, GPS geolocation, and camera model tags.
+- **Native OS File Dialogs**: Seamless local folder navigation.
+- **Lightweight Native Desktop Core**: Pure Java Swing interface with FlatLaf styling—boots in < 300ms with zero background port listeners.
+- **Power Management**: Prevents system sleep during long restorations, with optional auto-shutdown upon completion.
 
 ---
 
 ## 📥 Download (No Installation Required)
 
-You do not need to install Java or Node.js to run this. Simply download the standalone executable for your operating system:
+Download the standalone package for your operating system:
 
 1. Go to the [Releases Page](../../releases/latest).
-2. Download the `.zip` or `.tar.gz` for your operating system (Windows, macOS, or Linux).
-3. Extract the folder and run the `GTMetadataMerger` executable inside!
+2. Download the package for your OS:
+   - **Windows**: `TakeoutFix-Setup.msi` (Installer) or `TakeoutFix-Windows-Portable.zip` (Portable)
+   - **macOS**: `TakeoutFix-macOS.dmg` or `TakeoutFix-macOS-Portable.zip`
+   - **Linux**: `TakeoutFix-Linux.deb`, `TakeoutFix-Linux.rpm`, or `TakeoutFix-Linux-Portable.tar.gz`
+3. Launch `TakeoutFix` and start restoring!
 
 ---
 
 ## ⚙️ How to Use
 
-1. **Input Folder**: Click "Browse" and select your unzipped Google Takeout folder containing the images and JSON files.
-2. **Output Folder**: Select an empty folder where you want the restored photos to be copied.
-3. **Takeout Date (Optional)**: If you provide the date you exported the Takeout, the engine will use it to ignore incorrect timestamps injected by Google during the zipping process.
-4. **Post-Action**: Choose whether to prevent your computer from sleeping, or auto-shutdown when the 50GB+ process completes.
-5. Click **Start Extraction** and watch the logs fly by!
+1. **Source**: Select your unzipped Google Takeout folder or archive containing your photos and JSON files.
+2. **Destination**: Select an output folder where restored photos and videos will be saved.
+3. **Takeout Export Date (Optional)**: Provide your takeout export date so the engine can safely discard artificial zip timestamps.
+4. Click **Start Extraction** and monitor real-time progress in the operations log.
 
 ---
 
 ## 🛠️ For Developers
 
-Want to contribute or build from source? GT Metadata Merger is a Modular Monolith built with **Spring Boot 3.2 (Java 21)** and **React + Tailwind CSS**.
-
 ### Prerequisites
-- Java 21 JDK
-- Node.js 20+ & npm
+- Java 17+ JDK
 - Maven 3.8+
+- Node.js 20+ (for web landing page)
 
-### Running Locally
-Because the application is bundled to serve the React frontend natively through Spring Boot, you can build and run the entire stack with one command:
-
+### Building the Native Desktop App
 ```bash
-# Build the React app and package the Spring Boot JAR
-mvn clean install -DskipTests
-
-# Run the backend
-java -jar target/GTakeout-1.0.0.jar
+cd native
+mvn clean package -DskipTests
+java -jar target/takeoutfix.jar
 ```
-The application will start on `http://localhost:8081` and you can open it in your browser.
 
-### Project Architecture
-- `src/main/java/com/rahul/controller`: REST and Native System APIs.
-- `src/main/java/com/rahul/service`: Core domain logic (MediaScanner, MetadataMatcher, Dynamic RegEx).
-- `frontend/`: React source code, Tailwind configuration, and Vite bundler.
-- `.github/workflows/release.yml`: Automated CI/CD pipeline using `jpackage` to generate native binaries.
-
-## ⚠️ Note on Permissions
-To use the "Keep Awake" and "Shutdown" features, the application executes system-level shell commands. Ensure you are running the application with the appropriate privileges if those features are blocked by your OS.
+### Packaging Native Installers Locally
+```powershell
+# Windows EXE installer via jpackage
+powershell -ExecutionPolicy Bypass -File .\build-exe.ps1
+```

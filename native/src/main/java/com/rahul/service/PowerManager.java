@@ -2,13 +2,11 @@ package com.rahul.service;
 
 import java.awt.Robot;
 import java.awt.event.KeyEvent;
-import org.springframework.stereotype.Service;
 
 /**
  * Keeps the display awake by simulating minimal activity on an interval.
  * Also supports post-finish shutdown.
  */
-@Service
 public class PowerManager {
 
     public enum PostAction {

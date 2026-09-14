@@ -1,6 +1,5 @@
 package com.rahul.service;
 
-import org.springframework.stereotype.Service;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.*;
@@ -8,7 +7,6 @@ import java.nio.file.*;
 /**
  * Handles filesystem operations such as copying files and preserving directory structures.
  */
-@Service
 public class FileOperationService {
 
     /**

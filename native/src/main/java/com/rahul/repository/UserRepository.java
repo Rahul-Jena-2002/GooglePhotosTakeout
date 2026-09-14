@@ -3,8 +3,6 @@ package com.rahul.repository;
 import com.rahul.model.User;
 import org.json.JSONArray;
 import org.json.JSONObject;
-import org.springframework.stereotype.Repository;
-
 import java.io.File;
 import java.nio.file.Files;
 import java.time.LocalDateTime;
@@ -15,7 +13,6 @@ import java.util.concurrent.ConcurrentHashMap;
 /**
  * Local file-backed repository persisting user accounts and active sessions to ~/.takeoutfix/users.json.
  */
-@Repository
 public class UserRepository {
 
     private static final File STORAGE_FILE = new File(System.getProperty("user.home"), ".takeoutfix/users.json");

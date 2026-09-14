@@ -1,6 +1,5 @@
 package com.rahul.service;
 
-import org.springframework.stereotype.Service;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.*;
@@ -16,7 +15,6 @@ import java.util.regex.Pattern;
  * Responsible for parsing metadata from JSON files and applying
  * the correct timestamps to the filesystem.
  */
-@Service
 public class TimestampRestorer {
 
     private static final Pattern PHOTO_TAKEN_PATTERN = Pattern.compile("\"photoTakenTime\"\\s*:\\s*\\{[^}]*\"timestamp\"\\s*:\\s*\"(\\d+)\"", Pattern.CASE_INSENSITIVE | Pattern.DOTALL);

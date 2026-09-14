@@ -944,4 +944,12 @@ public class RecoveryCenterPanel extends JPanel {
     public ConsoleCard getConsoleCard() {
         return consoleCard;
     }
+
+    public JPanel getUpgradeBannerPanel() {
+        return upgradeBannerPanel;
+    }
+
+    public NetworkMonitorService getNetService() {
+        return netService;
+    }
 }

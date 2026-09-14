@@ -8,7 +8,6 @@ import javax.swing.border.EmptyBorder;
 import javax.swing.border.LineBorder;
 import javax.swing.table.DefaultTableModel;
 import java.awt.*;
-import java.io.File;
 
 /**
  * Duplicate Photos & Videos Finder Panel.
@@ -24,6 +23,10 @@ public class DuplicateFinderPanel extends JPanel {
     private final JButton btnStartScan = UiFactory.createPrimaryButton("Start Duplicate Scan");
     private final JButton btnClean = UiFactory.createSecondaryButton("Clean / Trash Selected Duplicates");
     private final DefaultTableModel dupTableModel;
+
+    public UserSyncBridgeService getUserService() {
+        return userService;
+    }
 
     public DuplicateFinderPanel(UserSyncBridgeService userService) {
         this.userService = userService;

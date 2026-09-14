@@ -310,4 +310,8 @@ public class HeaderBar extends JPanel {
         });
         return link;
     }
+
+    public JFrame getMainFrame() {
+        return mainFrame;
+    }
 }

@@ -8,39 +8,34 @@ import com.rahul.gui.theme.ThemeColors;
 import com.rahul.service.ExtractionService;
 import com.rahul.service.PowerManager;
 import com.rahul.service.SessionStatsService;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Component;
-
 import javax.swing.*;
-import javax.swing.border.EmptyBorder;
 import java.awt.*;
 import java.io.File;
 import java.net.URI;
 import java.time.Instant;
 import java.util.Optional;
 
-/**
- * Modular Orchestrator for the TakeoutFix Native Desktop Application GUI.
- * Rebuilt with strict Swing layout managers:
- * - Root JFrame with BorderLayout (NORTH, WEST, CENTER, SOUTH)
- * - Fixed-width responsive Sidebar
- * - GridBagLayout Main Content with expanding Logs panel
- * - Zero null layouts, zero setBounds, zero hardcoded coordinates.
- */
-@Component
 public class NativeDesktopGui {
 
-    @Autowired
     private ExtractionService extractionService;
-
-    @Autowired
     private SessionStatsService sessionStatsService;
-
-    @Autowired
     private NetworkMonitorService networkMonitorService;
-
-    @Autowired
     private UserSyncBridgeService userSyncBridgeService;
+
+    public NativeDesktopGui() {
+        this.sessionStatsService = new SessionStatsService();
+        this.networkMonitorService = new NetworkMonitorService();
+        this.userSyncBridgeService = new UserSyncBridgeService();
+        this.extractionService = new ExtractionService();
+    }
+
+    public NativeDesktopGui(ExtractionService extractionService, SessionStatsService sessionStatsService,
+                            NetworkMonitorService networkMonitorService, UserSyncBridgeService userSyncBridgeService) {
+        this.extractionService = extractionService;
+        this.sessionStatsService = sessionStatsService;
+        this.networkMonitorService = networkMonitorService;
+        this.userSyncBridgeService = userSyncBridgeService;
+    }
 
     private JFrame mainFrame;
     private HeaderBar headerBar;

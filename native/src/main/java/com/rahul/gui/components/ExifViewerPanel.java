@@ -33,6 +33,10 @@ public class ExifViewerPanel extends JPanel {
     private final DefaultTableModel tableModel;
     private final TableRowSorter<DefaultTableModel> rowSorter;
     private double currentLat = 0.0;
+
+    public UserSyncBridgeService getUserService() {
+        return userService;
+    }
     private double currentLon = 0.0;
 
     public ExifViewerPanel(UserSyncBridgeService userService) {

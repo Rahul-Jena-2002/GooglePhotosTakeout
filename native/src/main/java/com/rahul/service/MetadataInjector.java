@@ -1,9 +1,6 @@
 package com.rahul.service;
 
 import org.json.JSONObject;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Service;
-
 import java.io.File;
 import java.nio.file.Files;
 import java.text.SimpleDateFormat;
@@ -12,11 +9,17 @@ import java.util.Date;
 import java.util.List;
 import java.util.TimeZone;
 
-@Service
 public class MetadataInjector {
 
-    @Autowired
     private NativeExifToolEngine exifToolEngine;
+
+    public MetadataInjector() {
+        this(new NativeExifToolEngine());
+    }
+
+    public MetadataInjector(NativeExifToolEngine exifToolEngine) {
+        this.exifToolEngine = exifToolEngine;
+    }
 
     /**
      * Injects ALL metadata (EXIF dates, GPS, description, title, AND album name) in a SINGLE ExifTool call.

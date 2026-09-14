@@ -10,7 +10,6 @@ import javax.swing.filechooser.FileNameExtensionFilter;
 import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.DefaultTableModel;
 import java.awt.*;
-import java.io.File;
 
 /**
  * Metadata Comparison Tool Panel.
@@ -22,6 +21,10 @@ public class ComparisonPanel extends JPanel {
     private final JLabel mediaPathLabel = new JLabel("No media file chosen", SwingConstants.CENTER);
     private final JLabel jsonPathLabel = new JLabel("No Google JSON chosen", SwingConstants.CENTER);
     private final DefaultTableModel diffTableModel;
+
+    public UserSyncBridgeService getUserService() {
+        return userService;
+    }
 
     public ComparisonPanel(UserSyncBridgeService userService) {
         this.userService = userService;

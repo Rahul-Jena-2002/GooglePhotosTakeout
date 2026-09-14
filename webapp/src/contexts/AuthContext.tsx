@@ -1079,39 +1079,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
 
         setUserData(data);
-
-        // Auto-sync Google user credentials and real tier/quota to TakeoutFix Native Desktop App
-        try {
-          const compUsedFiles = Math.max(
-            typeof data.usedFiles === 'number' ? data.usedFiles : 0,
-            typeof data.totalFilesProcessed === 'number' ? data.totalFilesProcessed : 0,
-            typeof data.lifetimeFiles === 'number' ? data.lifetimeFiles : 0
-          );
-          const compUsedBytes = Math.max(
-            typeof data.usedBytes === 'number' ? data.usedBytes : 0,
-            typeof data.totalBytesProcessed === 'number' ? data.totalBytesProcessed : 0,
-            typeof data.lifetimeBytes === 'number' ? data.lifetimeBytes : 0
-          );
-
-          fetch('http://localhost:8081/api/user/sync', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              uid: user.uid,
-              email: user.email,
-              displayName: user.displayName,
-              photoURL: user.photoURL,
-              plan: data.plan || 'free',
-              usedFiles: compUsedFiles,
-              usedBytes: compUsedBytes,
-              totalFilesProcessed: data.totalFilesProcessed || 0,
-              totalBytesProcessed: data.totalBytesProcessed || 0,
-              lifetimeFiles: data.lifetimeFiles || 0,
-              lifetimeBytes: data.lifetimeBytes || 0,
-              isAdmin: Boolean(data.isAdmin)
-            })
-          }).catch(() => {});
-        } catch (_) {}
       }
     }, (err) => {
       console.warn("Session listener error:", err);
@@ -1151,9 +1118,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     }
     await signOut(auth);
-    try {
-      fetch('http://localhost:8081/api/user/logout', { method: 'POST' }).catch(() => {});
-    } catch (_) {}
+
     try {
       localStorage.removeItem("takeoutfix_user_data");
       localStorage.removeItem("takeoutfix_admin_data");
