@@ -143,20 +143,20 @@ function DesktopAuthBridgeContent() {
   const planLabel = (userData?.plan || "free").toUpperCase();
 
   return (
-    <div className="min-h-[80vh] flex items-center justify-center p-4 md:p-8">
-      <Card className="w-full max-w-lg border-zinc-800 bg-zinc-950/80 backdrop-blur-xl shadow-2xl overflow-hidden relative border">
+    <div className="min-h-[80vh] flex items-center justify-center p-4 md:p-8 font-sans">
+      <Card className="w-full max-w-lg border-zinc-200 dark:border-zinc-800 bg-white/95 dark:bg-zinc-950/80 backdrop-blur-xl shadow-2xl overflow-hidden relative border text-zinc-900 dark:text-white">
         {/* Glow accent */}
-        <div className="absolute -top-24 -left-24 w-48 h-48 bg-emerald-500/15 rounded-full blur-3xl pointer-events-none" />
-        <div className="absolute -bottom-24 -right-24 w-48 h-48 bg-cyan-500/15 rounded-full blur-3xl pointer-events-none" />
+        <div className="absolute -top-24 -left-24 w-48 h-48 bg-emerald-500/10 dark:bg-emerald-500/15 rounded-full blur-3xl pointer-events-none" />
+        <div className="absolute -bottom-24 -right-24 w-48 h-48 bg-cyan-500/10 dark:bg-cyan-500/15 rounded-full blur-3xl pointer-events-none" />
 
         <CardHeader className="text-center pb-4 pt-8">
-          <div className="mx-auto w-14 h-14 rounded-2xl bg-zinc-900 border border-zinc-800 flex items-center justify-center shadow-lg mb-4 text-emerald-400">
+          <div className="mx-auto w-14 h-14 rounded-2xl bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 flex items-center justify-center shadow-md mb-4 text-emerald-600 dark:text-emerald-400">
             <Laptop className="w-7 h-7" />
           </div>
-          <CardTitle className="text-2xl font-bold tracking-tight text-white">
+          <CardTitle className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-white">
             TakeoutFix Desktop
           </CardTitle>
-          <CardDescription className="text-zinc-400 text-sm mt-1">
+          <CardDescription className="text-zinc-500 dark:text-zinc-400 text-sm mt-1">
             Secure Authentication Bridge
           </CardDescription>
         </CardHeader>
@@ -170,12 +170,12 @@ function DesktopAuthBridgeContent() {
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -10 }}
-                className="p-4 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-300 text-sm flex items-start gap-3"
+                className="p-4 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-900 dark:text-amber-300 text-sm flex items-start gap-3"
               >
-                <AlertCircle className="w-5 h-5 flex-shrink-0 mt-0.5 text-amber-400" />
+                <AlertCircle className="w-5 h-5 flex-shrink-0 mt-0.5 text-amber-600 dark:text-amber-400" />
                 <div>
                   <p className="font-semibold mb-1">No Local Desktop Port Detected</p>
-                  <p className="text-amber-200/80 text-xs leading-relaxed">
+                  <p className="text-amber-800/80 dark:text-amber-200/80 text-xs leading-relaxed">
                     This page is meant to be opened by the TakeoutFix Desktop application. Please open TakeoutFix on your computer and click <strong>"Sign in with Google"</strong>.
                   </p>
                 </div>
@@ -191,13 +191,13 @@ function DesktopAuthBridgeContent() {
                 exit={{ opacity: 0, y: -10 }}
                 className="space-y-5"
               >
-                <div className="text-center text-sm text-zinc-300">
+                <div className="text-center text-sm text-zinc-600 dark:text-zinc-300">
                   <p>Sign in with your Google account to connect TakeoutFix Desktop and activate your license.</p>
                 </div>
 
                 <Button
                   onClick={handleSignIn}
-                  className="w-full h-12 bg-white text-zinc-950 hover:bg-zinc-100 font-semibold flex items-center justify-center gap-3 rounded-xl shadow-lg transition-all"
+                  className="w-full h-12 bg-zinc-900 text-white hover:bg-zinc-800 dark:bg-white dark:text-zinc-950 dark:hover:bg-zinc-100 font-semibold flex items-center justify-center gap-3 rounded-xl shadow-lg transition-all cursor-pointer"
                 >
                   <svg className="w-5 h-5" viewBox="0 0 24 24">
                     <path
@@ -221,7 +221,7 @@ function DesktopAuthBridgeContent() {
                 </Button>
 
                 <p className="text-center text-xs text-zinc-500">
-                  Ready to link with desktop on port <span className="text-zinc-400 font-mono">{port}</span>
+                  Ready to link with desktop on port <span className="text-zinc-700 dark:text-zinc-400 font-mono">{port}</span>
                 </p>
               </motion.div>
             )}
@@ -237,8 +237,8 @@ function DesktopAuthBridgeContent() {
               >
                 <div className="w-12 h-12 border-3 border-emerald-500 border-t-transparent rounded-full animate-spin mx-auto" />
                 <div>
-                  <p className="text-white font-medium">Connecting to TakeoutFix Desktop...</p>
-                  <p className="text-zinc-400 text-xs mt-1">Transmitting session token to port {port}</p>
+                  <p className="text-zinc-900 dark:text-white font-medium">Connecting to TakeoutFix Desktop...</p>
+                  <p className="text-zinc-500 dark:text-zinc-400 text-xs mt-1">Transmitting session token to port {port}</p>
                 </div>
               </motion.div>
             )}
@@ -252,41 +252,41 @@ function DesktopAuthBridgeContent() {
                 exit={{ opacity: 0, scale: 0.95 }}
                 className="space-y-6 text-center"
               >
-                <div className="w-16 h-16 rounded-full bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center mx-auto text-emerald-400 shadow-xl">
+                <div className="w-16 h-16 rounded-full bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center mx-auto text-emerald-600 dark:text-emerald-400 shadow-lg">
                   <CheckCircle2 className="w-9 h-9" />
                 </div>
 
                 <div className="space-y-1">
-                  <h3 className="text-xl font-bold text-white">Successfully Connected!</h3>
-                  <p className="text-zinc-400 text-sm">
+                  <h3 className="text-xl font-bold text-zinc-900 dark:text-white">Successfully Connected!</h3>
+                  <p className="text-zinc-600 dark:text-zinc-400 text-sm">
                     TakeoutFix Desktop is now authenticated and ready to use.
                   </p>
                 </div>
 
                 {/* Account card */}
                 {user && (
-                  <div className="bg-zinc-900/80 border border-zinc-800 rounded-xl p-4 flex items-center justify-between text-left">
+                  <div className="bg-zinc-50 dark:bg-zinc-900/80 border border-zinc-200 dark:border-zinc-800 rounded-xl p-4 flex items-center justify-between text-left shadow-sm">
                     <div className="flex items-center gap-3 min-w-0">
                       {user.photoURL ? (
                         <img
                           src={user.photoURL}
                           alt="Avatar"
-                          className="w-10 h-10 rounded-full border border-zinc-700 flex-shrink-0"
+                          className="w-10 h-10 rounded-full border border-zinc-300 dark:border-zinc-700 flex-shrink-0"
                           referrerPolicy="no-referrer"
                         />
                       ) : (
-                        <div className="w-10 h-10 rounded-full bg-zinc-800 flex items-center justify-center text-zinc-300 font-bold flex-shrink-0">
+                        <div className="w-10 h-10 rounded-full bg-zinc-200 dark:bg-zinc-800 flex items-center justify-center text-zinc-700 dark:text-zinc-300 font-bold flex-shrink-0">
                           {(user.displayName || user.email || "U").charAt(0).toUpperCase()}
                         </div>
                       )}
                       <div className="min-w-0">
-                        <p className="text-white text-sm font-semibold truncate">
+                        <p className="text-zinc-900 dark:text-white text-sm font-semibold truncate">
                           {user.displayName || "TakeoutFix User"}
                         </p>
-                        <p className="text-zinc-400 text-xs truncate">{user.email}</p>
+                        <p className="text-zinc-500 dark:text-zinc-400 text-xs truncate">{user.email}</p>
                       </div>
                     </div>
-                    <Badge variant="outline" className="bg-emerald-500/10 text-emerald-400 border-emerald-500/30 font-semibold px-2.5 py-1 text-xs">
+                    <Badge variant="outline" className="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/30 font-semibold px-2.5 py-1 text-xs">
                       {planLabel}
                     </Badge>
                   </div>
@@ -295,7 +295,7 @@ function DesktopAuthBridgeContent() {
                 <div className="pt-2 flex flex-col gap-2">
                   <Button
                     onClick={() => window.close()}
-                    className="w-full bg-zinc-800 hover:bg-zinc-700 text-white font-medium rounded-xl h-11"
+                    className="w-full bg-zinc-100 hover:bg-zinc-200 text-zinc-900 dark:bg-zinc-800 dark:hover:bg-zinc-700 dark:text-white font-medium rounded-xl h-11 border border-zinc-200 dark:border-zinc-700 cursor-pointer shadow-sm"
                   >
                     You can close this tab now
                   </Button>
@@ -312,19 +312,19 @@ function DesktopAuthBridgeContent() {
                 exit={{ opacity: 0, y: -10 }}
                 className="space-y-5"
               >
-                <div className="p-4 rounded-xl bg-red-500/10 border border-red-500/20 text-red-300 text-sm flex items-start gap-3">
-                  <AlertCircle className="w-5 h-5 flex-shrink-0 mt-0.5 text-red-400" />
+                <div className="p-4 rounded-xl bg-red-500/10 border border-red-500/20 text-red-800 dark:text-red-300 text-sm flex items-start gap-3">
+                  <AlertCircle className="w-5 h-5 flex-shrink-0 mt-0.5 text-red-600 dark:text-red-400" />
                   <div>
                     <p className="font-semibold mb-1">Local Connection Blocked</p>
-                    <p className="text-red-200/80 text-xs leading-relaxed">
+                    <p className="text-red-700/80 dark:text-red-200/80 text-xs leading-relaxed">
                       {errorMessage || "Your browser or firewall prevented the web page from communicating directly with the desktop app."}
                     </p>
                   </div>
                 </div>
 
                 {manualUrl && (
-                  <div className="p-4 rounded-xl bg-zinc-900 border border-zinc-800 space-y-3">
-                    <p className="text-xs text-zinc-300">
+                  <div className="p-4 rounded-xl bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 space-y-3">
+                    <p className="text-xs text-zinc-600 dark:text-zinc-300">
                       Click the direct link below to finish authenticating in TakeoutFix Desktop:
                     </p>
                     <a
@@ -343,7 +343,7 @@ function DesktopAuthBridgeContent() {
                   <Button
                     onClick={dispatchAuthToDesktop}
                     variant="outline"
-                    className="flex-1 border-zinc-800 hover:bg-zinc-900 text-zinc-300 rounded-xl h-10 text-xs gap-2"
+                    className="flex-1 border-zinc-300 dark:border-zinc-800 hover:bg-zinc-100 dark:hover:bg-zinc-900 text-zinc-700 dark:text-zinc-300 rounded-xl h-10 text-xs gap-2 cursor-pointer"
                   >
                     <RefreshCw className="w-3.5 h-3.5" />
                     Retry
@@ -352,7 +352,7 @@ function DesktopAuthBridgeContent() {
                     <Button
                       onClick={handleSwitchAccount}
                       variant="ghost"
-                      className="text-zinc-400 hover:text-white rounded-xl h-10 text-xs"
+                      className="text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white rounded-xl h-10 text-xs cursor-pointer"
                     >
                       Switch Account
                     </Button>

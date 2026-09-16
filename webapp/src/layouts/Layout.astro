@@ -8,13 +8,15 @@ interface Props {
   description?: string;
   isToolPage?: boolean;
   isAuthPage?: boolean;
+  robots?: string;
 }
 
 const { 
   title = "TakeoutFix – Take Out Fix, Takeout Fixer & Metadata Fixer for Google Photos",
   description = "Restore missing EXIF dates, GPS coordinates, timestamps, and other metadata from Google Takeout archives. Everything runs locally in your browser—your files never leave your device. Not affiliated with Google.",
   isToolPage = false,
-  isAuthPage = false
+  isAuthPage = false,
+  robots = isAuthPage ? "noindex, nofollow" : "index, follow"
 } = Astro.props;
 
 // Generate canonical URL dynamically based on current path
@@ -243,7 +245,7 @@ const canonicalUrl = `https://takeoutfix.pages.dev${Astro.url.pathname.replace(/
     <ClientRouter fallback="swap" />
     <meta name="description" content={description} />
     <meta name="keywords" content="take out fix, takeoutfixer, meta data fix, metadata fixer, how to fix metadata, how to fix meta data, metadata fix, restore metadata, Google Takeout metadata fix, EXIF metadata fix, Google Photos metadata fixer, EXIF recovery, GPS coordinates, JSON sidecar fixer, restore photo date taken, takeoutfix" />
-    <meta name="robots" content="index, follow" />
+    <meta name="robots" content={robots} />
     <meta name="google-site-verification" content="yjn_T1bJ3RfrKhKTaT4in3ciTBkK5Ngw9LfOChfRztk" />
     <link rel="canonical" href={canonicalUrl} />
     

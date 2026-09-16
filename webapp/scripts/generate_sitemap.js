@@ -1,42 +1,34 @@
 import fs from 'fs';
 import path from 'path';
 
-const actionKeys = ["restore", "fix", "recover"];
-const targetKeys = ["metadata", "exif", "gps", "date-taken", "timestamp"];
-const sourceKeys = ["takeout", "photos"];
-
 const baseUrl = "https://takeoutfix.pages.dev";
 const today = new Date().toISOString().split('T')[0];
 
-// ─── Core static pages ────────────────────────────────────────────────────────
-const corePages = [
-  { loc: "/",                             changefreq: "weekly",  priority: "1.0" },
-  { loc: "/restore-data",                 changefreq: "monthly", priority: "0.9" },
-  { loc: "/pricing",                      changefreq: "monthly", priority: "0.8" },
-  { loc: "/reviews",                      changefreq: "weekly",  priority: "0.7" },
-  { loc: "/support",                      changefreq: "monthly", priority: "0.6" },
-  { loc: "/privacy",                      changefreq: "monthly", priority: "0.3" },
-  { loc: "/terms",                        changefreq: "monthly", priority: "0.3" },
-  { loc: "/refund",                       changefreq: "monthly", priority: "0.3" },
-  { loc: "/tool",                         changefreq: "monthly", priority: "0.9" },
-  { loc: "/download",                     changefreq: "monthly", priority: "0.8" },
-  // ─── Keyword landing pages ────────────────────────────────────────────────
-  { loc: "/takeout-fix",                  changefreq: "monthly", priority: "0.9" },
-  { loc: "/takeout-fixer",                changefreq: "monthly", priority: "0.9" },
-  { loc: "/metadata-fixer",               changefreq: "monthly", priority: "0.9" },
-  { loc: "/google-photos-metadata-fix",   changefreq: "monthly", priority: "0.9" },
-  { loc: "/google-takeout-merger",        changefreq: "monthly", priority: "0.9" },
-  { loc: "/fix-google-takeout-dates",     changefreq: "monthly", priority: "0.9" },
-  { loc: "/restore-gps-google-takeout",   changefreq: "monthly", priority: "0.9" },
-  { loc: "/google-takeout-to-apple-photos", changefreq: "monthly", priority: "0.9" },
+// ─── High-Value Canonical & Editorial Pillar Pages (AdSense Compliant) ────────
+const indexablePages = [
+  { loc: "/",                              changefreq: "weekly",  priority: "1.0" },
+  { loc: "/restore-data",                  changefreq: "weekly",  priority: "0.9" },
+  { loc: "/pricing",                       changefreq: "monthly", priority: "0.8" },
+  { loc: "/download",                      changefreq: "monthly", priority: "0.8" },
+  { loc: "/reviews",                       changefreq: "weekly",  priority: "0.8" },
+  { loc: "/support",                       changefreq: "monthly", priority: "0.7" },
+  { loc: "/privacy",                       changefreq: "monthly", priority: "0.4" },
+  { loc: "/terms",                         changefreq: "monthly", priority: "0.4" },
+  { loc: "/refund",                        changefreq: "monthly", priority: "0.4" },
+  { loc: "/tool",                          changefreq: "monthly", priority: "0.9" },
+  // Distinct Technical Problem-Solving Pillar Guides
+  { loc: "/fix-google-takeout-dates",      changefreq: "monthly", priority: "0.8" },
+  { loc: "/restore-gps-google-takeout",    changefreq: "monthly", priority: "0.8" },
+  { loc: "/google-takeout-to-apple-photos", changefreq: "monthly", priority: "0.8" },
+  { loc: "/metadata-fixer",                changefreq: "monthly", priority: "0.8" },
 ];
 
 let mainXml = `<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-  <!-- Core & Keyword Landing Pages -->
+  <!-- Core Canonical & Editorial Pillar Pages -->
 `;
 
-for (const page of corePages) {
+for (const page of indexablePages) {
   mainXml += `  <url>
     <loc>${baseUrl}${page.loc}</loc>
     <lastmod>${today}</lastmod>
@@ -45,30 +37,10 @@ for (const page of corePages) {
   </url>\n`;
 }
 
-mainXml += `  <!-- SEO Keyword Permutation Dynamic Landing Pages -->\n`;
-
-let dynamicCount = 0;
-for (const action of actionKeys) {
-  for (const target of targetKeys) {
-    for (const source of sourceKeys) {
-      const slug = `how-to-${action}-${target}-from-${source}`;
-      mainXml += `  <url>
-    <loc>${baseUrl}/${slug}</loc>
-    <lastmod>${today}</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.7</priority>
-  </url>\n`;
-      dynamicCount++;
-    }
-  }
-}
-
 mainXml += `</urlset>\n`;
 
 const sitemapPath = path.resolve('public/sitemap.xml');
 fs.mkdirSync(path.dirname(sitemapPath), { recursive: true });
 fs.writeFileSync(sitemapPath, mainXml, 'utf8');
 
-const totalUrls = corePages.length + dynamicCount;
-console.log(`✅ Generated sitemap.xml at ${sitemapPath}`);
-console.log(`   Core pages: ${corePages.length} | Dynamic SEO pages: ${dynamicCount} | Total: ${totalUrls} URLs`);
+console.log(`✅ Generated clean sitemap.xml with ${indexablePages.length} high-value URLs (0 thin programmatic doorway pages).`);
