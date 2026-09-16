@@ -15,62 +15,20 @@ export default function MainLayout() {
   const location = useLocation()
 
   const handleLogin = async () => {
-    let loginSuccess = false;
-    let toastShown = false;
-    let popupRef: Window | null = null;
-    let checkInterval: any = null;
-
-    const originalOpen = window.open;
-    // Override window.open to capture the popup window when Firebase opens it
-    window.open = function(...args) {
-      const win = originalOpen.apply(this, args);
-      popupRef = win;
-      // Restore window.open immediately upon capturing
-      window.open = originalOpen;
-      return win;
-    };
-
-    // Safe fallback to restore window.open if it's never called
-    const restoreTimeout = setTimeout(() => {
-      if (window.open !== originalOpen) {
-        window.open = originalOpen;
-      }
-    }, 5000);
-
     try {
-      checkInterval = setInterval(() => {
-        if (popupRef && popupRef.closed) {
-          clearInterval(checkInterval);
-          clearTimeout(restoreTimeout);
-          if (window.open !== originalOpen) {
-            window.open = originalOpen;
-          }
-          if (!loginSuccess && !toastShown) {
-            toastShown = true;
-            useToastStore.getState().addToast("Please check your credentials and try again.", "error", 4500, "Login Failed");
-          }
-        }
-      }, 100);
-
       await login();
-      loginSuccess = true;
-      clearInterval(checkInterval);
-      clearTimeout(restoreTimeout);
-      if (window.open !== originalOpen) {
-        window.open = originalOpen;
-      }
     } catch (err: any) {
-      clearInterval(checkInterval);
-      clearTimeout(restoreTimeout);
-      if (window.open !== originalOpen) {
-        window.open = originalOpen;
-      }
-      if (loginSuccess) return;
-
-      if (!toastShown) {
-        toastShown = true;
-        const isAdmin = location.pathname.startsWith("/admin");
-        const feedback = getFriendlyAuthMessage(err, isAdmin);
+      const isAdmin = location.pathname.startsWith("/admin");
+      const feedback = getFriendlyAuthMessage(err, isAdmin);
+      if (feedback.isCancelled) {
+        // User intentionally closed the popup or cancelled sign-in
+        useToastStore.getState().addToast(
+          feedback.message,
+          "info",
+          4000,
+          feedback.title
+        );
+      } else {
         useToastStore.getState().addToast(
           feedback.message,
           feedback.type === "error" ? "error" : "success",
@@ -84,7 +42,6 @@ export default function MainLayout() {
   // Only run telemetry sync on admin routes to avoid loading admin collection listeners for normal users
   const isAdminRoute = location.pathname.startsWith('/admin')
   useTelemetrySync(isAdminRoute)
-  const isToolPage = location.pathname === "/tool"
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [profileMenuOpen, setProfileMenuOpen] = useState(false)
   const [notifications, setNotifications] = useState<any[]>([])
@@ -675,7 +632,7 @@ export default function MainLayout() {
             <div className="flex items-center gap-2.5 min-w-0">
               <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${dotColor} ${!isExpired ? 'animate-pulse' : ''}`} />
               <span className={`text-[11px] font-bold uppercase tracking-widest ${textColor} hidden sm:block flex-shrink-0`}>
-                {isExpired ? 'Recovery Pass Expired' : isRed ? 'Expiring Soon!' : isAmber ? 'Recovery Pass Active' : 'Recovery Pass Active'}
+                {isExpired ? 'Recovery Pass Expired' : isRed ? 'Expiring Soon!' : 'Recovery Pass Active'}
               </span>
               <span className={`text-[11px] font-mono font-black ${textColor} tabular-nums`}>
                 {timeStr}

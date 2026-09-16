@@ -409,46 +409,50 @@ function PricingPageContent() {
 
       {/* ─── BANNER SECTION: Free Unlimited Promo OVERRIDES Every Other Banner ─── */}
       {isFreePromoActive ? (
-        <div className="mb-12 max-w-2xl mx-auto bg-gradient-to-r from-emerald-500/15 via-emerald-500/10 to-emerald-500/15 border-2 border-emerald-500/40 backdrop-blur-md rounded-2xl p-6 text-center flex flex-col gap-3.5 items-center shadow-lg shadow-emerald-500/5 animate-in fade-in zoom-in-95 duration-300">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-400 text-xs font-black uppercase tracking-wider border border-emerald-500/30">
-            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
+        <div className="mb-12 max-w-2xl mx-auto bg-gradient-to-b from-emerald-50/90 via-emerald-50/40 to-white dark:from-emerald-950/40 dark:via-zinc-900/40 dark:to-zinc-900/60 border-2 border-emerald-400/50 dark:border-emerald-500/40 backdrop-blur-md rounded-2xl p-7 text-center flex flex-col gap-4 items-center shadow-lg shadow-emerald-500/10 animate-in fade-in zoom-in-95 duration-300">
+          <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-emerald-100 dark:bg-emerald-500/20 text-emerald-800 dark:text-emerald-300 text-xs font-black uppercase tracking-wider border border-emerald-300 dark:border-emerald-500/40 shadow-xs">
+            <span className="w-2 h-2 rounded-full bg-emerald-600 dark:bg-emerald-400 animate-ping" />
             Special Limited-Time Event
           </div>
-          <h2 className="text-xl md:text-2xl font-black text-white tracking-tight">
+          <h2 className="text-2xl md:text-3xl font-black text-zinc-950 dark:text-white tracking-tight">
             🎉 100% Free Unlimited Restoration is Live!
           </h2>
-          <p className="text-sm text-zinc-300 max-w-lg leading-relaxed">
+          <p className="text-sm md:text-base text-zinc-750 dark:text-zinc-300 max-w-lg leading-relaxed font-medium">
             All file count and storage limits have been lifted for all Free accounts! Enjoy unlimited photo and video restoration with zero cost.
           </p>
           {freePromoTimeLeft && (
-            <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-lg bg-zinc-950/80 border border-emerald-500/30 text-emerald-300 font-mono text-xs font-bold">
-              <span>⏳ Special Offer Ends in:</span>
-              <span className="text-white font-black">{freePromoTimeLeft}</span>
+            <div className="inline-flex items-center gap-2.5 px-4 py-2 rounded-xl bg-white dark:bg-zinc-950 border border-emerald-300/80 dark:border-emerald-500/40 shadow-sm font-mono text-xs md:text-sm">
+              <span className="text-emerald-800 dark:text-emerald-300 font-bold flex items-center gap-1.5">
+                <span>⏳</span> Special Offer Ends in:
+              </span>
+              <span className="text-zinc-950 dark:text-white font-black tracking-wider bg-emerald-100/70 dark:bg-zinc-900 px-2.5 py-0.5 rounded border border-emerald-200 dark:border-zinc-800">
+                {freePromoTimeLeft}
+              </span>
             </div>
           )}
           <a
             href="/tool"
-            className="mt-1 inline-flex items-center gap-2 px-6 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black font-extrabold text-xs transition-all cursor-pointer shadow-md hover:scale-105"
+            className="mt-1 inline-flex items-center gap-2 px-7 py-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white dark:bg-emerald-500 dark:hover:bg-emerald-400 dark:text-zinc-950 font-black text-sm transition-all cursor-pointer shadow-md hover:shadow-emerald-500/25 hover:scale-105 active:scale-95"
           >
             Start Unlimited Free Fix <ArrowRight className="w-4 h-4" />
           </a>
         </div>
       ) : isPromoActiveLocal ? (
-        <div className="mb-12 max-w-xl mx-auto bg-gradient-to-r from-indigo-500/10 via-purple-500/10 to-indigo-500/10 border border-indigo-500/20 backdrop-blur-md rounded-2xl p-5 text-center flex flex-col gap-3.5 items-center">
-          <span className="text-sm font-semibold text-indigo-400">
+        <div className="mb-12 max-w-xl mx-auto bg-gradient-to-r from-indigo-50/80 via-purple-50/80 to-indigo-50/80 dark:from-indigo-500/10 dark:via-purple-500/10 dark:to-indigo-500/10 border border-indigo-200 dark:border-indigo-500/20 backdrop-blur-md rounded-2xl p-5 text-center flex flex-col gap-3.5 items-center shadow-sm">
+          <span className="text-sm font-bold text-indigo-800 dark:text-indigo-400">
             {bannerText}
           </span>
           {Object.keys(activeCoupons).length > 0 && (
             <div className="flex flex-wrap items-center justify-center gap-2 text-xs">
-              <span className="text-zinc-400 font-medium">Active Coupons (click to copy):</span>
+              <span className="text-zinc-600 dark:text-zinc-400 font-medium">Active Coupons (click to copy):</span>
               {Object.entries(activeCoupons).map(([planKey, code]) => {
                 const codeStr = String(code);
                 const planLabel = planKey === 'recovery_pass' ? 'Recovery' : planKey === 'pro' ? 'Pro' : 'Super';
                 const colorClass = planKey === 'recovery_pass' 
-                  ? 'text-zinc-300 bg-zinc-800 border-zinc-700 hover:bg-zinc-750' 
+                  ? 'text-zinc-800 dark:text-zinc-300 bg-zinc-100 dark:bg-zinc-800 border-zinc-300 dark:border-zinc-700 hover:bg-zinc-200 dark:hover:bg-zinc-750' 
                   : planKey === 'pro'
-                    ? 'text-blue-400 bg-blue-500/10 border-blue-500/20 hover:bg-blue-500/25'
-                    : 'text-amber-400 bg-amber-500/10 border-amber-500/20 hover:bg-amber-500/25';
+                    ? 'text-blue-700 dark:text-blue-400 bg-blue-50 dark:bg-blue-500/10 border-blue-200 dark:border-blue-500/20 hover:bg-blue-100 dark:hover:bg-blue-500/25'
+                    : 'text-amber-800 dark:text-amber-400 bg-amber-50 dark:bg-amber-500/10 border-amber-200 dark:border-amber-500/20 hover:bg-amber-100 dark:hover:bg-amber-500/25';
                 return (
                   <button
                     key={planKey}
