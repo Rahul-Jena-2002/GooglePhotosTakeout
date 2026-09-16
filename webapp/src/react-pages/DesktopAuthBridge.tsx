@@ -7,10 +7,12 @@ import { ToastContainer } from "../components/ui/toast";
 import { CheckCircle2, AlertCircle, Laptop, RefreshCw, ExternalLink } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { getFriendlyAuthMessage } from "../lib/authErrors";
+import { isSuperAdminEmail } from "../lib/adminAuth";
 
 function DesktopAuthBridgeContent() {
   const { user, userData, loading, login, logout } = useAuth();
   const [port, setPort] = useState<string | null>(null);
+  const [selectAccountParam, setSelectAccountParam] = useState(false);
   const [status, setStatus] = useState<"idle" | "connecting" | "success" | "error">("idle");
   const [errorMessage, setErrorMessage] = useState<string>("");
   const [manualUrl, setManualUrl] = useState<string>("");
@@ -20,6 +22,8 @@ function DesktopAuthBridgeContent() {
     if (typeof window !== "undefined") {
       const searchParams = new URLSearchParams(window.location.search);
       const portParam = searchParams.get("port");
+      const selectAccount = searchParams.get("select_account") === "true";
+      setSelectAccountParam(selectAccount);
       if (portParam && !Number.isNaN(Number(portParam))) {
         setPort(portParam);
       } else {
@@ -29,15 +33,18 @@ function DesktopAuthBridgeContent() {
     }
   }, []);
 
-  // When user is authenticated and port is valid, automatically send auth payload to desktop
-  useEffect(() => {
-    if (!port || loading) return;
+  const isAdmin = isSuperAdminEmail(user?.email);
+  const requiresConfirmation = Boolean(isAdmin || selectAccountParam);
 
-    if (user && !attemptedRef.current) {
+  // When user is authenticated and port is valid, automatically send auth payload to desktop ONLY if not admin and not selectAccount
+  useEffect(() => {
+    if (!port || loading || !user) return;
+
+    if (!attemptedRef.current && !requiresConfirmation) {
       attemptedRef.current = true;
       dispatchAuthToDesktop();
     }
-  }, [user, userData, port, loading]);
+  }, [user, userData, port, loading, requiresConfirmation]);
 
   const dispatchAuthToDesktop = async () => {
     if (!port || !user) return;
@@ -223,6 +230,79 @@ function DesktopAuthBridgeContent() {
                 <p className="text-center text-xs text-zinc-500">
                   Ready to link with desktop on port <span className="text-zinc-700 dark:text-zinc-400 font-mono">{port}</span>
                 </p>
+              </motion.div>
+            )}
+
+            {/* Case 2.5: User logged in, requires confirmation (Admin account or select_account requested) */}
+            {port && user && !loading && status === "idle" && requiresConfirmation && (
+              <motion.div
+                key="confirm-login"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                className="space-y-4"
+              >
+                <div className="text-center">
+                  <h3 className="text-lg font-bold text-zinc-900 dark:text-white">Link Account to Desktop</h3>
+                  <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1">
+                    Confirm the account you want to connect to TakeoutFix Desktop.
+                  </p>
+                </div>
+
+                {isAdmin && (
+                  <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-900 dark:text-amber-300 text-xs flex items-start gap-2">
+                    <AlertCircle className="w-4 h-4 shrink-0 mt-0.5 text-amber-500" />
+                    <div>
+                      <strong className="font-bold">Admin Account Detected:</strong> You are currently signed in as <strong>{user.email}</strong>. To test with a regular user account, click "Sign In with Different Account" below.
+                    </div>
+                  </div>
+                )}
+
+                {/* Account card */}
+                <div className="bg-zinc-50 dark:bg-zinc-900/80 border border-zinc-200 dark:border-zinc-800 rounded-xl p-4 flex items-center justify-between text-left shadow-sm">
+                  <div className="flex items-center gap-3 min-w-0">
+                    {user.photoURL ? (
+                      <img
+                        src={user.photoURL}
+                        alt="Avatar"
+                        className="w-10 h-10 rounded-full border border-zinc-300 dark:border-zinc-700 flex-shrink-0"
+                        referrerPolicy="no-referrer"
+                      />
+                    ) : (
+                      <div className="w-10 h-10 rounded-full bg-zinc-200 dark:bg-zinc-800 flex items-center justify-center text-zinc-700 dark:text-zinc-300 font-bold flex-shrink-0">
+                        {(user.displayName || user.email || "U").charAt(0).toUpperCase()}
+                      </div>
+                    )}
+                    <div className="min-w-0">
+                      <p className="text-zinc-900 dark:text-white text-sm font-semibold truncate">
+                        {user.displayName || "TakeoutFix User"}
+                      </p>
+                      <p className="text-zinc-500 dark:text-zinc-400 text-xs truncate">{user.email}</p>
+                    </div>
+                  </div>
+                  <Badge variant="outline" className="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/30 font-semibold px-2.5 py-1 text-xs">
+                    {planLabel}
+                  </Badge>
+                </div>
+
+                <div className="pt-2 flex flex-col gap-2.5">
+                  <Button
+                    onClick={() => {
+                      attemptedRef.current = true;
+                      dispatchAuthToDesktop();
+                    }}
+                    className="w-full h-11 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl shadow-md cursor-pointer transition-all"
+                  >
+                    Connect as {user.displayName?.split(" ")[0] || "User"}
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={handleSwitchAccount}
+                    className="w-full h-10 border-zinc-300 dark:border-zinc-700 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 text-xs font-semibold rounded-xl cursor-pointer"
+                  >
+                    Sign In with Different Google Account
+                  </Button>
+                </div>
               </motion.div>
             )}
 
