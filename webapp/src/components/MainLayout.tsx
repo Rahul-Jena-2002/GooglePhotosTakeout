@@ -10,6 +10,41 @@ import { useToastStore } from "../store/useToastStore"
 import { registerServiceWorker } from "../lib/swRegister"
 import { getFriendlyAuthMessage } from "../lib/authErrors"
 
+const getPlanLabel = (plan?: string): string => {
+  if (plan === 'pro') return 'Pro Tier'
+  if (plan === 'super') return 'Super Tier'
+  if (plan === 'recovery_pass') return 'Recovery Pass'
+  return 'Free Tier'
+}
+
+const getPassTheme = (isGreen: boolean, isAmber: boolean) => {
+  if (isGreen) {
+    return {
+      bannerBg: 'bg-emerald-950/70 border-emerald-500/25',
+      dotColor: 'bg-emerald-400',
+      textColor: 'text-emerald-300',
+      mutedColor: 'text-emerald-400/70',
+      btnClass: 'border-emerald-500/30 text-emerald-300 hover:bg-emerald-500/10'
+    }
+  }
+  if (isAmber) {
+    return {
+      bannerBg: 'bg-amber-950/70 border-amber-500/25',
+      dotColor: 'bg-amber-400',
+      textColor: 'text-amber-300',
+      mutedColor: 'text-amber-400/70',
+      btnClass: 'border-amber-500/30 text-amber-300 hover:bg-amber-500/10'
+    }
+  }
+  return {
+    bannerBg: 'bg-red-950/70 border-red-500/25',
+    dotColor: 'bg-red-400',
+    textColor: 'text-red-300',
+    mutedColor: 'text-red-400/70',
+    btnClass: 'border-red-500/30 text-red-300 hover:bg-red-500/10 animate-pulse'
+  }
+}
+
 export default function MainLayout() {
   const { user, userData, adminData, login, logout, loading, inviteFacet } = useAuth()
   const location = useLocation()
@@ -429,7 +464,7 @@ export default function MainLayout() {
                             <p className={`text-[11px] font-bold uppercase tracking-wider mt-0.5 ${
                               userData?.plan === 'recovery_pass' ? 'text-cyan-400' : 'text-indigo-400/80'
                             }`}>
-                              {userData?.plan === 'pro' ? 'Pro Tier' : userData?.plan === 'super' ? 'Super Tier' : userData?.plan === 'recovery_pass' ? 'Recovery Pass' : 'Free Tier'}
+                              {getPlanLabel(userData?.plan)}
                             </p>
                           </div>
 
@@ -555,7 +590,7 @@ export default function MainLayout() {
                 <p className={`text-[10px] font-bold uppercase tracking-wider mt-0.5 ${
                   userData?.plan === 'recovery_pass' ? 'text-cyan-400' : 'text-indigo-400'
                 }`}>
-                  {userData?.plan === 'pro' ? 'Pro Tier' : userData?.plan === 'super' ? 'Super Tier' : userData?.plan === 'recovery_pass' ? 'Recovery Pass' : 'Free Tier'}
+                  {getPlanLabel(userData?.plan)}
                 </p>
               </div>
             </div>
@@ -615,41 +650,30 @@ export default function MainLayout() {
         const isAmber = !isExpired && hrs < 12 && hrs >= 2
         const isRed   = isExpired || (hrs < 2)
 
-        const bannerBg = isGreen
-          ? 'bg-emerald-950/70 border-emerald-500/25'
-          : isAmber
-          ? 'bg-amber-950/70 border-amber-500/25'
-          : 'bg-red-950/70 border-red-500/25'
-        const dotColor = isGreen ? 'bg-emerald-400' : isAmber ? 'bg-amber-400' : 'bg-red-400'
-        const textColor = isGreen ? 'text-emerald-300' : isAmber ? 'text-amber-300' : 'text-red-300'
-        const mutedColor = isGreen ? 'text-emerald-400/70' : isAmber ? 'text-amber-400/70' : 'text-red-400/70'
+        const theme = getPassTheme(isGreen, isAmber)
         const timeStr = isExpired
           ? 'Pass Expired'
           : `${String(hrs).padStart(2, '0')}:${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`
 
         return (
-          <div className={`fixed top-[52px] left-0 right-0 z-40 border-b backdrop-blur-md px-4 py-1.5 flex items-center justify-between gap-3 ${bannerBg}`}>
+          <div className={`fixed top-[52px] left-0 right-0 z-40 border-b backdrop-blur-md px-4 py-1.5 flex items-center justify-between gap-3 ${theme.bannerBg}`}>
             <div className="flex items-center gap-2.5 min-w-0">
-              <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${dotColor} ${!isExpired ? 'animate-pulse' : ''}`} />
-              <span className={`text-[11px] font-bold uppercase tracking-widest ${textColor} hidden sm:block flex-shrink-0`}>
+              <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${theme.dotColor} ${!isExpired ? 'animate-pulse' : ''}`} />
+              <span className={`text-[11px] font-bold uppercase tracking-widest ${theme.textColor} hidden sm:block flex-shrink-0`}>
                 {isExpired ? 'Recovery Pass Expired' : isRed ? 'Expiring Soon!' : 'Recovery Pass Active'}
               </span>
-              <span className={`text-[11px] font-mono font-black ${textColor} tabular-nums`}>
+              <span className={`text-[11px] font-mono font-black ${theme.textColor} tabular-nums`}>
                 {timeStr}
               </span>
               {!isExpired && (
-                <span className={`text-[10px] ${mutedColor} truncate hidden md:block`}>
+                <span className={`text-[10px] ${theme.mutedColor} truncate hidden md:block`}>
                   — unlimited until {new Date(expiresAt).toLocaleTimeString()}
                 </span>
               )}
             </div>
             <a
               href="/checkout?plan=recovery_pass"
-              className={`text-[10px] font-bold flex-shrink-0 px-2.5 py-1 rounded-md border transition-all ${
-                isGreen ? 'border-emerald-500/30 text-emerald-300 hover:bg-emerald-500/10'
-                : isAmber ? 'border-amber-500/30 text-amber-300 hover:bg-amber-500/10'
-                : 'border-red-500/30 text-red-300 hover:bg-red-500/10 animate-pulse'
-              }`}
+              className={`text-[10px] font-bold flex-shrink-0 px-2.5 py-1 rounded-md border transition-all ${theme.btnClass}`}
             >
               {isExpired ? 'Get New Pass' : '+ Extend'}
             </a>
@@ -700,8 +724,8 @@ export default function MainLayout() {
       <footer className="w-full border-t border-white/5 py-12 bg-black/40 backdrop-blur-md mt-auto">
           <div className="max-w-7xl mx-auto px-6 flex flex-col md:flex-row items-center justify-between gap-4">
             <div className="flex items-center gap-2 text-white/50 text-sm">
-              <span className="w-4 h-4 rounded-sm bg-gradient-to-br from-indigo-500 to-purple-600"></span>
-              &copy; 2026 TakeoutFix System Core. All rights reserved.
+              <span className="w-4 h-4 rounded-sm bg-gradient-to-br from-indigo-500 to-purple-600" />
+              <span>&copy; 2026 TakeoutFix System Core. All rights reserved.</span>
             </div>
             <div className="flex flex-wrap gap-6 text-sm text-white/40 items-center justify-center md:justify-end">
               <Link to="/privacy" className="hover:text-white transition-colors">Privacy Policy</Link>
