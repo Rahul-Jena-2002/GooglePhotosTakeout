@@ -1,0 +1,1 @@
+import{c as e}from"./createLucideIcon.8FoVCZAu.js";globalThis.process??={};globalThis.process.env??={};const o=[["path",{d:"M12 19h8",key:"baeox8"}],["path",{d:"m4 17 6-6-6-6",key:"1yngyt"}]],s=e("terminal",o);export{s as T};

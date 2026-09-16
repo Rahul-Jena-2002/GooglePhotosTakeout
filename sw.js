@@ -59,42 +59,60 @@ self.addEventListener('activate', (event) => {
   );
 });
 
-// ─── Fetch ───────────────────────────────────────────────────────────────────
+// ─── Localhost Killswitch & Self-Cleanup ────────────────────────────────────
+// In local development, service workers cache old Vite dependency chunks with stale ?v= hashes,
+// causing duplicate React instances ("Cannot read properties of null reading useState") and navigation breakage.
+const isLocalhost = self.location.hostname === 'localhost' || self.location.hostname === '127.0.0.1';
 
-self.addEventListener('fetch', (event) => {
-  const { request } = event;
-  if (request.method !== 'GET') return;
+if (isLocalhost) {
+  self.addEventListener('install', () => self.skipWaiting());
+  self.addEventListener('activate', (event) => {
+    event.waitUntil(
+      caches.keys().then((keys) => Promise.all(keys.map((k) => caches.delete(k))))
+        .then(() => self.registration.unregister())
+        .then(() => self.clients.claim())
+    );
+  });
+} else {
+  // ─── Fetch (Production Only) ────────────────────────────────────────────────
+  self.addEventListener('fetch', (event) => {
+    const { request } = event;
+    if (request.method !== 'GET') return;
 
-  const url = new URL(request.url);
+    const url = new URL(request.url);
 
-  // Network-only: Firebase, Auth, Sentry
-  if (NETWORK_ONLY_HOSTS.some(h => url.hostname.includes(h))) return;
+    // Network-only: Firebase, Auth, Sentry
+    if (NETWORK_ONLY_HOSTS.some(h => url.hostname.includes(h))) return;
 
-  // Google Fonts — cache-first, long TTL
-  if (url.hostname === 'fonts.googleapis.com' || url.hostname === 'fonts.gstatic.com') {
-    event.respondWith(cacheFirst(request, FONT_CACHE));
-    return;
-  }
+    // Google Fonts — cache-first, long TTL
+    if (url.hostname === 'fonts.googleapis.com' || url.hostname === 'fonts.gstatic.com') {
+      event.respondWith(cacheFirst(request, FONT_CACHE));
+      return;
+    }
 
-  // Static immutable assets (Astro hashed chunks, images, icons)
-  if (
-    url.pathname.startsWith('/_astro/') ||
-    url.pathname.startsWith('/assets/') ||
-    /\.(woff2?|ttf|png|jpg|jpeg|svg|webp|ico|gif|js|css)$/i.test(url.pathname)
-  ) {
-    event.respondWith(cacheFirst(request, STATIC_CACHE));
-    return;
-  }
+    // Static immutable assets (Astro hashed chunks, images, icons) — strictly SAME-ORIGIN only!
+    // External scripts (e.g. Google AdSense) must NEVER be intercepted by cacheFirst.
+    if (
+      url.origin === self.location.origin && (
+        url.pathname.startsWith('/_astro/') ||
+        url.pathname.startsWith('/assets/') ||
+        /\.(woff2?|ttf|png|jpg|jpeg|svg|webp|ico|gif|js|css)$/i.test(url.pathname)
+      )
+    ) {
+      event.respondWith(cacheFirst(request, STATIC_CACHE));
+      return;
+    }
 
-  // HTML pages — stale-while-revalidate
-  if (request.headers.get('accept')?.includes('text/html') && url.origin === self.location.origin) {
-    event.respondWith(staleWhileRevalidate(request, CACHE_NAME));
-    return;
-  }
+    // HTML pages — stale-while-revalidate
+    if (request.headers.get('accept')?.includes('text/html') && url.origin === self.location.origin) {
+      event.respondWith(staleWhileRevalidate(request, CACHE_NAME));
+      return;
+    }
 
-  // Everything else — network-first with cache fallback
-  event.respondWith(networkFirst(request, CACHE_NAME));
-});
+    // Everything else — network-first with cache fallback
+    event.respondWith(networkFirst(request, CACHE_NAME));
+  });
+}
 
 // ─── Strategies ───────────────────────────────────────────────────────────────
 

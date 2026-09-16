@@ -1,0 +1,20 @@
+# TakeoutFix
+
+> TakeoutFix is a private, client-side web utility that repairs stripped EXIF metadata (dates, GPS coordinates, timestamps, and camera details) from Google Takeout photo and video archives.
+
+TakeoutFix runs 100% locally in the user's web browser via the HTML5 File System Access API. User media and JSON sidecar files are processed on device CPU and are never uploaded to remote servers.
+
+## Core Features
+- **EXIF Metadata Restoration**: Matches `.json` sidecar files exported by Google Takeout back with the corresponding `.jpg`, `.jpeg`, `.png`, `.heic`, and video files.
+- **Timestamp Correction**: Injects accurate `DateTimeOriginal` and file system creation/modification timestamps.
+- **GPS Coordinates Ingestion**: Restores geolocation tags so photos appear in mapping features and chronological galleries in Apple Photos, Google Photos, or local viewers.
+- **Privacy by Design**: Zero cloud processing or external uploads.
+- **Cross-Platform**: Accessible via any modern Chromium-based browser (Google Chrome, Microsoft Edge, Brave, Opera) and desktop applications.
+
+## Key URLs
+- Home: https://takeoutfix.pages.dev/
+- Restore Guide: https://takeoutfix.pages.dev/restore-data
+- Pricing: https://takeoutfix.pages.dev/pricing
+- Download Desktop App: https://takeoutfix.pages.dev/download
+- Customer Reviews: https://takeoutfix.pages.dev/reviews
+- Support & FAQ: https://takeoutfix.pages.dev/support
