@@ -5,5 +5,17 @@ import SupportPage from "../react-pages/SupportPage";
 ---
 
 <Layout title="TakeoutFix | Support & FAQ" description="Access TakeoutFix FAQs, submit support tickets, trace processing reports, or contact team engineers.">
-  <SupportPage client:only="react" />
+  <SupportPage client:only="react">
+    <div slot="fallback" class="min-h-[70vh] max-w-5xl mx-auto px-6 py-16 animate-pulse space-y-8">
+      <div class="space-y-3 text-center max-w-xl mx-auto">
+        <div class="h-4 w-24 mx-auto rounded-full bg-zinc-200 dark:bg-zinc-800"></div>
+        <div class="h-10 w-3/4 mx-auto rounded-xl bg-zinc-200 dark:bg-zinc-800"></div>
+        <div class="h-4 w-1/2 mx-auto rounded-full bg-zinc-200 dark:bg-zinc-800"></div>
+      </div>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6 pt-6">
+        <div class="h-64 rounded-2xl bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800"></div>
+        <div class="h-64 rounded-2xl bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800"></div>
+      </div>
+    </div>
+  </SupportPage>
 </Layout>

@@ -2,22 +2,22 @@
 export const prerender = true;
 import Layout from "../layouts/Layout.astro";
 import AdUnit from "../components/AdUnit";
-import { FolderSearch, Binary, Cpu, ArrowRight, ShieldCheck, CheckCircle2, FileText, Download, Play, UploadCloud } from "lucide-react";
+import Icon from "../components/ui/Icon.astro";
 ---
 
 <Layout title="How it Works: Restore Google Takeout Photo & Video EXIF Metadata" description="Learn how to restore photo dates, GPS locations, timestamps, and EXIF information from your Google Takeout archive. Everything runs locally in your browser.">
-  <div class="bg-black text-zinc-100 min-h-screen py-24 px-4 sm:px-6 lg:px-8 relative overflow-hidden">
+  <div class="bg-background text-foreground min-h-screen py-24 px-4 sm:px-6 lg:px-8 relative overflow-hidden font-sans">
     
     <!-- Header -->
     <div class="max-w-4xl mx-auto text-center mb-16 relative">
-      <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-zinc-900 border border-zinc-800 text-xs font-semibold text-zinc-400 mb-6 font-mono">
-        <ShieldCheck className="w-4 h-4 text-zinc-400" />
+      <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-xs font-semibold text-zinc-700 dark:text-zinc-400 mb-6 font-mono">
+        <Icon name="shield-check" class="w-4 h-4 text-zinc-600 dark:text-zinc-400" />
         100% Client-Side Engine Telemetry
       </div>
-      <h1 class="text-4xl md:text-6xl font-extrabold tracking-tight text-white mb-6">
-        Guides & <span class="text-white">Specifications</span>
+      <h1 class="text-4xl md:text-6xl font-extrabold tracking-tight text-zinc-900 dark:text-white mb-6">
+        Guides & <span class="text-zinc-900 dark:text-white">Specifications</span>
       </h1>
-      <p class="text-base md:text-lg text-zinc-400 max-w-2xl mx-auto font-normal leading-relaxed">
+      <p class="text-base md:text-lg text-zinc-600 dark:text-zinc-400 max-w-2xl mx-auto font-normal leading-relaxed">
         <strong>Learn how to export Google Photos, restore missing EXIF metadata, and import your library back with the correct dates and locations—all in a few simple steps.</strong>
       </p>
     </div>
@@ -45,110 +45,110 @@ import { FolderSearch, Binary, Cpu, ArrowRight, ShieldCheck, CheckCircle2, FileT
       <div class="space-y-12">
         
         <!-- STEP 1: Navigate to Takeout -->
-        <div class="flex flex-col md:flex-row gap-6 p-8 rounded-2xl bg-zinc-950/40 border border-zinc-900 hover:border-zinc-850 transition-all">
-          <div class="flex-shrink-0 flex items-center justify-center w-12 h-12 rounded-xl bg-zinc-900 border border-zinc-800 font-mono text-xs font-bold text-zinc-400">
+        <div class="flex flex-col md:flex-row gap-6 p-8 rounded-2xl bg-white dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 hover:border-zinc-300 dark:hover:border-zinc-700 shadow-sm transition-all">
+          <div class="flex-shrink-0 flex items-center justify-center w-12 h-12 rounded-xl bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 font-mono text-xs font-bold text-zinc-900 dark:text-zinc-300">
             01
           </div>
           <div class="space-y-2">
-            <h3 class="text-lg font-bold text-white flex items-center gap-2">
+            <h3 class="text-lg font-bold text-zinc-900 dark:text-white flex items-center gap-2">
               Navigate to Google Takeout
-              <span class="text-[10px] font-mono font-bold uppercase px-2 py-0.5 rounded bg-zinc-900 border border-zinc-800 text-zinc-500">takeout.google.com</span>
+              <span class="text-[10px] font-mono font-bold uppercase px-2 py-0.5 rounded bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-zinc-700 dark:text-zinc-400">takeout.google.com</span>
             </h3>
-            <p class="text-sm text-zinc-400 leading-relaxed">
+            <p class="text-sm text-zinc-600 dark:text-zinc-400 leading-relaxed">
               Open Google Takeout in a new browser tab. Make sure you are logged into the Google Account that contains the Google Photos library you wish to export.
             </p>
             <div class="pt-2">
-              <a href="https://takeout.google.com" target="_blank" rel="noopener noreferrer" class="text-xs text-white underline hover:text-zinc-300 inline-flex items-center gap-1">
-                Go to Google Takeout <ArrowRight class="w-3 h-3" />
+              <a href="https://takeout.google.com" target="_blank" rel="noopener noreferrer" class="text-xs text-zinc-900 dark:text-white underline hover:text-zinc-700 dark:hover:text-zinc-300 font-medium inline-flex items-center gap-1">
+                Go to Google Takeout <Icon name="arrow-right" class="w-3 h-3" />
               </a>
             </div>
           </div>
         </div>
 
         <!-- STEP 2: Filter Your Export -->
-        <div class="flex flex-col md:flex-row gap-6 p-8 rounded-2xl bg-zinc-950/40 border border-zinc-900 hover:border-zinc-850 transition-all">
-          <div class="flex-shrink-0 flex items-center justify-center w-12 h-12 rounded-xl bg-zinc-900 border border-zinc-800 font-mono text-xs font-bold text-zinc-400">
+        <div class="flex flex-col md:flex-row gap-6 p-8 rounded-2xl bg-white dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 hover:border-zinc-300 dark:hover:border-zinc-700 shadow-sm transition-all">
+          <div class="flex-shrink-0 flex items-center justify-center w-12 h-12 rounded-xl bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 font-mono text-xs font-bold text-zinc-900 dark:text-zinc-300">
             02
           </div>
           <div class="space-y-2">
-            <h3 class="text-lg font-bold text-white">Select Google Photos Only</h3>
-            <p class="text-sm text-zinc-400 leading-relaxed">
-              By default, Google selects all of your Google Account data. Click <strong class="text-white">"Deselect all"</strong> at the top of the list, then scroll down to find <strong class="text-white">Google Photos</strong> and check its box. This makes your download size significantly smaller and saves you time.
+            <h3 class="text-lg font-bold text-zinc-900 dark:text-white">Select Google Photos Only</h3>
+            <p class="text-sm text-zinc-600 dark:text-zinc-400 leading-relaxed">
+              By default, Google selects all of your Google Account data. Click <strong class="text-zinc-900 dark:text-white">"Deselect all"</strong> at the top of the list, then scroll down to find <strong class="text-zinc-900 dark:text-white">Google Photos</strong> and check its box. This makes your download size significantly smaller and saves you time.
             </p>
           </div>
         </div>
 
         <!-- STEP 3: Create Export & Download -->
-        <div class="flex flex-col md:flex-row gap-6 p-8 rounded-2xl bg-zinc-950/40 border border-zinc-900 hover:border-zinc-850 transition-all">
-          <div class="flex-shrink-0 flex items-center justify-center w-12 h-12 rounded-xl bg-zinc-900 border border-zinc-800 font-mono text-xs font-bold text-zinc-400">
+        <div class="flex flex-col md:flex-row gap-6 p-8 rounded-2xl bg-white dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 hover:border-zinc-300 dark:hover:border-zinc-700 shadow-sm transition-all">
+          <div class="flex-shrink-0 flex items-center justify-center w-12 h-12 rounded-xl bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 font-mono text-xs font-bold text-zinc-900 dark:text-zinc-300">
             03
           </div>
           <div class="space-y-2">
-            <h3 class="text-lg font-bold text-white">Create Export and Download ZIPs</h3>
-            <p class="text-sm text-zinc-400 leading-relaxed">
-              Scroll to the bottom, click <strong class="text-white">"Next step"</strong>, select your preferred archive sizes (we recommend 10GB or 50GB splits if you have a massive library to avoid downloading dozens of small files), and click <strong class="text-white">"Create export"</strong>. Google will generate your files and email you download links. Download all of these ZIP files onto your computer.
+            <h3 class="text-lg font-bold text-zinc-900 dark:text-white">Create Export and Download ZIPs</h3>
+            <p class="text-sm text-zinc-600 dark:text-zinc-400 leading-relaxed">
+              Scroll to the bottom, click <strong class="text-zinc-900 dark:text-white">"Next step"</strong>, select your preferred archive sizes (we recommend 10GB or 50GB splits if you have a massive library to avoid downloading dozens of small files), and click <strong class="text-zinc-900 dark:text-white">"Create export"</strong>. Google will generate your files and email you download links. Download all of these ZIP files onto your computer.
             </p>
           </div>
         </div>
 
         <!-- STEP 4: Select Folder in Tool -->
-        <div class="flex flex-col md:flex-row gap-6 p-8 rounded-2xl bg-zinc-950/40 border border-zinc-900 hover:border-zinc-850 transition-all">
-          <div class="flex-shrink-0 flex items-center justify-center w-12 h-12 rounded-xl bg-zinc-900 border border-zinc-800 font-mono text-xs font-bold text-zinc-400">
+        <div class="flex flex-col md:flex-row gap-6 p-8 rounded-2xl bg-white dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 hover:border-zinc-300 dark:hover:border-zinc-700 shadow-sm transition-all">
+          <div class="flex-shrink-0 flex items-center justify-center w-12 h-12 rounded-xl bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 font-mono text-xs font-bold text-zinc-900 dark:text-zinc-300">
             04
           </div>
           <div class="space-y-2">
-            <h3 class="text-lg font-bold text-white">Load Archive in TakeoutFix</h3>
-            <p class="text-sm text-zinc-400 leading-relaxed">
-              Go to the <a href="/tool" class="text-white underline hover:text-zinc-300 font-semibold">Restore Center</a>. Click <strong class="text-white">"Select Folder"</strong> to select your extracted Google Takeout folder directly on your hard drive, or drop your downloaded ZIP archives directly into the drop zone. <strong class="text-white">TakeoutFix automatically scans your Google Takeout folder and detects photos, videos, and their matching metadata files.</strong>
+            <h3 class="text-lg font-bold text-zinc-900 dark:text-white">Load Archive in TakeoutFix</h3>
+            <p class="text-sm text-zinc-600 dark:text-zinc-400 leading-relaxed">
+              Go to the <a href="/tool" class="text-zinc-900 dark:text-white underline hover:text-zinc-700 dark:hover:text-zinc-300 font-semibold">Restore Center</a>. Click <strong class="text-zinc-900 dark:text-white">"Select Folder"</strong> to select your extracted Google Takeout folder directly on your hard drive, or drop your downloaded ZIP archives directly into the drop zone. <strong class="text-zinc-900 dark:text-white">TakeoutFix automatically scans your Google Takeout folder and detects photos, videos, and their matching metadata files.</strong>
             </p>
           </div>
         </div>
 
         <!-- STEP 5: Start Restoration -->
-        <div class="flex flex-col md:flex-row gap-6 p-8 rounded-2xl bg-zinc-950/40 border border-zinc-900 hover:border-zinc-800 transition-all">
-          <div class="flex-shrink-0 flex items-center justify-center w-12 h-12 rounded-xl bg-zinc-900 border border-zinc-800 font-mono text-xs font-bold text-zinc-400">
+        <div class="flex flex-col md:flex-row gap-6 p-8 rounded-2xl bg-white dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 hover:border-zinc-300 dark:hover:border-zinc-700 shadow-sm transition-all">
+          <div class="flex-shrink-0 flex items-center justify-center w-12 h-12 rounded-xl bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 font-mono text-xs font-bold text-zinc-900 dark:text-zinc-300">
             05
           </div>
           <div class="space-y-2">
-            <h3 class="text-lg font-bold text-white">Rebuild EXIF Metadata Offline</h3>
-            <p class="text-sm text-zinc-400 leading-relaxed">
-              Click <strong class="text-white">"Start Restore."</strong> TakeoutFix automatically matches each photo and video with its corresponding metadata file and restores missing dates, GPS locations, and EXIF information. Everything happens locally in your browser, so your files never leave your device. Once completed, save your restored files.
+            <h3 class="text-lg font-bold text-zinc-900 dark:text-white">Rebuild EXIF Metadata Offline</h3>
+            <p class="text-sm text-zinc-600 dark:text-zinc-400 leading-relaxed">
+              Click <strong class="text-zinc-900 dark:text-white">"Start Restore."</strong> TakeoutFix automatically matches each photo and video with its corresponding metadata file and restores missing dates, GPS locations, and EXIF information. Everything happens locally in your browser, so your files never leave your device. Once completed, save your restored files.
             </p>
           </div>
         </div>
 
         <!-- STEP 6: Transfer to Mobile or Other Devices -->
-        <div class="flex flex-col md:flex-row gap-6 p-8 rounded-2xl bg-zinc-950/40 border border-zinc-900 hover:border-zinc-800 transition-all animate-fade-in">
-          <div class="flex-shrink-0 flex items-center justify-center w-12 h-12 rounded-xl bg-zinc-900 border border-zinc-800 font-mono text-xs font-bold text-zinc-400">
+        <div class="flex flex-col md:flex-row gap-6 p-8 rounded-2xl bg-white dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 hover:border-zinc-300 dark:hover:border-zinc-700 shadow-sm transition-all animate-fade-in">
+          <div class="flex-shrink-0 flex items-center justify-center w-12 h-12 rounded-xl bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 font-mono text-xs font-bold text-zinc-900 dark:text-zinc-300">
             06
           </div>
           <div class="space-y-4 flex-1">
-            <h3 class="text-lg font-bold text-white">Transfer to Your Phone or Tablet</h3>
-            <p class="text-sm text-zinc-400 leading-relaxed">
+            <h3 class="text-lg font-bold text-zinc-900 dark:text-white">Transfer to Your Phone or Tablet</h3>
+            <p class="text-sm text-zinc-600 dark:text-zinc-400 leading-relaxed">
               Once you have downloaded the restored files to your computer, we highly recommend transferring them back to your device in a <strong>ZIP archive</strong>. Standard USB transfers strip file creation dates, while unzipping directly on the device preserves them perfectly:
             </p>
             <div class="grid sm:grid-cols-2 gap-4 pt-2">
-              <div class="p-4 rounded-xl bg-zinc-900/60 border border-zinc-800 space-y-2">
-                <h4 class="text-xs font-bold text-white uppercase tracking-wider flex items-center gap-2">
+              <div class="p-4 rounded-xl bg-zinc-50 dark:bg-zinc-900/60 border border-zinc-200 dark:border-zinc-800 space-y-2">
+                <h4 class="text-xs font-bold text-zinc-900 dark:text-white uppercase tracking-wider flex items-center gap-2">
                   <img src="/apple-logo-black.png" class="w-4 h-4 object-contain dark:hidden flex-shrink-0" alt="" />
                   <img src="/apple-logo-white.png" class="w-4 h-4 object-contain hidden dark:block flex-shrink-0" alt="" />
                   <span>Apple iPhone / iPad (iOS)</span>
                 </h4>
-                <ul class="text-xs text-zinc-400 space-y-2.5 list-disc pl-4 leading-relaxed font-normal">
+                <ul class="text-xs text-zinc-600 dark:text-zinc-400 space-y-2.5 list-disc pl-4 leading-relaxed font-normal">
                   <li><strong>AirDrop (Mac)</strong>: Send the restored `.zip` archive directly to your iPhone or iPad, and select the native <strong>Files</strong> app to extract it. This preserves all timestamps.</li>
-                  <li><strong>iCloud Photos</strong>: Upload files via <a href="https://icloud.com" target="_blank" rel="noopener noreferrer" class="text-white underline hover:text-zinc-300">iCloud.com</a> on your computer to sync them automatically.</li>
+                  <li><strong>iCloud Photos</strong>: Upload files via <a href="https://icloud.com" target="_blank" rel="noopener noreferrer" class="text-zinc-900 dark:text-white underline hover:text-zinc-700 dark:hover:text-zinc-300">iCloud.com</a> on your computer to sync them automatically.</li>
                   <li><strong>Avoid Finder USB Sync</strong>: Do not sync raw folders via USB Sync, as iOS resets filesystem dates during folder synchronization.</li>
                 </ul>
               </div>
-              <div class="p-4 rounded-xl bg-zinc-900/60 border border-zinc-800 space-y-2">
-                <h4 class="text-xs font-bold text-white uppercase tracking-wider flex items-center gap-2">
+              <div class="p-4 rounded-xl bg-zinc-50 dark:bg-zinc-900/60 border border-zinc-200 dark:border-zinc-800 space-y-2">
+                <h4 class="text-xs font-bold text-zinc-900 dark:text-white uppercase tracking-wider flex items-center gap-2">
                   <img src="/android-logo.png" class="w-4 h-4 object-contain flex-shrink-0" alt="" />
                   <span>Android Devices</span>
                 </h4>
-                <ul class="text-xs text-zinc-400 space-y-2.5 list-disc pl-4 leading-relaxed font-normal">
+                <ul class="text-xs text-zinc-600 dark:text-zinc-400 space-y-2.5 list-disc pl-4 leading-relaxed font-normal">
                   <li><strong>Unzip on Device</strong>: Copy the restored `.zip` archive to your device via USB or Quick Share, then extract it directly using the <strong>Files by Google</strong> app to keep file system timestamps intact.</li>
                   <li><strong>Avoid Raw USB Transfer</strong>: Do not copy raw folders via USB MTP mode directly to your Android gallery, as Android will overwrite file creation/modification dates with the transfer time.</li>
-                  <li><strong>Google Photos Sync</strong>: Drag and drop files to <a href="https://photos.google.com" target="_blank" rel="noopener noreferrer" class="text-white underline hover:text-zinc-300">photos.google.com</a> in your computer's browser to sync them to your phone.</li>
+                  <li><strong>Google Photos Sync</strong>: Drag and drop files to <a href="https://photos.google.com" target="_blank" rel="noopener noreferrer" class="text-zinc-900 dark:text-white underline hover:text-zinc-700 dark:hover:text-zinc-300">photos.google.com</a> in your computer's browser to sync them to your phone.</li>
                 </ul>
               </div>
             </div>
@@ -157,13 +157,15 @@ import { FolderSearch, Binary, Cpu, ArrowRight, ShieldCheck, CheckCircle2, FileT
 
       </div>
 
+      </div>
+
       <!-- Estimated Time Box -->
-      <div class="mt-16 p-6 rounded-2xl bg-zinc-950/20 border border-dashed border-zinc-800 text-left max-w-2xl mx-auto space-y-2">
-        <h4 class="text-sm font-bold text-white uppercase tracking-wider mb-2 flex items-center gap-2">
+      <div class="mt-16 p-6 rounded-2xl bg-zinc-50 dark:bg-zinc-950/20 border border-dashed border-zinc-200 dark:border-zinc-800 text-left max-w-2xl mx-auto space-y-2">
+        <h4 class="text-sm font-bold text-zinc-900 dark:text-white uppercase tracking-wider mb-2 flex items-center gap-2">
           ⏱️ Typical Restore Times
         </h4>
-        <p class="text-xs text-zinc-400 leading-relaxed">
-          TakeoutFix scans your archive in a few seconds and restores metadata locally. Most libraries finish in <strong class="text-zinc-200">under a few minutes</strong>, while very large Google Takeout archives may take longer depending on your computer and archive size.
+        <p class="text-xs text-zinc-600 dark:text-zinc-400 leading-relaxed">
+          TakeoutFix scans your archive in a few seconds and restores metadata locally. Most libraries finish in <strong class="text-zinc-900 dark:text-zinc-200">under a few minutes</strong>, while very large Google Takeout archives may take longer depending on your computer and archive size.
         </p>
       </div>
 
@@ -187,32 +189,32 @@ import { FolderSearch, Binary, Cpu, ArrowRight, ShieldCheck, CheckCircle2, FileT
           <!-- Left Block (Text & Code) -->
           <div class="flex-1 flex flex-col justify-center space-y-6 order-1 lg:text-left">
             <div class="flex items-center gap-3">
-              <div class="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-zinc-900 border border-zinc-800 shadow-md">
-                <FolderSearch className="w-6 h-6 text-zinc-400" />
+              <div class="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 shadow-md">
+                <Icon name="folder-search" class="w-6 h-6 text-zinc-600 dark:text-zinc-400" />
               </div>
               <div>
-                <span class="text-[10px] font-bold uppercase tracking-[0.2em] font-mono text-zinc-400">Phase 01</span>
-                <h3 class="text-2xl font-bold tracking-tight text-white">Local Directory Parsing Heuristics</h3>
+                <span class="text-[10px] font-bold uppercase tracking-[0.2em] font-mono text-zinc-500 dark:text-zinc-400">Phase 01</span>
+                <h3 class="text-2xl font-bold tracking-tight text-zinc-900 dark:text-white">Local Directory Parsing Heuristics</h3>
               </div>
             </div>
             
-            <div class="text-sm font-semibold tracking-wide text-zinc-500 uppercase font-mono">Secure Client-Side Indexing</div>
+            <div class="text-sm font-semibold tracking-wide text-zinc-500 dark:text-zinc-400 uppercase font-mono">Secure Client-Side Indexing</div>
             
-            <p class="text-base text-zinc-400 leading-relaxed font-normal">
+            <p class="text-base text-zinc-600 dark:text-zinc-400 leading-relaxed font-normal">
               TakeoutFix utilizes the modern browser File System Access API to gain read-only permission to your Google Takeout folder. It executes a high-performance recursive traversal to locate all media files and their corresponding sidecar JSON files entirely on your machine.
             </p>
 
             <ul class="space-y-2.5">
-              <li class="flex items-start gap-2.5 text-sm text-zinc-400 font-normal">
-                <CheckCircle2 className="w-4 h-4 mt-0.5 flex-shrink-0 text-zinc-400" />
+              <li class="flex items-start gap-2.5 text-sm text-zinc-600 dark:text-zinc-400 font-normal">
+                <Icon name="check-circle-2" class="w-4 h-4 mt-0.5 flex-shrink-0 text-emerald-500 dark:text-zinc-400" />
                 <span>Zero-upload architecture: media bytes never leave your device.</span>
               </li>
-              <li class="flex items-start gap-2.5 text-sm text-zinc-400 font-normal">
-                <CheckCircle2 className="w-4 h-4 mt-0.5 flex-shrink-0 text-zinc-400" />
+              <li class="flex items-start gap-2.5 text-sm text-zinc-600 dark:text-zinc-400 font-normal">
+                <Icon name="check-circle-2" class="w-4 h-4 mt-0.5 flex-shrink-0 text-emerald-500 dark:text-zinc-400" />
                 <span>Asynchronous scanning runs in a background Web Worker to prevent UI blocking.</span>
               </li>
-              <li class="flex items-start gap-2.5 text-sm text-zinc-400 font-normal">
-                <CheckCircle2 className="w-4 h-4 mt-0.5 flex-shrink-0 text-zinc-400" />
+              <li class="flex items-start gap-2.5 text-sm text-zinc-600 dark:text-zinc-400 font-normal">
+                <Icon name="check-circle-2" class="w-4 h-4 mt-0.5 flex-shrink-0 text-emerald-500 dark:text-zinc-400" />
                 <span>Supports nested folder structures and multi-part Takeout archives.</span>
               </li>
             </ul>
@@ -298,32 +300,32 @@ import { FolderSearch, Binary, Cpu, ArrowRight, ShieldCheck, CheckCircle2, FileT
  
           <div class="flex-1 flex flex-col justify-center space-y-6 order-1 lg:order-2 lg:text-left">
             <div class="flex items-center gap-3">
-              <div class="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-zinc-900 border border-zinc-800 shadow-md">
-                <Cpu className="w-6 h-6 text-zinc-400" />
+              <div class="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 shadow-md">
+                <Icon name="cpu" class="w-6 h-6 text-zinc-600 dark:text-zinc-400" />
               </div>
               <div>
-                <span class="text-[10px] font-bold uppercase tracking-[0.2em] font-mono text-zinc-400">Phase 02</span>
-                <h3 class="text-2xl font-bold tracking-tight text-white">Heuristic Metadata Matching Algorithms</h3>
+                <span class="text-[10px] font-bold uppercase tracking-[0.2em] font-mono text-zinc-500 dark:text-zinc-400">Phase 02</span>
+                <h3 class="text-2xl font-bold tracking-tight text-zinc-900 dark:text-white">Heuristic Metadata Matching Algorithms</h3>
               </div>
             </div>
             
-            <div class="text-sm font-semibold tracking-wide text-zinc-500 uppercase font-mono">Pairing Files with Sidecars</div>
+            <div class="text-sm font-semibold tracking-wide text-zinc-500 dark:text-zinc-400 uppercase font-mono">Pairing Files with Sidecars</div>
             
-            <p class="text-base text-zinc-400 leading-relaxed font-normal">
+            <p class="text-base text-zinc-600 dark:text-zinc-400 leading-relaxed font-normal">
               Google Takeout often edits names, truncates titles, or appends suffixes (like '-edited' or '(1)') to media, making standard matching fail. TakeoutFix applies a multi-layered match heuristic to pair files with their JSON sidecar, resolving filename inconsistencies automatically.
             </p>
 
             <ul class="space-y-2.5">
-              <li class="flex items-start gap-2.5 text-sm text-zinc-400 font-normal">
-                <CheckCircle2 className="w-4 h-4 mt-0.5 flex-shrink-0 text-zinc-400" />
+              <li class="flex items-start gap-2.5 text-sm text-zinc-600 dark:text-zinc-400 font-normal">
+                <Icon name="check-circle-2" class="w-4 h-4 mt-0.5 flex-shrink-0 text-emerald-500 dark:text-zinc-400" />
                 <span>Name-hash pairing checks original file titles inside the JSON schema.</span>
               </li>
-              <li class="flex items-start gap-2.5 text-sm text-zinc-400 font-normal">
-                <CheckCircle2 className="w-4 h-4 mt-0.5 flex-shrink-0 text-zinc-400" />
+              <li class="flex items-start gap-2.5 text-sm text-zinc-600 dark:text-zinc-400 font-normal">
+                <Icon name="check-circle-2" class="w-4 h-4 mt-0.5 flex-shrink-0 text-emerald-500 dark:text-zinc-400" />
                 <span>Fuzzy matching reconciles truncated strings and system-appended suffixes.</span>
               </li>
-              <li class="flex items-start gap-2.5 text-sm text-zinc-400 font-normal">
-                <CheckCircle2 className="w-4 h-4 mt-0.5 flex-shrink-0 text-zinc-400" />
+              <li class="flex items-start gap-2.5 text-sm text-zinc-600 dark:text-zinc-400 font-normal">
+                <Icon name="check-circle-2" class="w-4 h-4 mt-0.5 flex-shrink-0 text-emerald-500 dark:text-zinc-400" />
                 <span>Timestamp alignment acts as a fallback to resolve similar media files.</span>
               </li>
             </ul>
@@ -411,32 +413,32 @@ import { FolderSearch, Binary, Cpu, ArrowRight, ShieldCheck, CheckCircle2, FileT
  
           <div class="flex-1 flex flex-col justify-center space-y-6 order-1 lg:text-left">
             <div class="flex items-center gap-3">
-              <div class="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-zinc-900 border border-zinc-800 shadow-md">
-                <Binary className="w-6 h-6 text-zinc-400" />
+              <div class="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 shadow-md">
+                <Icon name="binary" class="w-6 h-6 text-zinc-600 dark:text-zinc-400" />
               </div>
               <div>
-                <span class="text-[10px] font-bold uppercase tracking-[0.2em] font-mono text-zinc-400">Phase 03</span>
-                <h3 class="text-2xl font-bold tracking-tight text-white">Deep EXIF Header Injection Mechanics</h3>
+                <span class="text-[10px] font-bold uppercase tracking-[0.2em] font-mono text-zinc-500 dark:text-zinc-400">Phase 03</span>
+                <h3 class="text-2xl font-bold tracking-tight text-zinc-900 dark:text-white">Deep EXIF Header Injection Mechanics</h3>
               </div>
             </div>
             
-            <div class="text-sm font-semibold tracking-wide text-zinc-500 uppercase font-mono">Rebuilding Media Headers</div>
+            <div class="text-sm font-semibold tracking-wide text-zinc-500 dark:text-zinc-400 uppercase font-mono">Rebuilding Media Headers</div>
             
-            <p class="text-base text-zinc-400 leading-relaxed font-normal">
+            <p class="text-base text-zinc-600 dark:text-zinc-400 leading-relaxed font-normal">
               Once matched, the engine extracts the Unix epoch timestamps and coordinates. It parses the binary structures JPEGs, PNGs, and HEICs, injecting parameters directly into EXIF headers (DateTimeOriginal and GPS tags) without transcoding files.
             </p>
 
             <ul class="space-y-2.5">
-              <li class="flex items-start gap-2.5 text-sm text-zinc-400 font-normal">
-                <CheckCircle2 className="w-4 h-4 mt-0.5 flex-shrink-0 text-zinc-400" />
+              <li class="flex items-start gap-2.5 text-sm text-zinc-600 dark:text-zinc-400 font-normal">
+                <Icon name="check-circle-2" class="w-4 h-4 mt-0.5 flex-shrink-0 text-emerald-500 dark:text-zinc-400" />
                 <span>Reconstructs native binary EXIF tags without re-compressing the image.</span>
               </li>
-              <li class="flex items-start gap-2.5 text-sm text-zinc-400 font-normal">
-                <CheckCircle2 className="w-4 h-4 mt-0.5 flex-shrink-0 text-zinc-400" />
+              <li class="flex items-start gap-2.5 text-sm text-zinc-600 dark:text-zinc-400 font-normal">
+                <Icon name="check-circle-2" class="w-4 h-4 mt-0.5 flex-shrink-0 text-emerald-500 dark:text-zinc-400" />
                 <span>Updates QuickTime/UserData metadata headers inside MP4/MOV videos.</span>
               </li>
-              <li class="flex items-start gap-2.5 text-sm text-zinc-400 font-normal">
-                <CheckCircle2 className="w-4 h-4 mt-0.5 flex-shrink-0 text-zinc-400" />
+              <li class="flex items-start gap-2.5 text-sm text-zinc-600 dark:text-zinc-400 font-normal">
+                <Icon name="check-circle-2" class="w-4 h-4 mt-0.5 flex-shrink-0 text-emerald-500 dark:text-zinc-400" />
                 <span>Outputs clean, linkable files ready for Apple Photos or Google Photos import.</span>
               </li>
             </ul>
@@ -515,9 +517,9 @@ import { FolderSearch, Binary, Cpu, ArrowRight, ShieldCheck, CheckCircle2, FileT
     </div>
  
     <!-- BOTTOM CTA -->
-    <div class="max-w-4xl mx-auto text-center mt-48 py-16 border-t border-zinc-900 relative">
-      <h2 class="text-3xl md:text-4xl font-bold tracking-tight mb-4 text-white">Ready to restore your Google Takeout metadata?</h2>
-      <p class="text-zinc-400 mb-8 max-w-md mx-auto">Upload your Google Takeout folder and start restoring your photos locally in your browser.</p>
+    <div class="max-w-4xl mx-auto text-center mt-48 py-16 border-t border-zinc-200 dark:border-zinc-800 relative">
+      <h2 class="text-3xl md:text-4xl font-bold tracking-tight mb-4 text-zinc-900 dark:text-white">Ready to restore your Google Takeout metadata?</h2>
+      <p class="text-zinc-600 dark:text-zinc-400 mb-8 max-w-md mx-auto">Upload your Google Takeout folder and start restoring your photos locally in your browser.</p>
       <div class="flex flex-col sm:flex-row gap-4 justify-center items-center">
         <a href="/pricing" class="w-full sm:w-auto">
           <button class="btn-monochrome-secondary px-8 h-14 font-semibold rounded-xl transition-all flex items-center justify-center w-full sm:w-auto cursor-pointer">
@@ -526,7 +528,7 @@ import { FolderSearch, Binary, Cpu, ArrowRight, ShieldCheck, CheckCircle2, FileT
         </a>
         <a href="/tool" class="w-full sm:w-auto">
           <button class="btn-monochrome-primary px-10 h-14 font-semibold rounded-xl transition-all flex items-center justify-center gap-2 w-full sm:w-auto cursor-pointer">
-            Start Restoring <ArrowRight className="w-5 h-5" />
+            Start Restoring <Icon name="arrow-right" class="w-5 h-5" />
           </button>
         </a>
       </div>

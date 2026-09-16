@@ -31,20 +31,20 @@ export const highlightActiveLinks = () => {
   navLinks.forEach((link: any) => {
     const href = link.getAttribute("href");
     if (href === path || (href !== "/" && path.startsWith(href))) {
-      link.classList.remove("text-zinc-400");
-      link.classList.add("text-white");
+      link.classList.remove("text-zinc-600", "dark:text-zinc-400");
+      link.classList.add("text-zinc-900", "dark:text-white", "font-semibold");
     } else {
-      link.classList.add("text-zinc-400");
-      link.classList.remove("text-white");
+      link.classList.add("text-zinc-600", "dark:text-zinc-400");
+      link.classList.remove("text-zinc-900", "dark:text-white", "font-semibold");
     }
   });
 
   mobileLinks.forEach((link: any) => {
     const href = link.getAttribute("href");
     if (href === path || (href !== "/" && path.startsWith(href))) {
-      link.classList.add("text-indigo-400", "bg-white/5");
+      link.classList.add("text-indigo-600", "dark:text-indigo-400", "bg-zinc-100", "dark:bg-white/5");
     } else {
-      link.classList.remove("text-indigo-400", "bg-white/5");
+      link.classList.remove("text-indigo-600", "dark:text-indigo-400", "bg-zinc-100", "dark:bg-white/5");
     }
   });
 };

@@ -67,9 +67,10 @@ export default function DownloadPage() {
         directUrl: "https://github.com/Rahul-Jena-2002/GooglePhotosTakeout/releases/latest/download/TakeoutFix-macOS-Portable.zip",
         primary: true,
         instructions: [
-          "Download and unzip 'TakeoutFix-macOS-Portable.zip'.",
+          "Download and unzip 'TakeoutFix-macOS-Portable.zip' on your Mac.",
           "Double-click 'Run-TakeoutFix.command' to automatically clear quarantine and start the app.",
-          "Or right-click 'TakeoutFix.app' and click 'Open' to confirm macOS security prompt."
+          "Or right-click 'TakeoutFix.app' and click 'Open' to confirm macOS security prompt.",
+          "Restore unlimited photos and videos with instant local processing."
         ]
       },
       {
@@ -91,44 +92,47 @@ export default function DownloadPage() {
     linux: [
       {
         title: "Linux Portable (.tar.gz)",
-        badge: "Universal Tarball",
+        badge: "Universal",
         desc: "Standalone compressed archive. Compatible with any modern x86_64 Linux distribution.",
         file: "TakeoutFix-Linux-Portable.tar.gz",
         url: "https://takeoutfix-download.takeoutfix.workers.dev/download/linux/portable",
         directUrl: "https://github.com/Rahul-Jena-2002/GooglePhotosTakeout/releases/latest/download/TakeoutFix-Linux-Portable.tar.gz",
         primary: true,
         instructions: [
-          "Download and extract: tar -xzf TakeoutFix-Linux-Portable.tar.gz",
-          "Navigate into directory: cd TakeoutFix",
-          "Launch directly: ./run.sh"
+          "Download the 'TakeoutFix-Linux-Portable.tar.gz' archive below.",
+          "Extract archive in terminal: tar -xzf TakeoutFix-Linux-Portable.tar.gz",
+          "Navigate into extracted directory: cd TakeoutFix",
+          "Launch app directly: chmod +x run.sh && ./run.sh"
         ]
       },
       {
         title: "Debian / Ubuntu (.deb)",
-        badge: "Debian / Ubuntu",
+        badge: "DEB Package",
         desc: "Native package for Ubuntu, Debian, Linux Mint, Pop!_OS, and derivatives.",
         file: "TakeoutFix-Linux.deb",
         url: "https://takeoutfix-download.takeoutfix.workers.dev/download/linux/deb",
         directUrl: "https://github.com/Rahul-Jena-2002/GooglePhotosTakeout/releases/latest/download/TakeoutFix-Linux.deb",
         primary: false,
         instructions: [
-          "Download 'TakeoutFix-Linux.deb' package below.",
-          "Install via terminal: sudo dpkg -i TakeoutFix-Linux.deb (or double-click to install via Software Center).",
-          "Launch 'TakeoutFix' from your Applications menu."
+          "Download 'TakeoutFix-Linux.deb' package using the button below.",
+          "Open terminal in your download folder (or double-click to install in Software Center).",
+          "Install via terminal: sudo dpkg -i TakeoutFix-Linux.deb",
+          "Launch 'TakeoutFix' from your Applications menu or type takeoutfix in terminal."
         ]
       },
       {
         title: "Fedora / RHEL (.rpm)",
-        badge: "Fedora / RHEL",
+        badge: "RPM Package",
         desc: "Native package for Fedora, Red Hat Enterprise Linux, CentOS, Rocky Linux, and openSUSE.",
         file: "TakeoutFix-Linux.rpm",
         url: "https://takeoutfix-download.takeoutfix.workers.dev/download/linux/rpm",
         directUrl: "https://github.com/Rahul-Jena-2002/GooglePhotosTakeout/releases/latest/download/TakeoutFix-Linux.rpm",
         primary: false,
         instructions: [
-          "Download 'TakeoutFix-Linux.rpm' package below.",
+          "Download 'TakeoutFix-Linux.rpm' package using the button below.",
+          "Open terminal in your download folder (or open in Software Center).",
           "Install via terminal: sudo rpm -i TakeoutFix-Linux.rpm (or sudo dnf install ./TakeoutFix-Linux.rpm).",
-          "Launch 'TakeoutFix' from your Applications menu."
+          "Launch 'TakeoutFix' from your Applications menu or type takeoutfix in terminal."
         ]
       }
     ]
@@ -138,9 +142,9 @@ export default function DownloadPage() {
   const activeOption = currentOptions[selectedType] || currentOptions[0];
 
   return (
-    <div className="min-h-screen text-zinc-900 dark:text-white relative py-12 px-6">
+    <div className="min-h-screen text-zinc-900 dark:text-white relative py-12 px-4 sm:px-8">
       {/* Grid container to structure the page */}
-      <div className="max-w-6xl mx-auto space-y-16">
+      <div className="w-full max-w-7xl mx-auto space-y-16">
         
         {/* Header Block */}
         <div className="text-center space-y-4 max-w-3xl mx-auto pt-6">
@@ -156,155 +160,150 @@ export default function DownloadPage() {
         </div>
 
         {/* Dynamic Selector Tabs & Download Box */}
-        <div className="grid grid-cols-1 lg:grid-cols-5 gap-8 items-start">
+        <div className="grid grid-cols-1 lg:grid-cols-5 gap-8 items-stretch">
           
           {/* Left 3 columns: OS Info and instructions */}
-          <div className="lg:col-span-3 space-y-6">
-            <div className="bg-white dark:bg-zinc-950/60 border border-zinc-200 dark:border-white/10 p-6 md:p-8 rounded-2xl shadow-sm dark:shadow-2xl">
+          <div className="lg:col-span-3 flex flex-col h-full">
+            <div className="bg-white dark:bg-zinc-950/60 border border-zinc-200 dark:border-white/10 p-6 md:p-7 rounded-2xl shadow-sm dark:shadow-2xl h-full flex flex-col justify-between">
               
-              {/* Tab headers */}
-              <div className="flex border-b border-zinc-200 dark:border-white/10 pb-4 mb-6 justify-between gap-2 overflow-x-auto">
-                <button 
-                  onClick={() => { setSelectedOS("win"); setSelectedType(0); }}
-                  className={`flex-1 min-w-[90px] py-2.5 px-4 rounded-xl text-xs font-bold transition-all border text-center flex items-center justify-center gap-2 ${
-                    selectedOS === "win" 
-                      ? "bg-zinc-900 text-white dark:bg-white dark:text-black border-transparent shadow-md"
-                      : "bg-zinc-100/80 dark:bg-white/[0.03] border-zinc-200 dark:border-white/5 text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white hover:bg-zinc-200/60"
-                  }`}
-                >
-                  <img src="/windows-logo.png" className="w-3.5 h-3.5 object-contain flex-shrink-0" alt="" />
-                  <span>Windows</span>
-                </button>
-                <button 
-                  onClick={() => { setSelectedOS("mac"); setSelectedType(0); }}
-                  className={`flex-1 min-w-[90px] py-2.5 px-4 rounded-xl text-xs font-bold transition-all border text-center flex items-center justify-center gap-2 ${
-                    selectedOS === "mac" 
-                      ? "bg-zinc-900 text-white dark:bg-white dark:text-black border-transparent shadow-md"
-                      : "bg-zinc-100/80 dark:bg-white/[0.03] border-zinc-200 dark:border-white/5 text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white hover:bg-zinc-200/60"
-                  }`}
-                >
-                  {selectedOS === "mac" ? (
-                    <img src="/apple-logo-white.png" className="w-3.5 h-3.5 object-contain flex-shrink-0 dark:hidden" alt="" />
-                  ) : (
-                    <>
-                      <img src="/apple-logo-black.png" className="w-3.5 h-3.5 object-contain flex-shrink-0 dark:hidden" alt="" />
-                      <img src="/apple-logo-white.png" className="w-3.5 h-3.5 object-contain flex-shrink-0 hidden dark:block" alt="" />
-                    </>
-                  )}
-                  <span>macOS</span>
-                </button>
-                <button 
-                  onClick={() => { setSelectedOS("linux"); setSelectedType(0); }}
-                  className={`flex-1 min-w-[90px] py-2.5 px-4 rounded-xl text-xs font-bold transition-all border text-center flex items-center justify-center gap-2 ${
-                    selectedOS === "linux" 
-                      ? "bg-zinc-900 text-white dark:bg-white dark:text-black border-transparent shadow-md"
-                      : "bg-zinc-100/80 dark:bg-white/[0.03] border-zinc-200 dark:border-white/5 text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white hover:bg-zinc-200/60"
-                  }`}
-                >
-                  <img src="/linux-logo.png" className="w-3.5 h-3.5 object-contain flex-shrink-0" alt="" />
-                  <span>Linux</span>
-                </button>
-              </div>
-
-              {/* Package Format Selector Pills */}
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <span className="text-[11px] font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">Choose Package Format</span>
-                  <span className="text-[11px] text-zinc-400 dark:text-zinc-500 font-medium">{currentOptions.length} formats available</span>
-                </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  {currentOptions.map((opt, idx) => {
-                    const isSelected = selectedType === idx;
-                    return (
-                      <button
-                        key={idx}
-                        onClick={() => setSelectedType(idx)}
-                        className={`p-3.5 rounded-xl border text-left transition-all relative ${
-                          isSelected
-                            ? "bg-indigo-50/70 dark:bg-indigo-500/10 border-indigo-500/60 ring-2 ring-indigo-500/20 shadow-sm"
-                            : "bg-zinc-50/60 dark:bg-white/[0.02] border-zinc-200 dark:border-white/10 hover:border-zinc-300 dark:hover:border-white/20 hover:bg-zinc-100/50"
-                        }`}
-                      >
-                        <div className="flex items-center justify-between mb-1.5">
-                          <span className={`text-xs font-bold ${isSelected ? "text-indigo-600 dark:text-indigo-300" : "text-zinc-900 dark:text-white"}`}>
-                            {opt.title}
-                          </span>
-                          <span className={`text-[9px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider ${
-                            opt.primary 
-                              ? "bg-indigo-100 dark:bg-indigo-500/20 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-500/30" 
-                              : "bg-zinc-200/80 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 border border-zinc-300/60 dark:border-white/10"
-                          }`}>
-                            {opt.badge}
-                          </span>
-                        </div>
-                        <p className="text-[11px] text-zinc-600 dark:text-zinc-400 line-clamp-2 leading-relaxed font-normal">
-                          {opt.desc}
-                        </p>
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-
-              {/* Active Selection Details & Download Action */}
-              <div className="space-y-6 pt-6 border-t border-zinc-200 dark:border-white/10 mt-6">
-                <div>
-                  <div className="flex flex-wrap items-center gap-2 mb-1.5">
-                    <h3 className="text-base font-bold text-zinc-900 dark:text-white">
-                      {activeOption.title}
-                    </h3>
-                    <span className="text-[11px] px-2.5 py-0.5 rounded-md bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 border border-zinc-300/70 dark:border-white/10 font-mono font-semibold">
-                      {activeOption.file}
-                    </span>
-                  </div>
-                  <p className="text-xs text-zinc-600 dark:text-zinc-400 font-medium">{activeOption.desc}</p>
+              <div className="space-y-5">
+                {/* Tab headers */}
+                <div className="flex border-b border-zinc-200 dark:border-white/10 pb-4 justify-between gap-2.5 overflow-x-auto">
+                  <button 
+                    onClick={() => { setSelectedOS("win"); setSelectedType(0); }}
+                    className={`flex-1 min-w-[100px] py-2.5 px-3.5 rounded-xl text-xs md:text-sm font-bold transition-all border text-center flex items-center justify-center gap-2 cursor-pointer ${
+                      selectedOS === "win" 
+                        ? "bg-zinc-900 text-white dark:bg-white dark:text-black border-transparent shadow-md"
+                        : "bg-zinc-100/80 dark:bg-white/[0.03] border-zinc-200 dark:border-white/5 text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white hover:bg-zinc-200/60"
+                    }`}
+                  >
+                    <img src="/windows-logo.png" className="w-4 h-4 object-contain flex-shrink-0" alt="" />
+                    <span>Windows</span>
+                  </button>
+                  <button 
+                    onClick={() => { setSelectedOS("mac"); setSelectedType(0); }}
+                    className={`flex-1 min-w-[100px] py-2.5 px-3.5 rounded-xl text-xs md:text-sm font-bold transition-all border text-center flex items-center justify-center gap-2 cursor-pointer ${
+                      selectedOS === "mac" 
+                        ? "bg-zinc-900 text-white dark:bg-white dark:text-black border-transparent shadow-md"
+                        : "bg-zinc-100/80 dark:bg-white/[0.03] border-zinc-200 dark:border-white/5 text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white hover:bg-zinc-200/60"
+                    }`}
+                  >
+                    {selectedOS === "mac" ? (
+                      <img src="/apple-logo-white.png" className="w-4 h-4 object-contain flex-shrink-0 dark:hidden" alt="" />
+                    ) : (
+                      <>
+                        <img src="/apple-logo-black.png" className="w-4 h-4 object-contain flex-shrink-0 dark:hidden" alt="" />
+                        <img src="/apple-logo-white.png" className="w-4 h-4 object-contain flex-shrink-0 hidden dark:block" alt="" />
+                      </>
+                    )}
+                    <span>macOS</span>
+                  </button>
+                  <button 
+                    onClick={() => { setSelectedOS("linux"); setSelectedType(0); }}
+                    className={`flex-1 min-w-[100px] py-2.5 px-3.5 rounded-xl text-xs md:text-sm font-bold transition-all border text-center flex items-center justify-center gap-2 cursor-pointer ${
+                      selectedOS === "linux" 
+                        ? "bg-zinc-900 text-white dark:bg-white dark:text-black border-transparent shadow-md"
+                        : "bg-zinc-100/80 dark:bg-white/[0.03] border-zinc-200 dark:border-white/5 text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white hover:bg-zinc-200/60"
+                    }`}
+                  >
+                    <img src="/linux-logo.png" className="w-4 h-4 object-contain flex-shrink-0" alt="" />
+                    <span>Linux</span>
+                  </button>
                 </div>
 
+                {/* Package Format Selector Pills */}
                 <div className="space-y-3">
-                  <h4 className="text-[11px] font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">Installation Steps</h4>
-                  <ol className="space-y-2.5 pl-0.5">
-                    {activeOption.instructions.map((step, idx) => (
-                      <li key={idx} className="flex gap-3 text-xs text-zinc-700 dark:text-zinc-300 leading-relaxed font-medium">
-                        <span className="flex-shrink-0 w-6 h-6 rounded-full bg-zinc-100 dark:bg-zinc-800 border border-zinc-300 dark:border-white/10 flex items-center justify-center text-[11px] font-bold text-zinc-700 dark:text-zinc-300 shadow-sm">
-                          {idx + 1}
-                        </span>
-                        <span className="pt-0.5">{step}</span>
-                      </li>
-                    ))}
-                  </ol>
+                  <div className="flex items-center justify-between">
+                    <span className="text-[11px] font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">Choose Package Format</span>
+                    <span className="text-[11px] text-zinc-400 dark:text-zinc-500 font-semibold">{currentOptions.length} formats available</span>
+                  </div>
+                  <div className={`grid gap-3 ${currentOptions.length === 3 ? "grid-cols-1 sm:grid-cols-3" : "grid-cols-1 sm:grid-cols-2"}`}>
+                    {currentOptions.map((opt, idx) => {
+                      const isSelected = selectedType === idx;
+                      return (
+                        <button
+                          key={idx}
+                          onClick={() => setSelectedType(idx)}
+                          className={`p-3 rounded-xl border text-left transition-all relative cursor-pointer min-h-[76px] flex flex-col justify-between ${
+                            isSelected
+                              ? "bg-indigo-50/80 dark:bg-indigo-500/15 border-indigo-500/60 ring-2 ring-indigo-500/20 shadow-sm"
+                              : "bg-zinc-50/70 dark:bg-white/[0.02] border-zinc-200 dark:border-white/10 hover:border-zinc-300 dark:hover:border-white/20 hover:bg-zinc-100/60"
+                          }`}
+                        >
+                          <div className="flex items-center justify-between gap-1 mb-1">
+                            <span className={`text-xs font-bold truncate ${isSelected ? "text-indigo-600 dark:text-indigo-300" : "text-zinc-900 dark:text-white"}`}>
+                              {opt.title}
+                            </span>
+                            <span className={`text-[9px] px-1.5 py-0.5 rounded-full font-bold uppercase tracking-wider flex-shrink-0 ${
+                              opt.primary 
+                                ? "bg-indigo-100 dark:bg-indigo-500/20 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-500/30" 
+                                : "bg-zinc-200/80 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 border border-zinc-300/60 dark:border-white/10"
+                            }`}>
+                              {opt.badge}
+                            </span>
+                          </div>
+                          <p className="text-[11px] text-zinc-500 dark:text-zinc-400 line-clamp-2 leading-relaxed font-normal">
+                            {opt.desc}
+                          </p>
+                        </button>
+                      );
+                    })}
+                  </div>
                 </div>
 
-                <div className="pt-2">
-                  <a href={activeOption.url} className="w-full block">
-                    <button className="w-full h-12 text-sm font-bold rounded-xl flex items-center justify-center gap-2.5 cursor-pointer shadow-lg transition-all bg-zinc-900 hover:bg-black text-white dark:bg-white dark:hover:bg-zinc-100 dark:text-black hover:scale-[1.005] active:scale-[0.995]">
-                      <Download className="w-4 h-4" /> Download {activeOption.title}
-                    </button>
-                  </a>
+                {/* Active Selection Details & Steps */}
+                <div className="space-y-3.5 pt-3.5 border-t border-zinc-200 dark:border-white/10">
+                  <div>
+                    <div className="flex flex-wrap items-center gap-2 mb-1">
+                      <h3 className="text-base font-bold text-zinc-900 dark:text-white">
+                        {activeOption.title}
+                      </h3>
+                      <span className="text-[11px] px-2 py-0.5 rounded-md bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 border border-zinc-300/70 dark:border-white/10 font-mono font-semibold">
+                        {activeOption.file}
+                      </span>
+                    </div>
+                    <p className="text-xs text-zinc-600 dark:text-zinc-400 font-medium leading-relaxed">{activeOption.desc}</p>
+                  </div>
+
+                  <div className="space-y-2.5">
+                    <h4 className="text-[11px] font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">Installation Steps</h4>
+                    <ol className="space-y-2.5 pl-0.5">
+                      {activeOption.instructions.map((step, idx) => (
+                        <li key={idx} className="flex items-start gap-3 text-xs text-zinc-700 dark:text-zinc-300 leading-relaxed font-medium">
+                          <span className="flex-shrink-0 w-5 h-5 rounded-full bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-white/10 flex items-center justify-center text-[10px] font-bold text-zinc-600 dark:text-zinc-400 mt-0.5 shadow-xs">
+                            {idx + 1}
+                          </span>
+                          <span className="flex-1 pt-0.5">{step}</span>
+                        </li>
+                      ))}
+                    </ol>
+                  </div>
                 </div>
               </div>
 
-            </div>
-
-            {/* Offline note */}
-            <div className="p-4 bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/20 rounded-xl flex gap-3 text-left">
-              <AlertCircle className="w-5 h-5 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" />
-              <div className="space-y-1">
-                <h4 className="text-xs font-bold text-amber-900 dark:text-amber-400">Offline activation notice</h4>
-                <p className="text-[11px] text-amber-900/80 dark:text-amber-200/80 leading-relaxed font-medium">
-                  Your upgraded tier limits (Pro/Super) are backed by Firestore and synchronize automatically. If you plan to run the software completely offline, simply log in to your account once while connected to the internet. The app securely caches your active plan thresholds locally, enabling unlimited offline use!
+              {/* Bottom Download Action — Pushed to bottom of card */}
+              <div className="pt-4 mt-4 border-t border-zinc-200 dark:border-white/10 space-y-2">
+                <a href={activeOption.url} className="w-full block">
+                  <button className="w-full h-12 text-sm font-bold rounded-xl flex items-center justify-center gap-2.5 cursor-pointer shadow-lg transition-all bg-zinc-900 hover:bg-black text-white dark:bg-white dark:hover:bg-zinc-100 dark:text-black hover:scale-[1.005] active:scale-[0.995]">
+                    <Download className="w-4 h-4" /> Download {activeOption.title}
+                  </button>
+                </a>
+                <p className="text-[10px] text-center text-zinc-500 dark:text-zinc-400 font-medium">
+                  ✓ Verified release · Bundled Java 21 JRE · 100% Offline execution supported
                 </p>
               </div>
+
             </div>
           </div>
 
           {/* Right 2 columns: Desktop app advantages */}
-          <div className="lg:col-span-2 space-y-6">
+          <div className="lg:col-span-2 flex flex-col justify-between h-full gap-4">
             
             {/* Advantages block */}
-            <div className="bg-white dark:bg-zinc-950/60 border border-zinc-200 dark:border-white/10 p-6 rounded-2xl space-y-5 shadow-sm dark:shadow-2xl">
+            <div className="bg-white dark:bg-zinc-950/60 border border-zinc-200 dark:border-white/10 p-5 rounded-2xl space-y-3.5 shadow-sm dark:shadow-2xl">
               <h3 className="text-sm font-bold uppercase tracking-wider text-zinc-900 dark:text-zinc-400">Why Desktop App?</h3>
               
-              <div className="space-y-4">
+              <div className="space-y-3">
                 <div className="flex items-start gap-3">
                   <div className="p-2 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400 mt-0.5">
                     <Cpu className="w-4 h-4" />
@@ -321,7 +320,7 @@ export default function DownloadPage() {
                   </div>
                   <div>
                     <h4 className="text-xs font-bold text-zinc-900 dark:text-white">Infinite Size Limits</h4>
-                    <p className="text-[11px] text-zinc-600 dark:text-zinc-400 mt-0.5 leading-relaxed">No browser memory block constraints. Confidently restore large Google Takeout archives from 50GB up to 500GB+.</p>
+                    <p className="text-[11px] text-zinc-600 dark:text-zinc-400 mt-0.5 leading-relaxed">No browser memory constraints. Confidently restore large Google Takeout archives from 50GB up to 1TB+.</p>
                   </div>
                 </div>
 
@@ -347,17 +346,28 @@ export default function DownloadPage() {
               </div>
             </div>
 
+            {/* Offline activation notice */}
+            <div className="p-4 bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/20 rounded-2xl flex gap-3 text-left shadow-sm">
+              <AlertCircle className="w-5 h-5 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" />
+              <div className="space-y-1">
+                <h4 className="text-xs font-bold text-amber-900 dark:text-amber-400">Offline activation notice</h4>
+                <p className="text-[11px] text-amber-900/80 dark:text-amber-200/80 leading-relaxed font-medium">
+                  Your upgraded tier limits (Pro/Super) are backed by Firestore and synchronize automatically. If you plan to run the software completely offline, simply log in to your account once while connected to the internet. The app securely caches your active plan thresholds locally, enabling unlimited offline use!
+                </p>
+              </div>
+            </div>
+
             {/* Tech Requirements */}
-            <div className="bg-white dark:bg-zinc-950/60 border border-zinc-200 dark:border-white/10 p-6 rounded-2xl space-y-3 shadow-sm dark:shadow-2xl">
+            <div className="bg-white dark:bg-zinc-950/60 border border-zinc-200 dark:border-white/10 p-5 rounded-2xl space-y-2.5 shadow-sm dark:shadow-2xl">
               <h3 className="text-sm font-bold uppercase tracking-wider text-zinc-900 dark:text-zinc-400 flex items-center gap-1.5">
                 <Terminal className="w-4 h-4" /> System Specs
               </h3>
               <ul className="space-y-2 text-xs text-zinc-700 dark:text-zinc-300 font-medium">
-                <li className="flex justify-between border-b border-zinc-200 dark:border-white/10 pb-2">
+                <li className="flex justify-between border-b border-zinc-200 dark:border-white/10 pb-1.5">
                   <span className="text-zinc-500 dark:text-zinc-400">Java Version</span>
                   <span className="font-semibold text-zinc-900 dark:text-white">Java 21 JRE (Bundled inside)</span>
                 </li>
-                <li className="flex justify-between border-b border-zinc-200 dark:border-white/10 pb-2">
+                <li className="flex justify-between border-b border-zinc-200 dark:border-white/10 pb-1.5">
                   <span className="text-zinc-500 dark:text-zinc-400">Memory (RAM)</span>
                   <span className="font-semibold text-zinc-900 dark:text-white">4 GB Minimum (8 GB Recommended)</span>
                 </li>
@@ -391,7 +401,7 @@ export default function DownloadPage() {
                 <tr>
                   <td className="p-4 font-semibold text-zinc-900 dark:text-white">Installation</td>
                   <td className="p-4">Instant (Zero install required)</td>
-                  <td className="p-4 text-zinc-800 dark:text-zinc-200 font-semibold">Requires download (No install needed)</td>
+                  <td className="p-4 text-zinc-800 dark:text-zinc-200 font-semibold">One-time download (Portable .zip or Installer setup)</td>
                 </tr>
                 <tr>
                   <td className="p-4 font-semibold text-zinc-900 dark:text-white">Processing Speed</td>
@@ -400,13 +410,13 @@ export default function DownloadPage() {
                 </tr>
                 <tr>
                   <td className="p-4 font-semibold text-zinc-900 dark:text-white">Ideal Archive Size</td>
-                  <td className="p-4">Small archives (&lt; 20 GB)</td>
-                  <td className="p-4 text-zinc-800 dark:text-zinc-200 font-semibold">Infinite size (50 GB to 1 TB+)</td>
+                  <td className="p-4">Standard to Large (Up to 50 GB – 100 GB)</td>
+                  <td className="p-4 text-zinc-800 dark:text-zinc-200 font-semibold">Massive &amp; Infinite (50 GB to Multi-Terabyte 1 TB+)</td>
                 </tr>
                 <tr>
                   <td className="p-4 font-semibold text-zinc-900 dark:text-white">Offline Use</td>
-                  <td className="p-4 text-rose-500 dark:text-rose-400">No (Requires server sync)</td>
-                  <td className="p-4 text-emerald-600 dark:text-emerald-400 font-bold">Yes (100% Offline supported)</td>
+                  <td className="p-4 text-rose-500 dark:text-rose-400">No (Requires internet connection)</td>
+                  <td className="p-4 text-emerald-600 dark:text-emerald-400 font-bold">Yes (100% Offline with cached activation)</td>
                 </tr>
                 <tr>
                   <td className="p-4 font-semibold text-zinc-900 dark:text-white">Direct Local EXIF Injection</td>

@@ -9,7 +9,7 @@ import { Button } from "../components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "../components/ui/card"
 import { Progress } from "../components/ui/progress"
 import AdUnit from "../components/AdUnit"
-import { getPlanCardStyles, type LogEntry } from "./useToolPipeline"
+import { type LogEntry } from "./useToolPipeline"
 import type { ActiveSession } from "../lib/SessionManager"
 import { usePersistentHandles } from "../hooks/usePersistentHandles"
 
@@ -297,16 +297,15 @@ export function RestorePanel({
         <>
           <div className="flex-grow flex flex-col overflow-hidden">
 
-          {/* Setup Grid */}
+          {/* Setup Grid: 2 balanced rows aligned across 3 columns */}
           <div className="p-4 grid grid-cols-1 lg:grid-cols-3 gap-4 border-b border-white/5 bg-white/[0.005]">
-            {/* Left 2 Columns: Source & Destination cards stacked */}
-            <div className="lg:col-span-2 space-y-4">
-              {/* Source Card */}
+            {/* ROW 1 — Left: 1. Source Card */}
+            <div className="order-1 lg:col-span-2 flex flex-col">
               <Card
                 onDragOver={handleDragOver}
                 onDragLeave={handleDragLeave}
                 onDrop={handleDrop}
-                className={`bg-white/[0.01] border-white/10 shadow-md transition-all duration-150 ${
+                className={`bg-white/[0.01] border-white/10 shadow-md transition-all duration-150 h-full flex flex-col justify-between ${
                   isDragOver ? 'border-indigo-500/40 bg-indigo-500/[0.01] scale-[1.005]' : ''
                 }`}
               >
@@ -326,7 +325,7 @@ export function RestorePanel({
                     )}
                   </CardTitle>
                 </CardHeader>
-                <CardContent className="p-3">
+                <CardContent className="p-3 flex-grow flex flex-col justify-center">
                   {zipFile ? (
                     <div className="p-2 bg-indigo-500/5 border border-indigo-500/15 rounded flex justify-between items-center text-zinc-350 text-[10px]">
                       <span className="font-mono truncate mr-2">ZIP: {zipFile.name}</span>
@@ -370,79 +369,11 @@ export function RestorePanel({
                   )}
                 </CardContent>
               </Card>
-
-              {/* Destination Card */}
-              <Card className="bg-white/[0.01] border-white/10 shadow-md">
-                <CardHeader className="border-b border-white/5 bg-black/20 py-2 px-3">
-                  <CardTitle className="flex items-center justify-between text-[11px] font-bold uppercase tracking-wider text-zinc-350">
-                    <span className="flex items-center gap-1.5">
-                      <HardDrive className="w-3.5 h-3.5 text-zinc-400"/>
-                      2. Destination
-                    </span>
-                    {outputFolder && (
-                      <button
-                        onClick={handleSelectOutput}
-                        className="text-[9px] text-zinc-400 hover:text-white font-bold transition-all px-1.5 py-0.5 rounded border border-white/10 hover:border-white/20 bg-white/[0.02] cursor-pointer"
-                      >
-                        Change
-                      </button>
-                    )}
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="p-3">
-                  {outputFolder ? (
-                    <div className="p-2 bg-zinc-800/10 border border-zinc-800/25 rounded flex justify-between items-center text-zinc-400 text-[10px]">
-                      <span className="font-mono truncate mr-2">{outputFolder.name}</span>
-                      <CheckCircle2 className="w-3.5 h-3.5 text-green-400 flex-shrink-0" />
-                    </div>
-                  ) : (
-                    <Button onClick={handleSelectOutput} className="btn-monochrome-primary w-full rounded px-3 py-1.5 transition-all duration-150 cursor-pointer text-[10px] h-8">
-                      Browse Output Directory
-                    </Button>
-                  )}
-                </CardContent>
-              </Card>
             </div>
 
-            {/* Right 1 Column: Plan Status & Buttons stacked */}
-            <div className="lg:col-span-1 flex flex-col gap-3 justify-between">
-              {/* Plan Status Card */}
-              {(() => {
-                const styles = getPlanCardStyles(plan, tierThresholds);
-                const isPremium = plan !== 'free';
-                return (
-                  <Card className={`relative overflow-hidden transition-all duration-300 border ${styles.cardClass} flex-grow min-h-[90px]`}>
-                    <CardContent className="p-3.5 flex flex-col justify-between h-full min-h-[85px]">
-                      <div className="flex justify-between items-start">
-                        <div>
-                          <div className="flex items-center gap-1.5">
-                            <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider">Plan Status</span>
-                            {plan === 'super' && <Sparkles className="w-3.5 h-3.5 text-amber-500" />}
-                            {plan === 'pro' && <Sparkles className="w-3.5 h-3.5 text-purple-500" />}
-                          </div>
-                          <div className={`text-xs font-black mt-1.5 flex items-center gap-1.5 ${styles.titleClass}`}>
-                            {isPremium ? (
-                              <ShieldCheck className={`w-4 h-4 ${styles.iconClass}`} />
-                            ) : (
-                              <AlertCircle className={`w-4 h-4 ${styles.iconClass}`} />
-                            )}
-                            {styles.titleText}
-                          </div>
-                        </div>
-                        <span className={`text-[9px] font-mono tracking-wide px-2 py-0.5 rounded border uppercase ${styles.badgeClass}`}>
-                          {styles.badgeText}
-                        </span>
-                      </div>
-                      <p className="mt-2.5 text-[9.5px] text-zinc-600 leading-normal font-medium">
-                        {styles.description}
-                      </p>
-                    </CardContent>
-                  </Card>
-                );
-              })()}
-
-              {/* Actions / Run Controls */}
-              <div className="mt-auto space-y-3">
+            {/* ROW 1 — Right: Start & Download Buttons (aligned level with 1. Source) */}
+            <div className="order-3 lg:order-2 lg:col-span-1 flex flex-col justify-center h-full">
+              <div className="space-y-2.5 w-full">
                 {/* Memory Limit Warning for Large Files */}
                 {!isProcessing && progress === 0 && (takeoutFolder || zipFile) && (
                   <div className="p-2.5 rounded-lg border border-yellow-500/20 bg-yellow-500/[0.03] text-yellow-500/80 text-[9.5px] leading-relaxed flex gap-2">
@@ -525,11 +456,45 @@ export function RestorePanel({
                 )}
               </div>
             </div>
-          </div>
 
-          {/* Horizontal Ad Unit */}
-          <div className="px-4 py-1.5 border-b border-white/5 bg-black/20">
-            <AdUnit type="horizontal" slot="1" />
+            {/* ROW 2 — Left: 2. Destination Card */}
+            <div className="order-2 lg:order-3 lg:col-span-2 flex flex-col">
+              <Card className="bg-white/[0.01] border-white/10 shadow-md h-full flex flex-col justify-between">
+                <CardHeader className="border-b border-white/5 bg-black/20 py-2 px-3">
+                  <CardTitle className="flex items-center justify-between text-[11px] font-bold uppercase tracking-wider text-zinc-350">
+                    <span className="flex items-center gap-1.5">
+                      <HardDrive className="w-3.5 h-3.5 text-zinc-400"/>
+                      2. Destination
+                    </span>
+                    {outputFolder && (
+                      <button
+                        onClick={handleSelectOutput}
+                        className="text-[9px] text-zinc-400 hover:text-white font-bold transition-all px-1.5 py-0.5 rounded border border-white/10 hover:border-white/20 bg-white/[0.02] cursor-pointer"
+                      >
+                        Change
+                      </button>
+                    )}
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="p-3 flex-grow flex flex-col justify-center">
+                  {outputFolder ? (
+                    <div className="p-2 bg-zinc-800/10 border border-zinc-800/25 rounded flex justify-between items-center text-zinc-400 text-[10px]">
+                      <span className="font-mono truncate mr-2">{outputFolder.name}</span>
+                      <CheckCircle2 className="w-3.5 h-3.5 text-green-400 flex-shrink-0" />
+                    </div>
+                  ) : (
+                    <Button onClick={handleSelectOutput} className="btn-monochrome-primary w-full rounded px-3 py-1.5 transition-all duration-150 cursor-pointer text-[10px] h-8">
+                      Browse Output Directory
+                    </Button>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* ROW 2 — Right: Ad Box (aligned level with 2. Destination) */}
+            <div className="order-4 lg:col-span-1 flex flex-col justify-center h-full">
+              <AdUnit type="horizontal" slot="1" className="!my-0 w-full" />
+            </div>
           </div>
 
           {/* Logs Terminal */}

@@ -1,3 +1,16 @@
+# Explicit access for Google AdSense Crawler
+User-agent: Mediapartners-Google
+Allow: /
+
+# Explicit access for Google Ads Crawler
+User-agent: Googlebot
+Allow: /
+
+# Explicit access for Media.net Ad Crawler
+User-agent: Medianet
+Allow: /
+
+# Default rule for all web crawlers
 User-agent: *
 Allow: /
 Disallow: /admin/

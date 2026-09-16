@@ -151,10 +151,12 @@ function DashboardPageContent() {
 
   // Recovery pass countdown
   const expiresAt: number = (userData as any)?.expiresAt || 0
+  const passExpiredAt: number = (userData as any)?.passExpiredAt || 0
   const passActive = plan === 'recovery_pass' && expiresAt > now
-  const passExpired = plan === 'recovery_pass' && expiresAt > 0 && expiresAt <= now
+  const passExpired = (plan === 'recovery_pass' && expiresAt > 0 && expiresAt <= now) || (plan === 'free' && passExpiredAt > 0)
   const remainingMs = Math.max(0, expiresAt - now)
-  const remainingHrs = Math.floor(remainingMs / (1000 * 60 * 60))
+  const remainingDays = Math.floor(remainingMs / (1000 * 60 * 60 * 24))
+  const remainingHrs = Math.floor((remainingMs % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60))
   const remainingMins = Math.floor((remainingMs % (1000 * 60 * 60)) / (1000 * 60))
   const remainingSecs = Math.floor((remainingMs % (1000 * 60)) / 1000)
 
@@ -241,20 +243,40 @@ Your EXIF metadata recovery tools are active.
             </CardHeader>
             <CardContent className="pt-6 space-y-6">
               {plan === 'free' && (
-                <div className="grid md:grid-cols-2 gap-6">
-                  <div className="bg-white/[0.01] border border-white/5 rounded-xl p-4 space-y-3">
-                    <div className="flex justify-between text-xs text-white/60">
-                      <span className="flex items-center gap-1.5 font-semibold"><HardDrive className="w-3.5 h-3.5 text-zinc-500" /> Storage Capacity</span>
-                      <span>{usedGB.toFixed(2)} GB / 0.50 GB</span>
+                <div className="space-y-4">
+                  {(passExpiredAt > 0 || (expiresAt > 0 && expiresAt <= now)) && (
+                    <div className="bg-amber-500/10 border border-amber-500/20 rounded-xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                      <div>
+                        <p className="text-xs font-bold text-amber-400">Recovery Pass Ended — Defaulted to Free Tier</p>
+                        <p className="text-[11px] text-zinc-400 mt-0.5">
+                          Your pass time span ended on {new Date(passExpiredAt || expiresAt).toLocaleString()}. You can purchase a new pass or upgrade to a Lifetime plan anytime.
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-2 flex-shrink-0">
+                        <a href="/checkout?plan=recovery_pass">
+                          <button className="btn-recovery-cyan px-3 py-1.5 rounded-lg text-xs font-bold transition-all">New Pass</button>
+                        </a>
+                        <a href="/pricing">
+                          <button className="btn-pro-blue px-3 py-1.5 rounded-lg text-xs font-bold transition-all">Upgrade Plan</button>
+                        </a>
+                      </div>
                     </div>
-                    <Progress value={quotaPct} className="h-1.5 bg-white/10" />
-                  </div>
-                  <div className="bg-white/[0.01] border border-white/5 rounded-xl p-4 space-y-3">
-                    <div className="flex justify-between text-xs text-white/60">
-                      <span className="flex items-center gap-1.5 font-semibold"><FileText className="w-3.5 h-3.5 text-zinc-500" /> Processed Files</span>
-                      <span>{usedFiles} / 250 files</span>
+                  )}
+                  <div className="grid md:grid-cols-2 gap-6">
+                    <div className="bg-white/[0.01] border border-white/5 rounded-xl p-4 space-y-3">
+                      <div className="flex justify-between text-xs text-white/60">
+                        <span className="flex items-center gap-1.5 font-semibold"><HardDrive className="w-3.5 h-3.5 text-zinc-500" /> Storage Capacity</span>
+                        <span>{usedGB.toFixed(2)} GB / 0.50 GB</span>
+                      </div>
+                      <Progress value={quotaPct} className="h-1.5 bg-white/10" />
                     </div>
-                    <Progress value={fileQuotaPct} className="h-1.5 bg-white/10" />
+                    <div className="bg-white/[0.01] border border-white/5 rounded-xl p-4 space-y-3">
+                      <div className="flex justify-between text-xs text-white/60">
+                        <span className="flex items-center gap-1.5 font-semibold"><FileText className="w-3.5 h-3.5 text-zinc-500" /> Processed Files</span>
+                        <span>{usedFiles} / 250 files</span>
+                      </div>
+                      <Progress value={fileQuotaPct} className="h-1.5 bg-white/10" />
+                    </div>
                   </div>
                 </div>
               )}
@@ -271,8 +293,10 @@ Your EXIF metadata recovery tools are active.
                         <a href={`/checkout?plan=recovery_pass`} className="text-[10px] font-bold text-cyan-400 hover:text-cyan-300 underline underline-offset-2">+ Extend</a>
                       </div>
                       <div className="flex items-baseline gap-1.5">
-                        <span className="text-4xl font-black text-white tabular-nums">{String(remainingHrs).padStart(2, '0')}:{String(remainingMins).padStart(2, '0')}:{String(remainingSecs).padStart(2, '0')}</span>
-                        <span className="text-xs text-zinc-500 font-semibold">remaining</span>
+                        <span className="text-4xl font-black text-white tabular-nums">
+                          {String(remainingDays).padStart(2, '0')}:{String(remainingHrs).padStart(2, '0')}:{String(remainingMins).padStart(2, '0')}
+                        </span>
+                        <span className="text-xs text-zinc-400 font-semibold">(days:hours:minutes)</span>
                       </div>
                       <p className="text-[11px] text-zinc-500 mt-2">Unlimited files & storage until {new Date(expiresAt).toLocaleString()}</p>
                     </div>

@@ -4,6 +4,7 @@ import { db } from "../firebase"
 import { useAuth } from "../contexts/AuthContext"
 import { Search, AlertCircle, X, Mail, CheckCircle2, Clock, Inbox } from "lucide-react"
 import { useToastStore } from "../store/useToastStore"
+import { AdminPagination, SortableHeader, sortItems, useAdminSort } from "../components/admin/AdminPagination"
 
 function getStatusBadgeClass(status: string): string {
   switch (status) {
@@ -24,6 +25,9 @@ export default function AdminSupport() {
   const [loading, setLoading] = useState(true)
   const [filter, setFilter] = useState("all")
   const [search, setSearch] = useState("")
+  const [page, setPage] = useState(1)
+  const pageSize = 5
+  const { sort, onSort } = useAdminSort("createdAt", "desc")
   
   // Drawer states
   const [selectedTicket, setSelectedTicket] = useState<any>(null)
@@ -324,6 +328,21 @@ Polished response:`
     return true
   })
 
+  // Reset pagination on filter or search changes
+  useEffect(() => {
+    setPage(1)
+  }, [filter, search])
+
+  const sortedTickets = sortItems(filteredTickets, sort, (item, key) => {
+    if (key === "subject") return item.subject
+    if (key === "email") return item.email
+    if (key === "createdAt") return item.createdAt
+    if (key === "status") return item.status
+    return item[key]
+  })
+
+  const paginatedTickets = sortedTickets.slice((page - 1) * pageSize, page * pageSize)
+
   // Priority calculations
   const getTicketPriority = (plan: string) => {
     if (plan === "super") return { label: "High Priority", color: "bg-zinc-800 text-zinc-100 dark:bg-zinc-200 dark:text-zinc-900 border border-zinc-700 dark:border-zinc-300" }
@@ -351,7 +370,7 @@ Polished response:`
       </tr>
     )
   } else {
-    tableRows = filteredTickets.map((t) => (
+    tableRows = paginatedTickets.map((t) => (
       <tr 
         key={t.id} 
         onClick={() => openTicketDetails(t)}
@@ -433,10 +452,18 @@ Polished response:`
           <table className="w-full text-left text-sm whitespace-nowrap">
             <thead className="bg-zinc-950/50 border-b border-zinc-800 text-zinc-400">
               <tr>
-                <th className="px-6 py-3.5 font-medium">Ticket / Subject</th>
-                <th className="px-6 py-3.5 font-medium">User Email</th>
-                <th className="px-6 py-3.5 font-medium">Created At</th>
-                <th className="px-6 py-3.5 font-medium">Status</th>
+                <th className="px-6 py-3.5 font-medium">
+                  <SortableHeader label="Ticket / Subject" sortKey="subject" sort={sort} onSort={onSort} />
+                </th>
+                <th className="px-6 py-3.5 font-medium">
+                  <SortableHeader label="User Email" sortKey="email" sort={sort} onSort={onSort} />
+                </th>
+                <th className="px-6 py-3.5 font-medium">
+                  <SortableHeader label="Created At" sortKey="createdAt" sort={sort} onSort={onSort} />
+                </th>
+                <th className="px-6 py-3.5 font-medium">
+                  <SortableHeader label="Status" sortKey="status" sort={sort} onSort={onSort} />
+                </th>
                 <th className="px-6 py-3.5 font-medium text-right">Actions</th>
               </tr>
             </thead>
@@ -445,6 +472,12 @@ Polished response:`
             </tbody>
           </table>
         </div>
+        <AdminPagination
+          page={page}
+          totalItems={sortedTickets.length}
+          pageSize={pageSize}
+          onPageChange={setPage}
+        />
       </div>
 
       {/* SLIDING DETAILS DRAWER PANEL */}

@@ -1,13 +1,13 @@
 ---
 export const prerender = true;
 import Layout from "../layouts/Layout.astro";
-import { Shield, ShieldAlert } from "lucide-react";
+import Icon from "../components/ui/Icon.astro";
 ---
 
 <Layout title="TakeoutFix | Privacy Policy" description="Read the TakeoutFix Privacy Policy. We guarantee 100% offline local processing: your photos and videos never leave your device.">
   <div class="max-w-4xl mx-auto px-4 py-16 mt-20">
     <div class="text-center mb-16">
-      <Shield className="w-16 h-16 text-indigo-400 mx-auto mb-6" />
+      <Icon name="shield" class="w-16 h-16 text-indigo-400 mx-auto mb-6" />
       <h1 class="text-4xl md:text-5xl font-bold tracking-tighter mb-4">Privacy Policy</h1>
       <p class="text-xl text-white/60">Your files are yours. They never leave your device.</p>
       <p class="text-sm text-white/40 mt-2">Last updated: June 12, 2026</p>
@@ -32,7 +32,7 @@ import { Shield, ShieldAlert } from "lucide-react";
         <ul class="grid md:grid-cols-2 gap-4">
           {['Photos', 'Videos', 'EXIF metadata', 'GPS coordinates', 'File contents', 'Folder contents', 'Album contents', 'Personal media'].map(item => (
             <li class="flex items-center gap-3 bg-red-500/10 border border-red-500/20 text-red-205 rounded-lg p-4">
-              <ShieldAlert className="w-5 h-5 text-red-400" />
+              <Icon name="shield-alert" class="w-5 h-5 text-red-400" />
               {item}
             </li>
           ))}

@@ -16,6 +16,10 @@ export default defineConfig({
   build: {
     format: 'file'
   },
+  prefetch: {
+    prefetchAll: true,
+    defaultStrategy: 'hover'
+  },
   integrations: [
     react(),
     tailwind({
@@ -23,21 +27,24 @@ export default defineConfig({
     })
   ],
   vite: {
-    esbuild: {
-      drop: ['console', 'debugger'],
-      legalComments: 'none'
-    },
-    build: {
-      sourcemap: false
-    },
     resolve: {
+      dedupe: ['react', 'react-dom'],
       alias: {
-        '@': srcPath
+        '@': srcPath,
       }
     },
     optimizeDeps: {
       exclude: [
-        '@uswriting/exiftool'
+        'astro:transitions',
+        'astro/virtual-modules/transitions',
+        'astro/virtual-modules/transitions.js',
+        'astro/virtual-modules/transitions-router.js',
+        'astro/virtual-modules/transitions-types.js',
+        'astro/virtual-modules/transitions-events.js',
+        'astro/virtual-modules/transitions-swap-functions.js',
+        '@uswriting/exiftool',
+        '@sentry/astro',
+        '@emailjs/browser',
       ],
       include: [
         'react',
@@ -49,17 +56,21 @@ export default defineConfig({
         'firebase/firestore',
         'framer-motion',
         'piexifjs',
-        '@sentry/astro'
       ]
     },
     ssr: {
-      external: ['@sentry/astro', '@uswriting/exiftool', 'react', 'react-dom'],
+      external: [
+        '@sentry/astro',
+        '@uswriting/exiftool',
+      ],
       noExternal: [
+        'react',
+        'react-dom',
         'react-router-dom',
         'lucide-react',
         'firebase',
         'framer-motion',
-        'piexifjs'
+        'piexifjs',
       ]
     }
   }

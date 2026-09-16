@@ -5,6 +5,7 @@ import { Search, Trash2, ShieldAlert } from "lucide-react"
 import { useAuth } from "../contexts/AuthContext"
 import { Link } from "react-router-dom"
 import { useToastStore } from "../store/useToastStore"
+import { AdminPagination } from "../components/admin/AdminPagination"
 
 const PLAN_LABELS: Record<string, string> = {
   free: "Free",
@@ -43,6 +44,59 @@ const getUserFilesRestored = (u: any, recoveries: any[]) => {
   return Math.round(totalFiles * ratio)
 }
 
+const formatUserJoinedDate = (val: any, withTime = false) => {
+  if (!val) return "—"
+  let d: Date
+  if (typeof val === "number") {
+    d = new Date(val)
+  } else if (val.toDate && typeof val.toDate === "function") {
+    d = val.toDate()
+  } else if (val.seconds) {
+    d = new Date(val.seconds * 1000)
+  } else if (typeof val === "string") {
+    d = new Date(val)
+  } else {
+    return "—"
+  }
+  if (isNaN(d.getTime())) return "—"
+  if (withTime) {
+    return d.toLocaleString(undefined, {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    })
+  }
+  return d.toLocaleDateString(undefined, {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+  })
+}
+
+const formatRelativeJoined = (val: any) => {
+  if (!val) return ""
+  let ms: number
+  if (typeof val === "number") ms = val
+  else if (val.toDate && typeof val.toDate === "function") ms = val.toDate().getTime()
+  else if (val.seconds) ms = val.seconds * 1000
+  else ms = new Date(val).getTime()
+  if (isNaN(ms)) return ""
+
+  const diff = Date.now() - ms
+  const mins = Math.floor(diff / 60000)
+  if (mins < 1) return "Just now"
+  if (mins < 60) return `${mins}m ago`
+  const hrs = Math.floor(mins / 60)
+  if (hrs < 24) return `${hrs}h ago`
+  const days = Math.floor(hrs / 24)
+  if (days < 30) return `${days}d ago`
+  const months = Math.floor(days / 30)
+  if (months < 12) return `${months}mo ago`
+  return `${Math.floor(months / 12)}y ago`
+}
+
 export default function AdminUsers() {
   const [users, setUsers] = useState<any[]>([])
   const [recoveries, setRecoveries] = useState<any[]>([])
@@ -52,6 +106,8 @@ export default function AdminUsers() {
   const [selectedUser, setSelectedUser] = useState<any | null>(null)
   const [pendingPlans, setPendingPlans] = useState<Record<string, string>>({})
   const [isSaving, setIsSaving] = useState(false)
+  const [page, setPage] = useState(1)
+  const [pageSize, setPageSize] = useState(5)
 
   const { adminData } = useAuth()
   const role = adminData?.role || "ADMIN"
@@ -238,8 +294,16 @@ export default function AdminUsers() {
     const q = query(collection(db, "users"))
     const unsubscribe = onSnapshot(q, (snap) => {
       const userList = snap.docs.map(d => ({ id: d.id, ...d.data() }))
-      // Sort in-memory safely (handles missing usedBytes and different schemas)
-      userList.sort((a: any, b: any) => getUserBytes(b) - getUserBytes(a))
+      // Sort by join date ascending (oldest members first — #1 = founding user)
+      userList.sort((a: any, b: any) => {
+        const getTs = (u: any) => {
+          if (typeof u.createdAt === "number") return u.createdAt;
+          if (u.createdAt?.seconds) return u.createdAt.seconds * 1000;
+          if (u.createdAt?.toDate) return u.createdAt.toDate().getTime();
+          return 0;
+        };
+        return getTs(a) - getTs(b);
+      })
       setUsers(userList)
       setLoading(false)
     }, (err) => {
@@ -272,6 +336,11 @@ export default function AdminUsers() {
     if (search && !(u.email?.toLowerCase().includes(search.toLowerCase()) || u.id.toLowerCase().includes(search.toLowerCase()))) return false
     return true
   })
+
+  // Reset to page 1 whenever filter or search changes
+  useEffect(() => { setPage(1) }, [search, filter])
+
+  const paginatedUsers = filteredUsers.slice((page - 1) * pageSize, page * pageSize)
 
   return (
     <div>
@@ -320,8 +389,10 @@ export default function AdminUsers() {
           <table className="w-full text-left text-sm whitespace-nowrap">
             <thead className="bg-zinc-950/50 border-b border-zinc-800 text-zinc-400">
               <tr>
+                <th className="px-4 py-3 font-medium w-10 text-center">#</th>
                 <th className="px-6 py-3 font-medium">User</th>
                 <th className="px-6 py-3 font-medium">Plan</th>
+                <th className="px-6 py-3 font-medium">Joined</th>
                 <th className="px-6 py-3 font-medium">Processed</th>
                 <th className="px-6 py-3 font-medium">Files Restored</th>
                 <th className="px-6 py-3 font-medium">Status</th>
@@ -331,20 +402,22 @@ export default function AdminUsers() {
             <tbody className="divide-y divide-zinc-800">
               {loading ? (
                 <tr>
-                  <td colSpan={6} className="px-6 py-8 text-center text-zinc-500">Loading users...</td>
+                  <td colSpan={7} className="px-6 py-8 text-center text-zinc-500">Loading users...</td>
                 </tr>
               ) : filteredUsers.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="px-6 py-8 text-center text-zinc-500">No users found matching criteria.</td>
+                  <td colSpan={7} className="px-6 py-8 text-center text-zinc-500">No users found matching criteria.</td>
                 </tr>
               ) : (
-                filteredUsers.map((u) => (
-                  <tr 
-                    key={u.id} 
+                paginatedUsers.map((u, idx) => (
+                  <tr
+                    key={u.id}
                     className="hover:bg-zinc-800/50 cursor-pointer transition-colors"
                     onClick={() => setSelectedUser(u)}
                   >
-                    <td className="px-6 py-4">
+                    <td className="px-4 py-4 text-center">
+                      <span className="text-xs font-mono text-zinc-500">{(page - 1) * pageSize + idx + 1}</span>
+                    </td>                    <td className="px-6 py-4">
                       <div className="flex items-center gap-3">
                         <img src={u.photoURL || `https://ui-avatars.com/api/?name=${u.displayName || 'U'}&background=random`} alt="" className="w-8 h-8 rounded-full" />
                         <div>
@@ -372,23 +445,33 @@ export default function AdminUsers() {
                         <select
                           value={pendingPlans[u.id] !== undefined ? pendingPlans[u.id] : (u.plan || 'free')}
                           onChange={(e) => handleStagePlan(u.id, e.target.value)}
-                          className={`inline-flex items-center px-2 py-1 rounded-md text-xs font-semibold uppercase tracking-wider bg-zinc-950 border text-zinc-350 focus:outline-none cursor-pointer transition-all ${
-                            pendingPlans[u.id] !== undefined ? 'border-amber-500 ring-2 ring-amber-500/30 font-bold' :
-                            u.plan === 'pro' ? 'text-zinc-200 border-zinc-700 bg-zinc-800/40' :
-                            u.plan === 'super' ? 'text-white border-zinc-600 bg-zinc-850 font-bold' :
-                            u.plan === 'recovery_pass' ? 'text-zinc-300 border-zinc-750 bg-zinc-900/60' :
-                            'text-zinc-450 border-zinc-800 bg-zinc-950/20'
+                          className={`inline-flex items-center px-2 py-1 rounded-md text-xs font-semibold uppercase tracking-wider border focus:outline-none cursor-pointer transition-all ${
+                            pendingPlans[u.id] !== undefined ? 'border-amber-500 ring-2 ring-amber-500/30 font-bold bg-amber-50 text-amber-900 dark:bg-amber-500/15 dark:text-amber-300' :
+                            u.plan === 'pro' ? 'text-indigo-700 dark:text-indigo-300 border-indigo-200 dark:border-indigo-500/30 bg-indigo-50 dark:bg-indigo-500/10 font-semibold' :
+                            u.plan === 'super' ? 'text-purple-700 dark:text-purple-300 border-purple-200 dark:border-purple-500/30 bg-purple-50 dark:bg-purple-500/10 font-bold' :
+                            u.plan === 'recovery_pass' ? 'text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-500/30 bg-blue-50 dark:bg-blue-500/10' :
+                            'text-zinc-700 dark:text-zinc-300 border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900'
                           }`}
                         >
-                          <option value="free" className="bg-zinc-900 text-zinc-400">Free</option>
-                          <option value="recovery_pass" className="bg-zinc-900 text-zinc-300">Single Time</option>
-                          <option value="pro" className="bg-zinc-900 text-zinc-250">Pro</option>
-                          <option value="super" className="bg-zinc-900 text-white font-bold">Super</option>
+                          <option value="free" className="bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100">Free</option>
+                          <option value="recovery_pass" className="bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100">Single Time</option>
+                          <option value="pro" className="bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100">Pro</option>
+                          <option value="super" className="bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 font-bold">Super</option>
                         </select>
                         {pendingPlans[u.id] !== undefined && (
                           <span className="text-[10px] font-bold text-amber-400 bg-amber-500/10 px-1.5 py-0.5 rounded border border-amber-500/20 uppercase tracking-wider">Unsaved</span>
                         )}
                       </div>
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="text-xs font-semibold text-zinc-200">
+                        {formatUserJoinedDate(u.createdAt || u.joinedAt)}
+                      </div>
+                      {formatRelativeJoined(u.createdAt || u.joinedAt) && (
+                        <div className="text-[10px] text-zinc-500 font-mono mt-0.5">
+                          {formatRelativeJoined(u.createdAt || u.joinedAt)}
+                        </div>
+                      )}
                     </td>
                     <td className="px-6 py-4 text-zinc-300">
                       {formatBytes(getUserBytes(u))}
@@ -397,8 +480,8 @@ export default function AdminUsers() {
                       {getUserFilesRestored(u, recoveries).toLocaleString()}
                     </td>
                     <td className="px-6 py-4">
-                      <span className={`inline-flex items-center gap-1.5 text-xs font-medium ${u.suspended ? 'text-red-400' : 'text-zinc-400'}`}>
-                        <span className={`w-1.5 h-1.5 rounded-full ${u.suspended ? 'bg-red-400' : 'bg-zinc-400'}`}></span>
+                      <span className={`inline-flex items-center gap-1.5 text-xs font-semibold ${u.suspended ? 'text-rose-600 dark:text-rose-400' : 'text-emerald-600 dark:text-emerald-400'}`}>
+                        <span className={`w-1.5 h-1.5 rounded-full ${u.suspended ? 'bg-rose-500' : 'bg-emerald-500'}`}></span>
                         {u.suspended ? 'Suspended' : 'Active'}
                       </span>
                     </td>
@@ -406,10 +489,10 @@ export default function AdminUsers() {
                       {u.plan === 'super' && (
                         <button
                           onClick={() => handleToggleSupportWithAds(u.id, !u.supportWithAds)}
-                          className={`px-2.5 py-1 rounded text-xs font-bold border transition-all ${
+                          className={`px-2.5 py-1 rounded-md text-xs font-semibold border transition-all cursor-pointer ${
                             u.supportWithAds 
-                              ? 'bg-zinc-150 text-zinc-900 border-zinc-200 hover:bg-zinc-200 dark:bg-zinc-200 dark:text-zinc-950 dark:border-zinc-350 dark:hover:bg-zinc-300' 
-                              : 'bg-zinc-850 text-zinc-300 border-zinc-800 hover:bg-zinc-800 dark:bg-zinc-900 dark:text-zinc-450 dark:border-zinc-800 dark:hover:bg-zinc-800'
+                              ? 'bg-amber-50 text-amber-800 border-amber-300 hover:bg-amber-100 dark:bg-amber-500/15 dark:text-amber-300 dark:border-amber-500/30 dark:hover:bg-amber-500/25' 
+                              : 'bg-zinc-100 text-zinc-700 border-zinc-300 hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-300 dark:border-zinc-700 dark:hover:bg-zinc-700'
                           }`}
                         >
                           {u.supportWithAds ? 'Disable Ads' : 'Enable Ads'}
@@ -417,17 +500,17 @@ export default function AdminUsers() {
                       )}
                       <button
                         onClick={() => handleToggleSuspension(u.id, !u.suspended)}
-                        className={`px-2.5 py-1 rounded text-xs font-semibold border transition-all ${
+                        className={`px-2.5 py-1 rounded-md text-xs font-semibold border transition-all cursor-pointer shadow-xs ${
                           u.suspended 
-                            ? 'bg-zinc-800/80 text-zinc-200 border-zinc-700 hover:bg-zinc-700/50' 
-                            : 'bg-zinc-950 text-zinc-400 border-zinc-850 hover:bg-zinc-900'
+                            ? 'bg-emerald-50 text-emerald-700 border-emerald-300 hover:bg-emerald-100 dark:bg-emerald-500/15 dark:text-emerald-300 dark:border-emerald-500/30 dark:hover:bg-emerald-500/25' 
+                            : 'bg-rose-50 text-rose-700 border-rose-200 hover:bg-rose-100 hover:border-rose-300 dark:bg-rose-500/15 dark:text-rose-300 dark:border-rose-500/30 dark:hover:bg-rose-500/25'
                         }`}
                       >
                         {u.suspended ? 'Reactivate' : 'Suspend'}
                       </button>
                       <button
                         onClick={() => handleDeleteUser(u.id, u.email)}
-                        className="text-zinc-500 hover:text-red-400 p-1.5 rounded hover:bg-zinc-800 transition-colors"
+                        className="text-zinc-400 hover:text-rose-600 dark:hover:text-rose-400 p-1.5 rounded-md hover:bg-rose-50 dark:hover:bg-rose-500/10 transition-colors cursor-pointer"
                         title="Delete User Document"
                       >
                         <Trash2 className="w-4 h-4" />
@@ -439,6 +522,12 @@ export default function AdminUsers() {
             </tbody>
           </table>
         </div>
+        <AdminPagination
+          page={page}
+          totalItems={filteredUsers.length}
+          pageSize={pageSize}
+          onPageChange={setPage}
+        />
       </div>
 
       {/* ─── USER DETAILS PANEL (SLIDE-OVER DRAWER) ─── */}
@@ -480,6 +569,12 @@ export default function AdminUsers() {
                   <div className="flex justify-between text-sm">
                     <span className="text-zinc-400">Current Plan</span>
                     <span className="font-semibold text-indigo-400 uppercase text-xs">{selectedUser.plan || 'free'}</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-zinc-400">Date Joined</span>
+                    <span className="text-zinc-200 text-xs font-medium">
+                      {formatUserJoinedDate(selectedUser.createdAt || selectedUser.joinedAt, true)}
+                    </span>
                   </div>
                   {selectedUser.plan === 'recovery_pass' && (
                     <div className="flex justify-between text-sm border-t border-zinc-800 pt-2.5 mt-1">

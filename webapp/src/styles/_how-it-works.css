@@ -119,3 +119,61 @@ html.light .diagram-badge-written {
   color: #16a34a !important;
   border-color: rgba(22, 163, 74, 0.2) !important;
 }
+
+/* Staggered animation classes for How It Works (no inline css) */
+@keyframes slideInLeft {
+  from {
+    transform: translateX(-16px);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+@keyframes dotTravel {
+  0%, 100% {
+    transform: translateX(-100%);
+  }
+  50% {
+    transform: translateX(100%);
+  }
+}
+@keyframes pulseOpacity {
+  0%, 100% {
+    opacity: 0.6;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+@keyframes fadeInUp {
+  from {
+    transform: translateY(16px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.anim-slide-in-0 { animation: slideInLeft 400ms ease-out 0ms forwards; opacity: 0; }
+.anim-slide-in-1 { animation: slideInLeft 400ms ease-out 150ms forwards; opacity: 0; }
+.anim-slide-in-2 { animation: slideInLeft 400ms ease-out 300ms forwards; opacity: 0; }
+.anim-slide-in-3 { animation: slideInLeft 400ms ease-out 450ms forwards; opacity: 0; }
+
+.anim-dot-travel-0 { animation: dotTravel 2s ease-in-out 0s infinite; }
+.anim-dot-travel-1 { animation: dotTravel 2s ease-in-out 0.4s infinite; }
+.anim-dot-travel-2 { animation: dotTravel 2s ease-in-out 0.8s infinite; }
+.anim-dot-travel-3 { animation: dotTravel 2s ease-in-out 1.2s infinite; }
+
+.anim-pulse-opacity-0 { animation: pulseOpacity 2.5s ease-in-out 0s infinite; }
+.anim-pulse-opacity-1 { animation: pulseOpacity 2.5s ease-in-out 0.3s infinite; }
+.anim-pulse-opacity-2 { animation: pulseOpacity 2.5s ease-in-out 0.6s infinite; }
+.anim-pulse-opacity-3 { animation: pulseOpacity 2.5s ease-in-out 0.9s infinite; }
+
+.anim-fade-in-up-0 { animation: fadeInUp 600ms ease-out 0ms forwards; opacity: 0; }
+.anim-fade-in-up-1 { animation: fadeInUp 600ms ease-out 150ms forwards; opacity: 0; }
+.anim-fade-in-up-2 { animation: fadeInUp 600ms ease-out 300ms forwards; opacity: 0; }
+.anim-fade-in-up-3 { animation: fadeInUp 600ms ease-out 450ms forwards; opacity: 0; }

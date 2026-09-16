@@ -3,13 +3,13 @@ import { getAuth, GoogleAuthProvider, signInWithPopup, signInWithRedirect, signO
 import type { User } from 'firebase/auth';
 
 const firebaseConfig = {
-  apiKey: import.meta.env.PUBLIC_FIREBASE_API_KEY || "AIzaSyDummyKeyForAstroBuildPrerendering",
-  authDomain: import.meta.env.PUBLIC_FIREBASE_AUTH_DOMAIN || "dummy-project.firebaseapp.com",
-  projectId: import.meta.env.PUBLIC_FIREBASE_PROJECT_ID || "dummy-project",
-  storageBucket: import.meta.env.PUBLIC_FIREBASE_STORAGE_BUCKET || "dummy-project.appspot.com",
-  messagingSenderId: import.meta.env.PUBLIC_FIREBASE_MESSAGING_SENDER_ID || "1234567890",
-  appId: import.meta.env.PUBLIC_FIREBASE_APP_ID || "1:1234567890:web:dummyappid",
-  measurementId: import.meta.env.PUBLIC_FIREBASE_MEASUREMENT_ID || "G-DUMMY",
+  apiKey: import.meta.env.PUBLIC_FIREBASE_API_KEY || "AIzaSyDBTj1lcAbftiAYwnv5upjHK7ET_sNgZNk",
+  authDomain: import.meta.env.PUBLIC_FIREBASE_AUTH_DOMAIN || "takeout-fix.firebaseapp.com",
+  projectId: import.meta.env.PUBLIC_FIREBASE_PROJECT_ID || "takeout-fix",
+  storageBucket: import.meta.env.PUBLIC_FIREBASE_STORAGE_BUCKET || "takeout-fix.firebasestorage.app",
+  messagingSenderId: import.meta.env.PUBLIC_FIREBASE_MESSAGING_SENDER_ID || "1089411779683",
+  appId: import.meta.env.PUBLIC_FIREBASE_APP_ID || "1:1089411779683:web:a0afa9043f9f7cecdabc56",
+  measurementId: import.meta.env.PUBLIC_FIREBASE_MEASUREMENT_ID || "G-YNTVCXYR6N",
 };
 
 const app = initializeApp(firebaseConfig);

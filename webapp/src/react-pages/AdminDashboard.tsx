@@ -191,9 +191,9 @@ export default function AdminDashboard() {
   const greeting = hour < 12 ? "Good morning" : hour < 18 ? "Good afternoon" : "Good evening"
 
   return (
-    <div className="space-y-8 font-sans">
+    <div className="flex flex-col h-full font-sans gap-4">
       {/* Header */}
-      <div>
+      <div className="flex-shrink-0">
         <h1 className="text-2xl font-bold tracking-tight text-white">
           {greeting}, {adminData?.displayName?.split(" ")[0] || "Admin"} 👋
         </h1>
@@ -202,10 +202,10 @@ export default function AdminDashboard() {
 
       {/* Actionable KPI Row */}
       {loading ? (
-        <div className="text-zinc-500 text-sm animate-pulse">Loading dashboard...</div>
+        <div className="text-zinc-500 text-sm animate-pulse flex-shrink-0">Loading dashboard...</div>
       ) : (
-        <>
-          <div className="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-8 gap-4">
+        <div className="flex flex-col flex-1 min-h-0 gap-6">
+          <div className="flex-shrink-0 grid grid-cols-2 md:grid-cols-4 xl:grid-cols-8 gap-4">
             {[
               { label: "Open Tickets", val: kpi.openTickets, icon: LifeBuoy, color: "text-zinc-500 dark:text-zinc-400", urgent: kpi.openTickets > 0 },
               { label: "Pending Reviews", val: kpi.pendingReviews, icon: MessageSquareQuote, color: "text-zinc-500 dark:text-zinc-400", urgent: kpi.pendingReviews > 0 },
@@ -231,16 +231,16 @@ export default function AdminDashboard() {
             ))}
           </div>
 
-          <div className="grid lg:grid-cols-3 gap-6">
+          <div className="grid lg:grid-cols-3 gap-6 flex-1 min-h-0 overflow-hidden">
             {/* Online Admins */}
-            <Card className="bg-zinc-900 border-zinc-800 shadow-none">
-              <CardHeader className="px-5 py-4 border-b border-zinc-800">
+            <Card className="bg-zinc-900 border-zinc-800 shadow-none flex flex-col min-h-0">
+              <CardHeader className="px-5 py-4 border-b border-zinc-800 flex-shrink-0">
                 <CardTitle className="text-sm font-semibold text-zinc-200 flex items-center gap-2">
                   <span className="w-2 h-2 rounded-full bg-zinc-200 dark:bg-white border border-zinc-400 dark:border-transparent animate-pulse"></span>
                   Admin Team Online
                 </CardTitle>
               </CardHeader>
-              <CardContent className="p-0">
+              <CardContent className="p-0 overflow-y-auto flex-1 min-h-0">
                 {onlineAdmins.length === 0 ? (
                   <div className="px-5 py-6 text-zinc-600 text-sm text-center">No admins currently online</div>
                 ) : (
@@ -272,7 +272,7 @@ export default function AdminDashboard() {
             </Card>
 
             {/* Revenue Overview (Dynamic SVG chart!) */}
-            <Card className="bg-zinc-900 border-zinc-800 shadow-none flex flex-col justify-between">
+            <Card className="bg-zinc-900 border-zinc-800 shadow-none flex flex-col min-h-0 justify-between">
               <CardHeader className="px-5 py-4 border-b border-zinc-800">
                 <CardTitle className="text-sm font-semibold text-zinc-200 flex items-center gap-2">
                   <TrendingUp className="w-4 h-4 text-zinc-400" /> Revenue (Last 6 Days)
@@ -320,13 +320,13 @@ export default function AdminDashboard() {
             </Card>
 
             {/* Activity Feed */}
-            <Card className="bg-zinc-900 border-zinc-800 shadow-none">
-              <CardHeader className="px-5 py-4 border-b border-zinc-800">
+            <Card className="bg-zinc-900 border-zinc-800 shadow-none flex flex-col min-h-0">
+              <CardHeader className="px-5 py-4 border-b border-zinc-800 flex-shrink-0">
                 <CardTitle className="text-sm font-semibold text-zinc-200 flex items-center gap-2">
                   <Activity className="w-4 h-4 text-zinc-400" /> Admin Activity Feed
                 </CardTitle>
               </CardHeader>
-              <CardContent className="p-0">
+              <CardContent className="p-0 overflow-y-auto flex-1 min-h-0">
                 {activity.length === 0 ? (
                   <div className="px-5 py-6 text-zinc-600 text-sm text-center">No recent admin activity</div>
                 ) : (
@@ -348,7 +348,7 @@ export default function AdminDashboard() {
               </CardContent>
             </Card>
           </div>
-        </>
+        </div>
       )}
     </div>
   )

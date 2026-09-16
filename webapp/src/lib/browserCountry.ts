@@ -1,12 +1,27 @@
+let cachedCountry: string | null = null;
+
 export const detectAndStoreCountry = async () => {
-  localStorage.removeItem("takeoutfix_selected_country");
-  localStorage.removeItem("takeoutfix_country_manually_set");
+  if (cachedCountry) {
+    window.dispatchEvent(new CustomEvent("takeoutfix-country-detected", { detail: cachedCountry }));
+    return;
+  }
+  try {
+    const sessionStored = sessionStorage.getItem("takeoutfix_session_country");
+    if (sessionStored) {
+      cachedCountry = sessionStored;
+      window.dispatchEvent(new CustomEvent("takeoutfix-country-detected", { detail: sessionStored }));
+      return;
+    }
+  } catch {
+    // SessionStorage may be restricted in private browsing
+  }
 
   const isLocalhost = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1";
   let countryCode = "";
   if (!isLocalhost) {
     countryCode = localStorage.getItem("takeoutfix_detected_country") || "";
     if (countryCode) {
+      cachedCountry = countryCode;
       window.dispatchEvent(new CustomEvent("takeoutfix-country-detected", { detail: countryCode }));
       return;
     }
@@ -26,7 +41,9 @@ export const detectAndStoreCountry = async () => {
           }
         }
       }
-    } catch (e) {}
+    } catch {
+      // Ignore cdn-cgi trace failure
+    }
 
     if (!countryCode) {
       try {
@@ -35,7 +52,9 @@ export const detectAndStoreCountry = async () => {
           const data = await res.json();
           countryCode = data.countryCode || "";
         }
-      } catch (e) {}
+      } catch {
+        // Fall back to timeZone / language detection
+      }
     }
   }
 
@@ -49,7 +68,9 @@ export const detectAndStoreCountry = async () => {
         else if (lowerTz.includes("shanghai") || lowerTz.includes("beijing") || lowerTz.includes("china")) countryCode = "CN";
         else if (lowerTz.includes("london") || lowerTz.includes("paris") || lowerTz.includes("berlin") || lowerTz.includes("rose")) countryCode = "GB";
       }
-    } catch (e) {}
+    } catch {
+      // Fall back to browser language
+    }
   }
 
   if (!countryCode) {
@@ -70,7 +91,9 @@ export const detectAndStoreCountry = async () => {
           break;
         }
       }
-    } catch (e) {}
+    } catch {
+      // Default to US
+    }
   }
 
   if (!countryCode) {
@@ -78,6 +101,12 @@ export const detectAndStoreCountry = async () => {
   }
 
   countryCode = countryCode.toUpperCase();
-  localStorage.setItem("takeoutfix_detected_country", countryCode);
+  cachedCountry = countryCode;
+  try {
+    sessionStorage.setItem("takeoutfix_session_country", countryCode);
+    localStorage.setItem("takeoutfix_detected_country", countryCode);
+  } catch {
+    // Storage access restricted
+  }
   window.dispatchEvent(new CustomEvent("takeoutfix-country-detected", { detail: countryCode }));
 };

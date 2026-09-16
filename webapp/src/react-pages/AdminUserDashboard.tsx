@@ -1,5 +1,4 @@
 import { useState, useEffect } from "react"
-import { useParams, Link, useNavigate } from "react-router-dom"
 import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card"
 import { Progress } from "../components/ui/progress"
 import { Button } from "../components/ui/button"
@@ -22,7 +21,7 @@ const formatBytes = (bytes: number) => {
   const k = 1024
   const sizes = ['B', 'KB', 'MB', 'GB', 'TB']
   const i = Math.floor(Math.log(bytes) / Math.log(k))
-  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i]
+  return Number.parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i]
 }
 
 const getUserBytes = (u: any) => {
@@ -41,7 +40,6 @@ const getUserFiles = (u: any) => {
 
 export default function AdminUserDashboard() {
   const uid = new URLSearchParams(window.location.search).get("uid") || ""
-  const navigate = useNavigate()
 
   const { adminData } = useAuth()
   const role = adminData?.role || "ADMIN"
@@ -214,7 +212,7 @@ export default function AdminUserDashboard() {
         description: `Permanently deleted user document for ${email || userId}`,
         timestamp: Date.now()
       })
-      navigate("/admin/users")
+      window.location.href = "/admin/users"
     } catch (err: any) {
       console.error(err)
       useToastStore.getState().addToast("Failed to delete user: " + err.message, "error")
@@ -297,9 +295,9 @@ export default function AdminUserDashboard() {
         <ShieldAlert className="w-12 h-12 text-red-500 mx-auto mb-4" />
         <h2 className="text-xl font-bold mb-2">User Not Found</h2>
         <p className="text-zinc-400 mb-6">The requested user document does not exist in the database.</p>
-        <Link to="/admin/users">
+        <a href="/admin/users" className="block w-full">
           <Button className="w-full bg-white text-zinc-950 hover:bg-white/90">Return to User Management</Button>
-        </Link>
+        </a>
       </div>
     )
   }
@@ -386,7 +384,7 @@ Your EXIF metadata recovery tools are active.
   }
 
   return (
-    <div className="max-w-5xl mx-auto px-4 py-6 relative font-sans text-zinc-100">
+    <div className="w-full min-w-0 relative font-sans text-zinc-100">
       
       <motion.div 
         variants={containerVariants}
@@ -396,12 +394,12 @@ Your EXIF metadata recovery tools are active.
       >
         <motion.div variants={itemVariants} className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-zinc-800 pb-4 gap-4">
           <div className="flex items-center gap-4">
-            <button 
-              onClick={() => navigate("/admin/users")}
-              className="p-2 bg-zinc-900 border border-zinc-800 rounded-full hover:bg-zinc-800 transition-colors text-zinc-400 hover:text-white"
+            <a 
+              href="/admin/users"
+              className="p-2 bg-zinc-900 border border-zinc-800 rounded-full hover:bg-zinc-800 transition-colors text-zinc-400 hover:text-white inline-flex items-center justify-center"
             >
               <ArrowLeft className="w-4 h-4" />
-            </button>
+            </a>
             <div>
               <h1 className="text-2xl font-bold tracking-tight text-white">
                 Dashboard View: {targetUser.displayName || 'Unknown'}

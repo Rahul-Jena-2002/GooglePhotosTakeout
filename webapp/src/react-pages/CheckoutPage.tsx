@@ -152,12 +152,6 @@ function CheckoutPageContent() {
       }
 
       // Check checkout plan upgrade restrictions
-      if (userData?.plan === 'recovery_pass' && (planKey === 'pro' || planKey === 'super')) {
-        setUpgradeBlocked(true);
-        setUpgradeBlockedReason("Upgrades from Recovery Pass to Pro or Super are not supported. You can purchase additional Recovery Passes to extend your active duration.");
-        setCouponLookupDone(true);
-        return;
-      }
 
       if (userData?.plan === 'super') {
         setUpgradeBlocked(true);

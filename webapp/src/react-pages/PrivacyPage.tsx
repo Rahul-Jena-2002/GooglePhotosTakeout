@@ -52,9 +52,15 @@ export default function PrivacyPage() {
         </section>
 
         <section>
-          <h2 className="text-2xl font-bold text-white mb-4">Cookies & Third Parties</h2>
+          <h2 className="text-2xl font-bold text-white mb-4">Cookies & Advertising Disclosure</h2>
+          <p className="mb-3">
+            We use essential cookies for authentication and session management. We do not sell your personal data to third parties. We use Firebase for backend services (Auth, Firestore, Hosting, Analytics) and secure payment gateways for processing transactions.
+          </p>
+          <p className="mb-3">
+            <strong>Third-Party Advertising:</strong> Third-party vendors, including Google, use cookies to serve ads based on a user's prior visits to this website or other websites. Google's use of advertising cookies enables it and its partners to serve ads to users based on their visits to our site and/or other sites on the Internet.
+          </p>
           <p>
-            We use essential cookies for authentication and session management. We do not sell your data to third parties. We use Firebase for backend services (Auth, Firestore, Hosting, Analytics) and secure payment gateways for processing transactions.
+            Users may opt out of personalized advertising at any time by visiting <a href="https://www.google.com/settings/ads" target="_blank" rel="noopener noreferrer" className="text-indigo-400 hover:text-indigo-300 underline">Google Ads Settings</a> or by visiting <a href="https://www.aboutads.info/choices/" target="_blank" rel="noopener noreferrer" className="text-indigo-400 hover:text-indigo-300 underline">www.aboutads.info</a>.
           </p>
         </section>
 

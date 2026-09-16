@@ -18,13 +18,13 @@
 
 import { db } from "../firebase";
 import { collection, addDoc, serverTimestamp, query, where, getDocs, Timestamp } from "firebase/firestore";
-import emailjs from "@emailjs/browser";
 
-const EMAILJS_SERVICE_ID  = import.meta.env.VITE_EMAILJS_SERVICE_ID  || "";
-const EMAILJS_TEMPLATE_ID = import.meta.env.VITE_EMAILJS_TEMPLATE_ID || "";
-const EMAILJS_PUBLIC_KEY  = import.meta.env.VITE_EMAILJS_PUBLIC_KEY  || "";
+const EMAILJS_SERVICE_ID  = import.meta.env.VITE_EMAILJS_SERVICE_ID  || import.meta.env.PUBLIC_EMAILJS_SERVICE_ID  || "";
+const EMAILJS_TEMPLATE_ID = import.meta.env.VITE_EMAILJS_TEMPLATE_ID || import.meta.env.PUBLIC_EMAILJS_TEMPLATE_ID || "";
+const EMAILJS_PUBLIC_KEY  = import.meta.env.VITE_EMAILJS_PUBLIC_KEY  || import.meta.env.PUBLIC_EMAILJS_PUBLIC_KEY  || "";
 
-const emailjsConfigured = EMAILJS_SERVICE_ID && EMAILJS_TEMPLATE_ID && EMAILJS_PUBLIC_KEY;
+export const isEmailConfigured = () => Boolean(EMAILJS_SERVICE_ID && EMAILJS_TEMPLATE_ID && EMAILJS_PUBLIC_KEY);
+const emailjsConfigured = isEmailConfigured();
 
 // ─── In-App Notification ──────────────────────────────────────────────────────
 
@@ -72,6 +72,8 @@ export async function sendAdminInviteEmail(
   }
 
   try {
+    const emailjsModule = await import("@emailjs/browser");
+    const emailjs = emailjsModule.default || emailjsModule;
     await emailjs.send(
       EMAILJS_SERVICE_ID,
       EMAILJS_TEMPLATE_ID,

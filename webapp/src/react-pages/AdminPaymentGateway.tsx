@@ -638,13 +638,23 @@ export default function AdminPaymentGateway() {
 
       cfUrl = resolveSyncUrl('sync-dodo-prices', cloudFunctionUrl)
 
+      const dodoKeyToSend = dodoTestMode
+        ? (decryptedValues['dodo_test_api_key'] || credentials['dodo_test_api_key'])
+        : (decryptedValues['dodo_api_key'] || credentials['dodo_api_key'] || decryptedValues['dodo_test_api_key']);
+
       const resp = await fetch(cfUrl, {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json', 
           'x-api-key': gatewayApiKey 
         },
-        body: JSON.stringify({ regionCode, prices, currency })
+        body: JSON.stringify({ 
+          regionCode, 
+          prices, 
+          currency, 
+          dodoApiKey: dodoKeyToSend || undefined,
+          productIds: dodoProducts[regionCode] || {}
+        })
       })
       const text = await resp.text()
       let data: any = {}
@@ -670,10 +680,24 @@ export default function AdminPaymentGateway() {
         }
 
         const allOk = data.results.every((r: any) => r.status === 'SUCCESS')
-        useToastStore.getState().addToast(
-          allOk ? `✅ All prices synced to Dodo for ${regionCode}!` : `⚠️ Partial sync — check results.`,
-          allOk ? 'success' : 'error'
-        )
+        const failedPlans = data.results.filter((r: any) => r.status !== 'SUCCESS')
+        if (allOk) {
+          useToastStore.getState().addToast(`✅ All prices synced to Dodo for ${regionCode}!`, 'success')
+        } else {
+          const detail = failedPlans.map((f: any) => {
+            let reason = f.error || ''
+            if (!reason && f.response) {
+              try {
+                const parsed = typeof f.response === 'string' ? JSON.parse(f.response) : f.response
+                reason = parsed.message || parsed.error || JSON.stringify(parsed)
+              } catch (_) {
+                reason = String(f.response).substring(0, 80)
+              }
+            }
+            return `${f.planCode}: ${reason || 'Failed'}`
+          }).join('; ')
+          useToastStore.getState().addToast(`⚠️ Partial sync (${failedPlans.length} failed): ${detail}`, 'error')
+        }
       } else {
         useToastStore.getState().addToast(`Sync failed: ${data.error || resp.status} for endpoint ${cfUrl}`, 'error')
       }
@@ -944,10 +968,14 @@ export default function AdminPaymentGateway() {
       const cfUrl = resolveSyncUrl('sync-dodo-prices', cloudFunctionUrl)
 
       const idToken = user ? await user.getIdToken() : ''
+      const dodoKeyToSend = dodoTestMode
+        ? (decryptedValues['dodo_test_api_key'] || credentials['dodo_test_api_key'])
+        : (decryptedValues['dodo_api_key'] || credentials['dodo_api_key'] || decryptedValues['dodo_test_api_key']);
+
       const resp = await fetch(cfUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${idToken}` },
-        body: JSON.stringify({ regionCode, prices, currency })
+        body: JSON.stringify({ regionCode, prices, currency, dodoApiKey: dodoKeyToSend || undefined })
       })
       if (!resp.ok) {
         console.warn(`Auto Dodo price sync failed for region ${regionCode}:`, resp.statusText)
@@ -1247,7 +1275,7 @@ export default function AdminPaymentGateway() {
   }
 
   return (
-    <div className="space-y-8 max-w-6xl mx-auto px-4 py-8 font-sans transition-all duration-300 w-full min-w-0 t-text-primary">
+    <div className="space-y-8 w-full min-w-0 font-sans transition-all duration-300 t-text-primary">
       
       {/* ── Header ── */}
       <PaymentHeader originalActiveGateway={originalActiveGateway} />
@@ -1681,16 +1709,27 @@ export default function AdminPaymentGateway() {
               {/* Action Buttons */}
               <div className="pt-6 border-t flex items-center justify-between flex-wrap gap-4 t-border">
                 <div className="flex gap-2">
-                  {priceSyncResults.map((r) => (
-                    <span key={r.planCode} className={`inline-flex items-center gap-1 text-[9px] font-bold px-2 py-0.5 rounded border ${
-                      r.status === 'SUCCESS'
-                        ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400'
-                        : 'bg-red-500/10 border-red-500/30 text-red-400'
-                    }`}>
-                      {r.status === 'SUCCESS' ? '✓' : '✗'}
-                      {r.planCode === 'recovery_pass' ? 'Recovery' : r.planCode === 'pro' ? 'Pro' : 'Super'}
-                    </span>
-                  ))}
+                  {priceSyncResults.map((r) => {
+                    const isSuccess = r.status === 'SUCCESS';
+                    const errorReason = r.error || (typeof r.response === 'object' ? (r.response?.message || JSON.stringify(r.response)) : r.response) || '';
+                    return (
+                      <span 
+                        key={r.planCode} 
+                        title={isSuccess ? 'Successfully synced to Dodo' : `Failed: ${errorReason}`}
+                        className={`inline-flex items-center gap-1 text-[9px] font-bold px-2 py-0.5 rounded border cursor-help ${
+                          isSuccess
+                            ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400'
+                            : 'bg-red-500/10 border-red-500/30 text-red-400'
+                        }`}
+                      >
+                        {isSuccess ? '✓' : '✗'}
+                        {r.planCode === 'recovery_pass' ? 'Recovery' : r.planCode === 'pro' ? 'Pro' : 'Super'}
+                        {!isSuccess && errorReason && (
+                          <span className="text-[8px] opacity-80 max-w-[120px] truncate">({errorReason})</span>
+                        )}
+                      </span>
+                    );
+                  })}
                 </div>
 
                 <div className="flex gap-2">

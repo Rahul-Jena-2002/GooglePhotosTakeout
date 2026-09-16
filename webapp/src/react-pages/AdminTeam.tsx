@@ -8,7 +8,7 @@ import { useAuth, type AdminData, type AdminRole } from "../contexts/AuthContext
 import {
   Users2, ShieldCheck, Trash2, Wifi, WifiOff,
   UserPlus, X, Mail, ChevronDown, Clock, RotateCcw,
-  Send, Check, AlertCircle
+  Send, Check, AlertCircle, Copy
 } from "lucide-react"
 import { useToastStore } from "../store/useToastStore"
 import { createAdminInviteNotification, sendAdminInviteEmail } from "../lib/adminNotify"
@@ -444,20 +444,20 @@ export default function AdminTeam() {
       {/* ── Header ── */}
       <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-white flex items-center gap-3">
-            <Users2 className="w-6 h-6 text-zinc-400" /> Admin Team
+          <h1 className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-white flex items-center gap-3">
+            <Users2 className="w-6 h-6 text-zinc-500 dark:text-zinc-400" /> Admin Team
           </h1>
-          <p className="text-zinc-400 text-sm mt-1">
+          <p className="text-zinc-600 dark:text-zinc-400 text-sm mt-1">
             Manage admin accounts, roles, and send role-specific invitations.
           </p>
         </div>
         {isSuperAdmin && (
           <button
             onClick={() => setShowInviteModal(true)}
-            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-bold transition-all shadow-lg shadow-indigo-500/10 whitespace-nowrap"
+            className="btn-admin-primary whitespace-nowrap"
           >
             <UserPlus className="w-4 h-4" />
-            Invite Member
+            <span>Invite Member</span>
           </button>
         )}
       </div>
@@ -466,12 +466,12 @@ export default function AdminTeam() {
       <div>
         <div className="flex items-center gap-2 mb-3">
           <h2 className="text-xs font-bold uppercase tracking-widest text-zinc-500">Active Team</h2>
-          <span className="text-xs text-zinc-600">({admins.length})</span>
+          <span className="text-xs text-zinc-500">({admins.length})</span>
         </div>
-        <div className="bg-zinc-900 border border-zinc-800 rounded-xl overflow-hidden">
+        <div className="admin-panel-card rounded-xl overflow-hidden">
           <div className="w-full overflow-x-auto">
             <table className="w-full text-left text-sm">
-              <thead className="bg-zinc-950/50 border-b border-zinc-800 text-zinc-400">
+              <thead className="bg-zinc-50 dark:bg-zinc-950/50 border-b border-zinc-200 dark:border-zinc-800 text-zinc-700 dark:text-zinc-400">
                 <tr>
                   <th className="px-6 py-3 font-medium">Admin</th>
                   <th className="px-6 py-3 font-medium">Role</th>
@@ -480,7 +480,7 @@ export default function AdminTeam() {
                   {isSuperAdmin && <th className="px-6 py-3 font-medium text-right">Actions</th>}
                 </tr>
               </thead>
-              <tbody className="divide-y divide-zinc-800">
+              <tbody className="divide-y divide-zinc-200 dark:divide-zinc-800">
                 {loadingAdmins ? (
                   <tr>
                     <td colSpan={isSuperAdmin ? 5 : 4} className="px-6 py-8 text-center text-zinc-500">
@@ -495,21 +495,21 @@ export default function AdminTeam() {
                   </tr>
                 ) : (
                   admins.map((a) => (
-                    <tr key={a.uid} className="hover:bg-zinc-800/30 transition-colors">
+                    <tr key={a.uid} className="hover:bg-zinc-50 dark:hover:bg-zinc-800/30 transition-colors">
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-3">
                           <div className="relative flex-shrink-0">
                             {a.photoURL ? (
                               <img src={a.photoURL} alt="" className="w-9 h-9 rounded-full" />
                             ) : (
-                              <div className="w-9 h-9 rounded-full bg-zinc-900 dark:bg-zinc-200 flex items-center justify-center font-bold text-zinc-100 dark:text-zinc-800 border border-zinc-800 dark:border-zinc-300">
+                              <div className="w-9 h-9 rounded-full bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center font-bold text-zinc-900 dark:text-zinc-100 border border-zinc-200 dark:border-zinc-700">
                                 {a.displayName?.charAt(0) || "A"}
                               </div>
                             )}
                             <span className={`absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border-2 border-zinc-900 ${STATUS_DOT[a.status] || "bg-zinc-600"}`} />
                           </div>
                           <div>
-                            <div className="font-medium text-zinc-100 flex items-center gap-2">
+                            <div className="font-medium text-zinc-900 dark:text-zinc-100 flex items-center gap-2">
                               {a.displayName}
                               {a.uid === user?.uid && (
                                 <span className="text-[10px] you-badge px-1.5 py-0.5 rounded">You</span>
@@ -535,11 +535,11 @@ export default function AdminTeam() {
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-2">
                           {a.status === "offline" ? (
-                            <WifiOff className="w-3.5 h-3.5 text-zinc-650" />
+                            <WifiOff className="w-3.5 h-3.5 text-zinc-400" />
                           ) : (
-                            <Wifi className={`w-3.5 h-3.5 ${a.status === "online" ? "text-zinc-200 dark:text-zinc-100" : "text-zinc-450"}`} />
+                            <Wifi className={`w-3.5 h-3.5 ${a.status === "online" ? "text-emerald-500" : "text-zinc-400"}`} />
                           )}
-                          <span className={`text-xs capitalize ${a.status === "online" ? "text-zinc-200 dark:text-zinc-100 font-bold" : a.status === "idle" ? "text-zinc-450" : "text-zinc-650"}`}>
+                          <span className={`text-xs capitalize ${a.status === "online" ? "text-emerald-600 dark:text-emerald-400 font-bold" : "text-zinc-500"}`}>
                             {a.status}
                           </span>
                         </div>
@@ -552,7 +552,7 @@ export default function AdminTeam() {
                           {a.uid !== user?.uid && a.role !== "SUPER_ADMIN" && (
                             <button
                               onClick={() => handleRemove(a)}
-                              className="text-zinc-500 hover:text-red-400 transition-colors p-1.5 rounded-lg hover:bg-red-500/10"
+                              className="text-zinc-400 hover:text-red-500 transition-colors p-1.5 rounded-lg hover:bg-red-50 dark:hover:bg-red-500/10 cursor-pointer"
                               title="Remove from team"
                             >
                               <Trash2 className="w-4 h-4" />
@@ -576,29 +576,29 @@ export default function AdminTeam() {
             <Clock className="w-3.5 h-3.5 text-zinc-500" />
             <h2 className="text-xs font-bold uppercase tracking-widest text-zinc-500">Pending Invitations</h2>
             {pendingInvites.length > 0 && (
-              <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-indigo-500/15 text-indigo-400 border border-indigo-500/20">
+              <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-indigo-50 dark:bg-indigo-500/15 text-indigo-700 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-500/20">
                 {pendingInvites.length}
               </span>
             )}
           </div>
 
-          <div className="bg-zinc-900 border border-zinc-800 rounded-xl overflow-hidden">
+          <div className="admin-panel-card rounded-xl overflow-hidden">
             {loadingInvites ? (
               <div className="px-6 py-8 text-center text-zinc-500 text-sm">
                 <RotateCcw className="w-4 h-4 animate-spin inline mr-2" /> Loading invitations...
               </div>
             ) : pendingInvites.length === 0 ? (
               <div className="px-6 py-8 text-center">
-                <div className="w-10 h-10 rounded-full bg-zinc-800/60 border border-zinc-700/40 flex items-center justify-center mx-auto mb-3">
+                <div className="w-10 h-10 rounded-full bg-zinc-100 dark:bg-zinc-800/60 border border-zinc-200 dark:border-zinc-700/40 flex items-center justify-center mx-auto mb-3">
                   <Mail className="w-4 h-4 text-zinc-500" />
                 </div>
-                <p className="text-zinc-500 text-sm font-medium">No pending invitations</p>
-                <p className="text-zinc-600 text-xs mt-1">Click "Invite Member" to send a role-specific invite.</p>
+                <p className="text-zinc-700 dark:text-zinc-400 text-sm font-medium">No pending invitations</p>
+                <p className="text-zinc-500 text-xs mt-1">Click &ldquo;Invite Member&rdquo; to send a role-specific invite.</p>
               </div>
             ) : (
               <div className="w-full overflow-x-auto">
                 <table className="w-full text-left text-sm">
-                  <thead className="bg-zinc-950/50 border-b border-zinc-800 text-zinc-400">
+                  <thead className="bg-zinc-50 dark:bg-zinc-950/50 border-b border-zinc-200 dark:border-zinc-800 text-zinc-700 dark:text-zinc-400">
                     <tr>
                       <th className="px-6 py-3 font-medium">Email</th>
                       <th className="px-6 py-3 font-medium">Role</th>
@@ -608,15 +608,15 @@ export default function AdminTeam() {
                       <th className="px-6 py-3 font-medium text-right">Revoke</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-zinc-800">
+                  <tbody className="divide-y divide-zinc-200 dark:divide-zinc-800">
                     {pendingInvites.map((inv) => (
-                      <tr key={inv.id} className="hover:bg-zinc-800/30 transition-colors">
+                      <tr key={inv.id} className="hover:bg-zinc-50 dark:hover:bg-zinc-800/30 transition-colors">
                         <td className="px-6 py-4">
                           <div className="flex items-center gap-2.5">
                             <div className="w-8 h-8 rounded-full bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center flex-shrink-0">
                               <Mail className="w-3.5 h-3.5 text-indigo-400" />
                             </div>
-                            <span className="text-zinc-200 font-medium">{inv.email}</span>
+                            <span className="text-zinc-900 dark:text-zinc-200 font-medium">{inv.email}</span>
                           </div>
                         </td>
                         <td className="px-6 py-4">
@@ -624,24 +624,36 @@ export default function AdminTeam() {
                             {inv.role.replace("_", " ")}
                           </span>
                         </td>
-                        <td className="px-6 py-4 text-zinc-400 text-xs">{inv.invitedByName}</td>
+                        <td className="px-6 py-4 text-zinc-600 dark:text-zinc-400 text-xs">{inv.invitedByName}</td>
                         <td className="px-6 py-4 text-zinc-500 text-xs">{formatRelative(inv.createdAt)}</td>
                         <td className="px-6 py-4 text-xs">
                           {inv.expiresAt ? (
-                            <span className="text-amber-500/80">
+                            <span className="text-amber-600 dark:text-amber-400">
                               {new Date(inv.expiresAt.toMillis()).toLocaleDateString()}&nbsp;
                               ({Math.max(0, Math.ceil((inv.expiresAt.toMillis() - Date.now()) / 3600000))}h left)
                             </span>
                           ) : "—"}
                         </td>
                         <td className="px-6 py-4 text-right">
-                          <button
-                            onClick={() => handleRevokeInvite(inv)}
-                            className="text-zinc-500 hover:text-red-400 transition-colors p-1.5 rounded-lg hover:bg-red-500/10"
-                            title="Revoke invite"
-                          >
-                            <X className="w-4 h-4" />
-                          </button>
+                          <div className="flex items-center justify-end gap-1">
+                            <button
+                              onClick={() => {
+                                navigator.clipboard.writeText(`${window.location.origin}/tool`);
+                                addToast(`Copied invite URL for ${inv.email} to clipboard!`, "success");
+                              }}
+                              className="text-zinc-400 hover:text-zinc-900 dark:hover:text-white transition-colors p-1.5 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800 cursor-pointer"
+                              title="Copy Invite URL to clipboard"
+                            >
+                              <Copy className="w-4 h-4" />
+                            </button>
+                            <button
+                              onClick={() => handleRevokeInvite(inv)}
+                              className="text-zinc-400 hover:text-red-600 dark:hover:text-red-400 transition-colors p-1.5 rounded-lg hover:bg-red-50 dark:hover:bg-red-950/30 cursor-pointer"
+                              title="Revoke invite"
+                            >
+                              <X className="w-4 h-4" />
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     ))}

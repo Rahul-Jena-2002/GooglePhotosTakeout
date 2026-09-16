@@ -10,26 +10,22 @@ interface FaqItem {
 }
 
 const DEFAULT_FAQS: FaqItem[] = [
-  {
-    id: "metadata-why",
+  {    id: "metadata-why",
     tag: "Problem",
     question: "Why do my Google Takeout photos lose their dates & GPS?",
     answer: "When you export your library from Google Takeout, Google strips the original metadata (such as the Date Taken, Camera Model, and GPS Coordinates) from the image/video files and writes it into separate matching .json sidecar files. When you import these photos directly into iCloud, Apple Photos, or other platforms, they read the stripped files, which defaults their creation dates to the download date and loses location data. TakeoutFix reads these JSON sidecars and merges the data back into the EXIF headers."
   },
-  {
-    id: "privacy-servers",
+  {    id: "privacy-servers",
     tag: "Privacy",
     question: "Are my photos uploaded to your servers?",
     answer: "No. Never. The entire application runs locally inside your web browser using HTML5 File APIs. Your photos, videos, and JSON files never leave your computer and are never uploaded to any server. This guarantees 100% privacy and security for your personal archives."
   },
-  {
-    id: "archive-limits",
+  {    id: "archive-limits",
     tag: "Limits",
     question: "Is there a limit on archive sizes?",
     answer: "Free accounts have a 250 files (500 MB) limit. The Recovery Pass unlocks unlimited files & storage for 24 hours from purchase — perfect for processing your full library in one session. Pro/Super Lifetime gives you unlimited access forever."
   },
-  {
-    id: "refund-policy",
+  {    id: "refund-policy",
     tag: "Billing",
     question: "What is your refund policy?",
     answer: "We want you to have a great experience with Takeout Fix. If you experience a genuine technical issue that prevents the software from working as described, and our support team is unable to resolve it, you may request a refund within 7 days of purchase. See our Refund Policy page for full details."
@@ -62,8 +58,6 @@ export default function ExpandableFaq() {
       if (unsub) unsub();
     };
   }, []);
-
-
 
   // Renders **bold**, *italic*, and <u>underline</u> markers as JSX elements
   const renderBoldText = (text: string) => {
@@ -123,13 +117,13 @@ export default function ExpandableFaq() {
               <span className="text-[10px] font-bold uppercase tracking-widest px-2.5 py-0.5 rounded-full border border-zinc-200 dark:border-zinc-800 bg-zinc-100 dark:bg-zinc-900/60 text-zinc-500 dark:text-zinc-400">
                 {faq.tag}
               </span>
-              <h4 className="text-base font-semibold text-zinc-900 dark:text-white mt-2 leading-snug group-hover:text-black dark:group-hover:text-white transition-colors">
+              <h3 className="text-base font-semibold text-zinc-900 dark:text-white mt-2 leading-snug group-hover:text-black dark:group-hover:text-white transition-colors">
                 {faq.question}
-              </h4>
+              </h3>
             </div>
             
             <div className="flex items-center gap-1 text-xs font-semibold text-zinc-400 dark:text-zinc-500 group-hover:text-zinc-650 transition-colors">
-              <span>Read details ➜</span>
+              <span>Read details ➔</span>
             </div>
           </div>
         ))}

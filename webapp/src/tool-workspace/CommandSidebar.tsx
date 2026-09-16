@@ -3,13 +3,16 @@
  * Pure display: quotas, telemetry, stats counters, upgrade banner.
  */
 import { useState, useEffect } from "react"
-import { Activity, HardDrive, FileText, Cpu, Database, CheckCircle2, AlertCircle, XCircle } from "lucide-react"
+import { Activity, HardDrive, FileText, Cpu, Database, CheckCircle2, AlertCircle, XCircle, Sparkles, ShieldCheck } from "lucide-react"
 import { Progress } from "../components/ui/progress"
 import AdUnit from "../components/AdUnit"
 import { Button } from "../components/ui/button"
+import { getPlanCardStyles } from "./useToolPipeline"
 
 interface CommandSidebarProps {
   plan: string
+  tierThresholds?: any
+  isFreePromoActive?: boolean
   limitFiles: number
   limitBytes: number
   currentUsedFiles: number
@@ -32,6 +35,8 @@ interface CommandSidebarProps {
 
 export function CommandSidebar({
   plan,
+  tierThresholds,
+  isFreePromoActive,
   limitFiles,
   limitBytes,
   currentUsedFiles,
@@ -66,11 +71,13 @@ export function CommandSidebar({
         return
       }
       
-      const hours = Math.floor(diff / (1000 * 60 * 60))
-      const mins = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60))
-      const secs = Math.floor((diff % (1000 * 60)) / 1000)
+      const totalSecs = Math.floor(diff / 1000)
+      const days = Math.floor(totalSecs / 86400)
+      const hours = Math.floor((totalSecs % 86400) / 3600)
+      const mins = Math.floor((totalSecs % 3600) / 60)
+      const pad = (n: number) => String(n).padStart(2, '0')
       
-      setTimeLeft(`${hours}h ${mins}m ${secs}s`)
+      setTimeLeft(`${pad(days)}d : ${pad(hours)}h : ${pad(mins)}m`)
     }
     
     calculateTimeLeft()
@@ -212,20 +219,47 @@ export function CommandSidebar({
         </div>
       </div>
 
-      {/* Banners at bottom */}
+      {/* Banners & Plan Status at bottom */}
       <div className="mt-auto pt-3 border-t border-white/5 space-y-3">
         <AdUnit type="vertical" slot="3" />
-        {plan === 'free' && (
-          <div className="p-3 bg-gradient-to-r from-indigo-500/10 to-purple-500/10 border border-indigo-500/20 rounded-xl text-center">
-            <div className="text-[10px] font-bold text-white mb-1">Upgrade to Premium</div>
-            <p className="text-[9px] text-zinc-400 mb-2">Unlock unlimited file restoration, metadata injection, and faster speed.</p>
-            <a href="/pricing">
-              <Button className="w-full h-7 text-[10px] btn-monochrome-primary py-0 rounded font-bold cursor-pointer">
-                Upgrade Now
-              </Button>
-            </a>
-          </div>
-        )}
+        {(() => {
+          const styles = getPlanCardStyles(plan, tierThresholds, isFreePromoActive);
+          const isPremium = plan !== 'free';
+          return (
+            <div className={`p-3 rounded-xl border transition-all duration-300 ${styles.cardClass}`}>
+              <div className="flex justify-between items-start">
+                <div>
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider">Plan Status</span>
+                    {plan === 'super' && <Sparkles className="w-3.5 h-3.5 text-amber-500" />}
+                    {plan === 'pro' && <Sparkles className="w-3.5 h-3.5 text-purple-500" />}
+                  </div>
+                  <div className={`text-xs font-black mt-1 flex items-center gap-1.5 ${styles.titleClass}`}>
+                    {isPremium ? (
+                      <ShieldCheck className={`w-3.5 h-3.5 ${styles.iconClass}`} />
+                    ) : (
+                      <AlertCircle className={`w-3.5 h-3.5 ${styles.iconClass}`} />
+                    )}
+                    {styles.titleText}
+                  </div>
+                </div>
+                <span className={`text-[9px] font-mono tracking-wide px-2 py-0.5 rounded border uppercase font-bold ${styles.badgeClass}`}>
+                  {styles.badgeText}
+                </span>
+              </div>
+              <p className="mt-2 text-[9.5px] text-zinc-400 leading-normal font-medium">
+                {styles.description}
+              </p>
+              {!isPremium && (
+                <a href="/pricing" className="block mt-2.5">
+                  <Button className="w-full h-7 text-[10px] btn-monochrome-primary py-0 rounded font-bold cursor-pointer">
+                    Upgrade Plan
+                  </Button>
+                </a>
+              )}
+            </div>
+          );
+        })()}
       </div>
 
     </div>

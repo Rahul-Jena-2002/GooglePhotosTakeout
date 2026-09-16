@@ -48,12 +48,24 @@ public class UserRepository {
         return currentUser;
     }
 
-    public void setCurrentUser(User user) {
+    public synchronized void setCurrentUser(User user) {
         this.currentUser = user;
+        persistUsers();
     }
 
-    public void clearCurrentUser() {
+    public synchronized void clearCurrentUser() {
         this.currentUser = null;
+        persistUsers();
+    }
+
+    public synchronized void clearAll() {
+        this.currentUser = null;
+        this.userCache.clear();
+        try {
+            if (STORAGE_FILE.exists()) {
+                Files.deleteIfExists(STORAGE_FILE.toPath());
+            }
+        } catch (Exception ignored) {}
     }
 
     private void loadUsers() {

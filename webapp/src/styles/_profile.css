@@ -1,65 +1,42 @@
-/* --- Monochromatic Profile Styling (Black in Light Mode, White in Dark Mode) --- */
+/* --- Navbar Profile Trigger Button (Theme Adaptive) --- */
 
-/* 1. Navbar Profile trigger button */
-.btn-profile-trigger {
-  background-color: #000000 !important;
-  border: 1px solid #000000 !important;
-  color: #ffffff !important;
+/* Base & Dark Mode (html.dark / default): sleek dark pill matching navbar controls */
+.btn-profile-trigger,
+html.dark .btn-profile-trigger,
+html:not(.light) .btn-profile-trigger {
+  background-color: #18181b !important;
+  border: 1px solid #27272a !important;
+  color: #f4f4f5 !important;
   transition: all 0.15s ease-in-out !important;
 }
 .btn-profile-trigger *,
-.btn-profile-trigger span {
-  color: #ffffff !important;
-  stroke: #ffffff !important;
-  transition: all 0.15s ease-in-out !important;
-}
-.btn-profile-trigger .profile-avatar-circle {
-  background-color: #1c1c1e !important;
-  color: #ffffff !important;
-  border: 1px solid rgba(255, 255, 255, 0.2) !important;
-  transition: all 0.15s ease-in-out !important;
-}
-.btn-profile-trigger:hover {
-  background-color: #ffffff !important;
-  border-color: #000000 !important;
-  color: #000000 !important;
-}
-.btn-profile-trigger:hover *,
-.btn-profile-trigger:hover span {
-  color: #000000 !important;
-  stroke: #000000 !important;
-}
-.btn-profile-trigger:hover .profile-avatar-circle {
-  background-color: #f4f4f5 !important;
-  color: #000000 !important;
-  border-color: rgba(0, 0, 0, 0.2) !important;
-}
-
-html.dark .btn-profile-trigger,
-html:not(.light) .btn-profile-trigger {
-  background-color: #ffffff !important;
-  border: 1px solid #ffffff !important;
-  color: #000000 !important;
-}
+.btn-profile-trigger span,
 html.dark .btn-profile-trigger *,
 html.dark .btn-profile-trigger span,
 html:not(.light) .btn-profile-trigger *,
 html:not(.light) .btn-profile-trigger span {
-  color: #000000 !important;
-  stroke: #000000 !important;
+  color: #f4f4f5 !important;
+  stroke: #f4f4f5 !important;
+  transition: all 0.15s ease-in-out !important;
 }
+.btn-profile-trigger .profile-avatar-circle,
 html.dark .btn-profile-trigger .profile-avatar-circle,
 html:not(.light) .btn-profile-trigger .profile-avatar-circle {
-  background-color: #e5e5e7 !important;
-  color: #000000 !important;
-  border: 1px solid rgba(0, 0, 0, 0.2) !important;
+  background-color: #27272a !important;
+  color: #ffffff !important;
+  border: 1px solid #3f3f46 !important;
+  transition: all 0.15s ease-in-out !important;
 }
+.btn-profile-trigger:hover,
 html.dark .btn-profile-trigger:hover,
 html:not(.light) .btn-profile-trigger:hover {
-  background-color: #000000 !important;
-  border-color: #ffffff !important;
+  background-color: #27272a !important;
+  border-color: #3f3f46 !important;
   color: #ffffff !important;
+  transform: scale(1.02);
 }
+.btn-profile-trigger:hover *,
+.btn-profile-trigger:hover span,
 html.dark .btn-profile-trigger:hover *,
 html.dark .btn-profile-trigger:hover span,
 html:not(.light) .btn-profile-trigger:hover *,
@@ -67,12 +44,48 @@ html:not(.light) .btn-profile-trigger:hover span {
   color: #ffffff !important;
   stroke: #ffffff !important;
 }
+.btn-profile-trigger:hover .profile-avatar-circle,
 html.dark .btn-profile-trigger:hover .profile-avatar-circle,
 html:not(.light) .btn-profile-trigger:hover .profile-avatar-circle {
-  background-color: #1c1c1e !important;
+  background-color: #3f3f46 !important;
   color: #ffffff !important;
-  border-color: rgba(255, 255, 255, 0.2) !important;
+  border-color: #52525b !important;
 }
+
+/* Light Mode: Clean high-contrast white/light-zinc pill */
+html.light .btn-profile-trigger {
+  background-color: #ffffff !important;
+  border: 1px solid #e4e4e7 !important;
+  color: #18181b !important;
+}
+html.light .btn-profile-trigger *,
+html.light .btn-profile-trigger span {
+  color: #18181b !important;
+  stroke: #18181b !important;
+}
+html.light .btn-profile-trigger .profile-avatar-circle {
+  background-color: #e4e4e7 !important;
+  color: #18181b !important;
+  border: 1px solid #d4d4d8 !important;
+}
+html.light .btn-profile-trigger:hover {
+  background-color: #f4f4f5 !important;
+  border-color: #d4d4d8 !important;
+  color: #09090b !important;
+  transform: scale(1.02);
+}
+html.light .btn-profile-trigger:hover *,
+html.light .btn-profile-trigger:hover span {
+  color: #09090b !important;
+  stroke: #09090b !important;
+}
+html.light .btn-profile-trigger:hover .profile-avatar-circle {
+  background-color: #d4d4d8 !important;
+  color: #09090b !important;
+  border-color: #a1a1aa !important;
+}
+
+/* --- Profile Page Mono Elements --- */
 
 /* 2. Profile page avatar background */
 .profile-avatar-mono {

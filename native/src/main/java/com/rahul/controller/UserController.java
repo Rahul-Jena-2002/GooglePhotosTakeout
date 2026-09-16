@@ -104,6 +104,11 @@ public class UserController {
 
     public static void logout() {
         currentUserProfile.clear();
+        if (userService != null) {
+            try {
+                userService.logout();
+            } catch (Exception ignored) {}
+        }
         if (profileUpdateListener != null) {
             try {
                 profileUpdateListener.accept(currentUserProfile);
@@ -114,8 +119,7 @@ public class UserController {
     private static long toLong(Object obj) {
         if (obj instanceof Number n) return n.longValue();
         if (obj instanceof String s) {
-            try { return Long.parseLong(s); } catch (Exception ignored) {}
-        }
+            try { return Long.parseLong(s); } catch (Exception ignored) {}        }
         return 0;
     }
 }

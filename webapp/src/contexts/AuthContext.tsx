@@ -20,15 +20,61 @@ export interface ComparisonRow {
   pro: string;
   super: string;
   isDynamicLimit?: boolean;
+  isDynamicTelemetry?: boolean;
 }
 
 export const DEFAULT_COMPARISON_ROWS: ComparisonRow[] = [
   { featureName: "Device Limit", free: "1 device", recovery_pass: "1 device", pro: "2 devices", super: "3 devices" },
   { featureName: "Processing Limit", free: "", recovery_pass: "", pro: "", super: "", isDynamicLimit: true },
-  { featureName: "Photo Matching", free: "Up to 90%", recovery_pass: "Up to 100%", pro: "Up to 90%", super: "Up to 90%" },
+  { featureName: "Photo Matching*", free: "Up to 90.8%*", recovery_pass: "Up to 90.8%*", pro: "Up to 90.8%*", super: "Up to 90.8%*", isDynamicTelemetry: true },
   { featureName: "Advanced Media Tools", free: "—", recovery_pass: "—", pro: "—", super: "Included" },
   { featureName: "No Ads Window", free: "—", recovery_pass: "—", pro: "—", super: "✓ Enabled" },
 ];
+
+export const formatThresholdLimit = (maxSizeMB?: number, maxFiles?: number): string => {
+  const sizeVal = maxSizeMB ?? 0;
+  const filesVal = maxFiles ?? 0;
+  if (sizeVal === 0 && filesVal === 0) return "Unlimited";
+  const sizeStr = sizeVal === 0 ? "Unlimited" : (sizeVal >= 1024 ? `${(sizeVal / 1024).toFixed(0)} GB` : `${sizeVal} MB`);
+  const filesStr = filesVal === 0 ? "Unlimited files" : `${filesVal.toLocaleString()} files`;
+  return `${sizeStr} (${filesStr})`;
+};
+
+export const resolveComparisonRowValues = (
+  row: ComparisonRow,
+  tierThresholds?: Record<string, { maxFiles: number; maxSizeMB: number }>,
+  telemetryAccuracy: string = "90.8%"
+) => {
+  if (row.isDynamicLimit) {
+    const freeVal = formatThresholdLimit(tierThresholds?.free?.maxSizeMB, tierThresholds?.free?.maxFiles);
+    const recoveryVal = formatThresholdLimit(tierThresholds?.recovery_pass?.maxSizeMB, tierThresholds?.recovery_pass?.maxFiles);
+    const proVal = (tierThresholds?.pro?.maxSizeMB === 0 && tierThresholds?.pro?.maxFiles === 0)
+      ? "Unlimited"
+      : formatThresholdLimit(tierThresholds?.pro?.maxSizeMB, tierThresholds?.pro?.maxFiles);
+    const superVal = (tierThresholds?.super?.maxSizeMB === 0 && tierThresholds?.super?.maxFiles === 0)
+      ? "Unlimited"
+      : formatThresholdLimit(tierThresholds?.super?.maxSizeMB, tierThresholds?.super?.maxFiles);
+    return { free: freeVal, recovery_pass: recoveryVal, pro: proVal, super: superVal };
+  }
+
+  const isTelemetry = row.isDynamicTelemetry || (row.isDynamicTelemetry !== false && row.featureName?.toLowerCase().includes("matching"));
+  if (isTelemetry) {
+    const acc = telemetryAccuracy || "90.8%";
+    return {
+      free: `Up to ${acc}*`,
+      recovery_pass: `Up to ${acc}*`,
+      pro: `Up to ${acc}*`,
+      super: `Up to ${acc}*`
+    };
+  }
+
+  return {
+    free: row.free,
+    recovery_pass: row.recovery_pass,
+    pro: row.pro,
+    super: row.super
+  };
+};
 
 export interface FeaturesConfig {
   free: FeatureItem[];
@@ -103,6 +149,7 @@ export interface UserData {
   lifetimeFiles?: number;
   lifetimeBytes?: number;
   expiresAt: number | null;
+  passExpiredAt?: number | null;
   isAdmin: boolean;
   email?: string | null;
   displayName?: string | null;
@@ -168,6 +215,8 @@ interface AuthContextType {
   comparisonRows: ComparisonRow[];
   refreshConfig: () => Promise<void>;
   inviteFacet: InviteFacet;
+  telemetryAccuracy: string;
+  platformStats: any;
 }
 
 const getPlanDeviceLimit = (plan: string): number => {
@@ -205,7 +254,36 @@ const generateUniqueUsername = async (email: string, displayName: string, uid: s
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<User | null>(() => {
+    try {
+      const adminSessionStr = typeof window !== 'undefined' ? sessionStorage.getItem("takeoutfix_admin_session") : null;
+      if (adminSessionStr) {
+        const s = JSON.parse(adminSessionStr);
+        if (s && s.uid && (Date.now() - (s.timestamp || 0) < 24 * 3600 * 1000)) {
+          return {
+            uid: s.uid,
+            email: s.email,
+            displayName: s.displayName,
+            photoURL: s.photoURL,
+          } as User;
+        }
+      }
+      const saved = typeof window !== 'undefined' ? localStorage.getItem("takeoutfix_user_data") : null;
+      if (saved) {
+        const u = JSON.parse(saved);
+        if (u && u.uid) {
+          return {
+            uid: u.uid,
+            email: u.email,
+            displayName: u.displayName,
+            photoURL: u.photoURL,
+          } as User;
+        }
+      }
+    } catch (_) {}
+    return null;
+  });
+
   const [userData, setUserDataState] = useState<UserData | null>(() => {
     try {
       const saved = localStorage.getItem("takeoutfix_user_data");
@@ -214,16 +292,39 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return null;
     }
   });
+
   const [adminData, setAdminDataState] = useState<AdminData | null>(() => {
     try {
+      const adminSessionStr = typeof window !== 'undefined' ? sessionStorage.getItem("takeoutfix_admin_session") : null;
+      if (adminSessionStr) {
+        const s = JSON.parse(adminSessionStr);
+        if (s && s.uid && s.role) {
+          return {
+            uid: s.uid,
+            email: s.email,
+            displayName: s.displayName,
+            photoURL: s.photoURL,
+            role: s.role,
+            status: 'online',
+            lastSeen: s.timestamp || Date.now(),
+            createdAt: s.timestamp || Date.now()
+          };
+        }
+      }
       const saved = localStorage.getItem("takeoutfix_admin_data");
       return saved ? JSON.parse(saved) : null;
     } catch (_) {
       return null;
     }
   });
+
   const [loading, setLoading] = useState(() => {
     try {
+      const adminSessionStr = typeof window !== 'undefined' ? sessionStorage.getItem("takeoutfix_admin_session") : null;
+      if (adminSessionStr) {
+        const s = JSON.parse(adminSessionStr);
+        if (s && s.uid) return false;
+      }
       const saved = localStorage.getItem("takeoutfix_user_data");
       return saved ? false : true;
     } catch (_) {
@@ -252,8 +353,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       if (data) {
         localStorage.setItem("takeoutfix_admin_data", JSON.stringify(data));
+        sessionStorage.setItem("takeoutfix_admin_session", JSON.stringify({
+          uid: data.uid,
+          email: data.email,
+          displayName: data.displayName,
+          photoURL: data.photoURL,
+          role: data.role,
+          timestamp: Date.now()
+        }));
       } else {
         localStorage.removeItem("takeoutfix_admin_data");
+        sessionStorage.removeItem("takeoutfix_admin_session");
       }
     } catch (_) {}
   };
@@ -296,40 +406,105 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [recoveryPassHours, setRecoveryPassHours] = useState<number>(24);
   const [refundPolicy, setRefundPolicy] = useState<string>("We offer a 100% Recovery Guarantee: if a verified technical issue prevents your restoration, and our support desk is unable to resolve it, we will issue a full refund within 7 days of purchase. Refunds are not available for change of mind or successfully completed recoveries.");
   const [comparisonRows, setComparisonRows] = useState<ComparisonRow[]>(DEFAULT_COMPARISON_ROWS);
+  const [telemetryAccuracy, setTelemetryAccuracy] = useState<string>("90.8%");
+  const [platformStats, setPlatformStats] = useState<any>(null);
 
-  // One-shot config loader — replaces 4 unconditional onSnapshot listeners
-  // to eliminate persistent Firestore WebSocket connections on every page load.
-  // Admin pages can call refreshConfig() to re-fetch after edits.
-  const loadGlobalConfig = async () => {
+  useEffect(() => {
+    const unsub = onSnapshot(doc(db, "platform_stats", "global"), (snap) => {
+      if (snap.exists()) {
+        const data = snap.data();
+        setPlatformStats(data);
+        if (data.filesScanned && data.filesScanned > 0 && data.filesRestored !== undefined) {
+          const rate = (data.filesRestored / data.filesScanned) * 100;
+          setTelemetryAccuracy(`${rate.toFixed(1)}%`);
+        }
+      }
+    }, (err) => {
+      console.warn("AuthContext: platform_stats listener error:", err);
+    });
+    return () => unsub();
+  }, []);
+
+  // Cached config loader — uses 3-minute sessionStorage cache to drastically reduce
+  // Firestore reads across page navigations. Admin pages call refreshConfig() to force re-fetch.
+  const CACHE_KEY = "takeoutfix_cached_global_config";
+  const CACHE_TTL = 3 * 60 * 1000;
+
+  const loadGlobalConfig = async (forceRefresh: boolean = false) => {
+    if (!forceRefresh && typeof window !== 'undefined') {
+      try {
+        const cachedStr = sessionStorage.getItem(CACHE_KEY);
+        if (cachedStr) {
+          const { data, timestamp } = JSON.parse(cachedStr);
+          if (Date.now() - (timestamp || 0) < CACHE_TTL) {
+            if (data.recoveryPassHours !== undefined) setRecoveryPassHours(data.recoveryPassHours);
+            if (data.dodoProductIds) setDodoProductIds(data.dodoProductIds);
+            if (data.dodoTestMode !== undefined) setDodoTestMode(data.dodoTestMode);
+            if (data.featuresConfig) setFeaturesConfig(data.featuresConfig);
+            if (data.tierThresholds) setTierThresholds(data.tierThresholds);
+            if (data.refundPolicy) setRefundPolicy(data.refundPolicy);
+            if (data.comparisonRows) {
+              setComparisonRows(data.comparisonRows.map((r: ComparisonRow) => {
+                if (r.featureName?.toLowerCase().includes("matching") && r.isDynamicTelemetry === undefined) {
+                  return { ...r, isDynamicTelemetry: true };
+                }
+                return r;
+              }));
+            }
+            if (data.foundingCount !== undefined) setFoundingCount(data.foundingCount);
+            if (data.pricingTiers) setPricingTiers(data.pricingTiers);
+            if (data.campaigns !== undefined) setCampaigns(data.campaigns);
+            if (data.activeCampaignDiscounts) setActiveCampaignDiscounts(data.activeCampaignDiscounts);
+            return;
+          }
+        }
+      } catch (_) {}
+    }
+
     try {
+      let recPassHours = 24;
+      let newProductIds = buildEmptyProductIds();
+      let newTestMode = false;
+      let newFeatures = DEFAULT_FEATURES_CONFIG;
+      let newThresholds = {
+        free:          { maxFiles: 250,    maxSizeMB: 500    },
+        recovery_pass: { maxFiles: 3000,   maxSizeMB: 3072   },
+        pro:           { maxFiles: 50000,  maxSizeMB: 51200  },
+        super:         { maxFiles: 100000, maxSizeMB: 102400 },
+      };
+      let newRefund = refundPolicy;
+      let newComparison = DEFAULT_COMPARISON_ROWS;
+
       // 1. settings/global
       const globalSnap = await getDoc(doc(db, "settings", "global"));
       if (globalSnap.exists()) {
         const data = globalSnap.data();
         if (data.recoveryPassHours !== undefined) {
-          setRecoveryPassHours(Number(data.recoveryPassHours));
+          recPassHours = Number(data.recoveryPassHours);
+          setRecoveryPassHours(recPassHours);
         }
         const isTestMode = data.dodo_test_mode === true;
+        newTestMode = isTestMode;
+        setDodoTestMode(newTestMode);
+
         const stored = (isTestMode ? data.dodo_products_test : data.dodo_products_live) as Record<string, Record<string, string>> | undefined
           || data.dodo_products as Record<string, Record<string, string>> | undefined;
         if (stored) {
-          setDodoProductIds(() => {
-            const merged = buildEmptyProductIds();
-            REGIONS.forEach(r => {
-              if (stored[r]) {
-                PLANS.forEach(p => {
-                  merged[r][p] = stored[r][p] || "";
-                });
-              }
-            });
-            return merged;
+          const merged = buildEmptyProductIds();
+          REGIONS.forEach(r => {
+            if (stored[r]) {
+              PLANS.forEach(p => {
+                merged[r][p] = stored[r][p] || "";
+              });
+            }
           });
+          newProductIds = merged;
+          setDodoProductIds(merged);
         }
-        setDodoTestMode(data.dodo_test_mode ?? false);
 
         const storedFeatures = data.features_config as FeaturesConfig | undefined;
         if (storedFeatures) {
-          setFeaturesConfig({
+          newFeatures = {
             free: storedFeatures.free || DEFAULT_FEATURES_CONFIG.free,
             recovery_pass: storedFeatures.recovery_pass || DEFAULT_FEATURES_CONFIG.recovery_pass,
             pro: storedFeatures.pro || DEFAULT_FEATURES_CONFIG.pro,
@@ -346,14 +521,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
               pro: storedFeatures.subheadings?.pro ?? DEFAULT_FEATURES_CONFIG.subheadings.pro,
               super: storedFeatures.subheadings?.super ?? DEFAULT_FEATURES_CONFIG.subheadings.super,
             },
-          });
-        } else {
-          setFeaturesConfig(DEFAULT_FEATURES_CONFIG);
+          };
         }
+        setFeaturesConfig(newFeatures);
 
         const storedThresholds = data.tierThresholds;
         if (storedThresholds) {
-          setTierThresholds({
+          newThresholds = {
             free: {
               maxFiles: Number(storedThresholds.free?.maxFiles ?? 250),
               maxSizeMB: Number(storedThresholds.free?.maxSizeMB ?? 500)
@@ -370,24 +544,32 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
               maxFiles: Number(storedThresholds.super?.maxFiles ?? 100000),
               maxSizeMB: Number(storedThresholds.super?.maxSizeMB ?? 102400)
             }
-          });
+          };
+          setTierThresholds(newThresholds);
         }
         const storedRefundPolicy = data.refundPolicy as string | undefined;
         if (storedRefundPolicy) {
-          setRefundPolicy(storedRefundPolicy);
+          newRefund = storedRefundPolicy;
+          setRefundPolicy(newRefund);
         }
         const storedComparisonRows = data.comparisonRows as ComparisonRow[] | undefined;
         if (storedComparisonRows && Array.isArray(storedComparisonRows)) {
-          setComparisonRows(storedComparisonRows);
-        } else {
-          setComparisonRows(DEFAULT_COMPARISON_ROWS);
+          newComparison = storedComparisonRows.map(r => {
+            if (r.featureName?.toLowerCase().includes("matching") && r.isDynamicTelemetry === undefined) {
+              return { ...r, isDynamicTelemetry: true };
+            }
+            return r;
+          });
         }
+        setComparisonRows(newComparison);
       }
 
       // 2. config/foundingMembers
+      let newFounding = 0;
       const foundingSnap = await getDoc(doc(db, "config", "foundingMembers"));
       if (foundingSnap.exists()) {
-        setFoundingCount(foundingSnap.data().count ?? 0);
+        newFounding = foundingSnap.data().count ?? 0;
+        setFoundingCount(newFounding);
       }
 
       // 3. pricing_tiers (collection)
@@ -405,16 +587,36 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         .find((c: any) => c.isEnabled === true && c.status === 'ACTIVE') || null;
       setCampaigns(activeCampaign);
 
+      let discounts: Record<string, { discountType: string; discountValue: number }> = {};
       if (activeCampaign?.id) {
         const discSnap = await getDocs(collection(db, "campaigns", activeCampaign.id, "discounts"));
-        const discounts: Record<string, { discountType: string; discountValue: number }> = {};
         discSnap.forEach(d => {
           const data = d.data();
           discounts[data.planCode] = { discountType: data.discountType, discountValue: data.discountValue };
         });
-        setActiveCampaignDiscounts(discounts);
-      } else {
-        setActiveCampaignDiscounts({});
+      }
+      setActiveCampaignDiscounts(discounts);
+
+      // Cache snapshot into sessionStorage
+      if (typeof window !== 'undefined') {
+        try {
+          sessionStorage.setItem(CACHE_KEY, JSON.stringify({
+            data: {
+              recoveryPassHours: recPassHours,
+              dodoProductIds: newProductIds,
+              dodoTestMode: newTestMode,
+              featuresConfig: newFeatures,
+              tierThresholds: newThresholds,
+              refundPolicy: newRefund,
+              comparisonRows: newComparison,
+              foundingCount: newFounding,
+              pricingTiers: tiersData,
+              campaigns: activeCampaign,
+              activeCampaignDiscounts: discounts
+            },
+            timestamp: Date.now()
+          }));
+        } catch (_) {}
       }
     } catch (err) {
       console.error("Failed to load global config:", err);
@@ -422,7 +624,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   // Expose refreshConfig for admin pages to re-fetch after config edits
-  const refreshConfig = loadGlobalConfig;
+  const refreshConfig = () => {
+    try { sessionStorage.removeItem("takeoutfix_cached_global_config"); } catch (_) {}
+    return loadGlobalConfig(true);
+  };
 
   useEffect(() => {
     loadGlobalConfig();
@@ -757,12 +962,24 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
       }
 
-      // 2. Set default plan if needed
+      // 2. Set default plan if needed & enforce recovery_pass expiry
       if (!data.plan) {
         if (data.licenseType === 'lifetime') data.plan = 'pro';
         else if (data.licenseType === '24hour' || data.licenseType === '15gb') data.plan = 'recovery_pass';
         else data.plan = 'free';
         pendingUpdates.plan = data.plan;
+      }
+
+      if (data.plan === 'recovery_pass') {
+        const passExpires = data.expiresAt || (data.createdAt ? data.createdAt + 24 * 60 * 60 * 1000 : null);
+        if (passExpires && Date.now() >= passExpires) {
+          console.log("⏰ Recovery pass duration elapsed. Reverting to free tier by default.");
+          data.plan = 'free';
+          data.expiresAt = null;
+          pendingUpdates.plan = 'free';
+          pendingUpdates.expiresAt = null;
+          pendingUpdates.passExpiredAt = passExpires;
+        }
       }
 
       // 3. Sync profile photo if changed
@@ -1044,7 +1261,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (snap.exists()) {
         const data = snap.data() as UserData;
         
-
+        // Auto-revert recovery_pass to free tier if expired
+        if (data.plan === 'recovery_pass') {
+          const passExpires = data.expiresAt || (data.createdAt ? data.createdAt + 24 * 60 * 60 * 1000 : null);
+          if (passExpires && Date.now() >= passExpires) {
+            console.log("⏰ Recovery pass snapshot: duration elapsed. Reverting to free tier by default.");
+            data.plan = 'free';
+            data.expiresAt = null;
+            updateDoc(userDocRef, { plan: 'free', expiresAt: null, passExpiredAt: passExpires }).catch(console.error);
+          }
+        }
 
         const sessionIds = data.sessionIds || [];
         const localSessionId = localStorage.getItem("takeoutfix_device_session_id");
@@ -1087,6 +1313,42 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return unsubscribe;
   }, [user, sessionRegistered, hasSeenSelfInSessions]);
 
+  // Active real-time recovery pass expiry tracker:
+  // When pass time span ends, auto-revert user to free tier immediately and notify them.
+  useEffect(() => {
+    if (!user || !userData || userData.plan !== 'recovery_pass') return;
+    const expiresAt = userData.expiresAt;
+    if (!expiresAt) return;
+
+    const handleExpiry = () => {
+      if (Date.now() >= expiresAt) {
+        console.log("⏰ Recovery pass duration ended in real-time. Reverting to free tier by default.");
+        const userDocRef = doc(db, 'users', user.uid);
+        updateDoc(userDocRef, { plan: 'free', expiresAt: null, passExpiredAt: expiresAt }).catch(console.error);
+        setUserData({ ...userData, plan: 'free', expiresAt: null, passExpiredAt: expiresAt });
+        useToastStore.getState().addToast(
+          "Your Recovery Pass duration has ended. Your account has returned to the Free tier by default.",
+          "info",
+          7000,
+          "Pass Expired"
+        );
+      }
+    };
+
+    const diff = expiresAt - Date.now();
+    if (diff <= 0) {
+      handleExpiry();
+      return;
+    }
+
+    const timeoutId = setTimeout(handleExpiry, diff);
+    const intervalId = setInterval(handleExpiry, 15000);
+    return () => {
+      clearTimeout(timeoutId);
+      clearInterval(intervalId);
+    };
+  }, [user, userData?.plan, userData?.expiresAt]);
+
   const login = async () => {
     const provider = new GoogleAuthProvider();
     provider.setCustomParameters({ prompt: 'select_account' });
@@ -1122,6 +1384,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       localStorage.removeItem("takeoutfix_user_data");
       localStorage.removeItem("takeoutfix_admin_data");
+      sessionStorage.removeItem("takeoutfix_admin_session");
       localStorage.removeItem("takeoutfix_device_session_id");
       localStorage.removeItem("takeoutfix_login_time");
       localStorage.removeItem("takeoutfix_last_uid");
@@ -1279,7 +1542,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       refundPolicy,
       comparisonRows,
       refreshConfig,
-      inviteFacet
+      inviteFacet,
+      telemetryAccuracy,
+      platformStats
     }}>
       {children}
       
@@ -1372,7 +1637,9 @@ export const useAuth = () => {
         pendingInvite: null,
         accept: async () => {},
         decline: async () => {}
-      }
+      },
+      telemetryAccuracy: "90.8%",
+      platformStats: null
     };
   }
   return context;

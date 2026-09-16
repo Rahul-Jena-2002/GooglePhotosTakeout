@@ -56,25 +56,32 @@ async function patchProductPrice(
   dodoApiKey: string,
   dodoCfg: any = {}
 ): Promise<{ statusCode: number; body: string }> {
-  const payload = JSON.stringify({
-    price: {
-      type: "one_time_price",
-      currency: currencyCode,
-      price: amountMinor,
-      tax_inclusive:            dodoCfg.tax_inclusive            ?? true,
-      discount:                 dodoCfg.discount                 ?? 0,
-      purchasing_power_parity:  dodoCfg.purchasing_power_parity  ?? false,
-      pay_what_you_want:        dodoCfg.pay_what_you_want        ?? false,
-      suggested_price:          dodoCfg.suggested_price          ?? null
+  const priceObj: Record<string, any> = {
+    type: "one_time_price",
+    currency: currencyCode,
+    price: amountMinor,
+    tax_inclusive: dodoCfg.tax_inclusive ?? true,
+  };
+
+  if (dodoCfg.discount && Number(dodoCfg.discount) > 0) {
+    priceObj.discount = Number(dodoCfg.discount);
+  }
+
+  if (dodoCfg.pay_what_you_want) {
+    priceObj.pay_what_you_want = true;
+    if (dodoCfg.suggested_price && Number(dodoCfg.suggested_price) > 0) {
+      priceObj.suggested_price = Math.round(Number(dodoCfg.suggested_price) * 100);
     }
-  });
+  }
+
+  const payload = JSON.stringify({ price: priceObj });
 
   const url = `https://${dodoHost}/products/${productId}`;
   const response = await fetch(url, {
     method: "PATCH",
     headers: {
       "Content-Type": "application/json",
-      "Authorization": `Bearer ${dodoApiKey}`
+      "Authorization": `Bearer ${dodoApiKey.trim()}`
     },
     body: payload
   });
@@ -103,42 +110,47 @@ export const POST: APIRoute = async ({ request }) => {
       return json(400, { error: 'Invalid JSON body' });
     }
 
-    const { regionCode, prices, currency } = payload;
+    const { regionCode, prices, currency, productIds } = payload;
     let currencyCode = String(currency || "INR").toUpperCase();
 
     if (!regionCode || !prices || typeof prices !== "object") {
       return json(400, { error: "regionCode and prices object are required." });
     }
 
-    // Resolve Dodo Keys and Mode directly from Cloudflare environment
+    // Resolve Dodo Keys and Mode directly from Cloudflare environment or payload
     const dodoTestModeVal = (env as any).DODO_TEST_MODE || import.meta.env.DODO_TEST_MODE;
-    const dodoTestMode = dodoTestModeVal === 'true' || dodoTestModeVal === true || dodoTestModeVal === undefined; // default to test mode if not configured
+    const dodoTestMode = dodoTestModeVal === 'true' || dodoTestModeVal === true;
     
-    let dodoApiKey = dodoTestMode 
-      ? ((env as any).DODO_TEST_API_KEY || import.meta.env.DODO_TEST_API_KEY)
-      : ((env as any).DODO_API_KEY || import.meta.env.DODO_API_KEY);
+    let dodoApiKey = (payload.dodoApiKey || payload.apiKey || (dodoTestMode 
+      ? ((env as any).DODO_TEST_API_KEY || import.meta.env.DODO_TEST_API_KEY || (typeof process !== "undefined" ? process.env.DODO_TEST_API_KEY : undefined))
+      : ((env as any).DODO_API_KEY || import.meta.env.DODO_API_KEY || (typeof process !== "undefined" ? process.env.DODO_API_KEY : undefined)))) || '';
 
     if (!dodoApiKey) {
-      return json(500, { error: `Dodo API key not configured in Cloudflare environment (${dodoTestMode ? "DODO_TEST_API_KEY" : "DODO_API_KEY"}).` });
+      return json(400, { 
+        error: `Dodo Payments API key not configured (${dodoTestMode ? "DODO_TEST_API_KEY" : "DODO_API_KEY"}). Please enter your Dodo API Key in the Gateway Credentials tab and click Save, or set it in your environment variables.` 
+      });
     }
 
-    // Strip sk_test_ / test_ / sk_live_ / live_ prefixes if present
-    dodoApiKey = dodoApiKey
-      .replace(/^sk_test_/, '').replace(/^test_/, '')
-      .replace(/^sk_live_/, '').replace(/^live_/, '');
+    // Preserve full API key (do NOT strip live_ or test_ prefixes as Dodo API requires them)
+    dodoApiKey = String(dodoApiKey).trim();
 
-    const dodoHost = dodoTestMode ? "test.dodopayments.com" : "live.dodopayments.com";
-    const envMode = dodoTestMode ? "test" : "live";
+    const isTestKey = dodoApiKey.startsWith("test_") || dodoApiKey.startsWith("sk_test_");
+    const dodoHost = isTestKey || dodoTestMode ? "test.dodopayments.com" : "live.dodopayments.com";
+    const envMode = isTestKey || dodoTestMode ? "test" : "live";
 
-    // Resolve Product mappings from env
+    // Resolve Product mappings from payload first, then fallback to env
     const dodoProductsLiveStr = (env as any).DODO_PRODUCTS_LIVE || import.meta.env.DODO_PRODUCTS_LIVE || '{}';
     const dodoProductsTestStr = (env as any).DODO_PRODUCTS_TEST || import.meta.env.DODO_PRODUCTS_TEST || '{}';
     let dodoProductsMap: Record<string, any> = {};
     try {
       dodoProductsMap = dodoTestMode ? JSON.parse(dodoProductsTestStr) : JSON.parse(dodoProductsLiveStr);
     } catch (e: any) {
-      return json(500, { error: "Invalid DODO_PRODUCTS config mapping on Cloudflare", message: e.message });
+      dodoProductsMap = {};
     }
+
+    const effectiveProductIds = (productIds && typeof productIds === 'object' && Object.keys(productIds).length > 0)
+      ? productIds
+      : (dodoProductsMap?.[regionCode as string] || {});
 
     // Auto-calculate to USD for JPY and CNY regions
     let finalPrices = { ...(prices as Record<string, any>) };
@@ -163,7 +175,7 @@ export const POST: APIRoute = async ({ request }) => {
     const results = [];
     for (const [planCode, priceVal] of Object.entries(finalPrices)) {
       try {
-        const productId = dodoProductsMap?.[regionCode as string]?.[planCode] || null;
+        const productId = effectiveProductIds?.[planCode] || dodoProductsMap?.[regionCode as string]?.[planCode] || null;
         if (!productId) {
           results.push({ planCode, status: "FAILED", error: `No productId for region=${regionCode} plan=${planCode}` });
           continue;

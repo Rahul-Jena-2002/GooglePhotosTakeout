@@ -14,7 +14,6 @@ const AdminUserDashboard  = React.lazy(() => import("../react-pages/AdminUserDas
 const AdminSupport        = React.lazy(() => import("../react-pages/AdminSupport"))
 const AdminReviews        = React.lazy(() => import("../react-pages/AdminReviews"))
 const AdminTeam           = React.lazy(() => import("../react-pages/AdminTeam"))
-const AdminRevenue        = React.lazy(() => import("../react-pages/AdminRevenue"))
 const AdminSettings       = React.lazy(() => import("../react-pages/AdminSettings"))
 const AdminStatistics     = React.lazy(() => import("../react-pages/AdminStatistics"))
 const AdminAudit          = React.lazy(() => import("../react-pages/AdminAudit"))
@@ -24,6 +23,7 @@ const AdminPlanThresholds = React.lazy(() => import("../react-pages/AdminPlanThr
 const AdminTierFeatures   = React.lazy(() => import("../react-pages/AdminTierFeatures"))
 const AdminDev           = React.lazy(() => import("../react-pages/AdminDev"))
 const AdminTransactions  = React.lazy(() => import("../react-pages/AdminTransactions"))
+const AdminMonetization  = React.lazy(() => import("../react-pages/AdminMonetization"))
 
 // ---------------------------------------------------------------------------
 // Loading skeleton (shown while lazy chunks are fetching)
@@ -140,11 +140,7 @@ function AdminRouterContent() {
                 <AdminUserDashboard />
               </RequireRole>
             } />
-            <Route path="revenue" element={
-              <RequireRole allow={["SUPER_ADMIN", "ADMIN"]}>
-                <AdminRevenue />
-              </RequireRole>
-            } />
+            <Route path="revenue" element={<Navigate to="/admin" replace />} />
             <Route path="payments" element={
               <RequireRole allow={["SUPER_ADMIN", "ADMIN"]}>
                 <AdminTransactions />
@@ -153,6 +149,11 @@ function AdminRouterContent() {
             <Route path="statistics" element={
               <RequireRole allow={["SUPER_ADMIN", "ADMIN"]}>
                 <AdminStatistics />
+              </RequireRole>
+            } />
+            <Route path="monetization" element={
+              <RequireRole allow={["SUPER_ADMIN", "ADMIN"]}>
+                <AdminMonetization />
               </RequireRole>
             } />
             <Route path="audit" element={

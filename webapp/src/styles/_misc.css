@@ -44,3 +44,13 @@ html.faq-modal-open footer {
   visibility: hidden !important;
   pointer-events: none !important;
 }
+
+/* Timeline scroll track centered padding and snap behavior */
+.timeline-scroll-track {
+  padding-left: calc(50% - 128px);
+  padding-right: calc(50% - 128px);
+  scroll-snap-type: x mandatory;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+

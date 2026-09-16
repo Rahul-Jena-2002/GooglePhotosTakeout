@@ -214,9 +214,13 @@ public class CommandCenterPanel extends JPanel {
         btnUpgradeQuota.setFont(new Font("Segoe UI", Font.BOLD, 11));
         btnUpgradeQuota.setPreferredSize(new Dimension(240, 32));
         btnUpgradeQuota.addActionListener(e -> {
-            try {
-                Desktop.getDesktop().browse(new URI("https://takeoutfix.pages.dev/pricing"));
-            } catch (Exception ignored) {}
+            if (!userService.isSignedIn()) {
+                UserSyncBridgeService.openGoogleLogin(SwingUtilities.getWindowAncestor(this));
+            } else {
+                try {
+                    Desktop.getDesktop().browse(new URI("https://takeoutfix.pages.dev/pricing"));
+                } catch (Exception ignored) {}
+            }
         });
         gbc.gridy = 6;
         gbc.insets = new Insets(0, 0, 0, 0);
@@ -507,12 +511,34 @@ public class CommandCenterPanel extends JPanel {
 
     public void updateUserData(Map<String, Object> user) {
         SwingUtilities.invokeLater(() -> {
+            boolean signedIn = userService.isSignedIn();
             String plan = userService.getCurrentPlan();
             long usedFiles = userService.getUsedFiles();
             long usedBytes = userService.getUsedBytes();
 
             String formattedFiles = NumberFormat.getNumberInstance(Locale.US).format(usedFiles);
             String formattedBytes = formatBytes(usedBytes);
+
+            if (!signedIn) {
+                storageProgressText.setText("Sign In to Activate");
+                storageProgressText.setForeground(ThemeColors.textMuted());
+                storageProgressBar.setValue(0);
+                storageProgressBar.setForeground(ThemeColors.accent());
+
+                filesProgressText.setText("Sign In to Activate");
+                filesProgressText.setForeground(ThemeColors.textMuted());
+                filesProgressBar.setValue(0);
+                filesProgressBar.setForeground(ThemeColors.accent());
+
+                if (btnUpgradeQuota != null) {
+                    btnUpgradeQuota.setVisible(true);
+                    btnUpgradeQuota.setText("Sign In with Google");
+                    btnUpgradeQuota.setBackground(ThemeColors.accent());
+                }
+                revalidate();
+                repaint();
+                return;
+            }
 
             if ("super".equalsIgnoreCase(plan) || "pro".equalsIgnoreCase(plan)) {
                 storageProgressText.setText(formattedBytes + " / Unlimited (" + plan.toUpperCase() + ")");

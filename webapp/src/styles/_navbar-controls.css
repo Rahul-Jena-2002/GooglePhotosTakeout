@@ -1,61 +1,64 @@
-/* --- Monochromatic Navbar Control Buttons (Theme Toggle, Notifications) --- */
+/* --- Unified Navbar Control Buttons (Theme Toggle, Notifications, Profile) --- */
 .btn-theme-toggle-navbar,
-.btn-notification-navbar {
-  background-color: #000000 !important;
-  color: #ffffff !important;
-  border: 1px solid #000000 !important;
+.btn-notification-navbar,
+.btn-nav-control {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: 36px !important;
+  height: 36px !important;
+  padding: 0 !important;
+  background-color: #18181b !important;
+  color: #f4f4f5 !important;
+  border: 1px solid #27272a !important;
+  border-radius: 9999px !important;
   transition: all 0.15s ease-in-out !important;
+  box-sizing: border-box !important;
 }
+
 .btn-theme-toggle-navbar svg,
-.btn-notification-navbar svg {
-  color: #ffffff !important;
-  stroke: #ffffff !important;
+.btn-notification-navbar svg,
+.btn-nav-control svg {
+  color: #f4f4f5 !important;
+  stroke: currentColor !important;
+  width: 1rem !important;
+  height: 1rem !important;
 }
+
 .btn-theme-toggle-navbar:hover,
-.btn-notification-navbar:hover {
-  background-color: #ffffff !important;
-  color: #000000 !important;
-  border-color: #000000 !important;
-}
-.btn-theme-toggle-navbar:hover svg,
-.btn-notification-navbar:hover svg {
-  color: #000000 !important;
-  stroke: #000000 !important;
-}
-
-html.dark .btn-theme-toggle-navbar,
-html.dark .btn-notification-navbar,
-html:not(.light) .btn-theme-toggle-navbar,
-html:not(.light) .btn-notification-navbar {
-  background-color: rgba(255, 255, 255, 0.08) !important;
-  color: #f3f4f6 !important;
-  border: 1px solid rgba(255, 255, 255, 0.15) !important;
-}
-html.dark .btn-theme-toggle-navbar svg,
-html.dark .btn-notification-navbar svg,
-html:not(.light) .btn-theme-toggle-navbar svg,
-html:not(.light) .btn-notification-navbar svg {
-  color: #f3f4f6 !important;
-  stroke: #f3f4f6 !important;
-}
-html.dark .btn-theme-toggle-navbar:hover,
-html.dark .btn-notification-navbar:hover,
-html:not(.light) .btn-theme-toggle-navbar:hover,
-html:not(.light) .btn-notification-navbar:hover {
-  background-color: rgba(255, 255, 255, 0.15) !important;
+.btn-notification-navbar:hover,
+.btn-nav-control:hover {
+  background-color: #27272a !important;
   color: #ffffff !important;
-  border-color: rgba(255, 255, 255, 0.25) !important;
-}
-html.dark .btn-theme-toggle-navbar:hover svg,
-html.dark .btn-notification-navbar:hover svg,
-html:not(.light) .btn-theme-toggle-navbar:hover svg,
-html:not(.light) .btn-notification-navbar:hover svg {
-  color: #ffffff !important;
-  stroke: #ffffff !important;
+  border-color: #3f3f46 !important;
+  transform: scale(1.02);
 }
 
+/* Light Mode: Crisp, high-contrast subtle zinc pill with dark icon */
+html.light .btn-theme-toggle-navbar,
+html.light .btn-notification-navbar,
+html.light .btn-nav-control {
+  background-color: #f4f4f5 !important;
+  color: #18181b !important;
+  border: 1px solid #e4e4e7 !important;
+}
 
-/* Force white text in both light and dark themes */
+html.light .btn-theme-toggle-navbar svg,
+html.light .btn-notification-navbar svg,
+html.light .btn-nav-control svg {
+  color: #18181b !important;
+  stroke: currentColor !important;
+}
+
+html.light .btn-theme-toggle-navbar:hover,
+html.light .btn-notification-navbar:hover,
+html.light .btn-nav-control:hover {
+  background-color: #e4e4e7 !important;
+  color: #09090b !important;
+  border-color: #d4d4d8 !important;
+}
+
+/* Force white text where explicitly needed */
 .text-white-force,
 html.light .text-white-force {
   color: #ffffff !important;

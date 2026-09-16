@@ -8,6 +8,7 @@ import { collection, query, where, onSnapshot, updateDoc, doc, Timestamp } from 
 import { useTelemetrySync } from "../hooks/useTelemetrySync"
 import { useToastStore } from "../store/useToastStore"
 import { registerServiceWorker } from "../lib/swRegister"
+import { getFriendlyAuthMessage } from "../lib/authErrors"
 
 export default function MainLayout() {
   const { user, userData, adminData, login, logout, loading, inviteFacet } = useAuth()
@@ -66,16 +67,15 @@ export default function MainLayout() {
       }
       if (loginSuccess) return;
 
-      console.error("Login failed:", err);
       if (!toastShown) {
         toastShown = true;
-        const errMsg = err?.code || err?.message || String(err);
-        const isCancelled = errMsg.includes("cancelled") || errMsg.includes("closed") || errMsg.includes("popup-closed-by-user");
+        const isAdmin = location.pathname.startsWith("/admin");
+        const feedback = getFriendlyAuthMessage(err, isAdmin);
         useToastStore.getState().addToast(
-          isCancelled ? "Sign-in was cancelled." : `Sign-in failed: ${errMsg}`,
-          "error",
-          7000,
-          "Login Failed"
+          feedback.message,
+          feedback.type === "error" ? "error" : "success",
+          6000,
+          feedback.title
         );
       }
     }
@@ -217,9 +217,9 @@ export default function MainLayout() {
       () => {}
     )
 
-    // 2. Real-time notifications (admin invites, system alerts)
+    // 2. Real-time notifications (admin invites, system alerts, global announcements)
     const unsubNotifs = email ? onSnapshot(
-      query(collection(db, "notifications"), where("recipientEmail", "==", email)),
+      query(collection(db, "notifications"), where("recipientEmail", "in", [email.toLowerCase(), "all"])),
       snap => {
         notifItems = snap.docs
           .map(d => ({
@@ -336,9 +336,9 @@ export default function MainLayout() {
                         setMobileMenuOpen(false)
                         setProfileMenuOpen(false)
                       }}
-                      className="btn-notification-navbar relative p-2 rounded-full bg-zinc-900 border border-zinc-800 hover:bg-zinc-800 hover:scale-[1.02] focus:outline-none transition-all flex items-center justify-center"
+                      className="btn-notification-navbar btn-nav-control relative p-2 rounded-full focus:outline-none transition-all flex items-center justify-center cursor-pointer"
                     >
-                      <Bell className="w-4 h-4 text-white/80" />
+                      <Bell className="w-4 h-4" />
                       {notifications.length > 0 && (
                         <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 rounded-full flex items-center justify-center text-[9px] font-bold text-white animate-pulse">
                           {notifications.length}

@@ -1,0 +1,13 @@
+---
+export const prerender = true;
+import Layout from "../layouts/Layout.astro";
+import AuthPage from "../react-pages/AuthPage";
+---
+
+<Layout 
+  title="Sign In | TakeoutFix" 
+  description="Sign in or create your TakeoutFix account to restore missing dates, GPS, and metadata to your Google Takeout photos and videos."
+  isAuthPage={true}
+>
+  <AuthPage client:only="react" />
+</Layout>

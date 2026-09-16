@@ -23,6 +23,7 @@ import {
   Key,
   Sliders,
   List,
+  Coins,
 } from "lucide-react"
 
 export default function AdminLayout() {
@@ -89,7 +90,7 @@ export default function AdminLayout() {
         { label: "Users", path: "/admin/users", icon: Users, show: isAdminOrAbove },
         { label: "Tickets", path: "/admin/support", icon: LifeBuoy, show: isSupportOrAbove },
         { label: "Payments", path: "/admin/payments", icon: CreditCard, show: isAdminOrAbove },
-        { label: "Revenue", path: "/admin/revenue", icon: BarChart3, show: isAdminOrAbove },
+        { label: "Monetization", path: "/admin/monetization", icon: Coins, show: isAdminOrAbove },
       ],
     },
     {
@@ -115,7 +116,7 @@ export default function AdminLayout() {
   ]
 
   return (
-    <div className="min-h-screen bg-zinc-950 text-zinc-100 flex font-sans admin-layout-root">
+    <div className="h-screen bg-zinc-950 text-zinc-100 flex font-sans admin-layout-root overflow-hidden">
 
       {/* ─── MOBILE DRAWER SIDEBAR ─── */}
       {sidebarOpen && (
@@ -257,18 +258,22 @@ export default function AdminLayout() {
       </aside>
 
       {/* ─── MAIN CONTENT ─── */}
-      <main className="flex-1 flex flex-col min-h-screen overflow-x-hidden">
-        <AdminTopbar onMenuClick={() => setSidebarOpen(true)} />
+      <main className="flex-1 flex flex-col h-screen overflow-hidden">
+        <div className="flex-shrink-0">
+          <AdminTopbar onMenuClick={() => setSidebarOpen(true)} />
+        </div>
         {location.pathname === "/admin/tool" ? (
-          <div className="flex-grow w-full overflow-hidden">
+          <div className="flex-1 w-full overflow-hidden min-h-0">
             <div key={location.pathname} className="animate-page h-full">
               <Outlet />
             </div>
           </div>
         ) : (
-          <div className="flex-grow max-w-7xl w-full mx-auto p-4 sm:p-6 md:p-8 overflow-x-auto">
-            <div key={location.pathname} className="animate-page h-full">
-              <Outlet />
+          <div className="flex-1 overflow-y-auto min-h-0">
+            <div className="w-full mx-auto p-4 sm:p-6 md:p-8">
+              <div key={location.pathname} className="animate-page h-full">
+                <Outlet />
+              </div>
             </div>
           </div>
         )}

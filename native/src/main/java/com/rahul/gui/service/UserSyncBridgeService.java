@@ -25,6 +25,7 @@ import java.util.function.Consumer;
 public class UserSyncBridgeService {
 
     private static final File SESSION_FILE = new File(System.getProperty("user.home"), ".takeoutfix/session.json");
+    private static final File USERS_FILE = new File(System.getProperty("user.home"), ".takeoutfix/users.json");
     private final List<Consumer<Map<String, Object>>> listeners = new CopyOnWriteArrayList<>();
 
     public UserSyncBridgeService() {
@@ -48,7 +49,7 @@ public class UserSyncBridgeService {
         try {
             int port = DesktopAuthServer.start(profile -> {
                 SwingUtilities.invokeLater(() -> {
-                    UserController.updateUserProfile(profile);
+                    UserController.syncUser(profile);
                     saveSessionFile(profile);
                     JOptionPane.showMessageDialog(parent,
                             "Welcome back, " + profile.getOrDefault("displayName", profile.getOrDefault("email", "User")) + "!\nYour session is active.",
@@ -72,7 +73,7 @@ public class UserSyncBridgeService {
         }
     }
 
-    // ── Session persistence ───────────────────────────────────────────────────
+    // ── Session persistence ──────────────────────────────────────────────────
 
     private void loadPersistedSession() {
         try {
@@ -91,6 +92,7 @@ public class UserSyncBridgeService {
     }
 
     private static void saveSessionFile(Map<String, Object> profile) {
+        if (profile == null || profile.isEmpty()) return;
         Object email = profile.get("email");
         if (email == null || email.toString().trim().isEmpty()) return;
         try {
@@ -100,7 +102,7 @@ public class UserSyncBridgeService {
         } catch (Exception ignored) {}
     }
 
-    // ── Listener management ───────────────────────────────────────────────────
+    // ── Listener management ──────────────────────────────────────────────────
 
     public void addListener(Consumer<Map<String, Object>> listener) {
         listeners.add(listener);
@@ -116,7 +118,7 @@ public class UserSyncBridgeService {
         }
     }
 
-    // ── Profile accessors ─────────────────────────────────────────────────────
+    // ── Profile accessors ────────────────────────────────────────────────────
 
     public Map<String, Object> getCurrentProfile() {
         return UserController.getCurrentUserProfile();
@@ -179,7 +181,7 @@ public class UserSyncBridgeService {
         return !canProcessMoreFiles(1);
     }
 
-    // ── Mutators ──────────────────────────────────────────────────────────────
+    // ── Mutators ─────────────────────────────────────────────────────────────
 
     public void signIn(String email, String plan) {
         Map<String, Object> updates = new HashMap<>(getCurrentProfile());
@@ -191,14 +193,22 @@ public class UserSyncBridgeService {
     }
 
     /**
-     * Explicit user-initiated sign-out. Deletes local session file.
+     * Explicit user-initiated sign-out. Deletes all local session and repository state.
      */
     public void signOut() {
         try {
-            if (SESSION_FILE.exists()) SESSION_FILE.delete();
+            if (SESSION_FILE.exists()) {
+                Files.deleteIfExists(SESSION_FILE.toPath());
+            }
         } catch (Exception ignored) {}
 
-        UserController.getCurrentUserProfile().clear();
+        try {
+            if (USERS_FILE.exists()) {
+                Files.deleteIfExists(USERS_FILE.toPath());
+            }
+        } catch (Exception ignored) {}
+
+        UserController.logout();
         handleProfileUpdate(new HashMap<>());
     }
 
@@ -213,8 +223,7 @@ public class UserSyncBridgeService {
     public static long getNumeric(Object obj) {
         if (obj instanceof Number num) return num.longValue();
         if (obj instanceof String str) {
-            try { return Long.parseLong(str); } catch (Exception ignored) {}
-        }
+            try { return Long.parseLong(str); } catch (Exception ignored) {}}
         return 0;
     }
 }

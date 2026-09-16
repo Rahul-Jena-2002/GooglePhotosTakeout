@@ -11,50 +11,38 @@ html.light, html.light body {
 }
 
 html.light body::before {
-  /* Subtle light vignette instead of blue/indigo glow */
   background: 
     radial-gradient(ellipse at 50% 35%, rgba(0, 0, 0, 0.02) 0%, rgba(0, 0, 0, 0.005) 45%, transparent 70%),
     radial-gradient(circle at 15% 50%, rgba(0, 0, 0, 0.01), transparent 25%),
     radial-gradient(circle at 85% 30%, rgba(0, 0, 0, 0.01), transparent 25%) !important;
 }
 
+/* Light mode container backgrounds */
 html.light .bg-black:not(button):not(.btn):not(.primary-saas),
 html.light .bg-zinc-950:not(button):not(.btn),
-html.light .bg-\[\#0A0A0A\] {
-  background-color: #FFFFFF !important;
-}
-
-html.light .bg-zinc-900:not(button):not(.btn) {
-  background-color: #F5F5F7 !important; /* Apple secondary background */
-}
-
-html.light .bg-black\/40,
-html.light .bg-white\/\[0\.02\],
-html.light .bg-white\/\[0\.04\],
-html.light .bg-white\/\[0\.08\],
-html.light .bg-zinc-900\/60,
+html.light .bg-\[\#0A0A0A\],
+html.light .bg-zinc-900:not(button):not(.btn),
 html.light .bg-zinc-950\/50,
 html.light .bg-zinc-950\/45,
 html.light .bg-zinc-950\/60,
 html.light .bg-zinc-950\/40,
 html.light .bg-zinc-950\/20,
-html.light .bg-zinc-950\/10 {
-  background-color: #F5F5F7 !important;
+html.light .bg-zinc-950\/10,
+html.light .bg-zinc-900\/60,
+html.light .bg-black\/40 {
+  background-color: #FFFFFF !important;
 }
 
 html.light .bg-zinc-950\/95 {
   background-color: rgba(255, 255, 255, 0.96) !important;
 }
 
-html.light .bg-zinc-950 {
-  background-color: #F5F5F7 !important;
-}
-
-html.light .text-white,
-html.light .text-white\/80,
-html.light .text-zinc-100,
-html.light .text-zinc-200,
-html.light .text-zinc-300 {
+/* Light mode text colors for standard non-colored elements */
+html.light .text-white:not(.text-keep-light):not([class*="bg-emerald"]):not([class*="bg-indigo"]):not([class*="bg-red"]):not([class*="bg-blue"]):not([class*="bg-purple"]),
+html.light .text-white\/80:not(.text-keep-light),
+html.light .text-zinc-100:not(.text-keep-light),
+html.light .text-zinc-200:not(.text-keep-light),
+html.light .text-zinc-300:not(.text-keep-light) {
   color: #1d1d1f !important;
 }
 
@@ -80,6 +68,7 @@ html.light .border-zinc-900 {
   border-color: #D2D2D7 !important; /* Apple divider */
 }
 
+/* Form controls */
 html.light input,
 html.light textarea,
 html.light select {
@@ -88,60 +77,119 @@ html.light select {
   border-color: #D2D2D7 !important;
 }
 
+/* Secondary dark buttons in light mode: render as clean, readable Apple-style light buttons */
+html.light button.bg-zinc-800,
+html.light button.bg-zinc-900,
+html.light a.bg-zinc-800,
+html.light a.bg-zinc-900 {
+  background-color: #ffffff !important;
+  color: #18181b !important;
+  border: 1px solid #d4d4d8 !important;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05) !important;
+}
+html.light button.bg-zinc-800:hover,
+html.light button.bg-zinc-900:hover,
+html.light a.bg-zinc-800:hover,
+html.light a.bg-zinc-900:hover {
+  background-color: #f4f4f5 !important;
+  color: #09090b !important;
+  border-color: #a1a1aa !important;
+}
+html.light button.bg-zinc-800 *,
+html.light button.bg-zinc-900 *,
+html.light a.bg-zinc-800 *,
+html.light a.bg-zinc-900 * {
+  color: #18181b !important;
+}
+html.light button.bg-zinc-800:hover *,
+html.light button.bg-zinc-900:hover * {
+  color: #09090b !important;
+}
+
+/* Primary white buttons */
 html.light button.bg-white {
   background-color: #1d1d1f !important;
   color: #FFFFFF !important;
 }
-
 html.light button.bg-white:hover {
   background-color: #000000 !important;
+}
+
+/* Colored buttons high-contrast in light mode */
+html.light .bg-emerald-500,
+html.light button.bg-emerald-500 {
+  background-color: #10b981 !important;
+  color: #022c22 !important;
+}
+html.light .bg-emerald-500 *,
+html.light button.bg-emerald-500 * {
+  color: #022c22 !important;
+}
+html.light .bg-red-600,
+html.light button.bg-red-600 {
+  background-color: #dc2626 !important;
+  color: #ffffff !important;
+}
+html.light .bg-red-600 *,
+html.light button.bg-red-600 * {
+  color: #ffffff !important;
+}
+
+/* Clean pastel badges in light mode */
+html.light .bg-purple-950\/40 {
+  background-color: #f3e8ff !important;
+  border-color: #d8b4fe !important;
+}
+html.light .text-purple-300 {
+  color: #6b21a8 !important;
+}
+html.light .bg-amber-950\/40 {
+  background-color: #fef3c7 !important;
+  border-color: #fcd34d !important;
+}
+html.light .text-amber-300 {
+  color: #92400e !important;
+}
+html.light .bg-blue-950\/40 {
+  background-color: #dbeafe !important;
+  border-color: #93c5fd !important;
+}
+html.light .text-blue-300 {
+  color: #1e40af !important;
+}
+html.light .bg-indigo-950\/50 {
+  background-color: #e0e7ff !important;
+  border-color: #a5b4fc !important;
+}
+html.light .text-indigo-400 {
+  color: #4338ca !important;
+}
+html.light .bg-emerald-950\/40 {
+  background-color: #dcfce7 !important;
+  border-color: #86efac !important;
+}
+html.light .text-emerald-400 {
+  color: #15803d !important;
+}
+html.light .bg-red-950\/40 {
+  background-color: #fee2e2 !important;
+  border-color: #fca5a5 !important;
+}
+html.light .text-red-400 {
+  color: #b91c1c !important;
 }
 
 /* Color indicators contrast fixes for light mode */
 html.light .text-yellow-400,
 html.light .text-amber-400 {
-  color: #b45309 !important; /* Darker amber value */
-}
-html.light .text-yellow-400\/60,
-html.light .text-amber-400\/60 {
-  color: #854d0e !important; /* Darker amber label */
-}
-html.light .text-red-400 {
-  color: #b91c1c !important; /* Darker red value */
-}
-html.light .text-red-400\/60 {
-  color: #991b1b !important; /* Darker red label */
+  color: #b45309 !important;
 }
 html.light .text-green-400,
 html.light .text-emerald-400 {
-  color: #15803d !important; /* Darker green value */
-}
-html.light .text-green-400\/60,
-html.light .text-emerald-400\/60 {
-  color: #166534 !important; /* Darker green label */
+  color: #15803d !important;
 }
 
-/* Pricing cards visible glows and borders in light mode */
-html.light .border-indigo-500\/50,
-html.light .border-indigo-555\/50,
-html.light .border-indigo-500\/55 {
-  border-color: rgba(99, 102, 241, 0.4) !important;
-  box-shadow: 0 10px 25px -5px rgba(99, 102, 241, 0.12) !important;
-}
-
-html.light .border-indigo-500\/50:hover,
-html.light .border-indigo-555\/50:hover,
-html.light .border-indigo-500\/55:hover {
-  border-color: #6366F1 !important;
-  box-shadow: 0 10px 30px -5px rgba(99, 102, 241, 0.28) !important;
-}
-
-html.light .bg-zinc-950\/45:hover {
-  border-color: #A3A3A3 !important;
-  box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.1) !important;
-}
-
-/* Table rows and item hover states in light mode (replaces dark grays with clean light off-white) */
+/* Table rows and item hover states in light mode */
 html.light .hover\:bg-zinc-800\/50:hover,
 html.light .hover\:bg-zinc-800\/40:hover,
 html.light .hover\:bg-zinc-800\/20:hover,
@@ -157,38 +205,7 @@ html.light tr.hover\:bg-zinc-800\/40:hover {
   background-color: rgba(0, 0, 0, 0.035) !important;
 }
 
-/* Light mode adjustments for red/yellow/green indicator badge backgrounds */
-html.light .bg-red-500\/10 {
-  background-color: rgba(239, 68, 68, 0.08) !important;
-  border-color: rgba(239, 68, 68, 0.25) !important;
-}
-html.light .bg-emerald-500\/10 {
-  background-color: rgba(16, 185, 129, 0.08) !important;
-  border-color: rgba(16, 185, 129, 0.25) !important;
-}
-html.light .bg-amber-500\/10 {
-  background-color: rgba(245, 158, 11, 0.08) !important;
-  border-color: rgba(245, 158, 11, 0.25) !important;
-}
-
-/* Hover effects for red/yellow/green indicator badges */
-html.light .hover\:bg-red-500\/20:hover,
-html.light .hover\:bg-red-500\/25:hover,
-html.light .hover\:bg-red-500\/30:hover {
-  background-color: rgba(239, 68, 68, 0.16) !important;
-}
-html.light .hover\:bg-emerald-500\/20:hover,
-html.light .hover\:bg-emerald-500\/25:hover,
-html.light .hover\:bg-emerald-500\/30:hover {
-  background-color: rgba(16, 185, 129, 0.16) !important;
-}
-html.light .hover\:bg-amber-500\/20:hover,
-html.light .hover\:bg-amber-500\/25:hover,
-html.light .hover\:bg-amber-500\/30:hover {
-  background-color: rgba(245, 158, 11, 0.16) !important;
-}
-
-/* Clean solid cards for light mode, avoiding neon/glass overrides */
+/* Clean solid cards for light mode */
 html.light .glass-capsule,
 html.light .glass-card,
 html.light .compare-card,
@@ -208,12 +225,8 @@ html.light .review-card::before {
   display: none !important;
 }
 
-html.light .review-card .bg-zinc-900\/50 {
-  background-color: #F5F5F7 !important;
-}
-
 html.light nav {
-  background-color: rgba(255, 255, 255, 0.9) !important;
+  background-color: rgba(255, 255, 255, 0.92) !important;
   border-color: #D2D2D7 !important;
   box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05), inset 0 1px 0 rgba(255, 255, 255, 1) !important;
 }
@@ -226,30 +239,7 @@ html.light nav .text-white\/70:hover {
   color: #1d1d1f !important;
 }
 
-html.light nav a.text-indigo-400,
-html.light .text-indigo-400,
-html.light .text-indigo-300,
-html.light .text-indigo-500,
-html.light .text-indigo-600 {
-  color: #4338ca !important;
-}
-
-html.light .text-purple-400,
-html.light .text-purple-500,
-html.light .text-purple-600 {
-  color: #6b21a8 !important;
-}
-
 html.light footer {
   background-color: #F5F5F7 !important;
   border-color: #D2D2D7 !important;
-}
-
-html.light footer .text-white\/50,
-html.light footer .text-white\/40 {
-  color: #6e6e73 !important;
-}
-
-html.light footer a:hover {
-  color: #1d1d1f !important;
 }

@@ -119,7 +119,7 @@ export default function Compare() {
               <AlertCircle className="w-3.5 h-3.5" />
               Before TakeoutFix
             </span>
-            <h4 className="text-xl font-bold text-zinc-900 dark:text-white mt-4 font-semibold">IMG_9942.jpg</h4>
+            <h3 className="text-xl font-bold text-zinc-900 dark:text-white mt-4 font-semibold">IMG_9942.jpg</h3>
             <p className="text-xs text-zinc-500 mt-1">2.4 MB · JPEG Image</p>
           </div>
           <Image className="w-10 h-10 text-zinc-400 dark:text-zinc-600" />
@@ -159,7 +159,7 @@ export default function Compare() {
               <CheckCircle2 className="w-3.5 h-3.5" />
               After TakeoutFix
             </span>
-            <h4 className="text-xl font-bold text-zinc-900 dark:text-white mt-4 font-semibold">IMG_9942.jpg</h4>
+            <h3 className="text-xl font-bold text-zinc-900 dark:text-white mt-4 font-semibold">IMG_9942.jpg</h3>
             <p className="text-xs text-emerald-600 dark:text-emerald-400 font-semibold mt-1 flex items-center gap-1">
               <Sparkles className="w-3 h-3" /> EXIF Injected
             </p>

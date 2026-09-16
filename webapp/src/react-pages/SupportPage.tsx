@@ -1,7 +1,6 @@
 import { useState, useEffect } from "react"
-import { useAuth } from "../contexts/AuthContext"
-// No react-router-dom imports
-import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card"
+import { useAuth, AuthProvider } from "../contexts/AuthContext"
+import { Card, CardContent } from "../components/ui/card"
 import { Button } from "../components/ui/button"
 import { Input } from "../components/ui/input"
 import { Textarea } from "../components/ui/textarea"
@@ -10,9 +9,8 @@ import { collection, query, where, getDocs, addDoc, doc, updateDoc, onSnapshot }
 import { db } from "../firebase"
 import { motion, AnimatePresence } from "framer-motion"
 import AdUnit from "../components/AdUnit"
-
-import { AuthProvider } from "../contexts/AuthContext"
 import { ToastContainer } from "../components/ui/toast"
+import { notifyAdminsOnTicketRaised } from "../lib/ticketNotify"
 
 interface SupportFaq {
   id: string;
@@ -22,12 +20,6 @@ interface SupportFaq {
 }
 
 const DEFAULT_SUPPORT_FAQS: SupportFaq[] = [
-  { id: "download-takeout", tag: "Guide",    q: "How do I download my Google Takeout?",                                                        a: "Go to takeout.google.com, select Google Photos, and create an export. Once finished, download and unzip the folder." },
-  { id: "missing-dates",   tag: "Metadata", q: "Why are my photos missing dates?",                                                              a: "Google removes EXIF metadata when you download through Takeout. Instead, it places the data in separate JSON sidecar files. TakeoutFix merges these files back together." },
-  { id: "upload-privacy",  tag: "Privacy",  q: "Does TakeoutFix upload my photos?",                                                             a: "No. Everything is processed 100% locally on your machine. Your photos never leave your device." },
-  { id: "free-limit",      tag: "Pricing",  q: "Is there a limit on the free plan?",                                                            a: "Yes, the free plan processes up to 500 MB or 250 files to let you test the tool. Upgrading removes this limit." },
-  { id: "refund-policy",   tag: "Billing",  q: "What is your refund policy?",                                                                   a: "We want you to have a great experience with Takeout Fix. If you experience a genuine technical issue that prevents the software from working as described, and our support team is unable to resolve it, you may request a refund within 7 days of purchase. See our Refund Policy page for full details." },
-  { id: "server-upload",   tag: "Privacy",  q: "Are my photos uploaded to your servers?",                                                       a: "No. Never. The entire application runs locally inside your web browser using HTML5 File APIs. Your photos and metadata never leave your computer." },
   { id: "offline-work",    tag: "Privacy",  q: "Does this work completely offline?",                                                            a: "Once the web app has loaded in your browser, you can disconnect from the internet and it will still process all your files locally." },
   { id: "out-of-order",    tag: "Metadata", q: "Why are my photos showing today's date or out of order after exporting from Google Takeout?",    a: "When you export your photos, Google Photos separates the EXIF metadata into separate JSON sidecar files. Without this metadata, your phone or computer defaults to showing today's date (the file modification date), causing your gallery to be completely out of order. TakeoutFix fixes this by merging the JSON sidecars back into your images." },
   { id: "metadata-types",  tag: "Metadata", q: "What metadata can be recovered?",                                                               a: "We recover original creation dates (timestamps), GPS coordinates (latitude, longitude, altitude), and camera device information if it exists in the Google JSON sidecars." },
@@ -36,7 +28,7 @@ const DEFAULT_SUPPORT_FAQS: SupportFaq[] = [
 ];
 
 const macOsSpring = {
-  type: "spring",
+  type: "spring" as const,
   stiffness: 300,
   damping: 28,
   mass: 1
@@ -210,7 +202,7 @@ function SupportPageContent() {
     setSubmitStatus("submitting")
     const ticketId = 'TKT-' + Math.floor(100000 + Math.random() * 900000)
     try {
-      await addDoc(collection(db, "tickets"), {
+      const docRef = await addDoc(collection(db, "tickets"), {
         ticketId,
         uid: user.uid,
         email: user.email,
@@ -221,6 +213,23 @@ function SupportPageContent() {
         replies: []
       })
       setSubmitStatus("success")
+
+      // Non-blocking notification dispatch: all admins + takeoutfix.support@gmail.com
+      const senderDisplayName = userData?.firstName 
+        ? `${userData.firstName} ${userData.lastName || ''}`.trim()
+        : (user.displayName || user.email || "User")
+
+      notifyAdminsOnTicketRaised({
+        ticketId,
+        userEmail: user.email || "",
+        userName: senderDisplayName,
+        subject: newTicket.subject,
+        message: newTicket.message,
+        ticketDocId: docRef.id
+      }).catch((err) => {
+        console.warn("[SupportPage] Background ticket alert dispatch error:", err)
+      })
+
       setNewTicket({ subject: "", message: "" })
       setTimeout(() => {
         setActiveTab("tickets")
@@ -289,9 +298,7 @@ function SupportPageContent() {
           <LifeBuoy className="w-8 h-8 text-indigo-400" />
           Support & FAQ
         </h1>
-      </motion.div>      <div className="mb-10 w-full block clear-both">
-        <AdUnit type="horizontal" />
-      </div>
+      </motion.div>
 
       <div className="flex flex-col md:flex-row gap-8">
         
@@ -794,6 +801,11 @@ function SupportPageContent() {
             </motion.div>
           </AnimatePresence>
         </div>
+      </div>
+
+      {/* Ad placement right above the footer */}
+      <div className="mt-16 w-full block clear-both">
+        <AdUnit type="horizontal" />
       </div>
     </div>
   )

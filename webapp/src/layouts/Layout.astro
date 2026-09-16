@@ -1,17 +1,20 @@
 ---
 import "../index.css";
 import { ClientRouter } from "astro:transitions";
+import AuthModal from "../react-pages/AuthModal";
 
 interface Props {
   title?: string;
   description?: string;
   isToolPage?: boolean;
+  isAuthPage?: boolean;
 }
 
 const { 
-  title = "TakeoutFix: Restore Google Takeout Photo & Video EXIF Metadata",
+  title = "TakeoutFix – Take Out Fix, Takeout Fixer & Metadata Fixer for Google Photos",
   description = "Restore missing EXIF dates, GPS coordinates, timestamps, and other metadata from Google Takeout archives. Everything runs locally in your browser—your files never leave your device. Not affiliated with Google.",
-  isToolPage = false 
+  isToolPage = false,
+  isAuthPage = false
 } = Astro.props;
 
 // Generate canonical URL dynamically based on current path
@@ -58,6 +61,88 @@ const canonicalUrl = `https://takeoutfix.pages.dev${Astro.url.pathname.replace(/
     <meta name="apple-mobile-web-app-title" content="TakeoutFix" />
     <meta name="application-name" content="TakeoutFix" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+
+
+    <!-- Automated Multi-Layer Background Route Preloader & Instant Hover Prioritizer -->
+    <script is:inline>
+      (() => {
+        const coreRoutes = [
+          '/pricing',
+          '/reviews',
+          '/support',
+          '/tool',
+          '/restore-data',
+          '/download',
+          '/terms',
+          '/privacy',
+          '/how-to-restore-metadata-from-takeout',
+          '/google-photos-metadata-fix',
+          '/fix-google-takeout-dates'
+        ];
+
+        const prefetched = new Set();
+
+        function prefetchUrl(url, highPriority = false) {
+          if (!url || prefetched.has(url) || url.startsWith('/admin') || url.startsWith('#') || url.startsWith('http')) return;
+          prefetched.add(url);
+
+          // 1. Native Link Prefetch
+          try {
+            const link = document.createElement('link');
+            link.rel = 'prefetch';
+            link.href = url;
+            link.as = 'document';
+            if (highPriority) {
+              link.setAttribute('fetchpriority', 'high');
+            }
+            document.head.appendChild(link);
+          } catch (_) {}
+
+          // 2. Browser Cache Warming via fetch (populates HTTP/disk cache so Astro ClientRouter serves instantly)
+          try {
+            fetch(url, { priority: highPriority ? 'high' : 'low' }).catch(() => {});
+          } catch (_) {}
+
+          // 3. Speculation Rules (Instant Chromium prerender for high-priority hovered links)
+          if (highPriority && typeof HTMLScriptElement !== 'undefined' && HTMLScriptElement.supports && HTMLScriptElement.supports('speculationrules')) {
+            try {
+              const specScript = document.createElement('script');
+              specScript.type = 'speculationrules';
+              specScript.textContent = JSON.stringify({
+                prerender: [{ source: 'list', urls: [url], eagerness: 'immediate' }]
+              });
+              document.head.appendChild(specScript);
+            } catch (_) {}
+          }
+        }
+
+        // Instant Prioritization on hover or pointerdown
+        const prioritizeTarget = (e) => {
+          const anchor = e.target && e.target.closest ? e.target.closest('a') : null;
+          if (!anchor) return;
+          const href = anchor.getAttribute('href');
+          if (href && href.startsWith('/') && !href.startsWith('/admin')) {
+            prefetchUrl(href, true);
+          }
+        };
+
+        document.addEventListener('mouseover', prioritizeTarget, { passive: true });
+        document.addEventListener('touchstart', prioritizeTarget, { passive: true });
+        document.addEventListener('pointerdown', prioritizeTarget, { passive: true });
+
+        // Once home page is loaded, systematically prefetch all user routes in the background
+        window.addEventListener('load', () => {
+          let delay = 100;
+          coreRoutes.forEach((route) => {
+            setTimeout(() => {
+              prefetchUrl(route, false);
+            }, delay);
+            delay += 120;
+          });
+        });
+      })();
+    </script>
     
     <!-- Theme Initialization Script -->
     <script is:inline>
@@ -126,12 +211,36 @@ const canonicalUrl = `https://takeoutfix.pages.dev${Astro.url.pathname.replace(/
     </script>
 
     
-    <!-- Google AdSense Account Setup -->
-    <meta name="google-adsense-account" content="ca-pub-7628736172233995">
-    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-7628736172233995" crossorigin="anonymous"></script>
- 
+    <!-- Google AdSense Account Setup (Production Only, not on auth pages) -->
+    {!isAuthPage && <meta name="google-adsense-account" content="ca-pub-7628736172233995">}
+    {!isAuthPage && (
+    <script is:inline>
+      window.addEventListener('load', function() {
+        if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') return;
+        var s = document.createElement('script');
+        s.src = "https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-7628736172233995";
+        s.crossOrigin = "anonymous";
+        s.async = true;
+        document.head.appendChild(s);
+      });
+    </script>
+    )}
+
+    <!-- Google Cloud reCAPTCHA Enterprise — only on auth pages -->
+    {isAuthPage && (
+    <script is:inline>
+      window.addEventListener('load', function() {
+        var rc = document.createElement('script');
+        rc.src = "https://www.google.com/recaptcha/enterprise.js?render=6LdDpb4tAAAAADJHZzjrMIC-gvDXkAw0rhdgB5Sb";
+        rc.async = true;
+        rc.defer = true;
+        document.head.appendChild(rc);
+      });
+    </script>
+    )}
+
     <title>{title}</title>
-    <ClientRouter />
+    <ClientRouter fallback="swap" />
     <meta name="description" content={description} />
     <meta name="keywords" content="take out fix, takeoutfixer, meta data fix, metadata fixer, how to fix metadata, how to fix meta data, metadata fix, restore metadata, Google Takeout metadata fix, EXIF metadata fix, Google Photos metadata fixer, EXIF recovery, GPS coordinates, JSON sidecar fixer, restore photo date taken, takeoutfix" />
     <meta name="robots" content="index, follow" />
@@ -281,6 +390,11 @@ const canonicalUrl = `https://takeoutfix.pages.dev${Astro.url.pathname.replace(/
 
   </head>
   <body class="bg-background text-foreground selection:bg-zinc-100 dark:selection:bg-zinc-800">
+    <!-- Top Micro Navigation Progress Bar (Instant visual response on page change) -->
+    <div id="astro-nav-progress" class="fixed top-0 left-0 right-0 h-[2.5px] z-[99999] pointer-events-none opacity-0 transition-opacity duration-150 bg-transparent">
+      <div id="astro-nav-bar" class="h-full w-0 bg-gradient-to-r from-blue-500 via-indigo-500 to-purple-500 shadow-[0_0_8px_rgba(99,102,241,0.8)] transition-all duration-200 ease-out"></div>
+    </div>
+
     <div class="flex flex-col min-h-screen bg-background">
       
       <!-- NAV CAPSULE -->
@@ -293,7 +407,8 @@ const canonicalUrl = `https://takeoutfix.pages.dev${Astro.url.pathname.replace(/
             <!-- Hamburger Menu Button -->
             <button 
               id="hamburger-btn"
-              class="lg:hidden p-1 text-white/80 hover:text-white focus:outline-none transition-colors mr-1"
+              aria-label="Toggle navigation menu"
+              class="lg:hidden p-1 text-white/80 hover:text-white focus:outline-none transition-colors mr-1 cursor-pointer"
             >
               <svg id="hamburger-icon" class="w-5 h-5" width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16M4 18h16" />
@@ -304,7 +419,7 @@ const canonicalUrl = `https://takeoutfix.pages.dev${Astro.url.pathname.replace(/
             </button>
 
             <!-- Brand Logo -->
-            <a href="/" class="text-[17px] font-semibold tracking-tight text-white flex items-center gap-2">
+            <a href="/" class="text-[17px] font-semibold tracking-tight text-white flex items-center gap-2" data-astro-prefetch="hover">
               <svg class="w-5 h-5 md:w-6 md:h-6 flex-shrink-0" width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                 <defs>
                   <linearGradient id="logo-grad-astro" x1="0%" y1="0%" x2="100%" y2="100%">
@@ -328,21 +443,22 @@ const canonicalUrl = `https://takeoutfix.pages.dev${Astro.url.pathname.replace(/
 
             <!-- Desktop Links -->
             <div id="desktop-marketing-links" class="hidden lg:flex gap-4 text-sm font-medium ml-4 font-sans items-center">
-              <a href="/" class="nav-link text-zinc-400 hover:text-white px-3 py-1.5 transition-colors duration-150">Home</a>
-              <a href="/restore-data" class="nav-link text-zinc-400 hover:text-white px-3 py-1.5 transition-colors duration-150">Restore Guide</a>
-              <a href="/pricing" class="nav-link text-zinc-400 hover:text-white px-3 py-1.5 transition-colors duration-150">Pricing</a>
-              <a href="/download" class="nav-link text-zinc-400 hover:text-white px-3 py-1.5 transition-colors duration-150">Download App</a>
-              <a href="/reviews" class="nav-link text-zinc-400 hover:text-white px-3 py-1.5 transition-colors duration-150">Reviews</a>
-              <a href="/support" class="nav-link text-zinc-400 hover:text-white px-3 py-1.5 transition-colors duration-150">Support & FAQ</a>
+              <a href="/" class="nav-link text-zinc-400 hover:text-white px-3 py-1.5 transition-colors duration-150" data-astro-prefetch="hover">Home</a>
+              <a href="/restore-data" class="nav-link text-zinc-400 hover:text-white px-3 py-1.5 transition-colors duration-150" data-astro-prefetch="hover">Restore Guide</a>
+              <a href="/pricing" class="nav-link text-zinc-400 hover:text-white px-3 py-1.5 transition-colors duration-150" data-astro-prefetch="hover">Pricing</a>
+              <a href="/download" class="nav-link text-zinc-400 hover:text-white px-3 py-1.5 transition-colors duration-150" data-astro-prefetch="hover">Download App</a>
+              <a href="/reviews" class="nav-link text-zinc-400 hover:text-white px-3 py-1.5 transition-colors duration-150" data-astro-prefetch="hover">Reviews</a>
+              <a href="/support" class="nav-link text-zinc-400 hover:text-white px-3 py-1.5 transition-colors duration-150" data-astro-prefetch="hover">Support & FAQ</a>
             </div>
           </div>
           
           <div class="flex items-center gap-2.5 md:gap-6">
-            <!-- Theme Toggle Button (Hidden) -->
+            <!-- Theme Toggle Button -->
             <button 
               id="theme-toggle-btn"
-              class="btn-theme-toggle-navbar flex p-2 rounded-full bg-zinc-900 border border-zinc-800 hover:bg-zinc-800 hover:scale-[1.02] focus:outline-none transition-all items-center justify-center text-white/80 hover:text-white"
+              class="btn-nav-control relative p-2 rounded-full cursor-pointer focus:outline-none transition-all"
               title="Toggle Theme"
+              aria-label="Toggle Color Theme"
             >
               <!-- Sun Icon -->
               <svg id="theme-sun-icon" class="w-4 h-4 hidden" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
@@ -358,9 +474,10 @@ const canonicalUrl = `https://takeoutfix.pages.dev${Astro.url.pathname.replace(/
             <div id="notification-container" class="relative hidden">
               <button 
                 id="notification-btn"
-                class="btn-notification-navbar relative p-2 rounded-full bg-zinc-900 border border-zinc-800 hover:bg-zinc-800 hover:scale-[1.02] focus:outline-none transition-all flex items-center justify-center"
+                class="btn-nav-control relative p-2 rounded-full cursor-pointer focus:outline-none transition-all"
+                aria-label="Notifications"
               >
-                <svg class="w-4 h-4 text-white/80" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <svg class="w-4 h-4" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                   <path stroke-linecap="round" stroke-linejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
                 </svg>
                 <span id="notification-badge" class="absolute -top-1 -right-1 w-4 h-4 bg-red-500 rounded-full flex items-center justify-center text-[9px] font-bold text-white animate-pulse hidden">0</span>
@@ -370,7 +487,6 @@ const canonicalUrl = `https://takeoutfix.pages.dev${Astro.url.pathname.replace(/
               <div 
                 id="notification-dropdown"
                 class="absolute right-0 top-full mt-2 w-72 bg-zinc-950/95 border border-white/10 rounded-xl py-2.5 shadow-2xl backdrop-blur-xl z-[100] hidden"
-                style="box-shadow: 0 10px 40px rgba(0,0,0,0.6);"
               >
                 <div class="px-4 py-2 border-b border-white/5 mb-1.5 text-left flex justify-between items-center">
                   <p class="text-xs text-white/40 font-bold uppercase tracking-wider">Notifications</p>
@@ -390,24 +506,28 @@ const canonicalUrl = `https://takeoutfix.pages.dev${Astro.url.pathname.replace(/
               <!-- Loading spinner or loading indicator by default -->
               <div id="auth-loading" class="w-7 h-7 border-2 border-white/10 border-t-white/80 rounded-full animate-spin"></div>
               
-              <!-- Get Started (logged out) -->
-              <button 
-                id="login-btn" 
-                class="hidden rounded-lg bg-white hover:bg-white/90 text-black border-none px-4 py-2 font-semibold text-xs md:text-sm transition-all shadow-sm"
+              <!-- Sign In / Sign Up (logged out) -->
+              <button
+                id="login-btn"
+                type="button"
+                onclick="window.dispatchEvent(new CustomEvent('takeoutfix:open-auth-modal', { detail: { mode: 'signin' } }))"
+                class="hidden rounded-full border border-zinc-800 dark:border-white/30 bg-zinc-900 dark:bg-white/10 hover:bg-zinc-700 dark:hover:bg-white/20 text-white dark:text-white px-4 py-1.5 font-semibold text-xs md:text-sm transition-all cursor-pointer whitespace-nowrap shadow-sm"
               >
-                Get Started
+                Sign In / Sign Up
               </button>
 
               <!-- Profile Dropdown Container (logged in) -->
               <div id="profile-container" class="relative hidden flex items-center gap-4">
                 <!-- Desktop App Links (logged in) -->
                 <div class="hidden lg:flex items-center gap-6 mr-2">
-                  <a id="desktop-dashboard-link" href="/dashboard" class="text-sm font-medium text-zinc-400 hover:text-white transition-colors duration-150">Dashboard</a>
-                  <a id="desktop-tool-link" href="/tool" class="text-sm font-medium text-zinc-400 hover:text-white transition-colors duration-150" data-astro-reload>Restore My Data</a>
+                  <a id="desktop-dashboard-link" href="/dashboard" class="text-sm font-medium text-zinc-400 hover:text-white transition-colors duration-150" data-astro-prefetch="hover">Dashboard</a>
+                  <a id="desktop-tool-link" href="/tool" class="text-sm font-medium text-zinc-400 hover:text-white transition-colors duration-150" data-astro-prefetch="hover" data-astro-reload>Restore My Data</a>
                   <a id="desktop-admin-link" href="/admin" class="text-sm font-medium text-zinc-400 hover:text-white transition-colors duration-150 hidden" data-astro-reload>Admin Center</a>
-                </div>                 <button 
+                </div>
+                <button 
                   id="profile-trigger-btn"
-                  class="btn-profile-trigger flex items-center gap-2 p-1 lg:px-3 lg:py-1.5 rounded-full bg-zinc-900 border border-zinc-800 hover:bg-zinc-800 hover:scale-[1.02] focus:outline-none transition-all shadow-sm"
+                  aria-label="User Profile Menu"
+                  class="btn-profile-trigger flex items-center gap-2 p-1 lg:px-3 lg:py-1.5 rounded-full bg-zinc-900 border border-zinc-800 hover:bg-zinc-800 hover:scale-[1.02] focus:outline-none transition-all shadow-sm cursor-pointer"
                 >
                   <span id="profile-name-span" class="text-xs font-semibold text-white/80 select-none hidden lg:inline-block">Hi, User</span>
                   <div id="profile-avatar-circle" class="profile-avatar-circle w-7 h-7 rounded-full bg-zinc-950 flex items-center justify-center font-bold text-xs text-white border border-white/10 flex-shrink-0">U</div>
@@ -417,7 +537,6 @@ const canonicalUrl = `https://takeoutfix.pages.dev${Astro.url.pathname.replace(/
                 <div 
                   id="profile-dropdown"
                   class="absolute right-0 top-full mt-2 w-56 bg-zinc-950/95 border border-white/10 rounded-xl py-2 shadow-2xl backdrop-blur-xl z-[100] hidden"
-                  style="box-shadow: 0 10px 40px rgba(0,0,0,0.6);"
                 >
                   <div class="px-4 py-2 border-b border-white/5 mb-1.5 text-left">
                     <p class="text-xs text-white/40 font-bold uppercase tracking-wider">Account</p>
@@ -425,9 +544,9 @@ const canonicalUrl = `https://takeoutfix.pages.dev${Astro.url.pathname.replace(/
                     <p id="dropdown-username" class="text-xs text-zinc-500 dark:text-zinc-400 font-semibold font-mono truncate max-w-full hidden">@username</p>
                     <p id="dropdown-plan" class="text-[11px] text-zinc-500 dark:text-zinc-400 font-bold uppercase tracking-wider mt-0.5">Free Tier</p>
                   </div>
-                  <a href="/profile" class="flex items-center px-4 py-2 text-sm text-white/70 hover:text-white hover:bg-white/5 transition-colors text-left w-full">Profile</a>
+                  <a href="/profile" class="flex items-center px-4 py-2 text-sm text-white/70 hover:text-white hover:bg-white/5 transition-colors text-left w-full" data-astro-prefetch="hover">Profile</a>
                   <div class="border-t border-white/5 mt-1.5 pt-1.5">
-                    <button id="logout-btn" class="flex items-center px-4 py-2 text-sm text-red-400 hover:text-red-300 hover:bg-red-500/5 transition-colors text-left w-full font-medium">Sign Out</button>
+                    <button id="logout-btn" class="flex items-center px-4 py-2 text-sm text-red-400 hover:text-red-300 hover:bg-red-500/5 transition-colors text-left w-full font-medium cursor-pointer">Sign Out</button>
                   </div>
                 </div>
 
@@ -448,17 +567,17 @@ const canonicalUrl = `https://takeoutfix.pages.dev${Astro.url.pathname.replace(/
         {/* Mobile menu overlay */}
         <div id="mobile-menu" class="hidden lg:hidden mt-4 pt-4 border-t border-white/5 flex flex-col gap-3 text-left px-2 animate-in fade-in slide-in-from-top-2 duration-200">
           <p class="text-xs font-bold text-white/30 uppercase tracking-wider px-2 mt-1 mb-1">Navigation</p>
-          <a href="/" class="mobile-nav-link py-2 px-2 text-white/70 hover:text-white hover:bg-white/5 rounded-md text-sm font-medium transition-all">Home</a>
-          <a href="/restore-data" class="mobile-nav-link py-2 px-2 text-white/70 hover:text-white hover:bg-white/5 rounded-md text-sm font-medium transition-all">Restore Guide</a>
-          <a href="/pricing" class="mobile-nav-link py-2 px-2 text-white/70 hover:text-white hover:bg-white/5 rounded-md text-sm font-medium transition-all">Pricing</a>
-          <a href="/download" class="mobile-nav-link py-2 px-2 text-white/70 hover:text-white hover:bg-white/5 rounded-md text-sm font-medium transition-all">Download App</a>
-          <a href="/reviews" class="mobile-nav-link py-2 px-2 text-white/70 hover:text-white hover:bg-white/5 rounded-md text-sm font-medium transition-all">Reviews</a>
-          <a href="/support" class="mobile-nav-link py-2 px-2 text-white/70 hover:text-white hover:bg-white/5 rounded-md text-sm font-medium transition-all">Support & FAQ</a>
+          <a href="/" class="mobile-nav-link py-2 px-2 text-white/70 hover:text-white hover:bg-white/5 rounded-md text-sm font-medium transition-all" data-astro-prefetch="tap">Home</a>
+          <a href="/restore-data" class="mobile-nav-link py-2 px-2 text-white/70 hover:text-white hover:bg-white/5 rounded-md text-sm font-medium transition-all" data-astro-prefetch="tap">Restore Guide</a>
+          <a href="/pricing" class="mobile-nav-link py-2 px-2 text-white/70 hover:text-white hover:bg-white/5 rounded-md text-sm font-medium transition-all" data-astro-prefetch="tap">Pricing</a>
+          <a href="/download" class="mobile-nav-link py-2 px-2 text-white/70 hover:text-white hover:bg-white/5 rounded-md text-sm font-medium transition-all" data-astro-prefetch="tap">Download App</a>
+          <a href="/reviews" class="mobile-nav-link py-2 px-2 text-white/70 hover:text-white hover:bg-white/5 rounded-md text-sm font-medium transition-all" data-astro-prefetch="tap">Reviews</a>
+          <a href="/support" class="mobile-nav-link py-2 px-2 text-white/70 hover:text-white hover:bg-white/5 rounded-md text-sm font-medium transition-all" data-astro-prefetch="tap">Support & FAQ</a>
 
           <div id="mobile-auth-section" class="border-t border-white/5 pt-3 flex flex-col gap-3 hidden">
             <p class="text-xs font-bold text-white/30 uppercase tracking-wider px-2 mb-1">App Tools</p>
-            <a id="mobile-dashboard-link" href="/dashboard" class="py-2 px-2 text-white/70 hover:text-white hover:bg-white/5 rounded-md text-sm font-medium transition-all">Dashboard</a>
-            <a id="mobile-tool-link" href="/tool" class="py-2 px-2 text-white/70 hover:text-white hover:bg-white/5 rounded-md text-sm font-medium transition-all" data-astro-reload>Restore My Data</a>
+            <a id="mobile-dashboard-link" href="/dashboard" class="py-2 px-2 text-white/70 hover:text-white hover:bg-white/5 rounded-md text-sm font-medium transition-all" data-astro-prefetch="tap">Dashboard</a>
+            <a id="mobile-tool-link" href="/tool" class="py-2 px-2 text-white/70 hover:text-white hover:bg-white/5 rounded-md text-sm font-medium transition-all" data-astro-prefetch="tap" data-astro-reload>Restore My Data</a>
             <a id="mobile-admin-link" href="/admin" class="py-2 px-2 text-white/70 hover:text-white hover:bg-white/5 rounded-md text-sm font-medium transition-all hidden" data-astro-reload>Admin Center</a>
           </div>
           
@@ -467,7 +586,8 @@ const canonicalUrl = `https://takeoutfix.pages.dev${Astro.url.pathname.replace(/
             <span class="text-xs font-bold text-white/30 uppercase tracking-wider">Appearance</span>
             <button 
               id="mobile-theme-toggle-btn"
-              class="flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/[0.04] border border-white/10 hover:bg-white/[0.08] text-xs font-semibold text-white/80 transition-all"
+              aria-label="Toggle Dark or Light Mode"
+              class="flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/[0.04] border border-white/10 hover:bg-white/[0.08] text-xs font-semibold text-white/80 transition-all cursor-pointer"
             >
               <svg class="theme-moon-svg w-3.5 h-3.5 text-zinc-400" width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
@@ -487,6 +607,8 @@ const canonicalUrl = `https://takeoutfix.pages.dev${Astro.url.pathname.replace(/
           <slot />
         </div>
       </main>
+
+
  
       <!-- FOOTER — hidden on tool page since it's a full-screen app -->
       { !isToolPage && <footer class="w-full border-t border-white/5 bg-black/40 backdrop-blur-md mt-auto py-16">
@@ -516,14 +638,14 @@ const canonicalUrl = `https://takeoutfix.pages.dev${Astro.url.pathname.replace(/
                   </svg>
                   TakeoutFix
                 </div>
-                <p class="text-xs text-zinc-400 leading-relaxed">
+                <p class="text-xs text-zinc-300 leading-relaxed">
                   Fast, secure, and private browser-based restoration utility for Google Takeout photo archives. Restores original timestamps and GPS tags entirely on your local CPU.
                 </p>
               </div>
 
               <!-- Column 2: Product Actions -->
               <div>
-                <h4 class="text-xs font-bold text-white uppercase tracking-widest mb-4">Product</h4>
+                <h3 class="text-xs font-bold text-white uppercase tracking-widest mb-4">Product</h3>
                 <ul class="space-y-3 text-xs">
                   <li><a href="/tool" class="text-zinc-400 hover:text-white transition-colors">Restore Tool</a></li>
                   <li><a href="/pricing" class="text-zinc-400 hover:text-white transition-colors">Pricing Plans</a></li>
@@ -535,7 +657,7 @@ const canonicalUrl = `https://takeoutfix.pages.dev${Astro.url.pathname.replace(/
 
               <!-- Column 3: Resources & Guides -->
               <div>
-                <h4 class="text-xs font-bold text-white uppercase tracking-widest mb-4">Resources</h4>
+                <h3 class="text-xs font-bold text-white uppercase tracking-widest mb-4">Resources</h3>
                 <ul class="space-y-3 text-xs">
                   <li><a href="/restore-data" class="text-zinc-400 hover:text-white transition-colors">How to Use</a></li>
                   <li><a href="/restore-data#tech-deep-dive" class="text-zinc-400 hover:text-white transition-colors">JSON Sidecars Explained</a></li>
@@ -546,14 +668,14 @@ const canonicalUrl = `https://takeoutfix.pages.dev${Astro.url.pathname.replace(/
 
               <!-- Column 4: Company & Support -->
               <div>
-                <h4 class="text-xs font-bold text-white uppercase tracking-widest mb-4">Support & Legal</h4>
+                <h3 class="text-xs font-bold text-white uppercase tracking-widest mb-4">Support & Legal</h3>
                 <ul class="space-y-3 text-xs">
                   <li><a href="/support" class="text-zinc-400 hover:text-white transition-colors">Contact / Help Desk</a></li>
                   <li><a href="/privacy" class="text-zinc-400 hover:text-white transition-colors">Privacy Policy</a></li>
                   <li><a href="/terms" class="text-zinc-400 hover:text-white transition-colors">Terms of Service</a></li>
                   <li><a href="/refund" class="text-zinc-400 hover:text-white transition-colors">Refund Policy</a></li>
                   <li class="pt-1">
-                    <span class="text-zinc-500 block text-[10px] uppercase tracking-wider font-bold">Direct Email Support</span>
+                    <span class="text-zinc-400 block text-[10px] uppercase tracking-wider font-bold">Direct Email Support</span>
                     <a href="mailto:takeoutfix.support@gmail.com" class="text-indigo-400 hover:text-indigo-300 transition-colors font-medium">takeoutfix.support@gmail.com</a>
                   </li>
                 </ul>
@@ -562,25 +684,25 @@ const canonicalUrl = `https://takeoutfix.pages.dev${Astro.url.pathname.replace(/
             </div>
 
             <!-- Bottom Row: Copyright, Trademark Disclaimer & Build details -->
-            <div class="border-t border-white/5 pt-8 flex flex-col gap-3 text-[11px] text-zinc-500">
+            <div class="border-t border-zinc-200 dark:border-white/5 pt-8 flex flex-col gap-4 text-[11px] text-zinc-500 dark:text-zinc-400 w-full">
               <!-- Trademark Disclaimer — visible for Google Ads Reseller/Informational Site compliance -->
-              <p class="text-xs text-zinc-400 leading-relaxed border border-zinc-700/40 rounded-lg px-4 py-3 bg-zinc-900/30">
-                <strong class="text-zinc-300 font-semibold">Disclosure:</strong> Google Takeout™ and Google Photos™ are trademarks of Google LLC.
-                TakeoutFix is an independent software utility and is <strong class="text-zinc-300 font-semibold">not affiliated with, endorsed by, or sponsored by Google LLC</strong> in any way.
+              <p class="w-full text-xs text-zinc-600 dark:text-zinc-300 leading-relaxed border border-zinc-300 dark:border-zinc-700/60 rounded-xl px-5 py-4 bg-zinc-50/80 dark:bg-zinc-900/60 shadow-sm">
+                <strong class="text-zinc-900 dark:text-white font-semibold">Disclosure:</strong> Google Takeout™ and Google Photos™ are trademarks of Google LLC.
+                TakeoutFix is an independent software utility and is <strong class="text-zinc-900 dark:text-white font-semibold">not affiliated with, endorsed by, or sponsored by Google LLC</strong> in any way.
                 This tool is designed to work with files exported from Google services and does not represent or provide official Google support.
               </p>
-              <div class="flex flex-col md:flex-row items-center justify-between gap-4">
+              <div class="flex flex-col md:flex-row items-center justify-between gap-4 w-full">
                 <div>
                   &copy; {new Date().getFullYear()} TakeoutFix. All rights reserved. &middot;
-                  <a href="/privacy" class="hover:text-zinc-300 transition-colors ml-1">Privacy Policy</a> &middot;
-                  <a href="/terms" class="hover:text-zinc-300 transition-colors ml-1">Terms of Service</a> &middot;
-                  <a href="/refund" class="hover:text-zinc-300 transition-colors ml-1">Refund Policy</a> &middot;
-                  <a href="mailto:takeoutfix.support@gmail.com" class="hover:text-zinc-300 transition-colors ml-1">Contact Support</a>
+                  <a href="/privacy" class="hover:text-zinc-900 dark:hover:text-zinc-200 transition-colors ml-1">Privacy Policy</a> &middot;
+                  <a href="/terms" class="hover:text-zinc-900 dark:hover:text-zinc-200 transition-colors ml-1">Terms of Service</a> &middot;
+                  <a href="/refund" class="hover:text-zinc-900 dark:hover:text-zinc-200 transition-colors ml-1">Refund Policy</a> &middot;
+                  <a href="mailto:takeoutfix.support@gmail.com" class="hover:text-zinc-900 dark:hover:text-zinc-200 transition-colors ml-1">Contact Support</a>
                 </div>
-                <div class="flex items-center gap-4">
-                  <span>Version 1.0.5</span>
-                  <span class="w-1 h-1 rounded-full bg-zinc-800"></span>
-                  <span>Build: 2026-06-14</span>
+                <div class="flex items-center gap-3">
+                  <span>Version 1.0.6</span>
+                  <span class="w-1 h-1 rounded-full bg-zinc-400 dark:bg-zinc-700"></span>
+                  <span>Build: 2026-09-16</span>
                 </div>
               </div>
             </div>
@@ -601,20 +723,20 @@ const canonicalUrl = `https://takeoutfix.pages.dev${Astro.url.pathname.replace(/
         <div class="flex items-center gap-2.5 flex-wrap justify-center">
           <button
             id="adblock-whitelist-btn"
-            class="px-3.5 py-1.5 bg-white text-black hover:bg-zinc-200 text-xs font-bold rounded-lg transition-all active:scale-95 duration-100 flex items-center gap-1"
+            class="px-3.5 py-1.5 bg-white text-black hover:bg-zinc-200 text-xs font-bold rounded-lg transition-all active:scale-95 duration-100 flex items-center gap-1 cursor-pointer"
           >
             I've Whitelisted
           </button>
           <a href="/pricing">
             <button
-              class="px-3.5 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-lg transition-all active:scale-95 duration-100 shadow-md shadow-indigo-500/20"
+              class="px-3.5 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-lg transition-all active:scale-95 duration-100 shadow-md shadow-indigo-500/20 cursor-pointer"
             >
               Upgrade
             </button>
           </a>
           <button
             id="adblock-close-btn"
-            class="w-7 h-7 flex items-center justify-center text-zinc-500 hover:text-white hover:bg-white/5 rounded-full transition-all"
+            class="w-7 h-7 flex items-center justify-center text-zinc-500 hover:text-white hover:bg-white/5 rounded-full transition-all cursor-pointer"
             aria-label="Dismiss banner"
           >
             <svg class="w-4 h-4" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
@@ -626,6 +748,9 @@ const canonicalUrl = `https://takeoutfix.pages.dev${Astro.url.pathname.replace(/
     </div>
     
     <div id="vanilla-toast-container" class="fixed top-[80px] right-6 z-[99999] flex flex-col gap-2.5 max-w-sm w-[calc(100%-2rem)] pointer-events-none items-end"></div>
+
+    <!-- Global Auth Modal (popup sign-in/sign-up, available on every page) -->
+    <AuthModal client:only="react" />
 
     <!-- CLIENT SIDE EVENT HANDLERS AND AUTH LISTENER -->
     <script>
@@ -671,14 +796,32 @@ const canonicalUrl = `https://takeoutfix.pages.dev${Astro.url.pathname.replace(/
       import { detectAndStoreCountry } from "../lib/browserCountry";
       import { checkAdBlock, setupAdblockEvents, setUserInteracted } from "../lib/browserAdblock";
       import { setupAuthListeners, setupAuthEvents, syncUserUI } from "../lib/browserAuth";
+      import { renderNotifications } from "../lib/browserNotifications";
 
-      Sentry.init({
-        dsn: "https://789a81283ea0ec0d1f762a19102c7a91@o4507198765277184.ingest.us.sentry.io/4508912384729182",
-      });
+      const isDevHost = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+      if (!isDevHost && import.meta.env.PROD) {
+        Sentry.init({
+          dsn: "https://789a81283ea0ec0d1f762a19102c7a91@o4507198765277184.ingest.us.sentry.io/4508912384729182",
+        });
+      }
 
-      // Dev Console Live Logger to browser_console.log
+      // Dev Console Live Logger to browser_console.log (throttled & batched to prevent navigation lag)
       if (import.meta.env.DEV) {
-        const sendDevLog = (type: string, args: any[]) => {
+        let logQueue: { type: string; message: string }[] = [];
+        let flushTimer: any = null;
+
+        const flushLogs = () => {
+          if (logQueue.length === 0) return;
+          const batch = logQueue.splice(0, 20);
+          fetch('/api/dev-log', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(batch.length === 1 ? batch[0] : { type: 'BATCH', message: batch.map(b => `[${b.type}] ${b.message}`).join('\n') }),
+            keepalive: true
+          }).catch(() => {});
+        };
+
+        const sendDevLog = (type: string, args: any[], immediate = false) => {
           try {
             const message = args.map(a => {
               if (a instanceof Error) return a.stack || a.message;
@@ -688,12 +831,16 @@ const canonicalUrl = `https://takeoutfix.pages.dev${Astro.url.pathname.replace(/
               return String(a);
             }).join(' ');
             if (message.includes('/api/dev-log')) return;
-            fetch('/api/dev-log', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ type, message }),
-              keepalive: true
-            }).catch(() => {});
+            logQueue.push({ type, message });
+
+            if (immediate) {
+              flushLogs();
+            } else if (!flushTimer) {
+              flushTimer = setTimeout(() => {
+                flushTimer = null;
+                flushLogs();
+              }, 1200);
+            }
           } catch {}
         };
 
@@ -703,10 +850,10 @@ const canonicalUrl = `https://takeoutfix.pages.dev${Astro.url.pathname.replace(/
 
         console.log = (...args) => { _log(...args); sendDevLog('LOG', args); };
         console.warn = (...args) => { _warn(...args); sendDevLog('WARN', args); };
-        console.error = (...args) => { _error(...args); sendDevLog('ERROR', args); };
+        console.error = (...args) => { _error(...args); sendDevLog('ERROR', args, true); };
 
-        window.addEventListener('error', (e) => sendDevLog('UNCAUGHT', [e.message, e.filename, e.lineno, e.colno]));
-        window.addEventListener('unhandledrejection', (e) => sendDevLog('UNHANDLED_REJECTION', [e.reason?.stack || e.reason?.message || e.reason]));
+        window.addEventListener('error', (e) => sendDevLog('UNCAUGHT', [e.message, e.filename, e.lineno, e.colno], true));
+        window.addEventListener('unhandledrejection', (e) => sendDevLog('UNHANDLED_REJECTION', [e.reason?.stack || e.reason?.message || e.reason], true));
       }
 
       const setupInteractionEvents = () => {
@@ -719,7 +866,43 @@ const canonicalUrl = `https://takeoutfix.pages.dev${Astro.url.pathname.replace(/
       // Register Auth State Listener once globally
       setupAuthListeners();
 
-      // Hook immediately after Astro Swaps pages
+      // Instant Top Micro-Progress Bar Feedback on navigation
+      document.addEventListener("astro:before-preparation", () => {
+        const progress = document.getElementById("astro-nav-progress");
+        const bar = document.getElementById("astro-nav-bar");
+        if (progress && bar) {
+          progress.style.opacity = "1";
+          bar.style.transition = "width 0.3s cubic-bezier(0.4, 0, 0.2, 1)";
+          bar.style.width = "35%";
+          setTimeout(() => { if (bar.style.width === "35%") bar.style.width = "65%"; }, 150);
+          setTimeout(() => { if (bar.style.width === "65%") bar.style.width = "80%"; }, 400);
+        }
+
+        // Close mobile menu immediately on nav start
+        const mobileMenu = document.getElementById("mobile-menu");
+        const hamburgerIcon = document.getElementById("hamburger-icon");
+        const closeIcon = document.getElementById("close-icon");
+        if (mobileMenu && !mobileMenu.classList.contains("hidden")) {
+          mobileMenu.classList.add("hidden");
+          hamburgerIcon?.classList.remove("hidden");
+          closeIcon?.classList.add("hidden");
+        }
+      });
+
+      // Preserve theme across Astro page transitions before DOM swap
+      document.addEventListener("astro:before-swap", (e: any) => {
+        const bar = document.getElementById("astro-nav-bar");
+        if (bar) bar.style.width = "93%";
+
+        const savedTheme = localStorage.getItem("takeoutfix_theme") || (document.documentElement.classList.contains("dark") ? "dark" : "light");
+        if (e.newDocument && e.newDocument.documentElement) {
+          e.newDocument.documentElement.classList.remove("light", "dark");
+          e.newDocument.documentElement.classList.add(savedTheme);
+        }
+      });
+
+      // Complete progress bar immediately after DOM swap (before React hydration)
+      // This prevents the bar from appearing "stuck" while client:only components load
       document.addEventListener("astro:after-swap", () => {
         const savedTheme = localStorage.getItem("takeoutfix_theme") || "light";
         if (savedTheme === "dark") {
@@ -729,17 +912,30 @@ const canonicalUrl = `https://takeoutfix.pages.dev${Astro.url.pathname.replace(/
           document.documentElement.classList.add("light");
           document.documentElement.classList.remove("dark");
         }
+        try { initTheme(); } catch (e) {}
+
+        // Complete bar right at DOM swap — page visually ready
+        const progress = document.getElementById("astro-nav-progress");
+        const bar = document.getElementById("astro-nav-bar");
+        if (progress && bar) {
+          bar.style.width = "100%";
+          setTimeout(() => {
+            progress.style.opacity = "0";
+            setTimeout(() => { bar.style.transition = "none"; bar.style.width = "0%"; }, 200);
+          }, 150);
+        }
       });
 
-      // Hook for initial load and page-load transitions
+      // Hook for initial load and page-load transitions (React hydration complete)
       document.addEventListener("astro:page-load", () => {
-        initTheme();
-        detectAndStoreCountry();
-        initMobileMenu();
-        syncUserUI();
-        setupInteractionEvents();
-        highlightActiveLinks();
-        checkAdBlock();
+        try { initTheme(); } catch (e) {}
+        try { detectAndStoreCountry(); } catch (e) {}
+        try { initMobileMenu(); } catch (e) {}
+        try { syncUserUI(); } catch (e) {}
+        try { renderNotifications(); } catch (e) {}
+        try { setupInteractionEvents(); } catch (e) {}
+        try { highlightActiveLinks(); } catch (e) {}
+        try { checkAdBlock(); } catch (e) {}
       });
 
       // Stage 2: Wait for folder selection or restore button click
@@ -748,11 +944,25 @@ const canonicalUrl = `https://takeoutfix.pages.dev${Astro.url.pathname.replace(/
         checkAdBlock();
       });
 
-      // PWA Service Worker Registration
+      // PWA Service Worker Registration & Localhost Aggressive Cleanup
       if ("serviceWorker" in navigator) {
-        window.addEventListener("load", () => {
-          navigator.serviceWorker.register("/sw.js").catch(() => {});
-        });
+        const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+        if (isLocal) {
+          navigator.serviceWorker.getRegistrations().then((registrations) => {
+            for (const registration of registrations) {
+              registration.unregister();
+            }
+          }).catch(() => {});
+          if ("caches" in window) {
+            caches.keys().then((keys) => {
+              for (const key of keys) caches.delete(key);
+            }).catch(() => {});
+          }
+        } else {
+          window.addEventListener("load", () => {
+            navigator.serviceWorker.register("/sw.js").catch(() => {});
+          });
+        }
       }
 
     </script>

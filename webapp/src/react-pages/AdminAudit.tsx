@@ -2,6 +2,7 @@ import { useEffect, useState } from "react"
 import { collection, query, orderBy, onSnapshot, limit } from "firebase/firestore"
 import { db } from "../firebase"
 import { ShieldAlert, Search, Download, Filter, FileText } from "lucide-react"
+import { AdminPagination, SortableHeader, sortItems, useAdminSort } from "../components/admin/AdminPagination"
 
 interface AuditLog {
   id: string;
@@ -31,6 +32,9 @@ export default function AdminAudit() {
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState("")
   const [filterAction, setFilterAction] = useState("all")
+  const [page, setPage] = useState(1)
+  const pageSize = 5
+  const { sort, onSort } = useAdminSort("timestamp", "desc")
 
   useEffect(() => {
     const q = query(collection(db, "admin_activity"), orderBy("timestamp", "desc"), limit(150))
@@ -47,6 +51,10 @@ export default function AdminAudit() {
     return unsubscribe
   }, [])
 
+  useEffect(() => {
+    setPage(1)
+  }, [search, filterAction])
+
   const filteredLogs = logs.filter(l => {
     if (filterAction !== "all" && l.action !== filterAction) return false
     if (search) {
@@ -59,6 +67,16 @@ export default function AdminAudit() {
     }
     return true
   })
+
+  const sortedLogs = sortItems(filteredLogs, sort, (item, key) => {
+    if (key === "actorName") return item.actorName
+    if (key === "action") return item.action
+    if (key === "description") return item.description
+    if (key === "timestamp") return item.timestamp
+    return item[key]
+  })
+
+  const paginatedLogs = sortedLogs.slice((page - 1) * pageSize, page * pageSize)
 
   const exportCSV = () => {
     if (filteredLogs.length === 0) return
@@ -99,7 +117,7 @@ export default function AdminAudit() {
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-white flex items-center gap-2">
-            <ShieldAlert className="w-6 h-6 text-indigo-400" /> Platform Audit Logs
+            <ShieldAlert className="w-6 h-6 text-zinc-200" /> Platform Audit Logs
           </h1>
           <p className="text-zinc-400 text-sm mt-1">Review activity logs, role change histories, refunds, and administrative overrides.</p>
         </div>
@@ -122,7 +140,7 @@ export default function AdminAudit() {
             placeholder="Search actor, action, or description..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full bg-zinc-950 border border-zinc-800 text-xs pl-9 pr-4 h-9 rounded-lg text-white focus:outline-none focus:border-indigo-500 transition-all focus:bg-zinc-950"
+            className="w-full bg-zinc-950 border border-zinc-800 text-xs pl-9 pr-4 h-9 rounded-lg text-white focus:outline-none focus:border-zinc-500 transition-all focus:bg-zinc-950"
           />
         </div>
 
@@ -142,6 +160,9 @@ export default function AdminAudit() {
             <option value="REFUND">Refund Payment</option>
             <option value="TICKET_REPLY">Ticket Reply</option>
             <option value="SETTINGS_CHANGE">Settings Change</option>
+            <option value="PLAN_THRESHOLDS_CHANGE">Plan Thresholds Change</option>
+            <option value="PROMO_ENABLE_FREE_UNLIMITED">Promo: Free Unlimited Enabled</option>
+            <option value="PROMO_DISABLE_FREE_UNLIMITED">Promo: Free Unlimited Disabled</option>
           </select>
         </div>
       </div>
@@ -152,10 +173,18 @@ export default function AdminAudit() {
           <table className="w-full text-left text-xs whitespace-nowrap">
             <thead className="bg-zinc-950/50 border-b border-zinc-800 text-zinc-400">
               <tr>
-                <th className="px-6 py-3.5 font-semibold">Actor / Admin</th>
-                <th className="px-6 py-3.5 font-semibold">Action Type</th>
-                <th className="px-6 py-3.5 font-semibold">Description</th>
-                <th className="px-6 py-3.5 font-semibold">Timestamp</th>
+                <th className="px-6 py-3.5 font-semibold">
+                  <SortableHeader label="Actor / Admin" sortKey="actorName" sort={sort} onSort={onSort} />
+                </th>
+                <th className="px-6 py-3.5 font-semibold">
+                  <SortableHeader label="Action Type" sortKey="action" sort={sort} onSort={onSort} />
+                </th>
+                <th className="px-6 py-3.5 font-semibold">
+                  <SortableHeader label="Description" sortKey="description" sort={sort} onSort={onSort} />
+                </th>
+                <th className="px-6 py-3.5 font-semibold">
+                  <SortableHeader label="Timestamp" sortKey="timestamp" sort={sort} onSort={onSort} />
+                </th>
               </tr>
             </thead>
             <tbody className="divide-y divide-zinc-800">
@@ -171,7 +200,7 @@ export default function AdminAudit() {
                   </td>
                 </tr>
               ) : (
-                filteredLogs.map((log) => (
+                paginatedLogs.map((log) => (
                   <tr key={log.id} className="hover:bg-zinc-800/10 transition-colors">
                     <td className="px-6 py-4">
                       <div>
@@ -198,6 +227,12 @@ export default function AdminAudit() {
             </tbody>
           </table>
         </div>
+        <AdminPagination
+          page={page}
+          totalItems={sortedLogs.length}
+          pageSize={pageSize}
+          onPageChange={setPage}
+        />
       </div>
 
     </div>

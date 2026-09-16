@@ -187,5 +187,31 @@ service cloud.firestore {
       allow read: if request.auth != null && resource.data.userId == request.auth.uid;
       allow read, write: if isAdmin();
     }
+
+    // ─── Monetization Architecture Collections ────────────────────────────────────
+    match /monetization_placements/{id} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+    match /monetization_configs/{id} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+    match /ad_providers/{id} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+    match /ad_units/{id} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+    match /affiliate_providers/{id} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+    match /affiliate_links/{id} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
   }
 }

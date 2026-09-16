@@ -1,8 +1,9 @@
 import { auth, db, googleProvider, signInWithPopup, signOut } from "../firebase";
 import { setAdFree, setUserInteracted, checkAdBlock, hideBanner } from "./browserAdblock";
-import { bindNotificationFetch } from "./browserNotifications";
+import { bindNotificationFetch, stopNotificationListeners } from "./browserNotifications";
 
 import { isSuperAdminEmail } from "./adminAuth";
+import { getFriendlyAuthMessage } from "./authErrors";
 let unsubUserDoc: any = null;
 let isAuthListenerInitialized = false;
 
@@ -71,6 +72,19 @@ export const syncUserUI = () => {
         dropdownUsername?.classList.add("hidden");
       }
       
+      // Auto-revert expired recovery pass to free tier by default
+      if (cachedUser.plan === "recovery_pass") {
+        const passExpires = cachedUser.expiresAt || (cachedUser.startedAt ? cachedUser.startedAt + 24*3600*1000 : null);
+        if (passExpires && Date.now() >= passExpires) {
+          cachedUser.plan = "free";
+          cachedUser.expiresAt = null;
+          cachedUser.passExpiredAt = passExpires;
+          try {
+            localStorage.setItem("takeoutfix_user_data", JSON.stringify(cachedUser));
+          } catch (_) {}
+        }
+      }
+
       let planLabel = "Free Tier";
       if (cachedUser.plan === "pro") planLabel = "Pro Tier";
       else if (cachedUser.plan === "super") planLabel = "Super Tier";
@@ -92,11 +106,12 @@ export const syncUserUI = () => {
             homePassBadge.classList.remove("flex");
             return;
           }
-          const hrs = Math.floor(remainingMs / (1000 * 60 * 60));
-          const mins = Math.floor((remainingMs % (1000 * 60 * 60)) / (1000 * 60));
-          const secs = Math.floor((remainingMs % (1000 * 60)) / 1000);
+          const totalSecs = Math.floor(remainingMs / 1000);
+          const days = Math.floor(totalSecs / 86400);
+          const hrs = Math.floor((totalSecs % 86400) / 3600);
+          const mins = Math.floor((totalSecs % 3600) / 60);
           const pad = (n: number) => n.toString().padStart(2, '0');
-          homePassVal.innerText = `${pad(hrs)}h ${pad(mins)}m ${pad(secs)}s`;
+          homePassVal.innerText = `${pad(days)}d : ${pad(hrs)}h : ${pad(mins)}m`;
         };
         updateTimer();
         if ((window as any).__homePassTimerInterval) clearInterval((window as any).__homePassTimerInterval);
@@ -114,7 +129,20 @@ export const syncUserUI = () => {
         mobileDashboardLink?.classList.add("hidden");
         desktopAdminLink?.classList.remove("hidden");
         mobileAdminLink?.classList.remove("hidden");
+        try {
+          const isSuper = isSuperAdminEmail(cachedUser.email);
+          sessionStorage.setItem("takeoutfix_admin_session", JSON.stringify({
+            uid: cachedUser.uid || auth.currentUser?.uid || "",
+            email: cachedUser.email || auth.currentUser?.email || "",
+            displayName: cachedUser.displayName || auth.currentUser?.displayName || "Admin",
+            photoURL: cachedUser.photoURL || auth.currentUser?.photoURL || "",
+            role: isSuper ? "SUPER_ADMIN" : (cachedUser.role || "ADMIN"),
+            isAdmin: true,
+            timestamp: Date.now()
+          }));
+        } catch (_) {}
       } else {
+        try { sessionStorage.removeItem("takeoutfix_admin_session"); } catch (_) {}
         desktopDashboardLink?.classList.remove("hidden");
         mobileDashboardLink?.classList.remove("hidden");
         desktopAdminLink?.classList.add("hidden");
@@ -165,8 +193,8 @@ export const setupAuthListeners = () => {
       localStorage.setItem("takeoutfix_user_data", JSON.stringify(previewData));
       syncUserUI();
       
-      // Bind on-demand notifications
-      bindNotificationFetch(user.uid);
+      // Bind on-demand notifications with email
+      bindNotificationFetch(user.uid, user.email || undefined);
 
       // Lazy load firestore
       import("firebase/firestore").then(({ doc, onSnapshot }) => {
@@ -194,6 +222,7 @@ export const setupAuthListeners = () => {
       });
     } else {
       localStorage.removeItem("takeoutfix_user_data");
+      stopNotificationListeners();
       setAdFree(false);
       setUserInteracted(false);
       hideBanner();
@@ -203,72 +232,11 @@ export const setupAuthListeners = () => {
 };
 
 export const setupAuthEvents = () => {
-  const loginBtn = document.getElementById("login-btn");
   const logoutBtn = document.getElementById("logout-btn");
 
-  loginBtn?.addEventListener("click", async () => {
-    let loginSuccess = false;
-    let toastShown = false;
-    let popupRef: Window | null = null;
-    let checkInterval: any = null;
-
-    const originalOpen = window.open;
-    window.open = function(...args) {
-      const win = originalOpen.apply(this, args);
-      popupRef = win;
-      window.open = originalOpen;
-      return win;
-    };
-
-    const restoreTimeout = setTimeout(() => {
-      if (window.open !== originalOpen) {
-        window.open = originalOpen;
-      }
-    }, 5000);
-
-    try {
-      checkInterval = setInterval(() => {
-        if (popupRef && popupRef.closed) {
-          clearInterval(checkInterval);
-          clearTimeout(restoreTimeout);
-          if (window.open !== originalOpen) {
-            window.open = originalOpen;
-          }
-          if (!loginSuccess && !toastShown) {
-            toastShown = true;
-            (window as any).showVanillaToast("Please check your credentials and try again.", "error", "Login Failed");
-          }
-        }
-      }, 100);
-
-      await signInWithPopup(auth, googleProvider);
-      loginSuccess = true;
-      clearInterval(checkInterval);
-      clearTimeout(restoreTimeout);
-      if (window.open !== originalOpen) {
-        window.open = originalOpen;
-      }
-    } catch (err: any) {
-      clearInterval(checkInterval);
-      clearTimeout(restoreTimeout);
-      if (window.open !== originalOpen) {
-        window.open = originalOpen;
-      }
-      if (loginSuccess) return;
-
-      console.error("Login failed:", err);
-      if (!toastShown) {
-        toastShown = true;
-        const errMsg = err?.code || err?.message || String(err);
-        const isCancelled = errMsg.includes("cancelled") || errMsg.includes("closed") || errMsg.includes("popup-closed-by-user");
-        (window as any).showVanillaToast(
-          isCancelled ? "Sign-in was cancelled." : `Sign-in failed: ${errMsg}`,
-          "error",
-          "Login Failed"
-        );
-      }
-    }
-  });
+  // Sign-in is now handled by the AuthModal React component.
+  // The navbar "Sign In / Sign Up" button dispatches 'takeoutfix:open-auth-modal'
+  // which AuthModal listens to and renders the sign-in/sign-up overlay.
 
   logoutBtn?.addEventListener("click", async () => {
     try {

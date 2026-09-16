@@ -9,7 +9,6 @@ export function getStaticPaths() {
     { params: { all: 'support' } },
     { params: { all: 'reviews' } },
     { params: { all: 'team' } },
-    { params: { all: 'revenue' } },
     { params: { all: 'settings' } },
     { params: { all: 'statistics' } },
     { params: { all: 'audit' } },
@@ -18,6 +17,7 @@ export function getStaticPaths() {
     { params: { all: 'plan-thresholds' } },
     { params: { all: 'tier-features' } },
     { params: { all: 'payments' } },
+    { params: { all: 'monetization' } },
     { params: { all: 'dev' } },
   ];
 }
@@ -35,23 +35,50 @@ import AdminRouter from "../../components/AdminRouter";
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
-    <!-- Theme Initialization Script -->
-    <script is:inline>
-      const initTheme = () => {
-        const saved = localStorage.getItem("takeoutfix_theme");
-        const theme = saved || "light";
-        if (theme === "dark") {
-          document.documentElement.classList.add("dark");
-          document.documentElement.classList.remove("light");
-        } else {
-          document.documentElement.classList.add("light");
-          document.documentElement.classList.remove("dark");
-        }
-      };
-      initTheme();
-    </script>
+    <!-- Admin is always dark mode -->
+    <script is:inline>document.documentElement.className = 'dark';</script>
   </head>
   <body class="bg-zinc-950 text-zinc-100 selection:bg-indigo-500/30">
+    <!-- Loading skeleton shown before React island hydrates -->
+    <div id="admin-skeleton" class="flex min-h-screen bg-zinc-950">
+      <div class="w-60 bg-black border-r border-zinc-900 p-5 shrink-0 flex flex-col gap-1.5">
+        <div class="h-9 rounded-lg bg-zinc-900 mb-4"></div>
+        <div class="h-2.5 rounded bg-zinc-900 w-3/5 mb-2"></div>
+        <div class="h-8 rounded-md bg-zinc-900"></div>
+        <div class="h-8 rounded-md bg-zinc-900"></div>
+        <div class="h-8 rounded-md bg-zinc-900"></div>
+        <div class="h-8 rounded-md bg-zinc-900"></div>
+        <div class="h-2.5 rounded bg-zinc-900 w-3/5 my-2"></div>
+        <div class="h-8 rounded-md bg-zinc-900"></div>
+        <div class="h-8 rounded-md bg-zinc-900"></div>
+        <div class="h-8 rounded-md bg-zinc-900"></div>
+      </div>
+      <div class="flex-1 p-8 flex flex-col gap-5">
+        <div class="h-12 rounded-lg bg-zinc-900 w-1/2"></div>
+        <div class="grid grid-cols-4 gap-4">
+          <div class="h-22 rounded-xl bg-zinc-900"></div>
+          <div class="h-22 rounded-xl bg-zinc-900"></div>
+          <div class="h-22 rounded-xl bg-zinc-900"></div>
+          <div class="h-22 rounded-xl bg-zinc-900"></div>
+        </div>
+        <div class="flex items-center gap-3 mt-1">
+          <div class="w-6 h-6 border-2 border-zinc-700 border-t-zinc-400 rounded-full animate-spin"></div>
+          <span class="text-zinc-500 text-xs font-sans">Loading Admin Panel...</span>
+        </div>
+      </div>
+    </div>
+    <script is:inline>
+      // Hide skeleton once React has mounted
+      document.addEventListener('astro:hydrate', function() {
+        var sk = document.getElementById('admin-skeleton');
+        if (sk) sk.style.display = 'none';
+      }, { once: true });
+      // Fallback: hide after 5s regardless
+      setTimeout(function() {
+        var sk = document.getElementById('admin-skeleton');
+        if (sk) sk.style.display = 'none';
+      }, 5000);
+    </script>
     <AdminRouter client:only="react" />
   </body>
 </html>

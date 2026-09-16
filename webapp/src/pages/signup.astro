@@ -1,0 +1,13 @@
+---
+export const prerender = true;
+import Layout from "../layouts/Layout.astro";
+import AuthPage from "../react-pages/AuthPage";
+---
+
+<Layout 
+  title="Create Account | TakeoutFix" 
+  description="Create your free TakeoutFix account and start restoring Google Takeout EXIF metadata, timestamps, and GPS coordinates."
+  isAuthPage={true}
+>
+  <AuthPage client:only="react" />
+</Layout>

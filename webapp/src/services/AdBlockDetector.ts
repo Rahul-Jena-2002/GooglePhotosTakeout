@@ -6,6 +6,11 @@
  * 2. Creates a honeypot DOM element with ad-like classes and checks if it is hidden.
  */
 export async function detectAdBlock(): Promise<boolean> {
+  const isLocalhost = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+  if (isLocalhost) {
+    return false;
+  }
+
   // Strategy 1: The ultimate test - dynamically load the official Google AdSense script
   // Brave and all adblockers MUST block this URL.
   // We use a HEAD fetch instead of a script tag to prevent downloading and parsing 1MB of Unused JS.

@@ -30,6 +30,10 @@ let notifItems: NotificationItem[] = [];
 
 // ─── Render ───────────────────────────────────────────────────────────────────
 
+export function renderNotifications() {
+  renderAll();
+}
+
 function renderAll() {
   const all = [...notifItems, ...ticketItems].sort((a, b) => b.createdAt - a.createdAt);
   const unread = all.filter(n => !n.read);
@@ -115,11 +119,11 @@ export function startNotificationListeners(uid: string, email: string) {
     () => {}
   );
 
-  // 2. Real-time notifications (admin invites, system alerts)
+  // 2. Real-time notifications (admin invites, system alerts, global promo announcements)
   unsubNotifications = onSnapshot(
     query(
       collection(db, "notifications"),
-      where("recipientEmail", "==", email.toLowerCase()),
+      where("recipientEmail", "in", [email.toLowerCase(), "all"]),
     ),
     snap => {
       notifItems = snap.docs.map(d => {
@@ -160,4 +164,4 @@ export const bindNotificationFetch = (uid: string, email?: string) => {
 };
 
 // Keep old fetchNotificationsOnDemand as a no-op for backwards compat
-export const fetchNotificationsOnDemand = async (_uid: string) => {};
+export const fetchNotificationsOnDemand = async () => {};

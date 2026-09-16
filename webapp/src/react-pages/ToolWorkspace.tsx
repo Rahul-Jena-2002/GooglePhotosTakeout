@@ -202,6 +202,8 @@ export function ToolWorkspaceContent() {
         {/* Left sidebar: command center */}
         <CommandSidebar
           plan={pipeline.plan}
+          tierThresholds={pipeline.tierThresholds}
+          isFreePromoActive={pipeline.isFreePromoActive}
           limitFiles={pipeline.limitFiles}
           limitBytes={pipeline.limitBytes}
           currentUsedFiles={pipeline.currentUsedFiles}

@@ -96,7 +96,7 @@ function ReviewsPageContent() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, delay: 0.1, ease: "easeOut" }}
-          className="text-4xl md:text-6xl font-bold tracking-tighter mb-6"
+          className="text-4xl md:text-6xl font-bold tracking-tighter mb-6 text-zinc-900 dark:text-white"
         >
           User Reviews
         </motion.h1>
@@ -104,7 +104,7 @@ function ReviewsPageContent() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, delay: 0.2, ease: "easeOut" }}
-          className="text-xl text-white/60 max-w-2xl mx-auto mb-8"
+          className="text-xl text-zinc-600 dark:text-zinc-400 max-w-2xl mx-auto mb-8"
         >
           See what our community thinks about TakeoutFix. Real reviews from users who successfully restored their Google Takeout metadata.
         </motion.p>
@@ -130,7 +130,7 @@ function ReviewsPageContent() {
           <motion.div 
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
-            className="inline-block bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 px-6 py-3 rounded-full text-sm font-medium"
+            className="inline-block bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400 px-6 py-3 rounded-full text-sm font-medium"
           >
             Thank you! Your review has been published.
           </motion.div>
@@ -146,16 +146,16 @@ function ReviewsPageContent() {
           className="max-w-2xl mx-auto mb-16 relative z-10"
         >
           {!user ? (
-            <div className="text-center p-8 bg-zinc-900 border border-zinc-800 rounded-xl">
-              <p className="text-zinc-400 mb-4">You must be signed in to submit a review.</p>
+            <div className="text-center p-8 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl shadow-md">
+              <p className="text-zinc-600 dark:text-zinc-400 mb-4">You must be signed in to submit a review.</p>
               <Button onClick={() => setShowForm(false)} variant="outline">Cancel</Button>
             </div>
           ) : (
-            <form onSubmit={handleSubmitReview} className="bg-zinc-900 border border-zinc-800 rounded-xl p-6 shadow-xl text-left">
-              <h3 className="text-xl font-bold mb-6 text-white">Write your Review</h3>
+            <form onSubmit={handleSubmitReview} className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl p-6 shadow-xl text-left">
+              <h3 className="text-xl font-bold mb-6 text-zinc-900 dark:text-white">Write your Review</h3>
               
               <div className="mb-6">
-                <label className="block text-sm font-medium text-zinc-400 mb-2">Rating</label>
+                <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">Rating</label>
                 <div className="flex gap-2">
                   {[1, 2, 3, 4, 5].map((star) => (
                     <button
@@ -164,21 +164,21 @@ function ReviewsPageContent() {
                       onClick={() => setRating(star)}
                       className="p-1 focus:outline-none"
                     >
-                      <Star className={`w-8 h-8 ${rating >= star ? 'fill-amber-400 text-amber-400' : 'text-zinc-700'}`} />
+                      <Star className={`w-8 h-8 ${rating >= star ? 'fill-amber-400 text-amber-400' : 'text-zinc-300 dark:text-zinc-700'}`} />
                     </button>
                   ))}
                 </div>
               </div>
 
               <div className="mb-6">
-                <label className="block text-sm font-medium text-zinc-400 mb-2">Message</label>
+                <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">Message</label>
                 <textarea
                   required
                   rows={4}
                   value={message}
                   onChange={(e) => setMessage(e.target.value)}
                   placeholder="How was your experience using TakeoutFix?"
-                  className="w-full bg-black border border-zinc-800 rounded-lg p-3 text-white focus:outline-none focus:border-indigo-500 resize-none"
+                  className="w-full bg-zinc-50 dark:bg-black border border-zinc-200 dark:border-zinc-800 rounded-lg p-3 text-zinc-900 dark:text-white focus:outline-none focus:border-indigo-500 resize-none"
                 ></textarea>
               </div>
 
@@ -195,11 +195,11 @@ function ReviewsPageContent() {
 
       {/* REVIEWS GRID */}
       {loading ? (
-        <div className="text-center py-20 text-white/50">Loading reviews...</div>
+        <div className="text-center py-20 text-zinc-500 dark:text-zinc-400">Loading reviews...</div>
       ) : reviews.length === 0 ? (
-        <div className="text-center py-20 bg-white/5 rounded-2xl border border-white/10 relative z-10">
-          <Star className="w-12 h-12 text-white/20 mx-auto mb-4" />
-          <p className="text-white/50">No reviews have been published yet.</p>
+        <div className="text-center py-20 bg-white dark:bg-zinc-900/40 rounded-2xl border border-zinc-200 dark:border-zinc-800 relative z-10 shadow-sm">
+          <Star className="w-12 h-12 text-zinc-300 dark:text-zinc-700 mx-auto mb-4" />
+          <p className="text-zinc-600 dark:text-zinc-400 font-medium">No reviews have been published yet.</p>
         </div>
       ) : (
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 relative z-10 items-start">
@@ -211,7 +211,7 @@ function ReviewsPageContent() {
               transition={{ duration: 0.5, delay: Math.min(0.5, idx * 0.08), ease: "easeOut" }}
               className="h-full"
             >
-              <Card className="review-card bg-black/60 backdrop-blur-xl border-white/10 hover:border-zinc-500/30 transition-colors group h-full flex flex-col justify-between">
+              <Card className="review-card bg-white dark:bg-zinc-900/60 border border-zinc-200 dark:border-zinc-800 hover:border-zinc-300 dark:hover:border-zinc-700 transition-colors group h-full flex flex-col justify-between shadow-sm">
                 <CardContent className="pt-6 flex flex-col h-full justify-between">
                   <div>
                     <div className="flex text-amber-400 mb-4">
@@ -219,7 +219,7 @@ function ReviewsPageContent() {
                         <Star key={i} className="w-4 h-4 fill-amber-400" />
                       ))}
                     </div>
-                    <p className="text-white/80 text-sm leading-relaxed mb-6 italic">"{review.message}"</p>
+                    <p className="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed mb-6 italic">"{review.message}"</p>
                   </div>
                   
                   <div>
@@ -227,13 +227,13 @@ function ReviewsPageContent() {
                       {review.photoURL ? (
                         <img src={review.photoURL} alt="" className="w-8 h-8 rounded-full" />
                       ) : (
-                        <div className="w-8 h-8 rounded-full bg-zinc-800 flex items-center justify-center text-xs font-bold uppercase text-zinc-300">
+                        <div className="w-8 h-8 rounded-full bg-zinc-200 dark:bg-zinc-800 flex items-center justify-center text-xs font-bold uppercase text-zinc-700 dark:text-zinc-300">
                           {review.displayName?.charAt(0) || "U"}
                         </div>
                       )}
                       <div>
-                        <div className="text-sm font-medium text-white group-hover:text-zinc-200 dark:group-hover:text-zinc-950 transition-colors">{review.displayName || "Anonymous User"}</div>
-                        <div className="text-xs text-white/40">
+                        <div className="text-sm font-medium text-zinc-900 dark:text-white transition-colors">{review.displayName || "Anonymous User"}</div>
+                        <div className="text-xs text-zinc-500 dark:text-zinc-400">
                           {review.createdAt?.seconds ? new Date(review.createdAt.seconds * 1000).toLocaleDateString() : "Recently"}
                         </div>
                       </div>
@@ -241,12 +241,12 @@ function ReviewsPageContent() {
 
                     {/* ADMIN REPLY SECTION */}
                     {review.adminReply && (
-                      <div className="mt-4 pt-4 border-t border-zinc-800 bg-zinc-900/50 rounded-b-lg -mx-6 -mb-6 px-6 pb-6 text-left">
+                      <div className="mt-4 pt-4 border-t border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900/50 rounded-b-lg -mx-6 -mb-6 px-6 pb-6 text-left">
                         <div className="flex items-start gap-2">
                           <CornerDownRight className="w-4 h-4 text-zinc-400 mt-1 flex-shrink-0" />
                           <div>
-                            <div className="text-xs font-bold text-zinc-400 dark:text-zinc-300 uppercase tracking-wider mb-1">Developer Reply</div>
-                            <p className="text-sm text-zinc-400 leading-relaxed">{review.adminReply}</p>
+                            <div className="text-xs font-bold text-zinc-500 dark:text-zinc-300 uppercase tracking-wider mb-1">Developer Reply</div>
+                            <p className="text-sm text-zinc-600 dark:text-zinc-400 leading-relaxed">{review.adminReply}</p>
                           </div>
                         </div>
                       </div>

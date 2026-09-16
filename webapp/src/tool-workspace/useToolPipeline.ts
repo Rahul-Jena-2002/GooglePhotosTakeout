@@ -62,7 +62,7 @@ export const getPlanCardStyles = (plan: string, thresholds?: {
   recovery_pass?: { maxFiles: number; maxSizeMB: number };
   pro?: { maxFiles: number; maxSizeMB: number };
   super?: { maxFiles: number; maxSizeMB: number };
-}) => {
+}, isFreePromoActive?: boolean) => {
   switch (plan) {
     case 'super':
       return {
@@ -104,6 +104,17 @@ export const getPlanCardStyles = (plan: string, thresholds?: {
     }
     case 'free':
     default: {
+      if (isFreePromoActive) {
+        return {
+          cardClass: "bg-emerald-500/5 border-emerald-500/30 shadow-sm ring-1 ring-emerald-500/20",
+          badgeClass: "bg-emerald-500/15 border-emerald-500/30 text-emerald-400 font-bold",
+          badgeText: "Free (Unlimited Active)",
+          iconClass: "text-emerald-400",
+          titleClass: "text-emerald-400",
+          titleText: "Free Plan — Unlimited Event",
+          description: "Special limited-time event active: All file and storage limits are lifted for Free tier users!",
+        };
+      }
       const maxFiles = thresholds?.free?.maxFiles ?? 250;
       const maxSizeMB = thresholds?.free?.maxSizeMB ?? 500;
       const sizeStr = maxSizeMB >= 1024 ? `${(maxSizeMB / 1024).toFixed(0)} GB` : `${maxSizeMB} MB`;
@@ -127,7 +138,8 @@ export const getPlanCardStyles = (plan: string, thresholds?: {
 export function useToolPipeline() {
   const { user, userData, refreshUserData } = useAuth()
 
-  const plan = userData?.plan || 'free'
+  const isPassExpired = userData?.plan === 'recovery_pass' && userData?.expiresAt && Date.now() >= userData.expiresAt;
+  const plan = (userData?.plan === 'recovery_pass' && isPassExpired) ? 'free' : (userData?.plan || 'free');
 
   const getUserBytes = (u: Record<string, unknown> | null | undefined) => {
     if (!u) return 0;
@@ -163,11 +175,12 @@ export function useToolPipeline() {
     pro:           { maxFiles: Infinity, maxSizeMB: Infinity },
     super:         { maxFiles: Infinity, maxSizeMB: Infinity },
   })
+  const [isFreePromoActive, setIsFreePromoActive] = useState(false)
 
-  const limitFiles = plan === 'pro' || plan === 'super'
+  const limitFiles = plan === 'pro' || plan === 'super' || (plan === 'free' && isFreePromoActive)
     ? Infinity
     : (tierThresholds[plan as keyof typeof tierThresholds]?.maxFiles ?? 250)
-  const limitBytes = plan === 'pro' || plan === 'super'
+  const limitBytes = plan === 'pro' || plan === 'super' || (plan === 'free' && isFreePromoActive)
     ? Infinity
     : (tierThresholds[plan as keyof typeof tierThresholds]?.maxSizeMB ?? 500) * 1024 * 1024
 
@@ -199,6 +212,13 @@ export function useToolPipeline() {
       if (snap.exists()) {
         const data = snap.data()
         setMaintenance(data.maintenance ?? false)
+        // Check limited-time free unlimited promo
+        const promo = data.freeUnlimitedPromo
+        if (promo && promo.enabled && promo.endsAt && Date.now() < promo.endsAt) {
+          setIsFreePromoActive(true)
+        } else {
+          setIsFreePromoActive(false)
+        }
         // Sync tool thresholds from admin settings
         const stored = data.tierThresholds
         if (stored) {
@@ -2365,6 +2385,7 @@ export function useToolPipeline() {
     userData,
     plan,
     tierThresholds,
+    isFreePromoActive,
     limitFiles,
     limitBytes,
     currentUsedFiles,

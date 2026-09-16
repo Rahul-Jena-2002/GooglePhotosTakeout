@@ -1,13 +1,12 @@
 package com.rahul.gui;
 
 import com.formdev.flatlaf.FlatLightLaf;
+import com.rahul.controller.UserController;
 import com.rahul.gui.components.*;
 import com.rahul.gui.service.NetworkMonitorService;
 import com.rahul.gui.service.UserSyncBridgeService;
 import com.rahul.gui.theme.ThemeColors;
-import com.rahul.service.ExtractionService;
-import com.rahul.service.PowerManager;
-import com.rahul.service.SessionStatsService;
+import com.rahul.service.*;
 import javax.swing.*;
 import java.awt.*;
 import java.io.File;
@@ -26,7 +25,17 @@ public class NativeDesktopGui {
         this.sessionStatsService = new SessionStatsService();
         this.networkMonitorService = new NetworkMonitorService();
         this.userSyncBridgeService = new UserSyncBridgeService();
-        this.extractionService = new ExtractionService();
+        UserService userService = new UserService();
+        UserController.setUserService(userService);
+        this.extractionService = new ExtractionService(
+                new MediaScanner(),
+                new MetadataMatcher(),
+                new TimestampRestorer(),
+                new MetadataInjector(),
+                new FileOperationService(),
+                this.sessionStatsService,
+                userService
+        );
     }
 
     public NativeDesktopGui(ExtractionService extractionService, SessionStatsService sessionStatsService,
@@ -177,6 +186,25 @@ public class NativeDesktopGui {
                     "Selected Takeout Source does not exist: " + inPath,
                     "Invalid Source",
                     JOptionPane.ERROR_MESSAGE);
+            return;
+        }
+
+        // 3. User Sign-in Check
+        if (!userSyncBridgeService.isSignedIn()) {
+            int choice = JOptionPane.showOptionDialog(
+                    mainFrame,
+                    "Please sign in with Google to start photo & video restorations.\n\n"
+                            + "Free tier includes 250 files / 500 MB metadata recovery.",
+                    "Sign In Required",
+                    JOptionPane.YES_NO_OPTION,
+                    JOptionPane.INFORMATION_MESSAGE,
+                    null,
+                    new String[]{"Sign In with Google", "Cancel"},
+                    "Sign In with Google"
+            );
+            if (choice == 0) {
+                UserSyncBridgeService.openGoogleLogin(mainFrame, true);
+            }
             return;
         }
 

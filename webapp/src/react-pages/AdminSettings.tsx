@@ -163,7 +163,7 @@ export default function AdminSettings() {
   };
 
   return (
-    <div className="space-y-8 max-w-5xl mx-auto px-4 py-8 font-sans transition-all duration-300">
+    <div className="space-y-8 w-full min-w-0 font-sans transition-all duration-300">
       
       {/* Heading */}
       <div>

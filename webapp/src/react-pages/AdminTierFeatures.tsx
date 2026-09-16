@@ -1,14 +1,14 @@
 import React, { useState, useEffect } from "react"
 import { doc, setDoc, onSnapshot, addDoc, collection } from "firebase/firestore"
 import { db } from "../firebase"
-import { useAuth, type FeatureItem, type FeaturesConfig, DEFAULT_FEATURES_CONFIG, type ComparisonRow, DEFAULT_COMPARISON_ROWS } from "../contexts/AuthContext"
+import { useAuth, type FeatureItem, type FeaturesConfig, DEFAULT_FEATURES_CONFIG, type ComparisonRow, DEFAULT_COMPARISON_ROWS, resolveComparisonRowValues } from "../contexts/AuthContext"
 import { useToastStore } from "../store/useToastStore"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../components/ui/card"
 import { Button } from "../components/ui/button"
 import { Shield, Settings, Save, Plus, Trash2 } from "lucide-react"
 
 export default function AdminTierFeatures() {
-  const { user, adminData, loading: authLoading } = useAuth()
+  const { user, adminData, loading: authLoading, tierThresholds, telemetryAccuracy, platformStats, refreshConfig } = useAuth()
   const isSuperAdminEmail = (user?.email || adminData?.email) === 'rahuljena.dev@gmail.com'
   const role = isSuperAdminEmail ? "SUPER_ADMIN" : (adminData?.role ?? "ADMIN")
   const isSuperAdmin = role === "SUPER_ADMIN" || isSuperAdminEmail
@@ -79,7 +79,16 @@ export default function AdminTierFeatures() {
         setRefundPolicy(storedRefundPolicy ?? "We offer a 100% Recovery Guarantee: if a verified technical issue prevents your restoration, and our support desk is unable to resolve it, we will issue a full refund within 7 days of purchase. Refunds are not available for change of mind or successfully completed recoveries.")
         
         const storedComparisonRows = data.comparisonRows as ComparisonRow[] | undefined
-        setComparisonRows(storedComparisonRows ?? DEFAULT_COMPARISON_ROWS)
+        if (storedComparisonRows) {
+          setComparisonRows(storedComparisonRows.map(r => {
+            if (r.featureName?.toLowerCase().includes("matching") && r.isDynamicTelemetry === undefined) {
+              return { ...r, isDynamicTelemetry: true }
+            }
+            return r
+          }))
+        } else {
+          setComparisonRows(DEFAULT_COMPARISON_ROWS)
+        }
       }
     })
 
@@ -89,6 +98,9 @@ export default function AdminTierFeatures() {
   const handleSave = async () => {
     setSaving(true)
     try {
+      if (typeof window !== "undefined") {
+        sessionStorage.removeItem("takeoutfix_cached_global_config")
+      }
       await setDoc(
         doc(db, "settings", "global"),
         {
@@ -105,6 +117,8 @@ export default function AdminTierFeatures() {
         },
         { merge: true }
       )
+
+      await refreshConfig()
 
       await addDoc(collection(db, "admin_activity"), {
         actorUid: adminData?.uid || "system",
@@ -188,7 +202,7 @@ export default function AdminTierFeatures() {
   ]
 
   return (
-    <div className="space-y-8 max-w-7xl mx-auto px-4 py-8 font-sans transition-all duration-300 t-text-primary">
+    <div className="space-y-8 w-full min-w-0 font-sans transition-all duration-300 t-text-primary">
       
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b pb-6 t-border">
@@ -368,13 +382,24 @@ export default function AdminTierFeatures() {
 
       {/* Compare Plans Table Customizer */}
       <Card className="shadow-none border mt-6 t-card">
-        <CardHeader className="border-b pb-4 t-border-subtle">
-          <CardTitle className="text-sm font-semibold flex items-center gap-2 t-heading">
-            Compare Plans Table Customizer
-          </CardTitle>
-          <CardDescription className="text-zinc-500 text-xs">
-            Edit the detailed feature comparison grid displayed at the bottom of the pricing page.
-          </CardDescription>
+        <CardHeader className="border-b pb-4 t-border-subtle flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <div>
+            <CardTitle className="text-sm font-semibold flex items-center gap-2 t-heading">
+              Compare Plans Table Customizer
+            </CardTitle>
+            <CardDescription className="text-zinc-500 text-xs">
+              Edit the detailed feature comparison grid displayed at the bottom of the pricing page.
+            </CardDescription>
+          </div>
+          <div className="flex items-center gap-2 text-[11px] font-semibold px-3 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400 self-start sm:self-auto">
+            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+            <span>Live Telemetry: <strong>{telemetryAccuracy || "90.8%"}</strong> Recovery Accuracy</span>
+            {platformStats?.filesRestored && platformStats?.filesScanned && (
+              <span className="text-zinc-400 font-normal">
+                ({platformStats.filesRestored.toLocaleString()} / {platformStats.filesScanned.toLocaleString()} files)
+              </span>
+            )}
+          </div>
         </CardHeader>
         <CardContent className="pt-6">
           <div className="overflow-x-auto">
@@ -390,117 +415,195 @@ export default function AdminTierFeatures() {
                 </tr>
               </thead>
               <tbody>
-                {comparisonRows.map((row, idx) => (
-                  <tr key={idx} className="border-b t-border-subtle">
-                    <td className="py-3 pr-4">
-                      <input
-                        type="text"
-                        value={row.featureName}
-                        onChange={(e) => {
-                          const updated = comparisonRows.map((r, i) => i === idx ? { ...r, featureName: e.target.value } : r)
-                          setComparisonRows(updated)
-                        }}
-                        placeholder="Feature name..."
-                        className="w-full border rounded-lg px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500 font-bold t-input-subtle-white"
-                      />
-                      <div className="flex items-center gap-1.5 mt-1.5">
+                {comparisonRows.map((row, idx) => {
+                  const isLimit = row.isDynamicLimit ?? false
+                  const isTelemetry = row.isDynamicTelemetry ?? (row.featureName?.toLowerCase().includes("matching") && !isLimit)
+                  const resolved = resolveComparisonRowValues(row, tierThresholds, telemetryAccuracy)
+                  const isAutoRendered = isLimit || isTelemetry
+
+                  return (
+                    <tr key={idx} className="border-b t-border-subtle">
+                      <td className="py-3 pr-4">
                         <input
-                          type="checkbox"
-                          id={`dyn-${idx}`}
-                          checked={row.isDynamicLimit ?? false}
+                          type="text"
+                          value={row.featureName}
                           onChange={(e) => {
-                            const updated = comparisonRows.map((r, i) => i === idx ? { ...r, isDynamicLimit: e.target.checked } : r)
+                            const updated = comparisonRows.map((r, i) => i === idx ? { ...r, featureName: e.target.value } : r)
                             setComparisonRows(updated)
                           }}
-                          className="rounded text-indigo-600 focus:ring-indigo-500 w-3 h-3 bg-zinc-950 border-zinc-800"
+                          placeholder="Feature name..."
+                          className="w-full border rounded-lg px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500 font-bold t-input-subtle-white"
                         />
-                        <label htmlFor={`dyn-${idx}`} className="text-[9px] text-zinc-500 cursor-pointer font-bold select-none uppercase tracking-wider">
-                          Use dynamic limit thresholds
-                        </label>
-                      </div>
-                    </td>
-                    <td className="py-3 px-2">
-                      <textarea
-                        value={row.free}
-                        disabled={row.isDynamicLimit}
-                        onChange={(e) => {
-                          const updated = comparisonRows.map((r, i) => i === idx ? { ...r, free: e.target.value } : r)
-                          setComparisonRows(updated)
-                        }}
-                        onKeyDown={(e) => handleTextareaKeyDown(e, row.free, (newVal) => {
-                          const updated = comparisonRows.map((r, i) => i === idx ? { ...r, free: newVal } : r)
-                          setComparisonRows(updated)
-                        })}
-                        placeholder="Value..."
-                        rows={1}
-                        className="w-full border rounded-lg px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500 resize-none disabled:opacity-35 t-input-subtle"
-                      />
-                    </td>
-                    <td className="py-3 px-2">
-                      <textarea
-                        value={row.recovery_pass}
-                        disabled={row.isDynamicLimit}
-                        onChange={(e) => {
-                          const updated = comparisonRows.map((r, i) => i === idx ? { ...r, recovery_pass: e.target.value } : r)
-                          setComparisonRows(updated)
-                        }}
-                        onKeyDown={(e) => handleTextareaKeyDown(e, row.recovery_pass, (newVal) => {
-                          const updated = comparisonRows.map((r, i) => i === idx ? { ...r, recovery_pass: newVal } : r)
-                          setComparisonRows(updated)
-                        })}
-                        placeholder="Value..."
-                        rows={1}
-                        className="w-full border rounded-lg px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500 resize-none disabled:opacity-35 t-input-subtle"
-                      />
-                    </td>
-                    <td className="py-3 px-2">
-                      <textarea
-                        value={row.pro}
-                        disabled={row.isDynamicLimit}
-                        onChange={(e) => {
-                          const updated = comparisonRows.map((r, i) => i === idx ? { ...r, pro: e.target.value } : r)
-                          setComparisonRows(updated)
-                        }}
-                        onKeyDown={(e) => handleTextareaKeyDown(e, row.pro, (newVal) => {
-                          const updated = comparisonRows.map((r, i) => i === idx ? { ...r, pro: newVal } : r)
-                          setComparisonRows(updated)
-                        })}
-                        placeholder="Value..."
-                        rows={1}
-                        className="w-full border rounded-lg px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500 resize-none disabled:opacity-35 font-bold t-input-subtle"
-                      />
-                    </td>
-                    <td className="py-3 px-2">
-                      <textarea
-                        value={row.super}
-                        disabled={row.isDynamicLimit}
-                        onChange={(e) => {
-                          const updated = comparisonRows.map((r, i) => i === idx ? { ...r, super: e.target.value } : r)
-                          setComparisonRows(updated)
-                        }}
-                        onKeyDown={(e) => handleTextareaKeyDown(e, row.super, (newVal) => {
-                          const updated = comparisonRows.map((r, i) => i === idx ? { ...r, super: newVal } : r)
-                          setComparisonRows(updated)
-                        })}
-                        placeholder="Value..."
-                        rows={1}
-                        className="w-full border rounded-lg px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500 resize-none disabled:opacity-35 font-bold t-input-subtle"
-                      />
-                    </td>
-                    <td className="py-3 pl-4 text-right">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setComparisonRows(comparisonRows.filter((_, i) => i !== idx))
-                        }}
-                        className="w-7 h-7 rounded text-red-500 hover:bg-red-500/10 border border-transparent hover:border-red-500/20 inline-flex items-center justify-center transition-all cursor-pointer"
-                        title="Delete comparison row"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
-                    </td>
-                  </tr>
-                ))}
+                        {row.featureName?.toLowerCase().includes("matching") ? (
+                          <div className="flex items-center gap-1.5 mt-1.5">
+                            <input
+                              type="checkbox"
+                              id={`dyn-telemetry-${idx}`}
+                              checked={isTelemetry}
+                              onChange={(e) => {
+                                const updated = comparisonRows.map((r, i) => i === idx ? { ...r, isDynamicTelemetry: e.target.checked } : r)
+                                setComparisonRows(updated)
+                              }}
+                              className="rounded text-emerald-600 focus:ring-emerald-500 w-3 h-3 bg-zinc-950 border-zinc-800"
+                            />
+                            <label htmlFor={`dyn-telemetry-${idx}`} className="text-[9px] text-emerald-600 dark:text-emerald-400 cursor-pointer font-bold select-none uppercase tracking-wider flex items-center gap-1">
+                              Use dynamic telemetry ({telemetryAccuracy || "90.8%"})
+                              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                            </label>
+                          </div>
+                        ) : (row.featureName?.toLowerCase().includes("processing") || row.isDynamicLimit) ? (
+                          <div className="flex items-center gap-1.5 mt-1.5">
+                            <input
+                              type="checkbox"
+                              id={`dyn-limit-${idx}`}
+                              checked={isLimit}
+                              onChange={(e) => {
+                                const updated = comparisonRows.map((r, i) => i === idx ? { ...r, isDynamicLimit: e.target.checked } : r)
+                                setComparisonRows(updated)
+                              }}
+                              className="rounded text-indigo-600 focus:ring-indigo-500 w-3 h-3 bg-zinc-950 border-zinc-800"
+                            />
+                            <label htmlFor={`dyn-limit-${idx}`} className="text-[9px] text-zinc-500 cursor-pointer font-bold select-none uppercase tracking-wider">
+                              Use dynamic limit thresholds
+                            </label>
+                          </div>
+                        ) : null}
+                      </td>
+                      <td className="py-3 px-2">
+                        <textarea
+                          value={isAutoRendered ? resolved.free : row.free}
+                          disabled={isAutoRendered}
+                          onChange={(e) => {
+                            const updated = comparisonRows.map((r, i) => i === idx ? { ...r, free: e.target.value } : r)
+                            setComparisonRows(updated)
+                          }}
+                          onKeyDown={(e) => handleTextareaKeyDown(e, isAutoRendered ? resolved.free : row.free, (newVal) => {
+                            if (!isAutoRendered) {
+                              const updated = comparisonRows.map((r, i) => i === idx ? { ...r, free: newVal } : r)
+                              setComparisonRows(updated)
+                            }
+                          })}
+                          placeholder="Value..."
+                          rows={1}
+                          className={`w-full border rounded-lg px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500 resize-none font-medium t-input-subtle ${
+                            isAutoRendered ? "bg-zinc-100/70 dark:bg-zinc-900/70 text-zinc-900 dark:text-zinc-100 border-dashed cursor-not-allowed opacity-90" : ""
+                          }`}
+                        />
+                        {isAutoRendered && (
+                          <div className="text-[9px] font-semibold mt-0.5 select-none truncate">
+                            {isLimit ? (
+                              <span className="text-indigo-600 dark:text-indigo-400">⚡ Dynamic Limit</span>
+                            ) : (
+                              <span className="text-emerald-600 dark:text-emerald-400">⚡ Live Telemetry ({telemetryAccuracy})</span>
+                            )}
+                          </div>
+                        )}
+                      </td>
+                      <td className="py-3 px-2">
+                        <textarea
+                          value={isAutoRendered ? resolved.recovery_pass : row.recovery_pass}
+                          disabled={isAutoRendered}
+                          onChange={(e) => {
+                            const updated = comparisonRows.map((r, i) => i === idx ? { ...r, recovery_pass: e.target.value } : r)
+                            setComparisonRows(updated)
+                          }}
+                          onKeyDown={(e) => handleTextareaKeyDown(e, isAutoRendered ? resolved.recovery_pass : row.recovery_pass, (newVal) => {
+                            if (!isAutoRendered) {
+                              const updated = comparisonRows.map((r, i) => i === idx ? { ...r, recovery_pass: newVal } : r)
+                              setComparisonRows(updated)
+                            }
+                          })}
+                          placeholder="Value..."
+                          rows={1}
+                          className={`w-full border rounded-lg px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500 resize-none font-medium t-input-subtle ${
+                            isAutoRendered ? "bg-zinc-100/70 dark:bg-zinc-900/70 text-zinc-900 dark:text-zinc-100 border-dashed cursor-not-allowed opacity-90" : ""
+                          }`}
+                        />
+                        {isAutoRendered && (
+                          <div className="text-[9px] font-semibold mt-0.5 select-none truncate">
+                            {isLimit ? (
+                              <span className="text-indigo-600 dark:text-indigo-400">⚡ Dynamic Limit</span>
+                            ) : (
+                              <span className="text-emerald-600 dark:text-emerald-400">⚡ Live Telemetry</span>
+                            )}
+                          </div>
+                        )}
+                      </td>
+                      <td className="py-3 px-2">
+                        <textarea
+                          value={isAutoRendered ? resolved.pro : row.pro}
+                          disabled={isAutoRendered}
+                          onChange={(e) => {
+                            const updated = comparisonRows.map((r, i) => i === idx ? { ...r, pro: e.target.value } : r)
+                            setComparisonRows(updated)
+                          }}
+                          onKeyDown={(e) => handleTextareaKeyDown(e, isAutoRendered ? resolved.pro : row.pro, (newVal) => {
+                            if (!isAutoRendered) {
+                              const updated = comparisonRows.map((r, i) => i === idx ? { ...r, pro: newVal } : r)
+                              setComparisonRows(updated)
+                            }
+                          })}
+                          placeholder="Value..."
+                          rows={1}
+                          className={`w-full border rounded-lg px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500 resize-none font-bold t-input-subtle ${
+                            isAutoRendered ? "bg-zinc-100/70 dark:bg-zinc-900/70 text-zinc-900 dark:text-zinc-100 border-dashed cursor-not-allowed opacity-90" : ""
+                          }`}
+                        />
+                        {isAutoRendered && (
+                          <div className="text-[9px] font-semibold mt-0.5 select-none truncate">
+                            {isLimit ? (
+                              <span className="text-indigo-600 dark:text-indigo-400">⚡ Dynamic Limit</span>
+                            ) : (
+                              <span className="text-emerald-600 dark:text-emerald-400">⚡ Live Telemetry ({telemetryAccuracy})</span>
+                            )}
+                          </div>
+                        )}
+                      </td>
+                      <td className="py-3 px-2">
+                        <textarea
+                          value={isAutoRendered ? resolved.super : row.super}
+                          disabled={isAutoRendered}
+                          onChange={(e) => {
+                            const updated = comparisonRows.map((r, i) => i === idx ? { ...r, super: e.target.value } : r)
+                            setComparisonRows(updated)
+                          }}
+                          onKeyDown={(e) => handleTextareaKeyDown(e, isAutoRendered ? resolved.super : row.super, (newVal) => {
+                            if (!isAutoRendered) {
+                              const updated = comparisonRows.map((r, i) => i === idx ? { ...r, super: newVal } : r)
+                              setComparisonRows(updated)
+                            }
+                          })}
+                          placeholder="Value..."
+                          rows={1}
+                          className={`w-full border rounded-lg px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500 resize-none font-bold t-input-subtle ${
+                            isAutoRendered ? "bg-zinc-100/70 dark:bg-zinc-900/70 text-zinc-900 dark:text-zinc-100 border-dashed cursor-not-allowed opacity-90" : ""
+                          }`}
+                        />
+                        {isAutoRendered && (
+                          <div className="text-[9px] font-semibold mt-0.5 select-none truncate">
+                            {isLimit ? (
+                              <span className="text-indigo-600 dark:text-indigo-400">⚡ Dynamic Limit</span>
+                            ) : (
+                              <span className="text-emerald-600 dark:text-emerald-400">⚡ Live Telemetry ({telemetryAccuracy})</span>
+                            )}
+                          </div>
+                        )}
+                      </td>
+                      <td className="py-3 pl-4 text-right">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setComparisonRows(comparisonRows.filter((_, i) => i !== idx))
+                          }}
+                          className="w-7 h-7 rounded text-red-500 hover:bg-red-500/10 border border-transparent hover:border-red-500/20 inline-flex items-center justify-center transition-all cursor-pointer"
+                          title="Delete comparison row"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </td>
+                    </tr>
+                  )
+                })}
               </tbody>
             </table>
           </div>
@@ -513,6 +616,15 @@ export default function AdminTierFeatures() {
           >
             <Plus className="w-3.5 h-3.5" /> Add Comparison Row
           </button>
+
+          <div className="mt-4 p-3 rounded-xl bg-zinc-50 dark:bg-zinc-900/40 border t-border-subtle text-[11px] text-zinc-500 space-y-1">
+            <div>
+              💡 <strong>Dynamic Limit Thresholds:</strong> Automatically populates with live device and file size limits from the Plan Thresholds configuration.
+            </div>
+            <div>
+              📡 <strong>Dynamic Telemetry:</strong> Automatically syncs live restoration accuracy ({telemetryAccuracy || "90.8%"}) directly from real user telemetry in Firestore (<code className="text-[10px] font-mono text-zinc-400">platform_stats/global</code>). Footnote renders automatically on the pricing page.
+            </div>
+          </div>
         </CardContent>
       </Card>
 

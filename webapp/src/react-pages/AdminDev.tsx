@@ -82,7 +82,7 @@ export default function AdminDev() {
   }
 
   return (
-    <div className="max-w-4xl mx-auto p-4 space-y-6">
+    <div className="w-full min-w-0 space-y-6">
       <div className="flex items-center justify-between pb-4 border-b border-zinc-900">
         <div>
           <h1 className="text-xl font-bold text-white tracking-tight flex items-center gap-2">

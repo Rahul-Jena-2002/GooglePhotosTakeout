@@ -12,7 +12,7 @@ export interface KeyEntry {
   sensitive: boolean
 }
 
-export const CATEGORIES = ["Cloud Functions", "Payments", "AI / APIs", "SEO", "Frontend (Build-time)"]
+export const CATEGORIES = ["Cloud Functions", "Payments", "AI / APIs", "Email / Alerts", "SEO", "Frontend (Build-time)"]
 
 export const KEY_DEFINITIONS: Omit<KeyEntry, "value">[] = [
   // ── Cloud Functions ──────────────────────────────────────────────────
@@ -89,6 +89,56 @@ export const KEY_DEFINITIONS: Omit<KeyEntry, "value">[] = [
     sensitive: true,
     link: "https://aistudio.google.com/app/apikey",
     linkLabel: "Google AI Studio",
+  },
+
+  // ── Email / Alerts ────────────────────────────────────────────────────
+  {
+    id: "emailjs_service_id",
+    label: "EmailJS Service ID",
+    description: "Service ID for your EmailJS Gmail/SMTP service connected to takeoutfix.support@gmail.com. Used for sending ticket raised alerts and admin invites.",
+    firestorePath: "settings/system",
+    firestoreField: "emailjs_service_id",
+    placeholder: "service_xxxxxxx",
+    category: "Email / Alerts",
+    sensitive: false,
+    link: "https://dashboard.emailjs.com/admin",
+    linkLabel: "EmailJS Dashboard",
+  },
+  {
+    id: "emailjs_ticket_template_id",
+    label: "EmailJS Ticket Alert Template ID",
+    description: "Template ID for support ticket alerts. Populates {{ticket_id}}, {{user_email}}, {{subject}}, {{message}}, {{from_email}}, {{ticket_url}}.",
+    firestorePath: "settings/system",
+    firestoreField: "emailjs_ticket_template_id",
+    placeholder: "template_xxxxxxx",
+    category: "Email / Alerts",
+    sensitive: false,
+    link: "https://dashboard.emailjs.com/admin/templates",
+    linkLabel: "EmailJS Templates",
+  },
+  {
+    id: "emailjs_public_key",
+    label: "EmailJS Public Key",
+    description: "Public key from EmailJS Account Settings. Used to authenticate email dispatch calls.",
+    firestorePath: "settings/system",
+    firestoreField: "emailjs_public_key",
+    placeholder: "xxxxxxxxxxxxxxx",
+    category: "Email / Alerts",
+    sensitive: true,
+    link: "https://dashboard.emailjs.com/admin/account",
+    linkLabel: "EmailJS Account",
+  },
+  {
+    id: "recaptcha_site_key",
+    label: "Google Cloud reCAPTCHA Enterprise Site Key",
+    description: "Enterprise site key protecting sign in, sign up, feedback, and ticket forms (Project: takeout-fix).",
+    firestorePath: "settings/system",
+    firestoreField: "recaptcha_site_key",
+    placeholder: "6LdDpb4tAAAAADJHZzjrMIC-gvDXkAw0rhdgB5Sb",
+    category: "Email / Alerts",
+    sensitive: false,
+    link: "https://console.cloud.google.com/security/recaptcha",
+    linkLabel: "Google Cloud reCAPTCHA Console",
   },
 
   // ── SEO ───────────────────────────────────────────────────────────────

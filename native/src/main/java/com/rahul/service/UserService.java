@@ -3,6 +3,7 @@ package com.rahul.service;
 import com.rahul.controller.UserController;
 import com.rahul.model.User;
 import com.rahul.repository.UserRepository;
+import java.io.File;
 import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.Map;
@@ -22,10 +23,15 @@ public class UserService {
     public UserService(UserRepository userRepository) {
         this.userRepository = userRepository;
 
-        // Restore initial user into UserController on startup
-        User existing = userRepository.getCurrentUser();
-        if (existing != null) {
-            syncToGuiBridge(existing);
+        // Restore initial user into UserController on startup only if session.json exists
+        File sessionFile = new File(System.getProperty("user.home"), ".takeoutfix/session.json");
+        if (sessionFile.exists()) {
+            User existing = userRepository.getCurrentUser();
+            if (existing != null) {
+                syncToGuiBridge(existing);
+            }
+        } else {
+            userRepository.clearCurrentUser();
         }
     }
 
@@ -54,7 +60,7 @@ public class UserService {
     }
 
     public boolean isAuthenticated() {
-        return userRepository.getCurrentUser() != null;
+        return userRepository.getCurrentUser() != null && !UserController.getCurrentUserProfile().isEmpty();
     }
 
     public User getCurrentUser() {
@@ -63,7 +69,6 @@ public class UserService {
 
     public void logout() {
         userRepository.clearCurrentUser();
-        UserController.updateUserProfile(new HashMap<>());
         UserController.getCurrentUserProfile().clear();
     }
 
@@ -118,7 +123,6 @@ public class UserService {
         userRepository.setCurrentUser(user);
         syncToGuiBridge(user);
     }
-
 
     private void syncToGuiBridge(User user) {
         Map<String, Object> map = new HashMap<>();

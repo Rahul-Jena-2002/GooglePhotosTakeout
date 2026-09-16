@@ -182,19 +182,19 @@ const prices = PLAN_PRICES[region] || PLAN_PRICES.us;
     </section>
 
     <div class="w-full max-w-4xl mx-auto px-6 my-8">
-      <AdUnit client:only="react" type="horizontal" slot="2" />
+      <AdUnit client:idle type="horizontal" slot="2" />
     </div>
 
     <!-- 4. SOLUTION (BEFORE / AFTER - INTERACTIVE COMPARE SLIDER) -->
     <section class="w-full py-36 relative z-10">
       <div class="max-w-7xl mx-auto px-4 text-center">
         <h2 class="text-4xl md:text-5xl font-bold tracking-tighter mb-16">The TakeoutFix Solution</h2>
-        <Compare client:only="react" />
+        <Compare client:idle />
       </div>
     </section>
 
     <div class="w-full max-w-4xl mx-auto px-6 my-8">
-      <AdUnit client:only="react" type="horizontal" slot="3" />
+      <AdUnit client:idle type="horizontal" slot="3" />
     </div>
 
     <!-- 5. PRIVACY SECTION -->
@@ -224,7 +224,7 @@ const prices = PLAN_PRICES[region] || PLAN_PRICES.us;
     </section>
 
     <div class="w-full max-w-4xl mx-auto px-6 my-8">
-      <AdUnit client:only="react" type="horizontal" slot="4" />
+      <AdUnit client:idle type="horizontal" slot="4" />
     </div>
 
     <!-- 6. HOW IT WORKS DIAGRAM -->
@@ -259,7 +259,7 @@ const prices = PLAN_PRICES[region] || PLAN_PRICES.us;
           <div class="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[280px] h-[210px] border-2 border-zinc-400/20 dark:border-zinc-600/20 rounded-lg pointer-events-none z-20 bg-zinc-500/[0.02]"></div>
 
           <!-- Scrollable Track (Only 4 cards, no cycles) -->
-          <div id="timeline-track" class="flex flex-row items-center gap-6 overflow-x-auto no-scrollbar w-full py-12 select-none" style="padding-left: calc(50% - 128px); padding-right: calc(50% - 128px); scroll-snap-type: x mandatory; -webkit-overflow-scrolling: touch; scrollbar-width: none;">
+          <div id="timeline-track" class="timeline-scroll-track flex flex-row items-center gap-6 overflow-x-auto no-scrollbar w-full py-12 select-none">
             <div class="slider-card bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 p-8 rounded-lg w-64 min-w-[256px] h-48 flex-shrink-0 transition-all duration-300 flex flex-col justify-center text-center scroll-snap-align-center" data-step="0">
               <div class="text-3xl font-black text-foreground mb-2 tracking-tight">Takeout</div>
               <div class="text-zinc-500 text-sm font-semibold">Photos + JSON</div>
@@ -287,13 +287,12 @@ const prices = PLAN_PRICES[region] || PLAN_PRICES.us;
       </div>
     </section>
 
-    <!-- 9. FAQ SECTION (INTERACTIVE EXPANDABLE FAQ DECK) -->
     <section class="w-full max-w-5xl mx-auto px-4 py-36 relative z-10">
       <h2 class="text-4xl font-bold tracking-tighter mb-12 text-center">Frequently Asked Questions</h2>
-      <ExpandableFaq client:only="react" />
+      <ExpandableFaq client:idle />
       <div class="mt-12 text-center">
-        <a href="/support" class="inline-flex items-center justify-center min-h-[44px] min-w-[44px] px-4">
-          <button class="text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 font-semibold text-sm transition-colors cursor-pointer" aria-label="View all frequently asked questions on support page">View all frequently asked questions &rarr;</button>
+        <a href="/support" class="inline-flex items-center justify-center min-h-[48px] px-6 py-2.5 text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 font-semibold text-sm transition-colors cursor-pointer" aria-label="View all frequently asked questions on support page">
+          View all frequently asked questions &rarr;
         </a>
       </div>
     </section>

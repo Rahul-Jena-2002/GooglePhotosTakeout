@@ -6,6 +6,7 @@ import { Badge } from "../components/ui/badge";
 import { ToastContainer } from "../components/ui/toast";
 import { CheckCircle2, AlertCircle, Laptop, RefreshCw, ExternalLink } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import { getFriendlyAuthMessage } from "../lib/authErrors";
 
 function DesktopAuthBridgeContent() {
   const { user, userData, loading, login, logout } = useAuth();
@@ -52,19 +53,26 @@ function DesktopAuthBridgeContent() {
       const usedBytes = userData?.usedBytes || 0;
 
       const payload = {
+        uid: user.uid,
+        googleId: user.uid,
         email,
         displayName,
+        name: displayName,
         plan,
         usedFiles,
         usedBytes,
         token,
-        photoUrl: user.photoURL || ""
+        photoUrl: user.photoURL || "",
+        photoURL: user.photoURL || ""
       };
 
       // Build manual fallback URL
       const queryParams = new URLSearchParams({
+        uid: user.uid,
+        googleId: user.uid,
         email,
         displayName,
+        name: displayName,
         plan,
         usedFiles: String(usedFiles),
         usedBytes: String(usedBytes),
@@ -121,8 +129,8 @@ function DesktopAuthBridgeContent() {
       attemptedRef.current = false;
       await login();
     } catch (err: any) {
-      console.error("Sign-in failed:", err);
-      setErrorMessage(err?.message || "Sign-in failed. Please try again.");
+      const feedback = getFriendlyAuthMessage(err);
+      setErrorMessage(feedback.message);
     }
   };
 
