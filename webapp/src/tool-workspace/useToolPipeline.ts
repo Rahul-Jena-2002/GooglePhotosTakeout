@@ -176,6 +176,7 @@ export function useToolPipeline() {
     super:         { maxFiles: Infinity, maxSizeMB: Infinity },
   })
   const [isFreePromoActive, setIsFreePromoActive] = useState(false)
+  const [unlockFreeFeatures, setUnlockFreeFeatures] = useState(true)
 
   const limitFiles = plan === 'pro' || plan === 'super' || (plan === 'free' && isFreePromoActive)
     ? Infinity
@@ -219,6 +220,8 @@ export function useToolPipeline() {
         } else {
           setIsFreePromoActive(false)
         }
+        // Sync unlockFreeFeatures setting (default to true)
+        setUnlockFreeFeatures(data.unlockFreeFeatures !== false)
         // Sync tool thresholds from admin settings
         const stored = data.tierThresholds
         if (stored) {
@@ -2451,9 +2454,10 @@ export function useToolPipeline() {
     dupStats,
     dupGroups,
     dupScanStatus,
-    // Active tool tab
+    // Active tool tab & feature unlocks
     activeToolTab,
     setActiveToolTab,
+    unlockFreeFeatures,
     // Refs
     logContainerRef,
     // Handlers

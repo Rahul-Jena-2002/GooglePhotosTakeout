@@ -6,7 +6,7 @@ import { useToastStore } from "../store/useToastStore"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../components/ui/card"
 import { Button } from "../components/ui/button"
 import { Input } from "../components/ui/input"
-import { Sliders, Database, Save, Shield, Info, ArrowLeftRight, Zap, Bell, Clock } from "lucide-react"
+import { Sliders, Database, Save, Shield, Info, ArrowLeftRight, Zap, Bell, Clock, Sparkles } from "lucide-react"
 
 interface ThresholdCfg {
   maxFiles: string
@@ -32,6 +32,10 @@ export default function AdminPlanThresholds() {
   const [freePromoEndsAt, setFreePromoEndsAt] = useState<number | null>(null)
   const [freePromoProcessing, setFreePromoProcessing] = useState(false)
   const [freePromoTimeRemaining, setFreePromoTimeRemaining] = useState("")
+
+  // Free Tier Feature Unlock State (Ad-Supported)
+  const [unlockFreeFeatures, setUnlockFreeFeatures] = useState<boolean>(true)
+  const [unlockFreeFeaturesProcessing, setUnlockFreeFeaturesProcessing] = useState(false)
 
   const [tierThresholds, setTierThresholds] = useState<Record<string, ThresholdCfg>>({
     free:          { maxFiles: "250",    maxSizeMB: "500"    },
@@ -89,6 +93,9 @@ export default function AdminPlanThresholds() {
           setFreePromoActive(false)
           setFreePromoEndsAt(null)
         }
+
+        // Load free tier Super feature unlock state (default to true)
+        setUnlockFreeFeatures(data.unlockFreeFeatures !== false)
       }
     })
 
@@ -227,6 +234,41 @@ export default function AdminPlanThresholds() {
     }
   }
 
+  const handleToggleUnlockFreeFeatures = async (enable: boolean) => {
+    setUnlockFreeFeaturesProcessing(true)
+    try {
+      await setDoc(
+        doc(db, "settings", "global"),
+        {
+          unlockFreeFeatures: enable,
+        },
+        { merge: true }
+      )
+
+      await addDoc(collection(db, "admin_activity"), {
+        actorUid: adminData?.uid || "system",
+        actorName: adminData?.displayName || "Admin",
+        actorRole: role,
+        action: enable ? "UNLOCK_FREE_FEATURES_ENABLED" : "UNLOCK_FREE_FEATURES_DISABLED",
+        description: `${enable ? "Unlocked" : "Locked"} all Super features for Free tier users (ad-supported).`,
+        timestamp: Date.now(),
+      })
+
+      setUnlockFreeFeatures(enable)
+      useToastStore.getState().addToast(
+        enable
+          ? "All Super features unlocked for Free tier (ad-supported)!"
+          : "Super features restricted to Super plan.",
+        "success"
+      )
+    } catch (err: any) {
+      console.error(err)
+      useToastStore.getState().addToast("Failed to update feature settings: " + err.message, "error")
+    } finally {
+      setUnlockFreeFeaturesProcessing(false)
+    }
+  }
+
   const handleSave = async () => {
     setSaving(true)
     try {
@@ -236,6 +278,7 @@ export default function AdminPlanThresholds() {
       await setDoc(
         doc(db, "settings", "global"),
         {
+          unlockFreeFeatures: unlockFreeFeatures,
           freeQuotaMB: Number(tierThresholds.free.maxSizeMB), // sync mirror
           recoveryPassHours: recHours,
           recoveryPassDurationValue: recVal,
@@ -396,6 +439,39 @@ export default function AdminPlanThresholds() {
                   )}
                 </div>
               </div>
+
+              {/* Free Tier Super Feature Unlock (Ad-Supported) */}
+              {key === 'free' && (
+                <div className="space-y-2 pt-3 border-t t-border-subtle">
+                  <div className="flex items-center justify-between gap-2 p-2.5 rounded-xl bg-purple-500/10 border border-purple-500/20">
+                    <div className="pr-2">
+                      <label className="text-[10px] font-bold uppercase tracking-wider block text-purple-400 flex items-center gap-1.5">
+                        <Sparkles className="w-3.5 h-3.5 text-purple-400" />
+                        Unlock Super Features
+                      </label>
+                      <p className="text-[10px] text-zinc-400 mt-0.5 leading-relaxed">
+                        Free users can access EXIF Viewer, Metadata Comparison, and Duplicate Analyzer with ads.
+                      </p>
+                    </div>
+
+                    <button
+                      type="button"
+                      disabled={unlockFreeFeaturesProcessing}
+                      onClick={() => handleToggleUnlockFreeFeatures(!unlockFreeFeatures)}
+                      className={`relative inline-flex h-5 w-10 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                        unlockFreeFeatures ? 'bg-purple-600' : 'bg-zinc-700'
+                      }`}
+                      title={unlockFreeFeatures ? "Disable Super features for Free" : "Unlock Super features for Free"}
+                    >
+                      <span
+                        className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                          unlockFreeFeatures ? 'translate-x-5' : 'translate-x-0'
+                        }`}
+                      />
+                    </button>
+                  </div>
+                </div>
+              )}
 
               {/* Limited-Time Unlimited for Free Tier Promo Config */}
               {key === 'free' && (

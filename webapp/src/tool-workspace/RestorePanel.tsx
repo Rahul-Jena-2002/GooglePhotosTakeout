@@ -18,6 +18,7 @@ interface RestorePanelProps {
   activeToolTab: 'restore' | 'viewer' | 'comparison' | 'duplicates'
   setActiveToolTab: (tab: 'restore' | 'viewer' | 'comparison' | 'duplicates') => void
   plan: string
+  unlockFreeFeatures?: boolean
   tierThresholds: {
     free: { maxFiles: number; maxSizeMB: number }
     recovery_pass: { maxFiles: number; maxSizeMB: number }
@@ -85,18 +86,20 @@ interface RestorePanelProps {
 // ---------------------------------------------------------------------------
 function SuperTierGate({
   plan,
+  unlockFreeFeatures = true,
   title,
   description,
   features,
   children,
 }: {
   plan: string
+  unlockFreeFeatures?: boolean
   title: string
   description: string
   features: string[]
   children: React.ReactNode
 }) {
-  if (plan === 'super') return <>{children}</>
+  if (plan === 'super' || unlockFreeFeatures) return <>{children}</>
 
   return (
     <div className="p-8 flex flex-col items-center justify-center text-center h-full max-w-md mx-auto space-y-6">
@@ -134,6 +137,7 @@ export function RestorePanel({
   activeToolTab,
   setActiveToolTab,
   plan,
+  unlockFreeFeatures = true,
   tierThresholds,
   takeoutFolder,
   outputFolder,
@@ -236,9 +240,9 @@ export function RestorePanel({
             className="w-full bg-[#121212] border border-white/10 hover:border-white/20 text-zinc-200 text-xs font-bold rounded-lg px-3 py-2 outline-none appearance-none cursor-pointer transition-all pr-8"
           >
             <option value="restore">Restore Archive</option>
-            <option value="viewer">{plan === 'super' ? 'EXIF Viewer' : '🔒 EXIF Viewer (Super)'}</option>
-            <option value="comparison">{plan === 'super' ? 'Comparison' : '🔒 Comparison (Super)'}</option>
-            <option value="duplicates">{plan === 'super' ? 'Duplicates' : '🔒 Duplicates (Super)'}</option>
+            <option value="viewer">{plan === 'super' ? 'EXIF Viewer' : unlockFreeFeatures ? 'EXIF Viewer (Ad-Supported)' : '🔒 EXIF Viewer (Super)'}</option>
+            <option value="comparison">{plan === 'super' ? 'Comparison' : unlockFreeFeatures ? 'Comparison (Ad-Supported)' : '🔒 Comparison (Super)'}</option>
+            <option value="duplicates">{plan === 'super' ? 'Duplicates' : unlockFreeFeatures ? 'Duplicates (Ad-Supported)' : '🔒 Duplicates (Super)'}</option>
           </select>
           <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2.5 text-zinc-400">
             <span className="text-[9px]">▼</span>
@@ -691,11 +695,21 @@ export function RestorePanel({
       {activeToolTab === 'viewer' && (
         <SuperTierGate
           plan={plan}
+          unlockFreeFeatures={unlockFreeFeatures}
           title="Visual EXIF Viewer"
           description="Gain deeper diagnostic insights into individual media files by inspecting their underlying EXIF structure locally."
           features={["Read Camera make, model, & software parameters", "Inspect Date & Time metadata headers", "Resolve Latitude, Longitude, and Altitude GPS coordinates", "100% Offline security"]}
         >
           <div className="p-6 space-y-6 overflow-y-auto h-full flex-grow">
+            {plan !== 'super' && unlockFreeFeatures && (
+              <div className="flex items-center justify-between gap-2 px-3.5 py-2 rounded-xl bg-purple-500/10 border border-purple-500/20 text-purple-300 text-xs font-semibold">
+                <span className="flex items-center gap-2">
+                  <Sparkles className="w-4 h-4 text-purple-400 shrink-0" />
+                  Free Tier (Ad-Supported) — Visual EXIF Inspector Unlocked
+                </span>
+                <a href="/pricing" className="text-[10px] text-zinc-400 hover:text-white underline shrink-0">Remove Ads with Super</a>
+              </div>
+            )}
             <div className="border-b border-white/5 pb-4">
               <h2 className="text-lg font-bold tracking-tight text-white mb-1">Visual EXIF Inspector</h2>
               <p className="text-zinc-400 text-xs">Review parsed metadata records extracted directly from files.</p>
@@ -807,11 +821,21 @@ export function RestorePanel({
       {activeToolTab === 'comparison' && (
         <SuperTierGate
           plan={plan}
+          unlockFreeFeatures={unlockFreeFeatures}
           title="Metadata Comparison"
           description="Perform side-by-side matches of image binary fields and sidecar JSON data before importing to check accuracy."
           features={["Compare local image name vs sidecar title", "Evaluate embedded EXIF date vs JSON formatted taken time", "Cross check GPS coordinates and tags", "Diagnose synchronization mismatches"]}
         >
           <div className="p-6 space-y-6 overflow-y-auto h-full flex-grow">
+            {plan !== 'super' && unlockFreeFeatures && (
+              <div className="flex items-center justify-between gap-2 px-3.5 py-2 rounded-xl bg-purple-500/10 border border-purple-500/20 text-purple-300 text-xs font-semibold">
+                <span className="flex items-center gap-2">
+                  <Sparkles className="w-4 h-4 text-purple-400 shrink-0" />
+                  Free Tier (Ad-Supported) — Metadata Comparison Unlocked
+                </span>
+                <a href="/pricing" className="text-[10px] text-zinc-400 hover:text-white underline shrink-0">Remove Ads with Super</a>
+              </div>
+            )}
             <div className="border-b border-white/5 pb-4">
               <h2 className="text-lg font-bold tracking-tight text-white mb-1">Side-by-Side Comparison</h2>
               <p className="text-zinc-400 text-xs">Compare EXIF parameters vs Google Takeout JSON sidecar values.</p>
@@ -964,11 +988,21 @@ export function RestorePanel({
       {activeToolTab === 'duplicates' && (
         <SuperTierGate
           plan={plan}
+          unlockFreeFeatures={unlockFreeFeatures}
           title="Duplicate Space Analyzer"
           description="Scan local Takeout folders to identify byte-identical duplicate files and reclaim storage."
           features={["Detect byte-exact identical duplicate groups", "Spot conflicting renamed files e.g. photo(1).jpg", "Calculate exact storage space reclaimable in megabytes", "Recursive main-thread scanner"]}
         >
           <div className="p-6 space-y-6 overflow-y-auto h-full flex flex-col flex-grow">
+            {plan !== 'super' && unlockFreeFeatures && (
+              <div className="flex items-center justify-between gap-2 px-3.5 py-2 rounded-xl bg-purple-500/10 border border-purple-500/20 text-purple-300 text-xs font-semibold mb-2">
+                <span className="flex items-center gap-2">
+                  <Sparkles className="w-4 h-4 text-purple-400 shrink-0" />
+                  Free Tier (Ad-Supported) — Duplicate Analyzer Unlocked
+                </span>
+                <a href="/pricing" className="text-[10px] text-zinc-400 hover:text-white underline shrink-0">Remove Ads with Super</a>
+              </div>
+            )}
             <div className="border-b border-white/5 pb-4 flex justify-between items-center">
               <div>
                 <h2 className="text-lg font-bold tracking-tight text-white mb-1">Duplicate Space Analyzer</h2>

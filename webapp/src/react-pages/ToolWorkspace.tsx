@@ -150,6 +150,7 @@ export function ToolWorkspaceContent() {
           activeToolTab={pipeline.activeToolTab}
           setActiveToolTab={pipeline.setActiveToolTab}
           plan={pipeline.plan}
+          unlockFreeFeatures={pipeline.unlockFreeFeatures}
           tierThresholds={pipeline.tierThresholds}
           takeoutFolder={pipeline.takeoutFolder}
           outputFolder={pipeline.outputFolder}
