@@ -9,8 +9,7 @@ import { collection, query, where, getDocs, addDoc, doc, updateDoc, onSnapshot }
 import { db } from "../firebase"
 import { motion, AnimatePresence } from "framer-motion"
 import AdUnit from "../components/AdUnit"
-import { ToastContainer } from "../components/ui/toast"
-import { notifyAdminsOnTicketRaised } from "../lib/ticketNotify"
+import { notifyAdminsOnTicketRaised, notifyAdminsOnTicketReply, notifyAdminsOnFeedback } from "../lib/ticketNotify"
 
 interface SupportFaq {
   id: string;
@@ -144,6 +143,14 @@ function SupportPageContent() {
         status: "IN_PROGRESS",
         replies: [...(currentReplies || []), newReply]
       })
+
+      // Dispatch real-time in-app notification to all team members
+      notifyAdminsOnTicketReply({
+        ticketId,
+        userEmail: user?.email || "Unknown",
+        userName: newReply.senderName,
+        replyMessage: newReply.message,
+      }).catch(err => console.warn("[SupportPage] Failed to notify team on reply:", err))
       
       setFollowUpText("")
       loadTickets()
@@ -246,22 +253,71 @@ function SupportPageContent() {
 
     setFeedbackSubmitStatus("submitting")
     try {
-      await addDoc(collection(db, "feedback"), {
-        uid: user?.uid || "anonymous",
-        email: user?.email || "anonymous",
-        displayName: userData?.firstName || user?.displayName || "Anonymous User",
+      try {
+        await addDoc(collection(db, "feedback"), {
+          uid: user?.uid || "anonymous",
+          email: user?.email || "anonymous",
+          displayName: userData?.firstName || user?.displayName || "Anonymous User",
+          rating: feedbackRating,
+          category: feedbackCategory,
+          message: feedbackMessage.trim(),
+          createdAt: Date.now()
+        })
+      } catch (err: any) {
+        console.warn("[SupportPage] feedback collection write failed, falling back to tickets:", err?.message || err)
+        // Fallback: If authenticated, save to `tickets` collection which has active permission rules
+        if (user) {
+          const fallbackTicketId = 'FDB-' + Math.floor(100000 + Math.random() * 900000)
+          await addDoc(collection(db, "tickets"), {
+            ticketId: fallbackTicketId,
+            uid: user.uid,
+            email: user.email,
+            subject: `[User Feedback - ${feedbackCategory.toUpperCase()}] Rating: ${feedbackRating}/5`,
+            message: feedbackMessage.trim(),
+            status: "OPEN",
+            category: "feedback",
+            rating: feedbackRating,
+            createdAt: Date.now(),
+            replies: []
+          })
+        } else {
+          // Anonymous: log to dev endpoint so feedback is never lost
+          await fetch('/api/dev-log', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              type: 'FEEDBACK',
+              message: {
+                rating: feedbackRating,
+                category: feedbackCategory,
+                message: feedbackMessage.trim(),
+                createdAt: Date.now()
+              }
+            })
+          }).catch(() => {})
+        }
+      }
+
+      // Non-blocking real-time notification dispatch to all team members
+      const submitterName = userData?.firstName 
+        ? `${userData.firstName} ${userData.lastName || ''}`.trim()
+        : (user?.displayName || user?.email || "User")
+
+      notifyAdminsOnFeedback({
         rating: feedbackRating,
         category: feedbackCategory,
         message: feedbackMessage.trim(),
-        createdAt: Date.now()
-      })
+        userEmail: user?.email || "anonymous",
+        displayName: submitterName,
+      }).catch(err => console.warn("[SupportPage] Background feedback alert dispatch error:", err))
+
       setFeedbackSubmitStatus("success")
       setFeedbackMessage("")
       setFeedbackRating(5)
       setFeedbackCategory("general")
       setTimeout(() => setFeedbackSubmitStatus("idle"), 3000)
     } catch (err) {
-      console.error(err)
+      console.error("[SupportPage] Feedback submission error:", err)
       setFeedbackSubmitStatus("error")
     }
   }

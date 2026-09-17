@@ -75,3 +75,7 @@ wix-tools/
 *.log
 rel_*.json
 latest_runs.json
+__pycache__/
+*.pyc
+TAKEOUT_EDGE_CASES_TEST_SUITE/
+test files/

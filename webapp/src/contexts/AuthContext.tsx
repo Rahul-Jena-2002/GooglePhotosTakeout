@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { type User, onAuthStateChanged, signInWithPopup, GoogleAuthProvider, signOut } from 'firebase/auth';
+import { type User, onAuthStateChanged, signInWithPopup, signInWithRedirect, getRedirectResult, GoogleAuthProvider, signOut } from 'firebase/auth';
 import { doc, getDoc, setDoc, getDocs, collection, query, where, deleteDoc, onSnapshot, increment, addDoc, updateDoc } from 'firebase/firestore';
 import { auth, db } from '../firebase';
 import { indexedDbService } from '../lib/indexedDbService';
@@ -217,6 +217,10 @@ interface AuthContextType {
   inviteFacet: InviteFacet;
   telemetryAccuracy: string;
   platformStats: any;
+  syncStatus: 'synced' | 'syncing' | 'failed';
+  syncError: string | null;
+  isFreePromoActive: boolean;
+  reSyncAuthAndFeatures: () => Promise<void>;
 }
 
 const getPlanDeviceLimit = (plan: string): number => {
@@ -337,6 +341,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [showDeviceLimitModal, setShowDeviceLimitModal] = useState(false);
   const [pendingSessionData, setPendingSessionData] = useState<any>(null);
 
+  const [syncStatus, setSyncStatus] = useState<'synced' | 'syncing' | 'failed'>('synced');
+  const [syncError, setSyncError] = useState<string | null>(null);
+  const [isFreePromoActive, setIsFreePromoActive] = useState<boolean>(false);
+
   const setUserData = (data: UserData | null) => {
     setUserDataState(data);
     try {
@@ -422,6 +430,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }, (err) => {
       console.warn("AuthContext: platform_stats listener error:", err);
     });
+    return () => unsub();
+  }, []);
+
+  useEffect(() => {
+    const unsub = onSnapshot(doc(db, "settings", "global"), (snap) => {
+      if (snap.exists()) {
+        const data = snap.data();
+        const promo = data.freeUnlimitedPromo;
+        if (promo && promo.enabled && promo.endsAt && Date.now() < promo.endsAt) {
+          setIsFreePromoActive(true);
+        } else {
+          setIsFreePromoActive(false);
+        }
+      }
+    }, () => {});
     return () => unsub();
   }, []);
 
@@ -936,7 +959,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       })
     ]);
 
-    const isAdminUser = (adminSnap && adminSnap.exists()) || isSuperAdmin || isDev;
+    const isAdminUser = (adminSnap && adminSnap.exists()) || isSuperAdmin;
 
     const profileData = {
       email: currentUser.email,
@@ -1058,8 +1081,24 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           setSessionRegistered(true);
         }
       }
+      setSyncStatus('synced');
+      setSyncError(null);
+    } else if (snap === null) {
+      // Network failure / Firestore 429 quota error: preserve last-known-good entitlements!
+      setSyncStatus('failed');
+      setSyncError('Network unreachable. Preserving cached session & entitlements.');
+      const saved = typeof window !== 'undefined' ? localStorage.getItem("takeoutfix_user_data") : null;
+      if (saved) {
+        try {
+          const cachedData = JSON.parse(saved);
+          setUserDataState(cachedData);
+          setSessionRegistered(true);
+        } catch (_) {}
+      }
     } else {
-      // New user registration or Firestore 429 quota fallback
+      // New user registration (snap !== null && !snap.exists())
+      setSyncStatus('synced');
+      setSyncError(null);
       const displayName = currentUser.displayName || '';
       const email = currentUser.email || '';
       const nameParts = displayName.trim().split(/\s+/);
@@ -1092,13 +1131,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setSessionRegistered(true);
     }
 
-    if (isSuperAdmin || isDev) {
+    if (isSuperAdmin) {
       const adminRecord: AdminData = {
         uid: currentUser.uid,
-        email: currentUser.email || 'dev-admin@takeoutfix.local',
-        displayName: currentUser.displayName || 'Dev Admin',
+        email: currentUser.email!,
+        displayName: currentUser.displayName || 'Super Admin',
         photoURL: currentUser.photoURL,
-        role: isSuperAdmin ? 'SUPER_ADMIN' : 'ADMIN',
+        role: 'SUPER_ADMIN',
         status: 'online',
         lastSeen: Date.now(),
         createdAt: (adminSnap && adminSnap.exists()) ? adminSnap.data().createdAt : Date.now(),
@@ -1116,7 +1155,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
       }
 
-      if (isSuperAdmin && !isDev && adminNeedsWrite) {
+      if (adminNeedsWrite) {
         await setDoc(adminRef, adminRecord, { merge: true }).catch(console.error);
       }
       setAdminData(adminRecord);
@@ -1132,30 +1171,94 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (currentUser.email) {
         const checkInvitesAsync = async () => {
           try {
-            const qInvite = query(collection(db, "admins"), where("email", "==", currentUser.email));
-            const inviteSnap = await getDocs(qInvite);
-            const pendingInvite = inviteSnap.docs.find(d => d.data().pending === true);
+            const userEmail = currentUser.email!.toLowerCase();
             
-            if (pendingInvite) {
-              const inviteDoc = pendingInvite;
-              const inviteData = inviteDoc.data();
-              if (inviteData) {
-                const adminRecord: AdminData = {
-                  uid: currentUser.uid,
-                  email: currentUser.email!,
-                  displayName: currentUser.displayName || inviteData.displayName || 'Admin',
-                  photoURL: currentUser.photoURL,
-                  role: inviteData.role || 'SUPPORT',
-                  status: 'online',
-                  lastSeen: Date.now(),
-                  createdAt: Date.now()
-                };
-                
-                await setDoc(adminRef, adminRecord);
-                await deleteDoc(inviteDoc.ref);
-                await setDoc(docRef, { isAdmin: true }, { merge: true }).catch(console.error);
-                setAdminData(adminRecord);
+            // 1. Query adminInvites collection for pending invite for this email
+            const qInvite = query(
+              collection(db, "adminInvites"),
+              where("email", "==", userEmail),
+              where("status", "==", "pending")
+            );
+            const inviteSnap = await getDocs(qInvite);
+
+            let targetInviteDoc = !inviteSnap.empty ? inviteSnap.docs[0] : null;
+
+            // 2. Also check URL invite query param as direct fallback
+            if (!targetInviteDoc && typeof window !== 'undefined') {
+              const urlParams = new URLSearchParams(window.location.search);
+              const urlInviteId = urlParams.get("invite");
+              if (urlInviteId) {
+                try {
+                  const directDoc = await getDoc(doc(db, "adminInvites", urlInviteId));
+                  if (
+                    directDoc.exists() && 
+                    directDoc.data().email?.toLowerCase() === userEmail &&
+                    directDoc.data().status === "pending"
+                  ) {
+                    targetInviteDoc = directDoc;
+                  }
+                } catch { /* ignore */ }
               }
+            }
+            
+            if (targetInviteDoc) {
+              const inviteDoc = targetInviteDoc;
+              const inviteData = inviteDoc.data();
+              
+              // Check expiration
+              const expiresAtMs = inviteData.expiresAt?.toMillis
+                ? inviteData.expiresAt.toMillis()
+                : (typeof inviteData.expiresAt === 'number' ? inviteData.expiresAt : 0);
+              if (expiresAtMs && Date.now() > expiresAtMs) {
+                console.warn("[AuthContext] Found admin invite for user but it has expired.");
+                setAdminData(null);
+                return;
+              }
+
+              const adminRecord: AdminData = {
+                uid: currentUser.uid,
+                email: currentUser.email!,
+                displayName: currentUser.displayName || inviteData.displayName || userEmail.split("@")[0] || 'Admin',
+                photoURL: currentUser.photoURL || null,
+                role: inviteData.role || 'SUPPORT',
+                status: 'online',
+                lastSeen: Date.now(),
+                createdAt: Date.now(),
+                inviteId: inviteDoc.id
+              };
+              
+              // 1. Create admin document in `admins` with inviteId (satisfies firestore.rules)
+              await setDoc(adminRef, adminRecord);
+              
+              // 2. Mark invite as accepted in `adminInvites`
+              await updateDoc(inviteDoc.ref, {
+                status: "accepted",
+                acceptedAt: Date.now(),
+                acceptedUid: currentUser.uid
+              }).catch(console.warn);
+
+              // 3. Mark user doc as admin
+              await updateDoc(docRef, { isAdmin: true }).catch(() => {
+                setDoc(docRef, { isAdmin: true }, { merge: true }).catch(console.warn);
+              });
+              
+              setAdminData(adminRecord);
+              setUserData(prev => prev ? ({ ...prev, isAdmin: true }) : prev);
+
+              // 4. Log to admin_activity
+              try {
+                await addDoc(collection(db, "admin_activity"), {
+                  actorUid: currentUser.uid,
+                  actorName: adminRecord.displayName,
+                  actorRole: adminRecord.role,
+                  action: "INVITE_ACCEPTED",
+                  target: adminRecord.email,
+                  description: `${adminRecord.displayName} accepted invite and joined as ${adminRecord.role}`,
+                  timestamp: Date.now()
+                });
+              } catch { /* ignore */ }
+
+              console.log("[AuthContext] Successfully provisioned admin from invite:", adminRecord);
             } else {
               setAdminData(null);
             }
@@ -1352,9 +1455,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const login = async () => {
     const provider = new GoogleAuthProvider();
     provider.setCustomParameters({ prompt: 'select_account' });
-    // Do NOT catch here — let the error bubble up to callers (MainLayout, Layout.astro)
-    // so they can display the real Firebase error code in the toast notification.
-    await signInWithPopup(auth, provider);
+    try {
+      await signInWithPopup(auth, provider);
+    } catch (err: any) {
+      if (
+        err?.code === 'auth/popup-closed-by-user' ||
+        err?.code === 'auth/cancelled-popup-request'
+      ) {
+        // User closed or cancelled the popup voluntarily
+        return;
+      }
+      throw err;
+    }
   };
 
   const logout = async () => {
@@ -1544,7 +1656,24 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       refreshConfig,
       inviteFacet,
       telemetryAccuracy,
-      platformStats
+      platformStats,
+      syncStatus,
+      syncError,
+      isFreePromoActive,
+      reSyncAuthAndFeatures: async () => {
+        setSyncStatus('syncing');
+        setSyncError(null);
+        try {
+          await refreshConfig();
+          if (user) {
+            await refreshUserData(user);
+          }
+          setSyncStatus('synced');
+        } catch (err: any) {
+          setSyncStatus('failed');
+          setSyncError(err?.message || 'Sync failed');
+        }
+      }
     }}>
       {children}
       
@@ -1639,7 +1768,11 @@ export const useAuth = () => {
         decline: async () => {}
       },
       telemetryAccuracy: "90.8%",
-      platformStats: null
+      platformStats: null,
+      syncStatus: 'synced',
+      syncError: null,
+      isFreePromoActive: false,
+      reSyncAuthAndFeatures: async () => {}
     };
   }
   return context;

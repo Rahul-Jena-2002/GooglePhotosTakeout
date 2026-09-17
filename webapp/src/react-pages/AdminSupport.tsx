@@ -2,7 +2,8 @@ import { useEffect, useState } from "react"
 import { collection, query, orderBy, getDocs, updateDoc, doc, where, addDoc, onSnapshot, getDoc } from "firebase/firestore"
 import { db } from "../firebase"
 import { useAuth } from "../contexts/AuthContext"
-import { Search, AlertCircle, X, Mail, CheckCircle2, Clock, Inbox } from "lucide-react"
+import { useSearchParams } from "react-router-dom"
+import { Search, AlertCircle, X, Mail, CheckCircle2, Clock, Inbox, Star } from "lucide-react"
 import { useToastStore } from "../store/useToastStore"
 import { AdminPagination, SortableHeader, sortItems, useAdminSort } from "../components/admin/AdminPagination"
 
@@ -21,13 +22,22 @@ function getStatusBadgeClass(status: string): string {
 
 export default function AdminSupport() {
   const { adminData } = useAuth()
+  const [searchParams, setSearchParams] = useSearchParams()
   const [tickets, setTickets] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [filter, setFilter] = useState("all")
+  const [typeFilter, setTypeFilter] = useState(() => searchParams.get("type") || "all")
   const [search, setSearch] = useState("")
   const [page, setPage] = useState(1)
   const pageSize = 5
   const { sort, onSort } = useAdminSort("createdAt", "desc")
+
+  useEffect(() => {
+    const qType = searchParams.get("type")
+    if (qType) {
+      setTypeFilter(qType)
+    }
+  }, [searchParams])
   
   // Drawer states
   const [selectedTicket, setSelectedTicket] = useState<any>(null)
@@ -189,21 +199,61 @@ Polished response:`
 
   useEffect(() => {
     setLoading(true)
-    const q = query(collection(db, "tickets"), orderBy("createdAt", "desc"))
-    const unsubTickets = onSnapshot(q, (snap) => {
-      const list = snap.docs.map(d => ({ id: d.id, ...d.data() }))
-      setTickets(list)
+    let ticketDocs: any[] = []
+    let feedbackDocs: any[] = []
+
+    const combine = () => {
+      const merged = [...ticketDocs, ...feedbackDocs].sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0))
+      setTickets(merged)
       setLoading(false)
       
       // Keep selected ticket in sync in real time
       setSelectedTicket((prev: any) => {
         if (!prev) return null
-        const found = list.find(t => t.id === prev.id)
+        const found = merged.find(t => t.id === prev.id)
         return found || null
       })
+    }
+
+    const qTickets = query(collection(db, "tickets"), orderBy("createdAt", "desc"))
+    const unsubTickets = onSnapshot(qTickets, (snap) => {
+      ticketDocs = snap.docs.map(d => ({
+        id: d.id,
+        _collection: "tickets",
+        ...d.data()
+      }))
+      combine()
     }, (err) => {
       console.error("Tickets listener error:", err)
       setLoading(false)
+    })
+
+    const unsubFeedback = onSnapshot(collection(db, "feedback"), (snap) => {
+      feedbackDocs = snap.docs.map(d => {
+        const data = d.data()
+        const createdAtMs = typeof data.createdAt === "number"
+          ? data.createdAt
+          : (data.createdAt?.toMillis ? data.createdAt.toMillis() : Date.now())
+        return {
+          id: d.id,
+          _collection: "feedback",
+          ticketId: `FDB-${d.id.slice(0, 6).toUpperCase()}`,
+          category: "feedback",
+          type: "FEEDBACK",
+          status: data.status || "OPEN",
+          subject: `[Feedback - ${(data.category || "General").toUpperCase()}] ${data.rating ? `${data.rating}/5★` : ""}`,
+          message: data.message || "",
+          email: data.email || "anonymous",
+          displayName: data.displayName || "Anonymous User",
+          rating: data.rating || 5,
+          createdAt: createdAtMs,
+          replies: data.replies || [],
+          ...data
+        }
+      })
+      combine()
+    }, (err) => {
+      console.warn("Feedback listener error in AdminSupport:", err)
     })
 
     // Load admin list for assignment dropdown
@@ -215,13 +265,16 @@ Polished response:`
 
     return () => {
       unsubTickets()
+      unsubFeedback()
       unsubAdmins()
     }
   }, [])
 
   const handleStatusChange = async (id: string, newStatus: string) => {
     try {
-      await updateDoc(doc(db, "tickets", id), { status: newStatus })
+      const item = tickets.find(t => t.id === id)
+      const targetCol = item?._collection === "feedback" ? "feedback" : "tickets"
+      await updateDoc(doc(db, targetCol, id), { status: newStatus })
     } catch (err) {
       console.error(err)
     }
@@ -252,7 +305,8 @@ Polished response:`
       if (selectedTicket.status === "OPEN" && adminUid) {
         updates.status = "IN_PROGRESS"
       }
-      await updateDoc(doc(db, "tickets", selectedTicket.id), updates)
+      const targetCol = selectedTicket._collection === "feedback" ? "feedback" : "tickets"
+      await updateDoc(doc(db, targetCol, selectedTicket.id), updates)
     } catch (err) {
       console.error(err)
     }
@@ -266,7 +320,8 @@ Polished response:`
       if (selectedTicket.status === "OPEN") {
         updates.status = "IN_PROGRESS"
       }
-      await updateDoc(doc(db, "tickets", selectedTicket.id), updates)
+      const targetCol = selectedTicket._collection === "feedback" ? "feedback" : "tickets"
+      await updateDoc(doc(db, targetCol, selectedTicket.id), updates)
       
       // Log activity
       await addDoc(collection(db, "admin_activity"), {
@@ -275,7 +330,7 @@ Polished response:`
         actorRole: adminData.role || "SUPPORT",
         action: "TICKET_CLAIM",
         target: selectedTicket.id,
-        description: `Claimed ticket: "${selectedTicket.subject}"`,
+        description: `Claimed ${selectedTicket._collection === 'feedback' ? 'feedback' : 'ticket'}: "${selectedTicket.subject}"`,
         timestamp: Date.now()
       })
     } catch (err) {
@@ -294,8 +349,9 @@ Polished response:`
       }
       
       const updatedReplies = [...(selectedTicket.replies || []), newReply]
+      const targetCol = selectedTicket._collection === "feedback" ? "feedback" : "tickets"
 
-      await updateDoc(doc(db, "tickets", selectedTicket.id), {
+      await updateDoc(doc(db, targetCol, selectedTicket.id), {
         status: "RESOLVED",
         adminReply: replyBody.trim(),
         repliedAt: Date.now(),
@@ -308,9 +364,9 @@ Polished response:`
         actorUid: adminData?.uid || "system",
         actorName: adminData?.displayName || "Support",
         actorRole: adminData?.role || "SUPPORT",
-        action: "TICKET_REPLY",
+        action: selectedTicket._collection === "feedback" ? "FEEDBACK_REPLY" : "TICKET_REPLY",
         target: selectedTicket.id,
-        description: `Replied and resolved ticket: "${selectedTicket.subject}"`,
+        description: `Replied and resolved: "${selectedTicket.subject}"`,
         timestamp: Date.now()
       })
 
@@ -323,8 +379,11 @@ Polished response:`
   }
 
   const filteredTickets = tickets.filter(t => {
+    const isFeedback = t.category === "feedback" || t.type === "FEEDBACK" || t.ticketId?.startsWith("FDB-")
+    if (typeFilter === "feedback" && !isFeedback) return false
+    if (typeFilter === "tickets" && isFeedback) return false
     if (filter !== "all" && t.status !== filter) return false
-    if (search && !(t.email?.toLowerCase().includes(search.toLowerCase()) || t.subject?.toLowerCase().includes(search.toLowerCase()))) return false
+    if (search && !(t.email?.toLowerCase().includes(search.toLowerCase()) || t.subject?.toLowerCase().includes(search.toLowerCase()) || t.message?.toLowerCase().includes(search.toLowerCase()))) return false
     return true
   })
 
@@ -377,8 +436,15 @@ Polished response:`
         className="hover:bg-zinc-800/40 cursor-pointer transition-colors"
       >
         <td className="px-6 py-4">
-          <div className="font-semibold text-zinc-200 mb-0.5 max-w-[300px] truncate" title={t.subject}>
-            {t.subject}
+          <div className="flex items-center gap-2 mb-0.5">
+            <span className="font-semibold text-zinc-200 max-w-[240px] truncate" title={t.subject}>
+              {t.subject}
+            </span>
+            {(t.category === 'feedback' || t.ticketId?.startsWith('FDB-') || t.type === 'FEEDBACK') && (
+              <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-400 border border-amber-500/20 text-[9px] font-bold flex-shrink-0">
+                <Star className="w-2.5 h-2.5 fill-amber-400" /> {t.rating || 5}★ Feedback
+              </span>
+            )}
           </div>
           <div className="text-[10px] text-zinc-400 font-mono font-bold">{t.ticketId || `#${t.id.slice(0, 8)}`}</div>
         </td>
@@ -421,7 +487,29 @@ Polished response:`
           <p className="text-zinc-400 text-sm mt-1">Manage user support tickets, prioritize claims, and assign cases.</p>
         </div>
         
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3">
+          {/* Type Filter Buttons */}
+          <div className="flex bg-zinc-950 border border-zinc-800 rounded-lg p-0.5 text-xs font-semibold">
+            <button
+              onClick={() => { setTypeFilter("all"); setSearchParams({}); }}
+              className={`px-3 py-1 rounded-md transition-all ${typeFilter === "all" ? "bg-zinc-800 text-white shadow-sm" : "text-zinc-400 hover:text-zinc-200"}`}
+            >
+              All Queue
+            </button>
+            <button
+              onClick={() => { setTypeFilter("tickets"); setSearchParams({ type: "tickets" }); }}
+              className={`px-3 py-1 rounded-md transition-all ${typeFilter === "tickets" ? "bg-zinc-800 text-white shadow-sm" : "text-zinc-400 hover:text-zinc-200"}`}
+            >
+              Support Tickets
+            </button>
+            <button
+              onClick={() => { setTypeFilter("feedback"); setSearchParams({ type: "feedback" }); }}
+              className={`px-3 py-1 rounded-md transition-all flex items-center gap-1.5 ${typeFilter === "feedback" ? "bg-indigo-600 text-white shadow-sm" : "text-zinc-400 hover:text-zinc-200"}`}
+            >
+              <Star className="w-3 h-3 fill-amber-400 text-amber-400" /> User Feedback
+            </button>
+          </div>
+
           <div className="relative">
             <Search className="w-4 h-4 text-zinc-500 absolute left-3 top-1/2 -translate-y-1/2" />
             <input 
@@ -429,7 +517,7 @@ Polished response:`
               placeholder="Search subject or email..." 
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="bg-zinc-900 border border-zinc-800 rounded-md py-1.5 pl-9 pr-3 text-sm text-white focus:outline-none focus:border-zinc-500 w-64 focus:bg-zinc-950 transition-colors"
+              className="bg-zinc-900 border border-zinc-800 rounded-md py-1.5 pl-9 pr-3 text-sm text-white focus:outline-none focus:border-zinc-500 w-56 focus:bg-zinc-950 transition-colors"
             />
           </div>
           <select 
@@ -543,6 +631,21 @@ Polished response:`
               {/* Message Details */}
               <div className="space-y-2">
                 <h4 className="text-xs font-bold text-zinc-400 uppercase">Subject & Description</h4>
+                {selectedTicket.rating && (
+                  <div className="flex items-center gap-2 p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/20 text-xs font-semibold text-amber-300">
+                    <div className="flex items-center gap-0.5">
+                      {[1, 2, 3, 4, 5].map((s) => (
+                        <Star key={s} className={`w-3.5 h-3.5 ${s <= selectedTicket.rating ? 'fill-amber-400 text-amber-400' : 'text-zinc-600'}`} />
+                      ))}
+                    </div>
+                    <span>Rating: {selectedTicket.rating}/5</span>
+                    {selectedTicket.category && (
+                      <span className="ml-auto px-2 py-0.5 rounded bg-zinc-900 border border-zinc-800 text-[10px] text-zinc-400 capitalize">
+                        {selectedTicket.category}
+                      </span>
+                    )}
+                  </div>
+                )}
                 <div className="bg-zinc-950 border border-zinc-900 p-4 rounded-xl">
                   <div className="font-bold text-white text-sm mb-2 leading-snug">{selectedTicket.subject}</div>
                   <p className="text-xs text-zinc-300 leading-relaxed whitespace-pre-wrap font-sans italic">

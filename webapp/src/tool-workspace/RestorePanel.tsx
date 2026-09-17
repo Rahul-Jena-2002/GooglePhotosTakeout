@@ -12,6 +12,7 @@ import AdUnit from "../components/AdUnit"
 import { type LogEntry } from "./useToolPipeline"
 import type { ActiveSession } from "../lib/SessionManager"
 import { usePersistentHandles } from "../hooks/usePersistentHandles"
+import { useSettingsStore } from "../store/useSettingsStore"
 
 interface RestorePanelProps {
   // Tool tab routing
@@ -184,6 +185,8 @@ export function RestorePanel({
   startDuplicateScan,
 }: RestorePanelProps) {
   const [agreedToTerms, setAgreedToTerms] = useState(false);
+  const organizeYearMonth = useSettingsStore((s) => s.organizeYearMonth);
+  const setOrganizeYearMonth = useSettingsStore((s) => s.setOrganizeYearMonth);
 
   // Persistent handle restore — auto-re-grants on tab reopen (VS Code model)
   const { needsReGrant, storedFolderName, reGrantState, reGrantAccess } = usePersistentHandles()
@@ -389,6 +392,21 @@ export function RestorePanel({
                 )}
 
                 {!isProcessing && progress === 0 && (takeoutFolder || zipFile) && (
+                  <div className="flex items-center gap-2.5 p-2.5 rounded-lg bg-zinc-950/40 border border-white/5 text-[9.5px] text-zinc-300">
+                    <input
+                      type="checkbox"
+                      id="organize-ym-checkbox"
+                      checked={organizeYearMonth}
+                      onChange={(e) => setOrganizeYearMonth(e.target.checked)}
+                      className="w-3.5 h-3.5 rounded border-white/10 bg-zinc-900 text-white focus:ring-0 focus:ring-offset-0 cursor-pointer accent-zinc-800 flex-shrink-0"
+                    />
+                    <label htmlFor="organize-ym-checkbox" className="cursor-pointer select-none leading-relaxed">
+                      Organize restored output into clean <strong className="text-white font-medium">Year/Month folders</strong> (YYYY/YYYY-MM)
+                    </label>
+                  </div>
+                )}
+
+                {!isProcessing && progress === 0 && (takeoutFolder || zipFile) && (
                   <div className="flex items-start gap-2.5 p-2.5 rounded-lg bg-zinc-950/40 border border-white/5 text-[9.5px] text-zinc-400">
                     <input
                       type="checkbox"
@@ -512,7 +530,7 @@ export function RestorePanel({
                 </span>
                 {(isProcessing || progress > 0) && (
                   <span className="text-[10px] text-zinc-400 font-mono">
-                    {getEstimatedRestoreTime().replace(/⏱️ Est\. restoration time:\s*/, '')}
+                    {getEstimatedRestoreTime().replace(/^⏱️\s*(Est\. restoration time:\s*)?/, '')}
                   </span>
                 )}
               </div>

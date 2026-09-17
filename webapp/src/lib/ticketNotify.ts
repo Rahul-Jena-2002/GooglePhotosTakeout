@@ -260,3 +260,128 @@ export async function notifyAdminsOnTicketRaised(
     errors: errors.length > 0 ? errors : undefined,
   };
 }
+
+/**
+ * Dispatches real-time in-app notifications to all team members when a customer posts a follow-up reply.
+ */
+export async function notifyAdminsOnTicketReply(payload: {
+  ticketId: string;
+  userEmail: string;
+  userName?: string;
+  replyMessage: string;
+}): Promise<void> {
+  const { ticketId, userEmail, userName = "User", replyMessage } = payload;
+  const adminEmails: string[] = [];
+
+  try {
+    const adminsSnap = await getDocs(collection(db, "admins"));
+    adminsSnap.forEach((docSnap) => {
+      const data = docSnap.data();
+      if (data.email && typeof data.email === "string") {
+        adminEmails.push(data.email.trim().toLowerCase());
+      }
+    });
+  } catch (err) {
+    console.warn("[TicketNotify] Error querying admins collection:", err);
+  }
+
+  const superAdminEmail = getSuperAdminEmail();
+  const rawList = [
+    SUPPORT_EMAIL.toLowerCase(),
+    superAdminEmail.toLowerCase(),
+    ...adminEmails,
+  ];
+  const recipients = Array.from(new Set(rawList.filter((e) => Boolean(e) && e.includes("@"))));
+
+  await Promise.allSettled(
+    recipients.map(async (email) => {
+      try {
+        await addDoc(collection(db, "notifications"), {
+          recipientEmail: email,
+          type: "TICKET_REPLY",
+          title: `Reply on Ticket ${ticketId}`,
+          message: `${userName} (${userEmail}): "${replyMessage.slice(0, 100)}${replyMessage.length > 100 ? '...' : ''}"`,
+          ticketId,
+          userEmail,
+          read: false,
+          createdAt: Date.now(),
+          adminLink: "/admin/support",
+          href: "/admin/support",
+        });
+      } catch (e) {
+        console.warn(`[TicketNotify] Failed creating reply notification for ${email}:`, e);
+      }
+    })
+  );
+}
+
+/**
+ * Dispatches real-time in-app notifications to all team members when user feedback is received.
+ */
+export async function notifyAdminsOnFeedback(payload: {
+  rating: number;
+  category: string;
+  message: string;
+  userEmail: string;
+  displayName: string;
+}): Promise<void> {
+  const { rating, category, message, userEmail, displayName } = payload;
+  const adminEmails: string[] = [];
+
+  try {
+    const adminsSnap = await getDocs(collection(db, "admins"));
+    adminsSnap.forEach((docSnap) => {
+      const data = docSnap.data();
+      if (data.email && typeof data.email === "string") {
+        adminEmails.push(data.email.trim().toLowerCase());
+      }
+    });
+  } catch (err) {
+    console.warn("[TicketNotify] Error querying admins collection for feedback:", err);
+  }
+
+  const superAdminEmail = getSuperAdminEmail();
+  const rawList = [
+    SUPPORT_EMAIL.toLowerCase(),
+    superAdminEmail.toLowerCase(),
+    ...adminEmails,
+  ];
+  const recipients = Array.from(new Set(rawList.filter((e) => Boolean(e) && e.includes("@"))));
+
+  await Promise.allSettled(
+    recipients.map(async (email) => {
+      try {
+        await addDoc(collection(db, "notifications"), {
+          recipientEmail: email,
+          type: "NEW_FEEDBACK",
+          title: `New Feedback (${rating}/5★ - ${category})`,
+          message: `${displayName} (${userEmail}): "${message.slice(0, 100)}${message.length > 100 ? '...' : ''}"`,
+          category,
+          rating,
+          userEmail,
+          read: false,
+          createdAt: Date.now(),
+          adminLink: "/admin/support",
+          href: "/admin/support",
+        });
+      } catch (e) {
+        console.warn(`[TicketNotify] Failed creating feedback notification for ${email}:`, e);
+      }
+    })
+  );
+
+  try {
+    await addDoc(collection(db, "admin_activity"), {
+      actorUid: "feedback_system",
+      actorName: displayName,
+      actorRole: "USER",
+      action: "FEEDBACK_SUBMITTED",
+      target: userEmail,
+      description: `User submitted ${rating}★ feedback [${category}]: "${message.slice(0, 80)}"`,
+      timestamp: Date.now(),
+    });
+  } catch (err) {
+    console.warn("[TicketNotify] Failed to log admin activity for feedback:", err);
+  }
+}
+

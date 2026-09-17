@@ -24,6 +24,7 @@ import {
   Sliders,
   List,
   Coins,
+  HeartHandshake,
 } from "lucide-react"
 
 export default function AdminLayout() {
@@ -65,14 +66,15 @@ export default function AdminLayout() {
     )
   }
 
-  if (!userData?.isAdmin && !adminData) {
+  const isSuperAdminEmail = checkSuperAdminEmail(user?.email || adminData?.email)
+  const hasAdminAccess = !!adminData || isSuperAdminEmail
+
+  if (!hasAdminAccess) {
     if (typeof window !== "undefined") {
       window.location.href = "/";
     }
     return null;
   }
-
-  const isSuperAdminEmail = checkSuperAdminEmail(user?.email || adminData?.email)
   const role = isSuperAdminEmail ? "SUPER_ADMIN" : (adminData?.role ?? "ADMIN")
   const isSuperAdmin = role === "SUPER_ADMIN" || isSuperAdminEmail
   const isAdminOrAbove = ["SUPER_ADMIN", "ADMIN"].includes(role) || isSuperAdminEmail
@@ -88,7 +90,7 @@ export default function AdminLayout() {
         { label: "Dashboard", path: "/admin", icon: LayoutDashboard, show: true },
         { label: "Tool Center", path: "/admin/tool", icon: ActivitySquare, show: true },
         { label: "Users", path: "/admin/users", icon: Users, show: isAdminOrAbove },
-        { label: "Tickets", path: "/admin/support", icon: LifeBuoy, show: isSupportOrAbove },
+        { label: "Tickets", path: "/admin/support", icon: LifeBuoy, show: true },
         { label: "Payments", path: "/admin/payments", icon: CreditCard, show: isAdminOrAbove },
         { label: "Monetization", path: "/admin/monetization", icon: Coins, show: isAdminOrAbove },
       ],

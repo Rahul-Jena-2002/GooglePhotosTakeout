@@ -10,6 +10,7 @@ import { useToastStore } from "../store/useToastStore"
 import { sanitizeFilename, findMatchingJsonName, safeParseJson, extractTimestamp } from "../services/MetadataMatcher"
 // ZipMetadataMatcher is used via normalizeZipPath only (findMatchingJsonNameForZip resolved during scan phase)
 import { isJpeg } from "../services/ExifRestorer"
+import { isVideoFilename } from "../services/VideoMetadataRestorer"
 import { db } from "../firebase"
 import { doc, setDoc, increment, addDoc, collection, onSnapshot } from "firebase/firestore"
 import { indexedDbService } from "../lib/indexedDbService"
@@ -199,11 +200,12 @@ export function useToolPipeline() {
 
   const formatByteSize = (bytes: number) => {
     if (bytes === Infinity) return "Unlimited";
+    if (bytes <= 0) return "0.0 MB";
     if (bytes >= 1024 * 1024 * 1024) {
       const gb = bytes / (1024 * 1024 * 1024);
       return gb % 1 === 0 ? `${gb.toFixed(0)} GB` : `${gb.toFixed(2)} GB`;
     }
-    return `${(bytes / (1024 * 1024)).toFixed(0)} MB`;
+    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
   };
 
   // Maintenance State
@@ -245,6 +247,7 @@ export function useToolPipeline() {
   const [telemetryMem, setTelemetryMem] = useState(24.2)
   const [telemetryTabHeap, setTelemetryTabHeap] = useState(45.0)
   const [telemetryWorkers, setTelemetryWorkers] = useState(0)
+  const [, setTimeTick] = useState(0)
 
   const {
     takeoutFolder,
@@ -544,53 +547,41 @@ export function useToolPipeline() {
 
   useEffect(() => {
     const timer = setInterval(() => {
-      // Tab heap memory check
-      let heap = 0
-      const perf = performance as unknown as { memory?: { usedJSHeapSize: number } }
-      if (perf.memory) {
-        heap = perf.memory.usedJSHeapSize / (1024 * 1024)
+      // 1. Attempt to poll live OS hardware telemetry from TakeoutFix Desktop bridge if running
+      fetch('http://127.0.0.1:47823/api/telemetry', { signal: AbortSignal.timeout(1200) })
+        .then(res => res.json())
+        .then(data => {
+          if (data && typeof data.cpuLoad === 'number') {
+            setTelemetryCpu(parseFloat(data.cpuLoad.toFixed(1)));
+            setTelemetryMem(parseFloat((data.ramUsedGB * 1024).toFixed(0)));
+            setTelemetryTabHeap(parseFloat((data.ramTotalGB * 1024).toFixed(0)));
+            setTelemetryWorkers(data.logicalThreads || navigator.hardwareConcurrency || 4);
+          }
+        })
+        .catch(() => {
+          // 2. Fallback to real browser heap telemetry
+          let heap = 0;
+          const perf = performance as unknown as { memory?: { usedJSHeapSize: number; totalJSHeapSize: number } };
+          if (perf.memory) {
+            heap = perf.memory.usedJSHeapSize / (1024 * 1024);
+          }
+          const baseHeap = heap > 0 ? heap : (isProcessing ? 240.0 : 120.0);
+          setTelemetryTabHeap(parseFloat(baseHeap.toFixed(1)));
+
+          const cores = navigator.hardwareConcurrency || 4;
+          const activeCount = activeWorkersCount;
+          setTelemetryWorkers(activeCount > 0 ? activeCount : (isProcessing ? 1 : 0));
+          const cpuPercent = isProcessing ? Math.min(99, Math.max(8, (activeCount / Math.max(1, maxWorkers)) * 75 + 10)) : 1.2;
+          setTelemetryCpu(parseFloat(cpuPercent.toFixed(1)));
+          setTelemetryMem(parseFloat((baseHeap * 0.8).toFixed(1)));
+        });
+
+      if (isProcessingRef.current) {
+        setTimeTick(t => t + 1);
       }
-
-      // Enforce a realistic base memory range for a complex React/Astro folder restoration application
-      const baseHeap = isProcessing ? (isPaused ? 210.0 : 380.0) : 165.0
-      const heapJitter = Math.random() * 25.0
-      const tabHeap = heap > 100 ? heap : (baseHeap + heapJitter)
-      setTelemetryTabHeap(parseFloat(tabHeap.toFixed(1)))
-
-      if (isProcessing) {
-        if (isPaused) {
-          setTelemetryCpu(parseFloat((1.5 + Math.random() * 1.0).toFixed(1)))
-          const activeCount = activeWorkersCount || maxWorkers
-          const baseMem = 110.0 + activeCount * 12.0
-          setTelemetryMem(parseFloat((baseMem + Math.random() * 10).toFixed(1)))
-          setTelemetryWorkers(0)
-        } else if (activeWorkersCount === 0) {
-          // Transition phase or idle sub-interval between file chunks
-          setTelemetryCpu(parseFloat((8.0 + Math.random() * 4).toFixed(1)))
-          setTelemetryMem(parseFloat((140.0 + Math.random() * 15).toFixed(1)))
-          setTelemetryWorkers(1)
-        } else {
-          const activeCount = activeWorkersCount
-          const maxCount = maxWorkers
-          const activeRatio = maxCount > 0 ? activeCount / maxCount : 0
-
-          // CPU usage spike matching active multi-thread work
-          const cpuLoad = activeRatio * 65.0 + 15.0 + (Math.random() * 15)
-          setTelemetryCpu(parseFloat(Math.min(99.5, cpuLoad).toFixed(1)))
-
-          // Realistic engine allocation scaling by active file processes
-          const baseMem = 160.0 + activeCount * 42.5
-          setTelemetryMem(parseFloat((baseMem + Math.random() * 30).toFixed(1)))
-          setTelemetryWorkers(activeCount)
-        }
-      } else {
-        setTelemetryCpu(parseFloat((0.8 + Math.random() * 0.8).toFixed(1)))
-        setTelemetryMem(parseFloat((55.0 + Math.random() * 5.0).toFixed(1)))
-        setTelemetryWorkers(0)
-      }
-    }, 1000)
-    return () => clearInterval(timer)
-  }, [isProcessing, isPaused, activeWorkersCount, maxWorkers])
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [isProcessing, isPaused, activeWorkersCount, maxWorkers]);
 
   const updateActiveSession = async (status: 'initializing' | 'processing' | 'completed' | 'failed' | 'cancelled', fields: Record<string, unknown> = {}) => {
     if (!user) return
@@ -705,6 +696,27 @@ export function useToolPipeline() {
       current = await current.getDirectoryHandle(safe, { create: true })
     }
     return current
+  }
+
+  const getUniqueFileHandle = async (dir: FileSystemDirectoryHandle, filename: string): Promise<FileSystemFileHandle> => {
+    try {
+      await dir.getFileHandle(filename);
+      const dot = filename.lastIndexOf('.');
+      const base = dot > 0 ? filename.substring(0, dot) : filename;
+      const ext = dot > 0 ? filename.substring(dot) : '';
+      let count = 1;
+      while (true) {
+        const candidate = `${base} (${count})${ext}`;
+        try {
+          await dir.getFileHandle(candidate);
+          count++;
+        } catch {
+          return await dir.getFileHandle(candidate, { create: true });
+        }
+      }
+    } catch {
+      return await dir.getFileHandle(filename, { create: true });
+    }
   }
 
   // Re-grant folder access and resume session
@@ -875,22 +887,20 @@ export function useToolPipeline() {
     // 4. Revert in-flight files (delete half-written and reset status to pending)
     await sessionManager.revertInFlightFiles();
 
-    // 5. Get total pending count (lightweight — no FileRecord materialisation)
+    // 5. Get total pending count
     const totalPending = await sessionManager.getPendingCount();
-    const PAGE_SIZE = 200; // process files in pages to keep heap flat
-    let globalFileIndex = 0;  // absolute index across all pages
-    let lastFileId: string | null = null; // last processed record ID for cursor page fetches
-    let currentPage: FileRecord[] = []; // current in-memory page
-    let pageIndex = 0;        // index within current page
+    statsBuffer.current.total = (session.scannedCount || 0) + totalPending;
 
-    // 6. Throttling and backpressure counter
-    // For ZIP: sequential processing (1 at a time) avoids ZipReader lock contention and is actually faster.
-    // For folder: use user-configured maxWorkers.
+    // 6. Queue-based concurrency engine (prevents premature break / worker starvation freeze)
+    const inflightLimit = (session.zipFile || zipModeRef.current) ? 1 : maxWorkersRef.current;
     let inFlightCount = 0;
     let isProcessingHeavy = false;
-    const inflightLimit = (session.zipFile || zipModeRef.current) ? 1 : maxWorkers;
+    const fileQueue: FileRecord[] = [];
+    let isFetchingPage = false;
+    let noMorePending = false;
+    const claimedIds = new Set<string>();
 
-    const processNext = async () => {
+    const pumpQueue = async () => {
       if (!isProcessingRef.current || isPausedRef.current) {
         if (inFlightCount === 0 && !isProcessingRef.current) {
           if (zipReader) {
@@ -901,70 +911,65 @@ export function useToolPipeline() {
         return;
       }
 
-      const runWorker = async () => {
-        // eslint-disable-next-line no-constant-condition
-        while (true) {
-          if (!isProcessingRef.current || isPausedRef.current) break;
-
-          // Advance within the current page
-          if (pageIndex >= currentPage.length) {
-            // Current page exhausted — null it out to allow GC to reclaim handles
-            currentPage = [];
-            pageIndex = 0;
-
-            // Check if there are more files to process
-            if (globalFileIndex >= totalPending) break;
-
-            // Fetch the next page
-            try {
-              currentPage = await sessionManager.getPendingFilesPage(lastFileId, PAGE_SIZE);
-              if (currentPage.length > 0) {
-                lastFileId = currentPage[currentPage.length - 1].id;
+      // If queue is running low, fetch next slice of pending files
+      if (fileQueue.length < inflightLimit * 3 && !isFetchingPage && !noMorePending) {
+        isFetchingPage = true;
+        try {
+          const nextBatch = await sessionManager.getPendingFilesPage(null, 150);
+          if (!nextBatch || nextBatch.length === 0) {
+            noMorePending = true;
+          } else {
+            for (const item of nextBatch) {
+              if (!claimedIds.has(item.id)) {
+                claimedIds.add(item.id);
+                fileQueue.push(item);
               }
-            } catch (err) {
-              console.error("Failed to load next page of pending files:", err);
-              break;
             }
-
-            if (currentPage.length === 0) break;
+            if (fileQueue.length === 0) {
+              noMorePending = true;
+            }
           }
+        } catch (err) {
+          console.error("Failed to load pending files batch:", err);
+        } finally {
+          isFetchingPage = false;
+        }
+      }
 
-          const fileRecord = currentPage[pageIndex];
-          if (!fileRecord) {
-            pageIndex++;
-            globalFileIndex++;
-            break;
-          }
+      // If a heavy task is currently running, wait until it finishes to protect RAM
+      if (isProcessingHeavy && inFlightCount > 0) {
+        return;
+      }
 
-          // Dynamic heavy file threshold scaled with device RAM
-          const deviceMem = ('deviceMemory' in navigator) ? (navigator as unknown as { deviceMemory: number }).deviceMemory || 4 : 4;
-          const HEAVY_FILE_THRESHOLD = (deviceMem >= 8 ? 150 : deviceMem >= 4 ? 75 : 35) * 1024 * 1024;
-          const isHeavy = fileRecord.bytes > HEAVY_FILE_THRESHOLD;
+      // Dispatch up to inflightLimit tasks
+      while (inFlightCount < inflightLimit && fileQueue.length > 0) {
+        if (!isProcessingRef.current || isPausedRef.current) break;
 
-          if (isHeavy && inFlightCount > 0) {
-            // Wait for all current light tasks to finish before starting this heavy file.
-            // We just break out of this runWorker loop; the last completing task
-            // will call processNext() again and spawn us when inFlightCount is 0.
-            break;
-          }
+        const nextFile = fileQueue[0];
+        if (!nextFile) {
+          fileQueue.shift();
+          continue;
+        }
 
-          if (!isHeavy && isProcessingHeavy) {
-            // A heavy file is currently processing, we should not spawn any new light files 
-            // until it finishes to protect the RAM.
-            break;
-          }
+        const deviceMem = ('deviceMemory' in navigator) ? (navigator as unknown as { deviceMemory: number }).deviceMemory || 4 : 4;
+        const HEAVY_FILE_THRESHOLD = (deviceMem >= 8 ? 150 : deviceMem >= 4 ? 75 : 35) * 1024 * 1024;
+        const isHeavy = nextFile.bytes > HEAVY_FILE_THRESHOLD;
 
-          if (isHeavy) {
-            isProcessingHeavy = true;
-          }
+        // If next file is heavy and light tasks are still in flight, wait until they finish
+        if (isHeavy && inFlightCount > 0) {
+          break;
+        }
 
-          // Advance indices now that we've committed to processing it
-          pageIndex++;
-          globalFileIndex++;
+        fileQueue.shift();
+        inFlightCount++;
+        if (isHeavy) {
+          isProcessingHeavy = true;
+        }
+        setActiveWorkersCount(inFlightCount);
 
-          inFlightCount++;
-          setActiveWorkersCount(inFlightCount);
-
+        // Execute task in self-contained worker closure
+        (async (fileRecord: FileRecord, heavyFlag: boolean) => {
+          let writable: any = null;
           try {
             // Check quota limits
             const isBypass = userData?.isAdmin || (import.meta as any).env?.DEV;
@@ -976,14 +981,12 @@ export function useToolPipeline() {
               return;
             }
 
-            // Claim file (mark processing in IDB)
             await sessionManager.claimFile(fileRecord.id);
 
             let size = fileRecord.bytes;
             let fileObj: File | null = null;
             let zipEntry: any = null;
 
-            // 1. Resolve handles dynamically from root if local directory to prevent permission revocation
             let parentDirHandle = fileRecord.dirHandle;
             let fileHandle = fileRecord.fileHandle;
 
@@ -1000,7 +1003,6 @@ export function useToolPipeline() {
               }
             }
 
-            // 2. Get file metadata/reference
             if (fileHandle) {
               try {
                 fileObj = await fileHandle.getFile();
@@ -1014,7 +1016,6 @@ export function useToolPipeline() {
               }
               size = fileObj.size;
             } else if (fileRecord.zipPath && zipReader) {
-              // zipPath is already normalized (forward slashes, NFC) from SessionManager scan
               zipEntry = zipEntryMap.get(normalizeZipPath(fileRecord.zipPath).normalize('NFC'));
               if (zipEntry) {
                 size = zipEntry.uncompressedSize;
@@ -1025,7 +1026,6 @@ export function useToolPipeline() {
               throw new Error("Source file reference not found.");
             }
 
-            // 3. Resolve sidecar and epoch timestamp (on-demand during restoration)
             let epochSec: number | null = null;
             let lat: number | undefined = undefined;
             let lng: number | undefined = undefined;
@@ -1034,7 +1034,6 @@ export function useToolPipeline() {
             let albumName: string | undefined = undefined;
 
             if (fileHandle && parentDirHandle) {
-              // Folder source: resolve sidecar on-demand during restoration
               const pathKey = fileRecord.relativePath.join('/');
               const allNames = await getDirNames(parentDirHandle, pathKey);
               const jsonName = findMatchingJsonName(fileRecord.filename, allNames);
@@ -1046,68 +1045,105 @@ export function useToolPipeline() {
                   if (parsed) {
                     epochSec = extractTimestamp(parsed);
                     const geoData = parsed.geoData;
-                    if (geoData && (geoData.latitude !== 0 || geoData.longitude !== 0)) {
-                      lat = geoData.latitude;
-                      lng = geoData.longitude;
+                    if (geoData && typeof geoData === 'object') {
+                      const latVal = typeof geoData.latitude === 'number' ? geoData.latitude : (geoData.latitude ? Number(geoData.latitude) : 0);
+                      const lngVal = typeof geoData.longitude === 'number' ? geoData.longitude : (geoData.longitude ? Number(geoData.longitude) : 0);
+                      if (!isNaN(latVal) && !isNaN(lngVal) && (Math.abs(latVal) > 0.0001 || Math.abs(lngVal) > 0.0001)) {
+                        lat = latVal;
+                        lng = lngVal;
+                      }
                     }
-                    description = (parsed.description as string) || undefined;
+                    if (typeof parsed.description === 'string' && parsed.description.trim()) {
+                      description = parsed.description.trim();
+                    }
                     if (Array.isArray(parsed.people)) {
-                      people = parsed.people.map((p: any) => p.name).filter(Boolean);
+                      people = parsed.people
+                        .map((p: any) => (typeof p === 'string' ? p : (p && typeof p.name === 'string' ? p.name : '')))
+                        .map((s: string) => s.trim())
+                        .filter(Boolean);
                     }
                   }
                 } catch {}
               }
-              
-              // Also try to resolve album metadata
-              if (parentDirHandle.name && !/^Photos from \d{4}$/.test(parentDirHandle.name)) {
+
+              const isUserAlbum = (name?: string | null) => {
+                if (!name || !name.trim()) return false;
+                const trimmed = name.trim();
+                if (/^Photos from \d{4}$/i.test(trimmed)) return false;
+                const lower = trimmed.toLowerCase();
+                return !['bin', 'archive', 'trash', 'locked folder', 'similar shots'].includes(lower);
+              };
+
+              if (parentDirHandle.name && isUserAlbum(parentDirHandle.name)) {
+                albumName = parentDirHandle.name;
                 try {
                   const metaHandle = await parentDirHandle.getFileHandle('metadata.json');
                   const metaFile = await metaHandle.getFile();
                   const metaParsed = safeParseJson(await metaFile.text());
-                  if (metaParsed && typeof metaParsed.title === 'string' && metaParsed.title.trim() && !/^Photos from \d{4}$/.test(metaParsed.title.trim())) {
+                  if (metaParsed && typeof metaParsed.title === 'string' && metaParsed.title.trim() && isUserAlbum(metaParsed.title.trim())) {
                     albumName = metaParsed.title.trim();
                   }
                 } catch {}
               }
             } else if (fileRecord.zipPath) {
-              // ZIP source: metadata was pre-cached during the scan phase — use it directly!
               epochSec = fileRecord.epochSec;
-              if (fileRecord.lat != null && fileRecord.lng != null) {
+              if (fileRecord.lat != null && fileRecord.lng != null && (Math.abs(fileRecord.lat) > 0.0001 || Math.abs(fileRecord.lng) > 0.0001)) {
                 lat = fileRecord.lat;
                 lng = fileRecord.lng;
               }
-              description = fileRecord.description;
+              if (fileRecord.description && fileRecord.description.trim()) {
+                description = fileRecord.description.trim();
+              }
               people = fileRecord.people;
-              
-              // Try to resolve album metadata from zip
+
+              const isUserAlbum = (name?: string | null) => {
+                if (!name || !name.trim()) return false;
+                const trimmed = name.trim();
+                if (/^Photos from \d{4}$/i.test(trimmed)) return false;
+                const lower = trimmed.toLowerCase();
+                return !['bin', 'archive', 'trash', 'locked folder', 'similar shots'].includes(lower);
+              };
+
               const normalizedPath = normalizeZipPath(fileRecord.zipPath);
               const parts = normalizedPath.split('/');
-              parts.pop(); // remove filename
+              parts.pop();
               const dirPath = parts.join('/');
               const folderName = parts[parts.length - 1] || '';
-              if (!/^Photos from \d{4}$/.test(folderName) && zipEntryMap) {
-                const metaZipPath = (dirPath ? `${dirPath}/metadata.json` : 'metadata.json').normalize('NFC');
-                const metaEntry = zipEntryMap.get(metaZipPath);
-                if (metaEntry && metaEntry.getData) {
-                  try {
-                    const textWriter = new TextWriter();
-                    const jsonText = await metaEntry.getData(textWriter);
-                    const metaParsed = safeParseJson(jsonText);
-                    if (metaParsed && typeof metaParsed.title === 'string' && metaParsed.title.trim() && !/^Photos from \d{4}$/.test(metaParsed.title.trim())) {
-                      albumName = metaParsed.title.trim();
-                    }
-                  } catch {}
+              if (isUserAlbum(folderName)) {
+                albumName = folderName;
+                if (zipEntryMap) {
+                  const metaZipPath = (dirPath ? `${dirPath}/metadata.json` : 'metadata.json').normalize('NFC');
+                  const metaEntry = zipEntryMap.get(metaZipPath);
+                  if (metaEntry && metaEntry.getData) {
+                    try {
+                      const textWriter = new TextWriter();
+                      const jsonText = await metaEntry.getData(textWriter);
+                      const metaParsed = safeParseJson(jsonText);
+                      if (metaParsed && typeof metaParsed.title === 'string' && metaParsed.title.trim() && isUserAlbum(metaParsed.title.trim())) {
+                        albumName = metaParsed.title.trim();
+                      }
+                    } catch {}
+                  }
                 }
               }
             }
 
-            // 4. Process buffer / inject EXIF if applicable
             let bufferOrBlob: any = null;
             let actionStr = 'No Metadata Found';
             let levelStr = 'warn';
 
-            // Resolve output destination and prepare handles (skipped in zipMode)
             const baseFolder = (epochSec && actionStr !== 'EXIF Error') ? 'restored' : 'unmatched';
+            const organizeByYearMonth = useSettingsStore.getState().organizeYearMonth;
+            let outRelativePath: string[];
+            if (organizeByYearMonth && epochSec && actionStr !== 'EXIF Error') {
+              const dt = new Date(epochSec * 1000);
+              const y = String(dt.getFullYear());
+              const m = `${y}-${String(dt.getMonth() + 1).padStart(2, '0')}`;
+              outRelativePath = ['restored', y, m];
+            } else {
+              outRelativePath = [baseFolder, ...fileRecord.relativePath];
+            }
+
             let outSubDir: FileSystemDirectoryHandle | null = null;
             let outHandle: FileSystemFileHandle | null = null;
             if (!zipModeRef.current) {
@@ -1116,163 +1152,138 @@ export function useToolPipeline() {
                 if (perm === 'prompt') {
                   await (session.outputHandle as any).requestPermission?.({ mode: 'readwrite' });
                 }
-                outSubDir = await getOrCreateDir(session.outputHandle!, [baseFolder, ...fileRecord.relativePath]);
-                outHandle = await outSubDir.getFileHandle(fileRecord.filename, { create: true });
+                outSubDir = await getOrCreateDir(session.outputHandle!, outRelativePath);
+                outHandle = await getUniqueFileHandle(outSubDir, fileRecord.filename);
               } catch (permErr: any) {
-                throw new Error(`Output folder access lost — please re-select the destination folder and resume. (${permErr?.message ?? permErr})`);
+                throw new Error(`Output folder access lost — please re-select destination and resume. (${permErr?.message ?? permErr})`);
               }
             }
 
-            // 5. Read, process, and write output directly using streams where possible
-            let writable: any = null;
-            try {
-              const engine = useSettingsStore.getState().exifEngine;
-              const isVideo = fileRecord.filename.toLowerCase().endsWith('.mp4') || fileRecord.filename.toLowerCase().endsWith('.mov');
-              const isSupported = isJpeg(fileRecord.filename) || (engine === 'wasm' && isVideo);
+            const engine = useSettingsStore.getState().exifEngine;
+            const isVideo = isVideoFilename(fileRecord.filename);
+            const isSupported = isJpeg(fileRecord.filename) || isVideo;
 
-              if (epochSec && isSupported) {
+            if (epochSec && isSupported) {
+              actionStr = isVideo ? 'Restored (Video Meta)' : 'Restored';
+              levelStr = 'success';
+
+              if (fileObj) {
+                bufferOrBlob = await fileObj.arrayBuffer();
+              } else if (zipEntry) {
+                const writer = new Uint8ArrayWriter();
+                const bytes = await zipEntry.getData!(writer);
+                bufferOrBlob = bytes.buffer;
+                (writer as any).writable = null;
+              }
+
+              if (bufferOrBlob) {
+                const taskName = isVideo ? 'inject_video' : (engine === 'wasm' ? 'inject_wasm' : 'inject_exif');
+                const res = await pool.runTask(taskName, {
+                  buffer: bufferOrBlob,
+                  epochSec,
+                  lat,
+                  lng,
+                  filename: fileRecord.filename,
+                  description,
+                  people,
+                  albumName,
+                  type: isVideo ? 'video' : 'image'
+                }, [bufferOrBlob]);
+
+                bufferOrBlob = res.buffer || bufferOrBlob;
+                if (res.success) {
+                  actionStr = isVideo ? 'Restored (QuickTime Meta)' : (engine === 'wasm' ? 'WASM Injected' : 'Deep Injected');
+                } else {
+                  actionStr = `Copied (Meta fallback: ${res.error || 'skipped'})`;
+                  levelStr = 'warn';
+                  statsBuffer.current.exifFailed += 1;
+                }
+              }
+
+              if (!bufferOrBlob) {
+                throw new Error("Failed to read file contents.");
+              }
+
+              if (zipModeRef.current) {
+                if (!currentZipWriterRef.current) {
+                  const blobWriter = new BlobWriter("application/zip");
+                  currentZipBlobWriterRef.current = blobWriter;
+                  currentZipWriterRef.current = new ZipWriter(blobWriter);
+                }
+                const zipEntryPath = [...outRelativePath, fileRecord.filename].join('/');
+                const dateObj = epochSec ? new Date(epochSec * 1000) : new Date();
+                await currentZipWriterRef.current.add(zipEntryPath, new BlobReader(new Blob([bufferOrBlob])), {
+                  lastModDate: dateObj
+                });
+                currentZipBytesRef.current += size;
+              } else {
+                writable = await outHandle!.createWritable();
+                await writable.write(bufferOrBlob);
+                await writable.close();
+                writable = null;
+                bufferOrBlob = null;
+              }
+            } else {
+              if (epochSec) {
                 actionStr = 'Restored';
                 levelStr = 'success';
+              }
 
-                // Read buffer only when EXIF injection is needed
+              if (zipModeRef.current) {
+                if (!currentZipWriterRef.current) {
+                  const blobWriter = new BlobWriter("application/zip");
+                  currentZipBlobWriterRef.current = blobWriter;
+                  currentZipWriterRef.current = new ZipWriter(blobWriter);
+                }
+                const zipEntryPath = [...outRelativePath, fileRecord.filename].join('/');
+                const dateObj = epochSec ? new Date(epochSec * 1000) : new Date();
+
+                let contentReader: any;
                 if (fileObj) {
-                  bufferOrBlob = await fileObj.arrayBuffer();
+                  contentReader = new BlobReader(fileObj);
                 } else if (zipEntry) {
                   const writer = new Uint8ArrayWriter();
                   const bytes = await zipEntry.getData!(writer);
-                  bufferOrBlob = bytes.buffer;
-                  // Help GC release writer
-                  (writer as any).writable = null;
-                }
-
-                if (bufferOrBlob) {
-                  // Run EXIF injection in the background Worker
-                  const taskName = engine === 'wasm' ? 'inject_wasm' : 'inject_exif';
-                  const res = await pool.runTask(taskName, {
-                    buffer: bufferOrBlob,
-                    epochSec,
-                    lat,
-                    lng,
-                    filename: fileRecord.filename,
-                    description,
-                    people,
-                    albumName,
-                    type: isVideo ? 'video' : 'image'
-                  }, [bufferOrBlob]);
-
-                  bufferOrBlob = res.buffer;
-                  if (res.success) {
-                    actionStr = engine === 'wasm' ? 'WASM Injected' : 'Deep Injected';
-                  } else {
-                    // File was still saved — only the EXIF injection failed.
-                    // Count as exifFailed (warn), not a hard error.
-                    actionStr = `Copied (EXIF unsupported: ${res.error})`;
-                    levelStr = 'warn';
-                    statsBuffer.current.exifFailed += 1;
-                  }
-                }
-
-                if (!bufferOrBlob) {
-                  throw new Error("Failed to read file contents.");
-                }
-
-                if (zipModeRef.current) {
-                  if (!currentZipWriterRef.current) {
-                    const blobWriter = new BlobWriter("application/zip");
-                    currentZipBlobWriterRef.current = blobWriter;
-                    currentZipWriterRef.current = new ZipWriter(blobWriter);
-                  }
-                  const zipEntryPath = [baseFolder, ...fileRecord.relativePath, fileRecord.filename].join('/');
-                  const dateObj = epochSec ? new Date(epochSec * 1000) : new Date();
-                  await currentZipWriterRef.current.add(zipEntryPath, new BlobReader(new Blob([bufferOrBlob])), {
-                    lastModDate: dateObj
-                  });
-                  currentZipBytesRef.current += size;
+                  contentReader = new BlobReader(new Blob([bytes]));
                 } else {
-                  writable = await outHandle!.createWritable();
-                  await writable.write(bufferOrBlob);
-                  await writable.close();
-                  writable = null; // Mark as closed successfully
-                  bufferOrBlob = null; // Immediately release RAM for garbage collection
+                  throw new Error("Failed to resolve file reference.");
                 }
+
+                await currentZipWriterRef.current.add(zipEntryPath, contentReader, {
+                  lastModDate: dateObj
+                });
+                currentZipBytesRef.current += size;
               } else {
-                // Zero-RAM Copying: stream file directly to output handle!
-                if (epochSec) {
-                  actionStr = 'Restored';
-                  levelStr = 'success';
-                }
-
-                if (zipModeRef.current) {
-                  if (!currentZipWriterRef.current) {
-                    const blobWriter = new BlobWriter("application/zip");
-                    currentZipBlobWriterRef.current = blobWriter;
-                    currentZipWriterRef.current = new ZipWriter(blobWriter);
-                  }
-                  const zipEntryPath = [baseFolder, ...fileRecord.relativePath, fileRecord.filename].join('/');
-                  const dateObj = epochSec ? new Date(epochSec * 1000) : new Date();
-
-                  let contentReader: any;
-                  if (fileObj) {
-                    contentReader = new BlobReader(fileObj);
-                  } else if (zipEntry) {
-                    const writer = new Uint8ArrayWriter();
-                    const bytes = await zipEntry.getData!(writer);
-                    contentReader = new BlobReader(new Blob([bytes]));
-                  } else {
-                    throw new Error("Failed to resolve file reference.");
-                  }
-
-                  await currentZipWriterRef.current.add(zipEntryPath, contentReader, {
-                    lastModDate: dateObj
-                  });
-                  currentZipBytesRef.current += size;
+                writable = await outHandle!.createWritable();
+                if (fileObj) {
+                  const readableStream = fileObj.stream();
+                  await readableStream.pipeTo(writable);
+                  writable = null;
+                } else if (zipEntry) {
+                  const zipWriter = new FileSystemWritableFileStreamWriter(writable);
+                  await zipEntry.getData!(zipWriter);
+                  await writable.close();
+                  writable = null;
                 } else {
-                  writable = await outHandle!.createWritable();
-                  if (fileObj) {
-                    // Stream folder file directly to output disk writable
-                    const readableStream = fileObj.stream();
-                    await readableStream.pipeTo(writable);
-                    writable = null; // pipeTo closes the stream automatically
-                  } else if (zipEntry) {
-                    // Stream decompress ZIP entry directly to output disk writable
-                    const zipWriter = new FileSystemWritableFileStreamWriter(writable);
-                    await zipEntry.getData!(zipWriter);
-                    await writable.close();
-                    writable = null; // Mark as closed successfully
-                  } else {
-                    throw new Error("Failed to resolve file reference for streaming.");
-                  }
+                  throw new Error("Failed to resolve file reference for streaming.");
                 }
               }
-
-              // Threshold check for ZIP size (chunking at 1.5 GB)
-              if (zipModeRef.current && currentZipBytesRef.current > 1500 * 1024 * 1024) {
-                await downloadCurrentZipChunk();
-              }
-            } catch (err) {
-              if (writable) {
-                try {
-                  await writable.abort();
-                } catch (abortErr) {
-                  console.warn("Failed to abort writable stream:", abortErr);
-                }
-              }
-              throw err;
             }
 
-            // 6. Confirm completion (passing resolved size and epochSec)
+            if (zipModeRef.current && currentZipBytesRef.current > 1500 * 1024 * 1024) {
+              await downloadCurrentZipChunk();
+            }
+
             await sessionManager.confirmFile(fileRecord.id, 'completed', size, epochSec);
 
-            // Explicitly nullify large references so GC can reclaim heap promptly
             bufferOrBlob = null;
             fileObj = null;
             zipEntry = null;
 
-            // Update stats
             if (levelStr === 'success') {
               statsBuffer.current.matched += 1;
-            } else if (levelStr === 'warn' && actionStr.startsWith('Copied (EXIF')) {
-              // exifFailed already incremented inside the worker result block — just count scanned
+            } else if (levelStr === 'warn' && actionStr.startsWith('Copied (Meta')) {
+              // counted as exifFailed
             } else if (levelStr === 'warn') {
               statsBuffer.current.unmatched += 1;
             } else {
@@ -1291,9 +1302,14 @@ export function useToolPipeline() {
               action: actionStr
             });
             fileBuffer.current = fileRecord.filename;
-            progressBuffer.current = Math.floor((statsBuffer.current.scanned / statsBuffer.current.total) * 100);
+            progressBuffer.current = statsBuffer.current.total > 0
+              ? Math.floor((statsBuffer.current.scanned / statsBuffer.current.total) * 100)
+              : 0;
 
           } catch (err: any) {
+            if (writable) {
+              try { await writable.abort(); } catch {}
+            }
             console.error("Pipeline file error:", fileRecord.filename, err);
 
             await sessionManager.confirmFile(fileRecord.id, 'failed', fileRecord.bytes, null, err.message);
@@ -1309,55 +1325,50 @@ export function useToolPipeline() {
               action: `Error: ${err.message || 'Unknown'}`
             });
             fileBuffer.current = fileRecord.filename;
-            progressBuffer.current = Math.floor((statsBuffer.current.scanned / statsBuffer.current.total) * 100);
+            progressBuffer.current = statsBuffer.current.total > 0
+              ? Math.floor((statsBuffer.current.scanned / statsBuffer.current.total) * 100)
+              : 0;
           } finally {
             inFlightCount--;
-            if (isHeavy) {
+            if (heavyFlag) {
               isProcessingHeavy = false;
             }
             setActiveWorkersCount(inFlightCount);
 
-            // V8 GC Yield: yield back event loop every 5 files to give GC idle time
-            if (globalFileIndex % 5 === 0 || isHeavy) {
-              await new Promise(resolve => setTimeout(resolve, 10));
+            // Yield slightly for garbage collection every 10 files
+            if (statsBuffer.current.scanned % 10 === 0) {
+              await new Promise(r => setTimeout(r, 5));
             }
 
-            // If we broke out earlier due to a Heavy file lock waiting, and we are the last
-            // worker to finish, we MUST trigger the next batch to wake up the stalled queue.
-            if (inFlightCount === 0 && isProcessingRef.current && !isPausedRef.current) {
-              setTimeout(processNext, 0);
-            }
-          }
-        }
+            // Immediately trigger next queue items
+            pumpQueue();
 
-        // Check if all pages exhausted or cancelled
-        if (inFlightCount === 0) {
-          if (globalFileIndex >= totalPending || !isProcessingRef.current) {
-            if (zipReader) {
-              try { await zipReader.close(); } catch {}
-            }
-            resumeNextRef.current = null;
-            if (globalFileIndex >= totalPending && isProcessingRef.current) {
-              if (zipModeRef.current) {
-                await downloadCurrentZipChunk();
+            // Completion check: when all workers and queues are drained
+            if (inFlightCount === 0 && fileQueue.length === 0 && (noMorePending || !isProcessingRef.current)) {
+              const remainingInDb = await sessionManager.getPendingCount();
+              if (remainingInDb === 0 && isProcessingRef.current) {
+                if (zipReader) {
+                  try { await zipReader.close(); } catch {}
+                }
+                resumeNextRef.current = null;
+                if (zipModeRef.current) {
+                  await downloadCurrentZipChunk();
+                }
+                await completeProcessing();
+              } else if (remainingInDb > 0 && isProcessingRef.current && !isPausedRef.current) {
+                noMorePending = false;
+                pumpQueue();
               }
-              await completeProcessing();
             }
           }
-        }
-      };
-
-      // Spawn worker instances to fill up the concurrency limit
-      const workersNeeded = inflightLimit - inFlightCount;
-      for (let i = 0; i < workersNeeded; i++) {
-        runWorker();
+        })(nextFile, isHeavy);
       }
     };
 
-    resumeNextRef.current = processNext;
+    resumeNextRef.current = pumpQueue;
 
     // Trigger initial batch
-    processNext();
+    pumpQueue();
   };
 
   const haltDueToQuota = async () => {
@@ -2328,8 +2339,16 @@ export function useToolPipeline() {
       timeString = "Less than 15 seconds";
     }
 
+    let elapsedStr = "";
+    if (startTimeRef.current > 0) {
+      const elapsedSec = Math.max(0, Math.floor((Date.now() - startTimeRef.current) / 1000));
+      const mm = Math.floor(elapsedSec / 60).toString().padStart(2, '0');
+      const ss = (elapsedSec % 60).toString().padStart(2, '0');
+      elapsedStr = `${mm}:${ss} elapsed • `;
+    }
+
     const speedText = bytesPerSec > 0 ? ` @ ${formatByteSize(bytesPerSec)}/s` : '';
-    return `⏱️ Est. restoration time: ${timeString}${scannedFiles > 0 ? ' remaining' : ''}${speedText}`;
+    return `⏱️ ${elapsedStr}${timeString}${scannedFiles > 0 ? ' remaining' : ''}${speedText}`;
   };
 
   const resetUserQuota = async () => {

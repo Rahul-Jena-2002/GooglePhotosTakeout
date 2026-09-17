@@ -12,6 +12,7 @@ import {
 } from "lucide-react"
 import { useToastStore } from "../store/useToastStore"
 import { createAdminInviteNotification, sendAdminInviteEmail } from "../lib/adminNotify"
+import { isSuperAdminEmail } from "../lib/adminAuth"
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -316,7 +317,7 @@ export default function AdminTeam() {
   const [loadingInvites, setLoadingInvites] = useState(true)
   const [showInviteModal, setShowInviteModal] = useState(false)
 
-  const isSuperAdmin = adminData?.role === "SUPER_ADMIN"
+  const isSuperAdmin = adminData?.role === "SUPER_ADMIN" || isSuperAdminEmail(user?.email || adminData?.email)
   const addToast = useToastStore.getState().addToast
 
   // ── Realtime listeners ────────────────────────────────────────────────────
@@ -386,7 +387,7 @@ export default function AdminTeam() {
     const expiresAt = Timestamp.fromMillis(Date.now() + 72 * 60 * 60 * 1000)
 
     // 1. Write invite record to Firestore
-    await addDoc(collection(db, "adminInvites"), {
+    const inviteRef = await addDoc(collection(db, "adminInvites"), {
       email,
       role,
       invitedBy: user?.uid ?? "unknown",
@@ -396,15 +397,15 @@ export default function AdminTeam() {
       status: "pending",
     })
 
-    // 2. Write in-app notification (real-time bell badge for logged-in user)
+    // 2. Write in-app notification (real-time bell badge for logged-in user and inviter)
     try {
-      await createAdminInviteNotification(email, role, inviterName, expiresAt)
+      await createAdminInviteNotification(email, role, inviterName, expiresAt, inviteRef.id, user?.email || adminData?.email)
     } catch (e) {
       console.warn("[AdminTeam] Failed to create in-app notification:", e)
     }
 
     // 3. Send email via EmailJS
-    const emailResult = await sendAdminInviteEmail(email, role, inviterName, expiresAt)
+    const emailResult = await sendAdminInviteEmail(email, role, inviterName, expiresAt, inviteRef.id)
 
     if (emailResult.success) {
       addToast(`Invite sent to ${email} — email delivered and in-app notification created.`, "success")
@@ -412,10 +413,10 @@ export default function AdminTeam() {
       // Email not configured or failed — in-app notification was still created
       addToast(
         `Invite created for ${email} as ${role.replace("_", " ")}. In-app notification sent.` +
-        (emailResult.error === "EmailJS not configured"
-          ? " (Email not configured — set VITE_EMAILJS_* env vars to enable)"
-          : ` Email delivery failed: ${emailResult.error}`),
-        emailResult.error === "EmailJS not configured" ? "info" : "warning"
+        (emailResult.error?.includes("EmailJS not configured")
+          ? " (Email keys not configured — add keys in Admin -> Keys & Secrets)"
+          : ` Email delivery: ${emailResult.error}`),
+        emailResult.error?.includes("EmailJS not configured") ? "info" : "warning"
       )
     }
   }
@@ -638,7 +639,8 @@ export default function AdminTeam() {
                           <div className="flex items-center justify-end gap-1">
                             <button
                               onClick={() => {
-                                navigator.clipboard.writeText(`${window.location.origin}/tool`);
+                                const inviteUrl = `${window.location.origin}/auth?invite=${inv.id}&email=${encodeURIComponent(inv.email)}`;
+                                navigator.clipboard.writeText(inviteUrl);
                                 addToast(`Copied invite URL for ${inv.email} to clipboard!`, "success");
                               }}
                               className="text-zinc-400 hover:text-zinc-900 dark:hover:text-white transition-colors p-1.5 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800 cursor-pointer"

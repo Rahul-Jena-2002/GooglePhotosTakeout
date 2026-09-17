@@ -53,16 +53,6 @@ export default function SupportWidget() {
               </div>
             </Link>
             
-            <Link to="/support?tab=feedback" onClick={() => setIsOpen(false)} className="flex items-center gap-3 p-3 bg-white/5 hover:bg-white/10 rounded-lg transition-colors border border-white/5">
-              <div className="bg-purple-500/20 p-2 rounded-md">
-                <MessageSquare className="w-4 h-4 text-purple-400" />
-              </div>
-              <div>
-                <div className="text-sm font-medium">Give Feedback</div>
-                <div className="text-xs text-white/50">Share your thoughts</div>
-              </div>
-            </Link>
-            
             {!user ? (
               <div className="p-3 bg-red-500/5 border border-red-500/10 rounded-lg text-center">
                 <p className="text-xs text-red-200 mb-1">Sign in to contact support</p>

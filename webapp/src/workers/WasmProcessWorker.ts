@@ -1,29 +1,19 @@
 import { injectWasmExif } from '../services/WasmExifRestorer';
-import { injectWasmVideo } from '../services/WasmVideoRestorer';
+import { injectMp4CreationTime } from '../services/VideoMetadataRestorer';
 
 self.onmessage = async (e: MessageEvent) => {
   const { action, payload } = e.data || {};
   if (!action) return;
 
   if (action === 'inject_wasm') {
-    const { buffer, epochSec, lat, lng, filename, description, people, albumName, type, fileHandle } = payload;
+    const { buffer, epochSec, lat, lng, filename, description, people, albumName, type } = payload;
     try {
       let resultBuffer: ArrayBuffer;
-      const u8 = new Uint8Array(buffer);
 
       if (type === 'video') {
-        const res = await injectWasmVideo(u8, epochSec, lat, lng, filename, fileHandle);
-        if (res.needsNativeEngine) {
-          (self as any).postMessage({
-            success: false,
-            needsNativeEngine: true,
-            message: res.message || 'Video processing requires Chrome or Edge, or use our Native App',
-            filename
-          });
-          return;
-        }
-        resultBuffer = res.data ? res.data.buffer : buffer;
+        resultBuffer = injectMp4CreationTime(buffer, epochSec);
       } else {
+        const u8 = new Uint8Array(buffer);
         const outU8 = await injectWasmExif(u8, epochSec, lat, lng, description, people, albumName, filename);
         resultBuffer = outU8.buffer;
       }

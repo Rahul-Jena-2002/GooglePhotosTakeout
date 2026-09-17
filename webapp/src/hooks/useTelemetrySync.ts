@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { doc, getDoc, setDoc, getDocs, collection } from 'firebase/firestore';
 import { db } from '../firebase';
 import { useAuth } from '../contexts/AuthContext';
+import { isSuperAdminEmail } from '../lib/adminAuth';
 
 const getUserBytes = (u: any) => {
   return Math.max(u.usedBytes || 0, u.totalBytesProcessed || 0, u.lifetimeBytes || 0);
@@ -22,7 +23,7 @@ const getUserFiles = (u: any) => {
  */
 export function useTelemetrySync(enabled: boolean = true) {
   const { user, userData, adminData } = useAuth();
-  const isAdmin = userData?.isAdmin || !!adminData;
+  const isAdmin = !!adminData || isSuperAdminEmail(user?.email);
 
   useEffect(() => {
     if (!user || !isAdmin || !enabled) return;

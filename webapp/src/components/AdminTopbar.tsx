@@ -1,8 +1,8 @@
-import { useState, useEffect } from "react"
-import { useLocation, Link } from "react-router-dom"
+import { useState, useEffect, useRef } from "react"
+import { useLocation, Link, useNavigate } from "react-router-dom"
 import { useAuth, type AdminRole } from "../contexts/AuthContext"
 import { db } from "../firebase"
-import { collection, query, where, onSnapshot, doc, updateDoc } from "firebase/firestore"
+import { collection, query, where, onSnapshot, doc, updateDoc, Timestamp } from "firebase/firestore"
 import {
   Search,
   Bell,
@@ -12,7 +12,13 @@ import {
   ActivitySquare,
   Sun,
   Moon,
-  Menu
+  Menu,
+  LifeBuoy,
+  MessageSquareQuote,
+  Users2,
+  Sparkles,
+  CheckCheck,
+  Inbox
 } from "lucide-react"
 import {
   DropdownMenu,
@@ -60,9 +66,12 @@ const ROLE_LABELS: Record<AdminRole, string> = {
 export default function AdminTopbar({ onMenuClick }: { onMenuClick?: () => void }) {
   const { user, adminData, logout } = useAuth()
   const location = useLocation()
+  const navigate = useNavigate()
   const [searchVal, setSearchVal] = useState("")
-  const [openTickets, setOpenTickets] = useState(0)
-  const [pendingReviews, setPendingReviews] = useState(0)
+  const [notifications, setNotifications] = useState<any[]>([])
+  const [notificationOpen, setNotificationOpen] = useState(false)
+  const notifRef = useRef<HTMLDivElement>(null)
+
   const [theme, setTheme] = useState<'light' | 'dark'>(() => {
     if (typeof window !== 'undefined') {
       const saved = localStorage.getItem("takeoutfix_theme")
@@ -97,27 +106,131 @@ export default function AdminTopbar({ onMenuClick }: { onMenuClick?: () => void 
     return () => window.removeEventListener("takeoutfix-theme-changed", handleThemeChange);
   }, [])
 
+  // Close notifications on location change or outside click
+  useEffect(() => {
+    setNotificationOpen(false)
+  }, [location.pathname])
+
+  useEffect(() => {
+    if (!notificationOpen) return
+    const handleClickOutside = (e: MouseEvent) => {
+      if (notifRef.current && !notifRef.current.contains(e.target as Node)) {
+        setNotificationOpen(false)
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside)
+    return () => document.removeEventListener("mousedown", handleClickOutside)
+  }, [notificationOpen])
+
   // Get active breadcrumbs
   const path = location.pathname
   const breadcrumb = BREADCRUMBS[path] || ["Admin", "Ops Center"]
 
-  // Listen for open tickets and pending reviews to calculate alerts in real-time
+  // Real-time notifications listener for Admin (Account-specific + Global offers + Tickets)
   useEffect(() => {
-    const qTickets = query(collection(db, "tickets"), where("status", "==", "OPEN"))
-    const unsubTickets = onSnapshot(qTickets, (snap) => {
-      setOpenTickets(snap.size)
-    }, (err) => console.error("Error loading tickets count in Topbar:", err))
+    if (!user) {
+      setNotifications([])
+      return
+    }
 
-    const qReviews = query(collection(db, "reviews"), where("status", "==", "PENDING"))
-    const unsubReviews = onSnapshot(qReviews, (snap) => {
-      setPendingReviews(snap.size)
-    }, (err) => console.error("Error loading reviews count in Topbar:", err))
+    const email = (user.email || adminData?.email || "").toLowerCase()
+    let notifItems: any[] = []
+    let openTicketItems: any[] = []
+    let inviteItems: any[] = []
+
+    const parseTs = (raw: any): number => {
+      if (!raw) return Date.now()
+      if (typeof raw === "number") return raw
+      if (raw instanceof Timestamp) return raw.toMillis()
+      if (typeof raw.toMillis === "function") return raw.toMillis()
+      if (raw.seconds) return raw.seconds * 1000
+      return Date.now()
+    }
+
+    const merge = () => {
+      const combined = [...inviteItems, ...notifItems, ...openTicketItems].sort(
+        (a, b) => (b._ts || 0) - (a._ts || 0)
+      )
+      setNotifications(combined)
+    }
+
+    // 1. Direct and Global notifications (tickets, offers, system alerts, account invites)
+    const unsubNotifs = email ? onSnapshot(
+      query(collection(db, "notifications"), where("recipientEmail", "in", [email, "all"])),
+      snap => {
+        notifItems = snap.docs.map(d => {
+          const data = d.data()
+          return {
+            id: d.id,
+            _collection: "notifications",
+            _type: data.type || "system",
+            _ts: parseTs(data.createdAt),
+            _read: !!data.read,
+            title: data.title || "Notification",
+            message: data.message || "",
+            href: data.adminLink || data.href || "/admin/support",
+            ...data
+          }
+        }).filter(n => !n._read)
+        merge()
+      },
+      err => console.warn("[AdminTopbar] Notifications listener error:", err)
+    ) : () => {}
+
+    // 2. Open tickets count/alerts
+    const unsubTickets = onSnapshot(
+      query(collection(db, "tickets"), where("status", "==", "OPEN")),
+      snap => {
+        openTicketItems = snap.docs.slice(0, 5).map(d => {
+          const data = d.data()
+          return {
+            id: `ticket_${d.id}`,
+            ticketDocId: d.id,
+            _collection: "tickets",
+            _type: "OPEN_TICKET",
+            _ts: parseTs(data.createdAt),
+            _read: false,
+            title: `Open Ticket: ${data.ticketId || d.id.slice(0, 8)}`,
+            message: `${data.email || 'User'}: ${data.subject || 'Support request'}`,
+            href: "/admin/support",
+            ...data
+          }
+        })
+        merge()
+      },
+      err => console.warn("[AdminTopbar] Tickets listener error:", err)
+    )
+
+    // 3. Pending admin invites for this email
+    const unsubInvites = email ? onSnapshot(
+      query(collection(db, "adminInvites"), where("email", "==", email), where("status", "==", "pending")),
+      snap => {
+        inviteItems = snap.docs.map(d => {
+          const data = d.data()
+          return {
+            id: `invite_${d.id}`,
+            inviteDocId: d.id,
+            _collection: "adminInvites",
+            _type: "ADMIN_INVITE",
+            _ts: parseTs(data.createdAt),
+            _read: false,
+            title: "Admin Team Invitation",
+            message: `${data.invitedByName || 'Admin'} invited you as ${(data.role || 'ADMIN').replace('_', ' ')}.`,
+            href: "/admin/team",
+            ...data
+          }
+        })
+        merge()
+      },
+      err => console.warn("[AdminTopbar] Invites listener error:", err)
+    ) : () => {}
 
     return () => {
+      unsubNotifs()
       unsubTickets()
-      unsubReviews()
+      unsubInvites()
     }
-  }, [])
+  }, [user, adminData])
 
   const handleStatusChange = async (status: 'online' | 'idle' | 'offline') => {
     if (!user) return
@@ -129,9 +242,28 @@ export default function AdminTopbar({ onMenuClick }: { onMenuClick?: () => void 
     }
   }
 
+  const markAllAsRead = async () => {
+    const unread = notifications.filter(n => n._collection === "notifications" && !n._read)
+    await Promise.allSettled(
+      unread.map(n => updateDoc(doc(db, "notifications", n.id), { read: true }))
+    )
+    setNotifications([])
+  }
+
+  const handleNotificationClick = async (notif: any) => {
+    setNotificationOpen(false)
+    if (notif._collection === "notifications" && notif.id) {
+      try {
+        await updateDoc(doc(db, "notifications", notif.id), { read: true })
+      } catch { /* ignore */ }
+    }
+    const dest = notif.href || notif.adminLink || "/admin/support"
+    navigate(dest)
+  }
+
   const role = adminData?.role ?? "ADMIN"
   const currentStatus = adminData?.status ?? "online"
-  const totalAlerts = openTickets + pendingReviews
+  const unreadCount = notifications.length
 
   return (
     <header className="h-16 border-b border-zinc-800 bg-zinc-950/40 backdrop-blur-md sticky top-0 z-40 flex items-center justify-between px-6 admin-topbar">
@@ -216,15 +348,117 @@ export default function AdminTopbar({ onMenuClick }: { onMenuClick?: () => void 
           )}
         </button>
 
-        {/* Notifications Alert Bell */}
-        <Link to="/admin/support" className="btn-notification-navbar relative hidden sm:block p-1.5 rounded-full hover:bg-zinc-900/60 border border-transparent hover:border-zinc-800 text-zinc-400 hover:text-zinc-200 transition-all">
-          <Bell className="w-4.5 h-4.5" />
-          {totalAlerts > 0 && (
-            <span className="absolute -top-0.5 -right-0.5 w-4 h-4 text-[9px] font-bold rounded-full flex items-center justify-center admin-notification-badge animate-bounce">
-              {totalAlerts}
-            </span>
+        {/* Notifications Alert Bell & Real-time Dropdown */}
+        <div className="relative" ref={notifRef}>
+          <button
+            onClick={() => setNotificationOpen(!notificationOpen)}
+            className="btn-notification-navbar relative p-1.5 rounded-full hover:bg-zinc-900/60 border border-transparent hover:border-zinc-800 text-zinc-400 hover:text-zinc-200 transition-all focus:outline-none cursor-pointer"
+            title="Notifications"
+          >
+            <Bell className="w-4.5 h-4.5" />
+            {unreadCount > 0 && (
+              <span className="absolute -top-0.5 -right-0.5 w-4 h-4 text-[9px] font-bold rounded-full flex items-center justify-center bg-red-500 text-white shadow-sm animate-pulse">
+                {unreadCount > 9 ? "9+" : unreadCount}
+              </span>
+            )}
+          </button>
+
+          {/* Real-time Notification Dropdown Popover */}
+          {notificationOpen && (
+            <div className="absolute right-0 top-full mt-2 w-80 max-w-[90vw] bg-zinc-950 border border-zinc-800 rounded-xl py-2 shadow-2xl backdrop-blur-2xl z-[100] animate-in fade-in slide-in-from-top-2 duration-200 text-left">
+              <div className="px-4 py-2 border-b border-zinc-800/80 flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-bold text-white uppercase tracking-wider">Alerts & Queue</span>
+                  {unreadCount > 0 && (
+                    <span className="px-1.5 py-0.2 rounded-full text-[10px] font-extrabold bg-indigo-500/20 text-indigo-400 border border-indigo-500/30">
+                      {unreadCount}
+                    </span>
+                  )}
+                </div>
+                {unreadCount > 0 && (
+                  <button
+                    onClick={markAllAsRead}
+                    className="text-[10px] text-zinc-400 hover:text-indigo-400 transition-colors flex items-center gap-1 font-semibold"
+                  >
+                    <CheckCheck className="w-3 h-3" /> Mark all read
+                  </button>
+                )}
+              </div>
+
+              <div className="max-h-72 overflow-y-auto divide-y divide-zinc-900">
+                {notifications.length === 0 ? (
+                  <div className="px-4 py-8 text-center text-xs text-zinc-500">
+                    <Inbox className="w-6 h-6 mx-auto mb-2 text-zinc-600" />
+                    No active notifications
+                  </div>
+                ) : (
+                  notifications.map((n) => {
+                    const isTicket = n._type === "NEW_TICKET" || n._type === "TICKET_REPLY" || n._type === "OPEN_TICKET"
+                    const isFeedback = n._type === "NEW_FEEDBACK"
+                    const isInvite = n._type === "ADMIN_INVITE"
+                    const isPromo = n._type === "FREE_UNLIMITED_PROMO" || n.type === "FREE_UNLIMITED_PROMO"
+
+                    let badgeColor = "bg-zinc-800 text-zinc-400 border-zinc-700"
+                    let badgeLabel = "Notification"
+                    let IconComponent = Bell
+
+                    if (isTicket) {
+                      badgeColor = "bg-red-500/10 text-red-400 border-red-500/20"
+                      badgeLabel = n._type === "TICKET_REPLY" ? "Ticket Reply" : "Ticket"
+                      IconComponent = LifeBuoy
+                    } else if (isFeedback) {
+                      badgeColor = "bg-amber-500/10 text-amber-400 border-amber-500/20"
+                      badgeLabel = "Feedback"
+                      IconComponent = MessageSquareQuote
+                    } else if (isInvite) {
+                      badgeColor = "bg-indigo-500/10 text-indigo-400 border-indigo-500/20"
+                      badgeLabel = "Team Invite"
+                      IconComponent = Users2
+                    } else if (isPromo) {
+                      badgeColor = "bg-emerald-500/10 text-emerald-400 border-emerald-500/20"
+                      badgeLabel = "Global Offer"
+                      IconComponent = Sparkles
+                    }
+
+                    return (
+                      <div
+                        key={n.id}
+                        onClick={() => handleNotificationClick(n)}
+                        className="px-4 py-3 hover:bg-zinc-900/60 transition-colors cursor-pointer group"
+                      >
+                        <div className="flex items-center justify-between mb-1">
+                          <span className={`text-[9px] font-extrabold uppercase px-1.5 py-0.5 rounded border ${badgeColor} flex items-center gap-1`}>
+                            <IconComponent className="w-2.5 h-2.5" />
+                            {badgeLabel}
+                          </span>
+                          <span className="text-[10px] text-zinc-500">
+                            {n._ts ? new Date(n._ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}
+                          </span>
+                        </div>
+                        <div className="text-xs font-bold text-zinc-200 group-hover:text-white truncate">
+                          {n.title}
+                        </div>
+                        <p className="text-[11px] text-zinc-400 line-clamp-2 mt-0.5 leading-snug">
+                          {n.message}
+                        </p>
+                      </div>
+                    )
+                  })
+                )}
+              </div>
+
+              <div className="p-2 border-t border-zinc-800/80 bg-zinc-950/80">
+                <Link
+                  to="/admin/support"
+                  onClick={() => setNotificationOpen(false)}
+                  className="block text-center py-1.5 text-[11px] font-bold text-zinc-300 hover:text-white bg-zinc-900 hover:bg-zinc-800 rounded-lg transition-colors"
+                >
+                  View Support Desk
+                </Link>
+              </div>
+            </div>
           )}
-        </Link>
+        </div>
 
         {/* Profile Settings Dropdown */}
         <DropdownMenu>

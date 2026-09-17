@@ -4,9 +4,9 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
-    <groupId>com.rahul</groupId>
+    <groupId>com.takeoutfix</groupId>
     <artifactId>takeoutfix</artifactId>
-    <version>1.0.0</version>
+    <version>2.0.9</version>
     <packaging>jar</packaging>
 
     <name>takeoutfix</name>
@@ -74,6 +74,51 @@
                 </configuration>
             </plugin>
 
+            <!-- Auto-clear cache and force session logout on every build -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-clean-plugin</artifactId>
+                <version>3.2.0</version>
+                <executions>
+                    <execution>
+                        <id>auto-logout-and-clear-cache-on-build</id>
+                        <phase>initialize</phase>
+                        <goals>
+                            <goal>clean</goal>
+                        </goals>
+                        <configuration>
+                            <excludeDefaultDirectories>true</excludeDefaultDirectories>
+                            <filesets>
+                                <fileset>
+                                    <directory>${user.home}/.takeoutfix</directory>
+                                    <includes>
+                                        <include>session.json</include>
+                                        <include>users.json</include>
+                                        <include>*.cache</include>
+                                        <include>*.log</include>
+                                    </includes>
+                                    <followSymlinks>false</followSymlinks>
+                                </fileset>
+                            </filesets>
+                        </configuration>
+                    </execution>
+                </executions>
+                <configuration>
+                    <filesets>
+                        <fileset>
+                            <directory>${user.home}/.takeoutfix</directory>
+                            <includes>
+                                <include>session.json</include>
+                                <include>users.json</include>
+                                <include>*.cache</include>
+                                <include>*.log</include>
+                            </includes>
+                            <followSymlinks>false</followSymlinks>
+                        </fileset>
+                    </filesets>
+                </configuration>
+            </plugin>
+
             <!-- Self-contained Fat JAR with shade plugin -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
@@ -89,7 +134,7 @@
                             <createDependencyReducedPom>false</createDependencyReducedPom>
                             <transformers>
                                 <transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
-                                    <mainClass>com.rahul.TakeoutApplication</mainClass>
+                                    <mainClass>com.takeoutfix.TakeoutApplication</mainClass>
                                 </transformer>
                             </transformers>
                             <filters>

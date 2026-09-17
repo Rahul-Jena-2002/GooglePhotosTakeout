@@ -2,10 +2,15 @@ import React, { useState, useEffect } from "react";
 import { auth, googleProvider, db } from "../firebase";
 import {
   signInWithPopup,
+  signInWithRedirect,
+  getRedirectResult,
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
   sendPasswordResetEmail,
   updateProfile,
+  setPersistence,
+  browserLocalPersistence,
+  browserSessionPersistence,
   type User,
 } from "firebase/auth";
 import { doc, getDoc, setDoc } from "firebase/firestore";
@@ -22,6 +27,7 @@ import {
   ShieldCheck,
   RotateCw,
   Sparkles,
+  Key,
   ExternalLink,
 } from "lucide-react";
 
@@ -35,7 +41,25 @@ export default function AuthPage() {
     return "signin";
   });
 
-  const [email, setEmail] = useState("");
+  const [inviteInfo] = useState<{ id: string; email: string } | null>(() => {
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      const inviteId = params.get("invite");
+      const inviteEmail = params.get("email");
+      if (inviteId || inviteEmail) {
+        return { id: inviteId || "", email: inviteEmail || "" };
+      }
+    }
+    return null;
+  });
+
+  const [email, setEmail] = useState(() => {
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      return params.get("email") || "";
+    }
+    return "";
+  });
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [fullName, setFullName] = useState("");
@@ -46,12 +70,67 @@ export default function AuthPage() {
   const [errorMsg, setErrorMsg] = useState("");
   const [successMsg, setSuccessMsg] = useState("");
   const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [rememberMe, setRememberMe] = useState(true);
 
-  // Sync auth state
+  const [desktopPort] = useState<string | null>(() => {
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      return params.get("desktop_port") || params.get("port");
+    }
+    return null;
+  });
+
+  const generateStrongPassword = () => {
+    const uppers = "ABCDEFGHJKLMNPQRSTUVWXYZ";
+    const lowers = "abcdefghijkmnopqrstuvwxyz";
+    const digits = "23456789";
+    const specials = "!@#$%^&*()_+-=";
+    const pwd = [
+      uppers[Math.floor(Math.random() * uppers.length)],
+      lowers[Math.floor(Math.random() * lowers.length)],
+      digits[Math.floor(Math.random() * digits.length)],
+      specials[Math.floor(Math.random() * specials.length)],
+    ];
+    const all = uppers + lowers + digits + specials;
+    for (let i = 0; i < 8; i++) {
+      pwd.push(all[Math.floor(Math.random() * all.length)]);
+    }
+    pwd.sort(() => Math.random() - 0.5);
+    const result = pwd.join("");
+    setPassword(result);
+    setConfirmPassword(result);
+    setShowPassword(true);
+    setSuccessMsg("Strong password generated! Browser can now save it.");
+  };
+
+  // Handle redirect result from signInWithRedirect fallback
+  useEffect(() => {
+    if (!auth) return;
+    getRedirectResult(auth)
+      .then(async (res) => {
+        if (res && res.user) {
+          await syncUserDoc(res.user);
+          setSuccessMsg("Signed in successfully! Connecting to Desktop...");
+          handleSuccessRedirect(res.user);
+        }
+      })
+      .catch((err) => {
+        console.warn("[Auth] getRedirectResult error:", err);
+      });
+  }, []);
+
+  // Sync auth state & auto-dispatch to desktop if already signed in
   useEffect(() => {
     if (!auth) return;
     const unsub = auth.onAuthStateChanged((u: User | null) => {
       setCurrentUser(u);
+      if (u && typeof window !== "undefined") {
+        const params = new URLSearchParams(window.location.search);
+        const port = params.get("desktop_port") || params.get("port");
+        if (port) {
+          handleSuccessRedirect(u);
+        }
+      }
     });
     return () => unsub();
   }, []);
@@ -59,10 +138,54 @@ export default function AuthPage() {
   const getRedirectUrl = () => {
     if (typeof window === "undefined") return "/tool";
     const params = new URLSearchParams(window.location.search);
-    return params.get("redirect") || "/tool";
+    if (params.get("redirect")) return params.get("redirect")!;
+    if (inviteInfo || params.get("invite")) return "/admin/team";
+    return "/tool";
   };
 
-  const handleSuccessRedirect = () => {
+  const handleSuccessRedirect = async (userObj?: User | null) => {
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      const port = params.get("desktop_port") || params.get("port");
+      const targetUser = userObj || currentUser || auth?.currentUser;
+      if (port && targetUser) {
+        try {
+          const token = await targetUser.getIdToken().catch(() => "");
+          const callbackParams = new URLSearchParams({
+            uid: targetUser.uid,
+            googleId: targetUser.uid,
+            email: targetUser.email || "",
+            displayName: targetUser.displayName || targetUser.email?.split("@")[0] || "User",
+            name: targetUser.displayName || targetUser.email?.split("@")[0] || "User",
+            plan: "free",
+            token: token
+          });
+          const callbackUrl = `http://127.0.0.1:${port}/callback?${callbackParams.toString()}`;
+
+          // Attempt background POST fetch first
+          try {
+            fetch(`http://127.0.0.1:${port}/callback`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                uid: targetUser.uid,
+                googleId: targetUser.uid,
+                email: targetUser.email || "",
+                displayName: targetUser.displayName || targetUser.email?.split("@")[0] || "User",
+                name: targetUser.displayName || targetUser.email?.split("@")[0] || "User",
+                plan: "free",
+                token: token
+              })
+            }).catch(() => {});
+          } catch (_) {}
+
+          window.location.href = callbackUrl;
+          return;
+        } catch (e) {
+          console.warn("Desktop bridge redirect error:", e);
+        }
+      }
+    }
     setTimeout(() => {
       if (typeof window !== "undefined") {
         // Trigger Astro progress bar before navigation
@@ -108,19 +231,24 @@ export default function AuthPage() {
       // reCAPTCHA runs in parallel (fire-and-forget) — it's a scoring signal, not a gate.
       executeRecaptcha("GOOGLE_SIGNIN").catch(() => {});
 
-      const res = await signInWithPopup(auth, googleProvider);
-      if (res.user) {
-        await syncUserDoc(res.user);
-        setSuccessMsg("Signed in successfully! Redirecting...");
-        handleSuccessRedirect();
+      try {
+        const res = await signInWithPopup(auth, googleProvider);
+        if (res.user) {
+          await syncUserDoc(res.user);
+          setSuccessMsg("Signed in successfully! Redirecting...");
+          handleSuccessRedirect(res.user);
+          return;
+        }
+      } catch (popupErr: any) {
+        if (popupErr.code === "auth/popup-closed-by-user" || popupErr.code === "auth/cancelled-popup-request") {
+          setErrorMsg("Sign-in cancelled. Please try again.");
+          return;
+        }
+        throw popupErr;
       }
     } catch (err: any) {
       console.error("Google sign in error:", err);
-      if (err.code === "auth/popup-closed-by-user") {
-        setErrorMsg("Sign-in cancelled. Please try again.");
-      } else {
-        setErrorMsg(err.message || "Failed to sign in with Google.");
-      }
+      setErrorMsg(err.message || "Failed to sign in with Google.");
     } finally {
       setGoogleLoading(false);
     }
@@ -132,8 +260,9 @@ export default function AuthPage() {
     setSuccessMsg("");
 
     const cleanEmail = email.trim().toLowerCase();
-    if (!cleanEmail || !cleanEmail.includes("@")) {
-      setErrorMsg("Please enter a valid email address.");
+    const GMAIL_REGEX = /^[a-zA-Z0-9._%+-]+@gmail\.com$/;
+    if (!cleanEmail || !GMAIL_REGEX.test(cleanEmail)) {
+      setErrorMsg("Only @gmail.com email addresses are allowed (e.g. yourname@gmail.com).");
       return;
     }
 
@@ -156,13 +285,27 @@ export default function AuthPage() {
       return;
     }
 
-    if (!password || password.length < 6) {
-      setErrorMsg("Password must be at least 6 characters long.");
+    if (!password) {
+      setErrorMsg("Please enter your password.");
       return;
+    }
+
+    try {
+      if (auth) {
+        await setPersistence(auth, rememberMe ? browserLocalPersistence : browserSessionPersistence);
+      }
+    } catch (e) {
+      console.warn("Persistence setup:", e);
     }
 
     // Sign up flow
     if (mode === "signup") {
+      const PASSWORD_REGEX = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?`~]).{8,16}$/;
+      if (!PASSWORD_REGEX.test(password)) {
+        setErrorMsg("Password must be 8-16 characters and contain uppercase, lowercase, numbers, and a special character.");
+        return;
+      }
+
       if (password !== confirmPassword) {
         setErrorMsg("Passwords do not match.");
         return;
@@ -177,7 +320,7 @@ export default function AuthPage() {
           await updateProfile(res.user, { displayName: cleanName });
           await syncUserDoc(res.user, cleanName);
           setSuccessMsg("Account created successfully! Redirecting...");
-          handleSuccessRedirect();
+          handleSuccessRedirect(res.user);
         }
       } catch (err: any) {
         console.error("Sign up error:", err);
@@ -202,7 +345,7 @@ export default function AuthPage() {
       if (res.user) {
         await syncUserDoc(res.user);
         setSuccessMsg("Welcome back! Redirecting...");
-        handleSuccessRedirect();
+        handleSuccessRedirect(res.user);
       }
     } catch (err: any) {
       console.error("Sign in error:", err);
@@ -243,15 +386,20 @@ export default function AuthPage() {
                 </p>
               </div>
             </div>
+            {desktopPort && (
+              <div className="mb-3 px-3 py-2 rounded-xl bg-indigo-50 dark:bg-indigo-950/40 border border-indigo-200 dark:border-indigo-800/60 text-xs text-indigo-900 dark:text-indigo-200 flex items-center justify-between">
+                <span>🖥️ TakeoutFix Desktop detected on port <strong>{desktopPort}</strong></span>
+              </div>
+            )}
             <div className="flex gap-2">
               <button
                 type="button"
                 onClick={() => {
-                  window.location.href = getRedirectUrl();
+                  handleSuccessRedirect(currentUser);
                 }}
-                className="flex-1 py-2 px-3 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-sm"
+                className="flex-1 py-2.5 px-3 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-md"
               >
-                <span>Continue to App</span>
+                <span>{desktopPort ? "Connect to TakeoutFix Desktop" : "Continue to App"}</span>
                 <ArrowRight className="w-3.5 h-3.5" />
               </button>
               <button
@@ -281,6 +429,24 @@ export default function AuthPage() {
               {mode === "forgot" && "Enter your email to receive a password reset link."}
             </p>
           </div>
+
+          {/* Admin Team Invitation Notice */}
+          {inviteInfo && (
+            <div className="mb-6 p-4 rounded-2xl bg-indigo-500/10 border border-indigo-500/30 text-left flex items-start gap-3">
+              <ShieldCheck className="w-5 h-5 text-indigo-500 dark:text-indigo-400 flex-shrink-0 mt-0.5" />
+              <div>
+                <h3 className="text-xs font-bold uppercase tracking-wider text-indigo-600 dark:text-indigo-400">Admin Team Invitation</h3>
+                <p className="text-xs text-zinc-600 dark:text-zinc-300 mt-1 leading-relaxed">
+                  You have been invited to join the TakeoutFix Admin Team.
+                  {inviteInfo.email ? (
+                    <span> Sign in with <strong>{inviteInfo.email}</strong> to activate your admin privileges.</span>
+                  ) : (
+                    " Sign in with your invited Google account to activate your admin privileges."
+                  )}
+                </p>
+              </div>
+            </div>
+          )}
 
           {/* Mode Switch Tabs (Sign In / Sign Up) */}
           {mode !== "forgot" && (
@@ -371,7 +537,7 @@ export default function AuthPage() {
           )}
 
           {/* Email / Password Form */}
-          <form onSubmit={handleEmailAuth} className="space-y-4 text-left">
+          <form method="post" action="#" onSubmit={handleEmailAuth} autoComplete="on" className="space-y-4 text-left">
             {/* Full Name field (Sign Up only) */}
             {mode === "signup" && (
               <div>
@@ -381,8 +547,11 @@ export default function AuthPage() {
                 <div className="relative">
                   <UserIcon className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-zinc-400" />
                   <input
+                    id="fullName"
+                    name="name"
                     type="text"
                     required
+                    autoComplete="name"
                     value={fullName}
                     onChange={(e) => setFullName(e.target.value)}
                     placeholder="Alex Morgan"
@@ -395,16 +564,19 @@ export default function AuthPage() {
             {/* Email field */}
             <div>
               <label className="block text-xs font-semibold text-zinc-700 dark:text-zinc-300 mb-1">
-                Email Address
+                Gmail Address (@gmail.com only)
               </label>
               <div className="relative">
                 <Mail className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-zinc-400" />
                 <input
+                  id="email"
+                  name="username"
                   type="email"
                   required
+                  autoComplete="username email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder="alex@example.com"
+                  placeholder="yourname@gmail.com"
                   className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl pl-10 pr-3 py-2.5 text-xs sm:text-sm text-zinc-900 dark:text-white placeholder:text-zinc-400 focus:outline-none focus:border-indigo-500 transition-colors"
                 />
               </div>
@@ -415,7 +587,7 @@ export default function AuthPage() {
               <div>
                 <div className="flex justify-between items-center mb-1">
                   <label className="block text-xs font-semibold text-zinc-700 dark:text-zinc-300">
-                    Password
+                    {mode === "signup" ? "Password (8-16 chars, Aa1@)" : "Password"}
                   </label>
                   {mode === "signin" && (
                     <button
@@ -426,12 +598,28 @@ export default function AuthPage() {
                       Forgot password?
                     </button>
                   )}
+                  {mode === "signup" && (
+                    <button
+                      type="button"
+                      onClick={generateStrongPassword}
+                      className="text-[11px] text-indigo-600 dark:text-indigo-400 hover:underline cursor-pointer flex items-center gap-1 font-medium"
+                      title="Auto-generate a compliant secure password"
+                    >
+                      <Sparkles className="w-3 h-3" />
+                      <span>Generate Strong Password</span>
+                    </button>
+                  )}
                 </div>
                 <div className="relative">
                   <Lock className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-zinc-400" />
                   <input
+                    id="password"
+                    name="password"
                     type={showPassword ? "text" : "password"}
                     required
+                    minLength={mode === "signup" ? 8 : undefined}
+                    maxLength={mode === "signup" ? 16 : undefined}
+                    autoComplete={mode === "signup" ? "new-password" : "current-password"}
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="••••••••"
@@ -457,14 +645,36 @@ export default function AuthPage() {
                 <div className="relative">
                   <Lock className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-zinc-400" />
                   <input
+                    id="confirm-password"
+                    name="confirmPassword"
                     type={showPassword ? "text" : "password"}
                     required
+                    minLength={8}
+                    maxLength={16}
+                    autoComplete="new-password"
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}
                     placeholder="••••••••"
                     className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl pl-10 pr-3 py-2.5 text-xs sm:text-sm text-zinc-900 dark:text-white placeholder:text-zinc-400 focus:outline-none focus:border-indigo-500 transition-colors"
                   />
                 </div>
+              </div>
+            )}
+
+            {/* Save Password & Remember Me Option */}
+            {mode !== "forgot" && (
+              <div className="flex items-center justify-between text-xs text-zinc-600 dark:text-zinc-400 pt-1">
+                <label className="flex items-center gap-2 cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    id="rememberMe"
+                    name="rememberMe"
+                    checked={rememberMe}
+                    onChange={(e) => setRememberMe(e.target.checked)}
+                    className="w-4 h-4 rounded text-indigo-600 border-zinc-300 dark:border-zinc-700 dark:bg-zinc-800 focus:ring-indigo-500 cursor-pointer"
+                  />
+                  <span>Save password & remember on this browser</span>
+                </label>
               </div>
             )}
 

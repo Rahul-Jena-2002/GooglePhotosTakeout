@@ -27,6 +27,11 @@ export default defineConfig({
     })
   ],
   vite: {
+    server: {
+      headers: {
+        'Cross-Origin-Opener-Policy': 'same-origin-allow-popups',
+      },
+    },
     resolve: {
       dedupe: ['react', 'react-dom'],
       alias: {

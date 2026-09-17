@@ -9,6 +9,7 @@ import { useTelemetrySync } from "../hooks/useTelemetrySync"
 import { useToastStore } from "../store/useToastStore"
 import { registerServiceWorker } from "../lib/swRegister"
 import { getFriendlyAuthMessage } from "../lib/authErrors"
+import { isSuperAdminEmail } from "../lib/adminAuth"
 
 const getPlanLabel = (plan?: string): string => {
   if (plan === 'pro') return 'Pro Tier'
@@ -186,9 +187,19 @@ export default function MainLayout() {
     // Track items from each source separately so we can merge
     let ticketItems: any[] = []
     let notifItems: any[] = []
+    let inviteItems: any[] = []
+
+    const parseTs = (raw: any): number => {
+      if (!raw) return Date.now()
+      if (typeof raw === "number") return raw
+      if (raw instanceof Timestamp) return raw.toMillis()
+      if (typeof raw.toMillis === "function") return raw.toMillis()
+      if (raw.seconds) return raw.seconds * 1000
+      return Date.now()
+    }
 
     const merge = () => {
-      const combined = [...notifItems, ...ticketItems].sort(
+      const combined = [...inviteItems, ...notifItems, ...ticketItems].sort(
         (a, b) => (b._ts || 0) - (a._ts || 0)
       )
       setNotifications(combined)
@@ -201,7 +212,7 @@ export default function MainLayout() {
         ticketItems = snap.docs.map(d => ({
           id: d.id,
           _type: "ticket_resolved",
-          _ts: d.data().createdAt instanceof Timestamp ? d.data().createdAt.toMillis() : 0,
+          _ts: parseTs(d.data().createdAt),
           ...d.data()
         }))
         merge()
@@ -209,7 +220,7 @@ export default function MainLayout() {
       () => {}
     )
 
-    // 2. Real-time notifications (admin invites, system alerts, global announcements)
+    // 2. Real-time notifications (system alerts, global announcements, offers, tickets)
     const unsubNotifs = email ? onSnapshot(
       query(collection(db, "notifications"), where("recipientEmail", "in", [email.toLowerCase(), "all"])),
       snap => {
@@ -217,7 +228,7 @@ export default function MainLayout() {
           .map(d => ({
             id: d.id,
             _type: d.data().type || "system",
-            _ts: d.data().createdAt instanceof Timestamp ? d.data().createdAt.toMillis() : 0,
+            _ts: parseTs(d.data().createdAt),
             _read: !!d.data().read,
             ...d.data()
           }))
@@ -227,10 +238,34 @@ export default function MainLayout() {
       () => {}
     ) : () => {}
 
-    return () => { unsubTickets(); unsubNotifs() }
+    // 3. Direct Admin Invites (guaranteed real-time delivery from adminInvites collection)
+    const unsubInvites = email ? onSnapshot(
+      query(collection(db, "adminInvites"), where("email", "==", email.toLowerCase()), where("status", "==", "pending")),
+      snap => {
+        inviteItems = snap.docs.map(d => {
+          const data = d.data();
+          return {
+            id: d.id,
+            _type: "ADMIN_INVITE",
+            _ts: parseTs(data.createdAt),
+            title: "You've been invited to the Admin Team",
+            message: `${data.invitedByName || 'Admin'} invited you to join TakeoutFix as ${(data.role || 'ADMIN').replace("_", " ")}.`,
+            role: data.role,
+            href: "/admin/team",
+            adminLink: "/admin/team",
+            inviteId: d.id,
+            ...data
+          };
+        });
+        merge();
+      },
+      () => {}
+    ) : () => {}
+
+    return () => { unsubTickets(); unsubNotifs(); unsubInvites(); }
   }, [user])
 
-  const isAdmin = userData?.isAdmin || !!adminData
+  const isAdmin = !!adminData || isSuperAdminEmail(user?.email)
 
   const renderNavLink = (to: string, label: string) => {
     const active = location.pathname === to
@@ -358,17 +393,19 @@ export default function MainLayout() {
                           ) : (
                             notifications.map(n => {
                               const isInvite = n._type === "ADMIN_INVITE"
-                              const dest = isInvite ? "/tool" : "/support?tab=tickets"
-                              const dotColor = isInvite ? "bg-indigo-400" : "bg-emerald-500"
+                              const dest = n.href || n.adminLink || (isInvite ? "/admin/team" : "/support?tab=tickets")
+                              const dotColor = isInvite ? "bg-indigo-400" : (n._type === "ticket_resolved" ? "bg-emerald-500" : "bg-amber-400")
                               const typeLabel = isInvite
                                 ? <span className="text-[9px] font-bold text-indigo-400 uppercase tracking-wide block mb-0.5">Admin Invite</span>
-                                : <span className="text-[9px] font-bold text-emerald-400 uppercase tracking-wide block mb-0.5">Ticket Resolved</span>
+                                : (n._type === "ticket_resolved"
+                                  ? <span className="text-[9px] font-bold text-emerald-400 uppercase tracking-wide block mb-0.5">Ticket Resolved</span>
+                                  : <span className="text-[9px] font-bold text-zinc-400 uppercase tracking-wide block mb-0.5">Notification</span>)
                               const title = isInvite
                                 ? (n.title || "You've been invited to the Admin Team")
-                                : `Ticket Resolved: ${n.ticketId || n.id?.slice(0, 8)}`
+                                : (n.title || `Ticket Resolved: ${n.ticketId || n.id?.slice(0, 8)}`)
                               const body = isInvite
                                 ? (n.message || "Sign in to accept the invitation.")
-                                : (n.subject || "Your support ticket has been resolved.")
+                                : (n.message || n.subject || "You have a new update.")
 
                               return (
                                 <Link
@@ -377,8 +414,8 @@ export default function MainLayout() {
                                   className="block px-4 py-2.5 hover:bg-white/5 text-left border-b border-white/5 last:border-0 transition-colors"
                                   onClick={async () => {
                                     setNotificationMenuOpen(false)
-                                    // Mark admin invite notifications as read
-                                    if (isInvite && n.id) {
+                                    // Mark notifications as read
+                                    if (n.id && n._type !== "ticket_resolved") {
                                       try { await updateDoc(doc(db, "notifications", n.id), { read: true }) } catch { /* ignore */ }
                                     }
                                   }}
@@ -731,7 +768,6 @@ export default function MainLayout() {
               <Link to="/privacy" className="hover:text-white transition-colors">Privacy Policy</Link>
               <Link to="/terms" className="hover:text-white transition-colors">Terms of Service</Link>
               <Link to="/support" className="hover:text-white transition-colors">Support Center</Link>
-              <Link to="/support?tab=feedback" className="hover:text-white transition-colors">Give Feedback</Link>
               <a href="mailto:takeoutfix.support@gmail.com" className="text-indigo-400 hover:text-indigo-300 transition-colors font-medium">
                 takeoutfix.support@gmail.com
               </a>

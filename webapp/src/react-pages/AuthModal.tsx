@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from "react";
 import { auth, googleProvider, db } from "../firebase";
 import {
   signInWithPopup,
+  getRedirectResult,
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
   sendPasswordResetEmail,
@@ -60,6 +61,20 @@ export default function AuthModal() {
     return () => document.removeEventListener("keydown", handler);
   }, [open, close]);
 
+  useEffect(() => {
+    if (!auth) return;
+    getRedirectResult(auth)
+      .then(async (res) => {
+        if (res?.user) {
+          await syncUserDoc(res.user);
+          handleSuccess();
+        }
+      })
+      .catch((err) => {
+        console.warn("[AuthModal] getRedirectResult error:", err);
+      });
+  }, []);
+
   const syncUserDoc = async (user: User, nameOverride?: string) => {
     try {
       if (!db) return;
@@ -89,10 +104,17 @@ export default function AuthModal() {
     setErrorMsg(""); setSuccessMsg(""); setGoogleLoading(true);
     try {
       executeRecaptcha("GOOGLE_SIGNIN").catch(() => {});
+      if (googleProvider) {
+        googleProvider.setCustomParameters({ prompt: 'select_account' });
+      }
+
       const res = await signInWithPopup(auth, googleProvider);
-      if (res.user) { await syncUserDoc(res.user); handleSuccess(); }
+      if (res && res.user) { await syncUserDoc(res.user); handleSuccess(); }
     } catch (err: any) {
-      setErrorMsg(err.code === "auth/popup-closed-by-user" ? "Sign-in cancelled." : err.message || "Failed to sign in with Google.");
+      if (err?.code === "auth/popup-closed-by-user" || err?.code === "auth/cancelled-popup-request") {
+        return;
+      }
+      setErrorMsg(err.message || "Failed to sign in with Google.");
     } finally { setGoogleLoading(false); }
   };
 
@@ -198,6 +220,7 @@ export default function AuthModal() {
               <div className="relative">
                 <UserIcon className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-zinc-400" />
                 <input type="text" required value={fullName} onChange={e => setFullName(e.target.value)}
+                  autoComplete="name"
                   placeholder="Alex Morgan"
                   className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl pl-10 pr-3 py-2.5 text-xs sm:text-sm text-zinc-900 dark:text-white placeholder:text-zinc-400 focus:outline-none focus:border-indigo-500 transition-colors" />
               </div>
@@ -208,6 +231,7 @@ export default function AuthModal() {
             <div className="relative">
               <Mail className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-zinc-400" />
               <input type="email" required value={email} onChange={e => setEmail(e.target.value)}
+                autoComplete="email"
                 placeholder="you@example.com"
                 className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl pl-10 pr-3 py-2.5 text-xs sm:text-sm text-zinc-900 dark:text-white placeholder:text-zinc-400 focus:outline-none focus:border-indigo-500 transition-colors" />
             </div>
@@ -224,6 +248,7 @@ export default function AuthModal() {
               <div className="relative">
                 <Lock className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-zinc-400" />
                 <input type={showPassword ? "text" : "password"} required value={password} onChange={e => setPassword(e.target.value)}
+                  autoComplete={mode === "signup" ? "new-password" : "current-password"}
                   placeholder="Enter password"
                   className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl pl-10 pr-10 py-2.5 text-xs sm:text-sm text-zinc-900 dark:text-white placeholder:text-zinc-400 focus:outline-none focus:border-indigo-500 transition-colors" />
                 <button type="button" onClick={() => setShowPassword(!showPassword)}

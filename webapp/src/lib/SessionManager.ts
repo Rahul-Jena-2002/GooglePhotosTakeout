@@ -378,12 +378,9 @@ export class SessionManager {
    * @param offset - Number of records to skip (0-based)
    * @param limit  - Maximum records to return per page (default 200)
    */
-  public async getPendingFilesPage(lastId: string | null, limit: number = 200): Promise<FileRecord[]> {
+  public async getPendingFilesPage(lastId?: string | null, limit: number = 200): Promise<FileRecord[]> {
     const allPending = await indexedDbService.getAllByIndex('files', 'status', 'pending') as FileRecord[];
-    if (!lastId) return allPending.slice(0, limit);
-    const idx = allPending.findIndex(f => f.id === lastId);
-    if (idx === -1) return allPending.slice(0, limit);
-    return allPending.slice(idx + 1, idx + 1 + limit);
+    return allPending.slice(0, limit);
   }
 
   public async getPendingFiles(): Promise<FileRecord[]> {

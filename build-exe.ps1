@@ -1,5 +1,11 @@
 $ErrorActionPreference = "Stop"
 
+# Auto-purge active sessions and cache
+$sessionPath = "$env:USERPROFILE\.takeoutfix\session.json"
+$usersPath = "$env:USERPROFILE\.takeoutfix\users.json"
+if (Test-Path $sessionPath) { Remove-Item $sessionPath -Force }
+if (Test-Path $usersPath) { Remove-Item $usersPath -Force }
+
 # Ensure jpackage-input exists and has the JAR
 New-Item -ItemType Directory -Force -Path "jpackage-input" | Out-Null
 Copy-Item "native/target/takeoutfix.jar" "jpackage-input/takeoutfix.jar" -Force
@@ -13,10 +19,10 @@ jpackage `
   --type exe `
   --input "jpackage-input" `
   --main-jar "takeoutfix.jar" `
-  --main-class "com.rahul.TakeoutApplication" `
+  --main-class "com.takeoutfix.TakeoutApplication" `
   --name "TakeoutFix" `
   --icon "native/icons/icon.ico" `
-  --app-version "1.0.0" `
+  --app-version "2.0.9" `
   --dest "dist-exe" `
   --win-dir-chooser `
   --win-menu `
@@ -25,3 +31,4 @@ jpackage `
 
 Write-Host "Done! Generated files in dist-exe:"
 Get-ChildItem "dist-exe" | Select-Object Name, Length
+

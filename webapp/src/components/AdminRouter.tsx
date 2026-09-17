@@ -162,9 +162,9 @@ function AdminRouterContent() {
               </RequireRole>
             } />
 
-            {/* ── SUPPORT + above ───────────────────────────────────────────── */}
+            {/* ── Open to all admin team members ─────────────────────────── */}
             <Route path="support" element={
-              <RequireRole allow={["SUPER_ADMIN", "ADMIN", "SUPPORT"]}>
+              <RequireRole allow={["SUPER_ADMIN", "ADMIN", "SUPPORT", "MODERATOR"]}>
                 <AdminSupport />
               </RequireRole>
             } />

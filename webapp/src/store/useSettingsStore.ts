@@ -6,6 +6,8 @@ export type ExifEngine = 'piexifjs' | 'wasm';
 interface SettingsState {
   exifEngine: ExifEngine;
   setExifEngine: (engine: ExifEngine) => void;
+  organizeYearMonth: boolean;
+  setOrganizeYearMonth: (val: boolean) => void;
 }
 
 export const useSettingsStore = create<SettingsState>()(
@@ -13,6 +15,8 @@ export const useSettingsStore = create<SettingsState>()(
     (set) => ({
       exifEngine: 'piexifjs',
       setExifEngine: (engine) => set({ exifEngine: engine }),
+      organizeYearMonth: true,
+      setOrganizeYearMonth: (val) => set({ organizeYearMonth: val }),
     }),
     {
       name: 'takeoutfix-settings',

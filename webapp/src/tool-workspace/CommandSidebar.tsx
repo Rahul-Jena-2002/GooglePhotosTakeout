@@ -125,10 +125,10 @@ export function CommandSidebar({
               <span>{formatByteSize(limitBytes)}</span>
             </div>
             <div className="text-xs font-bold text-zinc-150">
-              {formatByteSize(currentUsedBytes + sessionBytes)} / {formatByteSize(limitBytes)}
+              {formatByteSize(sessionBytes)} / {formatByteSize(limitBytes)}
             </div>
             {limitBytes !== Infinity && (
-              <Progress value={Math.min(100, ((currentUsedBytes + sessionBytes) / limitBytes) * 100)} className="h-1 bg-white/10" />
+              <Progress value={Math.min(100, (sessionBytes / limitBytes) * 100)} className="h-1 bg-white/10" />
             )}
           </div>
 
@@ -138,10 +138,10 @@ export function CommandSidebar({
               <span>{limitFiles === Infinity ? "Unlimited" : limitFiles.toLocaleString()}</span>
             </div>
             <div className="text-xs font-bold text-zinc-150">
-              {(currentUsedFiles + sessionFiles).toLocaleString()} / {limitFiles === Infinity ? "Unlimited" : limitFiles.toLocaleString()}
+              {sessionFiles.toLocaleString()} / {limitFiles === Infinity ? "Unlimited" : limitFiles.toLocaleString()}
             </div>
             {limitFiles !== Infinity && (
-              <Progress value={Math.min(100, ((currentUsedFiles + sessionFiles) / limitFiles) * 100)} className="h-1 bg-white/10" />
+              <Progress value={Math.min(100, (sessionFiles / limitFiles) * 100)} className="h-1 bg-white/10" />
             )}
           </div>
 

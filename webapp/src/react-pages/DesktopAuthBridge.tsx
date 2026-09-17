@@ -33,18 +33,15 @@ function DesktopAuthBridgeContent() {
     }
   }, []);
 
-  const isAdmin = isSuperAdminEmail(user?.email);
-  const requiresConfirmation = Boolean(isAdmin || selectAccountParam);
-
-  // When user is authenticated and port is valid, automatically send auth payload to desktop ONLY if not admin and not selectAccount
+  // When user is authenticated and port is valid, automatically send auth payload to desktop immediately
   useEffect(() => {
     if (!port || loading || !user) return;
 
-    if (!attemptedRef.current && !requiresConfirmation) {
+    if (!attemptedRef.current) {
       attemptedRef.current = true;
       dispatchAuthToDesktop();
     }
-  }, [user, userData, port, loading, requiresConfirmation]);
+  }, [user, userData, port, loading]);
 
   const dispatchAuthToDesktop = async () => {
     if (!port || !user) return;
@@ -249,14 +246,6 @@ function DesktopAuthBridgeContent() {
                   </p>
                 </div>
 
-                {isAdmin && (
-                  <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-900 dark:text-amber-300 text-xs flex items-start gap-2">
-                    <AlertCircle className="w-4 h-4 shrink-0 mt-0.5 text-amber-500" />
-                    <div>
-                      <strong className="font-bold">Admin Account Detected:</strong> You are currently signed in as <strong>{user.email}</strong>. To test with a regular user account, click "Sign In with Different Account" below.
-                    </div>
-                  </div>
-                )}
 
                 {/* Account card */}
                 <div className="bg-zinc-50 dark:bg-zinc-900/80 border border-zinc-200 dark:border-zinc-800 rounded-xl p-4 flex items-center justify-between text-left shadow-sm">

@@ -123,7 +123,7 @@ export const syncUserUI = () => {
         }
       }
       
-      const isAdmin = cachedUser.isAdmin === true || isSuperAdminEmail(cachedUser.email);
+      const isAdmin = (cachedUser.isAdmin === true && !!cachedUser.role) || isSuperAdminEmail(cachedUser.email);
       if (isAdmin) {
         desktopDashboardLink?.classList.add("hidden");
         mobileDashboardLink?.classList.add("hidden");

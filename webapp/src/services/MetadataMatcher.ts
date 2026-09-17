@@ -60,6 +60,14 @@ export function getMatchingCandidates(mediaName: string): Set<string> {
     baseSources.push(normalizedBase);
   }
 
+  // Motion / Live Photo companion extensions: e.g. foo.mp4 sharing foo.jpg.json or vice-versa
+  const lowerExt = ext.toLowerCase();
+  if (lowerExt === ".mp4" || lowerExt === ".mov" || lowerExt === ".m4v" || lowerExt === ".3gp") {
+    baseSources.push(nameNoExt + ".jpg", nameNoExt + ".jpeg", nameNoExt + ".heic");
+  } else if (lowerExt === ".jpg" || lowerExt === ".jpeg" || lowerExt === ".heic") {
+    baseSources.push(nameNoExt + ".mp4", nameNoExt + ".mov");
+  }
+
   const stems = new Set<string>();
 
   // 1. Generate standard configurations and length-based cuts (> 46 chars)
@@ -81,6 +89,9 @@ export function getMatchingCandidates(mediaName: string): Set<string> {
       for (const suffix of suffixes) {
         for (const delim of delimiters) {
           stems.add(base + delim + suffix);
+          // Support asymmetric sidecar numbering e.g. photo.jpg.supplemental-metadata(1).json
+          stems.add(base + delim + suffix + "(1)");
+          stems.add(base + delim + suffix + "(2)");
         }
       }
     }
@@ -90,6 +101,13 @@ export function getMatchingCandidates(mediaName: string): Set<string> {
   const numberedMatch = sanitized.match(/^(.+?)(\(\d+\))(\.[^.]+)$/);
   if (numberedMatch) {
     const [, basePart, numberSuffix, extPart] = numberedMatch;
+    // Truncated base combined with numberSuffix: e.g. Screenshot_...(46 chars)(1).json
+    if (basePart.length > MAX_STEM) {
+      stems.add(basePart.substring(0, MAX_STEM) + numberSuffix);
+      stems.add(basePart.substring(0, 47) + numberSuffix);
+    }
+    stems.add(basePart.length > MAX_STEM ? basePart.substring(0, MAX_STEM) : basePart);
+
     const word = "supplemental-metadata";
     const suffixes = [];
     for (let i = 1; i <= word.length; i++) {
@@ -101,12 +119,25 @@ export function getMatchingCandidates(mediaName: string): Set<string> {
     for (const suffix of suffixes) {
       for (const delim of delimiters) {
         stems.add(basePart + extPart + delim + suffix + numberSuffix);
+        // Fallback to unnumbered sidecar if multiple duplicates share one JSON
+        stems.add(basePart + extPart + delim + suffix);
+        stems.add(basePart + delim + suffix + numberSuffix);
+        stems.add(basePart + delim + suffix);
       }
     }
   }
 
   // 3. Fallback element added explicitly by Java tracking loops
-  stems.add(nameNoExt.length > MAX_STEM ? nameNoExt.substring(0, MAX_STEM) : nameNoExt);
+  if (nameNoExt.length > MAX_STEM) {
+    stems.add(nameNoExt.substring(0, MAX_STEM));
+    stems.add(nameNoExt.substring(0, MAX_STEM) + "(1)");
+    stems.add(nameNoExt.substring(0, MAX_STEM) + "(2)");
+    stems.add(nameNoExt.substring(0, 47));
+    stems.add(nameNoExt.substring(0, 47) + "(1)");
+    stems.add(nameNoExt.substring(0, 47) + "(2)");
+  } else {
+    stems.add(nameNoExt);
+  }
 
   // 4. Incorporate Java's withFuzzyTail(stems, 42, 46) behavior for long files
   const fuzzyStems = new Set<string>();
@@ -201,23 +232,45 @@ export function safeParseJson(raw: string): Record<string, unknown> | null {
 }
 
 /** Extract the best available timestamp (epoch seconds) from a parsed Takeout JSON */
-export function extractTimestamp(json: Record<string, unknown>): number | null {
-  const candidates: Array<[string, number]> = [];
+export function extractTimestamp(json: Record<string, unknown> | null | undefined): number | null {
+  if (!json || typeof json !== 'object') return null;
+
+  const parseTsValue = (val: unknown): number | null => {
+    if (typeof val === 'number' && !isNaN(val) && val > 0) {
+      return val > 100000000000 ? Math.floor(val / 1000) : Math.floor(val);
+    }
+    if (typeof val === 'string') {
+      const trimmed = val.trim();
+      if (!trimmed || trimmed === '0') return null;
+      const n = Number(trimmed);
+      if (!isNaN(n) && n > 0) {
+        return n > 100000000000 ? Math.floor(n / 1000) : Math.floor(n);
+      }
+      const parsed = Date.parse(trimmed);
+      if (!isNaN(parsed) && parsed > 0) {
+        return Math.floor(parsed / 1000);
+      }
+    }
+    return null;
+  };
 
   for (const key of ['photoTakenTime', 'creationTime', 'modificationTime']) {
     const block = json[key];
     if (block && typeof block === 'object') {
-      const ts = (block as Record<string, unknown>)['timestamp'];
-      if (typeof ts === 'string') {
-        const n = Number(ts);
-        if (!isNaN(n) && n > 0) candidates.push([key, n]);
-      }
+      const tsVal = (block as Record<string, unknown>)['timestamp'];
+      const parsed = parseTsValue(tsVal);
+      if (parsed) return parsed;
+
+      const formatted = (block as Record<string, unknown>)['formatted'];
+      const parsedFormatted = parseTsValue(formatted);
+      if (parsedFormatted) return parsedFormatted;
     }
   }
 
-  if (candidates.length === 0) return null;
+  for (const key of ['timestamp', 'photoTakenTime', 'creationTime', 'date']) {
+    const parsed = parseTsValue(json[key]);
+    if (parsed) return parsed;
+  }
 
-  const order = ['photoTakenTime', 'creationTime', 'modificationTime'];
-  candidates.sort((a, b) => order.indexOf(a[0]) - order.indexOf(b[0]));
-  return candidates[0][1];
+  return null;
 }

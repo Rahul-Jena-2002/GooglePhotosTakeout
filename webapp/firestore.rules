@@ -52,6 +52,18 @@ service cloud.firestore {
     match /admins/{adminId} {
       allow read: if request.auth != null && (request.auth.uid == adminId || isAdmin());
       allow write: if isSuperAdmin();
+      allow update: if isAdmin();
+      // Allow invited team member to claim their admin role if a matching invite exists
+      allow create: if isSuperAdmin() || (
+        request.auth != null
+        && request.auth.uid == adminId
+        && request.resource.data.inviteId != null
+        && exists(/databases/$(database)/documents/adminInvites/$(request.resource.data.inviteId))
+        && (
+          get(/databases/$(database)/documents/adminInvites/$(request.resource.data.inviteId)).data.email == request.auth.token.email ||
+          get(/databases/$(database)/documents/adminInvites/$(request.resource.data.inviteId)).data.email == request.auth.token.email.lower()
+        )
+      );
     }
 
     // ─── Admin Invites Collection ────────────────────────────────────────────────
@@ -59,21 +71,49 @@ service cloud.firestore {
     // The invited user (matching email on sign-in) can read their own invite to verify.
     match /adminInvites/{inviteId} {
       allow read: if isSuperAdmin()
-        || (request.auth != null && request.auth.token.email == resource.data.email);
+        || (request.auth != null && (
+          resource.data.email == request.auth.token.email ||
+          resource.data.email == request.auth.token.email.lower()
+        ));
       allow create: if isSuperAdmin()
         && request.resource.data.keys().hasAll(['email', 'role', 'invitedBy', 'status', 'expiresAt'])
         && request.resource.data.status == 'pending';
       allow update: if isSuperAdmin()
         || (request.auth != null
-          && request.auth.token.email == resource.data.email
-          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status']));
+          && (resource.data.email == request.auth.token.email || resource.data.email == request.auth.token.email.lower())
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'acceptedAt', 'acceptedUid']));
       allow delete: if isSuperAdmin();
+    }
+
+    // ─── Notifications Collection ────────────────────────────────────────────────
+    match /notifications/{notificationId} {
+      allow read: if request.auth != null && (
+        isAdmin() ||
+        resource.data.recipientEmail in [request.auth.token.email, request.auth.token.email.lower(), 'all']
+      );
+      allow create: if request.auth != null;
+      allow update: if request.auth != null && (
+        isAdmin() ||
+        resource.data.recipientEmail in [request.auth.token.email, request.auth.token.email.lower(), 'all']
+      );
+      allow delete: if request.auth != null && (
+        isAdmin() ||
+        resource.data.recipientEmail in [request.auth.token.email, request.auth.token.email.lower()]
+      );
+    }
+
+    // ─── Feedback Collection ─────────────────────────────────────────────────────
+    match /feedback/{feedbackId} {
+      // Anyone can submit product feedback (anonymous or authenticated)
+      allow create: if true;
+      allow read: if isAdmin();
+      allow update, delete: if isSuperAdmin();
     }
 
     // ─── Admin Activity Feed ─────────────────────────────────────────────────────
     match /admin_activity/{logId} {
       allow read: if isAdmin();
-      allow create: if isAdmin();
+      allow create: if request.auth != null;
       allow update, delete: if isSuperAdmin();
     }
 
@@ -99,7 +139,7 @@ service cloud.firestore {
     match /tickets/{ticketId} {
       allow create: if request.auth != null && request.resource.data.uid == request.auth.uid;
       allow read, update: if request.auth != null && resource.data.uid == request.auth.uid;
-      allow read, write: if isSupportOrAbove();
+      allow read, write: if isAdmin();
     }
 
     // ─── Reviews ─────────────────────────────────────────────────────────────────
