@@ -24,7 +24,7 @@ export interface ComparisonRow {
 }
 
 export const DEFAULT_COMPARISON_ROWS: ComparisonRow[] = [
-  { featureName: "Device Limit", free: "1 device", recovery_pass: "1 device", pro: "2 devices", super: "3 devices" },
+  { featureName: "Device Access", free: "Unlimited", recovery_pass: "Unlimited", pro: "Unlimited", super: "Unlimited" },
   { featureName: "Processing Limit", free: "", recovery_pass: "", pro: "", super: "", isDynamicLimit: true },
   { featureName: "Photo Matching*", free: "Up to 90.8%*", recovery_pass: "Up to 90.8%*", pro: "Up to 90.8%*", super: "Up to 90.8%*", isDynamicTelemetry: true },
   { featureName: "Advanced Media Tools", free: "—", recovery_pass: "—", pro: "—", super: "Included" },
@@ -224,10 +224,8 @@ interface AuthContextType {
   reSyncAuthAndFeatures: () => Promise<void>;
 }
 
-const getPlanDeviceLimit = (plan: string): number => {
-  if (plan === 'pro') return 2;
-  if (plan === 'super') return 3;
-  return 1;
+const getPlanDeviceLimit = (_plan: string): number => {
+  return Infinity;
 };
 
 const generateUniqueUsername = async (email: string, displayName: string, uid: string): Promise<string> => {
@@ -1069,26 +1067,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setUserData(data);
         setSessionRegistered(true);
       } else {
-        const bypassDeviceLimit = isAdminUser || import.meta.env.DEV;
-        if (!bypassDeviceLimit && updatedSessions.length >= maxDevices) {
-          setPendingSessionData({
-            docRef,
-            profileData: { ...profileData, ...pendingUpdates },
-            nameUpdates: {},
-            data,
-            deviceSessionId,
-            maxDevices,
-            currentPlan
-          });
-          setShowDeviceLimitModal(true);
-        } else {
-          updatedSessions.push(deviceSessionId);
-          pendingUpdates.sessionIds = updatedSessions;
-          await setDoc(docRef, pendingUpdates, { merge: true }).catch(console.error);
-          data.sessionIds = updatedSessions;
-          setUserData(data);
-          setSessionRegistered(true);
-        }
+        // Active device limit completely eliminated: auto-register this device session and continue seamlessly
+        updatedSessions.push(deviceSessionId);
+        if (updatedSessions.length > 20) updatedSessions = updatedSessions.slice(-20);
+        pendingUpdates.sessionIds = updatedSessions;
+        await setDoc(docRef, pendingUpdates, { merge: true }).catch(console.error);
+        data.sessionIds = updatedSessions;
+        setUserData(data);
+        setSessionRegistered(true);
       }
       setSyncStatus('synced');
       setSyncError(null);
@@ -1383,30 +1369,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           setHasSeenSelfInSessions(true);
         }
         
-        const isBypass = data.isAdmin || import.meta.env.DEV;
-        if (!isBypass && sessionRegistered && hasSeenSelfInSessions && localSessionId && sessionIds.length > 0 && !sessionIds.includes(localSessionId)) {
-          setPendingSessionData({
-            docRef: userDocRef,
-            profileData: {
-              email: user.email,
-              displayName: user.displayName,
-              photoURL: user.photoURL,
-            },
-            nameUpdates: {
-              firstName: data.firstName || '',
-              lastName: data.lastName || '',
-              username: data.username || '',
-            },
-            data,
-            deviceSessionId: localSessionId,
-            maxDevices: getPlanDeviceLimit(data.plan || 'free'),
-            currentPlan: data.plan || 'free'
-          });
-          setShowDeviceLimitModal(true);
-          setSessionRegistered(false);
-          setHasSeenSelfInSessions(false);
-          return;
-        }
+        // Device limit eviction eliminated: continue without blocking or evicting sessions
 
         setUserData(data);
       }
@@ -1678,48 +1641,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     }}>
       {children}
-      
-      {showDeviceLimitModal && pendingSessionData && (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-md z-[9999] flex items-center justify-center p-4 select-none">
-          <div className="bg-zinc-950 border border-white/10 p-6 rounded-3xl max-w-md w-full relative overflow-hidden shadow-2xl animate-in fade-in zoom-in-95 duration-200">
-            <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-red-500 via-amber-500 to-indigo-500"></div>
-            
-            <div className="text-center space-y-4 pt-4">
-              <div className="w-12 h-12 bg-amber-500/10 text-amber-400 rounded-full flex items-center justify-center mx-auto border border-amber-500/20">
-                <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                </svg>
-              </div>
-              
-              <h2 className="text-xl font-bold text-white tracking-tight">Active Device Limit Reached</h2>
-              
-              <div className="text-zinc-400 text-sm leading-relaxed space-y-3">
-                <p>
-                  Your <span className="text-indigo-400 font-bold uppercase tracking-wider text-xs">{(pendingSessionData.currentPlan || 'free')} Plan</span> limits active usage to <span className="text-white font-bold">{pendingSessionData.maxDevices} active session(s)</span> at the same time.
-                </p>
-                <p>
-                  You are currently logged in on other browsers or devices. To access the recovery center on this device, you must log out of the other sessions.
-                </p>
-              </div>
-              
-              <div className="pt-4 flex flex-col gap-2.5">
-                <button
-                  onClick={handleConfirmEvict}
-                  className="w-full h-11 bg-white text-black hover:bg-zinc-200 font-bold rounded-xl transition-colors shadow-lg active:scale-95 duration-100"
-                >
-                  Log Out Other Devices & Continue
-                </button>
-                <button
-                  onClick={handleCancelEvict}
-                  className="w-full h-11 bg-white/5 text-white hover:bg-white/10 font-semibold rounded-xl transition-all border border-white/10 active:scale-95 duration-100"
-                >
-                  Cancel & Sign Out
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
     </AuthContext.Provider>
   );
 };
