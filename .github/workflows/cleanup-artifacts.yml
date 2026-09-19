@@ -1,0 +1,50 @@
+name: Cleanup Old Artifacts
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 0 * * 0' # Weekly cleanup
+
+permissions:
+  actions: write
+
+jobs:
+  delete-artifacts:
+    name: Delete All Stored Artifacts
+    runs-on: ubuntu-latest
+    steps:
+      - name: Delete all repository artifacts
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            console.log(`Fetching all artifacts for ${owner}/${repo}...`);
+            let count = 0;
+            let freedBytes = 0;
+
+            try {
+              for await (const response of github.paginate.iterator(
+                github.rest.actions.listArtifactsForRepo,
+                { owner, repo, per_page: 100 }
+              )) {
+                for (const artifact of response.data) {
+                  console.log(`Deleting: ${artifact.name} (ID: ${artifact.id}, ${(artifact.size_in_bytes / (1024 * 1024)).toFixed(2)} MB)`);
+                  try {
+                    await github.rest.actions.deleteArtifact({
+                      owner,
+                      repo,
+                      artifact_id: artifact.id,
+                    });
+                    count++;
+                    freedBytes += artifact.size_in_bytes;
+                  } catch (delErr) {
+                    console.warn(`Could not delete artifact ${artifact.id}: ${delErr.message}`);
+                  }
+                }
+              }
+              console.log(`Done! Deleted ${count} artifacts, freed ${(freedBytes / (1024 * 1024)).toFixed(2)} MB.`);
+            } catch (err) {
+              console.error(`Error listing artifacts: ${err.message}`);
+              throw err;
+            }

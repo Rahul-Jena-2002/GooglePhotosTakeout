@@ -135,9 +135,11 @@ jobs:
 
       - name: Upload Java Artifact
         uses: actions/upload-artifact@v4
+        continue-on-error: true
         with:
           name: java-${{ matrix.os }}
           path: ${{ matrix.artifact_name }}
+          retention-days: 1
 
       - name: Attach Java Binary to GitHub Release
         uses: softprops/action-gh-release@v2
@@ -233,9 +235,11 @@ jobs:
 
       - name: Upload Rust Artifact
         uses: actions/upload-artifact@v4
+        continue-on-error: true
         with:
           name: rust-${{ matrix.os }}
           path: ${{ matrix.artifact_name }}
+          retention-days: 1
 
       - name: Attach Rust Binary to GitHub Release
         uses: softprops/action-gh-release@v2
