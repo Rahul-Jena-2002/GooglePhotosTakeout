@@ -619,6 +619,11 @@ export async function getMonetizationContent(
   let resolvedAffiliate: ResolvedMonetizationItem | null = null;
   let resolvedAd: ResolvedMonetizationItem | null = null;
 
+  // 80% Ads / 20% Affiliate Prioritization:
+  // In single/shared slots, 80% (4 out of 5 cycles) prioritizes Ads, while 20% showcases Affiliate.
+  // If an Ad is blocked by an adblocker, AdBlockDetector automatically swaps in the Affiliate item as 100% fallback!
+  const isAdFavored = ((slotIndex + pageVisitSeed) % 5) !== 0; // 80% chance true (slots 1, 2, 3, 4 vs 0)
+
   if (mode === "BOTH") {
     if (selectedAffiliate && selectedAd) {
       resolvedAffiliate = selectedAffiliate;
