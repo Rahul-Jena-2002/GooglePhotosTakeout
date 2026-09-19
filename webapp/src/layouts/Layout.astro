@@ -592,8 +592,8 @@ const canonicalUrl = `https://takeoutfix.pages.dev${Astro.url.pathname.replace(/
                 <!-- Desktop App Links (logged in) -->
                 <div class="hidden lg:flex items-center gap-6 mr-2">
                   <a id="desktop-dashboard-link" href="/dashboard" class={`nav-link text-sm font-medium transition-colors duration-150 ${isActive('/dashboard') ? 'active text-[#8170CC] font-bold' : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white'}`} data-astro-prefetch="hover">Dashboard</a>
-                  <a id="desktop-tool-link" href="/tool" class={`nav-link text-sm font-medium transition-colors duration-150 ${isActive('/tool') ? 'active text-[#8170CC] font-bold' : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white'}`} data-astro-prefetch="hover" data-astro-reload>Restore My Data</a>
                   <a id="desktop-admin-link" href="/admin" class={`nav-link text-sm font-medium transition-colors duration-150 hidden ${isActive('/admin') ? 'active text-[#8170CC] font-bold' : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white'}`} data-astro-reload>Admin Center</a>
+                  <a id="desktop-tool-link" href="/tool" class={`nav-link text-sm font-medium transition-colors duration-150 ${isActive('/tool') ? 'active text-[#8170CC] font-bold' : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white'}`} data-astro-prefetch="hover" data-astro-reload>Restore My Data</a>
                 </div>
                 <button 
                   id="profile-trigger-btn"
@@ -616,7 +616,7 @@ const canonicalUrl = `https://takeoutfix.pages.dev${Astro.url.pathname.replace(/
                   </div>
                   <a href="/profile" class="flex items-center px-4 py-2 text-sm text-white/70 hover:text-white hover:bg-white/5 transition-colors text-left w-full" data-astro-prefetch="hover">Profile</a>
                   <a href="/dashboard" class="flex items-center px-4 py-2 text-sm text-white/70 hover:text-white hover:bg-white/5 transition-colors text-left w-full" data-astro-prefetch="hover">My Uploads</a>
-                  <a id="dropdown-admin-link" href="/admin" class="flex items-center px-4 py-2 text-sm text-amber-400 hover:text-amber-300 hover:bg-white/5 transition-colors text-left w-full hidden" data-astro-reload>Admin Dashboard</a>
+                  <a id="dropdown-admin-link" href="/admin" class="flex items-center px-4 py-2 text-sm text-amber-400 hover:text-amber-300 hover:bg-white/5 transition-colors text-left w-full hidden" data-astro-reload>Admin Center</a>
                   <div class="border-t border-white/5 my-1.5"></div>
                   <button 
                     id="profile-signout-btn" 

@@ -101,10 +101,8 @@ export function ToolWorkspaceContent() {
     )
   }
 
-  // If tier limits are active (configured in Admin) AND visitor is not signed in:
-  if (!user && !pipeline.isFreeUnlimited) {
-    const freeFilesLimit = pipeline.tierThresholds?.free?.maxFiles;
-    const freeSizeLimit = pipeline.tierThresholds?.free?.maxSizeMB;
+  // Login compulsory for accessing the restoration tool workspace:
+  if (!user) {
     return (
       <div className="min-h-[calc(100vh-64px)] bg-[#0A0A0A] flex flex-col items-center justify-center p-6 text-center relative">
         <div className="absolute top-1/4 left-1/4 w-[400px] h-[400px] bg-zinc-500/5 blur-[120px] rounded-full pointer-events-none"></div>
@@ -113,12 +111,12 @@ export function ToolWorkspaceContent() {
         <Card className="bg-zinc-950/50 border-white/10 p-8 rounded-3xl backdrop-blur-2xl shadow-2xl max-w-md w-full relative overflow-hidden">
           <div className="absolute top-0 left-0 right-0 h-1 bg-zinc-800 dark:bg-zinc-200"></div>
           <CardHeader className="text-center pb-6">
-            <div className="w-12 h-12 bg-amber-500/10 text-amber-400 rounded-full flex items-center justify-center mx-auto mb-4 border border-amber-500/20">
+            <div className="w-12 h-12 bg-indigo-500/10 text-indigo-400 rounded-full flex items-center justify-center mx-auto mb-4 border border-indigo-500/20">
               <HardDrive className="w-6 h-6 animate-pulse" />
             </div>
             <CardTitle className="text-2xl font-black text-white">Sign In Required</CardTitle>
             <CardDescription className="text-zinc-400 text-sm mt-2">
-              Tier limits are active ({freeFilesLimit === Infinity ? "Unlimited" : `${freeFilesLimit?.toLocaleString()} files`} / {freeSizeLimit === Infinity ? "Unlimited" : `${freeSizeLimit} MB`} on Free Tier). Please sign in to sync your quota and track restored archives.
+              Please sign in to access the TakeoutFix restoration tool workspace, track restored archives, and manage your account.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
