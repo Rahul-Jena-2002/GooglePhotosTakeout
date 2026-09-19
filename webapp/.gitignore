@@ -25,10 +25,16 @@ dist-ssr
 dist
 dist-ssr
 node_modules
+src-tauri/target/
 
 # Environment secrets — never commit real values
-.env
-# .env.example is safe to commit (contains no real keys)
+.env*
+!.env.example
+!.env.local.example
+*.pem
+*.key
+scripts/diagnostics/
+functions/scripts/
 
 # Local Node binaries
 node-v22*

@@ -10,6 +10,21 @@ const srcPath = fileURLToPath(new URL('./src', import.meta.url)).replace(/\\/g, 
 export default defineConfig({
   site: 'https://takeoutfix.pages.dev',
   output: 'server',
+  redirects: {
+    // Legacy subfolder routes smoothly redirected to clean canonical URLs
+    '/marketing/download': '/download',
+    '/marketing/pricing': '/pricing',
+    '/marketing/reviews': '/reviews',
+    '/marketing/restore-data': '/restore-data',
+    '/legal/privacy': '/privacy',
+    '/legal/terms': '/terms',
+    '/legal/refund': '/refund',
+    '/user/dashboard': '/dashboard',
+    '/user/profile': '/profile',
+    '/user/checkout': '/checkout',
+    '/auth/login': '/login',
+    '/auth/signup': '/signup',
+  },
   adapter: cloudflare({
     imageService: 'passthrough'
   }),
@@ -31,6 +46,10 @@ export default defineConfig({
       headers: {
         'Cross-Origin-Opener-Policy': 'same-origin-allow-popups',
       },
+    },
+    build: {
+      sourcemap: false,
+      minify: 'esbuild',
     },
     resolve: {
       dedupe: ['react', 'react-dom'],

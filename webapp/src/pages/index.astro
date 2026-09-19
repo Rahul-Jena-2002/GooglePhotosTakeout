@@ -1,7 +1,7 @@
 ---
 export const prerender = true;
 import Layout from "../layouts/Layout.astro";
-import AdUnit from "../components/AdUnit";
+import AdUnit from "../components/monetization/AdUnit";
 import { PLAN_PRICES } from "../lib/planPrices";
 import Compare from "../components/ui/Compare";
 import ExpandableFaq from "../components/ui/ExpandableFaq";
@@ -12,8 +12,8 @@ const prices = PLAN_PRICES[region] || PLAN_PRICES.us;
 ---
 
 <Layout 
-  title="TakeoutFix – Take Out Fix, Takeout Fixer & Metadata Fixer for Google Photos"
-  description="TakeoutFixer restores photo dates, GPS, and EXIF tags stripped by Google Takeout. Works as a metadata fixer, meta data fix tool, and Google Takeout merger — entirely in your browser. Not affiliated with Google."
+  title="TakeoutFix – Merge Google Photos JSON Metadata & Fix Export Dates"
+  description="TakeoutFix merges Google Photos JSON sidecar metadata back into your photos and videos. Fix dates, GPS coordinates, and album timestamps offline in your browser with zero command-line tools."
 >
   <div class="flex flex-col items-center bg-background text-foreground w-full overflow-x-hidden aceternity-grid">
     
@@ -151,8 +151,8 @@ const prices = PLAN_PRICES[region] || PLAN_PRICES.us;
       <div>
         <h2 class="text-4xl md:text-5xl font-bold tracking-tighter mb-6">The Google Takeout Problem.</h2>
         <div class="space-y-6 text-xl text-zinc-500 leading-relaxed">
-          <p>When you export your data from Google Photos using Google Takeout, your files are systematically stripped of their most important context.</p>
-          <p><strong class="text-foreground">Google Takeout separates metadata.</strong> Your original `.jpg` or `.mp4` is exported cleanly, but the timestamps and GPS coordinates are exiled to a completely separate `.json` sidecar file.</p>
+          <p>When you export your data from Google Photos using Google Takeout, edited timestamps, in-app captions, and WhatsApp/video details are separated into companion JSON sidecars.</p>
+          <p><strong class="text-foreground">Google Takeout isolates metadata.</strong> While your original camera `.jpg` files retain basic EXIF, in-app edits, descriptions, and WhatsApp/video timestamps are exiled to separate `.json` files, causing files to display today's export date.</p>
           <p>Without intervention, <strong class="text-foreground">your photos lose dates and your gallery timelines break.</strong> Your precious memories from 2014 will show up as "Today" on your new device.</p>
         </div>
       </div>

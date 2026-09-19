@@ -7,21 +7,22 @@ import React, { useRef, useEffect, useState } from "react"
 import { useAuth } from "../contexts/AuthContext"
 import { useToolStore } from "../store/useToolStore"
 import { useToastStore } from "../store/useToastStore"
-import { sanitizeFilename, findMatchingJsonName, safeParseJson, extractTimestamp } from "../services/MetadataMatcher"
+import { sanitizeFilename, findMatchingJsonName, safeParseJson, extractTimestamp } from "../services/restoration/MetadataMatcher"
 // ZipMetadataMatcher is used via normalizeZipPath only (findMatchingJsonNameForZip resolved during scan phase)
-import { isJpeg } from "../services/ExifRestorer"
-import { isVideoFilename } from "../services/VideoMetadataRestorer"
+import { isJpeg } from "../services/restoration/ExifRestorer"
+import { isVideoFilename } from "../services/restoration/VideoMetadataRestorer"
 import { db } from "../firebase"
 import { doc, setDoc, increment, addDoc, collection, onSnapshot } from "firebase/firestore"
 import { indexedDbService } from "../lib/indexedDbService"
 import piexif from "piexifjs"
-import { detectAdBlock } from "../services/AdBlockDetector"
+import { detectAdBlock } from "../services/monetization/AdBlockDetector"
 import { SessionManager, type ActiveSession, type FileRecord } from "../lib/SessionManager"
 import { WorkerPool } from "../lib/WorkerPool"
 import { ZipReader, BlobReader, Uint8ArrayWriter, Writer, ZipWriter, BlobWriter, TextWriter } from "@zip.js/zip.js"
 import { useSettingsStore } from "../store/useSettingsStore";
-import { normalizeZipPath } from "../services/ZipMetadataMatcher"
+import { normalizeZipPath } from "../services/restoration/ZipMetadataMatcher"
 import { saveHandles } from "../lib/handleStore"
+import { generateSyncBatContent } from "../services/restoration/WindowsDateSyncScript"
 
 // ---------------------------------------------------------------------------
 // Streaming zip.js writer that pipes directly to a FileSystemWritableFileStream
@@ -116,18 +117,18 @@ export const getPlanCardStyles = (plan: string, thresholds?: {
           description: "Special limited-time event active: All file and storage limits are lifted for Free tier users!",
         };
       }
-      const maxFiles = thresholds?.free?.maxFiles ?? 250;
-      const maxSizeMB = thresholds?.free?.maxSizeMB ?? 500;
-      const sizeStr = maxSizeMB >= 1024 ? `${(maxSizeMB / 1024).toFixed(0)} GB` : `${maxSizeMB} MB`;
+      const maxFiles = thresholds?.free?.maxFiles ?? Infinity;
+      const maxSizeMB = thresholds?.free?.maxSizeMB ?? Infinity;
+      const sizeStr = maxSizeMB === Infinity ? "Unlimited" : (maxSizeMB >= 1024 ? `${(maxSizeMB / 1024).toFixed(0)} GB` : `${maxSizeMB} MB`);
       const fileStr = maxFiles === Infinity ? "unlimited" : maxFiles.toLocaleString();
       return {
         cardClass: "bg-white border-zinc-200 shadow-sm",
-        badgeClass: "bg-zinc-100 border-zinc-200 text-zinc-700 font-semibold",
-        badgeText: "Free Tier",
-        iconClass: "text-zinc-500",
+        badgeClass: "bg-emerald-100 border-emerald-200 text-emerald-800 font-semibold",
+        badgeText: "Free Plan",
+        iconClass: "text-emerald-600",
         titleClass: "text-zinc-800",
-        titleText: "Free Plan",
-        description: `Upgrade to unlock unlimited files, EXIF meta repairs & maximum speed (Free limit: ${fileStr} files / ${sizeStr}).`,
+        titleText: "Free Community Plan",
+        description: "100% free browser-based restoration. Need 10x faster multi-threaded processing for massive 100GB+ archives? Upgrade to the Dedicated Desktop App.",
       };
     }
   }
@@ -169,22 +170,23 @@ export function useToolPipeline() {
   const currentUsedFiles = getUserFiles(userData as unknown as Record<string, unknown>)
   const currentUsedBytes = getUserBytes(userData as unknown as Record<string, unknown>)
 
-  // Plan thresholds — loaded dynamically from Firestore settings/global.tierThresholds
+  // Plan thresholds — Free tier is UNLIMITED for core browser restoration
   const [tierThresholds, setTierThresholds] = useState({
-    free:          { maxFiles: 250,      maxSizeMB: 500      },
-    recovery_pass: { maxFiles: 3000,     maxSizeMB: 3072     },
+    free:          { maxFiles: Infinity, maxSizeMB: Infinity },
+    recovery_pass: { maxFiles: Infinity, maxSizeMB: Infinity },
     pro:           { maxFiles: Infinity, maxSizeMB: Infinity },
     super:         { maxFiles: Infinity, maxSizeMB: Infinity },
   })
   const [isFreePromoActive, setIsFreePromoActive] = useState(false)
   const [unlockFreeFeatures, setUnlockFreeFeatures] = useState(true)
 
-  const limitFiles = plan === 'pro' || plan === 'super' || (plan === 'free' && isFreePromoActive)
+  // Core browser tool dynamically respects tier thresholds synced from Admin settings
+  const activeTierCfg = tierThresholds[plan] || tierThresholds.free || { maxFiles: Infinity, maxSizeMB: Infinity };
+  const isFreeUnlimited = tierThresholds.free.maxFiles === Infinity && tierThresholds.free.maxSizeMB === Infinity;
+  const limitFiles = isFreePromoActive ? Infinity : (activeTierCfg.maxFiles ?? Infinity);
+  const limitBytes = isFreePromoActive || activeTierCfg.maxSizeMB === Infinity
     ? Infinity
-    : (tierThresholds[plan as keyof typeof tierThresholds]?.maxFiles ?? 250)
-  const limitBytes = plan === 'pro' || plan === 'super' || (plan === 'free' && isFreePromoActive)
-    ? Infinity
-    : (tierThresholds[plan as keyof typeof tierThresholds]?.maxSizeMB ?? 500) * 1024 * 1024
+    : (activeTierCfg.maxSizeMB * 1024 * 1024);
 
   const limitFilesRef = useRef(limitFiles)
   const limitBytesRef = useRef(limitBytes)
@@ -224,15 +226,30 @@ export function useToolPipeline() {
         }
         // Sync unlockFreeFeatures setting (default to true)
         setUnlockFreeFeatures(data.unlockFreeFeatures !== false)
-        // Sync tool thresholds from admin settings
+        // Sync tool thresholds from admin settings in real-time
         const stored = data.tierThresholds
         if (stored) {
-          const parseLimit = (val: any, def: number) => val === 0 ? Infinity : (val ?? def);
+          const parseLimit = (val: any) => {
+            const num = Number(val);
+            return (val === undefined || val === null || num === 0 || isNaN(num)) ? Infinity : num;
+          };
           setTierThresholds({
-            free:          { maxFiles: parseLimit(stored.free?.maxFiles, 250),           maxSizeMB: parseLimit(stored.free?.maxSizeMB, 500)    },
-            recovery_pass: { maxFiles: parseLimit(stored.recovery_pass?.maxFiles, 3000), maxSizeMB: parseLimit(stored.recovery_pass?.maxSizeMB, 3072) },
-            pro:           { maxFiles: Infinity,                               maxSizeMB: Infinity },
-            super:         { maxFiles: Infinity,                               maxSizeMB: Infinity },
+            free: {
+              maxFiles: parseLimit(stored.free?.maxFiles),
+              maxSizeMB: parseLimit(stored.free?.maxSizeMB),
+            },
+            recovery_pass: {
+              maxFiles: parseLimit(stored.recovery_pass?.maxFiles),
+              maxSizeMB: parseLimit(stored.recovery_pass?.maxSizeMB),
+            },
+            pro: {
+              maxFiles: parseLimit(stored.pro?.maxFiles),
+              maxSizeMB: parseLimit(stored.pro?.maxSizeMB),
+            },
+            super: {
+              maxFiles: parseLimit(stored.super?.maxFiles),
+              maxSizeMB: parseLimit(stored.super?.maxSizeMB),
+            },
           })
         }
       }
@@ -313,6 +330,8 @@ export function useToolPipeline() {
   const totalSessionBytesRef = useRef<number>(0)
   const lastActiveSessionUpdateRef = useRef<number>(0)
   const lastCommitTimeRef = useRef<number>(0)
+  const currentSessionRef = useRef<ActiveSession | null>(null)
+  const restoredTimestampsCatalogRef = useRef<{ path: string; epoch: number }[]>([])
 
   const [activeToolTab, setActiveToolTab] = useState<'restore' | 'viewer' | 'comparison' | 'duplicates'>('restore')
 
@@ -822,7 +841,7 @@ export function useToolPipeline() {
           if (logsBuffer.current.length === 0) return prev;
           const newLogs = [...prev, ...logsBuffer.current];
           logsBuffer.current = [];
-          return newLogs.slice(-300);
+          return newLogs;
         });
       });
     }, 250);
@@ -839,6 +858,7 @@ export function useToolPipeline() {
   };
 
   const processRestorePipeline = async (session: ActiveSession, sessionManager: SessionManager) => {
+    currentSessionRef.current = session;
     // 1. Initialize WorkerPool with selected engine
     const engine = useSettingsStore.getState().exifEngine;
     console.log('[PIPELINE ENGINE SELECTED]', engine);
@@ -919,13 +939,15 @@ export function useToolPipeline() {
           if (!nextBatch || nextBatch.length === 0) {
             noMorePending = true;
           } else {
+            let newlyAdded = 0;
             for (const item of nextBatch) {
               if (!claimedIds.has(item.id)) {
                 claimedIds.add(item.id);
                 fileQueue.push(item);
+                newlyAdded++;
               }
             }
-            if (fileQueue.length === 0) {
+            if (nextBatch.length < 150 || newlyAdded === 0) {
               noMorePending = true;
             }
           }
@@ -933,6 +955,24 @@ export function useToolPipeline() {
           console.error("Failed to load pending files batch:", err);
         } finally {
           isFetchingPage = false;
+        }
+      }
+
+      // Check if completely drained and trigger auto-completion
+      if (inFlightCount === 0 && fileQueue.length === 0) {
+        const remainingInDb = await sessionManager.getPendingCount();
+        if (remainingInDb === 0 && isProcessingRef.current) {
+          if (zipReader) {
+            try { await zipReader.close(); } catch {}
+          }
+          resumeNextRef.current = null;
+          if (zipModeRef.current) {
+            await downloadCurrentZipChunk();
+          }
+          await completeProcessing();
+          return;
+        } else if (remainingInDb > 0 && isProcessingRef.current && !isPausedRef.current) {
+          noMorePending = false;
         }
       }
 
@@ -1222,6 +1262,10 @@ export function useToolPipeline() {
                 await writable.close();
                 writable = null;
                 bufferOrBlob = null;
+                if (epochSec) {
+                  const relPath = [...outRelativePath, fileRecord.filename].join('\\');
+                  restoredTimestampsCatalogRef.current.push({ path: relPath, epoch: epochSec });
+                }
               }
             } else {
               if (epochSec) {
@@ -1266,6 +1310,10 @@ export function useToolPipeline() {
                   writable = null;
                 } else {
                   throw new Error("Failed to resolve file reference for streaming.");
+                }
+                if (epochSec) {
+                  const relPath = [...outRelativePath, fileRecord.filename].join('\\');
+                  restoredTimestampsCatalogRef.current.push({ path: relPath, epoch: epochSec });
                 }
               }
             }
@@ -1344,7 +1392,7 @@ export function useToolPipeline() {
             pumpQueue();
 
             // Completion check: when all workers and queues are drained
-            if (inFlightCount === 0 && fileQueue.length === 0 && (noMorePending || !isProcessingRef.current)) {
+            if (inFlightCount === 0 && fileQueue.length === 0) {
               const remainingInDb = await sessionManager.getPendingCount();
               if (remainingInDb === 0 && isProcessingRef.current) {
                 if (zipReader) {
@@ -1487,9 +1535,50 @@ export function useToolPipeline() {
     }
 
     setStats({ ...statsBuffer.current })
-    setProgress(progressBuffer.current)
+    setProgress(100)
     setCurrentFile("Processing Complete")
-    setLogs(prev => [...prev, ...logsBuffer.current].slice(-300))
+
+    // Auto-sync natively if running inside Tauri desktop app
+    if (typeof window !== 'undefined' && ('__TAURI_INTERNALS__' in window || '__TAURI__' in window) && restoredTimestampsCatalogRef.current.length > 0) {
+      try {
+        const { invoke } = await import('@tauri-apps/api/core');
+        const items = restoredTimestampsCatalogRef.current.map(c => [c.filePath || c.name, c.timestamp]);
+        const syncedCount = await invoke<number>('sync_catalog_timestamps', { items });
+        logsBuffer.current.push({
+          level: 'success',
+          filename: 'Tauri Native Engine',
+          action: `Deeply synced ${syncedCount} file dates directly to OS kernel on disk`
+        });
+      } catch (tauriErr) {
+        console.warn("Tauri native timestamp sync:", tauriErr);
+      }
+    }
+
+    // Auto-generate sync_windows_dates.bat in output folder if direct folder mode was used
+    const outHandle = (currentSessionRef.current?.outputHandle as FileSystemDirectoryHandle) || outputFolder;
+    if (outHandle && useSettingsStore.getState().generateSyncScript && restoredTimestampsCatalogRef.current.length > 0) {
+      try {
+        const jsonHandle = await outHandle.getFileHandle('file_timestamps.json', { create: true });
+        const jsonWritable = await jsonHandle.createWritable();
+        await jsonWritable.write(JSON.stringify(restoredTimestampsCatalogRef.current, null, 2));
+        await jsonWritable.close();
+
+        const batHandle = await outHandle.getFileHandle('sync_windows_dates.bat', { create: true });
+        const batWritable = await batHandle.createWritable();
+        await batWritable.write(generateSyncBatContent());
+        await batWritable.close();
+
+        logsBuffer.current.push({
+          level: 'success',
+          filename: 'sync_windows_dates.bat',
+          action: 'Generated in output folder — run it to sync File Explorer Date Modified'
+        });
+      } catch (scriptErr) {
+        console.warn("Could not write sync_windows_dates.bat to destination folder:", scriptErr);
+      }
+    }
+
+    setLogs(prev => [...prev, ...logsBuffer.current])
     logsBuffer.current = []
 
     const finalBytes = sessionBytesRef.current
@@ -2108,7 +2197,7 @@ export function useToolPipeline() {
           if (logsBuffer.current.length === 0) return prev;
           const newLogs = [...prev, ...logsBuffer.current]
           logsBuffer.current = []
-          return newLogs.slice(-300)
+          return newLogs
         })
       });
     }, 250)
@@ -2408,6 +2497,7 @@ export function useToolPipeline() {
     plan,
     tierThresholds,
     isFreePromoActive,
+    isFreeUnlimited,
     limitFiles,
     limitBytes,
     currentUsedFiles,

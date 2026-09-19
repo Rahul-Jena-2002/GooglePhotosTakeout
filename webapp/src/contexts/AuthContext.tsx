@@ -220,6 +220,7 @@ interface AuthContextType {
   syncStatus: 'synced' | 'syncing' | 'failed';
   syncError: string | null;
   isFreePromoActive: boolean;
+  enablePricingAndPayments: boolean;
   reSyncAuthAndFeatures: () => Promise<void>;
 }
 
@@ -433,10 +434,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return () => unsub();
   }, []);
 
+  const [enablePricingAndPayments, setEnablePricingAndPayments] = useState<boolean>(false);
+
   useEffect(() => {
     const unsub = onSnapshot(doc(db, "settings", "global"), (snap) => {
       if (snap.exists()) {
         const data = snap.data();
+        if (data.enablePricingAndPayments !== undefined) {
+          setEnablePricingAndPayments(Boolean(data.enablePricingAndPayments));
+        }
         const promo = data.freeUnlimitedPromo;
         if (promo && promo.enabled && promo.endsAt && Date.now() < promo.endsAt) {
           setIsFreePromoActive(true);
@@ -505,6 +511,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         if (data.recoveryPassHours !== undefined) {
           recPassHours = Number(data.recoveryPassHours);
           setRecoveryPassHours(recPassHours);
+        }
+        if (data.enablePricingAndPayments !== undefined) {
+          setEnablePricingAndPayments(Boolean(data.enablePricingAndPayments));
         }
         const isTestMode = data.dodo_test_mode === true;
         newTestMode = isTestMode;
@@ -1107,7 +1116,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const defaultUsername = email ? email.split('@')[0] : 'user';
 
       const newData = {
-        plan: (isSuperAdmin ? 'super' : 'free') as PlanType,
+        plan: 'free' as PlanType,
         usedBytes: 0,
         usedFiles: 0,
         totalBytesProcessed: 0,
@@ -1173,18 +1182,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           try {
             const userEmail = currentUser.email!.toLowerCase();
             
-            // 1. Query adminInvites collection for pending invite for this email
-            const qInvite = query(
-              collection(db, "adminInvites"),
-              where("email", "==", userEmail),
-              where("status", "==", "pending")
-            );
-            const inviteSnap = await getDocs(qInvite);
-
-            let targetInviteDoc = !inviteSnap.empty ? inviteSnap.docs[0] : null;
-
-            // 2. Also check URL invite query param as direct fallback
-            if (!targetInviteDoc && typeof window !== 'undefined') {
+            // Only provision automatically if user explicitly clicked the invite link with `?invite=` in the URL.
+            // Otherwise, the invite remains pending until the user clicks 'Accept' in their notification bell or email!
+            let targetInviteDoc = null;
+            if (typeof window !== 'undefined') {
               const urlParams = new URLSearchParams(window.location.search);
               const urlInviteId = urlParams.get("invite");
               if (urlInviteId) {
@@ -1660,6 +1661,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       syncStatus,
       syncError,
       isFreePromoActive,
+      enablePricingAndPayments,
       reSyncAuthAndFeatures: async () => {
         setSyncStatus('syncing');
         setSyncError(null);
@@ -1772,6 +1774,7 @@ export const useAuth = () => {
       syncStatus: 'synced',
       syncError: null,
       isFreePromoActive: false,
+      enablePricingAndPayments: false,
       reSyncAuthAndFeatures: async () => {}
     };
   }

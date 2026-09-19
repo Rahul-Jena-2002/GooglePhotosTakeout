@@ -84,6 +84,12 @@ public class MetadataMatcher {
         f = filesByName.get(nameNoExt + ".supplemental-metadata.json");
         if (f != null) return Optional.of(f);
 
+        f = filesByName.get(name + ".json");
+        if (f != null) return Optional.of(f);
+
+        f = filesByName.get(nameNoExt + ".json");
+        if (f != null) return Optional.of(f);
+
         // 2. All generated candidate names — in-memory map lookup, zero I/O
         for (String candidate : getJsonCandidates(name)) {
             f = filesByName.get(candidate);

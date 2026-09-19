@@ -1,7 +1,6 @@
 ---
 export const prerender = true;
 import Layout from "../layouts/Layout.astro";
-import AdUnit from "../components/AdUnit";
 import Icon from "../components/ui/Icon.astro";
 ---
 
@@ -78,6 +77,8 @@ import Icon from "../components/ui/Icon.astro";
           </div>
         </div>
 
+
+
         <!-- STEP 3: Create Export & Download -->
         <div class="flex flex-col md:flex-row gap-6 p-8 rounded-2xl bg-white dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 hover:border-zinc-300 dark:hover:border-zinc-700 shadow-sm transition-all">
           <div class="flex-shrink-0 flex items-center justify-center w-12 h-12 rounded-xl bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 font-mono text-xs font-bold text-zinc-900 dark:text-zinc-300">
@@ -103,6 +104,8 @@ import Icon from "../components/ui/Icon.astro";
             </p>
           </div>
         </div>
+
+
 
         <!-- STEP 5: Start Restoration -->
         <div class="flex flex-col md:flex-row gap-6 p-8 rounded-2xl bg-white dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 hover:border-zinc-300 dark:hover:border-zinc-700 shadow-sm transition-all">
@@ -157,7 +160,7 @@ import Icon from "../components/ui/Icon.astro";
 
       </div>
 
-      </div>
+
 
       <!-- Estimated Time Box -->
       <div class="mt-16 p-6 rounded-2xl bg-zinc-50 dark:bg-zinc-950/20 border border-dashed border-zinc-200 dark:border-zinc-800 text-left max-w-2xl mx-auto space-y-2">
@@ -511,10 +514,7 @@ import Icon from "../components/ui/Icon.astro";
       </div>
     </div>
  
-    <!-- Bottom Ad Unit -->
-    <div class="max-w-4xl mx-auto px-4 my-12">
-      <AdUnit client:only="react" type="horizontal" slot="1" />
-    </div>
+
  
     <!-- BOTTOM CTA -->
     <div class="max-w-4xl mx-auto text-center mt-48 py-16 border-t border-zinc-200 dark:border-zinc-800 relative">

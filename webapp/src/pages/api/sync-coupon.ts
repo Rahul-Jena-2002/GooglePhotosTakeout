@@ -1,34 +1,15 @@
 export const prerender = false;
 import type { APIRoute } from 'astro';
 import { env } from 'cloudflare:workers';
+import { jsonResponse, handleCorsOptions, isAuthorizedRequest } from '../../lib/api/apiResponse';
+import { resolveDodoHost } from '../../lib/dodo/client';
 
-type JsonRecord = Record<string, unknown>;
-
-function json(status: number, data: JsonRecord): Response {
-  return new Response(JSON.stringify(data), {
-    status,
-    headers: {
-      'Content-Type': 'application/json',
-      'Access-Control-Allow-Origin': '*'
-    }
-  });
-}
-
-export const OPTIONS: APIRoute = async () => {
-  return new Response(null, {
-    status: 204,
-    headers: {
-      'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Methods': 'POST, OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type, Authorization, x-api-key'
-    }
-  });
-};
+export const OPTIONS: APIRoute = handleCorsOptions;
 
 async function createDiscount(dodoHost: string, dodoApiKey: string, body: any): Promise<{ statusCode: number; body: string }> {
   const res = await fetch(`https://${dodoHost}/discounts`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${dodoApiKey}` },
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${dodoApiKey.trim()}` },
     body: JSON.stringify(body)
   });
   return { statusCode: res.status, body: await res.text() };
@@ -37,7 +18,7 @@ async function createDiscount(dodoHost: string, dodoApiKey: string, body: any): 
 async function patchDiscount(dodoHost: string, dodoApiKey: string, discountId: string, body: any): Promise<{ statusCode: number; body: string }> {
   const res = await fetch(`https://${dodoHost}/discounts/${discountId}`, {
     method: 'PATCH',
-    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${dodoApiKey}` },
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${dodoApiKey.trim()}` },
     body: JSON.stringify(body)
   });
   return { statusCode: res.status, body: await res.text() };
@@ -45,52 +26,46 @@ async function patchDiscount(dodoHost: string, dodoApiKey: string, discountId: s
 
 export const POST: APIRoute = async ({ request }) => {
   try {
-    const GATEWAY_API_KEY = (env as any).GATEWAY_API_KEY || import.meta.env.GATEWAY_API_KEY || '';
-    const headerKey = request.headers.get('x-api-key') || request.headers.get('authorization')?.replace('Bearer ', '');
-    const isLocalDev = import.meta.env.DEV || process.env.NODE_ENV === "development";
-    
-    if (!isLocalDev) {
-      if (!GATEWAY_API_KEY || !headerKey || headerKey !== GATEWAY_API_KEY) {
-        return json(401, { error: 'Unauthorized' });
-      }
-    }
-
     const raw = await request.text();
     let payload: any = {};
     try {
       payload = JSON.parse(raw || '{}');
     } catch {
-      return json(400, { error: 'Invalid JSON body' });
+      return jsonResponse(400, { error: 'Invalid JSON body' });
+    }
+
+    const GATEWAY_API_KEY = (env as any).GATEWAY_API_KEY || import.meta.env.GATEWAY_API_KEY || '';
+    const isDev = Boolean(import.meta.env.DEV || process.env.NODE_ENV === 'development');
+
+    if (!isAuthorizedRequest(request, payload, GATEWAY_API_KEY, isDev)) {
+      return jsonResponse(401, { error: 'Unauthorized' });
     }
 
     const { coupon, targets } = payload;
     if (!coupon || !targets || !Array.isArray(targets)) {
-      return json(400, { error: 'coupon object and targets array are required.' });
+      return jsonResponse(400, { error: 'coupon object and targets array are required.' });
     }
 
     if (coupon.discountType !== 'PERCENTAGE') {
-      return json(400, { error: 'Only PERCENTAGE-based discounts are supported by Dodo Payments currently.' });
+      return jsonResponse(400, { error: 'Only PERCENTAGE-based discounts are supported by Dodo Payments.' });
     }
 
-    // Resolve Dodo Keys and Mode directly from Cloudflare environment
     const dodoTestModeVal = (env as any).DODO_TEST_MODE || import.meta.env.DODO_TEST_MODE;
-    const dodoTestMode = dodoTestModeVal === 'true' || dodoTestModeVal === true || dodoTestModeVal === undefined; // default to test mode
-    
-    let dodoApiKey = dodoTestMode 
+    const testMode = payload.testMode !== undefined
+      ? Boolean(payload.testMode)
+      : (dodoTestModeVal === 'true' || dodoTestModeVal === true);
+
+    const dodoApiKey = String(payload.dodoApiKey || payload.apiKey || (testMode
       ? ((env as any).DODO_TEST_API_KEY || import.meta.env.DODO_TEST_API_KEY)
-      : ((env as any).DODO_API_KEY || import.meta.env.DODO_API_KEY);
+      : ((env as any).DODO_API_KEY || import.meta.env.DODO_API_KEY)) || '').trim();
 
     if (!dodoApiKey) {
-      return json(500, { error: `Dodo API key not configured in Cloudflare environment (${dodoTestMode ? "DODO_TEST_API_KEY" : "DODO_API_KEY"}).` });
+      return jsonResponse(400, { error: `Dodo API key not configured (${testMode ? 'DODO_TEST_API_KEY' : 'DODO_API_KEY'}).` });
     }
 
-    dodoApiKey = dodoApiKey
-      .replace(/^sk_test_/, '').replace(/^test_/, '')
-      .replace(/^sk_live_/, '').replace(/^live_/, '');
+    const { host: dodoHost } = resolveDodoHost(dodoApiKey, testMode);
 
-    const dodoHost = dodoTestMode ? "test.dodopayments.com" : "live.dodopayments.com";
-
-    // Retrieve all active discounts from Dodo to check for duplicates
+    // Retrieve active discounts from Dodo
     let dodoDiscountsList: any[] = [];
     try {
       const listRes = await fetch(`https://${dodoHost}/discounts`, {
@@ -101,11 +76,10 @@ export const POST: APIRoute = async ({ request }) => {
         dodoDiscountsList = data.items || data || [];
       }
     } catch (e: any) {
-      console.warn("[sync-coupon] Failed to fetch existing Dodo discounts:", e.message);
+      console.warn('[sync-coupon] Failed to fetch existing Dodo discounts:', e.message);
     }
 
     const results = [];
-    
     for (const target of targets) {
       const { regionCode, planCode, productId } = target;
       if (!productId) {
@@ -113,15 +87,13 @@ export const POST: APIRoute = async ({ request }) => {
         continue;
       }
 
-      // Check if this coupon code is already registered on Dodo for this product
-      const existingDiscount = dodoDiscountsList.find((d: any) => 
+      const existingDiscount = dodoDiscountsList.find((d: any) =>
         String(d.code).toUpperCase() === String(coupon.couponCode).toUpperCase() &&
         (Array.isArray(d.restricted_to) ? d.restricted_to.includes(productId) : d.restricted_to === productId)
       );
 
       const dodoDiscountId = existingDiscount ? (existingDiscount.id || existingDiscount.discount_id) : null;
 
-      // Calculate expiry
       let expiresAt: string | null = null;
       if (coupon.validUntil) {
         const d = new Date(coupon.validUntil);
@@ -131,7 +103,7 @@ export const POST: APIRoute = async ({ request }) => {
       const discountPayload = {
         code: coupon.couponCode,
         type: 'percentage',
-        amount: Math.round(Number(coupon.discountValue || 0) * 100), // basis points (15% -> 1500)
+        amount: Math.round(Number(coupon.discountValue || 0) * 100),
         restricted_to: [productId],
         usage_limit: coupon.usageLimit ? Number(coupon.usageLimit) : null,
         expires_at: expiresAt,
@@ -142,10 +114,8 @@ export const POST: APIRoute = async ({ request }) => {
       try {
         let apiResp;
         if (dodoDiscountId) {
-          // Update existing
           apiResp = await patchDiscount(dodoHost, dodoApiKey, dodoDiscountId, discountPayload);
         } else {
-          // Create new
           apiResp = await createDiscount(dodoHost, dodoApiKey, discountPayload);
         }
 
@@ -164,25 +134,14 @@ export const POST: APIRoute = async ({ request }) => {
           response: isSuccess ? parsed : apiResp.body
         });
       } catch (err: any) {
-        results.push({
-          regionCode,
-          planCode,
-          productId,
-          status: 'FAILED',
-          error: err.message
-        });
+        results.push({ regionCode, planCode, productId, status: 'FAILED', error: err.message });
       }
     }
 
-    return json(200, {
-      success: true,
-      couponId: coupon.id,
-      results
-    });
+    return jsonResponse(200, { success: true, couponId: coupon.id, results });
 
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err);
-    console.error('[sync-coupon] Unhandled error:', message);
-    return json(500, { error: 'ServerError', message });
+    return jsonResponse(500, { error: 'ServerError', message });
   }
 };

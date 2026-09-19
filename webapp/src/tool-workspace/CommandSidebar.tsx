@@ -2,12 +2,10 @@
  * CommandSidebar — left "Command Center" panel.
  * Pure display: quotas, telemetry, stats counters, upgrade banner.
  */
-import { useState, useEffect } from "react"
-import { Activity, HardDrive, FileText, Cpu, Database, CheckCircle2, AlertCircle, XCircle, Sparkles, ShieldCheck } from "lucide-react"
+import { Activity, HardDrive, Cpu, Database, CheckCircle2, AlertCircle, XCircle, ShieldCheck } from "lucide-react"
 import { Progress } from "../components/ui/progress"
-import AdUnit from "../components/AdUnit"
+import AdUnit from "../components/monetization/AdUnit"
 import { Button } from "../components/ui/button"
-import { getPlanCardStyles } from "./useToolPipeline"
 
 interface CommandSidebarProps {
   plan: string
@@ -56,35 +54,6 @@ export function CommandSidebar({
   userData,
   resetUserQuota,
 }: CommandSidebarProps) {
-  // Countdown timer for 24-hour pass
-  const [timeLeft, setTimeLeft] = useState("")
-
-  useEffect(() => {
-    if (plan !== 'recovery_pass') return
-    
-    const calculateTimeLeft = () => {
-      const expiresAt = userData?.expiresAt || (userData?.updatedAt ? userData.updatedAt + 24 * 60 * 60 * 1000 : Date.now() + 24 * 60 * 60 * 1000)
-      const diff = expiresAt - Date.now()
-      
-      if (diff <= 0) {
-        setTimeLeft("Expired")
-        return
-      }
-      
-      const totalSecs = Math.floor(diff / 1000)
-      const days = Math.floor(totalSecs / 86400)
-      const hours = Math.floor((totalSecs % 86400) / 3600)
-      const mins = Math.floor((totalSecs % 3600) / 60)
-      const pad = (n: number) => String(n).padStart(2, '0')
-      
-      setTimeLeft(`${pad(days)}d : ${pad(hours)}h : ${pad(mins)}m`)
-    }
-    
-    calculateTimeLeft()
-    const timer = setInterval(calculateTimeLeft, 1000)
-    return () => clearInterval(timer)
-  }, [plan, userData])
-
   return (
     <div className="w-full lg:w-[28%] lg:min-w-[340px] p-3 border-t lg:border-t-0 lg:border-r border-white/5 flex flex-col lg:h-full h-auto lg:overflow-y-auto overflow-visible scrollbar-thin scrollbar-thumb-zinc-800 order-2 lg:order-1">
 
@@ -102,60 +71,20 @@ export function CommandSidebar({
         </span>
       </div>
 
-      {/* Quota Progress */}
-      {plan === 'recovery_pass' ? (
-        <div className="space-y-2 mb-3 bg-cyan-500/10 dark:bg-cyan-500/10 border border-cyan-500/30 dark:border-cyan-500/20 p-3.5 rounded-xl text-left shadow-sm">
-          <div className="text-[10px] font-bold text-cyan-700 dark:text-cyan-400 uppercase tracking-wider flex items-center gap-1.5">
-            <span className="w-1.5 h-1.5 rounded-full bg-cyan-500 dark:bg-cyan-400 animate-ping"></span>
-            24h Recovery Pass Active
-          </div>
-          <div className="text-[11px] text-zinc-700 dark:text-zinc-300 font-semibold mt-1">
-            Unlimited files & storage restoration enabled.
-          </div>
-          <div className="border-t border-cyan-500/20 dark:border-cyan-500/10 pt-2.5 mt-2 flex justify-between items-center text-xs">
-            <span className="text-zinc-600 dark:text-zinc-400 font-semibold">Time Left:</span>
-            <span className="font-mono font-black text-cyan-950 bg-cyan-100 dark:text-cyan-300 dark:bg-cyan-950/80 px-2.5 py-0.5 rounded-md border border-cyan-200 dark:border-cyan-800/60 tracking-tight">{timeLeft}</span>
-          </div>
+      {/* Engine Status */}
+      <div className="space-y-2 mb-3 bg-white/[0.02] border border-white/5 p-3 rounded-xl">
+        <div className="flex justify-between items-center text-[9px] text-white/40 font-bold uppercase tracking-wider">
+          <span className="flex items-center gap-1"><HardDrive className="w-3 h-3 text-emerald-400" /> Restoration Engine</span>
+          <span className="text-emerald-400 font-mono">100% Free</span>
         </div>
-      ) : (
-        <div className="space-y-2 mb-3 bg-white/[0.01] border border-white/5 p-2 rounded-lg">
-          <div className="flex flex-col gap-1">
-            <div className="flex justify-between items-center text-[9px] text-white/40 font-bold uppercase tracking-wider">
-              <span className="flex items-center gap-1"><HardDrive className="w-3 h-3 text-zinc-550" /> Storage Limit Progress</span>
-              <span>{formatByteSize(limitBytes)}</span>
-            </div>
-            <div className="text-xs font-bold text-zinc-150">
-              {formatByteSize(sessionBytes)} / {formatByteSize(limitBytes)}
-            </div>
-            {limitBytes !== Infinity && (
-              <Progress value={Math.min(100, (sessionBytes / limitBytes) * 100)} className="h-1 bg-white/10" />
-            )}
-          </div>
-
-          <div className="flex flex-col gap-1 border-t border-white/5 pt-2 mt-1">
-            <div className="flex justify-between items-center text-[9px] text-white/40 font-bold uppercase tracking-wider">
-              <span className="flex items-center gap-1"><FileText className="w-3 h-3 text-zinc-550" /> Files Limit Progress</span>
-              <span>{limitFiles === Infinity ? "Unlimited" : limitFiles.toLocaleString()}</span>
-            </div>
-            <div className="text-xs font-bold text-zinc-150">
-              {sessionFiles.toLocaleString()} / {limitFiles === Infinity ? "Unlimited" : limitFiles.toLocaleString()}
-            </div>
-            {limitFiles !== Infinity && (
-              <Progress value={Math.min(100, (sessionFiles / limitFiles) * 100)} className="h-1 bg-white/10" />
-            )}
-          </div>
-
-          {/* Developer / Admin Reset Button */}
-          {(userData?.isAdmin || import.meta.env.DEV) && (
-            <Button 
-              onClick={resetUserQuota}
-              className="w-full mt-2 h-7 text-[9px] font-bold text-zinc-400 hover:text-white border border-white/10 hover:border-white/20 bg-white/[0.02] cursor-pointer rounded-md flex items-center justify-center gap-1"
-            >
-              ↺ Reset Usage Quota (Dev/Admin)
-            </Button>
-          )}
+        <div className="text-xs font-bold text-zinc-150 flex items-center justify-between">
+          <span>Processed Volume</span>
+          <span className="font-mono text-zinc-300">{formatByteSize(sessionBytes)} ({sessionFiles.toLocaleString()} files)</span>
         </div>
-      )}
+        <div className="text-[10px] text-zinc-500 font-medium">
+          Unlimited batch processing enabled. All files are merged client-side.
+        </div>
+      </div>
 
       {/* Engine Resource Telemetry */}
       <div className="space-y-2.5 mb-3 bg-white/[0.01] border border-white/5 p-2.5 rounded-lg">
@@ -200,66 +129,51 @@ export function CommandSidebar({
       )}
 
       {/* Stats counters */}
-      <div className="grid grid-cols-2 gap-1.5 mb-3">
-        <div className="bg-white/[0.02] border border-white/5 p-2 rounded flex flex-col justify-between h-14">
-          <span className="text-[9px] text-white/40 flex items-center gap-1"><Database className="w-3 h-3"/> Scanned</span>
-          <span className="text-xs font-bold truncate">{stats.scanned} / {stats.total || '—'}</span>
+      <div className={`grid ${stats.exifFailed > 0 ? 'grid-cols-3' : 'grid-cols-2'} gap-1.5 mb-3`}>
+        <div className="bg-zinc-100 dark:bg-white/[0.02] border border-zinc-200 dark:border-white/5 p-2 rounded flex flex-col justify-between h-14">
+          <span className="text-[9px] text-zinc-500 dark:text-white/40 flex items-center gap-1 font-medium"><Database className="w-3 h-3"/> Scanned</span>
+          <span className="text-xs font-bold text-zinc-900 dark:text-white truncate">{stats.scanned} / {stats.total || '—'}</span>
         </div>
-        <div className="bg-green-500/5 border border-green-500/10 p-2 rounded flex flex-col justify-between h-14">
-          <span className="text-[9px] text-green-400/60 flex items-center gap-1"><CheckCircle2 className="w-3 h-3"/> Restored</span>
-          <span className="text-xs font-bold text-green-400 truncate">{stats.matched} / {stats.total || '—'}</span>
+        <div className="bg-emerald-50 dark:bg-green-500/5 border border-emerald-200 dark:border-green-500/10 p-2 rounded flex flex-col justify-between h-14">
+          <span className="text-[9px] text-emerald-700 dark:text-green-400/70 flex items-center gap-1 font-semibold"><CheckCircle2 className="w-3 h-3 text-emerald-600 dark:text-green-400"/> Restored</span>
+          <span className="text-xs font-bold text-emerald-800 dark:text-green-400 truncate">{stats.matched} / {stats.total || '—'}</span>
         </div>
-        <div className="bg-yellow-500/5 border border-yellow-500/10 p-2 rounded flex flex-col justify-between h-14">
-          <span className="text-[9px] text-yellow-400/60 flex items-center gap-1"><AlertCircle className="w-3 h-3"/> Unmatched</span>
-          <span className="text-xs font-bold text-yellow-400 truncate">{stats.unmatched}</span>
+        {stats.exifFailed > 0 && (
+          <div className="bg-amber-50 dark:bg-amber-500/5 border border-amber-300 dark:border-amber-500/10 p-2 rounded flex flex-col justify-between h-14">
+            <span className="text-[9px] text-amber-800 dark:text-amber-400/70 flex items-center gap-1 font-semibold"><Activity className="w-3 h-3 text-amber-600 dark:text-amber-400"/> Fallback</span>
+            <span className="text-xs font-bold text-amber-900 dark:text-amber-400 truncate">{stats.exifFailed}</span>
+          </div>
+        )}
+        <div className="bg-amber-50 dark:bg-yellow-500/5 border border-amber-300 dark:border-yellow-500/10 p-2 rounded flex flex-col justify-between h-14">
+          <span className="text-[9px] text-amber-800 dark:text-yellow-400/70 flex items-center gap-1 font-semibold"><AlertCircle className="w-3 h-3 text-amber-600 dark:text-yellow-400"/> Unmatched</span>
+          <span className="text-xs font-bold text-amber-900 dark:text-yellow-400 truncate">{stats.unmatched}</span>
         </div>
-        <div className="bg-red-500/5 border border-red-500/10 p-2 rounded flex flex-col justify-between h-14">
-          <span className="text-[9px] text-red-400/60 flex items-center gap-1"><XCircle className="w-3 h-3"/> Errors</span>
-          <span className="text-xs font-bold text-red-400 truncate">{stats.errors}</span>
+        <div className="bg-rose-50 dark:bg-red-500/5 border border-rose-200 dark:border-red-500/10 p-2 rounded flex flex-col justify-between h-14">
+          <span className="text-[9px] text-rose-700 dark:text-red-400/70 flex items-center gap-1 font-semibold"><XCircle className="w-3 h-3 text-rose-600 dark:text-red-400"/> Errors</span>
+          <span className="text-xs font-bold text-rose-800 dark:text-red-400 truncate">{stats.errors}</span>
         </div>
       </div>
 
-      {/* Banners & Plan Status at bottom */}
-      <div className="mt-auto pt-3 border-t border-white/5 space-y-3">
-        <AdUnit type="vertical" slot="3" />
-        {(() => {
-          const styles = getPlanCardStyles(plan, tierThresholds, isFreePromoActive);
-          const isPremium = plan !== 'free';
-          return (
-            <div className={`p-3 rounded-xl border transition-all duration-300 ${styles.cardClass}`}>
-              <div className="flex justify-between items-start">
-                <div>
-                  <div className="flex items-center gap-1.5">
-                    <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider">Plan Status</span>
-                    {plan === 'super' && <Sparkles className="w-3.5 h-3.5 text-amber-500" />}
-                    {plan === 'pro' && <Sparkles className="w-3.5 h-3.5 text-purple-500" />}
-                  </div>
-                  <div className={`text-xs font-black mt-1 flex items-center gap-1.5 ${styles.titleClass}`}>
-                    {isPremium ? (
-                      <ShieldCheck className={`w-3.5 h-3.5 ${styles.iconClass}`} />
-                    ) : (
-                      <AlertCircle className={`w-3.5 h-3.5 ${styles.iconClass}`} />
-                    )}
-                    {styles.titleText}
-                  </div>
-                </div>
-                <span className={`text-[9px] font-mono tracking-wide px-2 py-0.5 rounded border uppercase font-bold ${styles.badgeClass}`}>
-                  {styles.badgeText}
-                </span>
-              </div>
-              <p className="mt-2 text-[9.5px] text-zinc-400 leading-normal font-medium">
-                {styles.description}
-              </p>
-              {!isPremium && (
-                <a href="/pricing" className="block mt-2.5">
-                  <Button className="w-full h-7 text-[10px] btn-monochrome-primary py-0 rounded font-bold cursor-pointer">
-                    Upgrade Plan
-                  </Button>
-                </a>
-              )}
+      {/* Engine Trust Card at bottom */}
+      <div className="mt-auto pt-3 border-t border-white/5 space-y-2.5">
+        <div className="flex flex-col gap-2">
+          <AdUnit type="compact" placement="TOOL_SIDEBAR_1" />
+          <AdUnit type="compact" placement="TOOL_SIDEBAR_2" />
+        </div>
+        <div className="p-3 rounded-xl border border-white/5 bg-white/[0.02]">
+          <div className="flex justify-between items-center">
+            <div className="flex items-center gap-1.5 text-xs font-bold text-white">
+              <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
+              100% Free &amp; Offline
             </div>
-          );
-        })()}
+            <span className="text-[9px] font-mono tracking-wide px-2 py-0.5 rounded border border-emerald-500/20 bg-emerald-500/10 text-emerald-400 uppercase font-bold">
+              Active
+            </span>
+          </div>
+          <p className="mt-2 text-[9.5px] text-zinc-400 leading-normal font-medium">
+            Zero server uploads. Your photos and JSON companion sidecars are restored directly in your browser with unlimited capacity.
+          </p>
+        </div>
       </div>
 
     </div>

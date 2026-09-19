@@ -6,45 +6,45 @@ export default {
     const url = new URL(request.url);
     const path = url.pathname.toLowerCase();
 
-    // Map download paths to expected file names (separate portable and installer packages)
+    // Map download paths to expected file names (Direct runnable Rust & Java editions)
     let targetFileName = "";
-    if (path === "/download/windows" || path === "/download/windows/portable" || path === "/download/windows/zip") {
-      targetFileName = "TakeoutFix-Windows-Portable.zip";
-    } else if (path === "/download/windows/installer" || path === "/download/windows/msi") {
-      targetFileName = "TakeoutFix-Setup.msi";
-    } else if (path === "/download/macos" || path === "/download/macos/portable" || path === "/download/macos/zip") {
-      targetFileName = "TakeoutFix-macOS-Portable.zip";
-    } else if (path === "/download/macos/installer" || path === "/download/macos/dmg") {
-      targetFileName = "TakeoutFix-macOS.dmg";
+    if (path === "/download/windows/rust" || path === "/download/windows/exe" || path === "/download/windows") {
+      targetFileName = "TakeoutFix.exe";
+    } else if (path === "/download/windows/java" || path === "/download/windows/installer" || path === "/download/windows/msi") {
+      targetFileName = "TakeoutFix-Java.exe";
+    } else if (path === "/download/macos/rust" || path === "/download/macos/dmg" || path === "/download/macos") {
+      targetFileName = "TakeoutFix.dmg";
+    } else if (path === "/download/macos/java") {
+      targetFileName = "TakeoutFix-Java.dmg";
+    } else if (path === "/download/linux/rust" || path === "/download/linux/appimage" || path === "/download/linux") {
+      targetFileName = "TakeoutFix.AppImage";
+    } else if (path === "/download/linux/java") {
+      targetFileName = "TakeoutFix-Java.AppImage";
     } else if (path === "/download/linux/deb") {
       targetFileName = "TakeoutFix-Linux.deb";
     } else if (path === "/download/linux/rpm") {
       targetFileName = "TakeoutFix-Linux.rpm";
-    } else if (path === "/download/linux" || path === "/download/linux/portable" || path === "/download/linux/tar") {
-      targetFileName = "TakeoutFix-Linux-Portable.tar.gz";
     } else if (path === "/" || path === "/download") {
       return Response.redirect("https://takeoutfix.pages.dev/download", 302);
     } else {
-      return new Response("Not Found. Available routes:\n- /download/windows/installer (MSI)\n- /download/windows/portable (.zip)\n- /download/macos/installer (.dmg)\n- /download/macos/portable (.zip)\n- /download/linux/deb (.deb)\n- /download/linux/rpm (.rpm)\n- /download/linux/portable (.tar.gz)", {
+      return new Response("Not Found. Available routes:\n- /download/windows/rust (TakeoutFix.exe)\n- /download/windows/java (TakeoutFix-Java.exe)\n- /download/macos/rust (TakeoutFix.dmg)\n- /download/macos/java (TakeoutFix-Java.dmg)\n- /download/linux/rust (TakeoutFix.AppImage)\n- /download/linux/java (TakeoutFix-Java.AppImage)", {
         status: 404,
         headers: { "Content-Type": "text/plain" }
       });
     }
 
-    // Automatically uses configured secret or built-in token so NO Cloudflare settings setup is needed
-    const BUILTIN_TOKEN = atob("Z2hvX1V6Y0RDcEpUVzVkODJadlc2d2hSTXhZNUNLMXFRazF2QXowNw==");
-    const token = env.GITHUB_PAT || BUILTIN_TOKEN;
+    const headers = {
+      "User-Agent": "Cloudflare-Worker",
+      "Accept": "application/vnd.github.v3+json"
+    };
+    if (env.GITHUB_PAT) {
+      headers["Authorization"] = `Bearer ${env.GITHUB_PAT}`;
+    }
 
     try {
       // 1. Fetch latest release details from GitHub API
       const releaseUrl = `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/releases/latest`;
-      const releaseResponse = await fetch(releaseUrl, {
-        headers: {
-          "Authorization": `Bearer ${token}`,
-          "User-Agent": "Cloudflare-Worker",
-          "Accept": "application/vnd.github.v3+json"
-        }
-      });
+      const releaseResponse = await fetch(releaseUrl, { headers });
 
       if (!releaseResponse.ok) {
         const errorText = await releaseResponse.text();
@@ -73,12 +73,15 @@ export default {
 
       // 3. Request the asset binary from GitHub
       const assetUrl = `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/releases/assets/${targetAsset.id}`;
+      const assetHeaders = {
+        "User-Agent": "Cloudflare-Worker",
+        "Accept": "application/octet-stream"
+      };
+      if (env.GITHUB_PAT) {
+        assetHeaders["Authorization"] = `Bearer ${env.GITHUB_PAT}`;
+      }
       const assetResponse = await fetch(assetUrl, {
-        headers: {
-          "Authorization": `Bearer ${token}`,
-          "User-Agent": "Cloudflare-Worker",
-          "Accept": "application/octet-stream"
-        },
+        headers: assetHeaders,
         redirect: "manual" // Stop automatic redirect follow to capture the S3 URL
       });
 

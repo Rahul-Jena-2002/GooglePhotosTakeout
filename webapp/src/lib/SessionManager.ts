@@ -1,6 +1,6 @@
 import { indexedDbService } from './indexedDbService';
-import { isAllowedMediaFile, sanitizeFilename, findMatchingJsonName, safeParseJson, extractTimestamp } from '../services/MetadataMatcher';
-import { findMatchingJsonNameForZip, normalizeZipPath } from '../services/ZipMetadataMatcher';
+import { isAllowedMediaFile, sanitizeFilename, findMatchingJsonName, safeParseJson, extractTimestamp } from '../services/restoration/MetadataMatcher';
+import { findMatchingJsonNameForZip, normalizeZipPath } from '../services/restoration/ZipMetadataMatcher';
 import { ZipReader, BlobReader, TextWriter } from '@zip.js/zip.js';
 
 export interface ActiveSession {

@@ -1310,6 +1310,101 @@ const fetchUsdExchangeRates = () => {
 };
 
 app.post("/sync-dodo-prices", async (req, res) => {
+  const https = require("https");
+
+  // Helper to fetch exchange rates
+  const fetchUsdExchangeRates = async () => {
+    return new Promise((resolve) => {
+      https.get("https://open.er-api.com/v6/latest/USD", (res) => {
+        let body = "";
+        res.on("data", chunk => body += chunk);
+        res.on("end", () => {
+          try {
+            const data = JSON.parse(body);
+            if (data?.result === "success" && data.rates) {
+              resolve({ JPY: Number(data.rates.JPY) || 150.0, CNY: Number(data.rates.CNY) || 7.25 });
+              return;
+            }
+          } catch (_) {}
+          resolve({ JPY: 150.0, CNY: 7.25 });
+        });
+      }).on("error", () => resolve({ JPY: 150.0, CNY: 7.25 }));
+    });
+  };
+
+  // Resolve Dodo API Key and Host
+  let { dodoApiKey, dodoHost } = await resolveDodoCredentials(db);
+  if (req.body && req.body.dodoApiKey) {
+    dodoApiKey = String(req.body.dodoApiKey).trim();
+    const isTestKey = dodoApiKey.startsWith("test_") || dodoApiKey.startsWith("sk_test_");
+    dodoHost = isTestKey || req.body.testMode ? "test.dodopayments.com" : "live.dodopayments.com";
+  }
+
+  if (!dodoApiKey) {
+    return res.status(500).json({ error: "Dodo API key not configured. Save it in Admin Settings → Dodo Live API Key or Dodo Test API Key." });
+  }
+
+  const envMode = dodoHost && typeof dodoHost === "string" && dodoHost.includes("test.") ? "test" : "live";
+
+  // ACTION 1: fetch_products
+  if (req.body && req.body.action === "fetch_products") {
+    const fetchProductsDodo = () => {
+      return new Promise((resolve) => {
+        const options = {
+          hostname: dodoHost,
+          path: "/products",
+          method: "GET",
+          headers: { "Authorization": `Bearer ${dodoApiKey}`, "Accept": "application/json" }
+        };
+        const r = https.request(options, (resp) => {
+          let body = "";
+          resp.on("data", c => body += c);
+          resp.on("end", () => {
+            try {
+              const data = JSON.parse(body);
+              if (Array.isArray(data)) resolve(data);
+              else if (Array.isArray(data.items)) resolve(data.items);
+              else if (Array.isArray(data.data)) resolve(data.data);
+              else resolve([]);
+            } catch (_) { resolve([]); }
+          });
+        });
+        r.on("error", () => resolve([]));
+        r.end();
+      });
+    };
+
+    const rawProducts = await fetchProductsDodo();
+    const REGIONS = ["in", "cn", "jp", "eu", "t1", "t2", "t3", "t4"];
+    const mappedProducts = {};
+    const mappedPrices = {};
+    REGIONS.forEach(r => { mappedProducts[r] = {}; mappedPrices[r] = {}; });
+
+    rawProducts.forEach(p => {
+      const pId = p.product_id || p.id;
+      if (!pId) return;
+      const name = (p.name || "").toLowerCase();
+      let plan = name.includes("super") ? "super" : name.includes("recovery") ? "recovery_pass" : name.includes("pro") ? "pro" : null;
+      let region = name.includes("india") ? "in" : name.includes("europe") ? "eu" : name.includes("japan") ? "jp" : name.includes("china") ? "cn" : null;
+      let amount = p.price?.price ? p.price.price / 100 : 0;
+      let curr = p.price?.currency || "USD";
+
+      if (plan && region) {
+        mappedProducts[region][plan] = pId;
+        mappedPrices[region][plan] = { amount, currency: curr };
+      } else if (plan) {
+        REGIONS.forEach(r => {
+          if (!mappedProducts[r][plan]) {
+            mappedProducts[r][plan] = pId;
+            mappedPrices[r][plan] = { amount, currency: curr, isUniversal: true };
+          }
+        });
+      }
+    });
+
+    return res.json({ success: true, count: rawProducts.length, envMode, mappedProducts, mappedPrices });
+  }
+
   const { regionCode, prices, currency } = req.body || {};
   let currencyCode = (currency || "INR").toUpperCase();
 
@@ -1323,7 +1418,6 @@ app.post("/sync-dodo-prices", async (req, res) => {
     currencyCode = "USD";
     const rates = await fetchUsdExchangeRates();
     const rate = regionCode === "jp" ? rates.JPY : rates.CNY;
-    console.log(`Auto-converting ${regionCode === "jp" ? "JPY" : "CNY"} to USD using dynamic rate: ${rate}`);
     for (const plan of Object.keys(finalPrices)) {
       const val = finalPrices[plan];
       if (val !== null && typeof val === "object") {
@@ -1336,14 +1430,6 @@ app.post("/sync-dodo-prices", async (req, res) => {
       }
     }
   }
-
-  // Resolve Dodo API Key and Host
-  const { dodoApiKey, dodoHost } = await resolveDodoCredentials(db);
-  if (!dodoApiKey) {
-    return res.status(500).json({ error: "Dodo API key not configured. Save it in Admin Settings → Dodo Live API Key or Dodo Test API Key." });
-  }
-
-  const envMode = dodoHost && typeof dodoHost === "string" && dodoHost.includes("test.") ? "test" : "live";
 
   // Load product ID map from Firestore
   let dodoProductsMap = {};
@@ -1358,9 +1444,9 @@ app.post("/sync-dodo-prices", async (req, res) => {
     return res.status(500).json({ error: "Failed to read settings/global: " + e.message });
   }
 
-  const https = require("https");
   const results = [];
   const now = Date.now();
+  const updatedProductIds = {};
 
   const patchProductPrice = (productId, amountMinor, dodoCfg = {}) => {
     const payload = JSON.stringify({
@@ -1397,31 +1483,91 @@ app.post("/sync-dodo-prices", async (req, res) => {
     });
   };
 
+  const createProductDodo = (name, amountMinor) => {
+    const payload = JSON.stringify({
+      name,
+      tax_category: "digital_products",
+      price: {
+        type: "one_time_price",
+        currency: currencyCode,
+        price: amountMinor,
+        discount: 0,
+        tax_inclusive: true
+      }
+    });
+    return new Promise((resolve, reject) => {
+      const options = {
+        hostname: dodoHost,
+        path: "/products",
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${dodoApiKey}`,
+          "Content-Length": Buffer.byteLength(payload)
+        }
+      };
+      const request = https.request(options, (response) => {
+        let body = "";
+        response.on("data", (chunk) => { body += chunk; });
+        response.on("end", () => resolve({ statusCode: response.statusCode, body }));
+      });
+      request.on("error", reject);
+      request.write(payload);
+      request.end();
+    });
+  };
+
   for (const [planCode, priceVal] of Object.entries(finalPrices)) {
     try {
-      const productId = dodoProductsMap?.[regionCode]?.[planCode] || null;
-      if (!productId) {
-        results.push({ planCode, status: "FAILED", error: `No productId for region=${regionCode} plan=${planCode}` });
-        continue;
-      }
-      // priceVal is either a plain number OR { amount, tax_inclusive, discount, ppp, pwyw, suggested_price }
+      let productId = req.body.productIds?.[planCode] || dodoProductsMap?.[regionCode]?.[planCode] || null;
       const isObj = priceVal !== null && typeof priceVal === "object";
       const rupees = Number(isObj ? priceVal.amount : priceVal);
       if (!isFinite(rupees) || rupees <= 0) {
         results.push({ planCode, productId, status: "FAILED", error: `Invalid amount: ${rupees}` });
         continue;
       }
-      // Convert to smallest currency unit (INR → paise, USD → cents, etc.)
       const amountMinor = Math.round(rupees * 100);
       const dodoCfg = isObj ? priceVal : {};
-      const apiResp = await patchProductPrice(productId, amountMinor, dodoCfg);
+
+      let isSuccess = false;
+      let apiResp = null;
+      let actionTaken = "NONE";
+
+      if (productId) {
+        apiResp = await patchProductPrice(productId, amountMinor, dodoCfg);
+        if (apiResp.statusCode < 300) {
+          isSuccess = true;
+          actionTaken = "PATCHED";
+        }
+      }
+
+      if (!isSuccess && (!productId || apiResp?.statusCode === 404)) {
+        const planName = planCode === "recovery_pass" ? "Recovery Pass" : planCode === "pro" ? "Pro Lifetime" : "Super Lifetime";
+        const prodName = `TakeoutFix ${planName} — ${regionCode.toUpperCase()}`;
+        const createRes = await createProductDodo(prodName, amountMinor);
+        if (createRes.statusCode < 300) {
+          try {
+            const parsedCreate = JSON.parse(createRes.body);
+            productId = parsedCreate.product_id || parsedCreate.id;
+            updatedProductIds[planCode] = productId;
+            isSuccess = true;
+            actionTaken = "CREATED";
+            apiResp = createRes;
+          } catch (_) {}
+        }
+      }
+
       let parsed = {};
-      try { parsed = JSON.parse(apiResp.body); } catch (_) {}
-      const isSuccess = apiResp.statusCode && apiResp.statusCode < 300;
+      try { parsed = JSON.parse(apiResp?.body || "{}"); } catch (_) {}
+
       results.push({
-        planCode, productId, currency: currencyCode, amountMinor,
+        planCode,
+        productId,
+        currency: currencyCode,
+        amountMinor,
+        actionTaken,
         status: isSuccess ? "SUCCESS" : "FAILED",
-        response: isSuccess ? parsed : apiResp.body
+        response: isSuccess ? parsed : (apiResp?.body || "Failed")
       });
     } catch (e) {
       results.push({ planCode, status: "FAILED", error: e.message });
@@ -1435,7 +1581,7 @@ app.post("/sync-dodo-prices", async (req, res) => {
     console.warn("Failed to write price_sync_logs:", e);
   }
 
-  return res.json({ success: true, regionCode, currency: currencyCode, results });
+  return res.json({ success: true, regionCode, currency: currencyCode, results, updatedProductIds });
 });
 
 // Route: POST /create-stripe-session

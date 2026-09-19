@@ -1,0 +1,288 @@
+import { useState } from "react"
+import { Link, Outlet, useLocation, Navigate } from "react-router-dom"
+import { useAuth } from "../../../contexts/AuthContext"
+import { isSuperAdminEmail as checkSuperAdminEmail } from "../../../lib/adminAuth"
+import { useAdminPresence } from "../../../hooks/useAdminPresence"
+import { useTelemetrySync } from "../../../hooks/useTelemetrySync"
+import AdminTopbar from "./AdminTopbar"
+import {
+  LayoutDashboard,
+  Users,
+  LifeBuoy,
+  CreditCard,
+  MessageSquareQuote,
+  BarChart3,
+  ActivitySquare,
+  ShieldCheck,
+  ShieldAlert,
+  Settings,
+  ExternalLink,
+  Users2,
+  Bell,
+  X,
+  Key,
+  Sliders,
+  List,
+  Coins,
+  HeartHandshake,
+  Package,
+} from "lucide-react"
+
+export default function AdminLayout() {
+  const { user, userData, adminData, loading } = useAuth()
+  const location = useLocation()
+  const [sidebarOpen, setSidebarOpen] = useState(false)
+
+  // Activate real-time presence tracking
+  useAdminPresence()
+
+  // Keep platform stats in sync in the background when admin is logged in
+  useTelemetrySync()
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-zinc-950 flex items-center justify-center">
+        <div className="flex items-center gap-3 text-zinc-500">
+          <div className="w-5 h-5 border-2 border-zinc-700 border-t-zinc-400 rounded-full animate-spin"></div>
+          Authenticating...
+        </div>
+      </div>
+    )
+  }
+
+  if (!user) {
+    return (
+      <div className="min-h-screen bg-zinc-950 flex items-center justify-center p-4">
+        <div className="max-w-md w-full p-6 bg-black/45 border border-zinc-900 rounded-xl text-center shadow-xl">
+          <ShieldAlert className="w-12 h-12 text-red-400 mx-auto mb-4" />
+          <h2 className="text-xl font-bold text-white mb-2">Authentication Required</h2>
+          <p className="text-zinc-400 text-sm mb-6 font-normal">You must be signed in to access the Admin Center.</p>
+          <a href="/">
+            <button className="w-full py-2.5 bg-white text-black hover:bg-white/90 rounded-lg font-semibold text-sm transition-colors">
+              Return Home
+            </button>
+          </a>
+        </div>
+      </div>
+    )
+  }
+
+  const isSuperAdminEmail = checkSuperAdminEmail(user?.email || adminData?.email)
+  const hasAdminAccess = !!adminData || isSuperAdminEmail
+
+  if (!hasAdminAccess) {
+    if (typeof window !== "undefined") {
+      window.location.href = "/";
+    }
+    return null;
+  }
+  const role = isSuperAdminEmail ? "SUPER_ADMIN" : (adminData?.role ?? "ADMIN")
+  const isSuperAdmin = role === "SUPER_ADMIN" || isSuperAdminEmail
+  const isAdminOrAbove = ["SUPER_ADMIN", "ADMIN"].includes(role) || isSuperAdminEmail
+  const isSupportOrAbove = ["SUPER_ADMIN", "ADMIN", "SUPPORT"].includes(role) || isSuperAdminEmail
+  const isModeratorOrAbove = ["SUPER_ADMIN", "ADMIN", "MODERATOR"].includes(role) || isSuperAdminEmail
+  const isDev = import.meta.env.DEV
+  const isDeveloper = isSuperAdminEmail || isDev
+
+  const navGroups = [
+    {
+      label: "Operations",
+      items: [
+        { label: "Dashboard", path: "/admin", icon: LayoutDashboard, show: true },
+        { label: "Tool Center", path: "/admin/tool", icon: ActivitySquare, show: true },
+        { label: "Users", path: "/admin/users", icon: Users, show: isAdminOrAbove },
+        { label: "Tickets", path: "/admin/support", icon: LifeBuoy, show: true },
+        { label: "Payments", path: "/admin/payments", icon: CreditCard, show: isAdminOrAbove },
+        { label: "Product Catalogue", path: "/admin/catalog", icon: Package, show: isAdminOrAbove },
+        { label: "Monetization", path: "/admin/monetization", icon: Coins, show: isAdminOrAbove },
+      ],
+    },
+    {
+      label: "Content",
+      items: [
+        { label: "Reviews", path: "/admin/reviews", icon: MessageSquareQuote, show: isModeratorOrAbove },
+        { label: "Statistics", path: "/admin/statistics", icon: BarChart3, show: isAdminOrAbove },
+      ],
+    },
+    {
+      label: "System",
+      items: [
+        { label: "Admin Team", path: "/admin/team", icon: Users2, show: true },
+        { label: "Audit Logs", path: "/admin/audit", icon: ShieldCheck, show: isAdminOrAbove },
+        { label: "Keys & Secrets", path: "/admin/keys", icon: Key, show: isSuperAdmin || isDev },
+        { label: "Payment Gateway", path: "/admin/payment-gateway", icon: CreditCard, show: isSuperAdmin || isDev },
+        { label: "Plan Thresholds", path: "/admin/plan-thresholds", icon: Sliders, show: isSuperAdmin || isDev },
+        { label: "Tier Features", path: "/admin/tier-features", icon: List, show: isSuperAdmin || isDev },
+        { label: "Settings", path: "/admin/settings", icon: Settings, show: isSuperAdmin || isDev },
+        { label: "Dev Options", path: "/admin/dev", icon: Sliders, show: isDeveloper },
+      ],
+    },
+  ]
+
+  return (
+    <div className="h-screen bg-zinc-950 text-zinc-100 flex font-sans admin-layout-root overflow-hidden">
+
+      {/* ─── MOBILE DRAWER SIDEBAR ─── */}
+      {sidebarOpen && (
+        <div className="fixed inset-0 z-50 flex md:hidden">
+          <div 
+            className="fixed inset-0 bg-black/75 backdrop-blur-sm transition-opacity" 
+            onClick={() => setSidebarOpen(false)}
+          />
+          <aside className="relative w-64 max-w-[80vw] bg-black border-r border-zinc-900 flex flex-col h-full animate-in slide-in-from-left duration-200">
+            <div className="px-4 py-5 border-b border-zinc-900 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-lg flex items-center justify-center text-sm font-black admin-brand-logo">M</div>
+                <div>
+                  <div className="font-extrabold text-base tracking-tight text-white">TakeoutFix</div>
+                  <div className="text-[11px] font-bold text-zinc-400 font-mono uppercase tracking-[0.15em]">Ops Center</div>
+                </div>
+              </div>
+              <button 
+                onClick={() => setSidebarOpen(false)}
+                className="p-1.5 rounded-lg bg-zinc-900 border border-zinc-800 text-zinc-400 hover:text-white transition-colors focus:outline-none"
+              >
+                <X className="w-4.5 h-4.5" />
+              </button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto py-4 px-3 space-y-5">
+              {navGroups.map((group) => {
+                const visibleItems = group.items.filter(i => i.show)
+                if (visibleItems.length === 0) return null
+                return (
+                  <div key={group.label}>
+                    <div className="text-[10px] font-bold uppercase tracking-[0.12em] text-zinc-600 px-3 mb-1.5">{group.label}</div>
+                    <div className="space-y-0.5">
+                      {visibleItems.map((item) => {
+                        const isActive = location.pathname === item.path
+                        const Icon = item.icon
+                        return (
+                          <Link
+                            key={item.path}
+                            to={item.path}
+                            onClick={() => setSidebarOpen(false)}
+                            className={`flex items-center gap-3 px-3 py-2 rounded-md text-sm transition-all admin-nav-link ${
+                              isActive
+                                ? "admin-nav-link-active font-medium"
+                                : "admin-nav-link-inactive"
+                            }`}
+                          >
+                            <Icon className="w-4 h-4 flex-shrink-0 admin-nav-icon" />
+                            {item.label}
+                          </Link>
+                        )
+                      })}
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+
+            <div className="border-t border-zinc-800 p-3 space-y-1">
+              <a
+                href="/"
+                rel="external"
+                onClick={(e) => {
+                  e.preventDefault()
+                  window.location.href = "/"
+                }}
+                className="flex items-center gap-2.5 px-3 py-2 rounded-md text-sm text-zinc-400 hover:bg-zinc-800 hover:text-zinc-200 transition-all group"
+              >
+                <ExternalLink className="w-4 h-4 text-zinc-500 group-hover:text-zinc-800 dark:group-hover:text-zinc-250 transition-colors" />
+                Open Website
+              </a>
+            </div>
+          </aside>
+        </div>
+      )}
+
+      {/* ─── DESKTOP SIDEBAR ─── */}
+      <aside className="hidden md:flex w-60 flex-shrink-0 bg-black border-r border-zinc-900 flex-col h-screen sticky top-0 admin-sidebar">
+
+        {/* Brand */}
+        <div className="px-4 py-5 border-b border-zinc-900 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-lg flex items-center justify-center text-sm font-black admin-brand-logo">M</div>
+            <div>
+              <div className="font-extrabold text-base tracking-tight text-white">TakeoutFix</div>
+              <div className="text-[11px] font-bold text-zinc-400 font-mono uppercase tracking-[0.15em]">Ops Center</div>
+            </div>
+          </div>
+          <Bell className="w-4.5 h-4.5 text-zinc-400 hover:text-zinc-200 cursor-pointer transition-colors" />
+        </div>
+
+        {/* Navigation */}
+        <div className="flex-1 overflow-y-auto py-4 px-3 space-y-5">
+          {navGroups.map((group) => {
+            const visibleItems = group.items.filter(i => i.show)
+            if (visibleItems.length === 0) return null
+            return (
+              <div key={group.label}>
+                <div className="text-[10px] font-bold uppercase tracking-[0.12em] text-zinc-600 px-3 mb-1.5">{group.label}</div>
+                <div className="space-y-0.5">
+                  {visibleItems.map((item) => {
+                    const isActive = location.pathname === item.path
+                    const Icon = item.icon
+                    return (
+                      <Link
+                        key={item.path}
+                        to={item.path}
+                        className={`flex items-center gap-3 px-3 py-2 rounded-md text-sm transition-all admin-nav-link ${
+                          isActive
+                            ? "admin-nav-link-active font-medium"
+                            : "admin-nav-link-inactive"
+                        }`}
+                      >
+                        <Icon className="w-4 h-4 flex-shrink-0 admin-nav-icon" />
+                        {item.label}
+                      </Link>
+                    )
+                  })}
+                </div>
+              </div>
+            )
+          })}
+        </div>
+
+        <div className="border-t border-zinc-800 p-3 space-y-1">
+          <a
+            href="/"
+            rel="external"
+            onClick={(e) => {
+              e.preventDefault()
+              window.location.href = "/"
+            }}
+            className="flex items-center gap-2.5 px-3 py-2 rounded-md text-sm text-zinc-400 hover:bg-zinc-800 hover:text-zinc-200 transition-all group"
+          >
+            <ExternalLink className="w-4 h-4 text-zinc-500 group-hover:text-zinc-800 dark:group-hover:text-zinc-250 transition-colors" />
+            Open Website
+          </a>
+        </div>
+      </aside>
+
+      {/* ─── MAIN CONTENT ─── */}
+      <main className="flex-1 flex flex-col h-screen overflow-hidden">
+        <div className="flex-shrink-0">
+          <AdminTopbar onMenuClick={() => setSidebarOpen(true)} />
+        </div>
+        {location.pathname === "/admin/tool" ? (
+          <div className="flex-1 w-full overflow-hidden min-h-0">
+            <div key={location.pathname} className="animate-page h-full">
+              <Outlet />
+            </div>
+          </div>
+        ) : (
+          <div className="flex-1 overflow-y-auto min-h-0">
+            <div className="w-full mx-auto p-4 sm:p-6 md:p-8">
+              <div key={location.pathname} className="animate-page h-full">
+                <Outlet />
+              </div>
+            </div>
+          </div>
+        )}
+      </main>
+
+    </div>
+  )
+}

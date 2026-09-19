@@ -1,7 +1,8 @@
 ---
 import "../index.css";
 import { ClientRouter } from "astro:transitions";
-import AuthModal from "../react-pages/AuthModal";
+import AuthModal from "../react-pages/auth/AuthModal";
+import AdUnit from "../components/monetization/AdUnit";
 
 interface Props {
   title?: string;
@@ -9,6 +10,7 @@ interface Props {
   isToolPage?: boolean;
   isAuthPage?: boolean;
   robots?: string;
+  sidebarAdCount?: number;
 }
 
 const { 
@@ -16,8 +18,29 @@ const {
   description = "Restore missing EXIF dates, GPS coordinates, timestamps, and other metadata from Google Takeout archives. Everything runs locally in your browser—your files never leave your device. Not affiliated with Google.",
   isToolPage = false,
   isAuthPage = false,
-  robots = isAuthPage ? "noindex, nofollow" : "index, follow"
+  robots = isAuthPage ? "noindex, nofollow" : "index, follow",
+  sidebarAdCount,
 } = Astro.props;
+
+// Determine if sidebar empty-space gutter ads should show (all pages except home and tool)
+const isHomePage = Astro.url.pathname === "/" || Astro.url.pathname === "";
+const showSideAds = !isToolPage && !isHomePage && !Astro.url.pathname.startsWith("/admin");
+
+// Flexible sidebar card length tailored to page content length:
+// Short pages (Reviews, Support, Terms, Privacy): 2 ads per sidebar
+// Medium pages (Pricing, How it works, Download): 3 ads per sidebar
+// Long pages (Restore Data guide, documentation): 4 ads per sidebar
+const currentPath = Astro.url.pathname.replace(/\/$/, "") || "/";
+let calculatedAdCount = 4;
+if (["/reviews", "/support", "/terms", "/privacy"].includes(currentPath)) {
+  calculatedAdCount = 2;
+} else if (["/pricing", "/how-it-works", "/download"].includes(currentPath)) {
+  calculatedAdCount = 3;
+}
+const effectiveAdCount = sidebarAdCount ?? calculatedAdCount;
+
+// Active Navigation Helper for Purple Highlighting
+const isActive = (path: string) => (path === "/" ? currentPath === "/" : currentPath === path || currentPath.startsWith(path + "/"));
 
 // Generate canonical URL dynamically based on current path
 const canonicalUrl = `https://takeoutfix.pages.dev${Astro.url.pathname.replace(/\/$/, "") || "/"}`;
@@ -46,6 +69,45 @@ const canonicalUrl = `https://takeoutfix.pages.dev${Astro.url.pathname.replace(/
         size-adjust: 107%;
       }
       body { font-family: 'Inter', 'Inter Fallback', system-ui, -apple-system, sans-serif; }
+
+      /* Dynamic Monetization Appearance Settings (Controlled from Admin Center) */
+      :root {
+        --ad-opacity: 0.8;
+        --ad-gutter-width: 220px;
+        --ad-gutter-width-2xl: 250px;
+      }
+      [data-ad-size="small"] {
+        --ad-gutter-width: 220px;
+        --ad-gutter-width-2xl: 250px;
+      }
+      [data-ad-size="medium"] {
+        --ad-gutter-width: 260px;
+        --ad-gutter-width-2xl: 290px;
+      }
+      [data-ad-size="large"] {
+        --ad-gutter-width: 300px;
+        --ad-gutter-width-2xl: 330px;
+      }
+      .sidebar-gutter-ad {
+        width: var(--ad-gutter-width);
+        opacity: var(--ad-opacity);
+        transition: width 0.25s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.2s ease;
+      }
+      @media (min-width: 1536px) {
+        .sidebar-gutter-ad {
+          width: var(--ad-gutter-width-2xl);
+        }
+      }
+      .sidebar-gutter-ad:hover {
+        opacity: 1 !important;
+      }
+      .ad-flow-banner {
+        opacity: var(--ad-opacity);
+        transition: opacity 0.2s ease;
+      }
+      .ad-flow-banner:hover {
+        opacity: 1 !important;
+      }
     </style>
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png" />
@@ -70,7 +132,6 @@ const canonicalUrl = `https://takeoutfix.pages.dev${Astro.url.pathname.replace(/
     <script is:inline>
       (() => {
         const coreRoutes = [
-          '/pricing',
           '/reviews',
           '/support',
           '/tool',
@@ -161,27 +222,17 @@ const canonicalUrl = `https://takeoutfix.pages.dev${Astro.url.pathname.replace(/
       })();
     </script>
 
-    <!-- Production Code Protection & Anti-Inspect Script -->
+    <!-- Monetization Appearance Initializer (Reads cached opacity and size to prevent layout shifts) -->
     <script is:inline>
       (() => {
-        const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-        if (isLocalhost) return;
-
-        // 1. Disable Right Click (Context Menu)
-        document.addEventListener('contextmenu', (e) => e.preventDefault());
-
-        // 2. Block Inspect Keyboard Shortcuts (F12, Ctrl+Shift+I/J/C, Ctrl+U/S)
-        document.addEventListener('keydown', (e) => {
-          if (
-            e.key === 'F12' ||
-            (e.ctrlKey && e.shiftKey && ['I','i','J','j','C','c'].includes(e.key)) ||
-            (e.ctrlKey && ['U','u','S','s'].includes(e.key))
-          ) {
-            e.preventDefault();
-            e.stopPropagation();
-            return false;
+        try {
+          const cached = localStorage.getItem("monetization_appearance");
+          if (cached) {
+            const { opacity, size } = JSON.parse(cached);
+            if (opacity !== undefined) document.documentElement.style.setProperty("--ad-opacity", (opacity / 100).toString());
+            if (size) document.documentElement.setAttribute("data-ad-size", size);
           }
-        });
+        } catch (_) {}
       })();
     </script>
 
@@ -446,16 +497,27 @@ const canonicalUrl = `https://takeoutfix.pages.dev${Astro.url.pathname.replace(/
 
             <!-- Desktop Links -->
             <div id="desktop-marketing-links" class="hidden lg:flex gap-4 text-sm font-medium ml-4 font-sans items-center">
-              <a href="/" class="nav-link text-zinc-400 hover:text-white px-3 py-1.5 transition-colors duration-150" data-astro-prefetch="hover">Home</a>
-              <a href="/restore-data" class="nav-link text-zinc-400 hover:text-white px-3 py-1.5 transition-colors duration-150" data-astro-prefetch="hover">Restore Guide</a>
-              <a href="/pricing" class="nav-link text-zinc-400 hover:text-white px-3 py-1.5 transition-colors duration-150" data-astro-prefetch="hover">Pricing</a>
-              <a href="/download" class="nav-link text-zinc-400 hover:text-white px-3 py-1.5 transition-colors duration-150" data-astro-prefetch="hover">Download App</a>
-              <a href="/reviews" class="nav-link text-zinc-400 hover:text-white px-3 py-1.5 transition-colors duration-150" data-astro-prefetch="hover">Reviews</a>
-              <a href="/support" class="nav-link text-zinc-400 hover:text-white px-3 py-1.5 transition-colors duration-150" data-astro-prefetch="hover">Support & FAQ</a>
+              <a href="/" class={`nav-link px-3 py-1.5 transition-colors duration-150 ${isActive('/') ? 'active text-[#8170CC] font-bold' : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white'}`} data-astro-prefetch="hover">Home</a>
+              <a href="/restore-data" class={`nav-link px-3 py-1.5 transition-colors duration-150 ${isActive('/restore-data') ? 'active text-[#8170CC] font-bold' : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white'}`} data-astro-prefetch="hover">Restore Guide</a>
+              <a href="/download" class={`nav-link px-3 py-1.5 transition-colors duration-150 ${isActive('/download') ? 'active text-[#8170CC] font-bold' : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white'}`} data-astro-prefetch="hover">Download App</a>
+              <a href="/reviews" class={`nav-link px-3 py-1.5 transition-colors duration-150 ${isActive('/reviews') ? 'active text-[#8170CC] font-bold' : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white'}`} data-astro-prefetch="hover">Reviews</a>
+              <a href="/support" class={`nav-link px-3 py-1.5 transition-colors duration-150 ${isActive('/support') ? 'active text-[#8170CC] font-bold' : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white'}`} data-astro-prefetch="hover">Support & FAQ</a>
             </div>
           </div>
           
-          <div class="flex items-center gap-2.5 md:gap-6">
+          <div class="flex items-center gap-2.5 md:gap-4">
+            <!-- Sponsor on GitHub (Funding Button) -->
+            <a 
+              href="https://github.com/sponsors/Rahul-Jena-2002" 
+              target="_blank" 
+              rel="noopener noreferrer"
+              class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold bg-pink-500/10 hover:bg-pink-500/20 text-pink-600 dark:text-pink-400 border border-pink-500/30 transition-all hover:scale-105 cursor-pointer shadow-xs whitespace-nowrap"
+              title="Support TakeoutFix on GitHub Sponsors"
+            >
+              <span class="text-sm">❤️</span>
+              <span class="hidden sm:inline font-bold">Sponsor</span>
+            </a>
+
             <!-- Theme Toggle Button -->
             <button 
               id="theme-toggle-btn"
@@ -523,9 +585,9 @@ const canonicalUrl = `https://takeoutfix.pages.dev${Astro.url.pathname.replace(/
               <div id="profile-container" class="relative hidden flex items-center gap-4">
                 <!-- Desktop App Links (logged in) -->
                 <div class="hidden lg:flex items-center gap-6 mr-2">
-                  <a id="desktop-dashboard-link" href="/dashboard" class="text-sm font-medium text-zinc-400 hover:text-white transition-colors duration-150" data-astro-prefetch="hover">Dashboard</a>
-                  <a id="desktop-tool-link" href="/tool" class="text-sm font-medium text-zinc-400 hover:text-white transition-colors duration-150" data-astro-prefetch="hover" data-astro-reload>Restore My Data</a>
-                  <a id="desktop-admin-link" href="/admin" class="text-sm font-medium text-zinc-400 hover:text-white transition-colors duration-150 hidden" data-astro-reload>Admin Center</a>
+                  <a id="desktop-dashboard-link" href="/dashboard" class={`nav-link text-sm font-medium transition-colors duration-150 ${isActive('/dashboard') ? 'active text-[#8170CC] font-bold' : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white'}`} data-astro-prefetch="hover">Dashboard</a>
+                  <a id="desktop-tool-link" href="/tool" class={`nav-link text-sm font-medium transition-colors duration-150 ${isActive('/tool') ? 'active text-[#8170CC] font-bold' : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white'}`} data-astro-prefetch="hover" data-astro-reload>Restore My Data</a>
+                  <a id="desktop-admin-link" href="/admin" class={`nav-link text-sm font-medium transition-colors duration-150 hidden ${isActive('/admin') ? 'active text-[#8170CC] font-bold' : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white'}`} data-astro-reload>Admin Center</a>
                 </div>
                 <button 
                   id="profile-trigger-btn"
@@ -545,70 +607,211 @@ const canonicalUrl = `https://takeoutfix.pages.dev${Astro.url.pathname.replace(/
                     <p class="text-xs text-white/40 font-bold uppercase tracking-wider">Account</p>
                     <p id="dropdown-fullname" class="text-sm font-semibold text-white truncate max-w-full">User</p>
                     <p id="dropdown-username" class="text-xs text-zinc-500 dark:text-zinc-400 font-semibold font-mono truncate max-w-full hidden">@username</p>
-                    <p id="dropdown-plan" class="text-[11px] text-zinc-500 dark:text-zinc-400 font-bold uppercase tracking-wider mt-0.5">Free Tier</p>
                   </div>
                   <a href="/profile" class="flex items-center px-4 py-2 text-sm text-white/70 hover:text-white hover:bg-white/5 transition-colors text-left w-full" data-astro-prefetch="hover">Profile</a>
-                  <div class="border-t border-white/5 mt-1.5 pt-1.5">
-                    <button id="logout-btn" class="flex items-center px-4 py-2 text-sm text-red-400 hover:text-red-300 hover:bg-red-500/5 transition-colors text-left w-full font-medium cursor-pointer">Sign Out</button>
-                  </div>
-                </div>
-
-                <!-- Desktop Floating 24h Pass Timer (Homepage Only for Single Time Users) -->
-                <div 
-                  id="home-pass-timer-floating" 
-                  class="hidden absolute right-0 top-full mt-3 px-3 py-1.5 rounded-full bg-cyan-950/90 dark:bg-cyan-950/90 bg-cyan-100 text-cyan-950 dark:text-cyan-300 border border-cyan-500/40 shadow-xl backdrop-blur-md items-center gap-2 text-xs font-mono font-bold z-[80] whitespace-nowrap"
-                >
-                  <span class="w-2 h-2 rounded-full bg-cyan-500 dark:bg-cyan-400 animate-ping"></span>
-                  <span>Time Left:</span>
-                  <span id="home-pass-timer-val" class="tracking-tight">23h 59m 59s</span>
+                  <a href="/dashboard" class="flex items-center px-4 py-2 text-sm text-white/70 hover:text-white hover:bg-white/5 transition-colors text-left w-full" data-astro-prefetch="hover">My Uploads</a>
+                  <a id="dropdown-admin-link" href="/admin" class="flex items-center px-4 py-2 text-sm text-amber-400 hover:text-amber-300 hover:bg-white/5 transition-colors text-left w-full hidden" data-astro-reload>Admin Dashboard</a>
+                  <div class="border-t border-white/5 my-1.5"></div>
+                  <button 
+                    id="profile-signout-btn" 
+                    type="button"
+                    class="btn-profile-signout flex items-center gap-2 w-full px-4 py-2 text-sm text-rose-400 hover:text-rose-300 hover:bg-rose-500/10 transition-colors text-left cursor-pointer"
+                  >
+                    Sign Out
+                  </button>
                 </div>
               </div>
             </div>
           </div>
         </div>
 
-        {/* Mobile menu overlay */}
-        <div id="mobile-menu" class="hidden lg:hidden mt-4 pt-4 border-t border-white/5 flex flex-col gap-3 text-left px-2 animate-in fade-in slide-in-from-top-2 duration-200">
-          <p class="text-xs font-bold text-white/30 uppercase tracking-wider px-2 mt-1 mb-1">Navigation</p>
-          <a href="/" class="mobile-nav-link py-2 px-2 text-white/70 hover:text-white hover:bg-white/5 rounded-md text-sm font-medium transition-all" data-astro-prefetch="tap">Home</a>
-          <a href="/restore-data" class="mobile-nav-link py-2 px-2 text-white/70 hover:text-white hover:bg-white/5 rounded-md text-sm font-medium transition-all" data-astro-prefetch="tap">Restore Guide</a>
-          <a href="/pricing" class="mobile-nav-link py-2 px-2 text-white/70 hover:text-white hover:bg-white/5 rounded-md text-sm font-medium transition-all" data-astro-prefetch="tap">Pricing</a>
-          <a href="/download" class="mobile-nav-link py-2 px-2 text-white/70 hover:text-white hover:bg-white/5 rounded-md text-sm font-medium transition-all" data-astro-prefetch="tap">Download App</a>
-          <a href="/reviews" class="mobile-nav-link py-2 px-2 text-white/70 hover:text-white hover:bg-white/5 rounded-md text-sm font-medium transition-all" data-astro-prefetch="tap">Reviews</a>
-          <a href="/support" class="mobile-nav-link py-2 px-2 text-white/70 hover:text-white hover:bg-white/5 rounded-md text-sm font-medium transition-all" data-astro-prefetch="tap">Support & FAQ</a>
+        <!-- Mobile Menu Panel -->
+        <div id="mobile-menu" class="hidden lg:hidden border-t border-zinc-200 dark:border-white/10 bg-white dark:bg-zinc-950/98 backdrop-blur-2xl px-4 pt-3 pb-6 transition-all duration-300 max-h-[85vh] overflow-y-auto shadow-2xl">
+          <div class="flex flex-col gap-1.5 font-sans">
+            <!-- Navigation Links -->
+            <div class="flex items-center justify-between px-2 py-1">
+              <span class="text-[11px] font-bold uppercase tracking-wider text-zinc-400 dark:text-zinc-500">Navigation</span>
+            </div>
 
-          <div id="mobile-auth-section" class="border-t border-white/5 pt-3 flex flex-col gap-3 hidden">
-            <p class="text-xs font-bold text-white/30 uppercase tracking-wider px-2 mb-1">App Tools</p>
-            <a id="mobile-dashboard-link" href="/dashboard" class="py-2 px-2 text-white/70 hover:text-white hover:bg-white/5 rounded-md text-sm font-medium transition-all" data-astro-prefetch="tap">Dashboard</a>
-            <a id="mobile-tool-link" href="/tool" class="py-2 px-2 text-white/70 hover:text-white hover:bg-white/5 rounded-md text-sm font-medium transition-all" data-astro-prefetch="tap" data-astro-reload>Restore My Data</a>
-            <a id="mobile-admin-link" href="/admin" class="py-2 px-2 text-white/70 hover:text-white hover:bg-white/5 rounded-md text-sm font-medium transition-all hidden" data-astro-reload>Admin Center</a>
-          </div>
-          
-          <!-- Mobile Theme Toggle (Hidden) -->
-          <div class="flex items-center justify-between py-2 px-2 border-t border-white/5 mt-2 pt-3">
-            <span class="text-xs font-bold text-white/30 uppercase tracking-wider">Appearance</span>
-            <button 
-              id="mobile-theme-toggle-btn"
-              aria-label="Toggle Dark or Light Mode"
-              class="flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/[0.04] border border-white/10 hover:bg-white/[0.08] text-xs font-semibold text-white/80 transition-all cursor-pointer"
-            >
-              <svg class="theme-moon-svg w-3.5 h-3.5 text-zinc-400" width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
-              </svg>
-              <svg class="theme-sun-svg w-3.5 h-3.5 text-amber-400 hidden" width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364-6.364l-.707.707M6.343 17.657l-.707.707m0-12.728l.707.707m12.728 12.728l.707-.707M12 8a4 4 0 100 8 4 4 0 000-8z" />
-              </svg>
-              <span id="mobile-theme-text">Dark Mode</span>
-            </button>
+            <a href="/" class={`mobile-nav-link py-2 px-3 rounded-lg text-sm font-medium transition-all ${isActive('/') ? 'active text-[#8170CC] font-bold bg-[#8170CC]/10 dark:bg-[#8170CC]/15' : 'text-zinc-700 dark:text-white/70 hover:text-zinc-900 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-white/5'}`} data-astro-prefetch="tap">Home</a>
+            <a href="/restore-data" class={`mobile-nav-link py-2 px-3 rounded-lg text-sm font-medium transition-all ${isActive('/restore-data') ? 'active text-[#8170CC] font-bold bg-[#8170CC]/10 dark:bg-[#8170CC]/15' : 'text-zinc-700 dark:text-white/70 hover:text-zinc-900 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-white/5'}`} data-astro-prefetch="tap">Restore Guide</a>
+            
+            <!-- Tools: Restore My Data (Always accessible in ham menu) -->
+            <a href="/tool" class={`mobile-nav-link py-2 px-3 rounded-lg text-sm font-semibold transition-all flex items-center justify-between ${isActive('/tool') ? 'active text-[#8170CC] font-bold bg-[#8170CC]/10 dark:bg-[#8170CC]/15' : 'text-zinc-800 dark:text-zinc-200 hover:text-zinc-900 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-white/5'}`} data-astro-prefetch="tap" data-astro-reload>
+              <span class="flex items-center gap-2">
+                <span>🛠️</span>
+                <span>Restore My Data</span>
+              </span>
+              <span class="text-[10px] px-1.5 py-0.5 rounded-full font-bold bg-indigo-500/15 text-indigo-600 dark:text-indigo-400 border border-indigo-500/30">Web Tool</span>
+            </a>
+
+            <a href="/download" class={`mobile-nav-link py-2 px-3 rounded-lg text-sm font-medium transition-all ${isActive('/download') ? 'active text-[#8170CC] font-bold bg-[#8170CC]/10 dark:bg-[#8170CC]/15' : 'text-zinc-700 dark:text-white/70 hover:text-zinc-900 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-white/5'}`} data-astro-prefetch="tap">Download Desktop App</a>
+            <a href="/reviews" class={`mobile-nav-link py-2 px-3 rounded-lg text-sm font-medium transition-all ${isActive('/reviews') ? 'active text-[#8170CC] font-bold bg-[#8170CC]/10 dark:bg-[#8170CC]/15' : 'text-zinc-700 dark:text-white/70 hover:text-zinc-900 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-white/5'}`} data-astro-prefetch="tap">Reviews</a>
+            <a href="/support" class={`mobile-nav-link py-2 px-3 rounded-lg text-sm font-medium transition-all ${isActive('/support') ? 'active text-[#8170CC] font-bold bg-[#8170CC]/10 dark:bg-[#8170CC]/15' : 'text-zinc-700 dark:text-white/70 hover:text-zinc-900 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-white/5'}`} data-astro-prefetch="tap">Support & FAQ</a>
+            
+            <a href="https://github.com/sponsors/Rahul-Jena-2002" target="_blank" rel="noopener noreferrer" class="mobile-nav-link py-2 px-3 text-pink-500 hover:text-pink-400 hover:bg-pink-500/10 rounded-lg text-sm font-bold transition-all flex items-center gap-2">
+              <span>❤️</span>
+              <span>Sponsor on GitHub</span>
+            </a>
+
+            <!-- Account, Dashboard, Tools & Admin section -->
+            <div id="mobile-auth-section" class="flex flex-col gap-1.5 pt-3 border-t border-zinc-200 dark:border-white/10 mt-2">
+              <div class="flex items-center justify-between px-2 py-0.5">
+                <span class="text-[11px] font-bold uppercase tracking-wider text-zinc-400 dark:text-zinc-500">Account & Tools</span>
+              </div>
+
+              <!-- Logged In Profile Header -->
+              <div id="mobile-profile-info" class="hidden items-center justify-between px-3 py-2 rounded-xl bg-zinc-100 dark:bg-white/[0.04] border border-zinc-200/80 dark:border-white/5 mb-1">
+                <div class="flex items-center gap-2.5 min-w-0">
+                  <div id="mobile-avatar-circle" class="w-8 h-8 rounded-full bg-zinc-900 dark:bg-zinc-800 text-white flex items-center justify-center font-bold text-xs flex-shrink-0 border border-white/10">U</div>
+                  <div class="min-w-0">
+                    <p id="mobile-user-name" class="text-xs font-bold text-zinc-900 dark:text-white truncate">User</p>
+                    <span id="mobile-user-plan" class="text-[10px] text-zinc-500 dark:text-zinc-400 font-semibold block">Free Tier</span>
+                  </div>
+                </div>
+                <button 
+                  id="mobile-signout-btn" 
+                  type="button" 
+                  class="btn-profile-signout text-[11px] font-semibold text-rose-500 hover:text-rose-400 px-2.5 py-1 rounded-md hover:bg-rose-500/10 transition-colors cursor-pointer"
+                >
+                  Sign Out
+                </button>
+              </div>
+
+              <!-- Logged Out Sign In Action -->
+              <button
+                id="mobile-login-btn"
+                type="button"
+                onclick="window.dispatchEvent(new CustomEvent('takeoutfix:open-auth-modal', { detail: { mode: 'signin' } }))"
+                class="w-full py-2.5 px-3 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-sm transition-all text-center flex items-center justify-center gap-2 shadow-sm cursor-pointer"
+              >
+                <span>Sign In / Sign Up</span>
+              </button>
+
+              <!-- App Links when logged in -->
+              <div id="mobile-auth-links" class="flex flex-col gap-1">
+                <a id="mobile-dashboard-link" href="/dashboard" class={`mobile-nav-link py-2 px-3 rounded-lg text-sm font-medium transition-all ${isActive('/dashboard') ? 'active text-[#8170CC] font-bold bg-[#8170CC]/10 dark:bg-[#8170CC]/15' : 'text-zinc-700 dark:text-white/70 hover:text-zinc-900 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-white/5'}`} data-astro-prefetch="tap">
+                  📊 Dashboard
+                </a>
+                
+                <a id="mobile-admin-link" href="/admin" class={`mobile-nav-link py-2 px-3 rounded-lg text-sm font-semibold transition-all hidden ${isActive('/admin') ? 'active text-amber-500 font-bold bg-amber-500/10' : 'text-amber-600 dark:text-amber-400 hover:bg-amber-500/10'}`} data-astro-reload>
+                  🛡️ Admin Center
+                </a>
+              </div>
+            </div>
+            
+            <!-- Mobile Theme Toggle -->
+            <div class="flex items-center justify-between py-2 px-2 border-t border-zinc-200 dark:border-white/10 mt-2 pt-3">
+              <span class="text-xs font-bold text-zinc-400 dark:text-white/30 uppercase tracking-wider">Appearance</span>
+              <button 
+                id="mobile-theme-toggle-btn"
+                aria-label="Toggle Dark or Light Mode"
+                class="flex items-center gap-2 px-3 py-1.5 rounded-full bg-zinc-100 dark:bg-white/[0.04] border border-zinc-200 dark:border-white/10 hover:bg-zinc-200 dark:hover:bg-white/[0.08] text-xs font-semibold text-zinc-700 dark:text-white/80 transition-all cursor-pointer"
+              >
+                <svg class="theme-moon-svg w-3.5 h-3.5 text-zinc-400" width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+                </svg>
+                <svg class="theme-sun-svg w-3.5 h-3.5 text-amber-400 hidden" width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364-6.364l-.707.707M6.343 17.657l-.707.707m0-12.728l.707.707m12.728 12.728l.707-.707M12 8a4 4 0 100 8 4 4 0 000-8z" />
+                </svg>
+                <span id="mobile-theme-text">Dark Mode</span>
+              </button>
+            </div>
           </div>
         </div>
       </nav>
  
       <!-- MAIN CONTENT OUTLET -->
-      <main class="flex-1 pt-16">
-        <div class="animate-page h-full">
-          <slot />
-        </div>
+      <main class="flex-1 pt-16 relative w-full overflow-x-clip">
+        { showSideAds ? (
+          <div class="relative w-full max-w-[1880px] mx-auto px-4 sm:px-6 2xl:px-8">
+            <div class="flex justify-center items-start gap-6 2xl:gap-10">
+              
+              <!-- Left Gutter Ads: Single Unified Card with Flexible Card Count Inside -->
+              <aside 
+                class="sidebar-gutter-ad hidden xl:flex flex-col shrink-0 pt-6 pb-16 select-none sticky top-20 self-start h-fit"
+                aria-label="Sponsored Deals"
+              >
+                <div class="w-full rounded-2xl border border-zinc-200/80 dark:border-white/10 bg-white/80 dark:bg-zinc-900/60 p-3 shadow-xs backdrop-blur-xs flex flex-col gap-2.5">
+                  <!-- Single Card Header -->
+                  <div class="flex items-center justify-between pb-2 border-b border-zinc-200/70 dark:border-white/10 px-0.5">
+                    <span class="text-[9px] font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-400 flex items-center gap-1.5">
+                      <span class="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse"></span>
+                      Sponsored Deals
+                    </span>
+                    <span class="text-[8.5px] font-semibold text-zinc-400 dark:text-zinc-500 uppercase tracking-widest bg-zinc-100 dark:bg-zinc-800/80 px-1 py-0.5 rounded border border-zinc-200/50 dark:border-zinc-700/50">
+                      Ad
+                    </span>
+                  </div>
+
+                  <!-- Multiple Cards Inside It: Flexible height tailored to page size -->
+                  <div class="flex flex-col gap-2.5">
+                    {Array.from({ length: effectiveAdCount }).map((_, i) => (
+                      <AdUnit client:idle type="vertical" placement={`SIDEBAR_LEFT_${i + 1}`} />
+                    ))}
+                  </div>
+                </div>
+              </aside>
+
+              <!-- Center Main Content -->
+              <div class="flex-1 min-w-0 max-w-full 2xl:max-w-[1140px] animate-page h-full flex flex-col justify-between">
+                <div>
+                  <slot />
+                </div>
+
+                <!-- Responsive In-Flow Ad for Tablets & Mobile (< xl screens) -->
+                <div class="xl:hidden w-full pt-8 pb-4 mt-auto">
+                  <div class="w-full rounded-2xl border border-zinc-200/80 dark:border-white/10 bg-white/80 dark:bg-zinc-900/60 p-3 shadow-xs backdrop-blur-xs ad-flow-banner">
+                    <div class="flex items-center justify-between pb-1.5 mb-2 border-b border-zinc-200/70 dark:border-white/10 px-0.5">
+                      <span class="text-[9px] font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-400 flex items-center gap-1.5">
+                        <span class="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse"></span>
+                        Sponsored Deals & Offers
+                      </span>
+                      <span class="text-[8px] font-semibold text-zinc-400 dark:text-zinc-500 uppercase tracking-widest bg-zinc-100 dark:bg-zinc-800/80 px-1 py-0.5 rounded border border-zinc-200/50 dark:border-zinc-700/50">
+                        Ad
+                      </span>
+                    </div>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                      <AdUnit client:idle type="compact" placement="SIDEBAR_LEFT_1" />
+                      <AdUnit client:idle type="compact" placement="SIDEBAR_RIGHT_1" />
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Right Gutter Ads: Single Unified Card with Flexible Card Count Inside -->
+              <aside 
+                class="sidebar-gutter-ad hidden xl:flex flex-col shrink-0 pt-6 pb-16 select-none sticky top-20 self-start h-fit"
+                aria-label="Partner Offers"
+              >
+                <div class="w-full rounded-2xl border border-zinc-200/80 dark:border-white/10 bg-white/80 dark:bg-zinc-900/60 p-3 shadow-xs backdrop-blur-xs flex flex-col gap-2.5">
+                  <!-- Single Card Header -->
+                  <div class="flex items-center justify-between pb-2 border-b border-zinc-200/70 dark:border-white/10 px-0.5">
+                    <span class="text-[9px] font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-400 flex items-center gap-1.5">
+                      <span class="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse"></span>
+                      Partner Offers
+                    </span>
+                    <span class="text-[8.5px] font-semibold text-zinc-400 dark:text-zinc-500 uppercase tracking-widest bg-zinc-100 dark:bg-zinc-800/80 px-1 py-0.5 rounded border border-zinc-200/50 dark:border-zinc-700/50">
+                      Ad
+                    </span>
+                  </div>
+
+                  <!-- Multiple Cards Inside It: Flexible height tailored to page size -->
+                  <div class="flex flex-col gap-2.5">
+                    {Array.from({ length: effectiveAdCount }).map((_, i) => (
+                      <AdUnit client:idle type="vertical" placement={`SIDEBAR_RIGHT_${i + 1}`} />
+                    ))}
+                  </div>
+                </div>
+              </aside>
+
+            </div>
+          </div>
+        ) : (
+          <div class="animate-page h-full">
+            <slot />
+          </div>
+        )}
       </main>
 
 
@@ -651,7 +854,6 @@ const canonicalUrl = `https://takeoutfix.pages.dev${Astro.url.pathname.replace(/
                 <h3 class="text-xs font-bold text-white uppercase tracking-widest mb-4">Product</h3>
                 <ul class="space-y-3 text-xs">
                   <li><a href="/tool" class="text-zinc-400 hover:text-white transition-colors">Restore Tool</a></li>
-                  <li><a href="/pricing" class="text-zinc-400 hover:text-white transition-colors">Pricing Plans</a></li>
                   <li><a href="/download" class="text-zinc-400 hover:text-white transition-colors">Download App</a></li>
                   <li><a href="/reviews" class="text-zinc-400 hover:text-white transition-colors">Customer Reviews</a></li>
                   <li><a href="/restore-data#tech-specs" class="text-zinc-400 hover:text-white transition-colors">Technical Specifications</a></li>
@@ -674,9 +876,22 @@ const canonicalUrl = `https://takeoutfix.pages.dev${Astro.url.pathname.replace(/
                 <h3 class="text-xs font-bold text-white uppercase tracking-widest mb-4">Support & Legal</h3>
                 <ul class="space-y-3 text-xs">
                   <li><a href="/support" class="text-zinc-400 hover:text-white transition-colors">Contact / Help Desk</a></li>
+                  <li class="pt-1">
+                    <a 
+                      href="https://github.com/sponsors/Rahul-Jena-2002" 
+                      target="_blank" 
+                      rel="noopener noreferrer" 
+                      class="flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl bg-pink-500/10 hover:bg-pink-500/20 border border-pink-500/30 text-pink-600 dark:text-pink-400 font-bold transition-all shadow-sm group hover:border-pink-500/50"
+                    >
+                      <span class="text-lg group-hover:scale-125 transition-transform">❤️</span>
+                      <div class="text-left">
+                        <div class="text-xs font-bold leading-tight">Sponsor on GitHub</div>
+                        <div class="text-[10px] text-zinc-500 dark:text-zinc-400 font-normal">Support free offline tools</div>
+                      </div>
+                    </a>
+                  </li>
                   <li><a href="/privacy" class="text-zinc-400 hover:text-white transition-colors">Privacy Policy</a></li>
                   <li><a href="/terms" class="text-zinc-400 hover:text-white transition-colors">Terms of Service</a></li>
-                  <li><a href="/refund" class="text-zinc-400 hover:text-white transition-colors">Refund Policy</a></li>
                   <li class="pt-1">
                     <span class="text-zinc-400 block text-[10px] uppercase tracking-wider font-bold">Direct Email Support</span>
                     <a href="mailto:takeoutfix.support@gmail.com" class="text-indigo-400 hover:text-indigo-300 transition-colors font-medium">takeoutfix.support@gmail.com</a>
@@ -687,19 +902,20 @@ const canonicalUrl = `https://takeoutfix.pages.dev${Astro.url.pathname.replace(/
             </div>
 
             <!-- Bottom Row: Copyright, Trademark Disclaimer & Build details -->
-            <div class="border-t border-zinc-200 dark:border-white/5 pt-8 flex flex-col gap-4 text-[11px] text-zinc-500 dark:text-zinc-400 w-full">
+            <div class="border-t border-zinc-200 dark:border-white/5 pt-8 flex flex-col gap-4 text-[11px] text-zinc-500 dark:text-zinc-400 w-full" style="width: 100%;">
               <!-- Trademark Disclaimer — visible for Google Ads Reseller/Informational Site compliance -->
-              <p class="w-full text-xs text-zinc-600 dark:text-zinc-300 leading-relaxed border border-zinc-300 dark:border-zinc-700/60 rounded-xl px-5 py-4 bg-zinc-50/80 dark:bg-zinc-900/60 shadow-sm">
-                <strong class="text-zinc-900 dark:text-white font-semibold">Disclosure:</strong> Google Takeout™ and Google Photos™ are trademarks of Google LLC.
-                TakeoutFix is an independent software utility and is <strong class="text-zinc-900 dark:text-white font-semibold">not affiliated with, endorsed by, or sponsored by Google LLC</strong> in any way.
-                This tool is designed to work with files exported from Google services and does not represent or provide official Google support.
-              </p>
-              <div class="flex flex-col md:flex-row items-center justify-between gap-4 w-full">
+              <div class="w-full block" style="width: 100%;">
+                <p class="w-full text-xs text-zinc-600 dark:text-zinc-300 leading-relaxed border border-zinc-300 dark:border-zinc-700/60 rounded-xl p-4 sm:p-5 bg-zinc-50/80 dark:bg-zinc-900/60 shadow-sm block" style="width: 100% !important; max-width: 100% !important; box-sizing: border-box;">
+                  <strong class="text-zinc-900 dark:text-white font-semibold">Disclosure:</strong> Google Takeout™ and Google Photos™ are trademarks of Google LLC.
+                  TakeoutFix is an independent software utility and is <strong class="text-zinc-900 dark:text-white font-semibold">not affiliated with, endorsed by, or sponsored by Google LLC</strong> in any way.
+                  This tool is designed to work with files exported from Google services and does not represent or provide official Google support.
+                </p>
+              </div>
+              <div class="flex flex-col md:flex-row items-center justify-between gap-4 w-full" style="width: 100%;">
                 <div>
                   &copy; {new Date().getFullYear()} TakeoutFix. All rights reserved. &middot;
                   <a href="/privacy" class="hover:text-zinc-900 dark:hover:text-zinc-200 transition-colors ml-1">Privacy Policy</a> &middot;
                   <a href="/terms" class="hover:text-zinc-900 dark:hover:text-zinc-200 transition-colors ml-1">Terms of Service</a> &middot;
-                  <a href="/refund" class="hover:text-zinc-900 dark:hover:text-zinc-200 transition-colors ml-1">Refund Policy</a> &middot;
                   <a href="mailto:takeoutfix.support@gmail.com" class="hover:text-zinc-900 dark:hover:text-zinc-200 transition-colors ml-1">Contact Support</a>
                 </div>
                 <div class="flex items-center gap-3">
@@ -730,13 +946,6 @@ const canonicalUrl = `https://takeoutfix.pages.dev${Astro.url.pathname.replace(/
           >
             I've Whitelisted
           </button>
-          <a href="/pricing">
-            <button
-              class="px-3.5 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-lg transition-all active:scale-95 duration-100 shadow-md shadow-indigo-500/20 cursor-pointer"
-            >
-              Upgrade
-            </button>
-          </a>
           <button
             id="adblock-close-btn"
             class="w-7 h-7 flex items-center justify-center text-zinc-500 hover:text-white hover:bg-white/5 rounded-full transition-all cursor-pointer"

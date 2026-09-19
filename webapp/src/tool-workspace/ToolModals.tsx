@@ -52,11 +52,6 @@ export function ToolModals({
             <h3 className="text-xl font-bold text-white mb-2">Restoration Limit Reached</h3>
             <p className="text-zinc-400 text-sm mb-6 leading-relaxed">{quotaAlert.message}</p>
             <div className="space-y-3">
-              <a href="/pricing">
-                <Button className="btn-monochrome-primary w-full font-bold h-12 rounded-lg border-0 shadow-none transition-all duration-150 cursor-pointer">
-                  Upgrade Plan
-                </Button>
-              </a>
               <Button
                 onClick={() => setQuotaAlert(null)}
                 className="btn-monochrome-primary w-full h-12 font-bold rounded-lg border-0 shadow-none transition-all duration-150 cursor-pointer"

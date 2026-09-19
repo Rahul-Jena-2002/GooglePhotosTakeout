@@ -18,7 +18,13 @@ export const syncUserUI = () => {
   const dropdownUsername = document.getElementById("dropdown-username");
   const dropdownPlan = document.getElementById("dropdown-plan");
   
-  const mobileAuthSection = document.getElementById("mobile-auth-section");
+  const mobileAuthSection = document.getElementById("mobile-auth-section") || document.getElementById("mobile-auth-links");
+  const mobileProfileInfo = document.getElementById("mobile-profile-info");
+  const mobileLoginBtn = document.getElementById("mobile-login-btn");
+  const mobileUserName = document.getElementById("mobile-user-name");
+  const mobileUserPlan = document.getElementById("mobile-user-plan");
+  const mobileAvatarCircle = document.getElementById("mobile-avatar-circle");
+
   const mobileToolLink = document.getElementById("mobile-tool-link") as HTMLAnchorElement;
   const desktopToolLink = document.getElementById("desktop-tool-link") as HTMLAnchorElement;
   
@@ -41,6 +47,9 @@ export const syncUserUI = () => {
       loginBtn?.classList.add("hidden");
       profileContainer?.classList.remove("hidden");
       mobileAuthSection?.classList.remove("hidden");
+      mobileProfileInfo?.classList.remove("hidden");
+      mobileProfileInfo?.classList.add("flex");
+      mobileLoginBtn?.classList.add("hidden");
       notificationContainer?.classList.remove("hidden");
       authLoading?.classList.add("hidden");
       
@@ -54,6 +63,8 @@ export const syncUserUI = () => {
       mobileMenu?.classList.remove("lg:hidden");
       
       if (profileNameSpan) profileNameSpan.innerText = `Hi, ${firstName}`;
+      if (mobileUserName) mobileUserName.innerText = cachedUser.displayName || firstName;
+      
       if (profileAvatarCircle) {
         const initial = firstName.charAt(0).toUpperCase();
         const photo = cachedUser.photoURL;
@@ -63,6 +74,17 @@ export const syncUserUI = () => {
           profileAvatarCircle.innerText = initial;
         }
       }
+
+      if (mobileAvatarCircle) {
+        const initial = firstName.charAt(0).toUpperCase();
+        const photo = cachedUser.photoURL;
+        if (photo) {
+          mobileAvatarCircle.innerHTML = `<img src="${photo}" class="w-full h-full rounded-full object-cover" referrerpolicy="no-referrer" onerror="this.style.display='none'; this.parentElement.innerText='${initial}'" />`;
+        } else {
+          mobileAvatarCircle.innerText = initial;
+        }
+      }
+
       if (dropdownFullName) dropdownFullName.innerText = cachedUser.displayName || "User";
       
       if (cachedUser.username && dropdownUsername) {
@@ -90,6 +112,7 @@ export const syncUserUI = () => {
       else if (cachedUser.plan === "super") planLabel = "Super Tier";
       else if (cachedUser.plan === "recovery_pass") planLabel = "Single Pass";
       if (dropdownPlan) dropdownPlan.innerText = planLabel;
+      if (mobileUserPlan) mobileUserPlan.innerText = planLabel;
       
       // Floating 24h Pass Timer on Home Page only for Single Pass users
       const homePassBadge = document.getElementById("home-pass-timer-floating");
@@ -123,10 +146,11 @@ export const syncUserUI = () => {
         }
       }
       
-      const isAdmin = (cachedUser.isAdmin === true && !!cachedUser.role) || isSuperAdminEmail(cachedUser.email);
+      const adminDataCached = typeof localStorage !== 'undefined' && localStorage.getItem("takeoutfix_admin_data");
+      const isAdmin = Boolean(cachedUser.isAdmin === true || cachedUser.role || adminDataCached || isSuperAdminEmail(cachedUser.email));
       if (isAdmin) {
-        desktopDashboardLink?.classList.add("hidden");
-        mobileDashboardLink?.classList.add("hidden");
+        desktopDashboardLink?.classList.remove("hidden");
+        mobileDashboardLink?.classList.remove("hidden");
         desktopAdminLink?.classList.remove("hidden");
         mobileAdminLink?.classList.remove("hidden");
         try {
@@ -150,7 +174,7 @@ export const syncUserUI = () => {
       }
       if (mobileToolLink) {
         mobileToolLink.href = "/tool";
-        mobileToolLink.innerText = "Restore My Data";
+        mobileToolLink.innerText = "⚡ Launch Restore Tool";
       }
       if (desktopToolLink) {
         desktopToolLink.href = "/tool";
@@ -160,7 +184,11 @@ export const syncUserUI = () => {
   } else {
     loginBtn?.classList.remove("hidden");
     profileContainer?.classList.add("hidden");
-    mobileAuthSection?.classList.add("hidden");
+    mobileProfileInfo?.classList.add("hidden");
+    mobileProfileInfo?.classList.remove("flex");
+    mobileLoginBtn?.classList.remove("hidden");
+    mobileDashboardLink?.classList.add("hidden");
+    mobileAdminLink?.classList.add("hidden");
     notificationContainer?.classList.add("hidden");
     authLoading?.classList.add("hidden");
     
@@ -232,21 +260,24 @@ export const setupAuthListeners = () => {
 };
 
 export const setupAuthEvents = () => {
-  const logoutBtn = document.getElementById("logout-btn");
+  const signoutButtons = document.querySelectorAll(".btn-profile-signout, #logout-btn, #profile-signout-btn, #mobile-signout-btn");
 
   // Sign-in is now handled by the AuthModal React component.
   // The navbar "Sign In / Sign Up" button dispatches 'takeoutfix:open-auth-modal'
   // which AuthModal listens to and renders the sign-in/sign-up overlay.
 
-  logoutBtn?.addEventListener("click", async () => {
-    try {
-      localStorage.removeItem("takeoutfix_user_data");
-      localStorage.removeItem("takeoutfix_admin_data");
-      localStorage.removeItem("takeoutfix_device_session_id");
-      await signOut(auth);
-      window.location.href = "/";
-    } catch (err) {
-      console.error("Sign out failed:", err);
-    }
+  signoutButtons.forEach((btn) => {
+    btn.addEventListener("click", async () => {
+      try {
+        localStorage.removeItem("takeoutfix_user_data");
+        localStorage.removeItem("takeoutfix_admin_data");
+        localStorage.removeItem("takeoutfix_device_session_id");
+        sessionStorage.removeItem("takeoutfix_admin_session");
+        await signOut(auth);
+        window.location.href = "/";
+      } catch (err) {
+        console.error("Sign out failed:", err);
+      }
+    });
   });
 };

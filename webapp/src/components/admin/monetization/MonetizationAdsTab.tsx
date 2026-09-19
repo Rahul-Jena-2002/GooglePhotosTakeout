@@ -53,6 +53,10 @@ export default function MonetizationAdsTab({
   const openNewUnitModal = () => {
     const newId = `ad_unit_${Date.now().toString().slice(-6)}`;
     const defaultProv = adProviders[0] || { id: "ad_prov_custom", name: "Custom" };
+    const allCodes =
+      placements.length > 0
+        ? placements.map((p) => p.code)
+        : ["ARTICLE_TOP", "ARTICLE_MIDDLE", "ARTICLE_BOTTOM", "SIDEBAR", "HOMEPAGE_TOP", "HOMEPAGE_MIDDLE", "HOMEPAGE_BOTTOM"];
     setEditingUnit({
       id: newId,
       providerId: defaultProv.id,
@@ -65,7 +69,7 @@ export default function MonetizationAdsTab({
       ctaText: "Learn More",
       status: "ACTIVE",
       priority: 10,
-      placementCodes: ["ARTICLE_MIDDLE", "HOMEPAGE_TOP"],
+      placementCodes: allCodes,
       targetBlank: true,
     });
   };
@@ -400,9 +404,34 @@ export default function MonetizationAdsTab({
 
               {/* Target Placements Checklist */}
               <div>
-                <label className="block text-zinc-400 font-semibold mb-1.5">
-                  Assigned Target Placements
-                </label>
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="text-zinc-400 font-semibold text-xs">
+                    Assigned Target Placements
+                  </label>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setEditingUnit({
+                          ...editingUnit,
+                          placementCodes: placements.map((p) => p.code),
+                        })
+                      }
+                      className="text-[11px] font-semibold text-blue-400 hover:text-blue-300 bg-blue-500/10 hover:bg-blue-500/20 px-2 py-0.5 rounded transition"
+                    >
+                      ✓ Select All
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setEditingUnit({ ...editingUnit, placementCodes: [] })
+                      }
+                      className="text-[11px] text-zinc-400 hover:text-zinc-300 bg-zinc-800 hover:bg-zinc-700 px-2 py-0.5 rounded transition"
+                    >
+                      Deselect All
+                    </button>
+                  </div>
+                </div>
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 p-3 bg-zinc-900/60 border border-zinc-800 rounded-xl max-h-36 overflow-y-auto">
                   {placements.map((p) => {
                     const checked = editingUnit.placementCodes.includes(p.code);

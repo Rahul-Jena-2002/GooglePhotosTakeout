@@ -31,6 +31,7 @@ interface OverviewTabProps {
   onUpdateDefaultMode: (mode: "BOTH" | "AFFILIATE_ONLY" | "ADS_ONLY") => void;
   onToggleFallback: () => void;
   onTogglePaidExemption: () => void;
+  onUpdateAppearance: (opacity: number, size: "small" | "medium" | "large") => void;
   onSeedDefaults: () => void;
   saving: boolean;
 }
@@ -46,6 +47,7 @@ export default function MonetizationOverviewTab({
   onUpdateDefaultMode,
   onToggleFallback,
   onTogglePaidExemption,
+  onUpdateAppearance,
   onSeedDefaults,
   saving,
 }: OverviewTabProps) {
@@ -54,6 +56,22 @@ export default function MonetizationOverviewTab({
   const activeAffiliates = affiliateLinks.filter((l) => l.status === "ACTIVE").length;
   const activeAdProvCount = adProviders.filter((p) => p.status === "ACTIVE").length;
   const activeAffProvCount = affiliateProviders.filter((p) => p.status === "ACTIVE").length;
+
+  const [localOpacity, setLocalOpacity] = React.useState<number>(settings.adOpacity ?? 80);
+  const [localSize, setLocalSize] = React.useState<"small" | "medium" | "large">(settings.adSize ?? "small");
+
+  React.useEffect(() => {
+    if (settings.adOpacity !== undefined) setLocalOpacity(settings.adOpacity);
+    if (settings.adSize) setLocalSize(settings.adSize);
+  }, [settings.adOpacity, settings.adSize]);
+
+  const hasAppearanceChanges =
+    localOpacity !== (settings.adOpacity ?? 80) ||
+    localSize !== (settings.adSize ?? "small");
+
+  const handleSaveAppearance = () => {
+    onUpdateAppearance(localOpacity, localSize);
+  };
 
   return (
     <div className="space-y-6">
@@ -181,6 +199,206 @@ export default function MonetizationOverviewTab({
             </div>
             <div className="text-[10px] font-mono text-zinc-600 dark:text-zinc-400 font-medium">
               {settings.allowPaidExemption ? "✓ Super Users Ad-Free" : "Show to All Users"}
+            </div>
+          </div>
+        </div>
+
+        {/* ─── Ad Appearance & Sizing Controls (Opacity & Dimensions) ─── */}
+        <div className="mt-6 pt-6 border-t border-zinc-200 dark:border-zinc-800">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-4">
+            <div>
+              <div className="flex items-center gap-2">
+                <Sliders className="w-4 h-4 text-purple-500" />
+                <h3 className="text-sm font-bold text-zinc-900 dark:text-white">
+                  Ad Appearance & Sizing Configuration
+                </h3>
+              </div>
+              <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5">
+                Fine-tune ad opacity, dimensions, and visual impact across all website pages.
+              </p>
+            </div>
+            {hasAppearanceChanges && (
+              <button
+                onClick={handleSaveAppearance}
+                disabled={saving}
+                className="px-4 py-2 bg-purple-600 hover:bg-purple-500 active:scale-95 text-white font-bold text-xs rounded-xl transition-all shadow-sm flex items-center gap-2 cursor-pointer"
+              >
+                <Sparkles className="w-3.5 h-3.5" />
+                <span>Save Appearance ({localOpacity}% · {localSize})</span>
+              </button>
+            )}
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
+            {/* Left Column: Opacity & Sizing Controls */}
+            <div className="lg:col-span-7 space-y-4">
+              {/* Opacity Slider Card */}
+              <div className="p-4 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2 text-xs font-bold text-zinc-800 dark:text-zinc-200">
+                    <span>Ad Resting Opacity</span>
+                    <span className="text-[11px] font-mono px-2 py-0.5 rounded-md bg-purple-500/10 text-purple-600 dark:text-purple-400 border border-purple-500/20 font-bold">
+                      {localOpacity}%
+                    </span>
+                  </div>
+                  <span className="text-[10px] text-zinc-400">
+                    Smoothly animates to 100% on hover
+                  </span>
+                </div>
+
+                <div className="flex items-center gap-3">
+                  <span className="text-[10px] font-mono text-zinc-400">30%</span>
+                  <input
+                    type="range"
+                    min={30}
+                    max={100}
+                    step={5}
+                    value={localOpacity}
+                    onChange={(e) => setLocalOpacity(Number(e.target.value))}
+                    className="w-full h-2 bg-zinc-200 dark:bg-zinc-800 rounded-lg appearance-none cursor-pointer accent-purple-600"
+                  />
+                  <span className="text-[10px] font-mono text-zinc-400">100%</span>
+                </div>
+
+                {/* Opacity Presets */}
+                <div className="flex flex-wrap items-center gap-1.5 pt-1">
+                  <span className="text-[10px] font-semibold text-zinc-400 mr-1">Presets:</span>
+                  {[50, 60, 70, 80, 90, 100].map((preset) => (
+                    <button
+                      key={preset}
+                      onClick={() => {
+                        setLocalOpacity(preset);
+                        onUpdateAppearance(preset, localSize);
+                      }}
+                      className={`px-2.5 py-1 rounded-lg text-[10.5px] font-mono font-bold transition-all ${
+                        localOpacity === preset
+                          ? "bg-purple-600 text-white shadow-xs"
+                          : "bg-zinc-200/70 dark:bg-zinc-900 text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white"
+                      }`}
+                    >
+                      {preset}%{preset === 80 ? " (Default)" : preset === 100 ? " (Solid)" : ""}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Sizing Preset Selector */}
+              <div className="p-4 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-zinc-800 dark:text-zinc-200">
+                    Ad Dimensions & Scale Preset
+                  </span>
+                  <span className="text-[10px] text-zinc-400">Controls gutter width and media height</span>
+                </div>
+
+                <div className="grid grid-cols-3 gap-2">
+                  {[
+                    {
+                      key: "small" as const,
+                      label: "Small (Compact)",
+                      width: "220px / 250px",
+                      desc: "Subtle & non-intrusive",
+                    },
+                    {
+                      key: "medium" as const,
+                      label: "Medium (Standard)",
+                      width: "260px / 290px",
+                      desc: "Balanced presence",
+                    },
+                    {
+                      key: "large" as const,
+                      label: "Large (Expanded)",
+                      width: "300px / 330px",
+                      desc: "Prominent spotlight",
+                    },
+                  ].map((sz) => (
+                    <button
+                      key={sz.key}
+                      onClick={() => {
+                        setLocalSize(sz.key);
+                        onUpdateAppearance(localOpacity, sz.key);
+                      }}
+                      className={`p-3 rounded-xl border text-left transition-all cursor-pointer ${
+                        localSize === sz.key
+                          ? "border-purple-500 bg-purple-500/10 shadow-xs ring-1 ring-purple-500"
+                          : "border-zinc-200 dark:border-zinc-800 hover:border-zinc-300 dark:hover:border-zinc-700 bg-white/50 dark:bg-zinc-900/40"
+                      }`}
+                    >
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="text-[11px] font-bold text-zinc-900 dark:text-white">
+                          {sz.label}
+                        </span>
+                        {localSize === sz.key && (
+                          <span className="w-2 h-2 rounded-full bg-purple-500 animate-pulse"></span>
+                        )}
+                      </div>
+                      <p className="text-[10px] font-mono text-purple-600 dark:text-purple-400 font-semibold">
+                        {sz.width}
+                      </p>
+                      <p className="text-[9.5px] text-zinc-500 mt-0.5 leading-tight">{sz.desc}</p>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {/* Right Column: Live Interactive Mockup */}
+            <div className="lg:col-span-5 flex flex-col">
+              <div className="p-4 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl h-full flex flex-col justify-between space-y-3">
+                <div className="flex items-center justify-between text-xs font-bold text-zinc-700 dark:text-zinc-300">
+                  <span>Live Appearance Mockup</span>
+                  <span className="text-[10px] text-zinc-400 font-normal">Hover to preview full opacity</span>
+                </div>
+
+                {/* Simulated Ad Card */}
+                <div className="flex items-center justify-center p-3 bg-zinc-200/40 dark:bg-zinc-900/60 rounded-xl border border-dashed border-zinc-300 dark:border-zinc-800">
+                  <div
+                    style={{ opacity: localOpacity / 100 }}
+                    className={`transition-all duration-200 hover:!opacity-100 rounded-xl border border-zinc-300 dark:border-white/10 bg-white dark:bg-zinc-900 p-2.5 shadow-sm text-left ${
+                      localSize === "small"
+                        ? "w-[200px]"
+                        : localSize === "medium"
+                        ? "w-[230px]"
+                        : "w-[260px]"
+                    }`}
+                  >
+                    <div className="flex items-center justify-between pb-1.5 border-b border-zinc-200 dark:border-zinc-800 mb-2">
+                      <span className="text-[8px] font-bold uppercase text-amber-500 flex items-center gap-1">
+                        <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse"></span>
+                        Sponsored Deal
+                      </span>
+                      <span className="text-[7.5px] font-mono text-zinc-400 bg-zinc-100 dark:bg-zinc-800 px-1 py-0.5 rounded">
+                        Ad
+                      </span>
+                    </div>
+
+                    <div className="w-full bg-zinc-100 dark:bg-zinc-800/80 rounded-lg flex items-center justify-center text-zinc-400 text-xs mb-2 transition-all overflow-hidden"
+                         style={{ height: localSize === "small" ? "56px" : localSize === "medium" ? "64px" : "80px" }}>
+                      <span className="text-[10px] font-mono">Product Preview</span>
+                    </div>
+
+                    <h4 className="text-[11px] font-bold text-zinc-900 dark:text-white truncate">
+                      SanDisk 1TB Extreme Portable SSD
+                    </h4>
+                    <p className="text-[9.5px] text-zinc-500 dark:text-zinc-400 line-clamp-1 mt-0.5">
+                      High-speed external backup storage
+                    </p>
+                    <div className="mt-2 pt-1.5 border-t border-zinc-200/60 dark:border-zinc-800 flex items-center justify-between">
+                      <span className="text-[9px] font-bold text-emerald-600 dark:text-emerald-400">
+                        In Stock
+                      </span>
+                      <span className="text-[9.5px] font-bold text-purple-600 dark:text-purple-400">
+                        Check Offer →
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between text-[10px] text-zinc-400 pt-1">
+                  <span>Effective Gutter: {localSize === "small" ? "220px (250px 2xl)" : localSize === "medium" ? "260px (290px 2xl)" : "300px (330px 2xl)"}</span>
+                  <span className="font-mono">Opacity: {localOpacity}%</span>
+                </div>
+              </div>
             </div>
           </div>
         </div>

@@ -1,4 +1,4 @@
-import { detectAdBlock } from "../services/AdBlockDetector";
+import { detectAdBlock } from "../services/monetization/AdBlockDetector";
 
 const isDismissedInSession = (): boolean => {
   try {

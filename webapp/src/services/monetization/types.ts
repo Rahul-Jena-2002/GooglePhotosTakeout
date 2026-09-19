@@ -92,6 +92,8 @@ export interface MonetizationGlobalSettings {
   defaultMode: DisplayMode;
   fallbackEnabled: boolean;
   allowPaidExemption: boolean; // If paid Pro/Super users can bypass ads
+  adOpacity?: number; // 30 - 100 (percentage opacity, default: 80)
+  adSize?: "small" | "medium" | "large"; // Size preset: "small" | "medium" | "large" (default: "small")
   updatedAt?: number;
 }
 
@@ -120,4 +122,6 @@ export interface MonetizationResponse {
   ad?: ResolvedMonetizationItem | null;
   empty?: boolean;
   fallbackEnabled?: boolean;
+  adOpacity?: number;
+  adSize?: "small" | "medium" | "large";
 }

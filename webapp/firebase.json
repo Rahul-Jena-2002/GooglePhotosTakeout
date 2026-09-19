@@ -58,7 +58,7 @@
     ]
   },
   "firestore": {
-    "rules": "firestore.rules"
+    "rules": "firebase/firestore.rules"
   },
   "functions": [
     {

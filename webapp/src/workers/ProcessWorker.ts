@@ -1,6 +1,6 @@
-import { injectExifDate } from '../services/ExifRestorer';
-import { injectImageExif } from '../services/DeepExifRestorer';
-import { injectMp4CreationTime, isVideoFilename } from '../services/VideoMetadataRestorer';
+import { injectExifDate } from '../services/restoration/ExifRestorer';
+import { injectImageExif } from '../services/restoration/DeepExifRestorer';
+import { injectMp4CreationTime, isVideoFilename } from '../services/restoration/VideoMetadataRestorer';
 
 self.onmessage = async (e: MessageEvent) => {
   const { action, payload } = e.data || {};

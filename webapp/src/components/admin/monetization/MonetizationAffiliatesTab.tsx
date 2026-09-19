@@ -58,18 +58,18 @@ export default function MonetizationAffiliatesTab({
     setIsExtracting(true);
     setExtractError(null);
     try {
-      const res = await fetch("/api/extract-metadata", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ url: editingLink.destinationUrl }),
-      });
+      const res = await fetch(`/api/extract-metadata?url=${encodeURIComponent(editingLink.destinationUrl)}`);
+      if (!res.ok) {
+        throw new Error(`Server returned error status ${res.status}`);
+      }
       const data = await res.json();
       if (data.success) {
         setEditingLink({
           ...editingLink,
           imageUrl: data.imageUrl || editingLink.imageUrl,
-          title: editingLink.title.trim() ? editingLink.title : (data.title || editingLink.title),
-          description: editingLink.description.trim() ? editingLink.description : (data.description || editingLink.description),
+          title: data.title || editingLink.title,
+          description: data.description || editingLink.description,
+          tag: editingLink.tag?.trim() && editingLink.tag !== "Featured Deal" ? editingLink.tag : (data.asin ? "Amazon Special" : "Featured Deal"),
         });
       } else {
         setExtractError(data.error || "Could not extract details from this link.");
@@ -97,7 +97,7 @@ export default function MonetizationAffiliatesTab({
       tag: "Featured Deal",
       status: "ACTIVE",
       priority: 10,
-      placementCodes: ["ARTICLE_MIDDLE", "ARTICLE_BOTTOM", "SIDEBAR"],
+      placementCodes: [], // Empty = Universal (auto-adjusted to ANY placement across the whole website)
       isExternal: true,
     });
   };
@@ -359,7 +359,60 @@ export default function MonetizationAffiliatesTab({
             </div>
 
             <div className="space-y-4 text-xs">
-              {/* Provider & Category Tag */}
+              {/* 1. Destination URL (Top & Primary) */}
+              <div className="p-3.5 bg-amber-500/5 border border-amber-500/20 rounded-xl space-y-2">
+                <div className="flex items-center justify-between">
+                  <label className="block text-white font-bold text-xs flex items-center gap-1.5">
+                    <span className="w-4 h-4 rounded-full bg-amber-500 text-black text-[10px] flex items-center justify-center font-black">1</span>
+                    Product or Affiliate Link
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => handleAutoExtract()}
+                    disabled={isExtracting || !editingLink.destinationUrl}
+                    className="text-[11px] font-bold text-amber-500 hover:text-amber-400 flex items-center gap-1.5 px-2.5 py-1 bg-amber-500/10 hover:bg-amber-500/20 rounded-lg disabled:opacity-40 transition-all cursor-pointer"
+                    title="Scrapes product title, description, and high-res image"
+                  >
+                    {isExtracting ? (
+                      <>
+                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                        <span>Auto-Extracting...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Wand2 className="w-3.5 h-3.5" />
+                        <span>Auto-Extract Details</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+                <input
+                  type="text"
+                  value={editingLink.destinationUrl}
+                  onChange={(e) =>
+                    setEditingLink({ ...editingLink, destinationUrl: e.target.value })
+                  }
+                  onPaste={(e) => {
+                    const pasted = e.clipboardData.getData("text");
+                    if (pasted && (pasted.startsWith("http://") || pasted.startsWith("https://"))) {
+                      setEditingLink((prev) => prev ? { ...prev, destinationUrl: pasted } : null);
+                      setTimeout(() => handleAutoExtract(pasted), 50);
+                    }
+                  }}
+                  className="w-full bg-zinc-900 border border-zinc-700 rounded-lg px-3 py-2.5 text-white text-xs focus:border-amber-500 outline-none"
+                  placeholder="Paste any Amazon product or affiliate URL (e.g. https://www.amazon.in/dp/B0...)"
+                  autoFocus
+                />
+                {extractError && (
+                  <p className="text-[11px] text-red-400 mt-1">{extractError}</p>
+                )}
+                <div className="flex items-center gap-1.5 text-[11px] text-emerald-400">
+                  <Sparkles className="w-3.5 h-3.5 shrink-0" />
+                  <span>Auto-Adjusted: Automatically cycles across all placements (Home, Sidebars & Banners).</span>
+                </div>
+              </div>
+
+              {/* 2. Auto-Populated Preview & Details */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="block text-zinc-400 font-semibold mb-1">Affiliate Account</label>
@@ -390,161 +443,113 @@ export default function MonetizationAffiliatesTab({
                     value={editingLink.tag || ""}
                     onChange={(e) => setEditingLink({ ...editingLink, tag: e.target.value })}
                     className="w-full bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-2 text-white text-xs focus:border-amber-500 outline-none"
-                    placeholder="e.g. Audio & Acoustics"
+                    placeholder="e.g. Featured Deal"
                   />
                 </div>
               </div>
 
-              {/* Title */}
+              {/* Title & Preview Image */}
               <div>
                 <label className="block text-zinc-400 font-semibold mb-1">Product Title</label>
-                <input
-                  type="text"
-                  value={editingLink.title}
-                  onChange={(e) => setEditingLink({ ...editingLink, title: e.target.value })}
-                  className="w-full bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-2 text-white text-xs focus:border-amber-500 outline-none"
-                  placeholder="e.g. Sony WF-1000XM5 Noise-Cancelling Earbuds"
-                />
+                <div className="flex items-center gap-2">
+                  <input
+                    type="text"
+                    value={editingLink.title}
+                    onChange={(e) => setEditingLink({ ...editingLink, title: e.target.value })}
+                    className="w-full bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-2 text-white text-xs focus:border-amber-500 outline-none"
+                    placeholder="Product Title (Auto-extracted)"
+                  />
+                  {editingLink.imageUrl && (
+                    <div className="w-10 h-10 rounded-lg border border-zinc-700 overflow-hidden shrink-0 bg-white/5 flex items-center justify-center p-0.5" title="Thumbnail preview">
+                      <img
+                        src={editingLink.imageUrl}
+                        alt="Preview"
+                        className="w-full h-full object-contain"
+                        onError={(e) => {
+                          (e.target as HTMLElement).style.display = "none";
+                        }}
+                      />
+                    </div>
+                  )}
+                </div>
               </div>
 
               {/* Description */}
               <div>
-                <label className="block text-zinc-400 font-semibold mb-1">Copy / Description</label>
+                <label className="block text-zinc-400 font-semibold mb-1">Product Description / Highlights</label>
                 <textarea
-                  rows={3}
+                  rows={2}
                   value={editingLink.description}
                   onChange={(e) => setEditingLink({ ...editingLink, description: e.target.value })}
                   className="w-full bg-zinc-900 border border-zinc-800 rounded-lg p-2.5 text-xs text-zinc-200 focus:border-amber-500 outline-none"
-                  placeholder="Highlight key specs, discounts, or value proposition..."
+                  placeholder="Auto-extracted product details..."
                 />
               </div>
 
-              {/* Destination URL & CTA Text */}
-              <div className="space-y-3">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div>
-                    <div className="flex items-center justify-between mb-1">
-                      <label className="block text-zinc-400 font-semibold">
-                        Destination URL (with tracking tag)
-                      </label>
-                      <button
-                        type="button"
-                        onClick={handleAutoExtract}
-                        disabled={isExtracting || !editingLink.destinationUrl}
-                        className="text-[11px] font-bold text-amber-500 hover:text-amber-400 flex items-center gap-1 disabled:opacity-40 transition-all cursor-pointer"
-                        title="Automatically scrape and populate product title, description, and image URL"
-                      >
-                        {isExtracting ? (
-                          <>
-                            <Loader2 className="w-3 h-3 animate-spin" />
-                            <span>Extracting...</span>
-                          </>
-                        ) : (
-                          <>
-                            <Wand2 className="w-3 h-3" />
-                            <span>Auto-Extract Details</span>
-                          </>
-                        )}
-                      </button>
-                    </div>
-                    <input
-                      type="text"
-                      value={editingLink.destinationUrl}
-                      onChange={(e) =>
-                        setEditingLink({ ...editingLink, destinationUrl: e.target.value })
-                      }
-                      className="w-full bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-2 text-white text-xs focus:border-amber-500 outline-none"
-                      placeholder="https://amazon.com/dp/... or affiliate tracking link"
-                    />
-                    {extractError && (
-                      <p className="text-[11px] text-red-400 mt-1">{extractError}</p>
-                    )}
-                  </div>
-
-                  <div>
-                    <label className="block text-zinc-400 font-semibold mb-1">CTA Button Text</label>
-                    <input
-                      type="text"
-                      value={editingLink.ctaText}
-                      onChange={(e) => setEditingLink({ ...editingLink, ctaText: e.target.value })}
-                      className="w-full bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-2 text-white text-xs focus:border-amber-500 outline-none"
-                      placeholder="e.g. Shop on Amazon"
-                    />
-                  </div>
+              {/* Button text & Image URL */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-zinc-400 font-semibold mb-1">CTA Button Text</label>
+                  <input
+                    type="text"
+                    value={editingLink.ctaText}
+                    onChange={(e) => setEditingLink({ ...editingLink, ctaText: e.target.value })}
+                    className="w-full bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-2 text-white text-xs focus:border-amber-500 outline-none"
+                    placeholder="Shop on Amazon"
+                  />
                 </div>
 
-                {/* Image URL & Priority with live thumbnail */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div>
-                    <label className="block text-zinc-400 font-semibold mb-1">Product Image URL (Optional)</label>
-                    <div className="flex items-center gap-2">
-                      <input
-                        type="text"
-                        value={editingLink.imageUrl || ""}
-                        onChange={(e) => setEditingLink({ ...editingLink, imageUrl: e.target.value })}
-                        className="w-full bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-2 text-white text-xs focus:border-amber-500 outline-none"
-                        placeholder="https://..."
-                      />
-                      {editingLink.imageUrl && (
-                        <div className="w-9 h-9 rounded-lg border border-zinc-700 overflow-hidden shrink-0 bg-white/5 flex items-center justify-center">
-                          <img
-                            src={editingLink.imageUrl}
-                            alt="Extracted preview"
-                            className="w-full h-full object-contain"
-                            onError={(e) => {
-                              (e.target as HTMLElement).style.display = "none";
+                <div>
+                  <label className="block text-zinc-400 font-semibold mb-1">Image URL</label>
+                  <input
+                    type="text"
+                    value={editingLink.imageUrl || ""}
+                    onChange={(e) => setEditingLink({ ...editingLink, imageUrl: e.target.value })}
+                    className="w-full bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-2 text-white text-xs focus:border-amber-500 outline-none"
+                    placeholder="https://m.media-amazon.com/images/..."
+                  />
+                </div>
+              </div>
+
+              {/* Optional Custom Placement Override (Collapsed by Default) */}
+              <details className="pt-1 text-zinc-500">
+                <summary className="cursor-pointer text-[11px] hover:text-zinc-300 transition-colors select-none py-1">
+                  ▸ Custom Placement Filter (Optional — Default is Universal Everywhere)
+                </summary>
+                <div className="mt-2 p-3 bg-zinc-900/60 border border-zinc-800 rounded-xl space-y-2">
+                  <div className="flex items-center justify-between text-[11px]">
+                    <span className="text-zinc-400">Target Specific Slots:</span>
+                    <button
+                      type="button"
+                      onClick={() => setEditingLink({ ...editingLink, placementCodes: [] })}
+                      className="text-amber-500 hover:underline"
+                    >
+                      Reset to Universal All
+                    </button>
+                  </div>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 max-h-28 overflow-y-auto">
+                    {placements.map((p) => {
+                      const checked = editingLink.placementCodes.length === 0 || editingLink.placementCodes.includes(p.code);
+                      return (
+                        <label key={p.code} className="flex items-center gap-1.5 text-[10px] text-zinc-300 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={checked}
+                            onChange={(e) => {
+                              const next = e.target.checked
+                                ? [...(editingLink.placementCodes.length === 0 ? placements.map(x => x.code) : editingLink.placementCodes), p.code]
+                                : editingLink.placementCodes.filter((c) => c !== p.code);
+                              setEditingLink({ ...editingLink, placementCodes: next });
                             }}
+                            className="rounded border-zinc-700 bg-zinc-800 text-amber-600"
                           />
-                        </div>
-                      )}
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="block text-zinc-400 font-semibold mb-1">Priority (Higher = Priority)</label>
-                    <input
-                      type="number"
-                      value={editingLink.priority}
-                      onChange={(e) =>
-                        setEditingLink({ ...editingLink, priority: parseInt(e.target.value, 10) || 0 })
-                      }
-                      className="w-full bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-2 text-white text-xs focus:border-amber-500 outline-none"
-                      placeholder="10"
-                    />
+                          <span className="font-mono truncate">{p.code}</span>
+                        </label>
+                      );
+                    })}
                   </div>
                 </div>
-              </div>
-
-              {/* Target Placements Checklist */}
-              <div>
-                <label className="block text-zinc-400 font-semibold mb-1.5">
-                  Assigned Target Placements
-                </label>
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 p-3 bg-zinc-900/60 border border-zinc-800 rounded-xl max-h-36 overflow-y-auto">
-                  {placements.map((p) => {
-                    const checked = editingLink.placementCodes.includes(p.code);
-                    return (
-                      <label
-                        key={p.code}
-                        className="flex items-center gap-2 text-[11px] text-zinc-300 cursor-pointer select-none"
-                      >
-                        <input
-                          type="checkbox"
-                          checked={checked}
-                          onChange={(e) => {
-                            const next = e.target.checked
-                              ? [...editingLink.placementCodes, p.code]
-                              : editingLink.placementCodes.filter((c) => c !== p.code);
-                            setEditingLink({ ...editingLink, placementCodes: next });
-                          }}
-                          className="rounded border-zinc-700 bg-zinc-800 text-amber-600"
-                        />
-                        <span className="font-mono text-[10px] truncate">{p.code}</span>
-                      </label>
-                    );
-                  })}
-                </div>
-              </div>
+              </details>
             </div>
 
             {/* Modal Buttons */}

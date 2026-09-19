@@ -1,228 +1,72 @@
 export const prerender = false;
 import type { APIRoute } from 'astro';
 import { env } from 'cloudflare:workers';
+import { jsonResponse, handleCorsOptions, isAuthorizedRequest } from '../../lib/api/apiResponse';
+import { resolveDodoHost } from '../../lib/dodo/client';
+import {
+  fetchProductsCatalog,
+  provisionAllRegions,
+  syncSingleRegionPrices
+} from '../../lib/dodo/syncService';
 
-type JsonRecord = Record<string, unknown>;
-
-function json(status: number, data: JsonRecord): Response {
-  return new Response(JSON.stringify(data), {
-    status,
-    headers: {
-      'Content-Type': 'application/json',
-      'Access-Control-Allow-Origin': '*'
-    }
-  });
-}
-
-export const OPTIONS: APIRoute = async () => {
-  return new Response(null, {
-    status: 204,
-    headers: {
-      'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Methods': 'POST, OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type, Authorization, x-api-key'
-    }
-  });
-};
-
-// Helper: Fetch USD exchange rates using standard fetch
-async function fetchUsdExchangeRates(): Promise<{ JPY: number; CNY: number }> {
-  const fallback = { JPY: 150.0, CNY: 7.2 };
-  try {
-    const res = await fetch("https://open.er-api.com/v6/latest/USD");
-    if (!res.ok) {
-      console.warn(`Exchange rate API returned status ${res.status}. Using fallback.`);
-      return fallback;
-    }
-    const parsed: any = await res.json();
-    if (parsed && parsed.result === "success" && parsed.rates) {
-      const jpy = parsed.rates.JPY ? Number(parsed.rates.JPY) : fallback.JPY;
-      const cny = parsed.rates.CNY ? Number(parsed.rates.CNY) : fallback.CNY;
-      console.log(`Successfully fetched dynamic USD rates: JPY=${jpy}, CNY=${cny}`);
-      return { JPY: jpy, CNY: cny };
-    }
-  } catch (e: any) {
-    console.warn("Failed to parse exchange rate response:", e.message);
-  }
-  return fallback;
-}
-
-// Helper to call PATCH /products/{product_id}
-async function patchProductPrice(
-  dodoHost: string,
-  productId: string,
-  amountMinor: number,
-  currencyCode: string,
-  dodoApiKey: string,
-  dodoCfg: any = {}
-): Promise<{ statusCode: number; body: string }> {
-  const priceObj: Record<string, any> = {
-    type: "one_time_price",
-    currency: currencyCode,
-    price: amountMinor,
-    tax_inclusive: dodoCfg.tax_inclusive ?? true,
-  };
-
-  if (dodoCfg.discount && Number(dodoCfg.discount) > 0) {
-    priceObj.discount = Number(dodoCfg.discount);
-  }
-
-  if (dodoCfg.pay_what_you_want) {
-    priceObj.pay_what_you_want = true;
-    if (dodoCfg.suggested_price && Number(dodoCfg.suggested_price) > 0) {
-      priceObj.suggested_price = Math.round(Number(dodoCfg.suggested_price) * 100);
-    }
-  }
-
-  const payload = JSON.stringify({ price: priceObj });
-
-  const url = `https://${dodoHost}/products/${productId}`;
-  const response = await fetch(url, {
-    method: "PATCH",
-    headers: {
-      "Content-Type": "application/json",
-      "Authorization": `Bearer ${dodoApiKey.trim()}`
-    },
-    body: payload
-  });
-
-  const body = await response.text();
-  return { statusCode: response.status, body };
-}
+export const OPTIONS: APIRoute = handleCorsOptions;
 
 export const POST: APIRoute = async ({ request }) => {
   try {
-    const GATEWAY_API_KEY = (env as any).GATEWAY_API_KEY || import.meta.env.GATEWAY_API_KEY || '';
-    const headerKey = request.headers.get('x-api-key') || request.headers.get('authorization')?.replace('Bearer ', '');
-    const isLocalDev = import.meta.env.DEV || process.env.NODE_ENV === "development";
-    
-    if (!isLocalDev) {
-      if (!GATEWAY_API_KEY || !headerKey || headerKey !== GATEWAY_API_KEY) {
-        return json(401, { error: 'Unauthorized' });
-      }
-    }
-
     const raw = await request.text();
     let payload: any = {};
     try {
       payload = JSON.parse(raw || '{}');
     } catch {
-      return json(400, { error: 'Invalid JSON body' });
+      return jsonResponse(400, { error: 'Invalid JSON body' });
     }
 
-    const { regionCode, prices, currency, productIds } = payload;
-    let currencyCode = String(currency || "INR").toUpperCase();
+    const GATEWAY_API_KEY = (env as any).GATEWAY_API_KEY || import.meta.env.GATEWAY_API_KEY || '';
+    const isDev = Boolean(import.meta.env.DEV || process.env.NODE_ENV === 'development');
 
-    if (!regionCode || !prices || typeof prices !== "object") {
-      return json(400, { error: "regionCode and prices object are required." });
+    if (!isAuthorizedRequest(request, payload, GATEWAY_API_KEY, isDev)) {
+      return jsonResponse(401, { error: 'Unauthorized' });
     }
 
-    // Resolve Dodo Keys and Mode directly from Cloudflare environment or payload
+    // Resolve Dodo key & environment
     const dodoTestModeVal = (env as any).DODO_TEST_MODE || import.meta.env.DODO_TEST_MODE;
-    const dodoTestMode = dodoTestModeVal === 'true' || dodoTestModeVal === true;
-    
-    let dodoApiKey = (payload.dodoApiKey || payload.apiKey || (dodoTestMode 
-      ? ((env as any).DODO_TEST_API_KEY || import.meta.env.DODO_TEST_API_KEY || (typeof process !== "undefined" ? process.env.DODO_TEST_API_KEY : undefined))
-      : ((env as any).DODO_API_KEY || import.meta.env.DODO_API_KEY || (typeof process !== "undefined" ? process.env.DODO_API_KEY : undefined)))) || '';
+    const testMode = payload.testMode !== undefined
+      ? Boolean(payload.testMode)
+      : (dodoTestModeVal === 'true' || dodoTestModeVal === true);
+
+    const dodoApiKey = String(payload.dodoApiKey || payload.apiKey || (testMode
+      ? ((env as any).DODO_TEST_API_KEY || import.meta.env.DODO_TEST_API_KEY || (typeof process !== 'undefined' ? process.env.DODO_TEST_API_KEY : undefined))
+      : ((env as any).DODO_API_KEY || import.meta.env.DODO_API_KEY || (typeof process !== 'undefined' ? process.env.DODO_API_KEY : undefined))) || '').trim();
 
     if (!dodoApiKey) {
-      return json(400, { 
-        error: `Dodo Payments API key not configured (${dodoTestMode ? "DODO_TEST_API_KEY" : "DODO_API_KEY"}). Please enter your Dodo API Key in the Gateway Credentials tab and click Save, or set it in your environment variables.` 
+      return jsonResponse(400, {
+        error: `Dodo API key not provided (${testMode ? 'DODO_TEST_API_KEY' : 'DODO_API_KEY'}).`
       });
     }
 
-    // Preserve full API key (do NOT strip live_ or test_ prefixes as Dodo API requires them)
-    dodoApiKey = String(dodoApiKey).trim();
+    const { host: dodoHost, envMode } = resolveDodoHost(dodoApiKey, testMode);
+    const action = payload.action || 'sync_region';
 
-    const isTestKey = dodoApiKey.startsWith("test_") || dodoApiKey.startsWith("sk_test_");
-    const dodoHost = isTestKey || dodoTestMode ? "test.dodopayments.com" : "live.dodopayments.com";
-    const envMode = isTestKey || dodoTestMode ? "test" : "live";
-
-    // Resolve Product mappings from payload first, then fallback to env
-    const dodoProductsLiveStr = (env as any).DODO_PRODUCTS_LIVE || import.meta.env.DODO_PRODUCTS_LIVE || '{}';
-    const dodoProductsTestStr = (env as any).DODO_PRODUCTS_TEST || import.meta.env.DODO_PRODUCTS_TEST || '{}';
-    let dodoProductsMap: Record<string, any> = {};
-    try {
-      dodoProductsMap = dodoTestMode ? JSON.parse(dodoProductsTestStr) : JSON.parse(dodoProductsLiveStr);
-    } catch (e: any) {
-      dodoProductsMap = {};
+    // ── Dispatch to modular syncService ─────────────────────────────
+    if (action === 'fetch_products') {
+      const result = await fetchProductsCatalog(dodoHost, dodoApiKey, envMode);
+      return jsonResponse(200, result);
     }
 
-    const effectiveProductIds = (productIds && typeof productIds === 'object' && Object.keys(productIds).length > 0)
-      ? productIds
-      : (dodoProductsMap?.[regionCode as string] || {});
-
-    // Auto-calculate to USD for JPY and CNY regions
-    let finalPrices = { ...(prices as Record<string, any>) };
-    if (regionCode === "jp" || regionCode === "cn") {
-      currencyCode = "USD";
-      const rates = await fetchUsdExchangeRates();
-      const rate = regionCode === "jp" ? rates.JPY : rates.CNY;
-      console.log(`Auto-converting ${regionCode === "jp" ? "JPY" : "CNY"} to USD using dynamic rate: ${rate}`);
-      for (const plan of Object.keys(finalPrices)) {
-        const val = finalPrices[plan];
-        if (val !== null && typeof val === "object") {
-          finalPrices[plan] = {
-            ...val,
-            amount: Number((Number(val.amount) / rate).toFixed(2))
-          };
-        } else {
-          finalPrices[plan] = Number((Number(val) / rate).toFixed(2));
-        }
-      }
+    if (action === 'provision_all') {
+      const result = await provisionAllRegions(dodoHost, dodoApiKey, envMode, payload);
+      return jsonResponse(200, result);
     }
 
-    const results = [];
-    for (const [planCode, priceVal] of Object.entries(finalPrices)) {
-      try {
-        const productId = effectiveProductIds?.[planCode] || dodoProductsMap?.[regionCode as string]?.[planCode] || null;
-        if (!productId) {
-          results.push({ planCode, status: "FAILED", error: `No productId for region=${regionCode} plan=${planCode}` });
-          continue;
-        }
-
-        const isObj = priceVal !== null && typeof priceVal === "object";
-        const rupees = Number(isObj ? priceVal.amount : priceVal);
-        if (!isFinite(rupees) || rupees <= 0) {
-          results.push({ planCode, productId, status: "FAILED", error: `Invalid amount for ${planCode}: ${rupees}` });
-          continue;
-        }
-
-        const amountMinor = Math.round(rupees * 100);
-        const dodoCfg = isObj ? priceVal : {};
-
-        const apiResp = await patchProductPrice(dodoHost, productId, amountMinor, currencyCode, dodoApiKey, dodoCfg);
-        let parsed = {};
-        try { parsed = JSON.parse(apiResp.body); } catch (_) { }
-
-        const isSuccess = apiResp.statusCode && apiResp.statusCode < 300;
-        results.push({
-          planCode,
-          productId,
-          currency: currencyCode,
-          amountMinor,
-          envMode,
-          status: isSuccess ? "SUCCESS" : "FAILED",
-          response: isSuccess ? (parsed || null) : apiResp.body
-        });
-      } catch (e: any) {
-        results.push({ planCode, status: "FAILED", error: e.message });
-      }
+    if (!payload.regionCode || !payload.prices || typeof payload.prices !== 'object') {
+      return jsonResponse(400, { error: 'regionCode and prices object are required.' });
     }
 
-    return json(200, {
-      success: true,
-      regionCode,
-      currency: currencyCode,
-      envMode,
-      results
-    });
+    const result = await syncSingleRegionPrices(dodoHost, dodoApiKey, envMode, payload);
+    return jsonResponse(200, result);
 
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err);
-    return json(500, {
-      error: 'ProxyError',
-      message
-    });
+    return jsonResponse(500, { error: 'ProxyError', message });
   }
 };

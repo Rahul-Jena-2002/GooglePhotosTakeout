@@ -7,7 +7,7 @@ import type {
   AffiliateLink,
 } from "../../../services/monetization/types";
 import { getMonetizationContent } from "../../../services/monetization/monetizationEngine";
-import Monetization from "../../Monetization";
+import Monetization from "../../monetization/Monetization";
 import {
   Play,
   RefreshCw,

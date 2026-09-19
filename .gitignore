@@ -47,9 +47,15 @@ metadata_not_found/
 dist/
 
 # Secrets & credentials
-serviceAccountKey.json
-service-account.json
-.env
+*serviceAccountKey*.json
+*service-account*.json
+.env*
+!.env.example
+!.env.local.example
+*.pem
+*.key
+scripts/diagnostics/
+functions/scripts/
 
 # Agent tracking files
 .agents/

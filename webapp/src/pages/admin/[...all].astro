@@ -17,12 +17,15 @@ export function getStaticPaths() {
     { params: { all: 'plan-thresholds' } },
     { params: { all: 'tier-features' } },
     { params: { all: 'payments' } },
+    { params: { all: 'catalog' } },
+    { params: { all: 'products' } },
+    { params: { all: 'product-catalogue' } },
     { params: { all: 'monetization' } },
     { params: { all: 'dev' } },
   ];
 }
 import "../../index.css";
-import AdminRouter from "../../components/AdminRouter";
+import AdminRouter from "../../components/admin/layout/AdminRouter";
 
 ---
 <!doctype html>

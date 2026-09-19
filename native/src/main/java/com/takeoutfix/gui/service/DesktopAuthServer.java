@@ -154,13 +154,18 @@ public class DesktopAuthServer {
                     </body>
                     </html>
                     """;
-                String html = String.format(htmlTemplate, userEmail);
+                String html = htmlTemplate.replace("%s", userEmail);
                 responseBytes = html.getBytes(StandardCharsets.UTF_8);
             }
 
-            exchange.sendResponseHeaders(200, responseBytes.length);
-            try (OutputStream os = exchange.getResponseBody()) {
-                os.write(responseBytes);
+            try {
+                exchange.sendResponseHeaders(200, responseBytes.length);
+                try (OutputStream os = exchange.getResponseBody()) {
+                    os.write(responseBytes);
+                    os.flush();
+                }
+            } catch (Exception sendErr) {
+                System.err.println("[DesktopAuthServer] Error sending response to browser: " + sendErr.getMessage());
             }
 
             // Dispatch to callback

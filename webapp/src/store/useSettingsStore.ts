@@ -8,6 +8,8 @@ interface SettingsState {
   setExifEngine: (engine: ExifEngine) => void;
   organizeYearMonth: boolean;
   setOrganizeYearMonth: (val: boolean) => void;
+  generateSyncScript: boolean;
+  setGenerateSyncScript: (val: boolean) => void;
 }
 
 export const useSettingsStore = create<SettingsState>()(
@@ -17,6 +19,8 @@ export const useSettingsStore = create<SettingsState>()(
       setExifEngine: (engine) => set({ exifEngine: engine }),
       organizeYearMonth: true,
       setOrganizeYearMonth: (val) => set({ organizeYearMonth: val }),
+      generateSyncScript: true,
+      setGenerateSyncScript: (val) => set({ generateSyncScript: val }),
     }),
     {
       name: 'takeoutfix-settings',

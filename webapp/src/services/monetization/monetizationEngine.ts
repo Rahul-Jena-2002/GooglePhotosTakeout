@@ -34,7 +34,7 @@ interface CacheState {
 }
 
 const CACHE_TTL_MS = 15 * 60 * 1000; // 15 minutes persistent cache
-const STORAGE_KEY = "takeoutfix_monetization_cache_v2";
+const STORAGE_KEY = "takeoutfix_monetization_cache_v3";
 
 const cache: CacheState = {
   globalSettings: null,
@@ -124,6 +124,20 @@ export const isInternalSitePromotion = (url?: string, title?: string, providerNa
   );
 };
 
+export function applyMonetizationAppearance(settings?: MonetizationGlobalSettings | null) {
+  if (typeof document === "undefined") return;
+  const opacity = (settings?.adOpacity ?? 80) / 100;
+  const size = settings?.adSize ?? "small";
+  document.documentElement.style.setProperty("--ad-opacity", opacity.toString());
+  document.documentElement.setAttribute("data-ad-size", size);
+  try {
+    localStorage.setItem("monetization_appearance", JSON.stringify({
+      opacity: settings?.adOpacity ?? 80,
+      size,
+    }));
+  } catch (_) {}
+}
+
 /**
  * Load all monetization datasets into cache with persistent storage and parallelized fetching
  */
@@ -137,6 +151,7 @@ export async function fetchAllMonetizationData(forceRefresh = false): Promise<Ca
 
   // 2. Check persistent storage (sessionStorage / localStorage)
   if (!forceRefresh && loadFromPersistentStorage()) {
+    applyMonetizationAppearance(cache.globalSettings);
     return cache;
   }
 
@@ -177,6 +192,7 @@ export async function fetchAllMonetizationData(forceRefresh = false): Promise<Ca
       } else {
         cache.globalSettings = { ...DEFAULT_GLOBAL_SETTINGS };
       }
+      applyMonetizationAppearance(cache.globalSettings);
 
       // 2. Placements
       cache.placements.clear();
@@ -215,7 +231,9 @@ export async function fetchAllMonetizationData(forceRefresh = false): Promise<Ca
       cache.affiliateProviders.clear();
       if (affProvSnapRes.status === "fulfilled" && !affProvSnapRes.value.empty) {
         affProvSnapRes.value.forEach((d) => {
+          if (d.id === "aff_prov_flipkart") return;
           const item = { id: d.id, ...d.data() } as AffiliateProvider;
+          if (item.code?.toUpperCase() === "FLIPKART" || item.name?.toLowerCase().includes("flipkart")) return;
           cache.affiliateProviders.set(item.id, item);
         });
       } else {
@@ -223,7 +241,7 @@ export async function fetchAllMonetizationData(forceRefresh = false): Promise<Ca
       }
 
       // 6. Ad Units
-      if (adUnitsSnapRes.status === "fulfilled" && !adUnitsSnapRes.value.empty) {
+      if (adUnitsSnapRes.status === "fulfilled") {
         const units: AdUnit[] = [];
         adUnitsSnapRes.value.forEach((d) => {
           const u = { id: d.id, ...d.data() } as AdUnit;
@@ -231,13 +249,13 @@ export async function fetchAllMonetizationData(forceRefresh = false): Promise<Ca
             units.push(u);
           }
         });
-        cache.adUnits = units.length > 0 ? units : [...DEFAULT_AD_UNITS];
+        cache.adUnits = units;
       } else {
-        cache.adUnits = [...DEFAULT_AD_UNITS];
+        cache.adUnits = [];
       }
 
       // 7. Affiliate Links
-      if (affLinksSnapRes.status === "fulfilled" && !affLinksSnapRes.value.empty) {
+      if (affLinksSnapRes.status === "fulfilled") {
         const links: AffiliateLink[] = [];
         affLinksSnapRes.value.forEach((d) => {
           const l = { id: d.id, ...d.data() } as AffiliateLink;
@@ -245,9 +263,9 @@ export async function fetchAllMonetizationData(forceRefresh = false): Promise<Ca
             links.push(l);
           }
         });
-        cache.affiliateLinks = links.length > 0 ? links : [...DEFAULT_AFFILIATE_LINKS];
+        cache.affiliateLinks = links;
       } else {
-        cache.affiliateLinks = [...DEFAULT_AFFILIATE_LINKS];
+        cache.affiliateLinks = [];
       }
 
       cache.lastLoaded = Date.now();
@@ -263,8 +281,8 @@ export async function fetchAllMonetizationData(forceRefresh = false): Promise<Ca
       DEFAULT_AD_PROVIDERS.forEach((p) => cache.adProviders.set(p.id, p));
       cache.affiliateProviders.clear();
       DEFAULT_AFFILIATE_PROVIDERS.forEach((p) => cache.affiliateProviders.set(p.id, p));
-      cache.adUnits = [...DEFAULT_AD_UNITS];
-      cache.affiliateLinks = [...DEFAULT_AFFILIATE_LINKS];
+      cache.adUnits = [];
+      cache.affiliateLinks = [];
       cache.lastLoaded = Date.now();
       saveToPersistentStorage(cache);
     } finally {
@@ -350,6 +368,61 @@ export async function seedDefaultMonetizationData(overwrite = false): Promise<{ 
   return { success: true, message: "Monetization defaults successfully synced to Firestore." };
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Page Rotation & Non-Repeating Allocation Engine
+// ─────────────────────────────────────────────────────────────────────────────
+let pageVisitSeed = 0;
+let dynamicSlotCounter = 12; // Reserves slots 0..11 for standard sidebars
+const dynamicPlacementSlots = new Map<string, number>();
+
+if (typeof window !== "undefined") {
+  try {
+    const savedSeed = sessionStorage.getItem("takeoutfix_monetization_seed");
+    if (savedSeed !== null) {
+      pageVisitSeed = parseInt(savedSeed, 10) || 0;
+    } else {
+      pageVisitSeed = Math.floor(Math.random() * 20);
+      sessionStorage.setItem("takeoutfix_monetization_seed", String(pageVisitSeed));
+    }
+  } catch (_) {}
+
+  // Advance rotation seed on Astro page navigation so ads rotate across pages
+  window.addEventListener("astro:page-load", () => {
+    pageVisitSeed = (pageVisitSeed + 1) % 1000;
+    dynamicSlotCounter = 12;
+    dynamicPlacementSlots.clear();
+    try {
+      sessionStorage.setItem("takeoutfix_monetization_seed", String(pageVisitSeed));
+    } catch (_) {}
+  });
+
+  window.addEventListener("popstate", () => {
+    dynamicSlotCounter = 12;
+    dynamicPlacementSlots.clear();
+  });
+}
+
+export function getPlacementSlotIndex(placementCode: string): number {
+  const numMatch = placementCode.match(/_(\d+)$/);
+  if (numMatch) {
+    const base = Math.max(0, parseInt(numMatch[1], 10) - 1);
+    // Left column slots 1..6 map to 0..5; Right column slots 1..6 map to 6..11
+    return placementCode.includes("RIGHT") ? base + 6 : base;
+  }
+  if (placementCode.includes("TOP")) return 0;
+  if (placementCode.includes("MID")) return 1;
+  if (placementCode.includes("BOTTOM")) return 2;
+
+  if (!dynamicPlacementSlots.has(placementCode)) {
+    dynamicPlacementSlots.set(placementCode, dynamicSlotCounter++);
+  }
+  return dynamicPlacementSlots.get(placementCode) || 0;
+}
+
+export function getPageVisitSeed(): number {
+  return pageVisitSeed;
+}
+
 /**
  * Core Selection Engine
  * Evaluates placement rules, candidate items, priority rotation, and fallback mechanisms
@@ -376,6 +449,8 @@ export async function getMonetizationContent(
       mode: globalSettings.defaultMode,
       reason: "GLOBAL_DISABLED",
       empty: true,
+      adOpacity: globalSettings.adOpacity ?? 80,
+      adSize: globalSettings.adSize ?? "small",
     };
   }
 
@@ -393,6 +468,8 @@ export async function getMonetizationContent(
       mode: globalSettings.defaultMode,
       reason: "PAID_USER_EXEMPT",
       empty: true,
+      adOpacity: globalSettings.adOpacity ?? 80,
+      adSize: globalSettings.adSize ?? "small",
     };
   }
 
@@ -462,13 +539,18 @@ export async function getMonetizationContent(
       .map((p) => p.id)
   );
 
+  const isSidebarPlacement = placementCode.startsWith("SIDEBAR") || placementCode.startsWith("GUTTER");
+  const slotIndex = getPlacementSlotIndex(placementCode);
+
   // Filter Active Affiliate Links matching this placement (excluding any site upsells)
   const affiliateCandidates = data.affiliateLinks.filter(
     (l) =>
       l.status === "ACTIVE" &&
       !isInternalSitePromotion(l.destinationUrl, l.title, l.providerName) &&
       (options.preview || activeAffProviderIds.has(l.providerId)) &&
-      (l.placementCodes.includes(placementCode) || l.placementCodes.length === 0)
+      (l.placementCodes.includes(placementCode) ||
+       (isSidebarPlacement && l.placementCodes.includes("SIDEBAR")) ||
+       l.placementCodes.length === 0)
   );
 
   // Active Ad Providers
@@ -484,23 +566,25 @@ export async function getMonetizationContent(
       u.status === "ACTIVE" &&
       !isInternalSitePromotion(u.destinationUrl, u.name, u.providerName) &&
       (options.preview || activeAdProviderIds.has(u.providerId)) &&
-      (u.placementCodes.includes(placementCode) || u.placementCodes.length === 0)
+      (u.placementCodes.includes(placementCode) ||
+       (isSidebarPlacement && u.placementCodes.includes("SIDEBAR")) ||
+       u.placementCodes.length === 0)
   );
 
-  // 5. Select Best Item per Category (Priority + Randomized Tiering)
-  const selectTopItem = <T extends { priority: number }>(items: T[]): T | null => {
+  // 5. Select Best Item per Category (Non-Repeating on same page + Rotating across visits)
+  const selectTopItem = <T extends { priority: number }>(items: T[], index?: number): T | null => {
     if (items.length === 0) return null;
-    // Sort descending by priority
     const sorted = [...items].sort((a, b) => (b.priority ?? 0) - (a.priority ?? 0));
-    const highestPriority = sorted[0].priority ?? 0;
-    // Gather all items sharing top priority tier to rotate fairly
-    const topTier = sorted.filter((i) => Math.abs((i.priority ?? 0) - highestPriority) < 3);
-    const randomIndex = Math.floor(Math.random() * topTier.length);
-    return topTier[randomIndex];
+    const targetSlot = index !== undefined && index >= 0 ? index : slotIndex;
+    const rotationOffset = pageVisitSeed;
+    // Guaranteed non-repeating cycle: slot 0, 1, 2... will each take a distinct item
+    // and will only repeat after all items in the candidate pool are finished!
+    const selectedIndex = (targetSlot + rotationOffset) % sorted.length;
+    return sorted[selectedIndex];
   };
 
-  const selectedAffiliateRaw = (config.affiliateEnabled || options.preview) ? selectTopItem(affiliateCandidates) : null;
-  const selectedAdRaw = (config.adsEnabled || options.preview) ? selectTopItem(adCandidates) : null;
+  const selectedAffiliateRaw = (config.affiliateEnabled || options.preview) ? selectTopItem(affiliateCandidates, slotIndex) : null;
+  const selectedAdRaw = (config.adsEnabled || options.preview) ? selectTopItem(adCandidates, slotIndex) : null;
 
   const selectedAffiliate: ResolvedMonetizationItem | null = selectedAffiliateRaw
     ? {
@@ -576,5 +660,7 @@ export async function getMonetizationContent(
     ad: resolvedAd,
     empty: isEmpty,
     fallbackEnabled: fallback,
+    adOpacity: globalSettings.adOpacity ?? 80,
+    adSize: globalSettings.adSize ?? "small",
   };
 }

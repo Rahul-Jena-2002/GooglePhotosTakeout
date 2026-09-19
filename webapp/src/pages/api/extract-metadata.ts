@@ -15,6 +15,48 @@ function decodeHtmlEntities(str: string): string {
     .trim();
 }
 
+function cleanTitle(rawTitle: string): string {
+  return decodeHtmlEntities(rawTitle)
+    .replace(/\s*:\s*Amazon\.[a-z.]+/i, "")
+    .replace(/\s*\|\s*Amazon\.[a-z.]+/i, "")
+    .replace(/\s*\|\s*Flipkart\.[a-z.]+/i, "")
+    .replace(/\s*-\s*Buy\s+.*Online\s+at\s+Best\s+Prices.*$/i, "")
+    .replace(/\s*\|\s*Best\s+Price.*$/i, "")
+    .trim();
+}
+
+function extractAsin(urlStr: string): string | null {
+  // Pattern 1: /dp/B0XXXXXXXX or /gp/product/B0XXXXXXXX or /d/B0XXXXXXXX
+  const dpMatch = urlStr.match(/(?:\/dp\/|\/gp\/product\/|\/d\/|\/product\/|link\.amazon\/)([A-Z0-9]{10})/i);
+  if (dpMatch?.[1]) return dpMatch[1].toUpperCase();
+
+  // Pattern 2: ASIN query param or standalone 10-char B0 code
+  const asinMatch = urlStr.match(/[?&]asin=([A-Z0-9]{10})/i) || urlStr.match(/\b(B0[A-Z0-9]{8})\b/i);
+  if (asinMatch?.[1]) return asinMatch[1].toUpperCase();
+
+  return null;
+}
+
+function extractSlugTitle(urlStr: string): string | null {
+  try {
+    const parsed = new URL(urlStr);
+    const pathParts = parsed.pathname.split("/").filter(Boolean);
+    for (const part of pathParts) {
+      if (
+        part.length > 5 &&
+        !part.match(/^(dp|gp|product|d|ref|b|s|tag)$/i) &&
+        !part.match(/^[A-Z0-9]{10}$/i)
+      ) {
+        return part
+          .replace(/[-_+]/g, " ")
+          .replace(/\b\w/g, (c) => c.toUpperCase())
+          .trim();
+      }
+    }
+  } catch (_) {}
+  return null;
+}
+
 async function handleExtract(request: Request) {
   try {
     const urlObj = new URL(request.url);
@@ -23,11 +65,9 @@ async function handleExtract(request: Request) {
     if (request.method === "POST") {
       try {
         body = await request.json();
-      } catch {
-        // Body might be empty or query param used
-      }
+      } catch {}
     }
-    const rawUrl = (queryUrl || body?.url || "").trim();
+    let rawUrl = (queryUrl || body?.url || "").trim();
 
     if (!rawUrl) {
       return new Response(JSON.stringify({ success: false, error: "URL is required" }), {
@@ -36,10 +76,13 @@ async function handleExtract(request: Request) {
       });
     }
 
-    // Ensure URL has protocol
+    if (!rawUrl.startsWith("http://") && !rawUrl.startsWith("https://")) {
+      rawUrl = `https://${rawUrl}`;
+    }
+
     let parsedUrl: URL;
     try {
-      parsedUrl = new URL(rawUrl.startsWith("http") ? rawUrl : `https://${rawUrl}`);
+      parsedUrl = new URL(rawUrl);
     } catch {
       return new Response(JSON.stringify({ success: false, error: "Invalid URL provided" }), {
         status: 400,
@@ -47,113 +90,135 @@ async function handleExtract(request: Request) {
       });
     }
 
-    // Fetch destination page with browser user-agent
-    const response = await fetch(parsedUrl.toString(), {
-      headers: {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
-        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
-        "Accept-Language": "en-US,en;q=0.9",
-      },
-      redirect: "follow",
-    });
-
-    if (!response.ok) {
-      return new Response(JSON.stringify({ success: false, error: `Failed to fetch page: HTTP ${response.status}` }), {
-        status: 200,
-        headers: { "Content-Type": "application/json" },
+    // Follow potential shortlinks (e.g. amzn.to, bit.ly, link.amazon) to resolve destination
+    let finalUrl = parsedUrl.toString();
+    try {
+      const headRes = await fetch(finalUrl, {
+        method: "HEAD",
+        redirect: "follow",
+        headers: {
+          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+        },
       });
-    }
-
-    const html = await response.text();
-
-    // ── 1. Image extraction ───────────────────────────────────────
-    let imageUrl = "";
-
-    // OpenGraph image
-    const ogImageMatch = html.match(/<meta[^>]+(?:property|name)=["'](?:og:image|twitter:image|og:image:url)["'][^>]+content=["']([^"']+)["']/i)
-      || html.match(/<meta[^>]+content=["']([^"']+)["'][^>]+(?:property|name)=["'](?:og:image|twitter:image|og:image:url)["']/i);
-    if (ogImageMatch?.[1]) {
-      imageUrl = ogImageMatch[1].trim();
-    }
-
-    // Amazon landing image detection fallback
-    if (!imageUrl) {
-      const amazonLandingMatch = html.match(/data-old-hires=["']([^"']+)["']/i)
-        || html.match(/id=["']landingImage["'][^>]+src=["']([^"']+)["']/i)
-        || html.match(/id=["']imgBlkFront["'][^>]+src=["']([^"']+)["']/i)
-        || html.match(/"large":"(https:\/\/[^"]+\.jpg)"/i);
-      if (amazonLandingMatch?.[1]) {
-        imageUrl = amazonLandingMatch[1].trim();
+      if (headRes.url && headRes.url !== finalUrl) {
+        finalUrl = headRes.url;
       }
-    }
+    } catch (_) {}
 
-    // Standard HTML link rel="image_src"
-    if (!imageUrl) {
-      const linkImageMatch = html.match(/<link[^>]+rel=["']image_src["'][^>]+href=["']([^"']+)["']/i);
-      if (linkImageMatch?.[1]) {
-        imageUrl = linkImageMatch[1].trim();
-      }
-    }
+    // Check for Amazon ASIN
+    const asin = extractAsin(finalUrl) || extractAsin(rawUrl);
+    const asinImageUrl = asin ? `https://m.media-amazon.com/images/P/${asin}.01._SCLZZZZZZZ_SX500_.jpg` : "";
+    const slugTitle = extractSlugTitle(finalUrl) || extractSlugTitle(rawUrl);
 
-    // JSON-LD fallback for schema product image
-    if (!imageUrl) {
-      const jsonLdMatch = html.match(/<script type=["']application\/ld\+json["']>([^<]+)<\/script>/i);
-      if (jsonLdMatch?.[1]) {
-        try {
-          const parsedLd = JSON.parse(jsonLdMatch[1]);
-          if (parsedLd.image) {
-            imageUrl = Array.isArray(parsedLd.image) ? parsedLd.image[0] : (typeof parsedLd.image === "string" ? parsedLd.image : parsedLd.image.url || "");
+    let title = "";
+    let description = "";
+    let imageUrl = asinImageUrl || "";
+
+    // Attempt page fetch for rich metadata
+    try {
+      const response = await fetch(finalUrl, {
+        headers: {
+          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+          "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
+          "Accept-Language": "en-US,en;q=0.9",
+          "Cache-Control": "no-cache",
+        },
+        redirect: "follow",
+      });
+
+      if (response.ok) {
+        const html = await response.text();
+
+        // 1. Image extraction
+        const ogImageMatch =
+          html.match(/<meta[^>]+(?:property|name)=["'](?:og:image|twitter:image|og:image:url)["'][^>]+content=["']([^"']+)["']/i) ||
+          html.match(/<meta[^>]+content=["']([^"']+)["'][^>]+(?:property|name)=["'](?:og:image|twitter:image|og:image:url)["']/i);
+        if (ogImageMatch?.[1]) {
+          imageUrl = ogImageMatch[1].trim();
+        }
+
+        // Amazon landing image detection fallback
+        if (!imageUrl || imageUrl === asinImageUrl) {
+          const amazonLandingMatch =
+            html.match(/data-old-hires=["']([^"']+)["']/i) ||
+            html.match(/id=["']landingImage["'][^>]+src=["']([^"']+)["']/i) ||
+            html.match(/id=["']imgBlkFront["'][^>]+src=["']([^"']+)["']/i) ||
+            html.match(/"large":"(https:\/\/[^"]+\.jpg)"/i);
+          if (amazonLandingMatch?.[1]) {
+            imageUrl = amazonLandingMatch[1].trim();
           }
-        } catch {
-          // Ignore json-ld parse error
+        }
+
+        // JSON-LD fallback for schema product image
+        if (!imageUrl || imageUrl === asinImageUrl) {
+          const jsonLdMatch = html.match(/<script type=["']application\/ld\+json["']>([^<]+)<\/script>/i);
+          if (jsonLdMatch?.[1]) {
+            try {
+              const parsedLd = JSON.parse(jsonLdMatch[1]);
+              if (parsedLd.image) {
+                const img = Array.isArray(parsedLd.image) ? parsedLd.image[0] : (typeof parsedLd.image === "string" ? parsedLd.image : parsedLd.image.url || "");
+                if (img) imageUrl = img;
+              }
+            } catch {}
+          }
+        }
+
+        // 2. Title extraction
+        const ogTitleMatch =
+          html.match(/<meta[^>]+(?:property|name)=["'](?:og:title|twitter:title)["'][^>]+content=["']([^"']+)["']/i) ||
+          html.match(/<meta[^>]+content=["']([^"']+)["'][^>]+(?:property|name)=["'](?:og:title|twitter:title)["']/i);
+        if (ogTitleMatch?.[1]) {
+          title = cleanTitle(ogTitleMatch[1]);
+        } else {
+          const titleTagMatch = html.match(/<title[^>]*>([^<]+)<\/title>/i);
+          if (titleTagMatch?.[1]) {
+            title = cleanTitle(titleTagMatch[1]);
+          }
+        }
+
+        // Amazon specific title selector fallback
+        if (!title || title.length < 5) {
+          const amzTitleMatch = html.match(/id=["']productTitle["'][^>]*>([^<]+)<\/span>/i);
+          if (amzTitleMatch?.[1]) {
+            title = cleanTitle(amzTitleMatch[1]);
+          }
+        }
+
+        // 3. Description extraction
+        const ogDescMatch =
+          html.match(/<meta[^>]+(?:property|name)=["'](?:og:description|twitter:description|description)["'][^>]+content=["']([^"']+)["']/i) ||
+          html.match(/<meta[^>]+content=["']([^"']+)["'][^>]+(?:property|name)=["'](?:og:description|twitter:description|description)["']/i);
+        if (ogDescMatch?.[1]) {
+          description = decodeHtmlEntities(ogDescMatch[1]);
         }
       }
+    } catch (_) {
+      // Scrape was blocked or timed out
+    }
+
+    // Resolve final fallbacks
+    if (!title && slugTitle) {
+      title = slugTitle;
+    }
+    if (!imageUrl && asinImageUrl) {
+      imageUrl = asinImageUrl;
     }
 
     // Resolve relative image URLs against target URL
     if (imageUrl && !imageUrl.startsWith("http")) {
       try {
         imageUrl = new URL(imageUrl, parsedUrl.origin).toString();
-      } catch {
-        // Ignore invalid URL
-      }
-    }
-
-    // ── 2. Title extraction ───────────────────────────────────────
-    let title = "";
-    const ogTitleMatch = html.match(/<meta[^>]+(?:property|name)=["'](?:og:title|twitter:title)["'][^>]+content=["']([^"']+)["']/i)
-      || html.match(/<meta[^>]+content=["']([^"']+)["'][^>]+(?:property|name)=["'](?:og:title|twitter:title)["']/i);
-    if (ogTitleMatch?.[1]) {
-      title = ogTitleMatch[1];
-    } else {
-      const titleTagMatch = html.match(/<title[^>]*>([^<]+)<\/title>/i);
-      if (titleTagMatch?.[1]) {
-        title = titleTagMatch[1];
-      }
-    }
-    title = decodeHtmlEntities(title);
-
-    // Clean up common suffix noise from titles (e.g. " : Amazon.in: Electronics" or " | Flipkart")
-    title = title
-      .replace(/\s*:\s*Amazon\.[a-z.]+/i, "")
-      .replace(/\s*\|\s*Amazon\.[a-z.]+/i, "")
-      .replace(/\s*\|\s*Flipkart\.[a-z.]+/i, "")
-      .trim();
-
-    // ── 3. Description extraction ─────────────────────────────────
-    let description = "";
-    const ogDescMatch = html.match(/<meta[^>]+(?:property|name)=["'](?:og:description|twitter:description|description)["'][^>]+content=["']([^"']+)["']/i)
-      || html.match(/<meta[^>]+content=["']([^"']+)["'][^>]+(?:property|name)=["'](?:og:description|twitter:description|description)["']/i);
-    if (ogDescMatch?.[1]) {
-      description = decodeHtmlEntities(ogDescMatch[1]);
+      } catch {}
     }
 
     return new Response(
       JSON.stringify({
         success: true,
-        imageUrl: imageUrl || null,
-        title: title || null,
-        description: description || null,
+        title: title || slugTitle || parsedUrl.hostname,
+        description: description || "High performance tech accessory and photo storage gear.",
+        imageUrl: imageUrl || asinImageUrl || null,
+        domain: parsedUrl.hostname,
+        asin: asin || null,
       }),
       {
         status: 200,
@@ -168,7 +233,7 @@ async function handleExtract(request: Request) {
         error: errorMsg,
       }),
       {
-        status: 500,
+        status: 200,
         headers: { "Content-Type": "application/json" },
       }
     );

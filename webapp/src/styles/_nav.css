@@ -10,6 +10,31 @@ html.light .nav-header {
   border-bottom: 1px solid #E5E5E7 !important;
 }
 
+/* Active Nav Link — Purple Highlight (#8170CC) in both themes */
+.nav-link.active,
+.mobile-nav-link.active,
+#desktop-dashboard-link.active,
+#desktop-tool-link.active,
+#desktop-admin-link.active,
+#mobile-dashboard-link.active,
+#mobile-tool-link.active,
+#mobile-admin-link.active {
+  color: #8170CC !important;
+  font-weight: 700 !important;
+}
+
+html.light .nav-link.active,
+html.light .mobile-nav-link.active,
+html.light #desktop-dashboard-link.active,
+html.light #desktop-tool-link.active,
+html.light #desktop-admin-link.active,
+html.light #mobile-dashboard-link.active,
+html.light #mobile-tool-link.active,
+html.light #mobile-admin-link.active {
+  color: #8170CC !important;
+  font-weight: 700 !important;
+}
+
 .btn-solid-dark {
   background-color: #1c1c1e !important;
   color: #ffffff !important;

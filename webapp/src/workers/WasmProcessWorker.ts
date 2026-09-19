@@ -1,5 +1,5 @@
-import { injectWasmExif } from '../services/WasmExifRestorer';
-import { injectMp4CreationTime } from '../services/VideoMetadataRestorer';
+import { injectWasmExif } from '../services/restoration/WasmExifRestorer';
+import { injectMp4CreationTime } from '../services/restoration/VideoMetadataRestorer';
 
 self.onmessage = async (e: MessageEvent) => {
   const { action, payload } = e.data || {};
