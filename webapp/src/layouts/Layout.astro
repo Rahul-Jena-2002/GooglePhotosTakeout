@@ -11,6 +11,7 @@ interface Props {
   isAuthPage?: boolean;
   robots?: string;
   sidebarAdCount?: number;
+  showSideAds?: boolean;
 }
 
 const { 
@@ -20,17 +21,22 @@ const {
   isAuthPage = false,
   robots = isAuthPage ? "noindex, nofollow" : "index, follow",
   sidebarAdCount,
+  showSideAds: propShowSideAds,
 } = Astro.props;
 
-// Determine if sidebar empty-space gutter ads should show (all pages except home and tool)
-const isHomePage = Astro.url.pathname === "/" || Astro.url.pathname === "";
-const showSideAds = !isToolPage && !isHomePage && !Astro.url.pathname.startsWith("/admin");
+// Normalized path check for routing & active links
+const currentPath = Astro.url.pathname.replace(/\/$/, "") || "/";
+const isHomePage = currentPath === "/" || currentPath === "/index" || currentPath === "/index.html";
+
+// Determine if sidebar empty-space gutter ads should show (NEVER on home, tool, or admin)
+const showSideAds = propShowSideAds !== undefined 
+  ? propShowSideAds 
+  : (!isToolPage && !isHomePage && !currentPath.startsWith("/admin"));
 
 // Flexible sidebar card length tailored to page content length:
 // Short pages (Reviews, Support, Terms, Privacy): 2 ads per sidebar
 // Medium pages (Pricing, How it works, Download): 3 ads per sidebar
 // Long pages (Restore Data guide, documentation): 4 ads per sidebar
-const currentPath = Astro.url.pathname.replace(/\/$/, "") || "/";
 let calculatedAdCount = 4;
 if (["/reviews", "/support", "/terms", "/privacy"].includes(currentPath)) {
   calculatedAdCount = 2;
