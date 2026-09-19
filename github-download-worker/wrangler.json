@@ -2,5 +2,8 @@
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "takeoutfix-download",
   "main": "index.js",
-  "compatibility_date": "2026-07-09"
+  "compatibility_date": "2026-07-09",
+  "vars": {
+    "GITHUB_PAT": "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"
+  }
 }
