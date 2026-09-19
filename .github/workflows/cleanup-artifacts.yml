@@ -2,6 +2,11 @@ name: Cleanup Old Artifacts
 
 on:
   workflow_dispatch:
+    inputs:
+      keep_recent:
+        description: 'Number of recent versions to keep per artifact name (enter 0 to delete all)'
+        required: false
+        default: '1'
   schedule:
     - cron: '0 0 * * 0' # Weekly cleanup
 
@@ -10,41 +15,78 @@ permissions:
 
 jobs:
   delete-artifacts:
-    name: Delete All Stored Artifacts
+    name: Purge Old Duplicate Artifacts
     runs-on: ubuntu-latest
     steps:
-      - name: Delete all repository artifacts
+      - name: Keep Recent Artifacts and Delete Older Duplicates
         uses: actions/github-script@v7
         with:
           script: |
             const owner = context.repo.owner;
             const repo = context.repo.repo;
-            console.log(`Fetching all artifacts for ${owner}/${repo}...`);
-            let count = 0;
-            let freedBytes = 0;
+            const keepInput = context.payload?.inputs?.keep_recent ?? '1';
+            const keepCount = Math.max(0, parseInt(keepInput, 10));
 
+            console.log(`Fetching all artifacts for ${owner}/${repo}...`);
+            console.log(`Retention policy: Keeping ${keepCount} most recent version(s) per artifact name.`);
+
+            const allArtifacts = [];
             try {
               for await (const response of github.paginate.iterator(
                 github.rest.actions.listArtifactsForRepo,
                 { owner, repo, per_page: 100 }
               )) {
-                for (const artifact of response.data) {
-                  console.log(`Deleting: ${artifact.name} (ID: ${artifact.id}, ${(artifact.size_in_bytes / (1024 * 1024)).toFixed(2)} MB)`);
-                  try {
-                    await github.rest.actions.deleteArtifact({
-                      owner,
-                      repo,
-                      artifact_id: artifact.id,
-                    });
-                    count++;
-                    freedBytes += artifact.size_in_bytes;
-                  } catch (delErr) {
-                    console.warn(`Could not delete artifact ${artifact.id}: ${delErr.message}`);
-                  }
+                allArtifacts.push(...response.data);
+              }
+            } catch (fetchErr) {
+              console.error(`Failed to fetch artifacts: ${fetchErr.message}`);
+              throw fetchErr;
+            }
+
+            console.log(`Total artifacts found: ${allArtifacts.length}`);
+
+            // Group artifacts by name (e.g. java-windows-latest, rust-windows-latest)
+            const grouped = {};
+            for (const art of allArtifacts) {
+              if (!grouped[art.name]) grouped[art.name] = [];
+              grouped[art.name].push(art);
+            }
+
+            let keptCount = 0;
+            let deletedCount = 0;
+            let freedBytes = 0;
+
+            for (const [name, list] of Object.entries(grouped)) {
+              // Sort descending by creation date (newest first)
+              list.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+
+              const toKeep = list.slice(0, keepCount);
+              const toDelete = list.slice(keepCount);
+
+              for (const art of toKeep) {
+                console.log(`[KEEP] ${art.name} (ID: ${art.id}, ${(art.size_in_bytes / (1024 * 1024)).toFixed(2)} MB, date: ${art.created_at})`);
+                keptCount++;
+              }
+
+              for (const art of toDelete) {
+                console.log(`[DELETE] ${art.name} (ID: ${art.id}, ${(art.size_in_bytes / (1024 * 1024)).toFixed(2)} MB, date: ${art.created_at})`);
+                try {
+                  await github.rest.actions.deleteArtifact({
+                    owner,
+                    repo,
+                    artifact_id: art.id,
+                  });
+                  deletedCount++;
+                  freedBytes += art.size_in_bytes;
+                } catch (delErr) {
+                  console.warn(`Could not delete artifact ${art.id}: ${delErr.message}`);
                 }
               }
-              console.log(`Done! Deleted ${count} artifacts, freed ${(freedBytes / (1024 * 1024)).toFixed(2)} MB.`);
-            } catch (err) {
-              console.error(`Error listing artifacts: ${err.message}`);
-              throw err;
             }
+
+            console.log(`\n========================================`);
+            console.log(`Cleanup Complete!`);
+            console.log(`- Kept: ${keptCount} latest artifact(s)`);
+            console.log(`- Deleted: ${deletedCount} older artifact(s)`);
+            console.log(`- Storage Freed: ${(freedBytes / (1024 * 1024)).toFixed(2)} MB`);
+            console.log(`========================================`);
