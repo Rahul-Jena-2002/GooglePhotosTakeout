@@ -9,19 +9,21 @@ const srcPath = fileURLToPath(new URL('./src', import.meta.url)).replace(/\\/g, 
 // ─── Layer 1: Restoration Engine Obfuscation ──────────────────────────────
 // Targets ONLY chunks that contain restoration service code.
 // Domain-locked to production domain — any tampering or off-domain execution
-// is blocked. RC4 string encryption + self-defending makes reverse engineering
-// extremely difficult without impacting public SEO/marketing pages.
+// is blocked. Base64 string encryption ensures zero UTF-8 decoding issues
+// during client-side hydration. UI and React chunks are explicitly exempted.
 function restorationObfuscatorPlugin() {
   const RESTORATION_PATTERN = /services[\\/]restoration[\\/]/;
+  const UI_OR_REACT_PATTERN = /(?:react-pages|components|contexts|layouts|node_modules)[\\/]/;
 
   return {
     name: 'takeoutfix-restoration-obfuscator',
     apply: 'build', // Only active during production builds, not dev server
     async renderChunk(code, chunk) {
-      // Only obfuscate chunks that contain restoration engine modules
+      // Only obfuscate dedicated restoration engine chunks; NEVER touch UI / React chunks
       const moduleIds = Object.keys(chunk.modules || {});
       const hasRestorationCode = moduleIds.some(id => RESTORATION_PATTERN.test(id));
-      if (!hasRestorationCode) return null;
+      const hasUiCode = moduleIds.some(id => UI_OR_REACT_PATTERN.test(id));
+      if (!hasRestorationCode || hasUiCode) return null;
 
       try {
         const { default: JavaScriptObfuscator } = await import('javascript-obfuscator');
@@ -29,23 +31,19 @@ function restorationObfuscatorPlugin() {
           target: 'browser',
 
           // ── Domain Lock (Layer 1a) ──────────────────────────────────────
-          // Code will silently break if loaded from any other domain
-          domainLock: ['takeoutfix.pages.dev', 'takeoutfix.com', 'www.takeoutfix.com'],
+          // Code will silently break if loaded from any unauthorized domain
+          domainLock: ['takeoutfix.pages.dev', 'takeoutfix.com', 'www.takeoutfix.com', 'localhost', '127.0.0.1'],
           domainLockRedirectUrl: 'about:blank',
 
-          // ── RC4 String Encryption (Layer 1b) ───────────────────────────
-          // All string literals are encrypted with RC4 and decoded at runtime
+          // ── Base64 String Encryption (Layer 1b) ─────────────────────────
+          // Base64 encoding avoids UTF-8 URI malformed issues under Vite minification
           stringArray: true,
-          rotateStringArray: true,
-          shuffleStringArray: true,
-          stringArrayEncoding: ['rc4'],
+          stringArrayRotate: true,
+          stringArrayShuffle: true,
+          stringArrayEncoding: ['base64'],
           stringArrayThreshold: 0.9,
           stringArrayWrappersCount: 2,
           stringArrayWrappersType: 'function',
-
-          // ── Self-Defending (Layer 1c) ───────────────────────────────────
-          // Makes DevTools extremely slow — infinite loop fires when inspector opens
-          selfDefending: true,
 
           // ── Identifier Obfuscation ──────────────────────────────────────
           identifierNamesGenerator: 'hexadecimal',
@@ -114,6 +112,15 @@ export default defineConfig({
     build: {
       sourcemap: false,
       minify: 'esbuild',
+      rollupOptions: {
+        output: {
+          manualChunks(id) {
+            if (id.includes('services/restoration') || id.includes('services\\restoration')) {
+              return 'restoration-engine';
+            }
+          }
+        }
+      }
     },
     resolve: {
       dedupe: ['react', 'react-dom'],
