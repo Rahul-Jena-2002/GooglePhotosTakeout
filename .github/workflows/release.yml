@@ -121,22 +121,10 @@ jobs:
           cp native/icons/icon.png AppDir/usr/share/icons/hicolor/256x256/apps/takeoutfix.png
           cp native/icons/icon.png AppDir/takeoutfix.png
 
-          cat << 'EOF' > AppDir/AppRun
-#!/bin/sh
-HERE="$(dirname "$(readlink -f "${0}")")"
-exec "${HERE}/usr/lib/bin/TakeoutFix-Java" "$@"
-EOF
+          printf '#!/bin/sh\nHERE="$(dirname "$(readlink -f "$0")")"\nexec "$HERE/usr/lib/bin/TakeoutFix-Java" "$@"\n' > AppDir/AppRun
           chmod +x AppDir/AppRun
 
-          cat << 'EOF' > AppDir/takeoutfix.desktop
-[Desktop Entry]
-Name=TakeoutFix-Java
-Exec=TakeoutFix-Java
-Icon=takeoutfix
-Type=Application
-Categories=Utility;
-Comment=Google Takeout Photo Metadata Restorer
-EOF
+          printf '[Desktop Entry]\nName=TakeoutFix-Java\nExec=TakeoutFix-Java\nIcon=takeoutfix\nType=Application\nCategories=Utility;\nComment=Google Takeout Photo Metadata Restorer\n' > AppDir/takeoutfix.desktop
 
           wget -q https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-x86_64.AppImage -O appimagetool
           chmod +x appimagetool
