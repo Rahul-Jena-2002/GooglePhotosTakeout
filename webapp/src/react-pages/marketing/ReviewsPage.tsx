@@ -193,8 +193,8 @@ function ReviewsPageContent() {
         </motion.div>
       )}
 
-      {/* Sponsored Placement Above Reviews */}
-      <div className="w-full mb-8 relative z-10">
+      {/* Sponsored Placement Above Reviews - only shown on mobile/tablet when vertical sidebar ads are hidden */}
+      <div className="xl:hidden w-full mb-8 relative z-10">
         <AdUnit placement="ARTICLE_TOP" type="compact" />
       </div>
 

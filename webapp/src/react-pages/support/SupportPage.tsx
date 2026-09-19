@@ -357,8 +357,8 @@ function SupportPageContent() {
         </h1>
       </motion.div>
 
-      {/* Sponsored Placement Above Support Content */}
-      <div className="w-full mb-8 relative z-10">
+      {/* Sponsored Placement Above Support Content - only shown on mobile/tablet when vertical sidebar ads are hidden */}
+      <div className="xl:hidden w-full mb-8 relative z-10">
         <AdUnit placement="ARTICLE_TOP" type="compact" />
       </div>
 
