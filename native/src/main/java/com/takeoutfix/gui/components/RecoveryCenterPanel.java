@@ -256,7 +256,7 @@ public class RecoveryCenterPanel extends JPanel {
         moduleSelect.addActionListener(e -> {
             String selected = (String) moduleSelect.getSelectedItem();
             if (selected != null) {
-                if (!selected.equals(CARD_DASHBOARD) && !userService.isSignedIn()) {
+                if (!userService.isSignedIn()) {
                     cardLayout.show(centerCards, CARD_AUTH_REQUIRED);
                 } else if (!selected.equals(CARD_RESTORE) && !selected.equals(CARD_DASHBOARD) && !userService.isFeaturesUnlocked()) {
                     cardLayout.show(centerCards, CARD_LOCKED);

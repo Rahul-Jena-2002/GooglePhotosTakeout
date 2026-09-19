@@ -13,7 +13,8 @@ html.dark body {
 html.dark .bg-black,
 html.dark .bg-zinc-950,
 html.dark .bg-\[\#0A0A0A\],
-html.dark .bg-background {
+html.dark .bg-background,
+html.dark #mobile-menu {
   background-color: #000000 !important;
 }
 

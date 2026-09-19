@@ -228,6 +228,58 @@ const canonicalUrl = `https://takeoutfix.pages.dev${Astro.url.pathname.replace(/
       })();
     </script>
 
+    <!-- Suppress React DevTools inspection in production -->
+    <script is:inline>
+      (() => {
+        try {
+          if (typeof window !== "undefined" && typeof window.__REACT_DEVTOOLS_GLOBAL_HOOK__ === "object") {
+            for (const [key, value] of Object.entries(window.__REACT_DEVTOOLS_GLOBAL_HOOK__)) {
+              window.__REACT_DEVTOOLS_GLOBAL_HOOK__[key] = typeof value === "function" ? () => {} : null;
+            }
+          }
+        } catch (_) {}
+      })();
+    </script>
+
+    <!-- Production Anti-Inspection & DevTools Protection -->
+    <script is:inline>
+      (() => {
+        try {
+          const isDev = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+          if (!isDev) {
+            // 1. Disable shortcut keys used to inspect source
+            window.addEventListener('keydown', (e) => {
+              // F12
+              if (e.keyCode === 123) { e.preventDefault(); return false; }
+              // Ctrl+Shift+I, Ctrl+Shift+J, Ctrl+Shift+C
+              if (e.ctrlKey && e.shiftKey && (e.keyCode === 73 || e.keyCode === 74 || e.keyCode === 67)) {
+                e.preventDefault(); return false;
+              }
+              // Ctrl+U (View Source)
+              if (e.ctrlKey && e.keyCode === 85) {
+                e.preventDefault(); return false;
+              }
+            });
+
+            // 2. Disable context menu (Inspect Element) except on inputs
+            window.addEventListener('contextmenu', (e) => {
+              const target = e.target;
+              if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA')) return;
+              e.preventDefault();
+              return false;
+            });
+
+            // 3. Suppress console logging in production to hide internal URLs and parameters
+            if (typeof console !== 'undefined') {
+              console.log = () => {};
+              console.debug = () => {};
+              console.info = () => {};
+            }
+          }
+        } catch (_) {}
+      })();
+    </script>
+
     <!-- Monetization Appearance Initializer (Reads cached opacity and size to prevent layout shifts) -->
     <script is:inline>
       (() => {
@@ -593,7 +645,7 @@ const canonicalUrl = `https://takeoutfix.pages.dev${Astro.url.pathname.replace(/
                 <div class="hidden lg:flex items-center gap-6 mr-2">
                   <a id="desktop-dashboard-link" href="/dashboard" class={`nav-link text-sm font-medium transition-colors duration-150 ${isActive('/dashboard') ? 'active text-[#8170CC] font-bold' : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white'}`} data-astro-prefetch="hover">Dashboard</a>
                   <a id="desktop-admin-link" href="/admin" class={`nav-link text-sm font-medium transition-colors duration-150 hidden ${isActive('/admin') ? 'active text-[#8170CC] font-bold' : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white'}`} data-astro-reload>Admin Center</a>
-                  <a id="desktop-tool-link" href="/tool" class={`nav-link text-sm font-medium transition-colors duration-150 ${isActive('/tool') ? 'active text-[#8170CC] font-bold' : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white'}`} data-astro-prefetch="hover" data-astro-reload>Restore My Data</a>
+                  <a id="desktop-tool-link" href="/tool" class={`nav-link text-sm font-medium transition-colors duration-150 ${isActive('/tool') ? 'active text-[#8170CC] font-bold' : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white'}`} data-astro-reload>Restore My Data</a>
                 </div>
                 <button 
                   id="profile-trigger-btn"
@@ -632,7 +684,7 @@ const canonicalUrl = `https://takeoutfix.pages.dev${Astro.url.pathname.replace(/
         </div>
 
         <!-- Mobile Menu Panel -->
-        <div id="mobile-menu" class="hidden lg:hidden border-t border-zinc-200 dark:border-white/10 bg-white dark:bg-zinc-950/98 backdrop-blur-2xl px-4 pt-3 pb-6 transition-all duration-300 max-h-[85vh] overflow-y-auto shadow-2xl">
+        <div id="mobile-menu" class="hidden lg:hidden border-t border-zinc-200 dark:border-zinc-800 bg-white dark:bg-black backdrop-blur-2xl px-4 pt-3 pb-6 transition-all duration-300 max-h-[85vh] overflow-y-auto shadow-2xl">
           <div class="flex flex-col gap-1.5 font-sans">
             <!-- Navigation Links -->
             <div class="flex items-center justify-between px-2 py-1">
@@ -642,15 +694,6 @@ const canonicalUrl = `https://takeoutfix.pages.dev${Astro.url.pathname.replace(/
             <a href="/" class={`mobile-nav-link py-2 px-3 rounded-lg text-sm font-medium transition-all ${isActive('/') ? 'active text-[#8170CC] font-bold bg-[#8170CC]/10 dark:bg-[#8170CC]/15' : 'text-zinc-700 dark:text-white/70 hover:text-zinc-900 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-white/5'}`} data-astro-prefetch="tap">Home</a>
             <a href="/restore-data" class={`mobile-nav-link py-2 px-3 rounded-lg text-sm font-medium transition-all ${isActive('/restore-data') ? 'active text-[#8170CC] font-bold bg-[#8170CC]/10 dark:bg-[#8170CC]/15' : 'text-zinc-700 dark:text-white/70 hover:text-zinc-900 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-white/5'}`} data-astro-prefetch="tap">Restore Guide</a>
             
-            <!-- Tools: Restore My Data (Always accessible in ham menu) -->
-            <a href="/tool" class={`mobile-nav-link py-2 px-3 rounded-lg text-sm font-semibold transition-all flex items-center justify-between ${isActive('/tool') ? 'active text-[#8170CC] font-bold bg-[#8170CC]/10 dark:bg-[#8170CC]/15' : 'text-zinc-800 dark:text-zinc-200 hover:text-zinc-900 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-white/5'}`} data-astro-prefetch="tap" data-astro-reload>
-              <span class="flex items-center gap-2">
-                <span>🛠️</span>
-                <span>Restore My Data</span>
-              </span>
-              <span class="text-[10px] px-1.5 py-0.5 rounded-full font-bold bg-indigo-500/15 text-indigo-600 dark:text-indigo-400 border border-indigo-500/30">Web Tool</span>
-            </a>
-
             <a href="/download" class={`mobile-nav-link py-2 px-3 rounded-lg text-sm font-medium transition-all ${isActive('/download') ? 'active text-[#8170CC] font-bold bg-[#8170CC]/10 dark:bg-[#8170CC]/15' : 'text-zinc-700 dark:text-white/70 hover:text-zinc-900 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-white/5'}`} data-astro-prefetch="tap">Download Desktop App</a>
             <a href="/reviews" class={`mobile-nav-link py-2 px-3 rounded-lg text-sm font-medium transition-all ${isActive('/reviews') ? 'active text-[#8170CC] font-bold bg-[#8170CC]/10 dark:bg-[#8170CC]/15' : 'text-zinc-700 dark:text-white/70 hover:text-zinc-900 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-white/5'}`} data-astro-prefetch="tap">Reviews</a>
             <a href="/support" class={`mobile-nav-link py-2 px-3 rounded-lg text-sm font-medium transition-all ${isActive('/support') ? 'active text-[#8170CC] font-bold bg-[#8170CC]/10 dark:bg-[#8170CC]/15' : 'text-zinc-700 dark:text-white/70 hover:text-zinc-900 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-white/5'}`} data-astro-prefetch="tap">Support & FAQ</a>
@@ -702,6 +745,14 @@ const canonicalUrl = `https://takeoutfix.pages.dev${Astro.url.pathname.replace(/
                 
                 <a id="mobile-admin-link" href="/admin" class={`mobile-nav-link py-2 px-3 rounded-lg text-sm font-semibold transition-all hidden ${isActive('/admin') ? 'active text-amber-500 font-bold bg-amber-500/10' : 'text-amber-600 dark:text-amber-400 hover:bg-amber-500/10'}`} data-astro-reload>
                   🛡️ Admin Center
+                </a>
+
+                <a id="mobile-tool-link" href="/tool" class={`mobile-nav-link py-2 px-3 rounded-lg text-sm font-semibold transition-all flex items-center justify-between ${isActive('/tool') ? 'active text-[#8170CC] font-bold bg-[#8170CC]/10 dark:bg-[#8170CC]/15' : 'text-zinc-700 dark:text-zinc-200 hover:text-zinc-900 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-zinc-900'}`} data-astro-reload>
+                  <span class="flex items-center gap-2">
+                    <span>🛠️</span>
+                    <span>Restore My Data</span>
+                  </span>
+                  <span class="text-[10px] px-1.5 py-0.5 rounded-full font-bold bg-indigo-500/15 text-indigo-600 dark:text-indigo-400 border border-indigo-500/30">Web Tool</span>
                 </a>
               </div>
             </div>

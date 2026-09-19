@@ -5,9 +5,24 @@
   border-bottom: 1px solid #1f1f22;
 }
 
+#mobile-menu {
+  background-color: #0b0b0c !important;
+  border-top: 1px solid #1f1f22 !important;
+}
+
 html.light .nav-header {
   background-color: #FFFFFF !important;
   border-bottom: 1px solid #E5E5E7 !important;
+}
+
+html.light #mobile-menu {
+  background-color: #FFFFFF !important;
+  border-top: 1px solid #E5E5E7 !important;
+}
+
+html.dark #mobile-menu {
+  background-color: #0b0b0c !important;
+  border-top: 1px solid #1f1f22 !important;
 }
 
 /* Active Nav Link — Purple Highlight (#8170CC) in both themes */
