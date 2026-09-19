@@ -10,6 +10,7 @@ import {
 import type {
   MonetizationPlacement,
   MonetizationConfig,
+  MonetizationStatus,
   AdUnit,
   AffiliateLink,
   AdProvider,
@@ -182,8 +183,8 @@ export default function AdminMonetization() {
   const handleTogglePlacementStatus = async (placementCode: string) => {
     const existing = placements.find((p) => p.code === placementCode);
     if (!existing) return;
-    const nextStatus = existing.status === "ACTIVE" ? "INACTIVE" : "ACTIVE";
-    const updated = { ...existing, status: nextStatus };
+    const nextStatus: MonetizationStatus = existing.status === "ACTIVE" ? "INACTIVE" : "ACTIVE";
+    const updated: MonetizationPlacement = { ...existing, status: nextStatus };
     const existingCfg = configs[placementCode] || {
       id: placementCode,
       placementCode,
