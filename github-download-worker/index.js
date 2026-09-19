@@ -39,22 +39,40 @@ export default {
     };
     if (env.GITHUB_PAT) {
       headers["Authorization"] = `Bearer ${env.GITHUB_PAT}`;
+    } else {
+      return new Response(
+        "Configuration Error: GITHUB_PAT secret is not configured in Cloudflare Workers.\n" +
+        "Because this GitHub repository is private, the worker needs a GitHub Personal Access Token (read-only) to access releases.\n\n" +
+        "To fix: In github-download-worker directory, run: npx wrangler secret put GITHUB_PAT",
+        { status: 500, headers: { "Content-Type": "text/plain" } }
+      );
     }
 
     try {
-      // 1. Fetch latest release details from GitHub API
+      // 1. Fetch latest release details from GitHub API (or fallback to newest release)
+      let releaseData = null;
       const releaseUrl = `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/releases/latest`;
       const releaseResponse = await fetch(releaseUrl, { headers });
 
-      if (!releaseResponse.ok) {
-        const errorText = await releaseResponse.text();
-        return new Response(`Error fetching release from GitHub (${releaseResponse.status}): ${errorText}`, {
-          status: releaseResponse.status,
+      if (releaseResponse.ok) {
+        releaseData = await releaseResponse.json();
+      } else {
+        // Fallback to the first release in the repository list
+        const listResponse = await fetch(`https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/releases?per_page=1`, { headers });
+        if (listResponse.ok) {
+          const list = await listResponse.json();
+          if (Array.isArray(list) && list.length > 0) {
+            releaseData = list[0];
+          }
+        }
+      }
+
+      if (!releaseData) {
+        return new Response(`Error fetching release from GitHub: Repository has no releases or token lacks access.`, {
+          status: 404,
           headers: { "Content-Type": "text/plain" }
         });
       }
-
-      const releaseData = await releaseResponse.json();
       const assets = releaseData.assets || [];
 
       // 2. Find the exact asset matching the requested target file name (no mixing portable and installer)
