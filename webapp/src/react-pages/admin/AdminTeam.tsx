@@ -246,10 +246,11 @@ function InviteModal({ onClose, onSend, existingEmails }: InviteModalProps) {
 interface RoleDropdownProps {
   admin: AdminData
   currentUserUid: string
+  isRootAdmin: boolean
   onRoleChange: (admin: AdminData, newRole: AdminRole) => Promise<void>
 }
 
-function RoleDropdown({ admin, currentUserUid, onRoleChange }: RoleDropdownProps) {
+function RoleDropdown({ admin, currentUserUid, isRootAdmin, onRoleChange }: RoleDropdownProps) {
   const [open, setOpen] = useState(false)
   const [saving, setSaving] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
@@ -263,9 +264,9 @@ function RoleDropdown({ admin, currentUserUid, onRoleChange }: RoleDropdownProps
   }, [])
 
   const isSelf = admin.uid === currentUserUid
-  const isSuper = admin.role === "SUPER_ADMIN"
+  const isProtectedRoot = isSuperAdminEmail(admin.email)
 
-  if (isSelf || isSuper) {
+  if (isSelf || (isProtectedRoot && !isRootAdmin)) {
     return (
       <span className={`inline-flex items-center px-2 py-1 rounded-md text-xs font-bold uppercase border ${ROLE_COLORS[admin.role]}`}>
         {admin.role.replace("_", " ")}
@@ -287,7 +288,7 @@ function RoleDropdown({ admin, currentUserUid, onRoleChange }: RoleDropdownProps
 
       {open && (
         <div className="absolute top-full mt-1.5 left-0 z-20 bg-zinc-900 border border-zinc-700 rounded-xl shadow-2xl overflow-hidden w-44 py-1">
-          {ALL_ROLES.filter(r => r !== 'SUPER_ADMIN').map(r => (
+          {ALL_ROLES.map(r => (
             <button
               key={r}
               onClick={async () => {
@@ -317,7 +318,8 @@ export default function AdminTeam() {
   const [loadingInvites, setLoadingInvites] = useState(true)
   const [showInviteModal, setShowInviteModal] = useState(false)
 
-  const isSuperAdmin = adminData?.role === "SUPER_ADMIN" || isSuperAdminEmail(user?.email || adminData?.email)
+  const isRootAdmin = isSuperAdminEmail(user?.email || adminData?.email)
+  const isSuperAdmin = adminData?.role === "SUPER_ADMIN" || isRootAdmin
   const addToast = useToastStore.getState().addToast
 
   // ── Realtime listeners ────────────────────────────────────────────────────
@@ -352,13 +354,14 @@ export default function AdminTeam() {
     if (admin.uid === user?.uid) {
       addToast("You cannot remove yourself.", "error"); return
     }
-    if (admin.role === "SUPER_ADMIN") {
-      addToast("You cannot remove a Super Admin.", "error"); return
+    // Prevent anyone other than Rahul from removing Rahul:
+    if (isSuperAdminEmail(admin.email) && !isRootAdmin) {
+      addToast("Primary Super Admin (Rahul) cannot be removed.", "error"); return
     }
     if (!confirm(`Remove ${admin.displayName} from the admin team?`)) return
     try {
       await deleteDoc(doc(db, "admins", admin.uid))
-      await updateDoc(doc(db, "users", admin.uid), { isAdmin: false })
+      await updateDoc(doc(db, "users", admin.uid), { isAdmin: false }).catch(console.warn)
       addToast(`${admin.displayName} removed from the team.`, "success")
     } catch (e) {
       console.error(e)
@@ -367,6 +370,10 @@ export default function AdminTeam() {
   }
 
   const handleRoleChange = async (admin: AdminData, newRole: AdminRole) => {
+    // Prevent anyone other than Rahul from modifying Rahul's role:
+    if (isSuperAdminEmail(admin.email) && !isRootAdmin) {
+      addToast("Primary Super Admin's role cannot be modified.", "error"); return
+    }
     try {
       await updateDoc(doc(db, "admins", admin.uid), { role: newRole })
       addToast(`${admin.displayName}'s role updated to ${newRole.replace("_", " ")}.`, "success")
@@ -525,6 +532,7 @@ export default function AdminTeam() {
                           <RoleDropdown
                             admin={a}
                             currentUserUid={user?.uid ?? ""}
+                            isRootAdmin={isRootAdmin}
                             onRoleChange={handleRoleChange}
                           />
                         ) : (
@@ -550,7 +558,7 @@ export default function AdminTeam() {
                       </td>
                       {isSuperAdmin && (
                         <td className="px-6 py-4 text-right">
-                          {a.uid !== user?.uid && a.role !== "SUPER_ADMIN" && (
+                          {a.uid !== user?.uid && (!isSuperAdminEmail(a.email) || isRootAdmin) && (
                             <button
                               onClick={() => handleRemove(a)}
                               className="text-zinc-400 hover:text-red-500 transition-colors p-1.5 rounded-lg hover:bg-red-50 dark:hover:bg-red-500/10 cursor-pointer"

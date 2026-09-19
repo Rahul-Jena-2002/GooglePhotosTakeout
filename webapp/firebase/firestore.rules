@@ -51,8 +51,14 @@ service cloud.firestore {
     // ─── Admins Collection ───────────────────────────────────────────────────────
     match /admins/{adminId} {
       allow read: if request.auth != null && (request.auth.uid == adminId || isAdmin());
-      allow write: if isSuperAdmin();
-      allow update: if isAdmin();
+      // rahuljena.dev@gmail.com can create, update, delete any admin (including other super admins)
+      // other super admins can remove/update admins, but CANNOT delete or modify rahuljena.dev@gmail.com
+      allow delete: if isSuperAdminEmail() || (
+        isSuperAdmin() && resource.data.email != 'rahuljena.dev@gmail.com'
+      );
+      allow update: if isSuperAdminEmail() || (
+        isAdmin() && resource.data.email != 'rahuljena.dev@gmail.com'
+      );
       // Allow invited team member to claim their admin role if a matching invite exists
       allow create: if isSuperAdmin() || (
         request.auth != null

@@ -32,6 +32,7 @@ export const syncUserUI = () => {
   const mobileDashboardLink = document.getElementById("mobile-dashboard-link");
   const desktopAdminLink = document.getElementById("desktop-admin-link");
   const mobileAdminLink = document.getElementById("mobile-admin-link");
+  const dropdownAdminLink = document.getElementById("dropdown-admin-link");
   
   const notificationContainer = document.getElementById("notification-container");
   const desktopMarketingLinks = document.getElementById("desktop-marketing-links");
@@ -147,20 +148,27 @@ export const syncUserUI = () => {
       }
       
       const adminDataCached = typeof localStorage !== 'undefined' && localStorage.getItem("takeoutfix_admin_data");
-      const isAdmin = Boolean(cachedUser.isAdmin === true || cachedUser.role || adminDataCached || isSuperAdminEmail(cachedUser.email));
+      let cachedAdminRole = null;
+      if (adminDataCached) {
+        try {
+          cachedAdminRole = JSON.parse(adminDataCached).role;
+        } catch (_) {}
+      }
+      const isAdmin = Boolean(cachedUser.isAdmin === true || cachedUser.role || cachedAdminRole || adminDataCached || isSuperAdminEmail(cachedUser.email));
       if (isAdmin) {
         desktopDashboardLink?.classList.remove("hidden");
         mobileDashboardLink?.classList.remove("hidden");
         desktopAdminLink?.classList.remove("hidden");
         mobileAdminLink?.classList.remove("hidden");
+        dropdownAdminLink?.classList.remove("hidden");
         try {
-          const isSuper = isSuperAdminEmail(cachedUser.email);
+          const isSuper = isSuperAdminEmail(cachedUser.email) || cachedUser.role === "SUPER_ADMIN" || cachedAdminRole === "SUPER_ADMIN";
           sessionStorage.setItem("takeoutfix_admin_session", JSON.stringify({
             uid: cachedUser.uid || auth.currentUser?.uid || "",
             email: cachedUser.email || auth.currentUser?.email || "",
             displayName: cachedUser.displayName || auth.currentUser?.displayName || "Admin",
             photoURL: cachedUser.photoURL || auth.currentUser?.photoURL || "",
-            role: isSuper ? "SUPER_ADMIN" : (cachedUser.role || "ADMIN"),
+            role: isSuper ? "SUPER_ADMIN" : (cachedUser.role || cachedAdminRole || "ADMIN"),
             isAdmin: true,
             timestamp: Date.now()
           }));
@@ -171,6 +179,7 @@ export const syncUserUI = () => {
         mobileDashboardLink?.classList.remove("hidden");
         desktopAdminLink?.classList.add("hidden");
         mobileAdminLink?.classList.add("hidden");
+        dropdownAdminLink?.classList.add("hidden");
       }
       if (mobileToolLink) {
         mobileToolLink.href = "/tool";
@@ -225,17 +234,20 @@ export const setupAuthListeners = () => {
       bindNotificationFetch(user.uid, user.email || undefined);
 
       // Lazy load firestore
-      import("firebase/firestore").then(({ doc, onSnapshot }) => {
+      import("firebase/firestore").then(({ doc, onSnapshot, getDoc }) => {
         if (!auth.currentUser) return; 
 
+        // 1. Listen to user document
         unsubUserDoc = onSnapshot(doc(db, "users", user.uid), (snap) => {
           if (snap.exists()) {
             const data = snap.data();
+            const saved = JSON.parse(localStorage.getItem("takeoutfix_user_data") || "{}");
             const fullData = {
               uid: user.uid,
               email: user.email,
               displayName: user.displayName,
               photoURL: user.photoURL,
+              ...saved,
               ...data
             };
             localStorage.setItem("takeoutfix_user_data", JSON.stringify(fullData));
@@ -245,6 +257,19 @@ export const setupAuthListeners = () => {
             syncUserUI();
           }
         });
+
+        // 2. ALSO query admins doc directly so admin navbar enables instantly!
+        getDoc(doc(db, "admins", user.uid)).then((adminSnap) => {
+          if (adminSnap.exists()) {
+            const adminDoc = adminSnap.data();
+            localStorage.setItem("takeoutfix_admin_data", JSON.stringify(adminDoc));
+            const currentCached = JSON.parse(localStorage.getItem("takeoutfix_user_data") || "{}");
+            currentCached.isAdmin = true;
+            currentCached.role = adminDoc.role || "ADMIN";
+            localStorage.setItem("takeoutfix_user_data", JSON.stringify(currentCached));
+            syncUserUI();
+          }
+        }).catch(console.warn);
       }).catch(err => {
         console.error("Failed to load firestore dynamically:", err);
       });

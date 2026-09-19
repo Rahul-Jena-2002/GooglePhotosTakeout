@@ -46,7 +46,7 @@ const AdminSkeleton = () => (
 // Denied" panel instead of the actual page.  Falls through while auth is still
 // loading so we don't flash the error during the initial Firestore fetch.
 // ---------------------------------------------------------------------------
-type AdminRoleType = "SUPER_ADMIN" | "ADMIN" | "SUPPORT" | "MODERATOR"
+type AdminRoleType = "SUPER_ADMIN" | "ADMIN" | "SUPPORT" | "MODERATOR" | "DEVELOPER"
 
 function RequireRole({
   allow,
@@ -86,12 +86,13 @@ function RequireRole({
 }
 
 function RequireDeveloper({ children }: { children: React.ReactNode }) {
-  const { user, loading } = useAuth()
+  const { user, adminData, loading } = useAuth()
   const isDev = import.meta.env.DEV
 
   if (loading) return null
 
-  const isDeveloper = checkSuperAdminEmail(user?.email)
+  const isSuper = checkSuperAdminEmail(user?.email || adminData?.email)
+  const isDeveloper = adminData?.role === "DEVELOPER" || adminData?.role === "SUPER_ADMIN" || isSuper || isDev
 
   if (!isDeveloper) {
     return (
@@ -101,7 +102,7 @@ function RequireDeveloper({ children }: { children: React.ReactNode }) {
         </div>
         <h2 className="text-lg font-bold text-white mb-2">Developer Clearance Required</h2>
         <p className="text-zinc-400 text-sm max-w-xs leading-relaxed">
-          This panel is strictly restricted to developer profile <span className="text-zinc-200 font-semibold font-mono text-xs">rahuljena.dev@gmail.com</span>.
+          This panel is restricted to Developer or Super Admin accounts.
         </p>
       </div>
     )
@@ -123,7 +124,13 @@ function AdminRouterContent() {
             {/* ── Open to all admins ─────────────────────────────────────────── */}
             <Route index element={<AdminDashboard />} />
             <Route path="tool"  element={<ToolWorkspaceContent />} />
-            <Route path="team"  element={<AdminTeam />} />
+            
+            {/* ── SUPER_ADMIN only: Admin Team ──────────────────────────────── */}
+            <Route path="team"  element={
+              <RequireRole allow={["SUPER_ADMIN"]}>
+                <AdminTeam />
+              </RequireRole>
+            } />
             <Route path="dev" element={
               <RequireDeveloper>
                 <AdminDev />
@@ -170,9 +177,9 @@ function AdminRouterContent() {
               </RequireRole>
             } />
 
-            {/* ── Open to all admin team members ─────────────────────────── */}
+            {/* ── Open to SUPPORT + ADMIN + SUPER_ADMIN ─────────────────────────── */}
             <Route path="support" element={
-              <RequireRole allow={["SUPER_ADMIN", "ADMIN", "SUPPORT", "MODERATOR"]}>
+              <RequireRole allow={["SUPER_ADMIN", "ADMIN", "SUPPORT"]}>
                 <AdminSupport />
               </RequireRole>
             } />

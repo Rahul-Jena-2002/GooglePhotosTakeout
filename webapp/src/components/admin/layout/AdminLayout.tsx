@@ -82,7 +82,7 @@ export default function AdminLayout() {
   const isSupportOrAbove = ["SUPER_ADMIN", "ADMIN", "SUPPORT"].includes(role) || isSuperAdminEmail
   const isModeratorOrAbove = ["SUPER_ADMIN", "ADMIN", "MODERATOR"].includes(role) || isSuperAdminEmail
   const isDev = import.meta.env.DEV
-  const isDeveloper = isSuperAdminEmail || isDev
+  const isDeveloper = role === "DEVELOPER" || isSuperAdmin || isDev
 
   const navGroups = [
     {
@@ -91,7 +91,7 @@ export default function AdminLayout() {
         { label: "Dashboard", path: "/admin", icon: LayoutDashboard, show: true },
         { label: "Tool Center", path: "/admin/tool", icon: ActivitySquare, show: true },
         { label: "Users", path: "/admin/users", icon: Users, show: isAdminOrAbove },
-        { label: "Tickets", path: "/admin/support", icon: LifeBuoy, show: true },
+        { label: "Tickets", path: "/admin/support", icon: LifeBuoy, show: isSupportOrAbove },
         { label: "Payments", path: "/admin/payments", icon: CreditCard, show: isAdminOrAbove },
         { label: "Product Catalogue", path: "/admin/catalog", icon: Package, show: isAdminOrAbove },
         { label: "Monetization", path: "/admin/monetization", icon: Coins, show: isAdminOrAbove },
@@ -107,7 +107,7 @@ export default function AdminLayout() {
     {
       label: "System",
       items: [
-        { label: "Admin Team", path: "/admin/team", icon: Users2, show: true },
+        { label: "Admin Team", path: "/admin/team", icon: Users2, show: isSuperAdmin },
         { label: "Audit Logs", path: "/admin/audit", icon: ShieldCheck, show: isAdminOrAbove },
         { label: "Keys & Secrets", path: "/admin/keys", icon: Key, show: isSuperAdmin || isDev },
         { label: "Payment Gateway", path: "/admin/payment-gateway", icon: CreditCard, show: isSuperAdmin || isDev },
