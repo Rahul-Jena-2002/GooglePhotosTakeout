@@ -172,18 +172,56 @@ jobs:
         working-directory: webapp
         run: |
           npx @tauri-apps/cli android init --ci || true
+
+          # Inject custom TakeoutFix brand icons into Android project
+          if [ -d "src-tauri/icons/android" ]; then
+            echo "Injecting custom TakeoutFix brand icons into Android res..."
+            mkdir -p src-tauri/gen/android/app/src/main/res
+            cp -rf src-tauri/icons/android/* src-tauri/gen/android/app/src/main/res/ 2>/dev/null || true
+          fi
+          npx @tauri-apps/cli icon src-tauri/icons/icon.png || true
+
+          # Build Android APK
           npx @tauri-apps/cli android build --apk --target aarch64 --ci || npx @tauri-apps/cli android build --apk --target aarch64 --debug --ci
 
       - name: Prepare APK Binary
         run: |
-          APK_PATH=$(find webapp/src-tauri/gen/android -name "*.apk" | head -n 1)
-          if [ -n "$APK_PATH" ]; then
-            cp "$APK_PATH" ./TakeoutFix.apk
-            echo "Prepared: TakeoutFix.apk from $APK_PATH"
-          else
-            echo "No APK found in build outputs."
+          BUILD_TOOLS_DIR=$(find /usr/local/lib/android/sdk/build-tools -maxdepth 1 -mindepth 1 2>/dev/null | sort -V | tail -n 1)
+
+          # Locate built APK, prioritizing signed / debug APK over unsigned
+          APK_PATH=$(find webapp/src-tauri/gen/android -name "*debug.apk" -o -name "*signed.apk" | head -n 1)
+          if [ -z "$APK_PATH" ]; then
+            APK_PATH=$(find webapp/src-tauri/gen/android -name "*.apk" ! -name "*-unsigned.apk" | head -n 1)
+          fi
+          if [ -z "$APK_PATH" ]; then
+            APK_PATH=$(find webapp/src-tauri/gen/android -name "*.apk" | head -n 1)
+          fi
+
+          if [ -z "$APK_PATH" ]; then
+            echo "Error: No APK found in build outputs."
             exit 1
           fi
+
+          echo "Found candidate APK: $APK_PATH"
+
+          # Verify or sign with apksigner to guarantee Android OS accepts the package
+          if [ -n "$BUILD_TOOLS_DIR" ] && [ -f "$BUILD_TOOLS_DIR/apksigner" ]; then
+            echo "Testing APK signature with apksigner..."
+            if "$BUILD_TOOLS_DIR/apksigner" verify "$APK_PATH" 2>/dev/null; then
+              echo "APK is already signed and verified!"
+              cp "$APK_PATH" ./TakeoutFix.apk
+            else
+              echo "APK is unsigned. Creating release keystore and signing with v1/v2/v3 schemes..."
+              keytool -genkeypair -v -keystore /tmp/takeoutfix.keystore -alias takeoutfix -keyalg RSA -keysize 2048 -validity 10000 -storepass takeoutfix123 -keypass takeoutfix123 -dname "CN=TakeoutFix, OU=Mobile, O=TakeoutFix, C=US"
+              "$BUILD_TOOLS_DIR/zipalign" -p -f -v 4 "$APK_PATH" ./aligned.apk
+              "$BUILD_TOOLS_DIR/apksigner" sign --ks /tmp/takeoutfix.keystore --ks-pass pass:takeoutfix123 --key-pass pass:takeoutfix123 --ks-key-alias takeoutfix --out ./TakeoutFix.apk ./aligned.apk
+              "$BUILD_TOOLS_DIR/apksigner" verify --verbose ./TakeoutFix.apk
+            fi
+          else
+            cp "$APK_PATH" ./TakeoutFix.apk
+          fi
+
+          echo "Prepared TakeoutFix.apk successfully ($(ls -lh ./TakeoutFix.apk | awk '{print $5}'))"
 
       - name: Upload Android Artifact
         uses: actions/upload-artifact@v4
