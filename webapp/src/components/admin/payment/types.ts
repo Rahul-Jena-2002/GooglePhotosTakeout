@@ -157,11 +157,9 @@ export const COUPON_REGIONS = [
 
 export const COUPON_PLANS = ['recovery_pass', 'pro', 'super']
 
+import { getApiUrl } from '../../../lib/api/apiUrl'
+
 export function resolveSyncUrl(endpoint: string, _storedUrl?: string): string {
-  const hostname = window.location.hostname
-  const isCloudflare = hostname.endsWith('.pages.dev') || hostname.endsWith('takeoutfix.com') || (hostname === 'localhost' && window.location.port === '4321')
-  if (isCloudflare) {
-    return `/api/${endpoint}`
-  }
-  return `https://takeoutfix.pages.dev/api/${endpoint}`
+  return getApiUrl(`api/${endpoint}`)
 }
+

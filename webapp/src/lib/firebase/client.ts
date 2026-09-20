@@ -35,15 +35,35 @@ export const googleProvider = typeof window !== 'undefined' ? new GoogleAuthProv
 export { signInWithPopup, signInWithRedirect, signOut, onAuthStateChanged };
 export type { User };
 
+import { initializeFirestore, getFirestore } from 'firebase/firestore';
+
 let dbInstance: any = null;
+if (typeof window !== 'undefined') {
+  try {
+    dbInstance = initializeFirestore(app, {
+      experimentalAutoDetectLongPolling: true,
+    });
+  } catch (e) {
+    try {
+      dbInstance = getFirestore(app);
+    } catch (err) {
+      console.warn("Failed to initialize Firestore in browser/webview environment:", err);
+    }
+  }
+}
+
+export const db = dbInstance;
 
 export async function getDb() {
   if (!dbInstance) {
-    const { getFirestore } = await import('firebase/firestore');
-    dbInstance = getFirestore(app);
+    try {
+      dbInstance = initializeFirestore(app, {
+        experimentalAutoDetectLongPolling: true,
+      });
+    } catch {
+      dbInstance = getFirestore(app);
+    }
   }
   return dbInstance;
 }
 
-export let db: any = null;
-getDb().then(instance => { db = instance; });

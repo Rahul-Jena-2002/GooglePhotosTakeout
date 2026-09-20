@@ -11,6 +11,7 @@ import { motion, AnimatePresence } from "framer-motion"
 import { ToastContainer } from "../../components/ui/toast"
 import { notifyAdminsOnTicketRaised, notifyAdminsOnTicketReply, notifyAdminsOnFeedback } from "../../lib/ticketNotify"
 import AdUnit from "../../components/monetization/AdUnit"
+import { apiClient } from "../../lib/api/apiClient"
 
 interface SupportFaq {
   id: string;
@@ -283,18 +284,14 @@ function SupportPageContent() {
           })
         } else {
           // Anonymous: log to dev endpoint so feedback is never lost
-          await fetch('/api/dev-log', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              type: 'FEEDBACK',
-              message: {
-                rating: feedbackRating,
-                category: feedbackCategory,
-                message: feedbackMessage.trim(),
-                createdAt: Date.now()
-              }
-            })
+          await apiClient.post('/api/dev-log', {
+            type: 'FEEDBACK',
+            message: {
+              rating: feedbackRating,
+              category: feedbackCategory,
+              message: feedbackMessage.trim(),
+              createdAt: Date.now()
+            }
           }).catch(() => {})
         }
       }

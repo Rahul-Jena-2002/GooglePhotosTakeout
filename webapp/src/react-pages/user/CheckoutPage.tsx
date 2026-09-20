@@ -8,10 +8,11 @@ import { Card } from "../../components/ui/card"
 import { ShieldCheck, Lock, CreditCard, ChevronRight, AlertCircle, Sparkles, CheckCircle2 } from "lucide-react"
 import BrandLogo from "../../components/common/BrandLogo"
 import { useState, useEffect } from "react"
+import { getApiUrl } from "../../lib/api/apiUrl"
+import { apiClient } from "../../lib/api/apiClient"
 
-function resolveBackendUrl(endpoint: string, storedUrl: string): string {
-  // Always route through same-origin Astro proxy API endpoints to prevent CORS issues
-  return `/api/${endpoint}`;
+function resolveBackendUrl(endpoint: string, _storedUrl?: string): string {
+  return getApiUrl(`api/${endpoint}`);
 }
 
 interface PlanDetails {
@@ -179,22 +180,18 @@ function CheckoutPageContent() {
         try {
           const idToken = await user.getIdToken();
           const cfUrl = resolveBackendUrl("create-dodo-upgrade-discount", cloudFunctionUrl);
-          const finalUrl = cfUrl;
           
-          const response = await fetch(finalUrl, {
-            method: "POST",
+          const response = await apiClient.post(cfUrl, {
+            targetPlan: planKey,
+            region: normalizedRegion
+          }, {
             headers: {
-              "Content-Type": "application/json",
               "Authorization": `Bearer ${idToken}`
-            },
-            body: JSON.stringify({
-              targetPlan: planKey,
-              region: normalizedRegion
-            })
+            }
           });
           
-          const data = await response.json();
-          if (response.ok && data.couponCode) {
+          const data = response.data;
+          if (data && data.couponCode) {
             setDetectedCoupon(data.couponCode);
             setCouponDetails({
               couponCode: data.couponCode,
@@ -202,7 +199,7 @@ function CheckoutPageContent() {
               discountValue: parseFloat(data.discountPct || "50")
             });
           } else {
-            console.warn("Failed to generate dynamic upgrade coupon:", data.error || "Unknown error");
+            console.warn("Failed to generate dynamic upgrade coupon:", data?.error || "Unknown error");
           }
         } catch (err) {
           console.error("Failed to generate upgrade coupon:", err);
@@ -444,18 +441,19 @@ function CheckoutPageContent() {
       } else {
         try {
           const cfUrl = resolveBackendUrl("create-stripe-session", cloudFunctionUrl);
-          const finalUrl = cfUrl;
-          const response = await fetch(finalUrl, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ priceId: productId, userId: user.uid, email: user.email || "", returnUrl, cancelUrl })
-          })
-          const data = await response.json()
-          if (response.ok && data.url) {
+          const response = await apiClient.post(cfUrl, {
+            priceId: productId,
+            userId: user.uid,
+            email: user.email || "",
+            returnUrl,
+            cancelUrl
+          });
+          const data = response.data;
+          if (data && data.url) {
             setCheckoutUrl(data.url)
             setIsProcessing(false)
           } else {
-            throw new Error(data.error || "Failed to generate Stripe checkout session.")
+            throw new Error(data?.error || "Failed to generate Stripe checkout session.")
           }
         } catch (err: any) {
           setError(err.message || "Stripe initialization failed.")

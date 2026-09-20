@@ -14,6 +14,8 @@ import { Input } from "../../components/ui/input"
 
 import { REGIONS_CONFIG, PLANS_CONFIG, REGION_DOC_IDS } from "../../lib/dodo/constants"
 import type { PlanCode, RegionCode } from "../../lib/dodo/types"
+import { getApiUrl } from "../../lib/api/apiUrl"
+import { apiClient } from "../../lib/api/apiClient"
 
 const DODO_REGIONS = Object.values(REGIONS_CONFIG).map(r => ({
   key: r.key,
@@ -48,12 +50,7 @@ const PLAN_META: Record<PlanKey, { name: string; desc: string; badge: string; ba
 }
 
 function resolveSyncUrl(endpoint: string, _storedUrl?: string): string {
-  const hostname = window.location.hostname;
-  const isCloudflare = hostname.endsWith('.pages.dev') || hostname.endsWith('takeoutfix.com') || (hostname === 'localhost' && window.location.port === '4321');
-  if (isCloudflare) {
-    return `/api/${endpoint}`;
-  }
-  return `https://takeoutfix.pages.dev/api/${endpoint}`;
+  return getApiUrl(`api/${endpoint}`);
 }
 
 export default function AdminProductCatalogue() {
@@ -151,28 +148,20 @@ export default function AdminProductCatalogue() {
       }
 
       const idToken = user ? await user.getIdToken() : ''
-      const resp = await fetch(cfUrl, {
-        method: 'POST',
+      const resp = await apiClient.post(cfUrl, {
+        action: 'fetch_products',
+        dodoApiKey: dodoKeyToSend,
+        testMode: dodoTestMode
+      }, {
         headers: {
-          'Content-Type': 'application/json',
           'x-api-key': gatewayApiKey,
           'Authorization': `Bearer ${idToken}`
-        },
-        body: JSON.stringify({
-          action: 'fetch_products',
-          dodoApiKey: dodoKeyToSend,
-          testMode: dodoTestMode
-        })
-      })
+        }
+      });
+      const data = resp.data || {};
 
-      const text = await resp.text()
-      let data: any = {}
-      try { data = text ? JSON.parse(text) : {} } catch (_) {
-        throw new Error(`Server returned invalid response: ${text.substring(0, 150)}`)
-      }
-
-      if (!resp.ok || !data.success) {
-        throw new Error(data.error || `Failed with status ${resp.status}`)
+      if (!data.success) {
+        throw new Error(data.error || 'Failed to fetch products')
       }
 
       const mergedMap: Record<string, Record<string, string>> = JSON.parse(JSON.stringify(dodoProducts || {}))

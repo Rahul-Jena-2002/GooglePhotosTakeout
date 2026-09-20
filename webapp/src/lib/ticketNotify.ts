@@ -1,6 +1,7 @@
 import { db } from "../firebase";
 import { collection, addDoc, getDocs, doc, getDoc, serverTimestamp } from "firebase/firestore";
 import { getSuperAdminEmail } from "./adminAuth";
+import { apiClient } from "./api/apiClient";
 
 export const SUPPORT_EMAIL = "takeoutfix.support@gmail.com";
 
@@ -231,19 +232,15 @@ export async function notifyAdminsOnTicketRaised(
 
   // Also notify server endpoint if running
   try {
-    if (typeof window !== "undefined" && window.fetch) {
-      fetch("/api/send-ticket-email", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          ticketId,
-          userEmail,
-          userName,
-          subject,
-          message,
-          recipients,
-          fromEmail: SUPPORT_EMAIL,
-        }),
+    if (typeof window !== "undefined") {
+      apiClient.post("/api/send-ticket-email", {
+        ticketId,
+        userEmail,
+        userName,
+        subject,
+        message,
+        recipients,
+        fromEmail: SUPPORT_EMAIL,
       }).catch(() => {
         // Non-blocking server dispatch fallback
       });

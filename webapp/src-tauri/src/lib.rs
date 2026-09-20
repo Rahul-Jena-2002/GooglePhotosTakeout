@@ -3,32 +3,9 @@ use std::io::{Read, Write};
 use std::net::TcpListener;
 use std::path::Path;
 use std::time::Duration;
+use tauri_plugin_opener::OpenerExt;
 #[cfg(desktop)]
 use tauri::Manager;
-
-fn open_system_browser(_url: &str) {
-    #[cfg(target_os = "windows")]
-    {
-        // Standard Windows command used by VS Code / JetBrains IDEs to open default browser
-        if std::process::Command::new("cmd")
-            .args(["/c", "start", "", _url])
-            .spawn()
-            .is_err()
-        {
-            let _ = std::process::Command::new("rundll32")
-                .args(["url.dll,FileProtocolHandler", _url])
-                .spawn();
-        }
-    }
-    #[cfg(target_os = "macos")]
-    {
-        let _ = std::process::Command::new("open").arg(_url).spawn();
-    }
-    #[cfg(target_os = "linux")]
-    {
-        let _ = std::process::Command::new("xdg-open").arg(_url).spawn();
-    }
-}
 
 fn urlencoding_decode(val: &str) -> String {
     let mut out = String::new();
@@ -62,7 +39,10 @@ async fn start_browser_login(_app_handle: tauri::AppHandle) -> Result<serde_json
         "https://takeoutfix.pages.dev/auth/desktop?port={}&desktop=true&source=tauri",
         port
     );
-    open_system_browser(&auth_url);
+    _app_handle
+        .opener()
+        .open_url(&auth_url, None::<&str>)
+        .map_err(|e| format!("Failed to open browser: {}", e))?;
 
     let result = tauri::async_runtime::spawn_blocking(move || -> Result<serde_json::Value, String> {
         let deadline = std::time::Instant::now() + Duration::from_secs(120);
@@ -190,6 +170,7 @@ fn sync_catalog_timestamps(items: Vec<(String, i64)>) -> Result<usize, String> {
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
   tauri::Builder::default()
+    .plugin(tauri_plugin_opener::init())
     .setup(|app| {
       if cfg!(debug_assertions) {
         app.handle().plugin(

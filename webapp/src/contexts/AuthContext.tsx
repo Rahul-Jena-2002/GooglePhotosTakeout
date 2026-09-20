@@ -5,6 +5,7 @@ import { auth, db } from '../firebase';
 import { indexedDbService } from '../lib/indexedDbService';
 import { useToastStore } from '../store/useToastStore';
 import { REGION_PRICING_CONFIGS, formatPrice, PLAN_PRICES, getRegionFromCountry } from '../lib/planPrices';
+import { apiClient } from '../lib/api/apiClient';
 
 export type PlanType = 'free' | 'recovery_pass' | 'pro' | 'super';
 export type AdminRole = 'SUPER_ADMIN' | 'ADMIN' | 'SUPPORT' | 'MODERATOR' | 'DEVELOPER';
@@ -173,6 +174,7 @@ export interface AdminData {
   status: 'online' | 'idle' | 'offline';
   lastSeen: number;
   createdAt: number;
+  inviteId?: string;
 }
 
 export interface InviteFacet {
@@ -1230,7 +1232,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
               });
               
               setAdminData(adminRecord);
-              setUserData(prev => prev ? ({ ...prev, isAdmin: true }) : prev);
+              if (userData) setUserData({ ...userData, isAdmin: true });
 
               // 4. Log to admin_activity
               try {
@@ -1330,6 +1332,33 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           setLoading(false);
         });
       } else {
+        const isTauriEnv = typeof window !== "undefined" && (
+          "__TAURI__" in window ||
+          "__TAURI_INTERNALS__" in window ||
+          "isTauri" in window ||
+          navigator.userAgent.includes("TakeoutFix-Desktop")
+        );
+        const cachedDesktopUser = typeof window !== "undefined" ? localStorage.getItem("takeoutfix_user_data") : null;
+        if (isTauriEnv && cachedDesktopUser) {
+          try {
+            const parsed = JSON.parse(cachedDesktopUser);
+            if (parsed && (parsed.uid || parsed.email)) {
+              const cleanUid = parsed.uid || parsed.googleId || parsed.email;
+              const desktopUserObj = {
+                uid: cleanUid,
+                email: parsed.email,
+                displayName: parsed.displayName || parsed.name || "User",
+                photoURL: parsed.photoURL || null,
+                getIdToken: async () => parsed.token || "",
+              };
+              setUser(desktopUserObj as any);
+              setUserData(parsed);
+              setLoading(false);
+              return;
+            }
+          } catch (_) {}
+        }
+
         try {
           localStorage.removeItem("takeoutfix_login_time");
         } catch (_) {}
@@ -1575,26 +1604,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (!user) return;
     try {
       const idToken = await user.getIdToken();
-      const response = await fetch("/api/accept-invite", {
-        method: "POST",
+      await apiClient.post("/api/accept-invite", { inviteId }, {
         headers: {
-          "Content-Type": "application/json",
           "Authorization": `Bearer ${idToken}`
-        },
-        body: JSON.stringify({ inviteId })
+        }
       });
-
-      const data = await response.json();
-      if (!response.ok) {
-        throw new Error(data.error || "Failed to accept invitation.");
-      }
 
       useToastStore.getState().addToast("Team invitation accepted! You are now a team member.", "success", 5000, "Invitation Accepted");
       // Force reload to update navbar and admin access
       window.location.reload();
     } catch (err: any) {
       console.error("accept-invite error:", err);
-      useToastStore.getState().addToast(err.message || "Failed to accept invite.", "error", 5000, "Error");
+      const msg = err?.response?.data?.error || err?.message || "Failed to accept invite.";
+      useToastStore.getState().addToast(msg, "error", 5000, "Error");
     }
   };
 
@@ -1602,19 +1624,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (!user) return;
     try {
       const idToken = await user.getIdToken();
-      const response = await fetch("/api/decline-invite", {
-        method: "POST",
+      await apiClient.post("/api/decline-invite", { inviteId }, {
         headers: {
-          "Content-Type": "application/json",
           "Authorization": `Bearer ${idToken}`
-        },
-        body: JSON.stringify({ inviteId })
+        }
       });
-
-      const data = await response.json();
-      if (!response.ok) {
-        throw new Error(data.error || "Failed to decline invitation.");
-      }
 
       useToastStore.getState().addToast("Invitation declined.", "info", 4000, "Declined");
       setPendingInvite(null);

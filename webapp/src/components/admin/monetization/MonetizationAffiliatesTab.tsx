@@ -3,7 +3,7 @@ import type {
   AffiliateProvider,
   AffiliateLink,
   MonetizationPlacement,
-} from "../../../services/monetization/types";
+import { apiClient } from "../../../lib/api/apiClient";
 import {
   ShoppingBag,
   Plus,
@@ -58,11 +58,10 @@ export default function MonetizationAffiliatesTab({
     setIsExtracting(true);
     setExtractError(null);
     try {
-      const res = await fetch(`/api/extract-metadata?url=${encodeURIComponent(editingLink.destinationUrl)}`);
-      if (!res.ok) {
-        throw new Error(`Server returned error status ${res.status}`);
-      }
-      const data = await res.json();
+      const res = await apiClient.get("/api/extract-metadata", {
+        params: { url: editingLink.destinationUrl }
+      });
+      const data = res.data;
       if (data.success) {
         setEditingLink({
           ...editingLink,

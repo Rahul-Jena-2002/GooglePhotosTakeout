@@ -32,7 +32,7 @@ function restorationObfuscatorPlugin() {
 
           // ── Domain Lock (Layer 1a) ──────────────────────────────────────
           // Code will silently break if loaded from any unauthorized domain
-          domainLock: ['takeoutfix.pages.dev', 'takeoutfix.com', 'www.takeoutfix.com', 'localhost', '127.0.0.1'],
+          domainLock: ['takeoutfix.pages.dev', 'takeoutfix.com', 'www.takeoutfix.com', 'localhost', '127.0.0.1', 'tauri.localhost'],
           domainLockRedirectUrl: 'about:blank',
 
           // ── Base64 String Encryption (Layer 1b) ─────────────────────────

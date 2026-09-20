@@ -228,7 +228,6 @@ export default function AuthPage() {
     try {
       const isTauri = typeof window !== "undefined" && ("__TAURI_INTERNALS__" in window || "__TAURI__" in window);
       if (isTauri) {
-        setSuccessMsg("Opening your default browser for seamless Google Sign-In...");
         try {
           const { invoke } = await import("@tauri-apps/api/core");
           const userData: any = await invoke("start_browser_login");

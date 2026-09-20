@@ -16,6 +16,8 @@ import { PaymentHeader } from "../../components/admin/payment/PaymentHeader"
 import { PaymentMekBanner } from "../../components/admin/payment/PaymentMekBanner"
 import { PaymentNavTabs } from "../../components/admin/payment/PaymentNavTabs"
 import { WebhookModal } from "../../components/admin/payment/WebhookModal"
+import { getApiUrl } from "../../lib/api/apiUrl"
+import { apiClient } from "../../lib/api/apiClient"
 
 // --- Config Types & Constants ---
 interface GatewayConfig {
@@ -182,14 +184,7 @@ const COUPON_PLANS = ['recovery_pass', 'pro', 'super']
  * - Everything else → routes to <base>/<endpoint>
  */
 function resolveSyncUrl(endpoint: string, _storedUrl?: string): string {
-  const hostname = window.location.hostname;
-  const isCloudflare = hostname.endsWith('.pages.dev') || hostname.endsWith('takeoutfix.com') || (hostname === 'localhost' && window.location.port === '4321');
-  if (isCloudflare) {
-    return `/api/${endpoint}`;
-  }
-  // If running on Firebase Hosting, route directly to the Cloudflare Pages deployment URL 
-  // where the Worker API endpoint is hosted (cross-origin pings are allowed by the Worker CORS headers)
-  return `https://takeoutfix.pages.dev/api/${endpoint}`;
+  return getApiUrl(`api/${endpoint}`);
 }
 
 

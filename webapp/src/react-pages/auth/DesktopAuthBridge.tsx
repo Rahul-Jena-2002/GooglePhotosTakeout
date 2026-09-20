@@ -33,15 +33,18 @@ function DesktopAuthBridgeContent() {
     }
   }, []);
 
+  const requiresConfirmation = selectAccountParam || (user ? isSuperAdminEmail(user.email) : false);
+
   // When user is authenticated and port is valid, automatically send auth payload to desktop immediately
   useEffect(() => {
     if (!port || loading || !user) return;
+    if (requiresConfirmation) return;
 
     if (!attemptedRef.current) {
       attemptedRef.current = true;
       dispatchAuthToDesktop();
     }
-  }, [user, userData, port, loading]);
+  }, [user, userData, port, loading, requiresConfirmation]);
 
   const dispatchAuthToDesktop = async () => {
     if (!port || !user) return;

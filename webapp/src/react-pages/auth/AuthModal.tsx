@@ -110,7 +110,6 @@ export default function AuthModal() {
         navigator.userAgent.includes("TakeoutFix-Desktop")
       );
       if (isTauri) {
-        setSuccessMsg("Opening your default browser for seamless Google Sign-In...");
         try {
           const { invoke } = await import("@tauri-apps/api/core");
           const userData: any = await invoke("start_browser_login");
