@@ -8,9 +8,16 @@ use tauri::Manager;
 fn open_system_browser(url: &str) {
     #[cfg(target_os = "windows")]
     {
-        let _ = std::process::Command::new("rundll32")
-            .args(["url.dll,FileProtocolHandler", url])
-            .spawn();
+        // Standard Windows command used by VS Code / JetBrains IDEs to open default browser
+        if std::process::Command::new("cmd")
+            .args(["/c", "start", "", url])
+            .spawn()
+            .is_err()
+        {
+            let _ = std::process::Command::new("rundll32")
+                .args(["url.dll,FileProtocolHandler", url])
+                .spawn();
+        }
     }
     #[cfg(target_os = "macos")]
     {
@@ -51,7 +58,7 @@ async fn start_browser_login(app_handle: tauri::AppHandle) -> Result<serde_json:
         .port();
 
     let auth_url = format!(
-        "https://takeoutfix.pages.dev/auth?port={}&desktop=true&source=tauri",
+        "https://takeoutfix.pages.dev/auth/desktop?port={}&desktop=true&source=tauri",
         port
     );
     open_system_browser(&auth_url);

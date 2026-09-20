@@ -16,12 +16,15 @@ export default {
 
     const url = new URL(request.url);
     let path = url.pathname.toLowerCase();
+    if (path.startsWith("/downloads")) {
+      path = "/download" + path.slice("/downloads".length);
+    }
 
-    // Check for version parameter or path prefix (e.g., /download/v2.0.9/windows/rust or ?v=v2.0.9)
+    // Check for version parameter or path prefix (e.g., /download/2.1.3/setup.exe, /downloads/2.1.3/TakeoutFix.exe, ?v=v2.1.3)
     let requestedVersion = url.searchParams.get("v") || url.searchParams.get("version") || "";
-    const versionMatch = path.match(/^\/download\/(v?\d+\.\d+(?:\.\d+)?)(?:\/(.*))?$/);
+    const versionMatch = path.match(/^\/download\/(?:windows\/)?(v?\d+\.\d+(?:\.\d+)?)(?:\/(.*))?$/);
     if (versionMatch) {
-      requestedVersion = versionMatch[1];
+      requestedVersion = requestedVersion || versionMatch[1];
       path = "/download" + (versionMatch[2] ? "/" + versionMatch[2] : "");
     }
 
@@ -32,7 +35,9 @@ export default {
       path === "/download/windows/exe" ||
       path === "/download/windows" ||
       path === "/download/takeoutfix.exe" ||
-      path === "/download/windows/takeoutfix.exe"
+      path === "/download/windows/takeoutfix.exe" ||
+      path === "/download/setup.exe" ||
+      path === "/download/windows/setup.exe"
     ) {
       targetFileName = "TakeoutFix.exe";
     } else if (

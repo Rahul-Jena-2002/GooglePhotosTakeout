@@ -1,7 +1,7 @@
 {
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
   "productName": "TakeoutFix",
-  "version": "2.1.3",
+  "version": "2.1.4",
   "identifier": "com.takeoutfix.app",
   "build": {
     "frontendDist": "../dist",
@@ -14,8 +14,8 @@
     "windows": [
       {
         "label": "main",
-        "title": "TakeoutFix v2.1.3 - Google Photos Metadata Restorer",
-        "userAgent": "TakeoutFix-Desktop/2.1.3",
+        "title": "TakeoutFix v2.1.4 - Google Photos Metadata Restorer",
+        "userAgent": "TakeoutFix-Desktop/2.1.4",
         "width": 1280,
         "height": 850,
         "minWidth": 900,
