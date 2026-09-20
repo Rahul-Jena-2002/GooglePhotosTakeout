@@ -20,6 +20,7 @@
     "@radix-ui/react-slot": "^1.2.5",
     "@radix-ui/react-tooltip": "^1.2.16",
     "@sentry/cloudflare": "^10.75.0",
+    "@tauri-apps/plugin-updater": "^2.12.0",
     "@uswriting/exiftool": "^1.0.9",
     "@zip.js/zip.js": "^2.8.26",
     "class-variance-authority": "^0.7.1",

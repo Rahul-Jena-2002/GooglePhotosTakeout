@@ -10,6 +10,7 @@ import { useToastStore } from "../../store/useToastStore"
 import { registerServiceWorker } from "../../lib/swRegister"
 import { getFriendlyAuthMessage } from "../../lib/authErrors"
 import { isSuperAdminEmail } from "../../lib/adminAuth"
+import TauriUpdateBanner from "../desktop/TauriUpdateBanner"
 
 const getPlanLabel = (plan?: string): string => {
   if (plan === 'pro') return 'Pro Tier'
@@ -285,6 +286,7 @@ export default function MainLayout() {
 
   return (
     <div className="flex flex-col min-h-screen bg-black text-white selection:bg-indigo-500/30">
+      <TauriUpdateBanner />
       <nav 
         id="navbar"
         className="fixed top-0 left-0 right-0 w-full z-50 px-6 md:px-8 py-2.5 transition-all duration-300 nav-header"
@@ -329,7 +331,7 @@ export default function MainLayout() {
             <div className={`text-sm font-medium ml-4 xl:gap-8 lg:gap-4 ${user ? 'hidden xl:flex' : 'hidden lg:flex'}`}>
               {renderNavLink("/", "Home")}
               {renderNavLink("/restore-data", "Restore Guide")}
-              {enablePricingAndPayments && renderNavLink("/pricing", "Pricing")}
+              {renderNavLink("/pricing", "Pricing")}
               {renderNavLink("/download", "Desktop App")}
               {renderNavLink("/reviews", "Reviews")}
               {renderNavLink("/support", "Support & FAQ")}
@@ -546,9 +548,7 @@ export default function MainLayout() {
             <p className="text-xs font-bold text-white/30 uppercase tracking-wider px-2 mt-1 mb-1">Navigation</p>
             <Link to="/" className="py-2 px-2 text-white/70 hover:text-white hover:bg-white/5 rounded-md text-sm font-medium transition-all" onClick={() => setMobileMenuOpen(false)}>Home</Link>
             <Link to="/restore-data" className="py-2 px-2 text-white/70 hover:text-white hover:bg-white/5 rounded-md text-sm font-medium transition-all" onClick={() => setMobileMenuOpen(false)}>Restore Guide</Link>
-            {enablePricingAndPayments && (
-              <Link to="/pricing" className="py-2 px-2 text-white/70 hover:text-white hover:bg-white/5 rounded-md text-sm font-medium transition-all" onClick={() => setMobileMenuOpen(false)}>Pricing</Link>
-            )}
+            <Link to="/pricing" className="py-2 px-2 text-white/70 hover:text-white hover:bg-white/5 rounded-md text-sm font-medium transition-all" onClick={() => setMobileMenuOpen(false)}>Pricing</Link>
             <Link to="/download" className="py-2 px-2 text-white/70 hover:text-white hover:bg-white/5 rounded-md text-sm font-medium transition-all" onClick={() => setMobileMenuOpen(false)}>Desktop App</Link>
             <Link to="/reviews" className="py-2 px-2 text-white/70 hover:text-white hover:bg-white/5 rounded-md text-sm font-medium transition-all" onClick={() => setMobileMenuOpen(false)}>Reviews</Link>
             <Link to="/support" className="py-2 px-2 text-white/70 hover:text-white hover:bg-white/5 rounded-md text-sm font-medium transition-all" onClick={() => setMobileMenuOpen(false)}>Support & FAQ</Link>

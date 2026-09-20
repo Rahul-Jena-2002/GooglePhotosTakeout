@@ -369,9 +369,10 @@ export async function seedDefaultMonetizationData(overwrite = false): Promise<{ 
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Page Rotation & Non-Repeating Allocation Engine
+// Page Rotation & 15-Second Cycle Engine
 // ─────────────────────────────────────────────────────────────────────────────
 let pageVisitSeed = 0;
+let rotationTick = 0;
 let dynamicSlotCounter = 12; // Reserves slots 0..11 for standard sidebars
 const dynamicPlacementSlots = new Map<string, number>();
 
@@ -386,6 +387,14 @@ if (typeof window !== "undefined") {
     }
   } catch (_) {}
 
+  // 15-Second Universal Rotation Timer across all pages
+  setInterval(() => {
+    rotationTick = (rotationTick + 1) % 10000;
+    try {
+      window.dispatchEvent(new CustomEvent("takeoutfix_ad_rotate", { detail: { rotationTick } }));
+    } catch (_) {}
+  }, 15000);
+
   // Advance rotation seed on Astro page navigation so ads rotate across pages
   window.addEventListener("astro:page-load", () => {
     pageVisitSeed = (pageVisitSeed + 1) % 1000;
@@ -393,6 +402,9 @@ if (typeof window !== "undefined") {
     dynamicPlacementSlots.clear();
     try {
       sessionStorage.setItem("takeoutfix_monetization_seed", String(pageVisitSeed));
+    } catch (_) {}
+    try {
+      window.dispatchEvent(new CustomEvent("takeoutfix_ad_rotate", { detail: { rotationTick } }));
     } catch (_) {}
   });
 
@@ -423,6 +435,10 @@ export function getPageVisitSeed(): number {
   return pageVisitSeed;
 }
 
+export function getRotationTick(): number {
+  return rotationTick;
+}
+
 /**
  * Core Selection Engine
  * Evaluates placement rules, candidate items, priority rotation, and fallback mechanisms
@@ -435,6 +451,7 @@ export async function getMonetizationContent(
     userPlan?: string;
     supportWithAds?: boolean;
     forceRefresh?: boolean;
+    rotationOffset?: number;
   } = {}
 ): Promise<MonetizationResponse> {
   const data = await fetchAllMonetizationData(options.forceRefresh);
@@ -571,14 +588,14 @@ export async function getMonetizationContent(
        u.placementCodes.length === 0)
   );
 
-  // 5. Select Best Item per Category (Non-Repeating on same page + Rotating across visits)
+  // 5. Select Best Item per Category (Non-Repeating on same page + Continuously Rotating every 15s)
   const selectTopItem = <T extends { priority: number }>(items: T[], index?: number): T | null => {
     if (items.length === 0) return null;
     const sorted = [...items].sort((a, b) => (b.priority ?? 0) - (a.priority ?? 0));
     const targetSlot = index !== undefined && index >= 0 ? index : slotIndex;
-    const rotationOffset = pageVisitSeed;
-    // Guaranteed non-repeating cycle: slot 0, 1, 2... will each take a distinct item
-    // and will only repeat after all items in the candidate pool are finished!
+    const rotationOffset = options.rotationOffset !== undefined ? options.rotationOffset : (pageVisitSeed + rotationTick);
+    // Guaranteed non-repeating cycle: slot 0, 1, 2... each takes a distinct item
+    // and continuously rotates every 15 seconds, wrapping around to re-appear in cycle!
     const selectedIndex = (targetSlot + rotationOffset) % sorted.length;
     return sorted[selectedIndex];
   };
@@ -622,7 +639,8 @@ export async function getMonetizationContent(
   // 80% Ads / 20% Affiliate Prioritization:
   // In single/shared slots, 80% (4 out of 5 cycles) prioritizes Ads, while 20% showcases Affiliate.
   // If an Ad is blocked by an adblocker, AdBlockDetector automatically swaps in the Affiliate item as 100% fallback!
-  const isAdFavored = ((slotIndex + pageVisitSeed) % 5) !== 0; // 80% chance true (slots 1, 2, 3, 4 vs 0)
+  const effectiveOffset = options.rotationOffset !== undefined ? options.rotationOffset : (pageVisitSeed + rotationTick);
+  const isAdFavored = ((slotIndex + effectiveOffset) % 5) !== 0; // 80% chance true (slots 1, 2, 3, 4 vs 0)
 
   if (mode === "BOTH") {
     if (selectedAffiliate && selectedAd) {

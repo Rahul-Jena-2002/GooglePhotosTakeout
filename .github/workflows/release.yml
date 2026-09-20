@@ -247,3 +247,79 @@ jobs:
         with:
           tag_name: ${{ github.event.inputs.tag_name || github.ref_name || 'latest' }}
           files: ${{ matrix.artifact_name }}
+
+  # ════════════════════════════════════════════════════════════════════════════
+  # 3. RELEASE RETENTION POLICY: Retain current + previous 2 releases (3 total)
+  # ════════════════════════════════════════════════════════════════════════════
+  cleanup-old-releases:
+    name: Retain Current + Previous 2 Releases
+    needs: [build-java, build-rust-tauri]
+    runs-on: ubuntu-latest
+    if: always() && (startsWith(github.ref, 'refs/tags/') || github.event_name == 'release' || github.event_name == 'workflow_dispatch')
+    permissions:
+      contents: write
+    steps:
+      - name: Prune Releases Older Than Current + Previous 2
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            const keepCount = 3; // Current release + 2 previous = 3 total
+
+            console.log(`Fetching all releases for ${owner}/${repo}...`);
+            let allReleases = [];
+            try {
+              for await (const response of github.paginate.iterator(
+                github.rest.repos.listReleases,
+                { owner, repo, per_page: 100 }
+              )) {
+                allReleases.push(...response.data);
+              }
+            } catch (err) {
+              console.error(`Failed to fetch releases: ${err.message}`);
+              throw err;
+            }
+
+            // Exclude drafts, sort descending by published_at / created_at
+            const publishedReleases = allReleases
+              .filter(r => !r.draft)
+              .sort((a, b) => new Date(b.published_at || b.created_at).getTime() - new Date(a.published_at || a.created_at).getTime());
+
+            console.log(`Total published releases found: ${publishedReleases.length}`);
+
+            const toKeep = publishedReleases.slice(0, keepCount);
+            const toDelete = publishedReleases.slice(keepCount);
+
+            console.log(`\nReleases to KEEP (${toKeep.length}):`);
+            for (const r of toKeep) {
+              console.log(`✓ [KEEP] ${r.tag_name} (${r.name || 'No title'}) published at ${r.published_at || r.created_at}`);
+            }
+
+            if (toDelete.length === 0) {
+              console.log(`\nNo older releases to delete. Total count is within retention limit (${keepCount}).`);
+              return;
+            }
+
+            console.log(`\nReleases to DELETE (${toDelete.length}):`);
+            let deletedCount = 0;
+            for (const r of toDelete) {
+              console.log(`✗ [DELETING] ${r.tag_name} (ID: ${r.id}, published: ${r.published_at || r.created_at})`);
+              try {
+                await github.rest.repos.deleteRelease({
+                  owner,
+                  repo,
+                  release_id: r.id,
+                });
+                deletedCount++;
+              } catch (delErr) {
+                console.warn(`  - Failed to delete release ${r.tag_name}: ${delErr.message}`);
+              }
+            }
+
+            console.log(`\n========================================`);
+            console.log(`Release Cleanup Complete!`);
+            console.log(`- Retained: ${toKeep.length} active releases`);
+            console.log(`- Deleted: ${deletedCount} older releases and their binary assets`);
+            console.log(`========================================`);
+

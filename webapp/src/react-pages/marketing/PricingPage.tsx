@@ -405,16 +405,16 @@ function PricingPageContent() {
         </h1>
 
         <p className="text-base md:text-lg text-zinc-600 dark:text-zinc-300 max-w-2xl mx-auto leading-relaxed mb-10">
-          We believe building trust is everything. Google Takeout exports companion JSON sidecars that separate your timestamps and locations. TakeoutFix restores all your photos and videos completely client-side in your browser for free.
+          We believe building trust is everything. Google Takeout separates your photos from their dates and locations. TakeoutFix reconnects them and restores all your photos and videos completely on your computer for free.
         </p>
 
         {/* Feature Grid */}
         <div className="grid sm:grid-cols-3 gap-6 mb-12 text-left">
           <div className="p-6 rounded-2xl bg-white/[0.02] border border-white/10 backdrop-blur-md">
             <div className="text-2xl mb-2">⚡</div>
-            <h3 className="text-base font-bold text-white mb-1.5">Unlimited Processing</h3>
+            <h3 className="text-base font-bold text-white mb-1.5">Unlimited Restorations</h3>
             <p className="text-xs text-zinc-400 leading-relaxed">
-              No 250-file or 500MB paywalls. Restore small folders or massive 50GB+ Google Takeout libraries without arbitrary limits.
+              No artificial limits. Restore small family folders or massive 50GB+ Google Takeout libraries easily.
             </p>
           </div>
 
@@ -422,15 +422,15 @@ function PricingPageContent() {
             <div className="text-2xl mb-2">🔒</div>
             <h3 className="text-base font-bold text-white mb-1.5">100% Local Privacy</h3>
             <p className="text-xs text-zinc-400 leading-relaxed">
-              Zero cloud uploads. All JSON metadata matching and EXIF injection happen directly inside your browser memory.
+              Zero cloud uploads. Everything is processed directly inside your browser so your personal pictures never leave your device.
             </p>
           </div>
 
           <div className="p-6 rounded-2xl bg-white/[0.02] border border-white/10 backdrop-blur-md">
             <div className="text-2xl mb-2">🎯</div>
-            <h3 className="text-base font-bold text-white mb-1.5">Full Metadata Sync</h3>
+            <h3 className="text-base font-bold text-white mb-1.5">Original Dates &amp; Locations</h3>
             <p className="text-xs text-zinc-400 leading-relaxed">
-              Recovers original camera timestamps, GPS coordinates, descriptions, and edited versions from JSON sidecars.
+              Puts your pictures back in chronological order with original camera timestamps, GPS locations, and descriptions intact.
             </p>
           </div>
         </div>

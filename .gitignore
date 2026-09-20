@@ -85,3 +85,6 @@ __pycache__/
 *.pyc
 TAKEOUT_EDGE_CASES_TEST_SUITE/
 test files/
+graphify-out/
+webapp/graphify-out/
+webapp/scripts/verify_slice1.cjs

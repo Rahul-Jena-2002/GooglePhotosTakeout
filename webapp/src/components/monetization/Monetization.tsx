@@ -3,6 +3,7 @@ import {
   getMonetizationContent,
   getPlacementSlotIndex,
   getPageVisitSeed,
+  getRotationTick,
 } from "../../services/monetization/monetizationEngine";
 import type { MonetizationResponse, ResolvedMonetizationItem } from "../../services/monetization/types";
 import { useAuth } from "../../contexts/AuthContext";
@@ -22,6 +23,7 @@ export interface MonetizationProps {
 function getInitialDefaultResponse(placementCode: string): MonetizationResponse {
   const isSidebar = placementCode.startsWith("SIDEBAR") || placementCode.startsWith("GUTTER");
   const slotIndex = getPlacementSlotIndex(placementCode);
+  const rotationOffset = getPageVisitSeed() + getRotationTick();
 
   const affMatches = DEFAULT_AFFILIATE_LINKS.filter(
     (l) => l.placementCodes.length === 0 || l.placementCodes.includes(placementCode) || (isSidebar && l.placementCodes.includes("SIDEBAR"))
@@ -29,7 +31,7 @@ function getInitialDefaultResponse(placementCode: string): MonetizationResponse 
 
   const affCandidate =
     affMatches.length > 0
-      ? affMatches[slotIndex % affMatches.length]
+      ? affMatches[(slotIndex + rotationOffset) % affMatches.length]
       : DEFAULT_AFFILIATE_LINKS[0];
 
   const adCandidate =
@@ -161,6 +163,33 @@ export default function Monetization({
     };
   }, [placement, preview, userPlan, supportWithAds]);
 
+  // Universal 15-second rotation cycle listener: smoothly swap ads without flicker or loader
+  useEffect(() => {
+    let mounted = true;
+
+    const handleAdRotate = () => {
+      getMonetizationContent(placement, {
+        preview,
+        userPlan,
+        supportWithAds,
+      })
+        .then((res) => {
+          if (mounted) {
+            setData(res);
+          }
+        })
+        .catch((err) => {
+          console.warn("[Monetization] Error rotating placement:", placement, err);
+        });
+    };
+
+    window.addEventListener("takeoutfix_ad_rotate", handleAdRotate);
+    return () => {
+      mounted = false;
+      window.removeEventListener("takeoutfix_ad_rotate", handleAdRotate);
+    };
+  }, [placement, preview, userPlan, supportWithAds]);
+
   const [adUnavailable, setAdUnavailable] = useState(false);
   const [affiliateUnavailable, setAffiliateUnavailable] = useState(false);
 
@@ -238,6 +267,7 @@ export default function Monetization({
         >
           <div className="flex flex-col justify-between">
             <AffiliateCardItem
+              key={effectiveAffiliate?.id || "aff"}
               item={effectiveAffiliate!}
               isVertical={isVertical}
               isCompact={isCompact}
@@ -247,6 +277,7 @@ export default function Monetization({
           </div>
           <div className={`${isVertical ? "pt-3" : "pt-4 md:pt-0 md:pl-4"} flex flex-col justify-between`}>
             <AdUnitItem
+              key={effectiveAd?.id || "ad"}
               item={effectiveAd!}
               preview={preview}
               isCompact={isCompact}
@@ -258,6 +289,7 @@ export default function Monetization({
       ) : effectiveAffiliate ? (
         // Mode = AFFILIATE_ONLY or Automatic Fallback to 100% Affiliate
         <AffiliateCardItem
+          key={effectiveAffiliate.id}
           item={effectiveAffiliate}
           fullWidth
           isVertical={isVertical}
@@ -268,6 +300,7 @@ export default function Monetization({
       ) : effectiveAd ? (
         // Mode = ADS_ONLY or Automatic Fallback to 100% Ad
         <AdUnitItem
+          key={effectiveAd.id}
           item={effectiveAd}
           fullWidth
           preview={preview}

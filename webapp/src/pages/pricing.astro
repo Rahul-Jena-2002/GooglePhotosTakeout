@@ -5,18 +5,5 @@ import PricingPage from "../react-pages/marketing/PricingPage";
 ---
 
 <Layout title="TakeoutFix Pricing: Plans & Features" description="Choose the perfect plan to restore photo dates, GPS locations, timestamps, and EXIF information from your Google Takeout archive.">
-  <PricingPage client:only="react">
-    <div slot="fallback" class="min-h-[70vh] max-w-5xl mx-auto px-6 py-16 animate-pulse space-y-8">
-      <div class="space-y-3 text-center max-w-xl mx-auto">
-        <div class="h-4 w-24 mx-auto rounded-full bg-zinc-200 dark:bg-zinc-800"></div>
-        <div class="h-10 w-3/4 mx-auto rounded-xl bg-zinc-200 dark:bg-zinc-800"></div>
-        <div class="h-4 w-1/2 mx-auto rounded-full bg-zinc-200 dark:bg-zinc-800"></div>
-      </div>
-      <div class="grid grid-cols-1 md:grid-cols-3 gap-6 pt-6">
-        <div class="h-96 rounded-2xl bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800"></div>
-        <div class="h-96 rounded-2xl bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800"></div>
-        <div class="h-96 rounded-2xl bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800"></div>
-      </div>
-    </div>
-  </PricingPage>
+  <PricingPage client:load />
 </Layout>

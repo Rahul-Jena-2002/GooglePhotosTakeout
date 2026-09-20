@@ -33,42 +33,48 @@ export default {
       });
     }
 
-    const headers = {
-      "User-Agent": "Cloudflare-Worker",
+    const baseHeaders = {
+      "User-Agent": "Cloudflare-Worker-TakeoutFix",
       "Accept": "application/vnd.github.v3+json"
     };
-    if (env.GITHUB_PAT) {
-      headers["Authorization"] = `Bearer ${env.GITHUB_PAT}`;
-    } else {
-      return new Response(
-        "Configuration Error: GITHUB_PAT secret is not configured in Cloudflare Workers.\n" +
-        "Because this GitHub repository is private, the worker needs a GitHub Personal Access Token (read-only) to access releases.\n\n" +
-        "To fix: In github-download-worker directory, run: npx wrangler secret put GITHUB_PAT",
-        { status: 500, headers: { "Content-Type": "text/plain" } }
-      );
-    }
+
+    const fetchGitHub = async (endpointUrl) => {
+      // 1. If GITHUB_PAT is configured, try with Authorization first
+      if (env.GITHUB_PAT && env.GITHUB_PAT.trim() !== "") {
+        try {
+          const authRes = await fetch(endpointUrl, {
+            headers: { ...baseHeaders, "Authorization": `Bearer ${env.GITHUB_PAT.trim()}` }
+          });
+          if (authRes.ok) return authRes;
+          // If token fails with 401/403/404, fall through to public unauthenticated request
+        } catch (_) {}
+      }
+
+      // 2. Unauthenticated public request fallback
+      return await fetch(endpointUrl, { headers: baseHeaders });
+    };
 
     try {
-      // 1. Fetch latest release details from GitHub API (or fallback to newest release)
+      // 1. Fetch latest release details from GitHub API (or fallback to newest release list)
       let releaseData = null;
       const releaseUrl = `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/releases/latest`;
-      const releaseResponse = await fetch(releaseUrl, { headers });
+      const releaseResponse = await fetchGitHub(releaseUrl);
 
       if (releaseResponse.ok) {
         releaseData = await releaseResponse.json();
       } else {
         // Fallback to the first release in the repository list
-        const listResponse = await fetch(`https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/releases?per_page=1`, { headers });
+        const listResponse = await fetchGitHub(`https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/releases?per_page=5`);
         if (listResponse.ok) {
           const list = await listResponse.json();
           if (Array.isArray(list) && list.length > 0) {
-            releaseData = list[0];
+            releaseData = list.find(r => !r.draft) || list[0];
           }
         }
       }
 
       if (!releaseData) {
-        return new Response(`Error fetching release from GitHub: Repository has no releases or token lacks access.`, {
+        return new Response(`Error fetching release from GitHub: Repository has no releases or access failed.`, {
           status: 404,
           headers: { "Content-Type": "text/plain" }
         });
@@ -89,14 +95,19 @@ export default {
         );
       }
 
-      // 3. Request the asset binary from GitHub
+      // 3. For public releases, redirect directly to GitHub's high-speed release asset CDN
+      if (targetAsset.browser_download_url) {
+        return Response.redirect(targetAsset.browser_download_url, 302);
+      }
+
+      // 4. Fallback for private releases: Request the asset binary from GitHub API
       const assetUrl = `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/releases/assets/${targetAsset.id}`;
       const assetHeaders = {
-        "User-Agent": "Cloudflare-Worker",
+        "User-Agent": "Cloudflare-Worker-TakeoutFix",
         "Accept": "application/octet-stream"
       };
-      if (env.GITHUB_PAT) {
-        assetHeaders["Authorization"] = `Bearer ${env.GITHUB_PAT}`;
+      if (env.GITHUB_PAT && env.GITHUB_PAT.trim() !== "") {
+        assetHeaders["Authorization"] = `Bearer ${env.GITHUB_PAT.trim()}`;
       }
       const assetResponse = await fetch(assetUrl, {
         headers: assetHeaders,

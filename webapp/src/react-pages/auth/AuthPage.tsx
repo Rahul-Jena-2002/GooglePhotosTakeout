@@ -226,6 +226,52 @@ export default function AuthPage() {
     setGoogleLoading(true);
 
     try {
+      const isTauri = typeof window !== "undefined" && ("__TAURI_INTERNALS__" in window || "__TAURI__" in window);
+      if (isTauri) {
+        setSuccessMsg("Opening your default browser for seamless Google Sign-In...");
+        try {
+          const { invoke } = await import("@tauri-apps/api/core");
+          const userData: any = await invoke("start_browser_login");
+          if (userData && (userData.uid || userData.email)) {
+            const cleanUid = userData.uid || userData.googleId || userData.email;
+            const userObj: any = {
+              uid: cleanUid,
+              email: userData.email,
+              displayName: userData.displayName || userData.name || userData.email?.split("@")[0] || "User",
+              photoURL: userData.photoURL || null,
+              plan: userData.plan || "free",
+              token: userData.token || ""
+            };
+            if (db && cleanUid) {
+              const userRef = doc(db, "users", cleanUid);
+              const snap = await getDoc(userRef);
+              if (!snap.exists()) {
+                await setDoc(userRef, {
+                  uid: cleanUid,
+                  email: userObj.email,
+                  displayName: userObj.displayName,
+                  plan: "free",
+                  createdAt: Date.now(),
+                  suspended: false
+                }, { merge: true });
+              }
+            }
+            localStorage.setItem("takeoutfix_user_data", JSON.stringify(userObj));
+            setSuccessMsg("Signed in successfully! Redirecting...");
+            handleSuccessRedirect(userObj);
+            return;
+          } else {
+            throw new Error("No user profile received from browser handshake.");
+          }
+        } catch (tauriErr: any) {
+          console.error("[Tauri Auth] Browser loopback error:", tauriErr);
+          setErrorMsg(tauriErr?.message || "Browser sign-in was cancelled or timed out.");
+          return;
+        } finally {
+          setGoogleLoading(false);
+        }
+      }
+
       // IMPORTANT: signInWithPopup MUST be called synchronously within the click event.
       // Any await before it breaks the browser's trusted event chain → popup gets blocked.
       // reCAPTCHA runs in parallel (fire-and-forget) — it's a scoring signal, not a gate.
@@ -242,6 +288,10 @@ export default function AuthPage() {
       } catch (popupErr: any) {
         if (popupErr.code === "auth/popup-closed-by-user" || popupErr.code === "auth/cancelled-popup-request") {
           setErrorMsg("Sign-in cancelled. Please try again.");
+          return;
+        }
+        if (popupErr.code === "auth/popup-blocked") {
+          setErrorMsg("Google Sign-In popup was blocked. Please use Email & Password below to sign in, or click 'Forgot?' to set a password.");
           return;
         }
         throw popupErr;

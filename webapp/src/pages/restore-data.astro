@@ -41,7 +41,7 @@ import Icon from "../components/ui/Icon.astro";
     <div id="section-how-to-use" class="max-w-4xl mx-auto relative z-10 transition-all duration-300">
       
       <!-- Timeline Step List -->
-      <div class="space-y-12">
+      <div id="dates-guide" class="space-y-12">
         
         <!-- STEP 1: Navigate to Takeout -->
         <div class="flex flex-col md:flex-row gap-6 p-8 rounded-2xl bg-white dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 hover:border-zinc-300 dark:hover:border-zinc-700 shadow-sm transition-all">
@@ -180,7 +180,7 @@ import Icon from "../components/ui/Icon.astro";
       <!-- Central connecting line for desktop -->
       <div class="absolute left-[50%] top-12 bottom-20 w-[1px] bg-zinc-800 opacity-30 hidden lg:block"></div>
 
-      <div class="space-y-40">
+      <div id="tech-specs" class="space-y-40">
         
         <!-- PHASE 1: Directory Parsing -->
         <div class="relative flex flex-col lg:flex-row items-stretch gap-12 lg:gap-20">
@@ -296,7 +296,7 @@ import Icon from "../components/ui/Icon.astro";
         </div>
  
         <!-- PHASE 2: Heuristic Matching -->
-        <div class="relative flex flex-col lg:flex-row items-stretch gap-12 lg:gap-20">
+        <div id="tech-deep-dive" class="relative flex flex-col lg:flex-row items-stretch gap-12 lg:gap-20">
           <div class="absolute left-[50%] -translate-x-1/2 top-4 w-10 h-10 rounded-full bg-zinc-950 border border-zinc-800 flex items-center justify-center shadow-[0_0_20px_rgba(0,0,0,0.8)] z-20 hidden lg:flex">
             <span class="w-3.5 h-3.5 rounded-full bg-zinc-500 animate-pulse"></span>
           </div>
@@ -570,6 +570,12 @@ import Icon from "../components/ui/Icon.astro";
     const hash = window.location.hash;
     if (hash === "#tech-specs" || hash === "#tech-deep-dive") {
       btnTech.click();
+      const el = document.querySelector(hash);
+      if (el) setTimeout(() => el.scrollIntoView({ behavior: "smooth" }), 50);
+    } else if (hash === "#dates-guide" || hash === "#how-to-use") {
+      btnUse.click();
+      const el = document.querySelector(hash);
+      if (el) setTimeout(() => el.scrollIntoView({ behavior: "smooth" }), 50);
     }
   }
 

@@ -48,8 +48,10 @@ const effectiveAdCount = sidebarAdCount ?? calculatedAdCount;
 // Active Navigation Helper for Purple Highlighting
 const isActive = (path: string) => (path === "/" ? currentPath === "/" : currentPath === path || currentPath.startsWith(path + "/"));
 
-// Generate canonical URL dynamically based on current path
-const canonicalUrl = `https://takeoutfix.pages.dev${Astro.url.pathname.replace(/\/$/, "") || "/"}`;
+// Generate clean canonical URL (strip .html, /index, and trailing slashes)
+const rawPath = Astro.url.pathname || "/";
+const cleanPath = rawPath.replace(/\.html$/, "").replace(/\/index$/, "").replace(/\/$/, "") || "/";
+const canonicalUrl = `https://takeoutfix.pages.dev${cleanPath === "" ? "/" : cleanPath}`;
 ---
 
 <!doctype html>
@@ -138,11 +140,12 @@ const canonicalUrl = `https://takeoutfix.pages.dev${Astro.url.pathname.replace(/
     <script is:inline>
       (() => {
         const coreRoutes = [
+          '/tool',
+          '/download',
+          '/pricing',
           '/reviews',
           '/support',
-          '/tool',
           '/restore-data',
-          '/download',
           '/terms',
           '/privacy',
           '/how-to-restore-metadata-from-takeout',
@@ -152,8 +155,28 @@ const canonicalUrl = `https://takeoutfix.pages.dev${Astro.url.pathname.replace(/
 
         const prefetched = new Set();
 
+        const checkIsAdmin = () => {
+          try {
+            const cached = JSON.parse(localStorage.getItem("takeoutfix_user_data") || "{}");
+            const adminData = localStorage.getItem("takeoutfix_admin_data");
+            const adminSession = sessionStorage.getItem("takeoutfix_admin_session");
+            const email = (cached.email || "").toLowerCase();
+            return Boolean(
+              cached.isAdmin ||
+              cached.role ||
+              adminData ||
+              adminSession ||
+              email.endsWith("@rahuljena.dev") ||
+              email === "rahuljena.dev@gmail.com"
+            );
+          } catch (_) {
+            return false;
+          }
+        };
+
         function prefetchUrl(url, highPriority = false) {
-          if (!url || prefetched.has(url) || url.startsWith('/admin') || url.startsWith('#') || url.startsWith('http')) return;
+          if (!url || prefetched.has(url) || url.startsWith('#') || url.startsWith('http')) return;
+          if (url.startsWith('/admin') && !checkIsAdmin()) return;
           prefetched.add(url);
 
           // 1. Native Link Prefetch
@@ -191,7 +214,8 @@ const canonicalUrl = `https://takeoutfix.pages.dev${Astro.url.pathname.replace(/
           const anchor = e.target && e.target.closest ? e.target.closest('a') : null;
           if (!anchor) return;
           const href = anchor.getAttribute('href');
-          if (href && href.startsWith('/') && !href.startsWith('/admin')) {
+          if (href && href.startsWith('/')) {
+            if (href.startsWith('/admin') && !checkIsAdmin()) return;
             prefetchUrl(href, true);
           }
         };
@@ -199,6 +223,17 @@ const canonicalUrl = `https://takeoutfix.pages.dev${Astro.url.pathname.replace(/
         document.addEventListener('mouseover', prioritizeTarget, { passive: true });
         document.addEventListener('touchstart', prioritizeTarget, { passive: true });
         document.addEventListener('pointerdown', prioritizeTarget, { passive: true });
+
+        // Lazy prefetch the admin bundle quietly in background if user is authenticated as an admin
+        const scheduleAdminPrefetch = () => {
+          if (checkIsAdmin()) {
+            if ('requestIdleCallback' in window) {
+              window.requestIdleCallback(() => prefetchUrl('/admin', false), { timeout: 4000 });
+            } else {
+              setTimeout(() => prefetchUrl('/admin', false), 2500);
+            }
+          }
+        };
 
         // Once home page is loaded, systematically prefetch all user routes in the background
         window.addEventListener('load', () => {
@@ -209,6 +244,12 @@ const canonicalUrl = `https://takeoutfix.pages.dev${Astro.url.pathname.replace(/
             }, delay);
             delay += 120;
           });
+          setTimeout(scheduleAdminPrefetch, delay + 500);
+        });
+
+        // Also trigger admin prefetch when an admin signs in
+        window.addEventListener('takeoutfix:auth-success', () => {
+          setTimeout(scheduleAdminPrefetch, 800);
         });
       })();
     </script>
@@ -365,12 +406,17 @@ const canonicalUrl = `https://takeoutfix.pages.dev${Astro.url.pathname.replace(/
     <meta property="og:description" content={description} />
     <meta property="og:url" content={canonicalUrl} />
     <meta property="og:site_name" content="TakeoutFix" />
+    <meta property="og:image" content="https://takeoutfix.pages.dev/og.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="TakeoutFix – Restore Google Photos Metadata" />
     
     <!-- Twitter -->
     <meta property="twitter:card" content="summary_large_image" />
     <meta property="twitter:title" content={title} />
     <meta property="twitter:description" content={description} />
     <meta property="twitter:url" content={canonicalUrl} />
+    <meta name="twitter:image" content="https://takeoutfix.pages.dev/og.png" />
 
     <!-- Google Search Site Name Schema -->
     <script type="application/ld+json">
@@ -557,6 +603,7 @@ const canonicalUrl = `https://takeoutfix.pages.dev${Astro.url.pathname.replace(/
             <div id="desktop-marketing-links" class="hidden lg:flex gap-4 text-sm font-medium ml-4 font-sans items-center">
               <a href="/" class={`nav-link px-3 py-1.5 transition-colors duration-150 ${isActive('/') ? 'active text-[#8170CC] font-bold' : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white'}`} data-astro-prefetch="hover">Home</a>
               <a href="/restore-data" class={`nav-link px-3 py-1.5 transition-colors duration-150 ${isActive('/restore-data') ? 'active text-[#8170CC] font-bold' : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white'}`} data-astro-prefetch="hover">Restore Guide</a>
+              <a href="/pricing" class={`nav-link px-3 py-1.5 transition-colors duration-150 ${isActive('/pricing') ? 'active text-[#8170CC] font-bold' : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white'}`} data-astro-prefetch="hover">Pricing</a>
               <a href="/download" class={`nav-link px-3 py-1.5 transition-colors duration-150 ${isActive('/download') ? 'active text-[#8170CC] font-bold' : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white'}`} data-astro-prefetch="hover">Download App</a>
               <a href="/reviews" class={`nav-link px-3 py-1.5 transition-colors duration-150 ${isActive('/reviews') ? 'active text-[#8170CC] font-bold' : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white'}`} data-astro-prefetch="hover">Reviews</a>
               <a href="/support" class={`nav-link px-3 py-1.5 transition-colors duration-150 ${isActive('/support') ? 'active text-[#8170CC] font-bold' : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white'}`} data-astro-prefetch="hover">Support & FAQ</a>
@@ -693,6 +740,7 @@ const canonicalUrl = `https://takeoutfix.pages.dev${Astro.url.pathname.replace(/
 
             <a href="/" class={`mobile-nav-link py-2 px-3 rounded-lg text-sm font-medium transition-all ${isActive('/') ? 'active text-[#8170CC] font-bold bg-[#8170CC]/10 dark:bg-[#8170CC]/15' : 'text-zinc-700 dark:text-white/70 hover:text-zinc-900 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-white/5'}`} data-astro-prefetch="tap">Home</a>
             <a href="/restore-data" class={`mobile-nav-link py-2 px-3 rounded-lg text-sm font-medium transition-all ${isActive('/restore-data') ? 'active text-[#8170CC] font-bold bg-[#8170CC]/10 dark:bg-[#8170CC]/15' : 'text-zinc-700 dark:text-white/70 hover:text-zinc-900 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-white/5'}`} data-astro-prefetch="tap">Restore Guide</a>
+            <a href="/pricing" class={`mobile-nav-link py-2 px-3 rounded-lg text-sm font-medium transition-all ${isActive('/pricing') ? 'active text-[#8170CC] font-bold bg-[#8170CC]/10 dark:bg-[#8170CC]/15' : 'text-zinc-700 dark:text-white/70 hover:text-zinc-900 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-white/5'}`} data-astro-prefetch="tap">Pricing</a>
             
             <a href="/download" class={`mobile-nav-link py-2 px-3 rounded-lg text-sm font-medium transition-all ${isActive('/download') ? 'active text-[#8170CC] font-bold bg-[#8170CC]/10 dark:bg-[#8170CC]/15' : 'text-zinc-700 dark:text-white/70 hover:text-zinc-900 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-white/5'}`} data-astro-prefetch="tap">Download Desktop App</a>
             <a href="/reviews" class={`mobile-nav-link py-2 px-3 rounded-lg text-sm font-medium transition-all ${isActive('/reviews') ? 'active text-[#8170CC] font-bold bg-[#8170CC]/10 dark:bg-[#8170CC]/15' : 'text-zinc-700 dark:text-white/70 hover:text-zinc-900 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-white/5'}`} data-astro-prefetch="tap">Reviews</a>

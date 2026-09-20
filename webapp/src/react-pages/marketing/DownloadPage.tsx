@@ -17,115 +17,55 @@ interface DownloadOption {
   file: string;
   url: string;
   directUrl: string;
-  primary: boolean;
   instructions: string[];
 }
 
 export default function DownloadPage() {
   const [selectedOS, setSelectedOS] = useState<"win" | "mac" | "linux">("win");
-  const [selectedType, setSelectedType] = useState<number>(0);
 
-  const downloadOptions: Record<"win" | "mac" | "linux", DownloadOption[]> = {
-    win: [
-      {
-        title: "Rust Native Edition (.exe)",
-        badge: "Rust Native",
-        desc: "Single-file direct runnable executable. Instant startup, ultra-lightweight (~10MB), and native Win32 filesystem date synchronization.",
-        file: "TakeoutFix.exe",
-        url: "https://takeoutfix-download.takeoutfix.workers.dev/download/windows/rust",
-        directUrl: "https://github.com/Rahul-Jena-2002/GooglePhotosTakeout/releases/latest/download/TakeoutFix.exe",
-        primary: true,
-        instructions: [
-          "Download 'TakeoutFix.exe' directly using the button below.",
-          "Double-click 'TakeoutFix.exe' to launch immediately (no folders to extract, zero installation).",
-          "Deeply restores EXIF/QuickTime metadata and syncs File Explorer 'Date Modified' directly on disk.",
-          "If Windows SmartScreen prompts on first run, click 'More info' and select 'Run anyway'."
-        ]
-      },
-      {
-        title: "Java Desktop Edition (.exe)",
-        badge: "Java Edition",
-        desc: "Single-file direct runnable executable powered by the Java engine. Zero JAR files, zero folder extraction.",
-        file: "TakeoutFix-Java.exe",
-        url: "https://takeoutfix-download.takeoutfix.workers.dev/download/windows/java",
-        directUrl: "https://github.com/Rahul-Jena-2002/GooglePhotosTakeout/releases/latest/download/TakeoutFix-Java.exe",
-        primary: false,
-        instructions: [
-          "Download 'TakeoutFix-Java.exe' directly using the button below.",
-          "Double-click to run immediately without extracting folders or handling JAR files.",
-          "Powered by the multi-threaded Java desktop restoration engine.",
-          "100% offline, private, and processes unlimited archives."
-        ]
-      }
-    ],
-    mac: [
-      {
-        title: "Rust Native Edition (.dmg)",
-        badge: "Rust Native",
-        desc: "Universal direct runnable Apple disk image. Compatible with Apple Silicon (M1/M2/M3/M4) and Intel Macs.",
-        file: "TakeoutFix.dmg",
-        url: "https://takeoutfix-download.takeoutfix.workers.dev/download/macos/rust",
-        directUrl: "https://github.com/Rahul-Jena-2002/GooglePhotosTakeout/releases/latest/download/TakeoutFix.dmg",
-        primary: true,
-        instructions: [
-          "Download 'TakeoutFix.dmg' using the button below.",
-          "Double-click the DMG and drag TakeoutFix into your Applications folder.",
-          "Launch TakeoutFix directly from Launchpad, Spotlight, or Applications.",
-          "Zero terminal commands, zero folder extraction, and native macOS date preservation."
-        ]
-      },
-      {
-        title: "Java Desktop Edition (.dmg)",
-        badge: "Java Edition",
-        desc: "Native Apple disk image powered by the Java engine. Zero JAR files, zero setup scripts.",
-        file: "TakeoutFix-Java.dmg",
-        url: "https://takeoutfix-download.takeoutfix.workers.dev/download/macos/java",
-        directUrl: "https://github.com/Rahul-Jena-2002/GooglePhotosTakeout/releases/latest/download/TakeoutFix-Java.dmg",
-        primary: false,
-        instructions: [
-          "Download 'TakeoutFix-Java.dmg' using the button below.",
-          "Double-click to mount and run directly on macOS.",
-          "Clean native app experience without ever touching a raw JAR file.",
-          "Supports high-speed multi-core restoration."
-        ]
-      }
-    ],
-    linux: [
-      {
-        title: "Rust Native Edition (.AppImage)",
-        badge: "Rust Native",
-        desc: "Universal single-file executable. No installation, no extracting folders—just run on any Linux distro.",
-        file: "TakeoutFix.AppImage",
-        url: "https://takeoutfix-download.takeoutfix.workers.dev/download/linux/rust",
-        directUrl: "https://github.com/Rahul-Jena-2002/GooglePhotosTakeout/releases/latest/download/TakeoutFix.AppImage",
-        primary: true,
-        instructions: [
-          "Download 'TakeoutFix.AppImage' directly below.",
-          "Make it executable: right-click > Properties > Permissions > 'Allow executing file as program' (or run: chmod +x TakeoutFix.AppImage).",
-          "Double-click 'TakeoutFix.AppImage' to launch immediately.",
-          "Runs natively across Ubuntu, Fedora, Debian, Arch, Mint, and Pop!_OS."
-        ]
-      },
-      {
-        title: "Java Desktop Edition (.AppImage)",
-        badge: "Java Edition",
-        desc: "Direct runnable AppImage powered by the Java engine. Zero JAR files, zero terminal scripts.",
-        file: "TakeoutFix-Java.AppImage",
-        url: "https://takeoutfix-download.takeoutfix.workers.dev/download/linux/java",
-        directUrl: "https://github.com/Rahul-Jena-2002/GooglePhotosTakeout/releases/latest/download/TakeoutFix-Java.AppImage",
-        primary: false,
-        instructions: [
-          "Download 'TakeoutFix-Java.AppImage' using the button below.",
-          "Make it executable (chmod +x TakeoutFix-Java.AppImage) and double-click to launch.",
-          "Self-contained executable bundle with zero JAR dependencies.",
-          "Fast local processing for all photo and video formats."
-        ]
-      }
-    ]
+  const downloadOptions: Record<"win" | "mac" | "linux", DownloadOption> = {
+    win: {
+      title: "TakeoutFix for Windows",
+      badge: "Windows 10 & 11",
+      desc: "Fast, single-file desktop app. Double-click to run immediately with zero installation required.",
+      file: "TakeoutFix.exe",
+      url: "https://takeoutfix-download.takeoutfix.workers.dev/download/windows/rust",
+      directUrl: "https://github.com/Rahul-Jena-2002/GooglePhotosTakeout/releases/latest/download/TakeoutFix.exe",
+      instructions: [
+        "Click the download button below to get 'TakeoutFix.exe'.",
+        "Double-click 'TakeoutFix.exe' in your Downloads folder to open it.",
+        "Select your unzipped Google Takeout folder to automatically restore all photo dates and locations."
+      ]
+    },
+    mac: {
+      title: "TakeoutFix for Mac",
+      badge: "Apple Silicon & Intel",
+      desc: "Universal Mac app compatible with all modern macOS versions and M-series or Intel chips.",
+      file: "TakeoutFix.dmg",
+      url: "https://takeoutfix-download.takeoutfix.workers.dev/download/macos/rust",
+      directUrl: "https://github.com/Rahul-Jena-2002/GooglePhotosTakeout/releases/latest/download/TakeoutFix.dmg",
+      instructions: [
+        "Download 'TakeoutFix.dmg' using the button below.",
+        "Double-click the downloaded DMG file and drag TakeoutFix into your Applications folder.",
+        "Launch TakeoutFix from your Applications folder or Spotlight search."
+      ]
+    },
+    linux: {
+      title: "TakeoutFix for Linux",
+      badge: "Ubuntu, Fedora, Mint",
+      desc: "Universal self-contained AppImage. Double-click to run on any major Linux distribution.",
+      file: "TakeoutFix.AppImage",
+      url: "https://takeoutfix-download.takeoutfix.workers.dev/download/linux/rust",
+      directUrl: "https://github.com/Rahul-Jena-2002/GooglePhotosTakeout/releases/latest/download/TakeoutFix.AppImage",
+      instructions: [
+        "Download 'TakeoutFix.AppImage' using the button below.",
+        "Right-click the file > Properties > Permissions > check 'Allow executing file as program'.",
+        "Double-click 'TakeoutFix.AppImage' to run."
+      ]
+    }
   };
 
-  const currentOptions = downloadOptions[selectedOS];
-  const activeOption = currentOptions[selectedType] || currentOptions[0];
+  const activeOption = downloadOptions[selectedOS];
 
   return (
     <div className="min-h-screen text-zinc-900 dark:text-white relative py-12 px-4 sm:px-6">
@@ -192,62 +132,27 @@ export default function DownloadPage() {
               </button>
             </div>
 
-            {/* Package Format Selector Pills */}
-            <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <span className="text-[11px] font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">Choose Package Format</span>
-                <span className="text-[11px] text-zinc-400 dark:text-zinc-500 font-semibold">{currentOptions.length} formats available</span>
-              </div>
-              <div className={`grid gap-3 ${currentOptions.length === 3 ? "grid-cols-1 sm:grid-cols-3" : "grid-cols-1 sm:grid-cols-2"}`}>
-                {currentOptions.map((opt, idx) => {
-                  const isSelected = selectedType === idx;
-                  return (
-                    <button
-                      key={idx}
-                      onClick={() => setSelectedType(idx)}
-                      className={`p-3.5 rounded-xl border text-left transition-all relative cursor-pointer min-h-[82px] flex flex-col justify-between ${
-                        isSelected
-                          ? "bg-indigo-50/80 dark:bg-indigo-500/15 border-indigo-500/60 ring-2 ring-indigo-500/20 shadow-sm"
-                          : "bg-zinc-50/70 dark:bg-white/[0.02] border-zinc-200 dark:border-white/10 hover:border-zinc-300 dark:hover:border-white/20 hover:bg-zinc-100/60"
-                      }`}
-                    >
-                      <div className="flex items-center justify-between gap-1 mb-1">
-                        <span className={`text-xs font-bold truncate ${isSelected ? "text-indigo-600 dark:text-indigo-300" : "text-zinc-900 dark:text-white"}`}>
-                          {opt.title}
-                        </span>
-                        <span className={`text-[9px] px-1.5 py-0.5 rounded-full font-bold uppercase tracking-wider flex-shrink-0 ${
-                          opt.primary 
-                            ? "bg-indigo-100 dark:bg-indigo-500/20 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-500/30" 
-                            : "bg-zinc-200/80 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 border border-zinc-300/60 dark:border-white/10"
-                        }`}>
-                          {opt.badge}
-                        </span>
-                      </div>
-                      <p className="text-[11px] text-zinc-500 dark:text-zinc-400 line-clamp-2 leading-relaxed font-normal">
-                        {opt.desc}
-                      </p>
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-
-            {/* Active Selection Details & Steps */}
-            <div className="space-y-4 pt-4 border-t border-zinc-200 dark:border-white/10">
-              <div>
-                <div className="flex flex-wrap items-center gap-2 mb-1.5">
-                  <h3 className="text-base font-bold text-zinc-900 dark:text-white">
+            {/* Direct OS Selection Card Details */}
+            <div className="space-y-5 pt-2">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div className="flex items-center gap-2.5">
+                  <h3 className="text-xl font-bold text-zinc-900 dark:text-white">
                     {activeOption.title}
                   </h3>
-                  <span className="text-[11px] px-2 py-0.5 rounded-md bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 border border-zinc-300/70 dark:border-white/10 font-mono font-semibold">
-                    {activeOption.file}
+                  <span className="text-[11px] px-2.5 py-0.5 rounded-full bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-500/20 font-bold uppercase tracking-wider">
+                    {activeOption.badge}
                   </span>
                 </div>
-                <p className="text-xs text-zinc-600 dark:text-zinc-400 font-medium leading-relaxed">{activeOption.desc}</p>
+                <span className="text-xs px-2.5 py-1 rounded-lg bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 font-mono font-medium">
+                  {activeOption.file}
+                </span>
               </div>
+              <p className="text-xs sm:text-sm text-zinc-600 dark:text-zinc-400 font-medium leading-relaxed">
+                {activeOption.desc}
+              </p>
 
-              <div className="space-y-3">
-                <h4 className="text-[11px] font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">Installation Steps</h4>
+              <div className="space-y-3 pt-2">
+                <h4 className="text-[11px] font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">Quick Setup</h4>
                 <ol className="space-y-2.5 pl-0.5">
                   {activeOption.instructions.map((step, idx) => (
                     <li key={idx} className="flex items-start gap-3 text-xs text-zinc-700 dark:text-zinc-300 leading-relaxed font-medium">
@@ -263,16 +168,14 @@ export default function DownloadPage() {
           </div>
 
           {/* Download Button Action */}
-          <div className="pt-6 mt-6 border-t border-zinc-200 dark:border-white/10 space-y-2">
+          <div className="pt-6 mt-6 border-t border-zinc-200 dark:border-white/10 space-y-2.5">
             <a href={activeOption.url} className="w-full block">
-              <button className="w-full h-12 text-sm font-bold rounded-xl flex items-center justify-center gap-2.5 cursor-pointer shadow-lg transition-all bg-zinc-900 hover:bg-black text-white dark:bg-white dark:hover:bg-zinc-100 dark:text-black hover:scale-[1.005] active:scale-[0.995]">
+              <button className="w-full h-14 text-sm font-bold rounded-xl flex items-center justify-center gap-2.5 cursor-pointer shadow-lg transition-all bg-zinc-900 hover:bg-black text-white dark:bg-white dark:hover:bg-zinc-100 dark:text-black hover:scale-[1.005] active:scale-[0.995]">
                 <Download className="w-4 h-4" /> Download {activeOption.title}
               </button>
             </a>
-            <p className="text-[10px] text-center text-zinc-500 dark:text-zinc-400 font-medium">
-              {selectedType === 0 
-                ? "✓ Verified release · Standalone Native Binary · 100% Offline execution supported" 
-                : "✓ Verified release · Bundled Self-Contained JRE · Zero JAR Files · 100% Offline"}
+            <p className="text-[11px] text-center text-zinc-500 dark:text-zinc-400 font-medium">
+              ✓ Verified release · 100% Offline execution · Direct single-file download
             </p>
           </div>
         </div>
@@ -360,6 +263,27 @@ export default function DownloadPage() {
           <AdUnit placement="DOWNLOAD_BOTTOM" type="compact" />
         </div>
 
+        {/* Windows Security Notice */}
+        <div className="bg-white dark:bg-zinc-950/60 border border-zinc-200 dark:border-white/10 p-6 rounded-2xl shadow-sm dark:shadow-2xl space-y-3">
+          <div className="flex items-center gap-2.5">
+            <div className="p-2 rounded-lg bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-zinc-700 dark:text-zinc-300">
+              <ShieldCheck className="w-5 h-5" />
+            </div>
+            <div>
+              <h3 className="text-sm font-bold text-zinc-900 dark:text-white">Code Signing &amp; Verification</h3>
+              <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5">Authenticode certificate and release integrity</p>
+            </div>
+          </div>
+          <div className="p-4 rounded-xl bg-zinc-50 dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 text-xs text-zinc-700 dark:text-zinc-300 leading-relaxed space-y-2">
+            <p className="font-medium text-zinc-900 dark:text-white">
+              Free code signing provided by <a href="https://signpath.io" target="_blank" rel="noopener noreferrer" className="underline font-semibold text-indigo-600 dark:text-indigo-400 hover:text-indigo-500">SignPath.io</a>, certificate by <a href="https://signpath.org" target="_blank" rel="noopener noreferrer" className="underline font-semibold text-indigo-600 dark:text-indigo-400 hover:text-indigo-500">SignPath Foundation</a>.
+            </p>
+            <p className="text-zinc-500 dark:text-zinc-400">
+              Windows releases of TakeoutFix are code signed using the SignPath Foundation. Unsigned or newly published release builds may display a standard security notice in Windows Smart App Control while publisher cloud reputation is established.
+            </p>
+          </div>
+        </div>
+
         {/* Feature Comparison Table */}
         <div className="space-y-4">
           <div className="text-center space-y-1.5">
@@ -379,28 +303,28 @@ export default function DownloadPage() {
               <tbody className="divide-y divide-zinc-200 dark:border-white/10 font-medium">
                 <tr>
                   <td className="p-4 font-semibold text-zinc-900 dark:text-white">Installation</td>
-                  <td className="p-4">Instant (Zero install required)</td>
-                  <td className="p-4 text-zinc-800 dark:text-zinc-200 font-semibold">Direct runnable (Native executable or packaged app - zero extractions, zero .jar files)</td>
+                  <td className="p-4">Instant (Open directly in browser)</td>
+                  <td className="p-4 text-zinc-800 dark:text-zinc-200 font-semibold">One-click app (Double-click and run, zero setup)</td>
                 </tr>
                 <tr>
                   <td className="p-4 font-semibold text-zinc-900 dark:text-white">Processing Speed</td>
-                  <td className="p-4 text-amber-600 dark:text-amber-500/90 font-medium">Standard (Browser throttle limits)</td>
-                  <td className="p-4 text-emerald-600 dark:text-emerald-400 font-bold">Native Multithreaded (Fastest)</td>
+                  <td className="p-4 text-amber-600 dark:text-amber-500/90 font-medium">Standard (Fast browser processing)</td>
+                  <td className="p-4 text-emerald-600 dark:text-emerald-400 font-bold">Native Speed (Fastest disk processing)</td>
                 </tr>
                 <tr>
                   <td className="p-4 font-semibold text-zinc-900 dark:text-white">Ideal Archive Size</td>
                   <td className="p-4">Standard to Large (Up to 50 GB – 100 GB)</td>
-                  <td className="p-4 text-zinc-800 dark:text-zinc-200 font-semibold">Massive &amp; Infinite (50 GB to Multi-Terabyte 1 TB+)</td>
+                  <td className="p-4 text-zinc-800 dark:text-zinc-200 font-semibold">Massive libraries (50 GB to Multi-Terabyte 1 TB+)</td>
                 </tr>
                 <tr>
                   <td className="p-4 font-semibold text-zinc-900 dark:text-white">Offline Use</td>
                   <td className="p-4 text-rose-500 dark:text-rose-400">No (Requires internet connection)</td>
-                  <td className="p-4 text-emerald-600 dark:text-emerald-400 font-bold">Yes (100% Offline with cached activation)</td>
+                  <td className="p-4 text-emerald-600 dark:text-emerald-400 font-bold">Yes (100% Offline on your computer)</td>
                 </tr>
                 <tr>
-                  <td className="p-4 font-semibold text-zinc-900 dark:text-white">Direct Local EXIF Injection</td>
-                  <td className="p-4">Yes (Via virtual files api)</td>
-                  <td className="p-4 text-zinc-800 dark:text-zinc-200 font-semibold">Yes (Direct write to physical disk)</td>
+                  <td className="p-4 font-semibold text-zinc-900 dark:text-white">Fixes Dates on Physical Drive</td>
+                  <td className="p-4">Downloads repaired ZIP archives</td>
+                  <td className="p-4 text-zinc-800 dark:text-zinc-200 font-semibold">Directly updates your files in place</td>
                 </tr>
                 <tr>
                   <td className="p-4 font-semibold text-zinc-900 dark:text-white">System Standby Prevention</td>
