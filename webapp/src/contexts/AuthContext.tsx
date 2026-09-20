@@ -1417,6 +1417,51 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, [user, userData?.plan, userData?.expiresAt]);
 
   const login = async () => {
+    const isTauri = typeof window !== "undefined" && (
+      "__TAURI__" in window ||
+      "__TAURI_INTERNALS__" in window ||
+      "isTauri" in window ||
+      navigator.userAgent.includes("TakeoutFix-Desktop")
+    );
+
+    if (isTauri) {
+      try {
+        const { invoke } = await import("@tauri-apps/api/core");
+        const userData: any = await invoke("start_browser_login");
+        if (userData && (userData.uid || userData.email)) {
+          const cleanUid = userData.uid || userData.googleId || userData.email;
+          const userObj: any = {
+            uid: cleanUid,
+            email: userData.email,
+            displayName: userData.displayName || userData.name || userData.email?.split("@")[0] || "User",
+            photoURL: userData.photoURL || null,
+            plan: userData.plan || "free",
+            token: userData.token || ""
+          };
+          if (db && cleanUid) {
+            const userRef = doc(db, "users", cleanUid);
+            const snap = await getDoc(userRef);
+            if (!snap.exists()) {
+              await setDoc(userRef, {
+                uid: cleanUid,
+                email: userObj.email,
+                displayName: userObj.displayName,
+                plan: "free",
+                createdAt: Date.now(),
+                suspended: false
+              }, { merge: true });
+            }
+          }
+          localStorage.setItem("takeoutfix_user_data", JSON.stringify(userObj));
+          window.location.reload();
+          return;
+        }
+      } catch (tauriErr) {
+        console.error("[Tauri Auth] start_browser_login failed:", tauriErr);
+        throw tauriErr;
+      }
+    }
+
     const provider = new GoogleAuthProvider();
     provider.setCustomParameters({ prompt: 'select_account' });
     try {

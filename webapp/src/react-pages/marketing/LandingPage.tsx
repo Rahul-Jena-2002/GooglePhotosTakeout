@@ -217,14 +217,14 @@ export default function LandingPage() {
         <div className="grid lg:grid-cols-12 gap-12 items-center text-left">
           <div className="lg:col-span-7 space-y-6">
             <div className="inline-flex items-center gap-2 px-3 py-1 bg-zinc-100 dark:bg-zinc-900 rounded-full border border-zinc-200 dark:border-zinc-800 text-xs font-semibold text-zinc-900 dark:text-zinc-100 uppercase tracking-wider">
-              ✓ Privacy-First EXIF Repair
+              ✓ 100% Private & Free · Runs on Your Device
             </div>
             <h1 className="text-4xl sm:text-5xl md:text-6xl font-bold tracking-tight text-foreground leading-tight">
-              Missing Google Takeout metadata? <br/>
-              <span className="text-zinc-900 dark:text-zinc-100 font-bold underline decoration-zinc-400 dark:decoration-zinc-800 decoration-2 underline-offset-4">Restore photo dates, GPS locations, timestamps, and EXIF information.</span>
+              Wrong dates on your downloaded photos? <br/>
+              <span className="text-zinc-900 dark:text-zinc-100 font-bold underline decoration-zinc-400 dark:decoration-zinc-800 decoration-2 underline-offset-4">Fix Google Takeout photos and restore their original dates & locations.</span>
             </h1>
             <p className="text-lg sm:text-xl text-zinc-500 font-normal leading-relaxed max-w-2xl">
-              Restore missing EXIF dates, GPS coordinates, timestamps, and other metadata from Google Takeout archives. Everything runs locally in your browser—your files never leave your device.
+              Put your family memories back in chronological order. TakeoutFix reconnects separated photo dates, timestamps, and camera locations from Google Takeout exports directly on your computer—100% private, no internet uploads.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 pt-2 items-center">
               <Link to="/restore-data" className="text-zinc-500 hover:text-foreground transition-colors flex items-center justify-center h-14 font-bold px-6 w-full sm:w-auto">
