@@ -3,6 +3,7 @@ import type {
   AffiliateProvider,
   AffiliateLink,
   MonetizationPlacement,
+} from "../../../services/monetization/types";
 import { apiClient } from "../../../lib/api/apiClient";
 import {
   ShoppingBag,
