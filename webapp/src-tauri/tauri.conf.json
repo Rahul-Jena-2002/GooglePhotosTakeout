@@ -2,7 +2,7 @@
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
   "productName": "TakeoutFix",
   "version": "2.1.4",
-  "identifier": "com.takeoutfix.app",
+  "identifier": "com.takeoutfix.takeout",
   "build": {
     "frontendDist": "../dist",
     "devUrl": "http://localhost:4321",

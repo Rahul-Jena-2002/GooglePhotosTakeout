@@ -5,27 +5,27 @@ use std::path::Path;
 use std::time::Duration;
 use tauri::Manager;
 
-fn open_system_browser(url: &str) {
+fn open_system_browser(_url: &str) {
     #[cfg(target_os = "windows")]
     {
         // Standard Windows command used by VS Code / JetBrains IDEs to open default browser
         if std::process::Command::new("cmd")
-            .args(["/c", "start", "", url])
+            .args(["/c", "start", "", _url])
             .spawn()
             .is_err()
         {
             let _ = std::process::Command::new("rundll32")
-                .args(["url.dll,FileProtocolHandler", url])
+                .args(["url.dll,FileProtocolHandler", _url])
                 .spawn();
         }
     }
     #[cfg(target_os = "macos")]
     {
-        let _ = std::process::Command::new("open").arg(url).spawn();
+        let _ = std::process::Command::new("open").arg(_url).spawn();
     }
     #[cfg(target_os = "linux")]
     {
-        let _ = std::process::Command::new("xdg-open").arg(url).spawn();
+        let _ = std::process::Command::new("xdg-open").arg(_url).spawn();
     }
 }
 
@@ -149,6 +149,7 @@ async fn start_browser_login(app_handle: tauri::AppHandle) -> Result<serde_json:
     .await
     .map_err(|e| format!("Task execution error: {}", e))??;
 
+    #[cfg(desktop)]
     if let Some(window) = app_handle.get_webview_window("main") {
         let _ = window.set_focus();
         let _ = window.unminimize();
