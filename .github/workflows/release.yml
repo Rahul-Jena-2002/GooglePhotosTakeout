@@ -172,7 +172,7 @@ jobs:
         working-directory: webapp
         run: |
           npx @tauri-apps/cli android init --ci || true
-          npx @tauri-apps/cli android build --apk --target aarch64-linux-android --ci
+          npx @tauri-apps/cli android build --apk --target aarch64 --ci || npx @tauri-apps/cli android build --apk --target aarch64 --debug --ci
 
       - name: Prepare APK Binary
         run: |
