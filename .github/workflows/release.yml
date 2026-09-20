@@ -249,11 +249,83 @@ jobs:
           files: ${{ matrix.artifact_name }}
 
   # ════════════════════════════════════════════════════════════════════════════
-  # 3. RELEASE RETENTION POLICY: Retain current + previous 2 releases (3 total)
+  # 3. ANDROID EDITION (Standalone APK for Mobile)
+  # ════════════════════════════════════════════════════════════════════════════
+  build-android:
+    name: Android Edition (APK)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: 'npm'
+          cache-dependency-path: webapp/package-lock.json
+
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-linux-android,armv7-linux-androideabi,i686-linux-android,x86_64-linux-android
+
+      - name: Rust Cache
+        uses: swatinem/rust-cache@v2
+        with:
+          workspaces: webapp/src-tauri -> target
+
+      - name: Install Webapp NPM Dependencies
+        working-directory: webapp
+        run: npm ci
+
+      - name: Build Android APK
+        working-directory: webapp
+        run: |
+          npx @tauri-apps/cli android init --ci || true
+          npx @tauri-apps/cli android build --apk --target aarch64 --ci
+
+      - name: Prepare APK Binary
+        run: |
+          APK_PATH=$(find webapp/src-tauri/gen/android -name "*.apk" | head -n 1)
+          if [ -n "$APK_PATH" ]; then
+            cp "$APK_PATH" ./TakeoutFix.apk
+            echo "Prepared: TakeoutFix.apk from $APK_PATH"
+          else
+            echo "No APK found in build outputs."
+            exit 1
+          fi
+
+      - name: Upload Android Artifact
+        uses: actions/upload-artifact@v4
+        continue-on-error: true
+        with:
+          name: android-apk
+          path: TakeoutFix.apk
+          retention-days: 1
+
+      - name: Attach APK to GitHub Release
+        uses: softprops/action-gh-release@v2
+        if: startsWith(github.ref, 'refs/tags/') || github.event_name == 'release' || github.event_name == 'workflow_dispatch'
+        with:
+          tag_name: ${{ github.event.inputs.tag_name || github.ref_name || 'latest' }}
+          files: TakeoutFix.apk
+
+  # ════════════════════════════════════════════════════════════════════════════
+  # 4. RELEASE RETENTION POLICY: Retain current + previous 2 releases (3 total)
   # ════════════════════════════════════════════════════════════════════════════
   cleanup-old-releases:
     name: Retain Current + Previous 2 Releases
-    needs: [build-java, build-rust-tauri]
+    needs: [build-java, build-rust-tauri, build-android]
     runs-on: ubuntu-latest
     if: always() && (startsWith(github.ref, 'refs/tags/') || github.event_name == 'release' || github.event_name == 'workflow_dispatch')
     permissions:

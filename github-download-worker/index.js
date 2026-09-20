@@ -75,10 +75,17 @@ export default {
       targetFileName = "TakeoutFix-Linux.deb";
     } else if (path === "/download/linux/rpm" || path === "/download/takeoutfix-linux.rpm") {
       targetFileName = "TakeoutFix-Linux.rpm";
+    } else if (
+      path === "/download/android" ||
+      path === "/download/android/apk" ||
+      path === "/download/takeoutfix.apk" ||
+      path === "/download/android/takeoutfix.apk"
+    ) {
+      targetFileName = "TakeoutFix.apk";
     } else if (path === "/" || path === "/download") {
       return Response.redirect("https://takeoutfix.pages.dev/download", 302);
     } else {
-      return new Response("Not Found. Available routes:\n- /download/windows/rust (TakeoutFix.exe)\n- /download/windows/java (TakeoutFix-Java.exe)\n- /download/macos/rust (TakeoutFix.dmg)\n- /download/macos/java (TakeoutFix-Java.dmg)\n- /download/linux/rust (TakeoutFix.AppImage)\n- /download/linux/java (TakeoutFix-Java.AppImage)", {
+      return new Response("Not Found. Available routes:\n- /download/windows/rust (TakeoutFix.exe)\n- /download/windows/java (TakeoutFix-Java.exe)\n- /download/macos/rust (TakeoutFix.dmg)\n- /download/macos/java (TakeoutFix-Java.dmg)\n- /download/linux/rust (TakeoutFix.AppImage)\n- /download/linux/java (TakeoutFix-Java.AppImage)\n- /download/android (TakeoutFix.apk)", {
         status: 404,
         headers: { "Content-Type": "text/plain", "Access-Control-Allow-Origin": "*" }
       });

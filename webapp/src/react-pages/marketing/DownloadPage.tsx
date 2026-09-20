@@ -21,9 +21,9 @@ interface DownloadOption {
 }
 
 export default function DownloadPage() {
-  const [selectedOS, setSelectedOS] = useState<"win" | "mac" | "linux">("win");
+  const [selectedOS, setSelectedOS] = useState<"win" | "mac" | "linux" | "android">("win");
 
-  const downloadOptions: Record<"win" | "mac" | "linux", DownloadOption> = {
+  const downloadOptions: Record<"win" | "mac" | "linux" | "android", DownloadOption> = {
     win: {
       title: "TakeoutFix for Windows",
       badge: "Windows 10 & 11",
@@ -61,6 +61,19 @@ export default function DownloadPage() {
         "Download 'TakeoutFix.AppImage' using the button below.",
         "Right-click the file > Properties > Permissions > check 'Allow executing file as program'.",
         "Double-click 'TakeoutFix.AppImage' to run."
+      ]
+    },
+    android: {
+      title: "TakeoutFix for Android",
+      badge: "Android 8.0+",
+      desc: "Native mobile APK. Install directly on your phone or tablet to restore metadata on the go.",
+      file: "TakeoutFix.apk",
+      url: "https://takeoutfix-download.takeoutfix.workers.dev/download/android",
+      directUrl: "https://github.com/Rahul-Jena-2002/GooglePhotosTakeout/releases/latest/download/TakeoutFix.apk",
+      instructions: [
+        "Tap the download button below to get 'TakeoutFix.apk'.",
+        "Tap the downloaded APK file in your notifications or Downloads folder.",
+        "If prompted, allow 'Install from unknown sources' for your browser, then tap Install."
       ]
     }
   };
@@ -120,7 +133,7 @@ export default function DownloadPage() {
                 <span>macOS</span>
               </button>
               <button 
-                onClick={() => { setSelectedOS("linux"); setSelectedType(0); }}
+                onClick={() => { setSelectedOS("linux"); }}
                 className={`flex-1 min-w-[100px] py-2.5 px-3.5 rounded-xl text-xs md:text-sm font-bold transition-all border text-center flex items-center justify-center gap-2 cursor-pointer ${
                   selectedOS === "linux" 
                     ? "bg-zinc-900 text-white dark:bg-white dark:text-black border-transparent shadow-md"
@@ -129,6 +142,17 @@ export default function DownloadPage() {
               >
                 <img src="/linux-logo.png" className="w-4 h-4 object-contain flex-shrink-0" alt="" />
                 <span>Linux</span>
+              </button>
+              <button 
+                onClick={() => { setSelectedOS("android"); }}
+                className={`flex-1 min-w-[100px] py-2.5 px-3.5 rounded-xl text-xs md:text-sm font-bold transition-all border text-center flex items-center justify-center gap-2 cursor-pointer ${
+                  selectedOS === "android" 
+                    ? "bg-zinc-900 text-white dark:bg-white dark:text-black border-transparent shadow-md"
+                    : "bg-zinc-100/80 dark:bg-white/[0.03] border-zinc-200 dark:border-white/5 text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white hover:bg-zinc-200/60"
+                }`}
+              >
+                <img src="/android-logo.png" className="w-4 h-4 object-contain flex-shrink-0" alt="" />
+                <span>Android</span>
               </button>
             </div>
 
