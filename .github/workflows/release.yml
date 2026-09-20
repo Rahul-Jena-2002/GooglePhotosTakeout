@@ -337,9 +337,9 @@ jobs:
   # ════════════════════════════════════════════════════════════════════════════
   cleanup-old-releases:
     name: Retain Current + Previous 2 Releases
-    needs: [build-rust-tauri, build-android, build-java]
+    needs: [build-rust-tauri, build-java]
     runs-on: ubuntu-latest
-    if: always() && (startsWith(github.ref, 'refs/tags/') || github.event_name == 'release' || github.event_name == 'workflow_dispatch')
+    if: success() && (startsWith(github.ref, 'refs/tags/') || github.event_name == 'release' || github.event_name == 'workflow_dispatch')
     permissions:
       contents: write
     steps:
@@ -371,6 +371,13 @@ jobs:
               .sort((a, b) => new Date(b.published_at || b.created_at).getTime() - new Date(a.published_at || a.created_at).getTime());
 
             console.log(`Total published releases found: ${publishedReleases.length}`);
+
+            // Safety guard: if the latest release has no uploaded assets, do NOT prune older releases
+            const newestRelease = publishedReleases[0];
+            if (!newestRelease || !newestRelease.assets || newestRelease.assets.length === 0) {
+              console.log(`⚠️ Newest release ${newestRelease?.tag_name || 'unknown'} has no assets yet. Aborting cleanup to preserve existing releases.`);
+              return;
+            }
 
             const toKeep = publishedReleases.slice(0, keepCount);
             const toDelete = publishedReleases.slice(keepCount);
