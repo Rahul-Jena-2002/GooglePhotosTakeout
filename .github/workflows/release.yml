@@ -205,6 +205,7 @@ jobs:
   # ════════════════════════════════════════════════════════════════════════════
   build-java:
     name: Java Edition (${{ matrix.os }})
+    needs: [build-rust-tauri]
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false

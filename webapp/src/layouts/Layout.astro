@@ -617,10 +617,12 @@ const canonicalUrl = `https://takeoutfix.pages.dev${cleanPath === "" ? "/" : cle
               href="https://github.com/sponsors/Rahul-Jena-2002" 
               target="_blank" 
               rel="noopener noreferrer"
-              class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold bg-pink-500/10 hover:bg-pink-500/20 text-pink-600 dark:text-pink-400 border border-pink-500/30 transition-all hover:scale-105 cursor-pointer shadow-xs whitespace-nowrap"
+              class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold bg-pink-500/10 hover:bg-pink-500/20 text-[#bf3989] dark:text-pink-400 border border-pink-500/30 transition-all hover:scale-105 cursor-pointer shadow-xs whitespace-nowrap"
               title="Support TakeoutFix on GitHub Sponsors"
             >
-              <span class="text-sm">❤️</span>
+              <svg aria-hidden="true" height="14" width="14" viewBox="0 0 16 16" class="fill-current flex-shrink-0">
+                <path d="m8 14.25.345.666a.75.75 0 0 1-.69 0l-.008-.004-.018-.01a7.152 7.152 0 0 1-.31-.17 22.055 22.055 0 0 1-3.434-2.414C2.045 10.731 0 8.35 0 5.5 0 2.836 2.086 1 4.75 1 6.275 1 7.57 1.83 8 3.088 8.43 1.83 9.725 1 11.25 1 13.914 1 16 2.836 16 5.5c0 2.85-2.045 5.231-3.885 6.818a22.066 22.066 0 0 1-3.434 2.414 7.27 7.27 0 0 1-.31.17l-.018.01-.008.004-.002.001Z"></path>
+              </svg>
               <span class="hidden sm:inline font-bold">Sponsor</span>
             </a>
 
@@ -747,8 +749,10 @@ const canonicalUrl = `https://takeoutfix.pages.dev${cleanPath === "" ? "/" : cle
             <a href="/reviews" class={`mobile-nav-link py-2 px-3 rounded-lg text-sm font-medium transition-all ${isActive('/reviews') ? 'active text-[#8170CC] font-bold bg-[#8170CC]/10 dark:bg-[#8170CC]/15' : 'text-zinc-700 dark:text-white/70 hover:text-zinc-900 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-white/5'}`} data-astro-prefetch="tap">Reviews</a>
             <a href="/support" class={`mobile-nav-link py-2 px-3 rounded-lg text-sm font-medium transition-all ${isActive('/support') ? 'active text-[#8170CC] font-bold bg-[#8170CC]/10 dark:bg-[#8170CC]/15' : 'text-zinc-700 dark:text-white/70 hover:text-zinc-900 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-white/5'}`} data-astro-prefetch="tap">Support & FAQ</a>
             
-            <a href="https://github.com/sponsors/Rahul-Jena-2002" target="_blank" rel="noopener noreferrer" class="mobile-nav-link py-2 px-3 text-pink-500 hover:text-pink-400 hover:bg-pink-500/10 rounded-lg text-sm font-bold transition-all flex items-center gap-2">
-              <span>❤️</span>
+            <a href="https://github.com/sponsors/Rahul-Jena-2002" target="_blank" rel="noopener noreferrer" class="mobile-nav-link py-2 px-3 text-[#bf3989] dark:text-pink-400 hover:bg-pink-500/10 rounded-lg text-sm font-bold transition-all flex items-center gap-2">
+              <svg aria-hidden="true" height="16" width="16" viewBox="0 0 16 16" class="fill-current flex-shrink-0">
+                <path d="m8 14.25.345.666a.75.75 0 0 1-.69 0l-.008-.004-.018-.01a7.152 7.152 0 0 1-.31-.17 22.055 22.055 0 0 1-3.434-2.414C2.045 10.731 0 8.35 0 5.5 0 2.836 2.086 1 4.75 1 6.275 1 7.57 1.83 8 3.088 8.43 1.83 9.725 1 11.25 1 13.914 1 16 2.836 16 5.5c0 2.85-2.045 5.231-3.885 6.818a22.066 22.066 0 0 1-3.434 2.414 7.27 7.27 0 0 1-.31.17l-.018.01-.008.004-.002.001Z"></path>
+              </svg>
               <span>Sponsor on GitHub</span>
             </a>
 
@@ -789,19 +793,15 @@ const canonicalUrl = `https://takeoutfix.pages.dev${cleanPath === "" ? "/" : cle
               <!-- App Links when logged in -->
               <div id="mobile-auth-links" class="flex flex-col gap-1">
                 <a id="mobile-dashboard-link" href="/dashboard" class={`mobile-nav-link py-2 px-3 rounded-lg text-sm font-medium transition-all ${isActive('/dashboard') ? 'active text-[#8170CC] font-bold bg-[#8170CC]/10 dark:bg-[#8170CC]/15' : 'text-zinc-700 dark:text-white/70 hover:text-zinc-900 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-white/5'}`} data-astro-prefetch="tap">
-                  📊 Dashboard
+                  Dashboard
                 </a>
                 
                 <a id="mobile-admin-link" href="/admin" class={`mobile-nav-link py-2 px-3 rounded-lg text-sm font-semibold transition-all hidden ${isActive('/admin') ? 'active text-amber-500 font-bold bg-amber-500/10' : 'text-amber-600 dark:text-amber-400 hover:bg-amber-500/10'}`} data-astro-reload>
-                  🛡️ Admin Center
+                  Admin Center
                 </a>
 
                 <a id="mobile-tool-link" href="/tool" class={`mobile-nav-link py-2 px-3 rounded-lg text-sm font-semibold transition-all flex items-center justify-between ${isActive('/tool') ? 'active text-[#8170CC] font-bold bg-[#8170CC]/10 dark:bg-[#8170CC]/15' : 'text-zinc-700 dark:text-zinc-200 hover:text-zinc-900 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-zinc-900'}`} data-astro-reload>
-                  <span class="flex items-center gap-2">
-                    <span>🛠️</span>
-                    <span>Restore My Data</span>
-                  </span>
-                  <span class="text-[10px] px-1.5 py-0.5 rounded-full font-bold bg-indigo-500/15 text-indigo-600 dark:text-indigo-400 border border-indigo-500/30">Web Tool</span>
+                  Restore My Data
                 </a>
               </div>
             </div>
@@ -987,9 +987,11 @@ const canonicalUrl = `https://takeoutfix.pages.dev${cleanPath === "" ? "/" : cle
                       href="https://github.com/sponsors/Rahul-Jena-2002" 
                       target="_blank" 
                       rel="noopener noreferrer" 
-                      class="flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl bg-pink-500/10 hover:bg-pink-500/20 border border-pink-500/30 text-pink-600 dark:text-pink-400 font-bold transition-all shadow-sm group hover:border-pink-500/50"
+                      class="flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl bg-pink-500/10 hover:bg-pink-500/20 border border-pink-500/30 text-[#bf3989] dark:text-pink-400 font-bold transition-all shadow-sm group hover:border-pink-500/50"
                     >
-                      <span class="text-lg group-hover:scale-125 transition-transform">❤️</span>
+                      <svg aria-hidden="true" height="18" width="18" viewBox="0 0 16 16" class="fill-current flex-shrink-0 group-hover:scale-125 transition-transform">
+                        <path d="m8 14.25.345.666a.75.75 0 0 1-.69 0l-.008-.004-.018-.01a7.152 7.152 0 0 1-.31-.17 22.055 22.055 0 0 1-3.434-2.414C2.045 10.731 0 8.35 0 5.5 0 2.836 2.086 1 4.75 1 6.275 1 7.57 1.83 8 3.088 8.43 1.83 9.725 1 11.25 1 13.914 1 16 2.836 16 5.5c0 2.85-2.045 5.231-3.885 6.818a22.066 22.066 0 0 1-3.434 2.414 7.27 7.27 0 0 1-.31.17l-.018.01-.008.004-.002.001Z"></path>
+                      </svg>
                       <div class="text-left">
                         <div class="text-xs font-bold leading-tight">Sponsor on GitHub</div>
                         <div class="text-[10px] text-zinc-500 dark:text-zinc-400 font-normal">Support free offline tools</div>
