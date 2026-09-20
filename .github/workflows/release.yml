@@ -129,7 +129,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Set up Java 17
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5
         with:
           distribution: 'temurin'
           java-version: '17'
@@ -172,7 +172,7 @@ jobs:
         working-directory: webapp
         run: |
           npx @tauri-apps/cli android init --ci || true
-          npx @tauri-apps/cli android build --apk --target aarch64 --ci
+          npx @tauri-apps/cli android build --apk --target aarch64-linux-android --ci
 
       - name: Prepare APK Binary
         run: |
@@ -223,7 +223,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Set up Java 21
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5
         with:
           java-version: '21'
           distribution: 'temurin'
