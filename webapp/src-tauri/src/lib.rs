@@ -3,6 +3,7 @@ use std::io::{Read, Write};
 use std::net::TcpListener;
 use std::path::Path;
 use std::time::Duration;
+#[cfg(desktop)]
 use tauri::Manager;
 
 fn open_system_browser(_url: &str) {
@@ -49,7 +50,7 @@ fn urlencoding_decode(val: &str) -> String {
 }
 
 #[tauri::command]
-async fn start_browser_login(app_handle: tauri::AppHandle) -> Result<serde_json::Value, String> {
+async fn start_browser_login(_app_handle: tauri::AppHandle) -> Result<serde_json::Value, String> {
     let listener = TcpListener::bind("127.0.0.1:0")
         .map_err(|e| format!("Failed to bind loopback listener: {}", e))?;
     let port = listener
@@ -150,7 +151,7 @@ async fn start_browser_login(app_handle: tauri::AppHandle) -> Result<serde_json:
     .map_err(|e| format!("Task execution error: {}", e))??;
 
     #[cfg(desktop)]
-    if let Some(window) = app_handle.get_webview_window("main") {
+    if let Some(window) = _app_handle.get_webview_window("main") {
         let _ = window.set_focus();
         let _ = window.unminimize();
     }
