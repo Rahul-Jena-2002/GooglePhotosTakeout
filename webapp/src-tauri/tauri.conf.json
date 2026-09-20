@@ -1,7 +1,7 @@
 {
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
   "productName": "TakeoutFix",
-  "version": "2.1.0",
+  "version": "2.1.1",
   "identifier": "com.takeoutfix.app",
   "build": {
     "frontendDist": "../dist",
@@ -13,7 +13,7 @@
     "windows": [
       {
         "label": "main",
-        "title": "TakeoutFix - Google Photos Metadata Restorer",
+        "title": "TakeoutFix v2.1.1 - Google Photos Metadata Restorer",
         "width": 1280,
         "height": 850,
         "minWidth": 900,
@@ -39,13 +39,6 @@
     ],
     "android": {
       "debugApplicationIdSuffix": ".debug"
-    }
-  },
-  "plugins": {
-    "updater": {
-      "endpoints": [
-        "https://github.com/Rahul-Jena-2002/GooglePhotosTakeout/releases/latest/download/latest.json"
-      ]
     }
   }
 }

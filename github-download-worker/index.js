@@ -90,15 +90,18 @@ export default {
     };
 
     const fetchGitHub = async (endpointUrl) => {
+      const separator = endpointUrl.includes("?") ? "&" : "?";
+      const freshUrl = `${endpointUrl}${separator}_t=${Date.now()}`;
       if (env.GITHUB_PAT && env.GITHUB_PAT.trim() !== "") {
         try {
-          const authRes = await fetch(endpointUrl, {
-            headers: { ...baseHeaders, "Authorization": `Bearer ${env.GITHUB_PAT.trim()}` }
+          const authRes = await fetch(freshUrl, {
+            headers: { ...baseHeaders, "Authorization": `Bearer ${env.GITHUB_PAT.trim()}` },
+            cf: { cacheTtl: 0 }
           });
           if (authRes.ok) return authRes;
         } catch (_) {}
       }
-      return await fetch(endpointUrl, { headers: baseHeaders });
+      return await fetch(freshUrl, { headers: baseHeaders, cf: { cacheTtl: 0 } });
     };
 
     try {
@@ -214,7 +217,11 @@ export default {
       }
 
       outHeaders.set("Access-Control-Allow-Origin", "*");
-      outHeaders.set("Cache-Control", "public, max-age=86400");
+      if (requestedVersion) {
+        outHeaders.set("Cache-Control", "public, max-age=86400");
+      } else {
+        outHeaders.set("Cache-Control", "public, max-age=60, s-maxage=60, must-revalidate");
+      }
 
       return new Response(request.method === "HEAD" ? null : binaryRes.body, {
         status: binaryRes.status,
