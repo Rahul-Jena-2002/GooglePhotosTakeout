@@ -1117,6 +1117,9 @@ const canonicalUrl = `https://takeoutfix.pages.dev${cleanPath === "" ? "/" : cle
       import { checkAdBlock, setupAdblockEvents, setUserInteracted } from "../lib/browserAdblock";
       import { setupAuthListeners, setupAuthEvents, syncUserUI } from "../lib/browserAuth";
       import { renderNotifications } from "../lib/browserNotifications";
+      import { initPowerManager } from "../lib/powerManager";
+
+      initPowerManager();
 
       const isDevHost = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
       if (!isDevHost && import.meta.env.PROD) {
@@ -1177,6 +1180,7 @@ const canonicalUrl = `https://takeoutfix.pages.dev${cleanPath === "" ? "/" : cle
       }
 
       const setupInteractionEvents = () => {
+        initPowerManager();
         setupThemeEvents();
         setupNavDropdowns();
         setupAdblockEvents();

@@ -1,9 +1,25 @@
 @layer base {
   * {
     @apply border-border;
+    -webkit-tap-highlight-color: transparent;
   }
-  body {
+  html, body {
     @apply bg-background text-foreground;
     font-feature-settings: "rlig" 1, "calt" 1;
+    overscroll-behavior-y: none;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+  /* Native App Mode: disables browser tap callouts and unwanted text selection while preserving inputs */
+  .tauri-native-app {
+    user-select: none;
+    -webkit-user-select: none;
+    -webkit-touch-callout: none;
+  }
+  .tauri-native-app input,
+  .tauri-native-app textarea,
+  .tauri-native-app [contenteditable="true"] {
+    user-select: text;
+    -webkit-user-select: text;
   }
 }
