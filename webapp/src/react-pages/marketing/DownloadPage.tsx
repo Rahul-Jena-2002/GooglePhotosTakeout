@@ -1,12 +1,11 @@
 import React, { useState } from "react";
-import { 
-  Download, 
-  ShieldCheck, 
-  Cpu, 
-  WifiOff, 
-  HardDrive, 
-  Terminal, 
-  AlertCircle
+import {
+  Download,
+  ShieldCheck,
+  Cpu,
+  WifiOff,
+  HardDrive,
+  Terminal,
 } from "lucide-react";
 import AdUnit from "../../components/monetization/AdUnit";
 
@@ -21,9 +20,9 @@ interface DownloadOption {
 }
 
 export default function DownloadPage() {
-  const [selectedOS, setSelectedOS] = useState<"win" | "mac" | "linux" | "android">("win");
+  const [selectedOS, setSelectedOS] = useState<"win" | "mac" | "linux">("win");
 
-  const downloadOptions: Record<"win" | "mac" | "linux" | "android", DownloadOption> = {
+  const downloadOptions: Record<"win" | "mac" | "linux", DownloadOption> = {
     win: {
       title: "TakeoutFix for Windows",
       badge: "Windows 10 & 11",
@@ -62,19 +61,6 @@ export default function DownloadPage() {
         "Right-click the file > Properties > Permissions > check 'Allow executing file as program'.",
         "Double-click 'TakeoutFix.AppImage' to run."
       ]
-    },
-    android: {
-      title: "TakeoutFix for Android",
-      badge: "Android 8.0+",
-      desc: "Native mobile APK. Install directly on your phone or tablet to restore metadata on the go.",
-      file: "TakeoutFix.apk",
-      url: "https://takeoutfix-download.takeoutfix.workers.dev/download/android",
-      directUrl: "https://github.com/Rahul-Jena-2002/GooglePhotosTakeout/releases/latest/download/TakeoutFix.apk",
-      instructions: [
-        "Tap the download button below to get 'TakeoutFix.apk'.",
-        "Tap the downloaded APK file in your notifications or Downloads folder.",
-        "If prompted, allow 'Install from unknown sources' for your browser, then tap Install."
-      ]
     }
   };
 
@@ -82,31 +68,30 @@ export default function DownloadPage() {
 
   return (
     <div className="min-h-screen text-zinc-900 dark:text-white relative py-12 px-4 sm:px-6">
-      {/* Container aligned with max-w-4xl to match other pages like Guides */}
       <div className="w-full max-w-4xl mx-auto space-y-12">
-        
-        {/* Header Block */}
+
+        {/* Header */}
         <div className="text-center space-y-4 max-w-3xl mx-auto pt-2">
           <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/30 text-emerald-600 dark:text-emerald-400 text-[10px] font-bold uppercase tracking-wider shadow-xs">
             <ShieldCheck className="w-3.5 h-3.5" /> 100% Free Desktop Restoration Engine
           </div>
           <h1 className="text-3xl md:text-5xl font-black tracking-tight text-zinc-900 dark:text-white">
-            TakeoutFix Desktop App
+            Download TakeoutFix
           </h1>
           <p className="text-sm md:text-base text-zinc-600 dark:text-zinc-400 leading-relaxed font-medium">
             Restore unlimited photo dates and GPS location tags 100% free on your computer. Bypasses browser memory limits, processes massive 500GB+ libraries at native multi-threaded disk speeds, and runs entirely offline.
           </p>
         </div>
 
-        {/* 1. TOP: Main Downloads Card (Full Width) */}
+        {/* Main Downloads Card */}
         <div className="bg-white dark:bg-zinc-950/60 border border-zinc-200 dark:border-white/10 p-6 md:p-8 rounded-2xl shadow-sm dark:shadow-2xl flex flex-col justify-between">
           <div className="space-y-6">
-            {/* Tab headers */}
+            {/* OS Tabs */}
             <div className="flex border-b border-zinc-200 dark:border-white/10 pb-4 justify-between gap-2.5 overflow-x-auto">
-              <button 
-                onClick={() => { setSelectedOS("win"); setSelectedType(0); }}
+              <button
+                onClick={() => setSelectedOS("win")}
                 className={`flex-1 min-w-[100px] py-2.5 px-3.5 rounded-xl text-xs md:text-sm font-bold transition-all border text-center flex items-center justify-center gap-2 cursor-pointer ${
-                  selectedOS === "win" 
+                  selectedOS === "win"
                     ? "bg-zinc-900 text-white dark:bg-white dark:text-black border-transparent shadow-md"
                     : "bg-zinc-100/80 dark:bg-white/[0.03] border-zinc-200 dark:border-white/5 text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white hover:bg-zinc-200/60"
                 }`}
@@ -114,10 +99,10 @@ export default function DownloadPage() {
                 <img src="/windows-logo.png" className="w-4 h-4 object-contain flex-shrink-0" alt="" />
                 <span>Windows</span>
               </button>
-              <button 
-                onClick={() => { setSelectedOS("mac"); setSelectedType(0); }}
+              <button
+                onClick={() => setSelectedOS("mac")}
                 className={`flex-1 min-w-[100px] py-2.5 px-3.5 rounded-xl text-xs md:text-sm font-bold transition-all border text-center flex items-center justify-center gap-2 cursor-pointer ${
-                  selectedOS === "mac" 
+                  selectedOS === "mac"
                     ? "bg-zinc-900 text-white dark:bg-white dark:text-black border-transparent shadow-md"
                     : "bg-zinc-100/80 dark:bg-white/[0.03] border-zinc-200 dark:border-white/5 text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white hover:bg-zinc-200/60"
                 }`}
@@ -132,10 +117,10 @@ export default function DownloadPage() {
                 )}
                 <span>macOS</span>
               </button>
-              <button 
-                onClick={() => { setSelectedOS("linux"); }}
+              <button
+                onClick={() => setSelectedOS("linux")}
                 className={`flex-1 min-w-[100px] py-2.5 px-3.5 rounded-xl text-xs md:text-sm font-bold transition-all border text-center flex items-center justify-center gap-2 cursor-pointer ${
-                  selectedOS === "linux" 
+                  selectedOS === "linux"
                     ? "bg-zinc-900 text-white dark:bg-white dark:text-black border-transparent shadow-md"
                     : "bg-zinc-100/80 dark:bg-white/[0.03] border-zinc-200 dark:border-white/5 text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white hover:bg-zinc-200/60"
                 }`}
@@ -143,20 +128,9 @@ export default function DownloadPage() {
                 <img src="/linux-logo.png" className="w-4 h-4 object-contain flex-shrink-0" alt="" />
                 <span>Linux</span>
               </button>
-              <button 
-                onClick={() => { setSelectedOS("android"); }}
-                className={`flex-1 min-w-[100px] py-2.5 px-3.5 rounded-xl text-xs md:text-sm font-bold transition-all border text-center flex items-center justify-center gap-2 cursor-pointer ${
-                  selectedOS === "android" 
-                    ? "bg-zinc-900 text-white dark:bg-white dark:text-black border-transparent shadow-md"
-                    : "bg-zinc-100/80 dark:bg-white/[0.03] border-zinc-200 dark:border-white/5 text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white hover:bg-zinc-200/60"
-                }`}
-              >
-                <img src="/android-logo.png" className="w-4 h-4 object-contain flex-shrink-0" alt="" />
-                <span>Android</span>
-              </button>
             </div>
 
-            {/* Direct OS Selection Card Details */}
+            {/* OS Details */}
             <div className="space-y-5 pt-2">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <div className="flex items-center gap-2.5">
@@ -191,25 +165,33 @@ export default function DownloadPage() {
             </div>
           </div>
 
-          {/* Download Button Action */}
+          {/* Download Button */}
           <div className="pt-6 mt-6 border-t border-zinc-200 dark:border-white/10 space-y-2.5">
             <a href={activeOption.url} className="w-full block">
               <button className="w-full h-14 text-sm font-bold rounded-xl flex items-center justify-center gap-2.5 cursor-pointer shadow-lg transition-all bg-zinc-900 hover:bg-black text-white dark:bg-white dark:hover:bg-zinc-100 dark:text-black hover:scale-[1.005] active:scale-[0.995]">
                 <Download className="w-4 h-4" /> Download {activeOption.title}
               </button>
             </a>
-            <p className="text-[11px] text-center text-zinc-500 dark:text-zinc-400 font-medium">
-              ✓ Verified release · 100% Offline execution · Direct single-file download
-            </p>
+            <div className="flex items-center justify-between gap-4">
+              <p className="text-[11px] text-zinc-500 dark:text-zinc-400 font-medium">
+                &#10003; Verified release &middot; 100% Offline execution &middot; Direct single-file download
+              </p>
+              <a
+                href={activeOption.directUrl}
+                className="text-[11px] text-zinc-400 dark:text-zinc-500 hover:text-zinc-600 dark:hover:text-zinc-300 transition-colors whitespace-nowrap underline underline-offset-2"
+              >
+                Direct link
+              </a>
+            </div>
           </div>
         </div>
 
-        {/* Ad directly below downloads div */}
+        {/* Ad below downloads */}
         <div className="w-full max-w-xl mx-auto -mt-4 mb-2">
           <AdUnit placement="DOWNLOAD_TOP" type="compact" />
         </div>
 
-        {/* 2. BELOW: Why Desktop App? (2x2 Grid) */}
+        {/* Why Desktop App */}
         <div className="bg-white dark:bg-zinc-950/60 border border-zinc-200 dark:border-white/10 p-6 md:p-8 rounded-2xl space-y-6 shadow-sm dark:shadow-2xl">
           <div className="flex items-center justify-between border-b border-zinc-200 dark:border-white/10 pb-3">
             <h3 className="text-base font-bold text-zinc-900 dark:text-white">Why Desktop App?</h3>
@@ -217,15 +199,15 @@ export default function DownloadPage() {
               Engineered for Massive Google Takeout Libraries
             </span>
           </div>
-          
+
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
             <div className="flex items-start gap-3 p-3.5 rounded-xl bg-zinc-50/60 dark:bg-white/[0.02] border border-zinc-200/60 dark:border-white/5">
               <div className="p-2 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400 mt-0.5 shrink-0">
                 <Cpu className="w-4 h-4" />
               </div>
               <div>
-                <h4 className="text-xs font-bold text-zinc-900 dark:text-white">10x Faster Processing</h4>
-                <p className="text-[11px] text-zinc-600 dark:text-zinc-400 mt-0.5 leading-relaxed">Uses native multi-threading and asynchronous background workers. Processes large archives in minutes rather than hours.</p>
+                <h4 className="text-xs font-bold text-zinc-900 dark:text-white">Super Fast Processing</h4>
+                <p className="text-[11px] text-zinc-600 dark:text-zinc-400 mt-0.5 leading-relaxed">Restores thousands of photos in minutes without freezing or slowing down your computer.</p>
               </div>
             </div>
 
@@ -234,8 +216,8 @@ export default function DownloadPage() {
                 <ShieldCheck className="w-4 h-4" />
               </div>
               <div>
-                <h4 className="text-xs font-bold text-zinc-900 dark:text-white">Infinite Size Limits</h4>
-                <p className="text-[11px] text-zinc-600 dark:text-zinc-400 mt-0.5 leading-relaxed">No browser memory constraints. Confidently restore large Google Takeout archives from 50GB up to 1TB+.</p>
+                <h4 className="text-xs font-bold text-zinc-900 dark:text-white">Handles Any Library Size</h4>
+                <p className="text-[11px] text-zinc-600 dark:text-zinc-400 mt-0.5 leading-relaxed">No file or size limits. Easily restore small albums or massive libraries from 50GB up to 1TB+.</p>
               </div>
             </div>
 
@@ -244,8 +226,8 @@ export default function DownloadPage() {
                 <WifiOff className="w-4 h-4" />
               </div>
               <div>
-                <h4 className="text-xs font-bold text-zinc-900 dark:text-white">100% Offline Capability</h4>
-                <p className="text-[11px] text-zinc-600 dark:text-zinc-400 mt-0.5 leading-relaxed">Runs entirely locally without any network connection. Perfect for users with slow or metered internet lines.</p>
+                <h4 className="text-xs font-bold text-zinc-900 dark:text-white">Works 100% Offline</h4>
+                <p className="text-[11px] text-zinc-600 dark:text-zinc-400 mt-0.5 leading-relaxed">Runs entirely on your computer without uploading anything to the internet. 100% private.</p>
               </div>
             </div>
 
@@ -255,13 +237,13 @@ export default function DownloadPage() {
               </div>
               <div>
                 <h4 className="text-xs font-bold text-zinc-900 dark:text-white">Direct Drive Integration</h4>
-                <p className="text-[11px] text-zinc-600 dark:text-zinc-400 mt-0.5 leading-relaxed">Bypasses browser sandboxes to read/write directories and ZIP archives directly on your hard drive or external disk.</p>
+                <p className="text-[11px] text-zinc-600 dark:text-zinc-400 mt-0.5 leading-relaxed">Bypasses browser sandboxes to read/write directories directly on your hard drive or external disk.</p>
               </div>
             </div>
           </div>
         </div>
 
-        {/* 3. Tech Requirements (System Specs Horizontal Pills) */}
+        {/* System Specs */}
         <div className="bg-white dark:bg-zinc-950/60 border border-zinc-200 dark:border-white/10 p-6 rounded-2xl shadow-sm dark:shadow-2xl space-y-3.5">
           <h3 className="text-xs font-bold uppercase tracking-wider text-zinc-900 dark:text-zinc-400 flex items-center gap-1.5">
             <Terminal className="w-4 h-4" /> System Specs
@@ -282,12 +264,12 @@ export default function DownloadPage() {
           </div>
         </div>
 
-        {/* Ad directly below system specs */}
+        {/* Ad below system specs */}
         <div className="w-full max-w-xl mx-auto -mt-4 mb-2">
           <AdUnit placement="DOWNLOAD_BOTTOM" type="compact" />
         </div>
 
-        {/* Windows Security Notice */}
+        {/* Code Signing Notice */}
         <div className="bg-white dark:bg-zinc-950/60 border border-zinc-200 dark:border-white/10 p-6 rounded-2xl shadow-sm dark:shadow-2xl space-y-3">
           <div className="flex items-center gap-2.5">
             <div className="p-2 rounded-lg bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-zinc-700 dark:text-zinc-300">
@@ -320,8 +302,8 @@ export default function DownloadPage() {
               <thead>
                 <tr className="border-b border-zinc-200 dark:border-white/10 bg-zinc-50 dark:bg-white/[0.02] text-left text-zinc-900 dark:text-zinc-300 font-bold">
                   <th className="p-4">Feature</th>
-                  <th className="p-4">🌐 Web Browser Tool</th>
-                  <th className="p-4 text-indigo-600 dark:text-indigo-400">💻 Desktop Standalone App</th>
+                  <th className="p-4">&#127760; Web Browser Tool</th>
+                  <th className="p-4 text-indigo-600 dark:text-indigo-400">&#128187; Desktop Standalone App</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-zinc-200 dark:border-white/10 font-medium">

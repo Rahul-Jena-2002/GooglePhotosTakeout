@@ -18,10 +18,14 @@ function DesktopAuthBridgeContent() {
   const [manualUrl, setManualUrl] = useState<string>("");
   const attemptedRef = useRef<boolean>(false);
 
+  const [stateToken, setStateToken] = useState<string>("");
+
   useEffect(() => {
     if (typeof window !== "undefined") {
       const searchParams = new URLSearchParams(window.location.search);
-      const portParam = searchParams.get("port");
+      const portParam = searchParams.get("port") || searchParams.get("desktop_port");
+      const stateParam = searchParams.get("state") || "";
+      setStateToken(stateParam);
       const selectAccount = searchParams.get("select_account") === "true";
       setSelectAccountParam(selectAccount);
       if (portParam && !Number.isNaN(Number(portParam))) {
@@ -59,7 +63,7 @@ function DesktopAuthBridgeContent() {
       const usedFiles = userData?.usedFiles || 0;
       const usedBytes = userData?.usedBytes || 0;
 
-      const payload = {
+      const payload: Record<string, any> = {
         uid: user.uid,
         googleId: user.uid,
         email,
@@ -72,9 +76,12 @@ function DesktopAuthBridgeContent() {
         photoUrl: user.photoURL || "",
         photoURL: user.photoURL || ""
       };
+      if (stateToken) {
+        payload.state = stateToken;
+      }
 
       // Build manual fallback URL
-      const queryParams = new URLSearchParams({
+      const queryParams: Record<string, string> = {
         uid: user.uid,
         googleId: user.uid,
         email,
@@ -84,8 +91,11 @@ function DesktopAuthBridgeContent() {
         usedFiles: String(usedFiles),
         usedBytes: String(usedBytes),
         token
-      });
-      const callbackUrl = `http://127.0.0.1:${port}/callback?${queryParams.toString()}`;
+      };
+      if (stateToken) {
+        queryParams.state = stateToken;
+      }
+      const callbackUrl = `http://127.0.0.1:${port}/callback?${new URLSearchParams(queryParams).toString()}`;
       setManualUrl(callbackUrl);
 
       // Attempt 1: POST fetch

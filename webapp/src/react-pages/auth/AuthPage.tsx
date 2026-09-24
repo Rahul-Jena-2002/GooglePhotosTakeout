@@ -79,23 +79,65 @@ export default function AuthPage() {
     }
     return null;
   });
+  const [fallbackAuthUrl, setFallbackAuthUrl] = useState<string | null>(null);
+  const [authorizing, setAuthorizing] = useState(false);
+  const [authorizedSuccessfully, setAuthorizedSuccessfully] = useState<boolean>(() => {
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      return params.get("authorized") === "true" || params.get("connected") === "true";
+    }
+    return false;
+  });
+  const [autoCloseSeconds, setAutoCloseSeconds] = useState(10);
+
+  // Auto-close countdown timer (10 seconds)
+  useEffect(() => {
+    if (!authorizedSuccessfully) return;
+    setAutoCloseSeconds(10);
+
+    const timer = setInterval(() => {
+      setAutoCloseSeconds((prev) => {
+        if (prev <= 1) {
+          clearInterval(timer);
+          try {
+            window.close();
+          } catch (_) {}
+          try {
+            window.open("", "_self", "").close();
+          } catch (_) {}
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [authorizedSuccessfully]);
 
   const generateStrongPassword = () => {
+    const getRandomInt = (max: number) => {
+      const arr = new Uint32Array(1);
+      window.crypto.getRandomValues(arr);
+      return arr[0] % max;
+    };
     const uppers = "ABCDEFGHJKLMNPQRSTUVWXYZ";
     const lowers = "abcdefghijkmnopqrstuvwxyz";
     const digits = "23456789";
     const specials = "!@#$%^&*()_+-=";
     const pwd = [
-      uppers[Math.floor(Math.random() * uppers.length)],
-      lowers[Math.floor(Math.random() * lowers.length)],
-      digits[Math.floor(Math.random() * digits.length)],
-      specials[Math.floor(Math.random() * specials.length)],
+      uppers[getRandomInt(uppers.length)],
+      lowers[getRandomInt(lowers.length)],
+      digits[getRandomInt(digits.length)],
+      specials[getRandomInt(specials.length)],
     ];
     const all = uppers + lowers + digits + specials;
     for (let i = 0; i < 8; i++) {
-      pwd.push(all[Math.floor(Math.random() * all.length)]);
+      pwd.push(all[getRandomInt(all.length)]);
     }
-    pwd.sort(() => Math.random() - 0.5);
+    for (let i = pwd.length - 1; i > 0; i--) {
+      const j = getRandomInt(i + 1);
+      [pwd[i], pwd[j]] = [pwd[j], pwd[i]];
+    }
     const result = pwd.join("");
     setPassword(result);
     setConfirmPassword(result);
@@ -119,21 +161,17 @@ export default function AuthPage() {
       });
   }, []);
 
-  // Sync auth state & auto-dispatch to desktop if already signed in
+  // Sync auth state & auto-authorize desktop if requested
   useEffect(() => {
     if (!auth) return;
     const unsub = auth.onAuthStateChanged((u: User | null) => {
       setCurrentUser(u);
-      if (u && typeof window !== "undefined") {
-        const params = new URLSearchParams(window.location.search);
-        const port = params.get("desktop_port") || params.get("port");
-        if (port) {
-          handleSuccessRedirect(u);
-        }
+      if (u && desktopPort && !authorizedSuccessfully && !authorizing) {
+        authorizeDesktop(u);
       }
     });
     return () => unsub();
-  }, []);
+  }, [desktopPort, authorizedSuccessfully, authorizing]);
 
   const getRedirectUrl = () => {
     if (typeof window === "undefined") return "/tool";
@@ -150,39 +188,10 @@ export default function AuthPage() {
       const targetUser = userObj || currentUser || auth?.currentUser;
       if (port && targetUser) {
         try {
-          const token = await targetUser.getIdToken().catch(() => "");
-          const callbackParams = new URLSearchParams({
-            uid: targetUser.uid,
-            googleId: targetUser.uid,
-            email: targetUser.email || "",
-            displayName: targetUser.displayName || targetUser.email?.split("@")[0] || "User",
-            name: targetUser.displayName || targetUser.email?.split("@")[0] || "User",
-            plan: "free",
-            token: token
-          });
-          const callbackUrl = `http://127.0.0.1:${port}/callback?${callbackParams.toString()}`;
-
-          // Attempt background POST fetch first
-          try {
-            fetch(`http://127.0.0.1:${port}/callback`, {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                uid: targetUser.uid,
-                googleId: targetUser.uid,
-                email: targetUser.email || "",
-                displayName: targetUser.displayName || targetUser.email?.split("@")[0] || "User",
-                name: targetUser.displayName || targetUser.email?.split("@")[0] || "User",
-                plan: "free",
-                token: token
-              })
-            }).catch(() => {});
-          } catch (_) {}
-
-          window.location.href = callbackUrl;
+          await authorizeDesktop(targetUser);
           return;
         } catch (e) {
-          console.warn("Desktop bridge redirect error:", e);
+          console.warn("Desktop bridge error:", e);
         }
       }
     }
@@ -226,62 +235,24 @@ export default function AuthPage() {
     setGoogleLoading(true);
 
     try {
-      const isTauri = typeof window !== "undefined" && ("__TAURI_INTERNALS__" in window || "__TAURI__" in window);
-      if (isTauri) {
-        try {
-          const { invoke } = await import("@tauri-apps/api/core");
-          const userData: any = await invoke("start_browser_login");
-          if (userData && (userData.uid || userData.email)) {
-            const cleanUid = userData.uid || userData.googleId || userData.email;
-            const userObj: any = {
-              uid: cleanUid,
-              email: userData.email,
-              displayName: userData.displayName || userData.name || userData.email?.split("@")[0] || "User",
-              photoURL: userData.photoURL || null,
-              plan: userData.plan || "free",
-              token: userData.token || ""
-            };
-            if (db && cleanUid) {
-              const userRef = doc(db, "users", cleanUid);
-              const snap = await getDoc(userRef);
-              if (!snap.exists()) {
-                await setDoc(userRef, {
-                  uid: cleanUid,
-                  email: userObj.email,
-                  displayName: userObj.displayName,
-                  plan: "free",
-                  createdAt: Date.now(),
-                  suspended: false
-                }, { merge: true });
-              }
-            }
-            localStorage.setItem("takeoutfix_user_data", JSON.stringify(userObj));
-            setSuccessMsg("Signed in successfully! Redirecting...");
-            handleSuccessRedirect(userObj);
-            return;
-          } else {
-            throw new Error("No user profile received from browser handshake.");
-          }
-        } catch (tauriErr: any) {
-          console.error("[Tauri Auth] Browser loopback error:", tauriErr);
-          setErrorMsg(tauriErr?.message || "Browser sign-in was cancelled or timed out.");
-          return;
-        } finally {
-          setGoogleLoading(false);
-        }
-      }
-
       // IMPORTANT: signInWithPopup MUST be called synchronously within the click event.
       // Any await before it breaks the browser's trusted event chain → popup gets blocked.
       // reCAPTCHA runs in parallel (fire-and-forget) — it's a scoring signal, not a gate.
       executeRecaptcha("GOOGLE_SIGNIN").catch(() => {});
 
       try {
+        if (googleProvider) {
+          googleProvider.setCustomParameters({ prompt: 'select_account' });
+        }
         const res = await signInWithPopup(auth, googleProvider);
         if (res.user) {
           await syncUserDoc(res.user);
-          setSuccessMsg("Signed in successfully! Redirecting...");
-          handleSuccessRedirect(res.user);
+          setSuccessMsg("Signed in successfully!");
+          if (desktopPort) {
+            await authorizeDesktop(res.user);
+          } else {
+            handleSuccessRedirect(res.user);
+          }
           return;
         }
       } catch (popupErr: any) {
@@ -410,6 +381,71 @@ export default function AuthPage() {
     }
   };
 
+  const authorizeDesktop = async (targetUser: User) => {
+    if (typeof window !== "undefined" && desktopPort && targetUser) {
+      setAuthorizing(true);
+      setErrorMsg("");
+      try {
+        const token = await targetUser.getIdToken().catch(() => "");
+        const refreshToken = (targetUser as any).refreshToken || (targetUser as any).stsTokenManager?.refreshToken || "";
+        const stateParam = new URLSearchParams(window.location.search).get("state") || "";
+        const payload: Record<string, string> = {
+          uid: targetUser.uid,
+          googleId: targetUser.uid,
+          email: targetUser.email || "",
+          displayName: targetUser.displayName || targetUser.email?.split("@")[0] || "User",
+          name: targetUser.displayName || targetUser.email?.split("@")[0] || "User",
+          plan: "free",
+          token: token,
+          idToken: token,
+          refreshToken: refreshToken
+        };
+        if (stateParam) {
+          payload.state = stateParam;
+        }
+        const callbackParams = new URLSearchParams(payload);
+        const callbackUrl = `http://127.0.0.1:${desktopPort}/callback?${callbackParams.toString()}`;
+        setFallbackAuthUrl(callbackUrl);
+
+        let ok = false;
+        try {
+          const res = await fetch(`http://127.0.0.1:${desktopPort}/callback`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload)
+          });
+          if (res.ok) ok = true;
+        } catch (_) {}
+
+        // Always also fire query GET ping as backup transport
+        try {
+          fetch(callbackUrl, { mode: "no-cors" }).catch(() => {});
+        } catch (_) {}
+
+        // Strip desktop_port/port from URL immediately to permanently prevent any looping
+        if (typeof window !== "undefined") {
+          try {
+            const cleanSearch = new URLSearchParams(window.location.search);
+            cleanSearch.delete("desktop_port");
+            cleanSearch.delete("port");
+            cleanSearch.set("authorized", "true");
+            const newUrl = window.location.pathname + "?" + cleanSearch.toString();
+            window.history.replaceState({}, document.title, newUrl);
+          } catch (_) {}
+        }
+
+        // Show successful authorization card right here on the login page ("here itself")
+        setAuthorizedSuccessfully(true);
+        setAutoCloseSeconds(10);
+      } catch (err: any) {
+        console.error("Authorization error:", err);
+        setErrorMsg("Failed to automatically connect to desktop. Please click 'Copy Auth Link' below.");
+      } finally {
+        setAuthorizing(false);
+      }
+    }
+  };
+
   return (
     <div className="min-h-[90vh] flex items-center justify-center px-4 py-12 relative">
       {/* Ambient background glows */}
@@ -417,55 +453,159 @@ export default function AuthPage() {
       <div className="absolute bottom-1/4 right-1/4 w-80 h-80 bg-purple-500/10 dark:bg-purple-600/10 rounded-full blur-3xl pointer-events-none" />
 
       <div className="w-full max-w-md relative z-10">
-        {/* Already Signed In Card */}
-        {currentUser && (
-          <div className="mb-6 p-4 rounded-2xl bg-white dark:bg-zinc-900/90 border border-zinc-200 dark:border-zinc-800 shadow-xl backdrop-blur-md text-left transition-all">
-            <div className="flex items-center gap-3 mb-3">
+        {/* SUCCESSFUL DESKTOP AUTHORIZATION VIEW - DISPLAYED RIGHT HERE IN THE LOGIN CARD */}
+        {authorizedSuccessfully ? (
+          <div className="bg-white dark:bg-zinc-900/95 border border-zinc-200/80 dark:border-zinc-800 rounded-3xl p-6 sm:p-8 shadow-2xl backdrop-blur-xl text-center">
+            <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-emerald-500 flex items-center justify-center text-3xl font-bold shadow-lg shadow-emerald-500/10">
+              ✓
+            </div>
+            <h2 className="text-xl sm:text-2xl font-extrabold text-zinc-900 dark:text-white mb-2">
+              Successfully Connected!
+            </h2>
+            <div className="inline-block px-3.5 py-1.5 rounded-xl bg-zinc-100 dark:bg-zinc-800/80 border border-zinc-200 dark:border-zinc-700 text-xs font-semibold text-emerald-600 dark:text-emerald-400 mb-3">
+              {currentUser?.displayName || currentUser?.email || (typeof window !== "undefined" ? new URLSearchParams(window.location.search).get("email") : "") || "TakeoutFix Desktop"}
+            </div>
+            <p className="text-xs text-zinc-500 dark:text-zinc-400 mb-5 leading-relaxed">
+              Your account has been connected to TakeoutFix Desktop. Your quota and restoration tools are unlocked.
+            </p>
+
+            {/* 10-Second Auto-close Countdown Indicator */}
+            <div className="mb-5 py-2.5 px-4 rounded-2xl bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-400 text-xs font-semibold flex items-center justify-center gap-2">
+              <span className="inline-block w-2 h-2 rounded-full bg-emerald-500 animate-ping" />
+              <span>
+                Auto-closing in <strong>{autoCloseSeconds}s</strong>...
+              </span>
+            </div>
+
+            {/* Close Window Button */}
+            <button
+              type="button"
+              onClick={() => {
+                try { window.close(); } catch (_) {}
+                try { window.open("", "_self", "").close(); } catch (_) {}
+              }}
+              className="w-full py-3.5 px-4 bg-emerald-600 hover:bg-emerald-500 active:scale-[0.99] text-white rounded-xl text-sm font-bold transition-all shadow-lg shadow-emerald-600/25 cursor-pointer flex items-center justify-center gap-2"
+            >
+              <span>Close Window</span>
+              {autoCloseSeconds > 0 && (
+                <span className="opacity-80 text-xs font-normal">({autoCloseSeconds}s)</span>
+              )}
+            </button>
+
+            <div className="mt-4 flex items-center justify-center gap-2 text-[11px] text-zinc-400 dark:text-zinc-500">
+              <span>Or press</span>
+              <kbd className="px-2 py-0.5 rounded bg-zinc-100 dark:bg-zinc-800 border border-zinc-300 dark:border-zinc-700 font-mono text-[10px] text-zinc-600 dark:text-zinc-300">
+                Ctrl + W
+              </kbd>
+              <span>to close now</span>
+            </div>
+          </div>
+        ) : desktopPort && currentUser ? (
+          /* GITHUB-STYLE AUTHORIZATION CONSENT CARD */
+          <div className="bg-white dark:bg-zinc-900/95 border border-zinc-200/80 dark:border-zinc-800 rounded-3xl p-6 sm:p-8 shadow-2xl backdrop-blur-xl text-center">
+            {/* Visual handshake connection badge */}
+            <div className="flex items-center justify-center gap-3 mb-5">
+              <div className="w-12 h-12 rounded-2xl bg-indigo-600 text-white font-bold flex items-center justify-center text-sm shadow-md shadow-indigo-500/20">
+                TF
+              </div>
+              <div className="flex items-center gap-1 text-zinc-400">
+                <div className="w-1.5 h-1.5 rounded-full bg-zinc-300 dark:bg-zinc-700" />
+                <div className="w-4 h-0.5 bg-zinc-300 dark:bg-zinc-700" />
+                <div className="w-1.5 h-1.5 rounded-full bg-zinc-300 dark:bg-zinc-700" />
+              </div>
+              <div className="w-12 h-12 rounded-2xl bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 text-xl flex items-center justify-center shadow-sm">
+                🖥️
+              </div>
+            </div>
+
+            <h1 className="text-xl sm:text-2xl font-extrabold text-zinc-900 dark:text-white mb-1">
+              Authorize TakeoutFix Desktop
+            </h1>
+            <p className="text-xs text-zinc-500 dark:text-zinc-400 mb-6">
+              TakeoutFix Desktop is requesting authorization to connect with your account on local port <strong>{desktopPort}</strong>.
+            </p>
+
+            {/* Current user card */}
+            <div className="mb-6 p-4 rounded-2xl bg-zinc-50 dark:bg-zinc-950/70 border border-zinc-200/80 dark:border-zinc-800 flex items-center gap-3 text-left">
               {currentUser.photoURL ? (
                 <img src={currentUser.photoURL} alt="" className="w-10 h-10 rounded-full border border-zinc-200 dark:border-zinc-700" />
               ) : (
-                <div className="w-10 h-10 rounded-full bg-indigo-600 text-white font-bold flex items-center justify-center">
+                <div className="w-10 h-10 rounded-full bg-indigo-600 text-white font-bold flex items-center justify-center text-sm">
                   {currentUser.displayName?.charAt(0) || currentUser.email?.charAt(0) || "U"}
                 </div>
               )}
               <div className="flex-1 min-w-0">
-                <p className="text-xs text-zinc-500 dark:text-zinc-400 font-medium">Currently signed in as</p>
-                <p className="text-sm font-bold text-zinc-900 dark:text-zinc-100 truncate">
+                <p className="text-[10px] text-zinc-400 font-semibold uppercase tracking-wider">Signed in as</p>
+                <p className="text-xs sm:text-sm font-bold text-zinc-900 dark:text-zinc-100 truncate">
                   {currentUser.displayName || currentUser.email}
+                </p>
+                <p className="text-[11px] text-zinc-500 dark:text-zinc-400 truncate">
+                  {currentUser.email}
                 </p>
               </div>
             </div>
-            {desktopPort && (
-              <div className="mb-3 px-3 py-2 rounded-xl bg-indigo-50 dark:bg-indigo-950/40 border border-indigo-200 dark:border-indigo-800/60 text-xs text-indigo-900 dark:text-indigo-200 flex items-center justify-between">
-                <span>🖥️ TakeoutFix Desktop detected on port <strong>{desktopPort}</strong></span>
+
+            {errorMsg && (
+              <div className="mb-4 p-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-600 dark:text-red-400 text-xs flex items-start gap-2 text-left">
+                <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />
+                <span>{errorMsg}</span>
               </div>
             )}
-            <div className="flex gap-2">
+
+            {/* Authorize button */}
+            <button
+              type="button"
+              disabled={authorizing}
+              onClick={() => authorizeDesktop(currentUser)}
+              className="w-full py-3 px-4 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-xl text-xs sm:text-sm shadow-md shadow-indigo-600/20 transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+            >
+              {authorizing ? (
+                <span>Connecting to Desktop...</span>
+              ) : (
+                <>
+                  <span>Authorize TakeoutFix Desktop</span>
+                  <ArrowRight className="w-4 h-4" />
+                </>
+              )}
+            </button>
+
+            {/* Fallback link if manual copy needed */}
+            {fallbackAuthUrl && (
+              <div className="mt-4 p-3 rounded-xl bg-zinc-100 dark:bg-zinc-800 text-left text-xs">
+                <p className="text-[11px] text-zinc-500 dark:text-zinc-400 mb-2">
+                  Didn't connect automatically? Copy this link and paste it in the desktop app:
+                </p>
+                <button
+                  type="button"
+                  onClick={() => {
+                    navigator.clipboard.writeText(fallbackAuthUrl);
+                    setSuccessMsg("Copied link to clipboard!");
+                  }}
+                  className="py-1.5 px-3 bg-zinc-200 dark:bg-zinc-700 hover:bg-zinc-300 dark:hover:bg-zinc-600 text-zinc-800 dark:text-zinc-200 rounded-lg text-xs font-medium cursor-pointer"
+                >
+                  Copy Auth Link
+                </button>
+              </div>
+            )}
+
+            {/* Switch account action */}
+            <div className="mt-4 text-center">
               <button
                 type="button"
                 onClick={() => {
-                  handleSuccessRedirect(currentUser);
+                  auth.signOut();
+                  setCurrentUser(null);
                 }}
-                className="flex-1 py-2.5 px-3 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-md"
+                className="text-xs text-zinc-500 dark:text-zinc-400 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors cursor-pointer py-1"
               >
-                <span>{desktopPort ? "Connect to TakeoutFix Desktop" : "Continue to App"}</span>
-                <ArrowRight className="w-3.5 h-3.5" />
-              </button>
-              <button
-                type="button"
-                onClick={() => auth.signOut()}
-                className="py-2 px-3 border border-zinc-200 dark:border-zinc-700 hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-700 dark:text-zinc-300 rounded-xl text-xs font-semibold transition-all cursor-pointer"
-              >
-                Sign Out
+                Sign in with a different Google account
               </button>
             </div>
           </div>
-        )}
-
-        {/* Main Auth Container */}
-        <div className="bg-white dark:bg-zinc-900/95 border border-zinc-200/80 dark:border-zinc-800 rounded-3xl p-6 sm:p-8 shadow-2xl backdrop-blur-xl transition-colors duration-200">
-          
-          {/* Header */}
+        ) : (
+          /* STANDARD LOGIN VIEW */
+          <div className="bg-white dark:bg-zinc-900/95 border border-zinc-200/80 dark:border-zinc-800 rounded-3xl p-6 sm:p-8 shadow-2xl backdrop-blur-xl transition-colors duration-200">
+            {/* Header */}
           <div className="text-center mb-6">
             <h1 className="text-2xl font-extrabold tracking-tight text-zinc-900 dark:text-white">
               {mode === "signin" && "Welcome Back"}
@@ -522,6 +662,21 @@ export default function AuthPage() {
               >
                 Sign Up
               </button>
+            </div>
+          )}
+
+          {/* Desktop App Authorization Banner */}
+          {desktopPort && (
+            <div className="mb-4 p-3.5 rounded-2xl bg-indigo-50/80 dark:bg-indigo-950/40 border border-indigo-200 dark:border-indigo-800 text-left">
+              <div className="flex items-center gap-2 mb-1">
+                <span className="text-sm">🖥️</span>
+                <h3 className="text-xs font-bold uppercase tracking-wider text-indigo-700 dark:text-indigo-300">
+                  TakeoutFix Desktop Link
+                </h3>
+              </div>
+              <p className="text-[11px] text-zinc-600 dark:text-zinc-400 leading-relaxed">
+                Signing in below will automatically authenticate your local TakeoutFix application.
+              </p>
             </div>
           )}
 
@@ -582,6 +737,36 @@ export default function AuthPage() {
             <div className="mb-4 p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400 text-xs flex items-start gap-2 text-left">
               <CheckCircle2 className="w-4 h-4 flex-shrink-0 mt-0.5" />
               <span>{successMsg}</span>
+            </div>
+          )}
+
+          {/* Fallback Manual Auth Code / Link Card */}
+          {fallbackAuthUrl && (
+            <div className="mb-4 p-3.5 rounded-2xl bg-zinc-100 dark:bg-zinc-800/80 border border-zinc-200 dark:border-zinc-700 text-left">
+              <p className="text-xs font-semibold text-zinc-800 dark:text-zinc-200 mb-1">
+                TakeoutFix Desktop didn't open automatically?
+              </p>
+              <p className="text-[11px] text-zinc-500 dark:text-zinc-400 mb-2.5">
+                Copy your authorization link and paste it into the "Or paste auth code / URL" field in TakeoutFix Desktop:
+              </p>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    navigator.clipboard.writeText(fallbackAuthUrl);
+                    setSuccessMsg("Authorization link copied! Paste into TakeoutFix Desktop.");
+                  }}
+                  className="py-1.5 px-3 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-bold transition-all cursor-pointer shadow-sm"
+                >
+                  Copy Auth Link
+                </button>
+                <a
+                  href={fallbackAuthUrl}
+                  className="py-1.5 px-3 bg-zinc-200 dark:bg-zinc-700 hover:bg-zinc-300 dark:hover:bg-zinc-600 text-zinc-800 dark:text-zinc-200 rounded-xl text-xs font-medium transition-all"
+                >
+                  Retry Link
+                </a>
+              </div>
             </div>
           )}
 
