@@ -46,5 +46,3 @@
 /auth/signup                /signup          301
 /auth/login/                /login           301
 /auth/login                 /login           301
-/auth/desktop/              /login           301
-/auth/desktop               /login           301
