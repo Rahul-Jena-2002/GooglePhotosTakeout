@@ -86,7 +86,6 @@ export default defineConfig({
     '/user/checkout': '/checkout',
     '/auth/login': '/login',
     '/auth/signup': '/signup',
-    '/auth/desktop': '/login',
     '/auth': '/login',
   },
   adapter: cloudflare({
