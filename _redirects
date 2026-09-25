@@ -18,7 +18,8 @@
 /google-takeout-to-apple-photos.html /google-takeout-to-apple-photos 301
 /restore-gps-google-takeout.html /restore-gps-google-takeout 301
 /fix-google-takeout-dates.html /fix-google-takeout-dates 301
-/auth/desktop /auth/desktop.html 200
+# /auth/desktop is served natively by DesktopAuthBridge
+/auth /login 302
 /user/profile/              /profile         301
 /user/profile               /profile         301
 /user/dashboard/            /dashboard       301
@@ -39,7 +40,11 @@
 /legal/refund               /refund          301
 /legal/privacy/             /privacy         301
 /legal/privacy              /privacy         301
+/auth/                      /login           301
+/auth                       /login           301
 /auth/signup/               /signup          301
 /auth/signup                /signup          301
 /auth/login/                /login           301
 /auth/login                 /login           301
+/auth/desktop/              /login           301
+/auth/desktop               /login           301
