@@ -1,0 +1,22 @@
+/* themes.css — Light / Dark theme overrides
+ * Layered on top of tokens.css and component stylesheets.
+ * Currently implemented in Java in ThemeColors.setDark(boolean).
+ */
+
+/* Light theme (default) */
+.theme-light {
+    --surface-bg:    var(--surface-canvas);
+    --surface-face:  var(--surface-card);
+    --text-primary:  var(--text-primary-light);
+    --text-secondary: var(--text-secondary-light);
+    --text-muted:    var(--text-muted-light);
+}
+
+/* Dark theme — applied when ThemeColors.isDark() == true */
+.theme-dark {
+    --surface-bg:    var(--dark-canvas);
+    --surface-face:  var(--dark-card);
+    --text-primary:  var(--text-primary-dark);
+    --text-secondary: var(--text-secondary-dark);
+    --text-muted:    var(--text-muted-dark);
+}

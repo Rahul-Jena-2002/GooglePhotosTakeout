@@ -31,6 +31,11 @@ if (typeof window !== 'undefined') {
 
 export const auth = authInstance;
 export const googleProvider = typeof window !== 'undefined' ? new GoogleAuthProvider() : (null as any);
+if (googleProvider) {
+  googleProvider.setCustomParameters({
+    prompt: "select_account"
+  });
+}
 
 export { signInWithPopup, signInWithRedirect, signOut, onAuthStateChanged };
 export type { User };

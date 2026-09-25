@@ -278,7 +278,7 @@ export default function LandingPage() {
       <section className="w-full relative z-10">
         <div className="absolute top-4 right-4 flex items-center gap-2 px-3 py-1 bg-zinc-100 dark:bg-zinc-900 rounded-full border border-zinc-200 dark:border-zinc-800 z-20">
           <div className="w-2 h-2 rounded-full bg-zinc-500 animate-pulse"></div>
-          <span className="text-xs font-bold text-zinc-500 uppercase tracking-widest">Realtime Telemetry</span>
+          <span className="text-xs font-bold text-zinc-500 uppercase tracking-widest">Live Community Stats</span>
         </div>
         <div className="max-w-7xl mx-auto px-4 py-24 sm:py-36 grid grid-cols-2 lg:grid-cols-5 gap-4 sm:gap-8 text-center">
           <div className="glass-card p-5 sm:p-10 flex flex-col items-center justify-center">
@@ -359,17 +359,17 @@ export default function LandingPage() {
           <div className="bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 p-6 rounded-lg">
             <Cpu className="w-8 h-8 text-zinc-900 dark:text-zinc-100 mb-4" />
             <h3 className="text-xl font-bold mb-2">Local Processing</h3>
-            <p className="text-zinc-500 text-sm leading-relaxed">Harnessing the power of HTML5 File System Access APIs, we process gigabytes of data locally utilizing your machine's CPU.</p>
+            <p className="text-zinc-500 text-sm leading-relaxed">Runs entirely inside your browser. Your photos are read and restored on your computer without leaving your device.</p>
           </div>
           <div className="bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 p-6 rounded-lg">
             <HardDrive className="w-8 h-8 text-zinc-900 dark:text-zinc-100 mb-4" />
-            <h3 className="text-xl font-bold mb-2">Direct Write</h3>
-            <p className="text-zinc-500 text-sm leading-relaxed">Restored files are injected with EXIF data and saved directly back to your local storage without ever touching an external server.</p>
+            <h3 className="text-xl font-bold mb-2">Direct Save</h3>
+            <p className="text-zinc-500 text-sm leading-relaxed">Restored photos with their original dates and locations are saved directly back to your computer folder.</p>
           </div>
           <div className="bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 p-6 rounded-lg">
             <ShieldCheck className="w-8 h-8 text-zinc-900 dark:text-zinc-100 mb-4" />
             <h3 className="text-xl font-bold mb-2">Files stay on your device</h3>
-            <p className="text-zinc-500 text-sm leading-relaxed">No tracking, no telemetry on your personal files. Your private memories remain strictly under your control.</p>
+            <p className="text-zinc-500 text-sm leading-relaxed">No tracking, no uploads of your personal photos. Your private memories remain strictly under your control.</p>
           </div>
         </div>
       </section>
@@ -428,15 +428,15 @@ export default function LandingPage() {
             >
               <div className="slider-card bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 p-8 rounded-lg w-64 min-w-[256px] h-48 flex-shrink-0 flex flex-col justify-center items-center text-center transition-all duration-300 scroll-snap-align-center" data-step="0">
                 <div className="text-3xl font-black text-foreground mb-2 tracking-tight">Takeout</div>
-                <div className="text-zinc-500 text-sm font-semibold">Photos + JSON</div>
+                <div className="text-zinc-500 text-sm font-semibold">Photos &amp; Date Files</div>
               </div>
               <div className="slider-card bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 p-8 rounded-lg w-64 min-w-[256px] h-48 flex-shrink-0 flex flex-col justify-center items-center text-center transition-all duration-300 scroll-snap-align-center" data-step="1">
                 <div className="text-3xl font-black text-foreground mb-2 tracking-tight">Matching</div>
-                <div className="text-zinc-500 text-sm font-semibold">Fuzzy Logic Engine</div>
+                <div className="text-zinc-500 text-sm font-semibold">Smart Date Matching</div>
               </div>
               <div className="slider-card bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 p-8 rounded-lg w-64 min-w-[256px] h-48 flex-shrink-0 flex flex-col justify-center items-center text-center transition-all duration-300 scroll-snap-align-center" data-step="2">
-                <div className="text-3xl font-black text-foreground mb-2 tracking-tight">Injection</div>
-                <div className="text-zinc-500 text-sm font-semibold">EXIF Header Rebuild</div>
+                <div className="text-3xl font-black text-foreground mb-2 tracking-tight">Restoring</div>
+                <div className="text-zinc-500 text-sm font-semibold">Fixing Photo Dates</div>
               </div>
               <div className="slider-card bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 p-8 rounded-lg w-64 min-w-[256px] h-48 flex-shrink-0 flex flex-col justify-center items-center text-center transition-all duration-300 scroll-snap-align-center" data-step="3">
                 <div className="text-3xl font-black text-foreground mb-2 tracking-tight">Restored</div>

@@ -103,56 +103,6 @@ export default function AuthModal() {
   const handleGoogleSignIn = async () => {
     setErrorMsg(""); setSuccessMsg(""); setGoogleLoading(true);
     try {
-      const isTauri = typeof window !== "undefined" && (
-        "__TAURI__" in window ||
-        "__TAURI_INTERNALS__" in window ||
-        "isTauri" in window ||
-        navigator.userAgent.includes("TakeoutFix-Desktop")
-      );
-      if (isTauri) {
-        try {
-          const { invoke } = await import("@tauri-apps/api/core");
-          const userData: any = await invoke("start_browser_login");
-          if (userData && (userData.uid || userData.email)) {
-            const cleanUid = userData.uid || userData.googleId || userData.email;
-            const userObj: any = {
-              uid: cleanUid,
-              email: userData.email,
-              displayName: userData.displayName || userData.name || userData.email?.split("@")[0] || "User",
-              photoURL: userData.photoURL || null,
-              plan: userData.plan || "free",
-              token: userData.token || ""
-            };
-            if (db && cleanUid) {
-              const userRef = doc(db, "users", cleanUid);
-              const snap = await getDoc(userRef);
-              if (!snap.exists()) {
-                await setDoc(userRef, {
-                  uid: cleanUid,
-                  email: userObj.email,
-                  displayName: userObj.displayName,
-                  plan: "free",
-                  createdAt: Date.now(),
-                  suspended: false
-                }, { merge: true });
-              }
-            }
-            localStorage.setItem("takeoutfix_user_data", JSON.stringify(userObj));
-            setSuccessMsg("Signed in successfully! Welcome back.");
-            handleSuccess();
-            return;
-          } else {
-            throw new Error("No user profile received from browser handshake.");
-          }
-        } catch (tauriErr: any) {
-          console.error("[Tauri Auth] Browser loopback error:", tauriErr);
-          setErrorMsg(tauriErr?.message || "Browser sign-in was cancelled or timed out.");
-          return;
-        } finally {
-          setGoogleLoading(false);
-        }
-      }
-
       executeRecaptcha("GOOGLE_SIGNIN").catch(() => {});
       if (googleProvider) {
         googleProvider.setCustomParameters({ prompt: 'select_account' });

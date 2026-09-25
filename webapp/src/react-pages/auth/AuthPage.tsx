@@ -75,7 +75,12 @@ export default function AuthPage() {
   const [desktopPort] = useState<string | null>(() => {
     if (typeof window !== "undefined") {
       const params = new URLSearchParams(window.location.search);
-      return params.get("desktop_port") || params.get("port");
+      const p = params.get("desktop_port") || params.get("port");
+      if (p) {
+        try { sessionStorage.setItem("takeoutfix_desktop_port", p); } catch (_) {}
+        return p;
+      }
+      try { return sessionStorage.getItem("takeoutfix_desktop_port"); } catch (_) { return null; }
     }
     return null;
   });
@@ -161,14 +166,21 @@ export default function AuthPage() {
       });
   }, []);
 
-  // Sync auth state & auto-authorize desktop if requested
+  // Sync auth state & handle select_account request
   useEffect(() => {
     if (!auth) return;
     const unsub = auth.onAuthStateChanged((u: User | null) => {
-      setCurrentUser(u);
-      if (u && desktopPort && !authorizedSuccessfully && !authorizing) {
-        authorizeDesktop(u);
+      if (typeof window !== "undefined") {
+        const params = new URLSearchParams(window.location.search);
+        const forceSelect = params.get("select_account") === "true" || params.get("prompt") === "select_account";
+        if (forceSelect && u && !authorizedSuccessfully) {
+          // Explicit account selection requested: clear stale Firebase session
+          auth.signOut();
+          setCurrentUser(null);
+          return;
+        }
       }
+      setCurrentUser(u);
     });
     return () => unsub();
   }, [desktopPort, authorizedSuccessfully, authorizing]);
@@ -184,7 +196,10 @@ export default function AuthPage() {
   const handleSuccessRedirect = async (userObj?: User | null) => {
     if (typeof window !== "undefined") {
       const params = new URLSearchParams(window.location.search);
-      const port = params.get("desktop_port") || params.get("port");
+      let port = params.get("desktop_port") || params.get("port") || desktopPort;
+      if (!port) {
+        try { port = sessionStorage.getItem("takeoutfix_desktop_port"); } catch (_) {}
+      }
       const targetUser = userObj || currentUser || auth?.currentUser;
       if (port && targetUser) {
         try {
@@ -235,41 +250,29 @@ export default function AuthPage() {
     setGoogleLoading(true);
 
     try {
-      // IMPORTANT: signInWithPopup MUST be called synchronously within the click event.
-      // Any await before it breaks the browser's trusted event chain → popup gets blocked.
-      // reCAPTCHA runs in parallel (fire-and-forget) — it's a scoring signal, not a gate.
+      if (typeof window !== "undefined") {
+        const params = new URLSearchParams(window.location.search);
+        const stateParam = params.get("state");
+        if (stateParam) {
+          try { sessionStorage.setItem("takeoutfix_desktop_state", stateParam); } catch (_) {}
+        }
+        const portParam = params.get("desktop_port") || params.get("port") || desktopPort;
+        if (portParam) {
+          try { sessionStorage.setItem("takeoutfix_desktop_port", portParam); } catch (_) {}
+        }
+      }
+
       executeRecaptcha("GOOGLE_SIGNIN").catch(() => {});
 
-      try {
-        if (googleProvider) {
-          googleProvider.setCustomParameters({ prompt: 'select_account' });
-        }
-        const res = await signInWithPopup(auth, googleProvider);
-        if (res.user) {
-          await syncUserDoc(res.user);
-          setSuccessMsg("Signed in successfully!");
-          if (desktopPort) {
-            await authorizeDesktop(res.user);
-          } else {
-            handleSuccessRedirect(res.user);
-          }
-          return;
-        }
-      } catch (popupErr: any) {
-        if (popupErr.code === "auth/popup-closed-by-user" || popupErr.code === "auth/cancelled-popup-request") {
-          setErrorMsg("Sign-in cancelled. Please try again.");
-          return;
-        }
-        if (popupErr.code === "auth/popup-blocked") {
-          setErrorMsg("Google Sign-In popup was blocked. Please use Email & Password below to sign in, or click 'Forgot?' to set a password.");
-          return;
-        }
-        throw popupErr;
+      if (googleProvider) {
+        googleProvider.setCustomParameters({ prompt: 'select_account' });
       }
+
+      // Navigate the complete browser window directly to Google OAuth account chooser (just like other IDEs)
+      await signInWithRedirect(auth, googleProvider);
     } catch (err: any) {
       console.error("Google sign in error:", err);
       setErrorMsg(err.message || "Failed to sign in with Google.");
-    } finally {
       setGoogleLoading(false);
     }
   };
@@ -382,13 +385,22 @@ export default function AuthPage() {
   };
 
   const authorizeDesktop = async (targetUser: User) => {
-    if (typeof window !== "undefined" && desktopPort && targetUser) {
+    if (typeof window !== "undefined" && targetUser) {
+      let port = desktopPort || new URLSearchParams(window.location.search).get("desktop_port") || new URLSearchParams(window.location.search).get("port");
+      if (!port) {
+        try { port = sessionStorage.getItem("takeoutfix_desktop_port"); } catch (_) {}
+      }
+      if (!port) return;
+
       setAuthorizing(true);
       setErrorMsg("");
       try {
         const token = await targetUser.getIdToken().catch(() => "");
         const refreshToken = (targetUser as any).refreshToken || (targetUser as any).stsTokenManager?.refreshToken || "";
-        const stateParam = new URLSearchParams(window.location.search).get("state") || "";
+        let stateParam = new URLSearchParams(window.location.search).get("state") || "";
+        if (!stateParam) {
+          try { stateParam = sessionStorage.getItem("takeoutfix_desktop_state") || ""; } catch (_) {}
+        }
         const payload: Record<string, string> = {
           uid: targetUser.uid,
           googleId: targetUser.uid,
@@ -404,12 +416,12 @@ export default function AuthPage() {
           payload.state = stateParam;
         }
         const callbackParams = new URLSearchParams(payload);
-        const callbackUrl = `http://127.0.0.1:${desktopPort}/callback?${callbackParams.toString()}`;
+        const callbackUrl = `http://127.0.0.1:${port}/callback?${callbackParams.toString()}`;
         setFallbackAuthUrl(callbackUrl);
 
         let ok = false;
         try {
-          const res = await fetch(`http://127.0.0.1:${desktopPort}/callback`, {
+          const res = await fetch(`http://127.0.0.1:${port}/callback`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(payload)
@@ -422,17 +434,20 @@ export default function AuthPage() {
           fetch(callbackUrl, { mode: "no-cors" }).catch(() => {});
         } catch (_) {}
 
+        try {
+          sessionStorage.removeItem("takeoutfix_desktop_port");
+          sessionStorage.removeItem("takeoutfix_desktop_state");
+        } catch (_) {}
+
         // Strip desktop_port/port from URL immediately to permanently prevent any looping
-        if (typeof window !== "undefined") {
-          try {
-            const cleanSearch = new URLSearchParams(window.location.search);
-            cleanSearch.delete("desktop_port");
-            cleanSearch.delete("port");
-            cleanSearch.set("authorized", "true");
-            const newUrl = window.location.pathname + "?" + cleanSearch.toString();
-            window.history.replaceState({}, document.title, newUrl);
-          } catch (_) {}
-        }
+        try {
+          const cleanSearch = new URLSearchParams(window.location.search);
+          cleanSearch.delete("desktop_port");
+          cleanSearch.delete("port");
+          cleanSearch.set("authorized", "true");
+          const newUrl = window.location.pathname + "?" + cleanSearch.toString();
+          window.history.replaceState({}, document.title, newUrl);
+        } catch (_) {}
 
         // Show successful authorization card right here on the login page ("here itself")
         setAuthorizedSuccessfully(true);
@@ -965,6 +980,7 @@ export default function AuthPage() {
 
 
         </div>
+        )}
 
       </div>
     </div>

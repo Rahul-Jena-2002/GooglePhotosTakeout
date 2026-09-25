@@ -4,9 +4,16 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
+    <parent>
+        <groupId>com.takeoutfix</groupId>
+        <artifactId>takeoutfix-root</artifactId>
+        <version>2.1.7</version>
+        <relativePath>../pom.xml</relativePath>
+    </parent>
+
     <groupId>com.takeoutfix</groupId>
     <artifactId>takeoutfix</artifactId>
-    <version>2.0.9</version>
+    <version>2.1.7</version>
     <packaging>jar</packaging>
 
     <name>takeoutfix</name>
@@ -19,18 +26,25 @@
     </properties>
 
     <dependencies>
-        <!-- Core Domain Compression & File Handling -->
+        <!-- Spring Framework Core & Dependency Injection (Zero Web / Zero Server Overhead) -->
+        <dependency>
+            <groupId>org.springframework</groupId>
+            <artifactId>spring-context</artifactId>
+            <version>6.1.14</version>
+        </dependency>
+
+        <!-- Core Domain Compression & File Handling (Latest CVE-free) -->
         <dependency>
             <groupId>org.apache.commons</groupId>
             <artifactId>commons-compress</artifactId>
-            <version>1.26.1</version>
+            <version>1.27.1</version>
         </dependency>
 
         <!-- JSON Processing -->
         <dependency>
             <groupId>org.json</groupId>
             <artifactId>json</artifactId>
-            <version>20231013</version>
+            <version>20240303</version>
         </dependency>
 
         <!-- Modern Swing UI Look & Feel -->
@@ -40,29 +54,60 @@
             <version>3.5.4</version>
         </dependency>
 
+        <!-- FlatLaf Extras: FlatSVGIcon support for scalable vector icons -->
+        <dependency>
+            <groupId>com.formdev</groupId>
+            <artifactId>flatlaf-extras</artifactId>
+            <version>3.5.4</version>
+        </dependency>
+
         <!-- Lightweight SLF4J Logging -->
         <dependency>
             <groupId>org.slf4j</groupId>
             <artifactId>slf4j-api</artifactId>
-            <version>2.0.12</version>
+            <version>2.0.16</version>
         </dependency>
         <dependency>
             <groupId>org.slf4j</groupId>
             <artifactId>slf4j-simple</artifactId>
-            <version>2.0.12</version>
+            <version>2.0.16</version>
+        </dependency>
+
+        <!-- OS-Level Secure Credential Store (Windows Credential Manager / macOS Keychain / Linux Secret Service) -->
+        <dependency>
+            <groupId>com.github.javakeyring</groupId>
+            <artifactId>java-keyring</artifactId>
+            <version>1.0.4</version>
         </dependency>
 
         <!-- Testing -->
         <dependency>
             <groupId>org.junit.jupiter</groupId>
             <artifactId>junit-jupiter</artifactId>
-            <version>5.10.2</version>
+            <version>5.11.4</version>
             <scope>test</scope>
         </dependency>
     </dependencies>
 
+
     <build>
         <finalName>takeoutfix</finalName>
+        <resources>
+            <resource>
+                <directory>src/main/resources</directory>
+                <filtering>true</filtering>
+                <includes>
+                    <include>version.properties</include>
+                </includes>
+            </resource>
+            <resource>
+                <directory>src/main/resources</directory>
+                <filtering>false</filtering>
+                <excludes>
+                    <exclude>version.properties</exclude>
+                </excludes>
+            </resource>
+        </resources>
         <plugins>
             <!-- Compiler plugin -->
             <plugin>
@@ -74,50 +119,7 @@
                 </configuration>
             </plugin>
 
-            <!-- Auto-clear cache and force session logout on every build -->
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-clean-plugin</artifactId>
-                <version>3.2.0</version>
-                <executions>
-                    <execution>
-                        <id>auto-logout-and-clear-cache-on-build</id>
-                        <phase>initialize</phase>
-                        <goals>
-                            <goal>clean</goal>
-                        </goals>
-                        <configuration>
-                            <excludeDefaultDirectories>true</excludeDefaultDirectories>
-                            <filesets>
-                                <fileset>
-                                    <directory>${user.home}/.takeoutfix</directory>
-                                    <includes>
-                                        <include>session.json</include>
-                                        <include>users.json</include>
-                                        <include>*.cache</include>
-                                        <include>*.log</include>
-                                    </includes>
-                                    <followSymlinks>false</followSymlinks>
-                                </fileset>
-                            </filesets>
-                        </configuration>
-                    </execution>
-                </executions>
-                <configuration>
-                    <filesets>
-                        <fileset>
-                            <directory>${user.home}/.takeoutfix</directory>
-                            <includes>
-                                <include>session.json</include>
-                                <include>users.json</include>
-                                <include>*.cache</include>
-                                <include>*.log</include>
-                            </includes>
-                            <followSymlinks>false</followSymlinks>
-                        </fileset>
-                    </filesets>
-                </configuration>
-            </plugin>
+
 
             <!-- Self-contained Fat JAR with shade plugin -->
             <plugin>

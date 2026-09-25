@@ -1,0 +1,40 @@
+/* glass.css — Glass morphism component styles
+ * Imports tokens from tokens.css.
+ * Active when JavaFX migration is complete. Currently documents the design intent
+ * that is implemented in Java in shared/ui/UiFactory.java.
+ */
+
+/* Glass card surface */
+.glass-card {
+    -fx-background-color: rgba(255, 255, 255, var(--glass-opacity));
+    -fx-background-radius: var(--glass-radius);
+    -fx-border-color: var(--glass-border);
+    -fx-border-radius: var(--glass-radius);
+    -fx-border-width: 1px;
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.15), 20, 0, 0, 4);
+}
+
+/* Glass button */
+.glass-button {
+    -fx-background-color: rgba(255, 255, 255, 0.08);
+    -fx-background-radius: var(--radius-full);
+    -fx-border-color: rgba(255, 255, 255, 0.16);
+    -fx-border-radius: var(--radius-full);
+    -fx-text-fill: var(--text-primary-dark);
+    -fx-cursor: hand;
+}
+.glass-button:hover {
+    -fx-background-color: rgba(255, 255, 255, 0.14);
+}
+
+/* Glass navigation pill */
+.glass-nav-pill {
+    -fx-background-color: rgba(255, 255, 255, 0.06);
+    -fx-background-radius: var(--radius-full);
+    -fx-border-color: rgba(255, 255, 255, 0.10);
+    -fx-border-radius: var(--radius-full);
+    -fx-padding: var(--space-sm) var(--space-xl);
+}
+.glass-nav-pill.active {
+    -fx-background-color: var(--color-accent);
+}

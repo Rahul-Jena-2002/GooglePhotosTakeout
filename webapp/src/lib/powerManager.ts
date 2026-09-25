@@ -16,17 +16,6 @@ export function initPowerManager() {
   if (isPowerManagerInitialized || typeof window === "undefined") return;
   isPowerManagerInitialized = true;
 
-  // Add native app class to document when running in Tauri
-  const isTauri = 
-    "__TAURI__" in window || 
-    "__TAURI_INTERNALS__" in window || 
-    navigator.userAgent.includes("TakeoutFix-Desktop") ||
-    navigator.userAgent.includes("TakeoutFix-Android");
-
-  if (isTauri) {
-    document.documentElement.classList.add("tauri-native-app");
-  }
-
   document.addEventListener("visibilitychange", () => {
     if (document.visibilityState === "hidden") {
       // 1. Dispatch suspend event to stop polling / animations

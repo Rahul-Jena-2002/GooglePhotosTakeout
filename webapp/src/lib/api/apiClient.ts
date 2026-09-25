@@ -3,8 +3,7 @@ import { getApiUrl } from "./apiUrl";
 
 /**
  * Pre-configured Axios instance for TakeoutFix API calls.
- * Automatically resolves relative paths (e.g. `/api/dev-log`) to the Cloudflare
- * production backend when running inside Tauri, desktop, or mobile WebViews.
+ * Automatically resolves relative paths (e.g. `/api/dev-log`) to the Cloudflare backend.
  */
 export const apiClient = axios.create({
   headers: {

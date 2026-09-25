@@ -10,16 +10,4 @@
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
   }
-  /* Native App Mode: disables browser tap callouts and unwanted text selection while preserving inputs */
-  .tauri-native-app {
-    user-select: none;
-    -webkit-user-select: none;
-    -webkit-touch-callout: none;
-  }
-  .tauri-native-app input,
-  .tauri-native-app textarea,
-  .tauri-native-app [contenteditable="true"] {
-    user-select: text;
-    -webkit-user-select: text;
-  }
 }

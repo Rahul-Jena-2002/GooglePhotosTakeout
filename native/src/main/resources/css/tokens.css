@@ -1,0 +1,97 @@
+/*
+ * TakeoutFix Design Token Layer — tokens.css
+ *
+ * This file is the single source of truth for the visual language of TakeoutFix.
+ * All other CSS files and Java ThemeColors.java should derive from these values.
+ *
+ * JavaFX CSS note: variables here serve as documentation / design reference.
+ * In Swing, values are mirrored in com.takeoutfix.shared.theme.ThemeColors.java.
+ * When migrating to JavaFX, these tokens map 1:1 to -fx- CSS properties.
+ */
+
+/* ── Color Palette ─────────────────────────────────────────────────────────── */
+
+/* Brand / Primary */
+--color-accent:          #6366f1;   /* Indigo 500 — ThemeColors.accent() */
+--color-accent-hover:    #4f46e5;   /* Indigo 600 */
+--color-accent-light:    #eef2ff;   /* Indigo 50  (light) */
+--color-accent-dark:     #26234b;   /* Indigo 950 (dark)  */
+
+/* Semantic: Success */
+--color-success:         #10b981;   /* Emerald 500 */
+--color-success-light:   #ecfdf5;   /* Emerald 50  (light) */
+--color-success-dark:    #082e20;   /* Emerald 950 (dark)  */
+
+/* Semantic: Warning */
+--color-warning:         #f59e0b;   /* Amber 500 */
+--color-warning-light:   #fef3c7;   /* Amber 50  (light) */
+--color-warning-dark:    #37260c;   /* Amber 950 (dark)  */
+
+/* Semantic: Danger */
+--color-danger:          #ef4444;   /* Rose 500 */
+--color-danger-light:    #fef2f2;   /* Rose 50  (light) */
+--color-danger-dark:     #371212;   /* Rose 950 (dark)  */
+
+/* ── Surface (Light Theme) ──────────────────────────────────────────────────── */
+
+--surface-canvas:        #f8fafc;   /* Background canvas */
+--surface-card:          #ffffff;   /* Card face */
+--surface-card-border:   #e2e8f0;   /* Card border */
+--surface-input:         #f8fafc;   /* Input background */
+--surface-input-border:  #cbd5e1;   /* Input border */
+--surface-pill:          #f1f5f9;   /* Pill / chip background */
+--surface-console:       #0f172a;   /* Terminal console */
+
+/* ── Surface (Dark Theme) ───────────────────────────────────────────────────── */
+
+--dark-canvas:           #0d0d12;
+--dark-card:             #16161e;
+--dark-card-border:      #2a2a36;
+--dark-input:            #1c1c26;
+--dark-input-border:     #373746;
+--dark-pill:             #20202c;
+
+/* ── Typography ─────────────────────────────────────────────────────────────── */
+
+--text-primary-light:    #0f172a;   /* Slate 900 */
+--text-secondary-light:  #64748b;   /* Slate 500 */
+--text-muted-light:      #94a3b8;   /* Slate 400 */
+
+--text-primary-dark:     #f4f4f5;   /* Zinc 100 */
+--text-secondary-dark:   #a1a1aa;   /* Zinc 400 */
+--text-muted-dark:       #71717a;   /* Zinc 500 */
+
+/* ── Spacing Scale ───────────────────────────────────────────────────────────── */
+
+--space-xs:   4px;
+--space-sm:   8px;
+--space-md:   12px;
+--space-lg:   16px;
+--space-xl:   24px;
+--space-2xl:  32px;
+
+/* ── Radius Scale ────────────────────────────────────────────────────────────── */
+
+--radius-sm:   6px;
+--radius-md:   10px;   /* Cards */
+--radius-lg:   14px;   /* Panels */
+--radius-full: 9999px; /* Pills / badges */
+
+/* ── Typography Scale ────────────────────────────────────────────────────────── */
+
+--font-family:      "Segoe UI", -apple-system, BlinkMacSystemFont, sans-serif;
+--font-size-xs:     9px;
+--font-size-sm:     10px;
+--font-size-base:   11px;
+--font-size-md:     12px;
+--font-size-lg:     13px;
+--font-size-xl:     16px;
+--font-size-2xl:    24px;
+--font-weight-bold: 700;
+
+/* ── Glass Effect (future JavaFX migration) ──────────────────────────────────── */
+
+--glass-opacity:    0.12;
+--glass-blur:       20px;
+--glass-radius:     18px;
+--glass-border:     rgba(255, 255, 255, 0.18);

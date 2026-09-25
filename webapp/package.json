@@ -8,8 +8,7 @@
     "dev": "astro dev",
     "build": "node scripts/generate_sitemap.js && astro build && node scripts/append_spa_rewrite.js",
     "preview": "astro preview",
-    "lint": "eslint .",
-    "tauri": "tauri"
+    "lint": "eslint ."
   },
   "dependencies": {
     "@emailjs/browser": "^4.4.1",
@@ -21,7 +20,6 @@
     "@radix-ui/react-slot": "^1.2.5",
     "@radix-ui/react-tooltip": "^1.2.16",
     "@sentry/cloudflare": "^10.75.0",
-    "@tauri-apps/plugin-updater": "^2.12.0",
     "@uswriting/exiftool": "^1.0.9",
     "@zip.js/zip.js": "^2.8.26",
     "axios": "^1.20.0",
@@ -46,8 +44,6 @@
     "@babel/preset-typescript": "^7.29.7",
     "@eslint/js": "^10.0.1",
     "@sentry/astro": "^10.57.0",
-    "@tauri-apps/api": "^2.11.1",
-    "@tauri-apps/cli": "^2.11.4",
     "@types/node": "^24.13.1",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",

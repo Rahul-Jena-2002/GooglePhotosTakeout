@@ -22,7 +22,7 @@ jpackage `
   --main-class "com.takeoutfix.TakeoutApplication" `
   --name "TakeoutFix" `
   --icon "native/icons/icon.ico" `
-  --app-version "2.0.9" `
+  --app-version "2.1.7" `
   --dest "dist-exe" `
   --win-dir-chooser `
   --win-menu `

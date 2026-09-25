@@ -1538,22 +1538,6 @@ export function useToolPipeline() {
     setProgress(100)
     setCurrentFile("Processing Complete")
 
-    // Auto-sync natively if running inside Tauri desktop app
-    if (typeof window !== 'undefined' && ('__TAURI_INTERNALS__' in window || '__TAURI__' in window) && restoredTimestampsCatalogRef.current.length > 0) {
-      try {
-        const { invoke } = await import('@tauri-apps/api/core');
-        const items = restoredTimestampsCatalogRef.current.map(c => [c.filePath || c.name, c.timestamp]);
-        const syncedCount = await invoke<number>('sync_catalog_timestamps', { items });
-        logsBuffer.current.push({
-          level: 'success',
-          filename: 'Tauri Native Engine',
-          action: `Deeply synced ${syncedCount} file dates directly to OS kernel on disk`
-        });
-      } catch (tauriErr) {
-        console.warn("Tauri native timestamp sync:", tauriErr);
-      }
-    }
-
     // Auto-generate sync_windows_dates.bat in output folder if direct folder mode was used
     const outHandle = (currentSessionRef.current?.outputHandle as FileSystemDirectoryHandle) || outputFolder;
     if (outHandle && useSettingsStore.getState().generateSyncScript && restoredTimestampsCatalogRef.current.length > 0) {

@@ -1,5 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useAuth, AuthProvider } from "../../contexts/AuthContext";
+import { signInWithRedirect, getRedirectResult, GoogleAuthProvider } from "firebase/auth";
+import { auth, googleProvider } from "../../lib/firebase/client";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "../../components/ui/card";
 import { Button } from "../../components/ui/button";
 import { Badge } from "../../components/ui/badge";
@@ -7,48 +9,80 @@ import { ToastContainer } from "../../components/ui/toast";
 import { CheckCircle2, AlertCircle, Laptop, RefreshCw, ExternalLink } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { getFriendlyAuthMessage } from "../../lib/authErrors";
-import { isSuperAdminEmail } from "../../lib/adminAuth";
 
 function DesktopAuthBridgeContent() {
   const { user, userData, loading, login, logout } = useAuth();
   const [port, setPort] = useState<string | null>(null);
-  const [selectAccountParam, setSelectAccountParam] = useState(false);
   const [status, setStatus] = useState<"idle" | "connecting" | "success" | "error">("idle");
   const [errorMessage, setErrorMessage] = useState<string>("");
   const [manualUrl, setManualUrl] = useState<string>("");
   const attemptedRef = useRef<boolean>(false);
-
+  const attemptedAutoLoginRef = useRef<boolean>(false);
+  const [justRedirectedFromOAuth, setJustRedirectedFromOAuth] = useState(false);
   const [stateToken, setStateToken] = useState<string>("");
 
   useEffect(() => {
     if (typeof window !== "undefined") {
       const searchParams = new URLSearchParams(window.location.search);
-      const portParam = searchParams.get("port") || searchParams.get("desktop_port");
-      const stateParam = searchParams.get("state") || "";
-      setStateToken(stateParam);
-      const selectAccount = searchParams.get("select_account") === "true";
-      setSelectAccountParam(selectAccount);
+      let portParam = searchParams.get("port") || searchParams.get("desktop_port");
+      if (portParam) {
+        try { sessionStorage.setItem("takeoutfix_desktop_port", portParam); } catch (_) {}
+      } else {
+        try { portParam = sessionStorage.getItem("takeoutfix_desktop_port"); } catch (_) {}
+      }
+
+      let stateParam = searchParams.get("state") || "";
+      if (stateParam) {
+        try { sessionStorage.setItem("takeoutfix_desktop_state", stateParam); } catch (_) {}
+      } else {
+        try { stateParam = sessionStorage.getItem("takeoutfix_desktop_state") || ""; } catch (_) {}
+      }
+      setStateToken(stateParam || "");
+
       if (portParam && !Number.isNaN(Number(portParam))) {
         setPort(portParam);
       } else {
         setStatus("error");
         setErrorMessage("Missing or invalid 'port' parameter in URL. Please launch sign-in directly from TakeoutFix Desktop.");
       }
+
+      const wasRedirected = sessionStorage.getItem("takeoutfix_from_oauth") === "true";
+      if (wasRedirected) {
+        setJustRedirectedFromOAuth(true);
+      }
     }
   }, []);
 
-  const requiresConfirmation = selectAccountParam || (user ? isSuperAdminEmail(user.email) : false);
+  // Listen for return from Google OAuth redirect
+  useEffect(() => {
+    if (!auth) return;
+    getRedirectResult(auth)
+      .then((result) => {
+        if (result && result.user) {
+          setJustRedirectedFromOAuth(true);
+        }
+      })
+      .catch((err) => {
+        console.warn("[DesktopAuthBridge] getRedirectResult error:", err);
+      });
+  }, []);
 
-  // When user is authenticated and port is valid, automatically send auth payload to desktop immediately
+  // Auto-dispatch when returning fresh from Google OAuth selection
   useEffect(() => {
     if (!port || loading || !user) return;
-    if (requiresConfirmation) return;
-
-    if (!attemptedRef.current) {
+    if (justRedirectedFromOAuth && !attemptedRef.current) {
       attemptedRef.current = true;
+      try { sessionStorage.removeItem("takeoutfix_from_oauth"); } catch (_) {}
       dispatchAuthToDesktop();
     }
-  }, [user, userData, port, loading, requiresConfirmation]);
+  }, [user, userData, port, loading, justRedirectedFromOAuth]);
+
+  // If user is not logged in at all, automatically navigate directly to Google OAuth Account Chooser
+  useEffect(() => {
+    if (!port || loading || user || attemptedAutoLoginRef.current) return;
+    attemptedAutoLoginRef.current = true;
+    handleSignIn();
+  }, [port, loading, user]);
 
   const dispatchAuthToDesktop = async () => {
     if (!port || !user) return;
@@ -144,17 +178,32 @@ function DesktopAuthBridgeContent() {
   const handleSignIn = async () => {
     try {
       attemptedRef.current = false;
-      await login();
+      if (typeof window !== "undefined") {
+        try { sessionStorage.setItem("takeoutfix_from_oauth", "true"); } catch (_) {}
+      }
+      const provider = googleProvider || new GoogleAuthProvider();
+      provider.setCustomParameters({ prompt: "select_account" });
+      await signInWithRedirect(auth, provider);
     } catch (err: any) {
-      const feedback = getFriendlyAuthMessage(err);
-      setErrorMessage(feedback.message);
+      console.warn("[DesktopAuthBridge] Google redirect error:", err);
+      try {
+        await login();
+      } catch (popupErr: any) {
+        const feedback = getFriendlyAuthMessage(popupErr);
+        setErrorMessage(feedback.message);
+      }
     }
   };
 
   const handleSwitchAccount = async () => {
     attemptedRef.current = false;
+    if (typeof window !== "undefined") {
+      try { sessionStorage.setItem("takeoutfix_from_oauth", "true"); } catch (_) {}
+    }
     await logout();
-    await login();
+    const provider = googleProvider || new GoogleAuthProvider();
+    provider.setCustomParameters({ prompt: "select_account" });
+    await signInWithRedirect(auth, provider);
   };
 
   const planLabel = (userData?.plan || "free").toUpperCase();
@@ -243,8 +292,8 @@ function DesktopAuthBridgeContent() {
               </motion.div>
             )}
 
-            {/* Case 2.5: User logged in, requires confirmation (Admin account or select_account requested) */}
-            {port && user && !loading && status === "idle" && requiresConfirmation && (
+            {/* Case 2.5: User already logged in on web - Ask to continue or switch account */}
+            {port && user && !loading && status === "idle" && !justRedirectedFromOAuth && (
               <motion.div
                 key="confirm-login"
                 initial={{ opacity: 0, y: 10 }}
@@ -253,9 +302,9 @@ function DesktopAuthBridgeContent() {
                 className="space-y-4"
               >
                 <div className="text-center">
-                  <h3 className="text-lg font-bold text-zinc-900 dark:text-white">Link Account to Desktop</h3>
+                  <h3 className="text-lg font-bold text-zinc-900 dark:text-white">Authorize TakeoutFix Desktop</h3>
                   <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1">
-                    Confirm the account you want to connect to TakeoutFix Desktop.
+                    An existing web session was detected. Choose whether to continue with this account or switch:
                   </p>
                 </div>
 
@@ -295,14 +344,14 @@ function DesktopAuthBridgeContent() {
                     }}
                     className="w-full h-11 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl shadow-md cursor-pointer transition-all"
                   >
-                    Connect as {user.displayName?.split(" ")[0] || "User"}
+                    Continue to App as {user.displayName?.split(" ")[0] || "User"}
                   </Button>
                   <Button
                     variant="outline"
                     onClick={handleSwitchAccount}
                     className="w-full h-10 border-zinc-300 dark:border-zinc-700 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 text-xs font-semibold rounded-xl cursor-pointer"
                   >
-                    Sign In with Different Google Account
+                    Switch Account / Choose Different Account
                   </Button>
                 </div>
               </motion.div>

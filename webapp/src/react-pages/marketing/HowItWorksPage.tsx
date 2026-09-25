@@ -21,9 +21,9 @@ function DirectoryParsingDiagram() {
       <div className="flex items-center justify-between border-b border-zinc-800 pb-3 z-10">
         <div className="flex items-center gap-2">
           <span className="w-2 h-2 rounded-full bg-zinc-500 animate-pulse"></span>
-          <span className="text-zinc-400 font-semibold text-[10px] uppercase tracking-wider">File System Indexer</span>
+          <span className="text-zinc-400 font-semibold text-[10px] uppercase tracking-wider">Photo Scanner</span>
         </div>
-        <span className="text-zinc-400 text-[10px] font-bold">Active Traversal</span>
+        <span className="text-zinc-400 text-[10px] font-bold">Scanning Folder</span>
       </div>
 
       <div className="space-y-3.5 my-4 z-10 flex-1 justify-center flex flex-col">
@@ -77,9 +77,9 @@ function MetadataMatchingDiagram() {
       <div className="flex items-center justify-between border-b border-zinc-800 pb-3 z-10">
         <div className="flex items-center gap-2">
           <span className="w-2 h-2 rounded-full bg-zinc-500 animate-pulse"></span>
-          <span className="text-zinc-400 font-semibold text-[10px] uppercase tracking-wider">Heuristic Matching Engine</span>
+          <span className="text-zinc-400 font-semibold text-[10px] uppercase tracking-wider">Smart Date Matcher</span>
         </div>
-        <span className="text-zinc-400 text-[10px] font-bold">Resolving Permutations</span>
+        <span className="text-zinc-400 text-[10px] font-bold">Matching Photos to Dates</span>
       </div>
 
       <div className="my-auto py-2 space-y-4 z-10 flex-1 justify-center flex flex-col">
@@ -110,8 +110,8 @@ function MetadataMatchingDiagram() {
       </div>
 
       <div className="border-t border-zinc-900 pt-3 flex items-center justify-between z-10 text-[10px] text-zinc-500 font-bold uppercase tracking-wider">
-        <span>Fuzzy Match Accuracy: <span className="text-zinc-300 font-extrabold">99.99%</span></span>
-        <span>Fail Safe Fallback: <span className="text-zinc-400 font-extrabold">Active</span></span>
+        <span>Match Accuracy: <span className="text-zinc-300 font-extrabold">99.99%</span></span>
+        <span>Automatic Fallback: <span className="text-zinc-400 font-extrabold">Active</span></span>
       </div>
     </div>
   );
@@ -120,10 +120,10 @@ function MetadataMatchingDiagram() {
 // Dynamic visual representation for Phase 3
 function ExifHeaderInjectionDiagram() {
   const tags = [
-    { tag: "0x9003", name: "DateTimeOriginal", val: "2021:08:15 14:23:35", status: "written" },
-    { tag: "0x0002", name: "GPSLatitude", val: "40.7128 N", status: "written" },
-    { tag: "0x0004", name: "GPSLongitude", val: "74.0060 W", status: "written" },
-    { tag: "0x0112", name: "Orientation", val: "1 (Normal)", status: "verified" },
+    { tag: "Date", name: "DateTaken", val: "2021:08:15 14:23:35", status: "written" },
+    { tag: "GPS", name: "Latitude", val: "40.7128 N", status: "written" },
+    { tag: "GPS", name: "Longitude", val: "74.0060 W", status: "written" },
+    { tag: "Tag", name: "Orientation", val: "1 (Normal)", status: "verified" },
   ];
 
   return (
@@ -134,9 +134,9 @@ function ExifHeaderInjectionDiagram() {
       <div className="flex items-center justify-between border-b border-zinc-800 pb-3 z-10">
         <div className="flex items-center gap-2">
           <span className="w-2 h-2 rounded-full bg-zinc-500 animate-pulse"></span>
-          <span className="text-zinc-400 font-semibold text-[10px] uppercase tracking-wider">EXIF Binary Injector</span>
+          <span className="text-zinc-400 font-semibold text-[10px] uppercase tracking-wider">Photo Date Restorer</span>
         </div>
-        <span className="text-zinc-400 text-[10px] font-bold">Writing EXIF Headers</span>
+        <span className="text-zinc-400 text-[10px] font-bold">Saving Original Dates</span>
       </div>
 
       <div className="space-y-3 my-4 z-10 flex-1 justify-center flex flex-col">
@@ -162,8 +162,8 @@ function ExifHeaderInjectionDiagram() {
       </div>
 
       <div className="border-t border-zinc-900 pt-3 flex items-center justify-between z-10 text-[10px] text-zinc-500 font-bold uppercase tracking-wider">
-        <span>Binary Integrity: <span className="text-zinc-300 font-extrabold">100% Valid</span></span>
-        <span>Recomp: <span className="text-zinc-450 font-extrabold">None (Raw)</span></span>
+        <span>Photo Quality: <span className="text-zinc-300 font-extrabold">100% Original</span></span>
+        <span>Recompression: <span className="text-zinc-450 font-extrabold">None (Lossless)</span></span>
       </div>
     </div>
   );
@@ -172,80 +172,60 @@ function ExifHeaderInjectionDiagram() {
 export default function HowItWorksPage() {
   const steps = [
     {
-      phase: "Phase 01",
-      title: "Local Directory Parsing",
-      subtitle: "Secure Client-Side Indexing",
+      phase: "Step 01",
+      title: "Select Your Folder",
+      subtitle: "Fast Local Scanning",
       icon: FolderSearch,
       color: "text-zinc-400",
       glowColor: "",
-      description: "TakeoutFix utilizes the modern browser File System Access API to gain read-only permission to your Google Takeout folder. It executes a high-performance recursive traversal to locate all media files and their corresponding sidecar JSON files entirely on your machine.",
+      description: "Select your Google Takeout folder. TakeoutFix reads your photos and companion date files directly on your computer without uploading anything to the internet.",
       technicalDetails: [
-        "Zero-upload architecture: media bytes never leave your device.",
-        "Asynchronous scanning runs in a background Web Worker to prevent UI blocking.",
-        "Supports nested folder structures and multi-part Takeout archives."
+        "100% private: your photos never leave your device.",
+        "Scans quickly in the background without slowing down your computer.",
+        "Works automatically with all Google Takeout folders and subfolders."
       ],
-      codeLabel: "Browser Security Sandbox",
-      codeSnippet: `// Requesting local folder access
-const dirHandle = await window.showDirectoryPicker({
-  mode: 'readwrite' // Read source, write to output
-});
-
-// Traversing folders recursively
-for await (const [name, entry] of dirHandle) {
-  if (entry.kind === 'file') {
-    // Indexes locally, no network calls
-    addToLocalIndex(name, entry);
-  }
-}`
+      codeLabel: "Simple Folder Selection",
+      codeSnippet: `// Choose your unzipped Google Takeout folder
+// TakeoutFix scans your photos directly on your device
+// Zero cloud uploads — 100% private`
     },
     {
-      phase: "Phase 02",
-      title: "Heuristic Metadata Matching",
-      subtitle: "Pairing Files with Sidecars",
+      phase: "Step 02",
+      title: "Match Photos with Dates",
+      subtitle: "Pairing Every Photo with Its Date",
       icon: Cpu,
       color: "text-zinc-400",
       glowColor: "",
-      description: "Google Takeout often edits names, truncates titles, or appends suffixes (like '-edited' or '(1)') to media, making standard matching fail. TakeoutFix applies a multi-layered match heuristic to pair files with their JSON sidecar, resolving filename inconsistencies automatically.",
+      description: "Google Takeout often changes filenames or separates dates into separate .json files. TakeoutFix automatically pairs each photo and video with its original date, time, and location.",
       technicalDetails: [
-        "Name-hash pairing checks original file titles inside the JSON schema.",
-        "Fuzzy matching reconciles truncated strings and system-appended suffixes.",
-        "Timestamp alignment acts as a fallback to resolve similar media files."
+        "Automatically pairs matching date files for edited or duplicate photos.",
+        "Resolves file names with '-edited', '(1)', or truncated titles.",
+        "Restores accurate photo creation dates and GPS locations."
       ],
-      codeLabel: "Google Takeout JSON Schema",
-      codeSnippet: `{
-  "title": "IMG_9102.JPG",
-  "photoTakenTime": {
-    "timestamp": "1629037415",
-    "formatted": "Aug 15, 2021, 2:23:35 PM UTC"
-  },
-  "geoData": {
-    "latitude": 40.7128,
-    "longitude": -74.0060,
-    "altitude": 10.5
-  }
-}`
+      codeLabel: "Google Photos Date Pairing",
+      codeSnippet: `// Matches photo with its original timestamp
+Photo:  IMG_9102.JPG
+Date:   Aug 15, 2021, 2:23:35 PM
+GPS:    New York (40.7128 N, 74.0060 W)`
     },
     {
-      phase: "Phase 03",
-      title: "Deep EXIF Header Injection",
-      subtitle: "Rebuilding Media Headers",
+      phase: "Step 03",
+      title: "Save Restored Photos",
+      subtitle: "Permanent Dates & Locations",
       icon: Binary,
       color: "text-zinc-400",
       glowColor: "",
-      description: "Once matched, the engine extracts the Unix epoch timestamps and coordinates. It parses the binary structures of JPEGs, PNGs, and HEICs, injecting the parameters directly into their EXIF headers (DateTimeOriginal and GPS tags) before outputting clean files.",
+      description: "TakeoutFix saves the original capture dates and location tags permanently into each photo and video file without reducing picture quality.",
       technicalDetails: [
-        "Reconstructs native binary EXIF tags without re-compressing the image.",
-        "Updates QuickTime/UserData metadata headers inside MP4/MOV videos.",
-        "Outputs clean, linkable files ready for Apple Photos or Google Photos import."
+        "Preserves full, original photo quality with zero compression.",
+        "Works seamlessly with photos (JPG, PNG, HEIC) and videos (MP4, MOV).",
+        "Ready to import into Apple Photos, Google Photos, or your computer gallery."
       ],
-      codeLabel: "Injected EXIF Header Structure",
-      codeSnippet: `[EXIF Header Block]
-├─ Tag 0x9003 (DateTimeOriginal)  ➜ "2021:08:15 14:23:35"
-├─ Tag 0x0001 (GPSLatitudeRef)    ➜ "N"
-├─ Tag 0x0002 (GPSLatitude)       ➜ [40, 42, 46.08]
-├─ Tag 0x0003 (GPSLongitudeRef)   ➜ "W"
-└─ Tag 0x0004 (GPSLongitude)      ➜ [74, 0, 21.6]
-[End of Binary Payload]`
+      codeLabel: "Restored Photo Details",
+      codeSnippet: `[Restored Photo]
+Date Taken:  2021-08-15 14:23:35
+Location:    GPS coordinates restored
+Status:      Perfect chronological order!`
     }
   ];
 

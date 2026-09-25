@@ -107,7 +107,7 @@ export default function SeoLandingPage() {
     }
     metaDesc.setAttribute(
       'content', 
-      `Learn how to ${matchedAction.toLowerCase()} your ${matchedTarget.toLowerCase()} from your ${matchedSource} export easily. TakeoutFix matches sidecar JSON data and injects EXIF metadata 100% locally in your browser.`
+      `Learn how to ${matchedAction.toLowerCase()} your ${matchedTarget.toLowerCase()} from your ${matchedSource} export easily. TakeoutFix automatically matches your photos with their original dates and locations 100% privately on your device.`
     )
   }, [isValidSeo, matchedAction, matchedTarget, matchedSource])
 
@@ -125,7 +125,7 @@ export default function SeoLandingPage() {
           className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-zinc-900 border border-zinc-800 text-xs font-semibold text-indigo-400 mb-6 font-mono t-animate-fade-in-scale"
         >
           <ShieldCheck className="w-4 h-4 text-indigo-400" />
-          100% Local Browser Engine · HIPAA Compliant
+          100% Private &amp; Offline · No Uploads
         </div>
         
         <h1
@@ -137,7 +137,7 @@ export default function SeoLandingPage() {
         <p
           className="text-lg md:text-xl text-zinc-400 max-w-3xl mx-auto font-normal leading-relaxed mb-8 t-animate-fade-in-up-200"
         >
-          Did your {matchedSource} export strip out original dates, camera info, or GPS coordinates? TakeoutFix automatically merges the separate JSON metadata sidecar files back into your photos and videos offline on your device.
+          Did your {matchedSource} export mess up photo dates or lose GPS locations? TakeoutFix automatically reconnects the original dates and locations back into your photos and videos directly on your computer.
         </p>
 
         <div
@@ -159,7 +159,7 @@ export default function SeoLandingPage() {
           <CardHeader className="border-b border-white/5 py-4 px-6">
             <CardTitle className="text-sm font-sans font-bold tracking-tight text-zinc-300 flex items-center gap-2">
               <Eye className="w-4 h-4 text-indigo-400" />
-              Dynamic EXIF Header Verification Matrix
+              Photo Date &amp; Location Comparison
             </CardTitle>
           </CardHeader>
           <CardContent className="p-8">
@@ -178,7 +178,7 @@ export default function SeoLandingPage() {
                   </div>
                   <div>
                     <span className="compare-file-name">IMG_3012.JPG</span>
-                    <span className="compare-file-desc">3.1 MB · Camera Original</span>
+                    <span className="compare-file-desc">3.1 MB · Missing Details</span>
                   </div>
                 </div>
 
@@ -212,7 +212,7 @@ export default function SeoLandingPage() {
                   </div>
                   <div>
                     <span className="compare-file-name">IMG_3012.JPG</span>
-                    <span className="compare-file-desc">3.1 MB · EXIF Restored</span>
+                    <span className="compare-file-desc">3.1 MB · Restored</span>
                   </div>
                 </div>
 
@@ -246,10 +246,10 @@ export default function SeoLandingPage() {
             </CardHeader>
             <CardContent className="p-0 text-sm text-zinc-400 leading-relaxed space-y-4">
               <p>
-                When exporting your photo library via {matchedSource}, the platform separates your media binary files from their descriptive headers. Instead of writing metadata directly inside the photo headers, it creates individual sidecar files ending in <code>.json</code>.
+                When exporting your photo library via {matchedSource}, the service separates your pictures and videos from their dates and locations. Instead of saving this information directly inside the pictures, it saves them into separate small text files (.json).
               </p>
               <p>
-                As a result, importing these files into new systems (like Apple Photos, Windows Gallery, or Synology) displays them with wrong dates (often showing the date of your takeout export itself) and strips out GPS location tracking maps.
+                As a result, importing these files into new systems (like Apple Photos, Windows Gallery, or your computer) displays them with wrong dates (often showing the date you downloaded them) and loses map locations.
               </p>
             </CardContent>
           </Card>
@@ -259,24 +259,24 @@ export default function SeoLandingPage() {
               <div className="w-10 h-10 rounded-lg bg-purple-500/10 border border-purple-500/20 flex items-center justify-center mb-3">
                 <HardDrive className="w-5 h-5 text-purple-400" />
               </div>
-              <CardTitle className="text-lg text-white">How TakeoutFix Resolves the Bug Locally</CardTitle>
+              <CardTitle className="text-lg text-white">How TakeoutFix Fixes Your Photos Privately</CardTitle>
             </CardHeader>
             <CardContent className="p-0 text-sm text-zinc-400 leading-relaxed space-y-4">
               <p>
-                TakeoutFix's client-side compilation engine bypasses network servers. By keeping file matching 100% on your device:
+                TakeoutFix works directly on your device without uploading anything to the internet:
               </p>
               <ul className="space-y-2">
                 <li className="flex items-center gap-2 text-zinc-300">
                   <CheckCircle2 className="w-4 h-4 text-purple-400 flex-shrink-0" />
-                  <span>Recursively traverses directories to locate sidecar JSONs.</span>
+                  <span>Scans your folders to find the matching date and location files.</span>
                 </li>
                 <li className="flex items-center gap-2 text-zinc-300">
                   <CheckCircle2 className="w-4 h-4 text-purple-400 flex-shrink-0" />
-                  <span>Executes name-hash matching to link edited and copy versions.</span>
+                  <span>Accurately matches edited, cropped, and duplicate photos.</span>
                 </li>
                 <li className="flex items-center gap-2 text-zinc-300">
                   <CheckCircle2 className="w-4 h-4 text-purple-400 flex-shrink-0" />
-                  <span>Writes binary headers directly without quality loss or recompression.</span>
+                  <span>Saves original dates and locations into your photos with zero quality loss.</span>
                 </li>
               </ul>
             </CardContent>
@@ -290,29 +290,28 @@ export default function SeoLandingPage() {
             <div className="bg-zinc-950/20 border border-zinc-900 rounded-xl p-5 text-left relative overflow-hidden">
               <span className="absolute right-4 top-2 text-5xl font-extrabold text-white/5 font-mono select-none">1</span>
               <h4 className="font-bold text-white mb-2">Select Folders</h4>
-              <p className="text-xs text-zinc-450 leading-relaxed">
-                Provide your {matchedSource} directory. TakeoutFix scans files recursively entirely within your local browser sandbox.
+              <p className="text-xs text-zinc-400 leading-relaxed">
+                Choose your {matchedSource} folder or ZIP. TakeoutFix scans your files securely right on your computer.
               </p>
             </div>
             
             <div className="bg-zinc-950/20 border border-zinc-900 rounded-xl p-5 text-left relative overflow-hidden">
               <span className="absolute right-4 top-2 text-5xl font-extrabold text-white/5 font-mono select-none">2</span>
-              <h4 className="font-bold text-white mb-2">Run Matcher</h4>
-              <p className="text-xs text-zinc-450 leading-relaxed">
-                Our dynamic heuristic resolver maps modified, truncated, and multi-copy suffix filenames back to their parent JSON descriptors.
+              <h4 className="font-bold text-white mb-2">Smart Match</h4>
+              <p className="text-xs text-zinc-400 leading-relaxed">
+                Our smart matcher pairs photos, edited versions, and duplicates with their correct dates and details.
               </p>
             </div>
 
             <div className="bg-zinc-950/20 border border-zinc-900 rounded-xl p-5 text-left relative overflow-hidden">
               <span className="absolute right-4 top-2 text-5xl font-extrabold text-white/5 font-mono select-none">3</span>
-              <h4 className="font-bold text-white mb-2">Inject Headers</h4>
-              <p className="text-xs text-zinc-450 leading-relaxed">
-                Timestamps, GPS coordinates, and camera info are written directly into binary headers, exporting clean folders for immediate import.
+              <h4 className="font-bold text-white mb-2">Restore Dates</h4>
+              <p className="text-xs text-zinc-400 leading-relaxed">
+                Original dates and locations are saved directly into your photos so they appear in correct chronological order everywhere.
               </p>
             </div>
           </div>
         </div>
-
       </div>
 
       {/* Call to Action Footer */}

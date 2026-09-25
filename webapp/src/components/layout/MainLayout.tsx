@@ -10,7 +10,6 @@ import { useToastStore } from "../../store/useToastStore"
 import { registerServiceWorker } from "../../lib/swRegister"
 import { getFriendlyAuthMessage } from "../../lib/authErrors"
 import { isSuperAdminEmail } from "../../lib/adminAuth"
-import TauriUpdateBanner from "../desktop/TauriUpdateBanner"
 
 const getPlanLabel = (plan?: string): string => {
   if (plan === 'pro') return 'Pro Tier'
@@ -286,7 +285,6 @@ export default function MainLayout() {
 
   return (
     <div className="flex flex-col min-h-screen bg-black text-white selection:bg-indigo-500/30">
-      <TauriUpdateBanner />
       <nav 
         id="navbar"
         className="fixed top-0 left-0 right-0 w-full z-50 px-6 md:px-8 py-2.5 transition-all duration-300 nav-header"
@@ -325,7 +323,7 @@ export default function MainLayout() {
                 <circle cx="16" cy="14" r="1.5" fill="url(#logo-grad-nav)" />
               </svg>
               <span className="text-base md:text-lg font-semibold tracking-tight">TakeoutFix</span>
-              <span className="hidden sm:inline-block text-[11px] px-1.5 py-0.5 rounded-full bg-violet-500/15 text-violet-400 border border-violet-500/30 font-mono font-semibold ml-0.5">v2.1.4</span>
+              <span className="hidden sm:inline-block text-[11px] px-1.5 py-0.5 rounded-full bg-violet-500/15 text-violet-400 border border-violet-500/30 font-mono font-semibold ml-0.5">v2.1.7</span>
             </Link>
 
             {/* Marketing Links (Desktop only) */}
