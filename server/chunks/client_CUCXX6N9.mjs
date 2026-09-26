@@ -18,14 +18,11 @@ const handleCorsOptions = async () => {
     headers: CORS_HEADERS
   });
 };
-function isAuthorizedRequest(request, payload, gatewayApiKey, isDev = false) {
+function isAuthorizedRequest(request, _payload, gatewayApiKey, isDev = false) {
   if (isDev) return true;
-  if (!gatewayApiKey) return true;
+  if (!gatewayApiKey) return false;
   const headerKey = request.headers.get("x-api-key") || request.headers.get("authorization")?.replace("Bearer ", "");
   if (headerKey && headerKey === gatewayApiKey) return true;
-  if (payload.dodoApiKey && typeof payload.dodoApiKey === "string" && payload.dodoApiKey.trim().length > 10) {
-    return true;
-  }
   return false;
 }
 function resolveDodoHost(apiKey, testMode = false) {

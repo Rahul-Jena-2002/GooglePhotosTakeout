@@ -1,7 +1,7 @@
 globalThis.process ??= {};
 globalThis.process.env ??= {};
 import { env } from "cloudflare:workers";
-import { f as fetchDodoProducts, p as patchDodoProductPrice, c as createDodoProduct, h as handleCorsOptions, j as jsonResponse, i as isAuthorizedRequest, r as resolveDodoHost } from "./client_B0zx0kbw.mjs";
+import { f as fetchDodoProducts, p as patchDodoProductPrice, c as createDodoProduct, h as handleCorsOptions, j as jsonResponse, i as isAuthorizedRequest, r as resolveDodoHost } from "./client_CUCXX6N9.mjs";
 const REGIONS_CONFIG = {
   in: { key: "in", name: "India", currency: "INR", symbol: "₹", flag: "🇮🇳", keywords: ["india", " in ", "in-", "🇮🇳"] },
   cn: { key: "cn", name: "China", currency: "CNY", symbol: "¥", flag: "🇨🇳", keywords: ["china", " cn ", "cn-", "🇨🇳"] },

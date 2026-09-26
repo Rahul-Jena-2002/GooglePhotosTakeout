@@ -27,6 +27,30 @@ function extractSlugTitle(urlStr) {
   }
   return null;
 }
+function isSafePublicUrl(url) {
+  if (url.protocol !== "http:" && url.protocol !== "https:") return false;
+  const hostname = url.hostname.toLowerCase().trim();
+  if (hostname === "localhost" || hostname.endsWith(".localhost") || hostname.endsWith(".local") || hostname.endsWith(".internal") || hostname.endsWith(".lan") || hostname === "metadata.google.internal" || hostname === "instance-data") {
+    return false;
+  }
+  const ipv4Match = hostname.match(/^(\d+)\.(\d+)\.(\d+)\.(\d+)$/);
+  if (ipv4Match) {
+    const [, o1, o2] = ipv4Match.map(Number);
+    if (o1 === 127) return false;
+    if (o1 === 10) return false;
+    if (o1 === 172 && o2 >= 16 && o2 <= 31) return false;
+    if (o1 === 192 && o2 === 168) return false;
+    if (o1 === 169 && o2 === 254) return false;
+    if (o1 === 0 || o1 >= 224) return false;
+  }
+  if (/^(?:0x[0-9a-f]+|\d+)$/i.test(hostname)) {
+    return false;
+  }
+  if (hostname === "[::1]" || hostname === "::1" || hostname.startsWith("[fe80:") || hostname.startsWith("fe80:") || hostname.startsWith("[fc") || hostname.startsWith("[fd") || hostname.startsWith("fc") || hostname.startsWith("fd")) {
+    return false;
+  }
+  return true;
+}
 async function handleExtract(request) {
   try {
     const urlObj = new URL(request.url);
@@ -57,6 +81,12 @@ async function handleExtract(request) {
         headers: { "Content-Type": "application/json" }
       });
     }
+    if (!isSafePublicUrl(parsedUrl)) {
+      return new Response(JSON.stringify({ success: false, error: "Target URL destination is not allowed" }), {
+        status: 400,
+        headers: { "Content-Type": "application/json" }
+      });
+    }
     let finalUrl = parsedUrl.toString();
     try {
       const headRes = await fetch(finalUrl, {
@@ -67,7 +97,10 @@ async function handleExtract(request) {
         }
       });
       if (headRes.url && headRes.url !== finalUrl) {
-        finalUrl = headRes.url;
+        const resolvedUrl = new URL(headRes.url);
+        if (isSafePublicUrl(resolvedUrl)) {
+          finalUrl = headRes.url;
+        }
       }
     } catch (_) {
     }

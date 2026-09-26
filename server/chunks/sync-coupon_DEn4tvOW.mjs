@@ -1,7 +1,7 @@
 globalThis.process ??= {};
 globalThis.process.env ??= {};
 import { env } from "cloudflare:workers";
-import { h as handleCorsOptions, j as jsonResponse, i as isAuthorizedRequest, r as resolveDodoHost } from "./client_B0zx0kbw.mjs";
+import { h as handleCorsOptions, j as jsonResponse, i as isAuthorizedRequest, r as resolveDodoHost } from "./client_CUCXX6N9.mjs";
 const prerender = false;
 const OPTIONS = handleCorsOptions;
 async function createDiscount(dodoHost, dodoApiKey, body) {

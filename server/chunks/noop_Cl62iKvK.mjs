@@ -1,6 +1,6 @@
 globalThis.process ??= {};
 globalThis.process.env ??= {};
-import { b as baseService, i as isESMImportedImage, v as verifyOptions } from "./image-passthrough-endpoint_CIiC0iY1.mjs";
+import { b as baseService, i as isESMImportedImage, v as verifyOptions } from "./image-passthrough-endpoint_BaTXjhp1.mjs";
 const noopService = {
   ...baseService,
   propertiesToHash: ["src"],

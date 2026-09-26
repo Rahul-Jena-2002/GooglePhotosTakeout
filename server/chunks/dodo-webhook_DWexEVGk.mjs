@@ -4562,7 +4562,7 @@ const POST = async ({ request }) => {
     const payload = JSON.parse(rawBody);
     let dodoWebhookSecret = env.DODO_WEBHOOK_KEY || void 0;
     const serviceAccountStr = env.FIREBASE_SERVICE_ACCOUNT || void 0;
-    const encryptionKey = env.ENCRYPTION_KEY || void 0 || "92elPvQ63jp_SXOmGbLyOgvfcGHVP-GfDbbiyLV4rpw";
+    const encryptionKey = env.ENCRYPTION_KEY || void 0 || "";
     if (!serviceAccountStr) {
       console.error("Missing FIREBASE_SERVICE_ACCOUNT environment variable.");
       return new Response("Server configuration error", { status: 500 });
@@ -4588,7 +4588,7 @@ const POST = async ({ request }) => {
       console.warn("Failed to fetch settings/global in webhook:", err.message);
     }
     const envMode = isTestMode ? "test" : "live";
-    if (!dodoWebhookSecret) {
+    if (!dodoWebhookSecret && encryptionKey) {
       try {
         console.log("DODO_WEBHOOK_KEY not set in env. Attempting backup Firestore secure fetch...");
         const secureUrl = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/settings/secure`;
@@ -4605,25 +4605,25 @@ const POST = async ({ request }) => {
         console.error("Backup webhook secret retrieval failed:", err.message);
       }
     }
-    if (dodoWebhookSecret && dodoWebhookSecret !== "dodo-webhook-secret-placeholder") {
-      const webhookHeaders = {
-        "webhook-id": request.headers.get("webhook-id") || "",
-        "webhook-signature": request.headers.get("webhook-signature") || "",
-        "webhook-timestamp": request.headers.get("webhook-timestamp") || ""
-      };
-      try {
-        const dodoPaymentsClient = new DodoPayments({
-          bearerToken: "dummy_key",
-          webhookKey: dodoWebhookSecret
-        });
-        dodoPaymentsClient.webhooks.unwrap(rawBody, { headers: webhookHeaders });
-        console.log("✅ Webhook signature verified using official SDK");
-      } catch (error) {
-        console.error("❌ Webhook verification failed using official SDK:", error);
-        return new Response("Invalid signature", { status: 401 });
-      }
-    } else {
-      console.log("No Dodo Webhook Secret or placeholder detected. Skipping verification (TEST MODE).");
+    if (!dodoWebhookSecret || dodoWebhookSecret === "dodo-webhook-secret-placeholder") {
+      console.error("❌ Dodo Webhook Secret is unconfigured. Rejecting unverified webhook event.");
+      return new Response("Webhook secret unconfigured", { status: 500 });
+    }
+    const webhookHeaders = {
+      "webhook-id": request.headers.get("webhook-id") || "",
+      "webhook-signature": request.headers.get("webhook-signature") || "",
+      "webhook-timestamp": request.headers.get("webhook-timestamp") || ""
+    };
+    try {
+      const dodoPaymentsClient = new DodoPayments({
+        bearerToken: "dummy_key",
+        webhookKey: dodoWebhookSecret
+      });
+      dodoPaymentsClient.webhooks.unwrap(rawBody, { headers: webhookHeaders });
+      console.log("✅ Webhook signature verified using official SDK");
+    } catch (error) {
+      console.error("❌ Webhook verification failed using official SDK:", error);
+      return new Response("Invalid signature", { status: 401 });
     }
     const { type, data } = payload;
     if (!type || !data) {
