@@ -97,17 +97,17 @@ jobs:
 
           # 2. Package into Direct Standalone Single-File EXE (Zero-Install, Runs Immediately on Double-Click)
           Write-Host "Creating Direct Standalone TakeoutFix.exe (No Installation Wizard)..."
-          $payloadZip = "dist-app/payload.zip"
-          Compress-Archive -Path "dist-app/TakeoutFix/*" -DestinationPath $payloadZip -Force
+          $payloadZip = "dist-app\payload.zip"
+          Compress-Archive -Path "dist-app\TakeoutFix\*" -DestinationPath $payloadZip -Force
 
           $cscPath = "C:\Windows\Microsoft.NET\Framework64\v4.0.30319\csc.exe"
           & $cscPath `
-            /target:winexe `
-            /win32icon:native\icons\icon.ico `
-            /reference:System.IO.Compression.dll,System.IO.Compression.FileSystem.dll,System.Windows.Forms.dll `
-            /resource:$payloadZip,payload.zip `
-            /out:TakeoutFix.exe `
-            native\launcher\SingleFileLauncher.cs
+            "/target:winexe" `
+            "/win32icon:native\icons\icon.ico" `
+            "/reference:System.IO.Compression.dll,System.IO.Compression.FileSystem.dll,System.Windows.Forms.dll" `
+            "/resource:$payloadZip,payload.zip" `
+            "/out:TakeoutFix.exe" `
+            "native\launcher\SingleFileLauncher.cs"
 
           if (-not (Test-Path "TakeoutFix.exe")) {
             throw "TakeoutFix.exe compilation failed."
