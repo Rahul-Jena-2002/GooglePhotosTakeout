@@ -37,28 +37,28 @@
         <dependency>
             <groupId>org.apache.commons</groupId>
             <artifactId>commons-compress</artifactId>
-            <version>1.27.1</version>
+            <version>1.28.0</version>
         </dependency>
 
         <!-- JSON Processing -->
         <dependency>
             <groupId>org.json</groupId>
             <artifactId>json</artifactId>
-            <version>20240303</version>
+            <version>20260814</version>
         </dependency>
 
         <!-- Modern Swing UI Look & Feel -->
         <dependency>
             <groupId>com.formdev</groupId>
             <artifactId>flatlaf</artifactId>
-            <version>3.5.4</version>
+            <version>3.7.2</version>
         </dependency>
 
         <!-- FlatLaf Extras: FlatSVGIcon support for scalable vector icons -->
         <dependency>
             <groupId>com.formdev</groupId>
             <artifactId>flatlaf-extras</artifactId>
-            <version>3.5.4</version>
+            <version>3.7.2</version>
         </dependency>
 
         <!-- Lightweight SLF4J Logging -->

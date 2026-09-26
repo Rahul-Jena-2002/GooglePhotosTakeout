@@ -1,19 +1,20 @@
-const functions = require("firebase-functions");
 const admin = require("firebase-admin");
+const { getFirestore } = require("firebase-admin/firestore");
+const { onRequest } = require("firebase-functions/v2/https");
 const express = require("express");
 const cors = require("cors");
 const crypto = require("crypto");
 
 // Initialize Firebase Admin SDK
 admin.initializeApp();
-const db = admin.firestore();
+const db = getFirestore();
 
 // Decrypt sensitive keys stored in Firestore using AES-256-GCM
 const decryptFirestoreValue = (val) => {
   if (!val) return "";
   if (!val.startsWith("enc:v1:")) return val;
   
-  const mek = process.env.ENCRYPTION_KEY || functions.config().encryption?.key;
+  const mek = process.env.ENCRYPTION_KEY;
   if (!mek) return "";
   
   try {
@@ -198,7 +199,7 @@ app.use(express.json({
  * Security Middleware: Validates API Key header to prevent abuse.
  */
 const authenticateApiKey = (req, res, next) => {
-  const customSecretKey = String(process.env.GATEWAY_API_KEY || functions.config().gateway?.key || "").trim();
+  const customSecretKey = String(process.env.GATEWAY_API_KEY || "").trim();
 
   const headerKey = req.headers["x-api-key"];
   let bearerKey = "";
@@ -271,7 +272,7 @@ const verifyDodoWebhook = (req, webhookSecret) => {
 // Dodo Payments Webhook handler
 // ─────────────────────────────────────────────────────────────────────────────
 app.post("/dodo-webhook", async (req, res) => {
-  let webhookSecret = process.env.DODO_WEBHOOK_KEY || functions.config().dodo?.webhook_key;
+  let webhookSecret = process.env.DODO_WEBHOOK_KEY;
 
   if (!webhookSecret) {
     try {
@@ -773,7 +774,7 @@ app.post("/decline-invite", async (req, res) => {
 
 // Route: POST /get-dodo-product
 app.post("/get-dodo-product", async (req, res) => {
-  const customSecretKey = String(process.env.GATEWAY_API_KEY || functions.config().gateway?.key || "").trim();
+  const customSecretKey = String(process.env.GATEWAY_API_KEY || "").trim();
   const headerKey = String(req.headers["x-api-key"] || (req.headers.authorization || "").replace("Bearer ", "")).trim();
   if (!customSecretKey || !headerKey || headerKey !== customSecretKey) {
     return res.status(401).json({ error: "Unauthorized" });
@@ -866,7 +867,7 @@ const fetchDiscountByCode = (dodoHost, dodoApiKey, code) => {
 app.post("/sync-coupon", async (req, res) => {
   // Note: authenticateApiKey middleware is applied AFTER this route so we
   // need to manually check the key here since sync-coupon is called from frontend
-  const customSecretKey = String(process.env.GATEWAY_API_KEY || functions.config().gateway?.key || "").trim();
+  const customSecretKey = String(process.env.GATEWAY_API_KEY || "").trim();
   const headerKey = String(req.headers["x-api-key"] || (req.headers.authorization || "").replace("Bearer ", "")).trim();
   if (!customSecretKey || !headerKey || headerKey !== customSecretKey) {
     return res.status(401).json({ error: "Unauthorized" });
@@ -1086,7 +1087,7 @@ const fetchUsdExchangeRates = () => {
  *    Ref: https://docs.dodopayments.com/miscellaneous/faq#q135
  */
 app.post("/sync-dodo-prices", async (req, res) => {
-  const customSecretKey = String(process.env.GATEWAY_API_KEY || functions.config().gateway?.key || "").trim();
+  const customSecretKey = String(process.env.GATEWAY_API_KEY || "").trim();
   const headerKey = String(req.headers["x-api-key"] || (req.headers.authorization || "").replace("Bearer ", "")).trim();
   const hasDodoKey = req.body && req.body.dodoApiKey;
   if (customSecretKey && (!headerKey || headerKey !== customSecretKey) && !hasDodoKey) {
@@ -1620,4 +1621,4 @@ app.post("/execute", async (req, res) => {
 });
 
 // Expose HTTPS Cloud Function
-exports.geminiToolGateway = functions.https.onRequest(app);
+exports.geminiToolGateway = onRequest(app);
