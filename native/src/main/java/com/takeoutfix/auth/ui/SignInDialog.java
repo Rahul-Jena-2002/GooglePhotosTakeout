@@ -2,6 +2,7 @@ package com.takeoutfix.auth.ui;
 
 import com.takeoutfix.auth.AuthSession;
 import com.takeoutfix.auth.CredentialStore;
+import com.takeoutfix.auth.FirebaseTokenService;
 import com.takeoutfix.auth.GoogleAuthService;
 import com.takeoutfix.auth.UserController;
 import com.takeoutfix.auth.UserSyncBridgeService;
@@ -159,7 +160,20 @@ public class SignInDialog extends JDialog {
         btnGoogleSignIn.setAlignmentX(Component.CENTER_ALIGNMENT);
         btnGoogleSignIn.addActionListener(e -> startGoogleSignIn());
         root.add(btnGoogleSignIn);
-        root.add(Box.createVerticalStrut(12));
+        root.add(Box.createVerticalStrut(6));
+
+        // Enterprise Fallback: Manual Token Entry (IntelliJ style)
+        JButton btnManualToken = new JButton("Trouble connecting? Paste code manually");
+        btnManualToken.setFont(new Font(FONT_FAMILY, Font.PLAIN, 11));
+        btnManualToken.setForeground(ThemeColors.accent());
+        btnManualToken.setBorderPainted(false);
+        btnManualToken.setContentAreaFilled(false);
+        btnManualToken.setFocusPainted(false);
+        btnManualToken.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        btnManualToken.setAlignmentX(Component.CENTER_ALIGNMENT);
+        btnManualToken.addActionListener(e -> promptManualToken());
+        root.add(btnManualToken);
+        root.add(Box.createVerticalStrut(8));
 
         // Progress bar for active request
         progressBar = new JProgressBar();
@@ -425,6 +439,10 @@ public class SignInDialog extends JDialog {
                 UserController.syncUser(session.toMap());
                 userService.triggerCloudSync(null);
             }
+            if (getOwner() != null) {
+                getOwner().toFront();
+                getOwner().requestFocus();
+            }
             dispose();
         } else {
             statusLabel.setText("Authentication failed. Please verify credentials.");
@@ -441,6 +459,52 @@ public class SignInDialog extends JDialog {
                 .whenComplete((session, error) -> SwingUtilities.invokeLater(() -> handleGoogleSignInResult(session, error)));
     }
 
+    private void promptManualToken() {
+        String input = JOptionPane.showInputDialog(
+                this,
+                "Paste the authorization code or token from your browser:",
+                "Enterprise Login — Manual Code",
+                JOptionPane.PLAIN_MESSAGE
+        );
+        if (input != null && !input.trim().isEmpty()) {
+            startManualTokenAuth(input.trim());
+        }
+    }
+
+    private void startManualTokenAuth(String rawInput) {
+        setLoading(true);
+        statusLabel.setText("Verifying authorization code...");
+        statusLabel.setForeground(ThemeColors.accent());
+
+        CompletableFuture.supplyAsync(() -> {
+            try {
+                FirebaseTokenService tokenService = new FirebaseTokenService();
+                java.util.Map<String, Object> map = new java.util.HashMap<>();
+
+                // Check if base64 encoded JSON string
+                if (!rawInput.startsWith("ey") && rawInput.length() > 20) {
+                    try {
+                        byte[] decoded = java.util.Base64.getDecoder().decode(rawInput);
+                        String jsonStr = new String(decoded, java.nio.charset.StandardCharsets.UTF_8);
+                        if (jsonStr.startsWith("{")) {
+                            org.json.JSONObject obj = new org.json.JSONObject(jsonStr);
+                            for (String key : obj.keySet()) {
+                                map.put(key, obj.get(key));
+                            }
+                            return tokenService.exchangeGoogleCredential(map);
+                        }
+                    } catch (Exception ignored) {}
+                }
+
+                map.put("token", rawInput);
+                map.put("idToken", rawInput);
+                return tokenService.exchangeGoogleCredential(map);
+            } catch (Exception e) {
+                throw new java.util.concurrent.CompletionException(e);
+            }
+        }).whenComplete((session, error) -> SwingUtilities.invokeLater(() -> handleGoogleSignInResult(session, error)));
+    }
+
     private void handleGoogleSignInResult(AuthSession session, Throwable error) {
         setLoading(false);
         if (error != null) {
@@ -455,6 +519,10 @@ public class SignInDialog extends JDialog {
                 userService.getSessionManager().save(session);
                 UserController.syncUser(session.toMap());
                 userService.triggerCloudSync(null);
+            }
+            if (getOwner() != null) {
+                getOwner().toFront();
+                getOwner().requestFocus();
             }
             dispose();
         } else {

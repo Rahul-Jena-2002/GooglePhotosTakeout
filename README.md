@@ -33,15 +33,15 @@ When you export your photos and videos from **Google Takeout**, Google separates
 
 ## ⚡ Available Editions
 
-TakeoutFix is distributed in two high-performance desktop editions as well as an in-browser Web edition:
+TakeoutFix is distributed as a high-performance standalone desktop edition as well as an in-browser Web edition:
 
-| Feature / Edition | **Rust Tauri Edition** (Recommended) | **Java Edition** | **Web Edition** |
-|---|---|---|---|
-| **Binary** | `TakeoutFix.exe` / `.dmg` / `.AppImage` | `TakeoutFix-Java.exe` / `.dmg` / `.AppImage` | WebAssembly in Browser |
-| **Engine** | Native Rust + ZeroPerl WASM / ExifTool | Embedded Multi-Core ExifTool Engine | WebAssembly (Client-side) |
-| **UI** | Modern Reactive Dark/Light UI | Desktop Java Swing (FlatLaf) | Modern Astro + React SPA |
-| **Size** | Ultra-lightweight (~15–20 MB) | Self-contained jpackage runtime | 0 MB install (Instant) |
-| **Network** | 100% Offline Local Processing | 100% Offline Local Processing | 100% Offline Local Processing |
+| Feature / Edition | **Java Desktop Edition** (Standalone) | **Web Edition** |
+|---|---|---|
+| **Binary** | `TakeoutFix.exe` / `.dmg` / `.AppImage` | WebAssembly in Browser |
+| **Engine** | Embedded Multi-Core ExifTool Engine | WebAssembly (Client-side) |
+| **UI** | Native Desktop Java (FlatLaf / Modern System Styling) | Modern Astro + React SPA |
+| **Packaging** | Bundled JRE via `jpackage` (zero external dependencies) | 0 MB install (Instant) |
+| **Network** | 100% Offline Local Processing | 100% Offline Local Processing |
 
 ---
 
@@ -49,15 +49,10 @@ TakeoutFix is distributed in two high-performance desktop editions as well as an
 
 Download directly from the [Releases Page](https://github.com/Rahul-Jena-2002/GooglePhotosTakeout/releases/latest) or use our fast download links:
 
-### 🦀 Rust Edition (Modern & Lightweight)
-- **Windows (x64)**: [`TakeoutFix.exe`](https://takeoutfix-download.takeoutfix.workers.dev/download/windows/rust)
-- **macOS (Universal / Apple Silicon & Intel)**: [`TakeoutFix.dmg`](https://takeoutfix-download.takeoutfix.workers.dev/download/mac/rust)
-- **Linux (x64)**: [`TakeoutFix.AppImage`](https://takeoutfix-download.takeoutfix.workers.dev/download/linux/rust)
-
-### ☕ Java Edition (Standalone jpackage)
-- **Windows (x64)**: [`TakeoutFix-Java.exe`](https://takeoutfix-download.takeoutfix.workers.dev/download/windows/java)
-- **macOS (Universal)**: [`TakeoutFix-Java.dmg`](https://takeoutfix-download.takeoutfix.workers.dev/download/mac/java)
-- **Linux (x64)**: [`TakeoutFix-Java.AppImage`](https://takeoutfix-download.takeoutfix.workers.dev/download/linux/java)
+### ☕ Desktop Edition (Standalone jpackage)
+- **Windows (x64)**: [`TakeoutFix.exe`](https://takeoutfix-download.takeoutfix.workers.dev/download/windows)
+- **macOS (Universal / Apple Silicon & Intel)**: [`TakeoutFix.dmg`](https://takeoutfix-download.takeoutfix.workers.dev/download/macos)
+- **Linux (x64)**: [`TakeoutFix.AppImage`](https://takeoutfix-download.takeoutfix.workers.dev/download/linux)
 
 ---
 
@@ -74,18 +69,8 @@ Download directly from the [Releases Page](https://github.com/Rahul-Jena-2002/Go
 ## 🛠️ For Developers & Building from Source
 
 ### Prerequisites
-- **Node.js 20+** and **npm**
-- **Rust** (stable toolchain with `cargo`)
-- **Java 17+ / 21 JDK** and **Maven** (for Java Edition only)
-
-### 1. Building the Rust Tauri App
-```bash
-cd webapp
-npm install
-npm run build
-npx @tauri-apps/cli build
-```
-The compiled standalone executable will be generated at `webapp/src-tauri/target/release/`.
+- **Node.js 20+** and **npm** (for Web Edition)
+- **Java 21 JDK** and **Maven** (for Desktop Edition)
 
 ### 2. Building the Web Application Locally
 ```bash

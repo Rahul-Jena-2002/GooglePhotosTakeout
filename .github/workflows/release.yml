@@ -1,4 +1,4 @@
-name: Build Native Rust (Tauri) & Java Desktop Apps
+name: Build & Release Pure Java Desktop Apps
 
 on:
   push:
@@ -9,7 +9,7 @@ on:
   workflow_dispatch:
     inputs:
       tag_name:
-        description: 'Release tag name (e.g. v2.0.9)'
+        description: 'Release tag name (e.g. v2.1.8)'
         required: false
         default: 'latest'
 
@@ -18,247 +18,45 @@ permissions:
 
 jobs:
   # ════════════════════════════════════════════════════════════════════════════
-  # 1. RUST NATIVE TAURI EDITION (Primary Desktop: Windows, macOS, Linux)
-  # ════════════════════════════════════════════════════════════════════════════
-  build-rust-tauri:
-    name: Rust Tauri Edition (${{ matrix.os }})
-    runs-on: ${{ matrix.os }}
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - os: windows-latest
-            artifact_name: TakeoutFix.exe
-          - os: macos-latest
-            artifact_name: TakeoutFix.dmg
-          - os: ubuntu-latest
-            artifact_name: TakeoutFix.AppImage
-
-    steps:
-      - name: Checkout Code
-        uses: actions/checkout@v4
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: 'npm'
-          cache-dependency-path: webapp/package-lock.json
-
-      - name: Set up Rust
-        uses: dtolnay/rust-toolchain@stable
-
-      - name: Rust Cache
-        uses: swatinem/rust-cache@v2
-        with:
-          workspaces: webapp/src-tauri -> target
-
-      - name: Install Linux Dependencies (Ubuntu)
-        if: matrix.os == 'ubuntu-latest'
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y libwebkit2gtk-4.1-dev build-essential curl wget file libxdo-dev libssl-dev libayatana-appindicator3-dev librsvg2-dev
-
-      - name: Install Webapp NPM Dependencies
-        working-directory: webapp
-        run: npm ci
-
-      - name: Build Tauri Desktop App
-        working-directory: webapp
-        run: npx @tauri-apps/cli build
-
-      # ─── Windows: Copy Standalone Executable ───
-      - name: Prepare Windows Rust Binary
-        if: matrix.os == 'windows-latest'
-        shell: pwsh
-        run: |
-          # Check standalone release binary or NSIS setup
-          if (Test-Path "webapp/src-tauri/target/release/TakeoutFix.exe") {
-            Copy-Item "webapp/src-tauri/target/release/TakeoutFix.exe" "./TakeoutFix.exe" -Force
-          } elseif (Test-Path "webapp/src-tauri/target/release/app.exe") {
-            Copy-Item "webapp/src-tauri/target/release/app.exe" "./TakeoutFix.exe" -Force
-          } elseif (Test-Path "webapp/src-tauri/target/release/bundle/nsis/*.exe") {
-            $nsisExe = Get-ChildItem "webapp/src-tauri/target/release/bundle/nsis/*.exe" | Select-Object -First 1
-            Copy-Item $nsisExe.FullName "./TakeoutFix.exe" -Force
-          } elseif (Test-Path "webapp/src-tauri/target/release/bundle/msi/*.msi") {
-            $msi = Get-ChildItem "webapp/src-tauri/target/release/bundle/msi/*.msi" | Select-Object -First 1
-            Copy-Item $msi.FullName "./TakeoutFix.exe" -Force
-          }
-          Write-Host "Prepared: TakeoutFix.exe"
-
-      # ─── macOS: Copy Universal DMG ───
-      - name: Prepare macOS Rust DMG
-        if: matrix.os == 'macos-latest'
-        run: |
-          DMG_FILE=$(find webapp/src-tauri/target/release/bundle/dmg -name "*.dmg" | head -n 1)
-          cp "$DMG_FILE" ./TakeoutFix.dmg
-          echo "Prepared: TakeoutFix.dmg"
-
-      # ─── Linux: Copy AppImage ───
-      - name: Prepare Linux Rust AppImage
-        if: matrix.os == 'ubuntu-latest'
-        run: |
-          APPIMAGE_FILE=$(find webapp/src-tauri/target/release/bundle/appimage -name "*.AppImage" | head -n 1)
-          cp "$APPIMAGE_FILE" ./TakeoutFix.AppImage
-          echo "Prepared: TakeoutFix.AppImage"
-
-      - name: Upload Rust Artifact
-        uses: actions/upload-artifact@v4
-        continue-on-error: true
-        with:
-          name: rust-${{ matrix.os }}
-          path: ${{ matrix.artifact_name }}
-          retention-days: 1
-
-      - name: Attach Rust Binary to GitHub Release
-        uses: softprops/action-gh-release@v2
-        if: startsWith(github.ref, 'refs/tags/') || github.event_name == 'release' || github.event_name == 'workflow_dispatch'
-        with:
-          tag_name: ${{ github.event.inputs.tag_name || github.ref_name || 'latest' }}
-          files: ${{ matrix.artifact_name }}
-
-  # ════════════════════════════════════════════════════════════════════════════
-  # 2. ANDROID EDITION (Tauri Mobile APK)
-  # ════════════════════════════════════════════════════════════════════════════
-  build-android:
-    name: Android Edition (APK)
-    runs-on: ubuntu-latest
-    continue-on-error: true
-    steps:
-      - name: Checkout Code
-        uses: actions/checkout@v4
-
-      - name: Set up Java 17
-        uses: actions/setup-java@v5
-        with:
-          distribution: 'temurin'
-          java-version: '17'
-
-      - name: Configure Android SDK & NDK
-        run: |
-          echo "ANDROID_HOME=/usr/local/lib/android/sdk" >> $GITHUB_ENV
-          SDKMANAGER=$(find /usr/local/lib/android/sdk/cmdline-tools -name sdkmanager 2>/dev/null | head -n 1)
-          if [ -n "$SDKMANAGER" ]; then
-            yes | "$SDKMANAGER" --licenses 2>/dev/null || true
-          fi
-          NDK_PATH=$(find /usr/local/lib/android/sdk/ndk -maxdepth 1 -mindepth 1 2>/dev/null | sort -V | tail -n 1)
-          if [ -n "$NDK_PATH" ]; then
-            echo "ANDROID_NDK_HOME=$NDK_PATH" >> $GITHUB_ENV
-            echo "NDK_HOME=$NDK_PATH" >> $GITHUB_ENV
-          fi
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: 'npm'
-          cache-dependency-path: webapp/package-lock.json
-
-      - name: Set up Rust
-        uses: dtolnay/rust-toolchain@stable
-        with:
-          targets: aarch64-linux-android,armv7-linux-androideabi,i686-linux-android,x86_64-linux-android
-
-      - name: Rust Cache
-        uses: swatinem/rust-cache@v2
-        with:
-          workspaces: webapp/src-tauri -> target
-
-      - name: Install Webapp NPM Dependencies
-        working-directory: webapp
-        run: npm ci
-
-      - name: Build Android APK
-        working-directory: webapp
-        run: |
-          npx @tauri-apps/cli android init --ci || true
-
-          # Inject custom TakeoutFix brand icons into Android project
-          if [ -d "src-tauri/icons/android" ]; then
-            echo "Injecting custom TakeoutFix brand icons into Android res..."
-            mkdir -p src-tauri/gen/android/app/src/main/res
-            cp -rf src-tauri/icons/android/* src-tauri/gen/android/app/src/main/res/ 2>/dev/null || true
-          fi
-          npx @tauri-apps/cli icon src-tauri/icons/icon.png || true
-
-          # Build Android APK
-          npx @tauri-apps/cli android build --apk --target aarch64 --ci || npx @tauri-apps/cli android build --apk --target aarch64 --debug --ci
-
-      - name: Prepare APK Binary
-        run: |
-          BUILD_TOOLS_DIR=$(find /usr/local/lib/android/sdk/build-tools -maxdepth 1 -mindepth 1 2>/dev/null | sort -V | tail -n 1)
-
-          # Locate built APK, prioritizing signed / debug APK over unsigned
-          APK_PATH=$(find webapp/src-tauri/gen/android -name "*debug.apk" -o -name "*signed.apk" | head -n 1)
-          if [ -z "$APK_PATH" ]; then
-            APK_PATH=$(find webapp/src-tauri/gen/android -name "*.apk" ! -name "*-unsigned.apk" | head -n 1)
-          fi
-          if [ -z "$APK_PATH" ]; then
-            APK_PATH=$(find webapp/src-tauri/gen/android -name "*.apk" | head -n 1)
-          fi
-
-          if [ -z "$APK_PATH" ]; then
-            echo "Error: No APK found in build outputs."
-            exit 1
-          fi
-
-          echo "Found candidate APK: $APK_PATH"
-
-          # Verify or sign with apksigner to guarantee Android OS accepts the package
-          if [ -n "$BUILD_TOOLS_DIR" ] && [ -f "$BUILD_TOOLS_DIR/apksigner" ]; then
-            echo "Testing APK signature with apksigner..."
-            if "$BUILD_TOOLS_DIR/apksigner" verify "$APK_PATH" 2>/dev/null; then
-              echo "APK is already signed and verified!"
-              cp "$APK_PATH" ./TakeoutFix.apk
-            else
-              echo "APK is unsigned. Creating release keystore and signing with v1/v2/v3 schemes..."
-              keytool -genkeypair -v -keystore /tmp/takeoutfix.keystore -alias takeoutfix -keyalg RSA -keysize 2048 -validity 10000 -storepass takeoutfix123 -keypass takeoutfix123 -dname "CN=TakeoutFix, OU=Mobile, O=TakeoutFix, C=US"
-              "$BUILD_TOOLS_DIR/zipalign" -p -f -v 4 "$APK_PATH" ./aligned.apk
-              "$BUILD_TOOLS_DIR/apksigner" sign --ks /tmp/takeoutfix.keystore --ks-pass pass:takeoutfix123 --key-pass pass:takeoutfix123 --ks-key-alias takeoutfix --out ./TakeoutFix.apk ./aligned.apk
-              "$BUILD_TOOLS_DIR/apksigner" verify --verbose ./TakeoutFix.apk
-            fi
-          else
-            cp "$APK_PATH" ./TakeoutFix.apk
-          fi
-
-          echo "Prepared TakeoutFix.apk successfully ($(ls -lh ./TakeoutFix.apk | awk '{print $5}'))"
-
-      - name: Upload Android Artifact
-        uses: actions/upload-artifact@v4
-        continue-on-error: true
-        with:
-          name: android-apk
-          path: TakeoutFix.apk
-          retention-days: 1
-
-      - name: Attach APK to GitHub Release
-        uses: softprops/action-gh-release@v2
-        if: startsWith(github.ref, 'refs/tags/') || github.event_name == 'release' || github.event_name == 'workflow_dispatch'
-        with:
-          tag_name: ${{ github.event.inputs.tag_name || github.ref_name || 'latest' }}
-          files: TakeoutFix.apk
-
-  # ════════════════════════════════════════════════════════════════════════════
-  # 3. JAVA DESKTOP EDITION (Standalone Direct Runnable via jpackage)
+  # 1. PURE JAVA DESKTOP APP (Standalone Installers via jpackage)
   # ════════════════════════════════════════════════════════════════════════════
   build-java:
-    name: Java Edition (${{ matrix.os }})
-    needs: [build-rust-tauri]
+    name: Java Desktop (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
         include:
           - os: windows-latest
-            artifact_name: TakeoutFix-Java.exe
+            primary_artifact: TakeoutFix.exe
+            legacy_artifact: TakeoutFix-Java.exe
           - os: macos-latest
-            artifact_name: TakeoutFix-Java.dmg
+            primary_artifact: TakeoutFix.dmg
+            legacy_artifact: TakeoutFix-Java.dmg
           - os: ubuntu-latest
-            artifact_name: TakeoutFix-Java.AppImage
+            primary_artifact: TakeoutFix.AppImage
+            legacy_artifact: TakeoutFix-Java.AppImage
 
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
+
+      - name: Extract Release Version
+        id: version
+        shell: bash
+        run: |
+          RAW_TAG="${{ github.event.inputs.tag_name || github.ref_name || '2.1.7' }}"
+          CLEAN_VER="${RAW_TAG#v}"
+          if [[ "$CLEAN_VER" == "main" || "$CLEAN_VER" == "latest" || -z "$CLEAN_VER" ]]; then
+            # Extract version from version.properties if available
+            if [ -f "native/src/main/resources/version.properties" ]; then
+              CLEAN_VER=$(grep "app.version" native/src/main/resources/version.properties | cut -d'=' -f2 | tr -d '\r')
+            else
+              CLEAN_VER="2.1.7"
+            fi
+          fi
+          echo "version=$CLEAN_VER" >> $GITHUB_OUTPUT
+          echo "Package version resolved: $CLEAN_VER"
 
       - name: Set up Java 21
         uses: actions/setup-java@v5
@@ -281,14 +79,15 @@ jobs:
         if: matrix.os == 'windows-latest'
         shell: pwsh
         run: |
+          $appVer = "${{ steps.version.outputs.version }}"
           jpackage `
             --type exe `
-            --name "TakeoutFix-Java" `
+            --name "TakeoutFix" `
             --input "jpackage-input" `
             --main-jar "takeoutfix.jar" `
             --main-class "com.takeoutfix.TakeoutApplication" `
             --icon "native/icons/icon.ico" `
-            --app-version "2.0.9" `
+            --app-version "$appVer" `
             --dest "dist-exe" `
             --win-dir-chooser `
             --win-menu `
@@ -296,98 +95,109 @@ jobs:
             --verbose
 
           $generatedExe = Get-ChildItem "dist-exe/*.exe" | Select-Object -First 1
+          Copy-Item $generatedExe.FullName "./TakeoutFix.exe" -Force
           Copy-Item $generatedExe.FullName "./TakeoutFix-Java.exe" -Force
-          Write-Host "Generated: TakeoutFix-Java.exe"
+          Write-Host "Generated: TakeoutFix.exe and TakeoutFix-Java.exe (Version $appVer)"
 
       # ─── macOS: Direct Standalone DMG ───
       - name: Package Java macOS (.dmg)
         if: matrix.os == 'macos-latest'
         run: |
+          APP_VER="${{ steps.version.outputs.version }}"
           jpackage \
             --type dmg \
-            --name "TakeoutFix-Java" \
+            --name "TakeoutFix" \
             --input "jpackage-input" \
             --main-jar "takeoutfix.jar" \
             --main-class "com.takeoutfix.TakeoutApplication" \
             --icon "native/icons/icon.icns" \
             --dest "dist-dmg" \
             --mac-package-identifier "com.takeoutfix.desktop" \
-            --app-version "2.0.9" \
+            --app-version "$APP_VER" \
             --verbose
 
-          cp dist-dmg/*.dmg ./TakeoutFix-Java.dmg
-          echo "Generated: TakeoutFix-Java.dmg"
+          DMG_FILE=$(find dist-dmg -name "*.dmg" | head -n 1)
+          cp "$DMG_FILE" ./TakeoutFix.dmg
+          cp "$DMG_FILE" ./TakeoutFix-Java.dmg
+          echo "Generated: TakeoutFix.dmg and TakeoutFix-Java.dmg (Version $APP_VER)"
 
       # ─── Linux: Direct AppImage / Package ───
-      - name: Package Java Linux (.AppImage & .deb)
+      - name: Package Java Linux (.AppImage)
         if: matrix.os == 'ubuntu-latest'
         run: |
+          APP_VER="${{ steps.version.outputs.version }}"
           sudo apt-get update -qq
           sudo apt-get install -y -qq fakeroot
 
           # 1. Build app-image
           jpackage \
             --type app-image \
-            --name "TakeoutFix-Java" \
+            --name "TakeoutFix" \
             --input "jpackage-input" \
             --main-jar "takeoutfix.jar" \
             --main-class "com.takeoutfix.TakeoutApplication" \
             --icon "native/icons/icon.png" \
             --dest "dist-linux" \
-            --app-version "2.0.9" \
+            --app-version "$APP_VER" \
             --verbose
 
           # 2. Package as self-extracting single-file AppImage runner
           mkdir -p AppDir/usr/bin AppDir/usr/lib AppDir/usr/share/icons/hicolor/256x256/apps
-          cp -r dist-linux/TakeoutFix-Java/* AppDir/usr/lib/
+          cp -r dist-linux/TakeoutFix/* AppDir/usr/lib/
           cp native/icons/icon.png AppDir/usr/share/icons/hicolor/256x256/apps/takeoutfix.png
           cp native/icons/icon.png AppDir/takeoutfix.png
 
-          printf '#!/bin/sh\nHERE="$(dirname "$(readlink -f "$0")")"\nexec "$HERE/usr/lib/bin/TakeoutFix-Java" "$@"\n' > AppDir/AppRun
+          printf '#!/bin/sh\nHERE="$(dirname "$(readlink -f "$0")")"\nexec "$HERE/usr/lib/bin/TakeoutFix" "$@"\n' > AppDir/AppRun
           chmod +x AppDir/AppRun
 
-          printf '[Desktop Entry]\nName=TakeoutFix-Java\nExec=TakeoutFix-Java\nIcon=takeoutfix\nType=Application\nCategories=Utility;\nComment=Google Takeout Photo Metadata Restorer\n' > AppDir/takeoutfix.desktop
+          printf '[Desktop Entry]\nName=TakeoutFix\nExec=TakeoutFix\nIcon=takeoutfix\nType=Application\nCategories=Utility;\nComment=Google Takeout Photo Metadata Restorer\n' > AppDir/takeoutfix.desktop
 
           wget -q https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-x86_64.AppImage -O appimagetool
           chmod +x appimagetool
-          ./appimagetool --appimage-extract-and-run AppDir ./TakeoutFix-Java.AppImage || {
+          ./appimagetool --appimage-extract-and-run AppDir ./TakeoutFix.AppImage || {
             # Fallback if FUSE is unavailable on runner
-            ARCH=x86_64 ./appimagetool --appimage-extract-and-run AppDir ./TakeoutFix-Java.AppImage
+            ARCH=x86_64 ./appimagetool --appimage-extract-and-run AppDir ./TakeoutFix.AppImage
           }
+          cp ./TakeoutFix.AppImage ./TakeoutFix-Java.AppImage
+          echo "Generated: TakeoutFix.AppImage and TakeoutFix-Java.AppImage (Version $APP_VER)"
 
       - name: Upload Java Artifact
         uses: actions/upload-artifact@v4
         continue-on-error: true
         with:
           name: java-${{ matrix.os }}
-          path: ${{ matrix.artifact_name }}
+          path: |
+            ${{ matrix.primary_artifact }}
+            ${{ matrix.legacy_artifact }}
           retention-days: 1
 
-      - name: Attach Java Binary to GitHub Release
+      - name: Attach Binaries to GitHub Release
         uses: softprops/action-gh-release@v2
         if: startsWith(github.ref, 'refs/tags/') || github.event_name == 'release' || github.event_name == 'workflow_dispatch'
         with:
           tag_name: ${{ github.event.inputs.tag_name || github.ref_name || 'latest' }}
-          files: ${{ matrix.artifact_name }}
+          files: |
+            ${{ matrix.primary_artifact }}
+            ${{ matrix.legacy_artifact }}
 
   # ════════════════════════════════════════════════════════════════════════════
-  # 4. RELEASE RETENTION POLICY: Retain current + previous 2 releases (3 total)
+  # 2. RELEASE RETENTION POLICY: Retain current + previous 9 releases (10 total)
   # ════════════════════════════════════════════════════════════════════════════
   cleanup-old-releases:
-    name: Retain Current + Previous 2 Releases
-    needs: [build-rust-tauri, build-java]
+    name: Retain Current + Previous 9 Releases (10 Total)
+    needs: [build-java]
     runs-on: ubuntu-latest
     if: success() && (startsWith(github.ref, 'refs/tags/') || github.event_name == 'release' || github.event_name == 'workflow_dispatch')
     permissions:
       contents: write
     steps:
-      - name: Prune Releases Older Than Current + Previous 2
+      - name: Prune Releases Older Than Current + Previous 9
         uses: actions/github-script@v7
         with:
           script: |
             const owner = context.repo.owner;
             const repo = context.repo.repo;
-            const keepCount = 3; // Current release + 2 previous = 3 total
+            const keepCount = 10; // Current release + 9 previous = 10 total
 
             console.log(`Fetching all releases for ${owner}/${repo}...`);
             let allReleases = [];

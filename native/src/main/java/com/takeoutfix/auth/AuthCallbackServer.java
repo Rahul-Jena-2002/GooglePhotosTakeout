@@ -157,72 +157,177 @@ public class AuthCallbackServer {
                 pendingFuture.complete(params);
             }
 
-            // Render confirmation screen to user's browser with auto-routing to the website
+            // Render enterprise gold-standard confirmation screen (IntelliJ / JetBrains style)
             String email = String.valueOf(params.getOrDefault("email", "Google Account"));
-            String websiteUrl = "https://takeoutfix.pages.dev/tool?connected=true";
-            if (params.containsKey("return_to") && !String.valueOf(params.get("return_to")).isBlank()) {
-                websiteUrl = String.valueOf(params.get("return_to"));
-            } else {
-                String referer = exchange.getRequestHeaders().getFirst("Referer");
-                if (referer != null && (referer.contains("localhost:4321") || referer.contains("localhost:4322"))) {
-                    websiteUrl = referer.split("/login")[0] + "/tool?connected=true";
-                }
-            }
+            String plan = String.valueOf(params.getOrDefault("plan", "Free")).toUpperCase();
 
             String template = """
                 <!DOCTYPE html>
                 <html lang="en">
                 <head>
                     <meta charset="utf-8">
-                    <meta http-equiv="refresh" content="1;url={{WEBSITE_URL}}">
-                    <title>TakeoutFix — Connected</title>
+                    <meta name="viewport" content="width=device-width, initial-scale=1">
+                    <title>TakeoutFix — Authorization Successful</title>
                     <style>
-                        * { box-sizing: border-box; }
-                        body { background: #09090b; color: #f4f4f5; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0; padding: 20px; }
-                        .card { background: #18181b; border: 1px solid #27272a; border-radius: 24px; padding: 36px 28px; max-width: 440px; width: 100%; text-align: center; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.6); }
-                        .icon { width: 56px; height: 56px; border-radius: 50%; background: rgba(16, 185, 129, 0.15); border: 1px solid rgba(16, 185, 129, 0.3); color: #10b981; display: flex; align-items: center; justify-content: center; margin: 0 auto 16px; font-size: 26px; font-weight: bold; }
-                        h1 { font-size: 22px; font-weight: 800; margin: 0 0 8px; color: #ffffff; letter-spacing: -0.02em; }
-                        .badge { display: inline-block; background: #27272a; color: #10b981; padding: 5px 14px; border-radius: 999px; font-size: 13px; font-weight: 600; margin-bottom: 16px; border: 1px solid #3f3f46; word-break: break-all; }
-                        p { font-size: 14px; color: #a1a1aa; margin: 0 0 20px; line-height: 1.5; }
-                        .actions { display: flex; flex-direction: column; gap: 10px; }
-                        .btn { display: block; text-decoration: none; text-align: center; font-weight: 700; padding: 13px 20px; border-radius: 12px; border: none; cursor: pointer; font-size: 14px; width: 100%; transition: all 0.15s ease; }
-                        .btn-primary { background: #6366f1; color: #ffffff; }
-                        .btn-primary:hover { background: #4f46e5; }
-                        .btn-secondary { background: #27272a; color: #e4e4e7; border: 1px solid #3f3f46; }
-                        .btn-secondary:hover { background: #3f3f46; }
-                        .timer { font-size: 12px; color: #71717a; margin-top: 16px; }
+                        * { box-sizing: border-box; margin: 0; padding: 0; }
+                        body {
+                            background: radial-gradient(circle at 50% 20%, #151824 0%, #090a0f 100%);
+                            color: #f4f4f5;
+                            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+                            display: flex;
+                            align-items: center;
+                            justify-content: center;
+                            min-height: 100vh;
+                            padding: 24px;
+                            -webkit-font-smoothing: antialiased;
+                        }
+                        .card {
+                            background: rgba(24, 26, 35, 0.85);
+                            backdrop-filter: blur(20px);
+                            -webkit-backdrop-filter: blur(20px);
+                            border: 1px solid rgba(255, 255, 255, 0.08);
+                            border-radius: 24px;
+                            padding: 44px 36px;
+                            max-width: 440px;
+                            width: 100%;
+                            text-align: center;
+                            box-shadow: 0 30px 60px -15px rgba(0, 0, 0, 0.7), 0 0 40px -10px rgba(16, 185, 129, 0.15);
+                            animation: fadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+                        }
+                        @keyframes fadeIn {
+                            from { opacity: 0; transform: translateY(12px) scale(0.98); }
+                            to { opacity: 1; transform: translateY(0) scale(1); }
+                        }
+                        .icon-wrap {
+                            width: 68px;
+                            height: 68px;
+                            border-radius: 50%;
+                            background: radial-gradient(circle, rgba(16, 185, 129, 0.22) 0%, rgba(16, 185, 129, 0.06) 100%);
+                            border: 1px solid rgba(16, 185, 129, 0.4);
+                            color: #10b981;
+                            display: flex;
+                            align-items: center;
+                            justify-content: center;
+                            margin: 0 auto 22px;
+                            font-size: 30px;
+                            box-shadow: 0 0 24px rgba(16, 185, 129, 0.25);
+                        }
+                        h1 {
+                            font-size: 24px;
+                            font-weight: 700;
+                            margin-bottom: 8px;
+                            color: #ffffff;
+                            letter-spacing: -0.02em;
+                        }
+                        .subtitle {
+                            font-size: 14px;
+                            color: #a1a1aa;
+                            margin-bottom: 20px;
+                            line-height: 1.5;
+                        }
+                        .account-chip {
+                            display: inline-flex;
+                            align-items: center;
+                            gap: 8px;
+                            background: rgba(255, 255, 255, 0.04);
+                            border: 1px solid rgba(255, 255, 255, 0.1);
+                            padding: 6px 14px;
+                            border-radius: 999px;
+                            font-size: 13px;
+                            font-weight: 500;
+                            color: #e4e4e7;
+                            margin-bottom: 24px;
+                            max-width: 100%;
+                        }
+                        .account-chip .dot {
+                            width: 8px;
+                            height: 8px;
+                            border-radius: 50%;
+                            background: #10b981;
+                            box-shadow: 0 0 8px #10b981;
+                            flex-shrink: 0;
+                        }
+                        .account-chip .email {
+                            overflow: hidden;
+                            text-overflow: ellipsis;
+                            white-space: nowrap;
+                        }
+                        .account-chip .tier {
+                            background: rgba(16, 185, 129, 0.2);
+                            color: #34d399;
+                            font-size: 11px;
+                            font-weight: 700;
+                            padding: 2px 7px;
+                            border-radius: 6px;
+                            margin-left: 4px;
+                        }
+                        .instruction {
+                            background: rgba(255, 255, 255, 0.03);
+                            border: 1px solid rgba(255, 255, 255, 0.06);
+                            border-radius: 14px;
+                            padding: 16px 18px;
+                            font-size: 13px;
+                            color: #d4d4d8;
+                            line-height: 1.5;
+                            margin-bottom: 22px;
+                        }
+                        .btn-app {
+                            display: inline-flex;
+                            align-items: center;
+                            justify-content: center;
+                            width: 100%;
+                            padding: 13px 20px;
+                            background: #10b981;
+                            color: #ffffff;
+                            font-size: 14px;
+                            font-weight: 600;
+                            border-radius: 12px;
+                            text-decoration: none;
+                            transition: all 0.2s ease;
+                            border: none;
+                            cursor: pointer;
+                            box-shadow: 0 4px 14px rgba(16, 185, 129, 0.3);
+                        }
+                        .btn-app:hover {
+                            background: #059669;
+                            transform: translateY(-1px);
+                            box-shadow: 0 6px 20px rgba(16, 185, 129, 0.4);
+                        }
+                        .footer-note {
+                            font-size: 12px;
+                            color: #71717a;
+                            margin-top: 20px;
+                        }
                     </style>
                 </head>
                 <body>
                     <div class="card">
-                        <div class="icon">✓</div>
-                        <h1>Successfully Connected!</h1>
-                        <div class="badge">{{EMAIL}}</div>
-                        <p>TakeoutFix Desktop is now authenticated. Redirecting you back to the website now...</p>
-                        <div class="actions">
-                            <a class="btn btn-primary" id="btnWebsite" href="{{WEBSITE_URL}}" onclick="window.location.replace('{{WEBSITE_URL}}'); return true;">Return to TakeoutFix Website &rarr;</a>
-                            <button class="btn btn-secondary" onclick="tryCloseWindow()">Close Window</button>
+                        <div class="icon-wrap">✓</div>
+                        <h1>You're All Set!</h1>
+                        <p class="subtitle">TakeoutFix Desktop is now authenticated.</p>
+                        
+                        <div class="account-chip">
+                            <span class="dot"></span>
+                            <span class="email">{{EMAIL}}</span>
+                            <span class="tier">{{PLAN}}</span>
                         </div>
-                        <div class="timer">Desktop app is active and authenticated.</div>
+
+                        <div class="instruction">
+                            You can safely close this browser tab and return to <strong>TakeoutFix</strong>.
+                        </div>
+
+                        <a href="takeoutfix://auth" class="btn-app" onclick="window.focus();">
+                            Return to TakeoutFix Desktop
+                        </a>
+
+                        <p class="footer-note">Desktop client is connected & running locally.</p>
                     </div>
-                    <script>
-                        function tryCloseWindow() {
-                            try {
-                                window.opener = null;
-                                window.open('', '_self', '');
-                                window.close();
-                            } catch(e) {}
-                        }
-                        tryCloseWindow();
-                        setTimeout(function() {
-                            tryCloseWindow();
-                            window.location.replace("{{WEBSITE_URL}}");
-                        }, 800);
-                    </script>
                 </body>
                 </html>
                 """;
-            String html = template.replace("{{WEBSITE_URL}}", websiteUrl).replace("{{EMAIL}}", email);
+            String html = template
+                    .replace("{{EMAIL}}", email)
+                    .replace("{{PLAN}}", plan);
 
             byte[] bytes = html.getBytes(StandardCharsets.UTF_8);
             exchange.getResponseHeaders().set("Content-Type", "text/html; charset=utf-8");

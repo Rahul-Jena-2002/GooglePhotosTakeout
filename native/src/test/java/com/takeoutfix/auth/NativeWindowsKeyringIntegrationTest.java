@@ -61,8 +61,13 @@ class NativeWindowsKeyringIntegrationTest {
         assertTrue(cmdkeyOutput.contains("TakeoutFix|" + TEST_EMAIL),
                 "Windows Credential Manager MUST contain 'TakeoutFix|" + TEST_EMAIL + "' in cmdkey /list output");
 
-        // 4. Verify loading reads exact tokens from Windows Credential Manager
-        AuthSession loaded = credentialStore.loadSession();
+        // 4. Verify loading reads exact tokens from Windows Credential Manager (with small retry for Windows Credential Manager file IO)
+        AuthSession loaded = null;
+        for (int i = 0; i < 5; i++) {
+            loaded = credentialStore.loadSession();
+            if (loaded != null) break;
+            try { Thread.sleep(50); } catch (InterruptedException ignored) {}
+        }
         assertNotNull(loaded, "Session must be successfully loaded from OS Keyring");
         assertEquals("jwt-token-live-windows-dpapi", loaded.getIdToken());
         assertEquals("refresh-token-live-windows-dpapi", loaded.getRefreshToken());
@@ -95,8 +100,12 @@ class NativeWindowsKeyringIntegrationTest {
     }
 
     private void deleteFromWindowsCredentialManager(String email) {
+        try (com.github.javakeyring.Keyring keyring = com.github.javakeyring.Keyring.create()) {
+            keyring.deletePassword("TakeoutFix", email);
+        } catch (Exception ignored) {}
+
         try {
-            Process process = new ProcessBuilder("cmdkey", "/delete:TakeoutFix|" + email).start();
+            Process process = new ProcessBuilder("cmdkey", "/delete:TakeoutFix|" + email).redirectErrorStream(true).start();
             process.waitFor();
         } catch (Exception ignored) {
             // Cleanup helper

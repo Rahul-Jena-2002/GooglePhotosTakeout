@@ -1,26 +1,24 @@
 import { useState, useEffect, useRef } from "react";
 import { useAuth, AuthProvider } from "../../contexts/AuthContext";
-import { signInWithRedirect, getRedirectResult, GoogleAuthProvider } from "firebase/auth";
+import { signInWithPopup, getRedirectResult, GoogleAuthProvider } from "firebase/auth";
 import { auth, googleProvider } from "../../lib/firebase/client";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "../../components/ui/card";
 import { Button } from "../../components/ui/button";
-import { Badge } from "../../components/ui/badge";
 import { ToastContainer } from "../../components/ui/toast";
-import { CheckCircle2, AlertCircle, Laptop, RefreshCw, ExternalLink } from "lucide-react";
+import { CheckCircle2, AlertCircle, Laptop, Copy, Check, ExternalLink } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-import { getFriendlyAuthMessage } from "../../lib/authErrors";
 
 function DesktopAuthBridgeContent() {
-  const { user, userData, loading, login, logout } = useAuth();
+  const { user, userData, loading, login } = useAuth();
   const [port, setPort] = useState<string | null>(null);
-  const [status, setStatus] = useState<"idle" | "connecting" | "success" | "error">("idle");
-  const [errorMessage, setErrorMessage] = useState<string>("");
-  const [manualUrl, setManualUrl] = useState<string>("");
-  const attemptedRef = useRef<boolean>(false);
-  const attemptedAutoLoginRef = useRef<boolean>(false);
-  const [justRedirectedFromOAuth, setJustRedirectedFromOAuth] = useState(false);
+  const [status, setStatus] = useState<"idle" | "authorizing" | "error">("idle");
   const [stateToken, setStateToken] = useState<string>("");
+  const [authPayloadString, setAuthPayloadString] = useState<string>("");
+  const [copied, setCopied] = useState<boolean>(false);
+  const [signingIn, setSigningIn] = useState<boolean>(false);
+  const attemptedRef = useRef<boolean>(false);
 
+  // 1. Parse port and anti-CSRF state from query parameters
   useEffect(() => {
     if (typeof window !== "undefined") {
       const searchParams = new URLSearchParams(window.location.search);
@@ -43,51 +41,36 @@ function DesktopAuthBridgeContent() {
         setPort(portParam);
       } else {
         setStatus("error");
-        setErrorMessage("Missing or invalid 'port' parameter in URL. Please launch sign-in directly from TakeoutFix Desktop.");
-      }
-
-      const wasRedirected = sessionStorage.getItem("takeoutfix_from_oauth") === "true";
-      if (wasRedirected) {
-        setJustRedirectedFromOAuth(true);
       }
     }
   }, []);
 
-  // Listen for return from Google OAuth redirect
+  // 2. Handle redirect result if returning from any prior redirect
   useEffect(() => {
     if (!auth) return;
     getRedirectResult(auth)
       .then((result) => {
         if (result && result.user) {
-          setJustRedirectedFromOAuth(true);
+          attemptedRef.current = false;
         }
       })
       .catch((err) => {
-        console.warn("[DesktopAuthBridge] getRedirectResult error:", err);
+        console.warn("[DesktopAuthBridge] getRedirectResult check:", err);
       });
   }, []);
 
-  // Auto-dispatch when returning fresh from Google OAuth selection
+  // 3. When user is signed in and port is available, hand off immediately to desktop
   useEffect(() => {
     if (!port || loading || !user) return;
-    if (justRedirectedFromOAuth && !attemptedRef.current) {
+    if (!attemptedRef.current) {
       attemptedRef.current = true;
-      try { sessionStorage.removeItem("takeoutfix_from_oauth"); } catch (_) {}
       dispatchAuthToDesktop();
     }
-  }, [user, userData, port, loading, justRedirectedFromOAuth]);
-
-  // If user is not logged in at all, automatically navigate directly to Google OAuth Account Chooser
-  useEffect(() => {
-    if (!port || loading || user || attemptedAutoLoginRef.current) return;
-    attemptedAutoLoginRef.current = true;
-    handleSignIn();
-  }, [port, loading, user]);
+  }, [user, userData, port, loading]);
 
   const dispatchAuthToDesktop = async () => {
     if (!port || !user) return;
-    setStatus("connecting");
-    setErrorMessage("");
+    setStatus("authorizing");
 
     try {
       const token = await user.getIdToken().catch(() => "");
@@ -97,24 +80,6 @@ function DesktopAuthBridgeContent() {
       const usedFiles = userData?.usedFiles || 0;
       const usedBytes = userData?.usedBytes || 0;
 
-      const payload: Record<string, any> = {
-        uid: user.uid,
-        googleId: user.uid,
-        email,
-        displayName,
-        name: displayName,
-        plan,
-        usedFiles,
-        usedBytes,
-        token,
-        photoUrl: user.photoURL || "",
-        photoURL: user.photoURL || ""
-      };
-      if (stateToken) {
-        payload.state = stateToken;
-      }
-
-      // Build manual fallback URL
       const queryParams: Record<string, string> = {
         uid: user.uid,
         googleId: user.uid,
@@ -129,107 +94,74 @@ function DesktopAuthBridgeContent() {
       if (stateToken) {
         queryParams.state = stateToken;
       }
+
+      // Generate base64 token for manual copy-paste fallback
+      try {
+        const payloadJson = JSON.stringify(queryParams);
+        const encoded = btoa(unescape(encodeURIComponent(payloadJson)));
+        setAuthPayloadString(encoded);
+      } catch (_) {
+        setAuthPayloadString(token);
+      }
+
       const callbackUrl = `http://127.0.0.1:${port}/callback?${new URLSearchParams(queryParams).toString()}`;
-      setManualUrl(callbackUrl);
 
-      // Attempt 1: POST fetch
-      try {
-        const response = await fetch(`http://127.0.0.1:${port}/callback`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "Accept": "application/json"
-          },
-          body: JSON.stringify(payload)
-        });
+      // Gold Standard: Top-level navigation directly to local loopback server
+      window.location.replace(callbackUrl);
 
-        if (response.ok) {
-          setStatus("success");
-          return;
-        }
-      } catch (postErr) {
-        console.warn("[DesktopAuthBridge] POST attempt failed, trying GET...", postErr);
-      }
-
-      // Attempt 2: GET fetch fallback
-      try {
-        const getRes = await fetch(callbackUrl, {
-          method: "GET",
-          headers: { "Accept": "application/json" }
-        });
-        if (getRes.ok) {
-          setStatus("success");
-          return;
-        }
-      } catch (getErr) {
-        console.warn("[DesktopAuthBridge] GET attempt failed:", getErr);
-      }
-
-      // If both background fetches failed (e.g. browser mixed-content / private network block)
-      setStatus("error");
-      setErrorMessage("Could not reach TakeoutFix Desktop on local port " + port + ". Your browser may block automatic localhost connections.");
     } catch (err: any) {
       console.error("[DesktopAuthBridge] Auth dispatch error:", err);
       setStatus("error");
-      setErrorMessage(err?.message || "Failed to complete authentication with desktop client.");
     }
   };
 
-  const handleSignIn = async () => {
+  // 4. Clean popup-based Google Sign-In — NEVER redirects the parent page, stopping all loops!
+  const handleGoogleSignIn = async () => {
+    if (signingIn) return;
+    setSigningIn(true);
+    attemptedRef.current = false;
+
     try {
-      attemptedRef.current = false;
-      if (typeof window !== "undefined") {
-        try { sessionStorage.setItem("takeoutfix_from_oauth", "true"); } catch (_) {}
-      }
       const provider = googleProvider || new GoogleAuthProvider();
       provider.setCustomParameters({ prompt: "select_account" });
-      await signInWithRedirect(auth, provider);
+      await signInWithPopup(auth, provider);
+      // user state will be updated via onAuthStateChanged and effect 3 will fire!
     } catch (err: any) {
-      console.warn("[DesktopAuthBridge] Google redirect error:", err);
-      try {
-        await login();
-      } catch (popupErr: any) {
-        const feedback = getFriendlyAuthMessage(popupErr);
-        setErrorMessage(feedback.message);
-      }
+      console.warn("[DesktopAuthBridge] Google popup cancelled or failed:", err);
+      setSigningIn(false);
     }
   };
 
-  const handleSwitchAccount = async () => {
-    attemptedRef.current = false;
-    if (typeof window !== "undefined") {
-      try { sessionStorage.setItem("takeoutfix_from_oauth", "true"); } catch (_) {}
-    }
-    await logout();
-    const provider = googleProvider || new GoogleAuthProvider();
-    provider.setCustomParameters({ prompt: "select_account" });
-    await signInWithRedirect(auth, provider);
+  const copyTokenToClipboard = () => {
+    if (!authPayloadString) return;
+    navigator.clipboard.writeText(authPayloadString).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2500);
+    });
   };
-
-  const planLabel = (userData?.plan || "free").toUpperCase();
 
   return (
-    <div className="min-h-[80vh] flex items-center justify-center p-4 md:p-8 font-sans">
-      <Card className="w-full max-w-lg border-zinc-200 dark:border-zinc-800 bg-white/95 dark:bg-zinc-950/80 backdrop-blur-xl shadow-2xl overflow-hidden relative border text-zinc-900 dark:text-white">
+    <div className="min-h-[85vh] flex items-center justify-center p-4 md:p-8 font-sans">
+      <Card className="w-full max-w-md border-zinc-200 dark:border-zinc-800 bg-white dark:bg-[#12131a] shadow-2xl overflow-hidden relative border text-zinc-900 dark:text-white rounded-2xl">
         {/* Glow accent */}
-        <div className="absolute -top-24 -left-24 w-48 h-48 bg-emerald-500/10 dark:bg-emerald-500/15 rounded-full blur-3xl pointer-events-none" />
-        <div className="absolute -bottom-24 -right-24 w-48 h-48 bg-cyan-500/10 dark:bg-cyan-500/15 rounded-full blur-3xl pointer-events-none" />
+        <div className="absolute -top-24 -left-24 w-48 h-48 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none" />
+        <div className="absolute -bottom-24 -right-24 w-48 h-48 bg-cyan-500/10 rounded-full blur-3xl pointer-events-none" />
 
         <CardHeader className="text-center pb-4 pt-8">
-          <div className="mx-auto w-14 h-14 rounded-2xl bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 flex items-center justify-center shadow-md mb-4 text-emerald-600 dark:text-emerald-400">
+          <div className="mx-auto w-14 h-14 rounded-2xl bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 flex items-center justify-center shadow-md mb-3 text-emerald-500">
             <Laptop className="w-7 h-7" />
           </div>
           <CardTitle className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-white">
             TakeoutFix Desktop
           </CardTitle>
           <CardDescription className="text-zinc-500 dark:text-zinc-400 text-sm mt-1">
-            Secure Authentication Bridge
+            {status === "authorizing" ? "Connecting to application..." : "Sign in to connect TakeoutFix"}
           </CardDescription>
         </CardHeader>
 
         <CardContent className="space-y-6 pt-2 pb-8 px-6">
           <AnimatePresence mode="wait">
-            {/* Case 1: Missing port */}
+            {/* Case 1: Missing port parameter */}
             {!port && (
               <motion.div
                 key="no-port"
@@ -240,127 +172,18 @@ function DesktopAuthBridgeContent() {
               >
                 <AlertCircle className="w-5 h-5 flex-shrink-0 mt-0.5 text-amber-600 dark:text-amber-400" />
                 <div>
-                  <p className="font-semibold mb-1">No Local Desktop Port Detected</p>
+                  <p className="font-semibold mb-1">Launch from Desktop App</p>
                   <p className="text-amber-800/80 dark:text-amber-200/80 text-xs leading-relaxed">
-                    This page is meant to be opened by the TakeoutFix Desktop application. Please open TakeoutFix on your computer and click <strong>"Sign in with Google"</strong>.
+                    Please open <strong>TakeoutFix</strong> on your computer and click <strong>"Continue with Google"</strong> to connect.
                   </p>
                 </div>
               </motion.div>
             )}
 
-            {/* Case 2: Port present, user NOT logged in */}
-            {port && !user && !loading && (
+            {/* Case 2: Authorizing / Redirecting state (Instant handoff) */}
+            {port && (status === "authorizing" || (user && !authPayloadString)) && (
               <motion.div
-                key="needs-login"
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -10 }}
-                className="space-y-5"
-              >
-                <div className="text-center text-sm text-zinc-600 dark:text-zinc-300">
-                  <p>Sign in with your Google account to connect TakeoutFix Desktop and activate your license.</p>
-                </div>
-
-                <Button
-                  onClick={handleSignIn}
-                  className="w-full h-12 bg-zinc-900 text-white hover:bg-zinc-800 dark:bg-white dark:text-zinc-950 dark:hover:bg-zinc-100 font-semibold flex items-center justify-center gap-3 rounded-xl shadow-lg transition-all cursor-pointer"
-                >
-                  <svg className="w-5 h-5" viewBox="0 0 24 24">
-                    <path
-                      fill="#4285F4"
-                      d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
-                    />
-                    <path
-                      fill="#34A853"
-                      d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
-                    />
-                    <path
-                      fill="#FBBC05"
-                      d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"
-                    />
-                    <path
-                      fill="#EA4335"
-                      d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"
-                    />
-                  </svg>
-                  <span>Sign in with Google</span>
-                </Button>
-
-                <p className="text-center text-xs text-zinc-500">
-                  Ready to link with desktop on port <span className="text-zinc-700 dark:text-zinc-400 font-mono">{port}</span>
-                </p>
-              </motion.div>
-            )}
-
-            {/* Case 2.5: User already logged in on web - Ask to continue or switch account */}
-            {port && user && !loading && status === "idle" && !justRedirectedFromOAuth && (
-              <motion.div
-                key="confirm-login"
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -10 }}
-                className="space-y-4"
-              >
-                <div className="text-center">
-                  <h3 className="text-lg font-bold text-zinc-900 dark:text-white">Authorize TakeoutFix Desktop</h3>
-                  <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1">
-                    An existing web session was detected. Choose whether to continue with this account or switch:
-                  </p>
-                </div>
-
-
-                {/* Account card */}
-                <div className="bg-zinc-50 dark:bg-zinc-900/80 border border-zinc-200 dark:border-zinc-800 rounded-xl p-4 flex items-center justify-between text-left shadow-sm">
-                  <div className="flex items-center gap-3 min-w-0">
-                    {user.photoURL ? (
-                      <img
-                        src={user.photoURL}
-                        alt="Avatar"
-                        className="w-10 h-10 rounded-full border border-zinc-300 dark:border-zinc-700 flex-shrink-0"
-                        referrerPolicy="no-referrer"
-                      />
-                    ) : (
-                      <div className="w-10 h-10 rounded-full bg-zinc-200 dark:bg-zinc-800 flex items-center justify-center text-zinc-700 dark:text-zinc-300 font-bold flex-shrink-0">
-                        {(user.displayName || user.email || "U").charAt(0).toUpperCase()}
-                      </div>
-                    )}
-                    <div className="min-w-0">
-                      <p className="text-zinc-900 dark:text-white text-sm font-semibold truncate">
-                        {user.displayName || "TakeoutFix User"}
-                      </p>
-                      <p className="text-zinc-500 dark:text-zinc-400 text-xs truncate">{user.email}</p>
-                    </div>
-                  </div>
-                  <Badge variant="outline" className="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/30 font-semibold px-2.5 py-1 text-xs">
-                    {planLabel}
-                  </Badge>
-                </div>
-
-                <div className="pt-2 flex flex-col gap-2.5">
-                  <Button
-                    onClick={() => {
-                      attemptedRef.current = true;
-                      dispatchAuthToDesktop();
-                    }}
-                    className="w-full h-11 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl shadow-md cursor-pointer transition-all"
-                  >
-                    Continue to App as {user.displayName?.split(" ")[0] || "User"}
-                  </Button>
-                  <Button
-                    variant="outline"
-                    onClick={handleSwitchAccount}
-                    className="w-full h-10 border-zinc-300 dark:border-zinc-700 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 text-xs font-semibold rounded-xl cursor-pointer"
-                  >
-                    Switch Account / Choose Different Account
-                  </Button>
-                </div>
-              </motion.div>
-            )}
-
-            {/* Case 3: Connecting state */}
-            {port && (status === "connecting" || (loading && !user)) && (
-              <motion.div
-                key="connecting"
+                key="authorizing"
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -10 }}
@@ -368,127 +191,81 @@ function DesktopAuthBridgeContent() {
               >
                 <div className="w-12 h-12 border-3 border-emerald-500 border-t-transparent rounded-full animate-spin mx-auto" />
                 <div>
-                  <p className="text-zinc-900 dark:text-white font-medium">Connecting to TakeoutFix Desktop...</p>
-                  <p className="text-zinc-500 dark:text-zinc-400 text-xs mt-1">Transmitting session token to port {port}</p>
+                  <p className="text-zinc-900 dark:text-white font-medium">Authorizing TakeoutFix Desktop...</p>
+                  <p className="text-zinc-500 dark:text-zinc-400 text-xs mt-1">Returning you to the application</p>
                 </div>
               </motion.div>
             )}
 
-            {/* Case 4: Success state */}
-            {port && status === "success" && (
+            {/* Case 3: Ready for User to Click Sign in (Pop-up flow, NO REDIRECT LOOPS) */}
+            {port && !user && status !== "authorizing" && (
               <motion.div
-                key="success"
-                initial={{ opacity: 0, scale: 0.95 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.95 }}
-                className="space-y-6 text-center"
-              >
-                <div className="w-16 h-16 rounded-full bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center mx-auto text-emerald-600 dark:text-emerald-400 shadow-lg">
-                  <CheckCircle2 className="w-9 h-9" />
-                </div>
-
-                <div className="space-y-1">
-                  <h3 className="text-xl font-bold text-zinc-900 dark:text-white">Successfully Connected!</h3>
-                  <p className="text-zinc-600 dark:text-zinc-400 text-sm">
-                    TakeoutFix Desktop is now authenticated and ready to use.
-                  </p>
-                </div>
-
-                {/* Account card */}
-                {user && (
-                  <div className="bg-zinc-50 dark:bg-zinc-900/80 border border-zinc-200 dark:border-zinc-800 rounded-xl p-4 flex items-center justify-between text-left shadow-sm">
-                    <div className="flex items-center gap-3 min-w-0">
-                      {user.photoURL ? (
-                        <img
-                          src={user.photoURL}
-                          alt="Avatar"
-                          className="w-10 h-10 rounded-full border border-zinc-300 dark:border-zinc-700 flex-shrink-0"
-                          referrerPolicy="no-referrer"
-                        />
-                      ) : (
-                        <div className="w-10 h-10 rounded-full bg-zinc-200 dark:bg-zinc-800 flex items-center justify-center text-zinc-700 dark:text-zinc-300 font-bold flex-shrink-0">
-                          {(user.displayName || user.email || "U").charAt(0).toUpperCase()}
-                        </div>
-                      )}
-                      <div className="min-w-0">
-                        <p className="text-zinc-900 dark:text-white text-sm font-semibold truncate">
-                          {user.displayName || "TakeoutFix User"}
-                        </p>
-                        <p className="text-zinc-500 dark:text-zinc-400 text-xs truncate">{user.email}</p>
-                      </div>
-                    </div>
-                    <Badge variant="outline" className="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/30 font-semibold px-2.5 py-1 text-xs">
-                      {planLabel}
-                    </Badge>
-                  </div>
-                )}
-
-                <div className="pt-2 flex flex-col gap-2">
-                  <Button
-                    onClick={() => window.close()}
-                    className="w-full bg-zinc-100 hover:bg-zinc-200 text-zinc-900 dark:bg-zinc-800 dark:hover:bg-zinc-700 dark:text-white font-medium rounded-xl h-11 border border-zinc-200 dark:border-zinc-700 cursor-pointer shadow-sm"
-                  >
-                    You can close this tab now
-                  </Button>
-                </div>
-              </motion.div>
-            )}
-
-            {/* Case 5: Error or connection fallback */}
-            {port && status === "error" && (
-              <motion.div
-                key="error"
+                key="needs-login"
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -10 }}
-                className="space-y-5"
+                className="space-y-4"
               >
-                <div className="p-4 rounded-xl bg-red-500/10 border border-red-500/20 text-red-800 dark:text-red-300 text-sm flex items-start gap-3">
-                  <AlertCircle className="w-5 h-5 flex-shrink-0 mt-0.5 text-red-600 dark:text-red-400" />
-                  <div>
-                    <p className="font-semibold mb-1">Local Connection Blocked</p>
-                    <p className="text-red-700/80 dark:text-red-200/80 text-xs leading-relaxed">
-                      {errorMessage || "Your browser or firewall prevented the web page from communicating directly with the desktop app."}
-                    </p>
-                  </div>
-                </div>
+                <p className="text-center text-sm text-zinc-600 dark:text-zinc-400">
+                  Click below to choose your Google account and authorize TakeoutFix Desktop.
+                </p>
 
-                {manualUrl && (
-                  <div className="p-4 rounded-xl bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 space-y-3">
-                    <p className="text-xs text-zinc-600 dark:text-zinc-300">
-                      Click the direct link below to finish authenticating in TakeoutFix Desktop:
-                    </p>
-                    <a
-                      href={manualUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center justify-center w-full h-11 bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-semibold rounded-xl gap-2 transition-all shadow-md"
-                    >
-                      <span>Complete Connection Manually</span>
-                      <ExternalLink className="w-4 h-4" />
-                    </a>
-                  </div>
-                )}
-
-                <div className="flex gap-2">
-                  <Button
-                    onClick={dispatchAuthToDesktop}
-                    variant="outline"
-                    className="flex-1 border-zinc-300 dark:border-zinc-800 hover:bg-zinc-100 dark:hover:bg-zinc-900 text-zinc-700 dark:text-zinc-300 rounded-xl h-10 text-xs gap-2 cursor-pointer"
-                  >
-                    <RefreshCw className="w-3.5 h-3.5" />
-                    Retry
-                  </Button>
-                  {user && (
-                    <Button
-                      onClick={handleSwitchAccount}
-                      variant="ghost"
-                      className="text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white rounded-xl h-10 text-xs cursor-pointer"
-                    >
-                      Switch Account
-                    </Button>
+                <Button
+                  onClick={handleGoogleSignIn}
+                  disabled={signingIn}
+                  className="w-full h-12 bg-white text-zinc-900 hover:bg-zinc-100 border border-zinc-300 dark:border-zinc-700 dark:bg-zinc-900 dark:text-white dark:hover:bg-zinc-800 font-semibold flex items-center justify-center gap-3 rounded-xl shadow-sm transition-all cursor-pointer"
+                >
+                  {signingIn ? (
+                    <div className="w-5 h-5 border-2 border-zinc-400 border-t-transparent rounded-full animate-spin" />
+                  ) : (
+                    <svg className="w-5 h-5" viewBox="0 0 24 24">
+                      <path
+                        fill="#4285F4"
+                        d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
+                      />
+                      <path
+                        fill="#34A853"
+                        d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
+                      />
+                      <path
+                        fill="#FBBC05"
+                        d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"
+                      />
+                      <path
+                        fill="#EA4335"
+                        d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"
+                      />
+                    </svg>
                   )}
+                  <span>{signingIn ? "Connecting..." : "Continue with Google"}</span>
+                </Button>
+              </motion.div>
+            )}
+
+            {/* Case 4: Enterprise Fallback / Manual Token (IntelliJ Style) */}
+            {authPayloadString && (
+              <motion.div
+                key="manual-token"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="pt-2 border-t border-zinc-200 dark:border-zinc-800 space-y-3"
+              >
+                <div className="flex items-center justify-between text-xs text-zinc-500">
+                  <span>Using a strict corporate VPN?</span>
+                  <button
+                    onClick={copyTokenToClipboard}
+                    className="text-emerald-500 hover:text-emerald-400 font-medium inline-flex items-center gap-1 cursor-pointer"
+                  >
+                    {copied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+                    <span>{copied ? "Copied!" : "Copy Code"}</span>
+                  </button>
                 </div>
+                <div className="bg-zinc-100 dark:bg-zinc-950 p-2.5 rounded-lg border border-zinc-200 dark:border-zinc-800 font-mono text-[11px] text-zinc-400 truncate select-all">
+                  {authPayloadString.slice(0, 36)}...
+                </div>
+                <p className="text-[11px] text-zinc-500 text-center">
+                  You can paste this code directly into TakeoutFix if loopback is blocked.
+                </p>
               </motion.div>
             )}
           </AnimatePresence>
