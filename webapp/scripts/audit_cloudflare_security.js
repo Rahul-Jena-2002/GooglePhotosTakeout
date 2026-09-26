@@ -125,6 +125,12 @@ function scanDirectory(dir) {
         }
       }
 
+      // Only scan client-facing assets for secret content.
+      // server/ chunks are never sent to the browser and legitimately
+      // reference Firebase Admin credentials from runtime env vars.
+      const isServerChunk = relPath.startsWith('server' + path.sep) || relPath.startsWith('server/');
+      if (isServerChunk) continue;
+
       // Check file content for non-binary assets
       const ext = path.extname(entry.name).toLowerCase();
       if (!BINARY_EXTENSIONS.has(ext)) {
