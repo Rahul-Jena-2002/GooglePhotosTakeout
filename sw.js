@@ -37,28 +37,6 @@ const NETWORK_ONLY_HOSTS = [
   'ingest.sentry.io',
 ];
 
-// ─── Install ──────────────────────────────────────────────────────────────────
-
-self.addEventListener('install', (event) => {
-  event.waitUntil(
-    caches.open(CACHE_NAME)
-      .then(cache => cache.addAll(APP_SHELL.map(u => new Request(u, { credentials: 'same-origin' })))
-        .catch(() => {}))
-      .then(() => self.skipWaiting())
-  );
-});
-
-// ─── Activate ────────────────────────────────────────────────────────────────
-
-self.addEventListener('activate', (event) => {
-  const valid = [CACHE_NAME, STATIC_CACHE, FONT_CACHE];
-  event.waitUntil(
-    caches.keys()
-      .then(keys => Promise.all(keys.filter(k => !valid.includes(k)).map(k => caches.delete(k))))
-      .then(() => self.clients.claim())
-  );
-});
-
 // ─── Localhost Killswitch & Self-Cleanup ────────────────────────────────────
 // In local development, service workers cache old Vite dependency chunks with stale ?v= hashes,
 // causing duplicate React instances ("Cannot read properties of null reading useState") and navigation breakage.
@@ -74,6 +52,25 @@ if (isLocalhost) {
     );
   });
 } else {
+  // ─── Install ──────────────────────────────────────────────────────────────────
+  self.addEventListener('install', (event) => {
+    event.waitUntil(
+      caches.open(CACHE_NAME)
+        .then(cache => cache.addAll(APP_SHELL.map(u => new Request(u, { credentials: 'same-origin' })))
+          .catch(() => {}))
+        .then(() => self.skipWaiting())
+    );
+  });
+
+  // ─── Activate ────────────────────────────────────────────────────────────────
+  self.addEventListener('activate', (event) => {
+    const valid = [CACHE_NAME, STATIC_CACHE, FONT_CACHE];
+    event.waitUntil(
+      caches.keys()
+        .then(keys => Promise.all(keys.filter(k => !valid.includes(k)).map(k => caches.delete(k))))
+        .then(() => self.clients.claim())
+    );
+  });
   // ─── Fetch (Production Only) ────────────────────────────────────────────────
   self.addEventListener('fetch', (event) => {
     const { request } = event;
