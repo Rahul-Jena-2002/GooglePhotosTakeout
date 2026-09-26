@@ -445,7 +445,8 @@ const canonicalUrl = `https://takeoutfix.pages.dev${cleanPath === "" ? "/" : cle
         "url": "https://takeoutfix.pages.dev",
         "description": "Restore missing dates, GPS locations, and EXIF metadata from your Google Takeout photos and videos locally in your browser. Independent utility — not affiliated with Google LLC.",
         "applicationCategory": "MultimediaApplication",
-        "operatingSystem": "All",
+        "operatingSystem": "Windows 10+, macOS 11+, Linux, Web (Chrome, Edge, Brave)",
+        "downloadUrl": "https://takeoutfix.pages.dev/download",
         "browserRequirements": "Requires HTML5 File System Access API (Google Chrome, Microsoft Edge, Brave recommended)",
         "featureList": [
           "Restore photo EXIF metadata from Google Takeout JSON sidecars",
@@ -453,7 +454,8 @@ const canonicalUrl = `https://takeoutfix.pages.dev${cleanPath === "" ? "/" : cle
           "Restore GPS coordinates and location data",
           "Fix metadata on thousands of photos simultaneously",
           "100% local browser processing - no uploads",
-          "Google Takeout merger - merge JSON metadata back into photos"
+          "Google Takeout merger - merge JSON metadata back into photos",
+          "Direct zero-install standalone desktop applications for Windows, Mac, and Linux"
         ],
         "offers": {
           "@type": "Offer",
@@ -463,12 +465,28 @@ const canonicalUrl = `https://takeoutfix.pages.dev${cleanPath === "" ? "/" : cle
       }
     </script>
 
-    <!-- FAQPage Schema for Rich Snippets -->
+    <!-- FAQPage Schema for Rich Snippets & AI Answer Engines -->
     <script type="application/ld+json">
       {
         "@context": "https://schema.org",
         "@type": "FAQPage",
         "mainEntity": [
+          {
+            "@type": "Question",
+            "name": "Why are my Google Takeout photo dates wrong or set to today?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "When you export photos from Google Takeout, Google strips original capture timestamps and stores them in separate JSON sidecars. Your computer displays the download or extraction date instead. TakeoutFix re-embeds the original JSON timestamps back into EXIF headers so photos sort chronologically."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "How can I fix Google Takeout metadata offline on Windows or Mac?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "You can use the TakeoutFix desktop app. On Windows, run the standalone TakeoutFix.exe directly with no installation. On macOS, open TakeoutFix.dmg. Both applications process files 100% locally on your computer with zero file uploads."
+            }
+          },
           {
             "@type": "Question",
             "name": "What is a take out fix or takeout fix?",

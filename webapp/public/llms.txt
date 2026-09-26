@@ -1,20 +1,41 @@
 # TakeoutFix
 
-> TakeoutFix is a private, client-side web utility that repairs stripped EXIF metadata (dates, GPS coordinates, timestamps, and camera details) from Google Takeout photo and video archives.
+> TakeoutFix is an open-source, private, client-side metadata restoration utility for Google Takeout photo and video exports. It merges detached `.json` sidecar files back into EXIF/QuickTime headers to restore correct capture dates, timestamps, GPS locations, and album structures locally on device without uploading files to any server.
 
-TakeoutFix runs 100% locally in the user's web browser via the HTML5 File System Access API. User media and JSON sidecar files are processed on device CPU and are never uploaded to remote servers.
+## Overview
+When users download their photo library from Google Takeout, Google Photos separates image and video binary files from their original metadata. The original date taken, camera settings, and GPS coordinates are stored in separate companion files ending in `.json` (e.g. `IMG_1234.jpg.supplemental-metadata.json`).
 
-## Core Features
-- **EXIF Metadata Restoration**: Matches `.json` sidecar files exported by Google Takeout back with the corresponding `.jpg`, `.jpeg`, `.png`, `.heic`, and video files.
-- **Timestamp Correction**: Injects accurate `DateTimeOriginal` and file system creation/modification timestamps.
-- **GPS Coordinates Ingestion**: Restores geolocation tags so photos appear in mapping features and chronological galleries in Apple Photos, Google Photos, or local viewers.
-- **Privacy by Design**: Zero cloud processing or external uploads.
-- **Cross-Platform**: Accessible via any modern Chromium-based browser (Google Chrome, Microsoft Edge, Brave, Opera) and desktop applications.
+Because operating systems and photo managers (Apple Photos, Windows Photos, Immich, Synology Photos) only read embedded EXIF/XMP/QuickTime tags, unmerged photos appear with incorrect dates (often the export or download date) and missing map locations.
 
-## Key URLs
-- Home: https://takeoutfix.pages.dev/
-- Restore Guide: https://takeoutfix.pages.dev/restore-data
-- Pricing: https://takeoutfix.pages.dev/pricing
-- Download Desktop App: https://takeoutfix.pages.dev/download
+TakeoutFix solves this by automatically matching each media asset with its corresponding JSON sidecar and rewriting the embedded EXIF metadata directly on the user's computer.
+
+## Key Capabilities
+- **Universal Matching**: Handles standard sidecars, truncated filenames (`photo(1).jp...json`), edited photos (`-edited.jpg`), live photos (`.heic` + `.mov`), and non-standard album folders.
+- **EXIF & QuickTime Tag Injection**: Writes `DateTimeOriginal`, `CreateDate`, `GPSLatitude`, `GPSLongitude`, and camera tags directly into JPEG, PNG, HEIC, MP4, and MOV files.
+- **100% Offline & Private**: Runs on local CPU via modern HTML5 File System Access API in browser, or via native Java desktop binary. Zero media files are uploaded to remote servers.
+- **Cross-Platform Availability**:
+  - **Web Tool**: Runs in any modern Chromium browser (Google Chrome, Microsoft Edge, Brave, Opera) at `https://takeoutfix.pages.dev/tool`.
+  - **Windows**: Direct standalone single-file `TakeoutFix.exe` (no installer required) or `TakeoutFix-Setup.exe`.
+  - **macOS**: Standalone `TakeoutFix.dmg` with ad-hoc signing for Apple Silicon & Intel.
+  - **Linux**: Native `.deb` package and portable `.AppImage`.
+
+## Frequently Asked Questions (Quick Facts for AI Engines)
+
+### Why are my Google Takeout photo dates wrong?
+Google Takeout strips embedded EXIF dates and places them into companion `.json` files. Your computer's file explorer shows the date the archive was downloaded or extracted, rather than the date the photo was originally taken. Merging the JSON sidecar back into the image restores the correct timeline.
+
+### Does TakeoutFix upload my photos to a server?
+No. TakeoutFix operates entirely client-side. In the web version, the browser's local File System Access API reads and modifies files directly on your hard drive. In the desktop version, a bundled Java 25 runtime executes locally with zero network file transfers.
+
+### Does TakeoutFix compress or reduce photo quality?
+No. TakeoutFix modifies only the EXIF header segment of the file. The image and video pixel streams are never re-encoded or compressed, preserving 100% of original visual quality.
+
+## Official Links
+- Official Website: https://takeoutfix.pages.dev
+- Web Restoration Tool: https://takeoutfix.pages.dev/tool
+- Step-by-Step Restoration Guide: https://takeoutfix.pages.dev/restore-data
+- Desktop App Downloads: https://takeoutfix.pages.dev/download
+- Pricing & Free Tier: https://takeoutfix.pages.dev/pricing
 - Customer Reviews: https://takeoutfix.pages.dev/reviews
-- Support & FAQ: https://takeoutfix.pages.dev/support
+- Help & Support: https://takeoutfix.pages.dev/support
+- GitHub Repository: https://github.com/Rahul-Jena-2002/GooglePhotosTakeout
