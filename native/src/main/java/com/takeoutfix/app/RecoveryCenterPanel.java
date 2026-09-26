@@ -760,14 +760,15 @@ public class RecoveryCenterPanel extends JPanel {
         btnGoogle.addActionListener(e -> {
             btnGoogle.setEnabled(false);
             btnGoogle.setText("Opening browser...");
+            String stateToken = UUID.randomUUID().toString().replace("-", "");
             int port = com.takeoutfix.network.DesktopAuthServer.start(profile -> {
                 SwingUtilities.invokeLater(() -> {
                     com.takeoutfix.auth.UserController.syncUser(profile);
                     updatePlanBadge();
                 });
-            });
+            }, stateToken);
             if (port > 0) {
-                String url = "https://takeoutfix.pages.dev/login?desktop_port=" + port + "&port=" + port + "&provider=google&prompt=select_account";
+                String url = "https://takeoutfix.pages.dev/login?desktop_port=" + port + "&port=" + port + "&state=" + stateToken + "&provider=google&prompt=select_account";
                 boolean opened = com.takeoutfix.shared.util.BrowserUtil.openBrowser(url);
                 if (opened) {
                     btnGoogle.setText("Waiting for auth...");

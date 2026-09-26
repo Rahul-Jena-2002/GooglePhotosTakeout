@@ -28,7 +28,7 @@ export default function AdminKeys() {
 
   // ── Restore MEK from sessionStorage on mount ──
   useEffect(() => {
-    const savedMek = sessionStorage.getItem("tf_mek") || "92elPvQ63jp_SXOmGbLyOgvfcGHVP-GfDbbiyLV4rpw"
+    const savedMek = sessionStorage.getItem("tf_mek")
     if (savedMek) {
       const derive = async () => {
         try {

@@ -212,13 +212,14 @@ public class UserSyncBridgeService {
 
     public static void openGoogleLogin(Component parent) {
         try {
+            String stateToken = UUID.randomUUID().toString().replace("-", "");
             int port = DesktopAuthServer.start(profile -> SwingUtilities.invokeLater(() -> {
                 UserController.syncUser(profile);
                 saveSessionFile(profile);
                 JOptionPane.showMessageDialog(parent,
                         "Welcome back, " + profile.getOrDefault("displayName", profile.getOrDefault(KEY_EMAIL, "User")) + "!\nYour session is active.",
                         "Sign-In Successful", JOptionPane.INFORMATION_MESSAGE);
-            }));
+            }), stateToken);
 
             if (port <= 0) {
                 JOptionPane.showMessageDialog(parent,
@@ -227,7 +228,7 @@ public class UserSyncBridgeService {
                 return;
             }
 
-            String url = "https://takeoutfix.pages.dev/login?desktop_port=" + port + "&port=" + port + "&provider=google&prompt=select_account";
+            String url = "https://takeoutfix.pages.dev/login?desktop_port=" + port + "&port=" + port + "&state=" + stateToken + "&provider=google&prompt=select_account";
             boolean opened = com.takeoutfix.shared.util.BrowserUtil.openBrowser(url);
             if (!opened) {
                 JOptionPane.showMessageDialog(parent,

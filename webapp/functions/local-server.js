@@ -43,7 +43,8 @@ const decryptFirestoreValue = (val) => {
   if (!val) return "";
   if (!val.startsWith("enc:v1:")) return val;
   
-  const mek = process.env.ENCRYPTION_KEY || "92elPvQ63jp_SXOmGbLyOgvfcGHVP-GfDbbiyLV4rpw";
+  const mek = process.env.ENCRYPTION_KEY;
+  if (!mek) return "";
   
   try {
     const salt = Buffer.alloc(16); // 16 bytes of zeros

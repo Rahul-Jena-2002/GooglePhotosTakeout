@@ -57,6 +57,57 @@ function extractSlugTitle(urlStr: string): string | null {
   return null;
 }
 
+function isSafePublicUrl(url: URL): boolean {
+  if (url.protocol !== "http:" && url.protocol !== "https:") return false;
+  const hostname = url.hostname.toLowerCase().trim();
+
+  // Block localhost, local domains, cloud metadata hostnames
+  if (
+    hostname === "localhost" ||
+    hostname.endsWith(".localhost") ||
+    hostname.endsWith(".local") ||
+    hostname.endsWith(".internal") ||
+    hostname.endsWith(".lan") ||
+    hostname === "metadata.google.internal" ||
+    hostname === "instance-data"
+  ) {
+    return false;
+  }
+
+  // Check dotted-decimal IPv4 addresses
+  const ipv4Match = hostname.match(/^(\d+)\.(\d+)\.(\d+)\.(\d+)$/);
+  if (ipv4Match) {
+    const [, o1, o2] = ipv4Match.map(Number);
+    if (o1 === 127) return false; // Loopback 127.0.0.0/8
+    if (o1 === 10) return false;  // Private 10.0.0.0/8
+    if (o1 === 172 && o2 >= 16 && o2 <= 31) return false; // Private 172.16.0.0/12
+    if (o1 === 192 && o2 === 168) return false; // Private 192.168.0.0/16
+    if (o1 === 169 && o2 === 254) return false; // Link-local / Cloud metadata 169.254.0.0/16
+    if (o1 === 0 || o1 >= 224) return false; // Reserved / Multicast
+  }
+
+  // Raw integer or hex IPv4 notation check
+  if (/^(?:0x[0-9a-f]+|\d+)$/i.test(hostname)) {
+    return false;
+  }
+
+  // Check IPv6 addresses (loopback, link-local, unique local)
+  if (
+    hostname === "[::1]" ||
+    hostname === "::1" ||
+    hostname.startsWith("[fe80:") ||
+    hostname.startsWith("fe80:") ||
+    hostname.startsWith("[fc") ||
+    hostname.startsWith("[fd") ||
+    hostname.startsWith("fc") ||
+    hostname.startsWith("fd")
+  ) {
+    return false;
+  }
+
+  return true;
+}
+
 async function handleExtract(request: Request) {
   try {
     const urlObj = new URL(request.url);
@@ -90,6 +141,13 @@ async function handleExtract(request: Request) {
       });
     }
 
+    if (!isSafePublicUrl(parsedUrl)) {
+      return new Response(JSON.stringify({ success: false, error: "Target URL destination is not allowed" }), {
+        status: 400,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+
     // Follow potential shortlinks (e.g. amzn.to, bit.ly, link.amazon) to resolve destination
     let finalUrl = parsedUrl.toString();
     try {
@@ -101,7 +159,10 @@ async function handleExtract(request: Request) {
         },
       });
       if (headRes.url && headRes.url !== finalUrl) {
-        finalUrl = headRes.url;
+        const resolvedUrl = new URL(headRes.url);
+        if (isSafePublicUrl(resolvedUrl)) {
+          finalUrl = headRes.url;
+        }
       }
     } catch (_) {}
 

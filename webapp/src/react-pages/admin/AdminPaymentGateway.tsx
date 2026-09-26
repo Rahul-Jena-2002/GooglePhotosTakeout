@@ -296,7 +296,7 @@ export default function AdminPaymentGateway() {
   // --- Restore MEK from sessionStorage ---
   useEffect(() => {
     const restoreMek = async () => {
-      const savedMek = sessionStorage.getItem("tf_mek") || "92elPvQ63jp_SXOmGbLyOgvfcGHVP-GfDbbiyLV4rpw"
+      const savedMek = sessionStorage.getItem("tf_mek")
       if (savedMek) {
         try {
           const salt = new Uint8Array(16)

@@ -58,7 +58,7 @@ export default function AdminSupport() {
         if (snap.exists()) {
           const val = snap.data().gemini_api_key || ""
           if (val.startsWith("enc:v1:")) {
-            const savedMek = sessionStorage.getItem("tf_mek") || "92elPvQ63jp_SXOmGbLyOgvfcGHVP-GfDbbiyLV4rpw"
+            const savedMek = sessionStorage.getItem("tf_mek")
             if (savedMek) {
               const { decrypt, deriveKeyFromPassword } = await import("../../lib/crypto")
               const salt = new Uint8Array(16)

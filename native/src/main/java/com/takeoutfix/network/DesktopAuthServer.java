@@ -28,14 +28,20 @@ public class DesktopAuthServer {
     private static HttpServer server = null;
     private static int activePort = 0;
     private static Consumer<Map<String, Object>> authCallback = null;
+    private static volatile String expectedStateToken = null;
     private static final AtomicBoolean dispatched = new AtomicBoolean(false);
     private static ScheduledExecutorService shutdownScheduler = null;
 
     public static synchronized int start(Consumer<Map<String, Object>> callback) {
+        return start(callback, null);
+    }
+
+    public static synchronized int start(Consumer<Map<String, Object>> callback, String stateToken) {
         stop(); // Stop any previous instance if lingering
 
         try {
             authCallback = callback;
+            expectedStateToken = stateToken;
             dispatched.set(false);
             // Bind to 127.0.0.1 on port 0 -> OS chooses any free ephemeral port
             server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
@@ -128,11 +134,19 @@ public class DesktopAuthServer {
     private static class CallbackHandler implements HttpHandler {
         @Override
         public void handle(HttpExchange exchange) throws IOException {
-            // Comprehensive CORS and Chrome Private Network Access headers
-            exchange.getResponseHeaders().set("Access-Control-Allow-Origin", "*");
-            exchange.getResponseHeaders().set("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
-            exchange.getResponseHeaders().set("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Requested-With");
-            exchange.getResponseHeaders().set("Access-Control-Allow-Private-Network", "true");
+            // Restrict CORS to trusted TakeoutFix origins and local development
+            String origin = exchange.getRequestHeaders().getFirst("Origin");
+            if (origin != null && (
+                    origin.equalsIgnoreCase("https://takeoutfix.pages.dev") ||
+                    origin.equalsIgnoreCase("https://takeoutfix.com") ||
+                    origin.equalsIgnoreCase("https://www.takeoutfix.com") ||
+                    origin.startsWith("http://localhost:") ||
+                    origin.startsWith("http://127.0.0.1:"))) {
+                exchange.getResponseHeaders().set("Access-Control-Allow-Origin", origin);
+                exchange.getResponseHeaders().set("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+                exchange.getResponseHeaders().set("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Requested-With");
+                exchange.getResponseHeaders().set("Access-Control-Allow-Private-Network", "true");
+            }
 
             if ("OPTIONS".equalsIgnoreCase(exchange.getRequestMethod())) {
                 exchange.sendResponseHeaders(204, -1);
@@ -249,6 +263,21 @@ public class DesktopAuthServer {
                 }
             } catch (Exception sendErr) {
                 System.err.println("[DesktopAuthServer] Error sending response to browser: " + sendErr.getMessage());
+            }
+
+            // Anti-CSRF verification: if an expected state was specified, enforce exact match
+            if (expectedStateToken != null && !expectedStateToken.isBlank()) {
+                String state = String.valueOf(params.getOrDefault("state", ""));
+                if (!expectedStateToken.equals(state)) {
+                    System.err.println("[DesktopAuthServer] Rejected auth callback: state token mismatch.");
+                    byte[] errBytes = "{\"status\":\"error\",\"message\":\"State token mismatch\"}".getBytes(StandardCharsets.UTF_8);
+                    exchange.getResponseHeaders().set("Content-Type", "application/json");
+                    exchange.sendResponseHeaders(403, errBytes.length);
+                    try (OutputStream os = exchange.getResponseBody()) {
+                        os.write(errBytes);
+                    }
+                    return;
+                }
             }
 
             // Dispatch to callback if valid credentials exist

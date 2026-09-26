@@ -25,20 +25,15 @@ export const handleCorsOptions: APIRoute = async () => {
 
 export function isAuthorizedRequest(
   request: Request,
-  payload: Record<string, any>,
+  _payload: Record<string, any>,
   gatewayApiKey?: string,
   isDev: boolean = false
 ): boolean {
   if (isDev) return true;
-  if (!gatewayApiKey) return true; // If not configured in env, allow authorized admin payload
+  if (!gatewayApiKey) return false; // Fail closed: unconfigured gateway secret must reject external callers
 
   const headerKey = request.headers.get('x-api-key') || request.headers.get('authorization')?.replace('Bearer ', '');
   if (headerKey && headerKey === gatewayApiKey) return true;
-
-  // If request contains an active Dodo API key from an admin session, authorize
-  if (payload.dodoApiKey && typeof payload.dodoApiKey === 'string' && payload.dodoApiKey.trim().length > 10) {
-    return true;
-  }
 
   return false;
 }
