@@ -20,6 +20,10 @@ export interface MonetizationProps {
   preview?: boolean;
 }
 
+function isValidExternalDestination(url?: string): boolean {
+  return Boolean(url && !url.startsWith("/") && !url.includes("takeoutfix"));
+}
+
 function getInitialDefaultResponse(placementCode: string): MonetizationResponse {
   const isSidebar = placementCode.startsWith("SIDEBAR") || placementCode.startsWith("GUTTER");
   const slotIndex = getPlacementSlotIndex(placementCode);
@@ -214,16 +218,13 @@ export default function Monetization({
     return null; // Gracefully collapse when disabled, exempt, or empty
   }
 
-  const isAffiliateValid = (item?: ResolvedMonetizationItem | null): boolean => {
-    if (!item) return false;
-    if (!item.destinationUrl || item.destinationUrl.startsWith("/") || item.destinationUrl.includes("takeoutfix")) return false;
-    return true;
-  };
+  const isAffiliateValid = (item?: ResolvedMonetizationItem | null): boolean =>
+    Boolean(item && isValidExternalDestination(item.destinationUrl));
 
   const isAdValid = (item?: ResolvedMonetizationItem | null): boolean => {
     if (!item) return false;
     if (item.adType === "NATIVE" || item.adType === "IFRAME") {
-      if (!item.destinationUrl || item.destinationUrl.startsWith("/") || item.destinationUrl.includes("takeoutfix")) return false;
+      return isValidExternalDestination(item.destinationUrl);
     }
     return true;
   };
@@ -330,7 +331,7 @@ function AffiliateCardItem({
   onUnavailable?: () => void;
 }) {
   // Never show internal website upsells/links in the monetization banner
-  if (!item.destinationUrl || item.destinationUrl.startsWith("/") || item.destinationUrl.includes("takeoutfix")) {
+  if (!isValidExternalDestination(item.destinationUrl)) {
     onUnavailable?.();
     return null;
   }
@@ -554,7 +555,7 @@ function AdUnitItem({
   const embedRef = useRef<HTMLDivElement>(null);
 
   if (isCompact) {
-    if (!item.destinationUrl || item.destinationUrl.startsWith("/") || item.destinationUrl.includes("takeoutfix")) {
+    if (!isValidExternalDestination(item.destinationUrl)) {
       onUnavailable?.();
       return null;
     }
