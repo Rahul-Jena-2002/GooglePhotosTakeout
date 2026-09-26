@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useAuth, AuthProvider } from "../../contexts/AuthContext";
 import { signInWithPopup, GoogleAuthProvider } from "firebase/auth";
 import { auth, googleProvider } from "../../lib/firebase/client";
@@ -8,11 +8,73 @@ import { ToastContainer } from "../../components/ui/toast";
 import { AlertCircle, Laptop, Copy, Check } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
+interface DesktopBridgeParams {
+  port: string | null;
+  stateToken: string;
+  hasPortError: boolean;
+}
+
+/**
+ * Parses and validates port and anti-CSRF state token from URL params or sessionStorage.
+ */
+function getInitialDesktopParams(): DesktopBridgeParams {
+  if (typeof window === "undefined") {
+    return { port: null, stateToken: "", hasPortError: false };
+  }
+
+  const searchParams = new URLSearchParams(window.location.search);
+
+  // 1. Port resolution and validation (unprivileged loopback range 1024 - 65535)
+  let rawPort = searchParams.get("port") || searchParams.get("desktop_port");
+  if (rawPort) {
+    try { sessionStorage.setItem("takeoutfix_desktop_port", rawPort); } catch (_) {}
+  } else {
+    try { rawPort = sessionStorage.getItem("takeoutfix_desktop_port"); } catch (_) {}
+  }
+
+  const parsedPort = rawPort ? parseInt(rawPort, 10) : NaN;
+  const isValidPort = Number.isInteger(parsedPort) && parsedPort >= 1024 && parsedPort <= 65535;
+  const port = isValidPort ? String(parsedPort) : null;
+
+  // 2. Anti-CSRF state token resolution and sanitization
+  let rawState = searchParams.get("state") || "";
+  if (rawState) {
+    try { sessionStorage.setItem("takeoutfix_desktop_state", rawState); } catch (_) {}
+  } else {
+    try { rawState = sessionStorage.getItem("takeoutfix_desktop_state") || ""; } catch (_) {}
+  }
+  const stateToken = rawState.replace(/[^a-zA-Z0-9_-]/g, "");
+
+  return {
+    port,
+    stateToken,
+    hasPortError: !isValidPort,
+  };
+}
+
+/**
+ * Safely encodes a payload to Base64 for the manual token copy-paste fallback.
+ */
+function encodePayload(payload: Record<string, string>, fallbackToken: string): string {
+  try {
+    const jsonStr = JSON.stringify(payload);
+    const bytes = new TextEncoder().encode(jsonStr);
+    let binary = "";
+    for (let i = 0; i < bytes.length; i++) {
+      binary += String.fromCharCode(bytes[i]);
+    }
+    return btoa(binary);
+  } catch (_) {
+    return fallbackToken;
+  }
+}
+
 function DesktopAuthBridgeContent() {
   const { user, userData, loading } = useAuth();
-  const [port, setPort] = useState<string | null>(null);
-  const [status, setStatus] = useState<"idle" | "authorizing" | "error">("idle");
-  const [stateToken, setStateToken] = useState<string>("");
+  const [{ port, stateToken, hasPortError }] = useState(getInitialDesktopParams);
+  const [status, setStatus] = useState<"idle" | "authorizing" | "error">(
+    hasPortError ? "error" : "idle"
+  );
   const [authPayloadString, setAuthPayloadString] = useState<string>("");
   const [copied, setCopied] = useState<boolean>(false);
   const [signingIn, setSigningIn] = useState<boolean>(false);
@@ -22,54 +84,11 @@ function DesktopAuthBridgeContent() {
   // Clean up timer on unmount
   useEffect(() => {
     return () => {
-      if (copyTimerRef.current) {
-        clearTimeout(copyTimerRef.current);
-      }
+      if (copyTimerRef.current) clearTimeout(copyTimerRef.current);
     };
   }, []);
 
-  // 1. Parse and strictly validate port and anti-CSRF state token
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      const searchParams = new URLSearchParams(window.location.search);
-      let portParam = searchParams.get("port") || searchParams.get("desktop_port");
-      if (portParam) {
-        try { sessionStorage.setItem("takeoutfix_desktop_port", portParam); } catch (_) {}
-      } else {
-        try { portParam = sessionStorage.getItem("takeoutfix_desktop_port"); } catch (_) {}
-      }
-
-      let stateParam = searchParams.get("state") || "";
-      if (stateParam) {
-        try { sessionStorage.setItem("takeoutfix_desktop_state", stateParam); } catch (_) {}
-      } else {
-        try { stateParam = sessionStorage.getItem("takeoutfix_desktop_state") || ""; } catch (_) {}
-      }
-      
-      // Sanitize state token to URL-safe alphanumeric and standard chars
-      const sanitizedState = stateParam ? stateParam.replace(/[^a-zA-Z0-9_-]/g, "") : "";
-      setStateToken(sanitizedState);
-
-      // Validate port range: unprivileged loopback ports (1024 - 65535)
-      const parsedPort = portParam ? parseInt(portParam, 10) : NaN;
-      if (Number.isInteger(parsedPort) && parsedPort >= 1024 && parsedPort <= 65535) {
-        setPort(String(parsedPort));
-      } else {
-        setStatus("error");
-      }
-    }
-  }, []);
-
-  // 2. When user is signed in and port is available, hand off immediately to desktop
-  useEffect(() => {
-    if (!port || loading || !user) return;
-    if (!attemptedRef.current) {
-      attemptedRef.current = true;
-      dispatchAuthToDesktop();
-    }
-  }, [user, userData, port, loading]);
-
-  const dispatchAuthToDesktop = async () => {
+  const dispatchAuthToDesktop = useCallback(async () => {
     if (!port || !user) return;
     setStatus("authorizing");
 
@@ -90,38 +109,35 @@ function DesktopAuthBridgeContent() {
         plan,
         usedFiles: String(usedFiles),
         usedBytes: String(usedBytes),
-        token
+        token,
       };
+
       if (stateToken) {
         queryParams.state = stateToken;
       }
 
-      // Generate base64 token for manual copy-paste fallback using standard UTF-8 encoder
-      try {
-        const payloadJson = JSON.stringify(queryParams);
-        const bytes = new TextEncoder().encode(payloadJson);
-        let binary = "";
-        for (let i = 0; i < bytes.length; i++) {
-          binary += String.fromCharCode(bytes[i]);
-        }
-        setAuthPayloadString(btoa(binary));
-      } catch (_) {
-        setAuthPayloadString(token);
-      }
+      setAuthPayloadString(encodePayload(queryParams, token));
 
+      // Top-level navigation directly to local loopback server
       const callbackUrl = `http://127.0.0.1:${port}/callback?${new URLSearchParams(queryParams).toString()}`;
-
-      // Gold Standard: Top-level navigation directly to local loopback server
       window.location.replace(callbackUrl);
-
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
       console.error("[DesktopAuthBridge] Auth dispatch error:", msg);
       setStatus("error");
     }
-  };
+  }, [port, user, userData, stateToken]);
 
-  // 3. Clean popup-based Google Sign-In — NEVER redirects the parent page, stopping all loops!
+  // When user is signed in and port is available, hand off immediately to desktop
+  useEffect(() => {
+    if (!port || loading || !user) return;
+    if (!attemptedRef.current) {
+      attemptedRef.current = true;
+      dispatchAuthToDesktop();
+    }
+  }, [user, port, loading, dispatchAuthToDesktop]);
+
+  // Popup-based Google Sign-In — stops parent redirect loops
   const handleGoogleSignIn = async () => {
     if (signingIn) return;
     setSigningIn(true);
@@ -131,7 +147,6 @@ function DesktopAuthBridgeContent() {
       const provider = googleProvider || new GoogleAuthProvider();
       provider.setCustomParameters({ prompt: "select_account" });
       await signInWithPopup(auth, provider);
-      // user state will be updated via onAuthStateChanged and effect 2 will fire!
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
       console.warn("[DesktopAuthBridge] Google popup cancelled or failed:", msg);
@@ -147,6 +162,11 @@ function DesktopAuthBridgeContent() {
       copyTimerRef.current = setTimeout(() => setCopied(false), 2500);
     }).catch(() => {});
   };
+
+  // Explicit, easily readable UI state flags
+  const showError = !port || status === "error";
+  const isAuthorizing = Boolean(port) && !showError && (status === "authorizing" || (Boolean(user) && !authPayloadString));
+  const showLoginPrompt = Boolean(port) && !user && !isAuthorizing && !showError;
 
   return (
     <div className="min-h-[85vh] flex items-center justify-center p-4 md:p-8 font-sans">
@@ -170,7 +190,7 @@ function DesktopAuthBridgeContent() {
         <CardContent className="space-y-6 pt-2 pb-8 px-6">
           <AnimatePresence mode="wait">
             {/* Case 1: Missing or invalid port parameter */}
-            {(!port || status === "error") && (
+            {showError && (
               <motion.div
                 key="no-port"
                 initial={{ opacity: 0, y: 10 }}
@@ -191,7 +211,7 @@ function DesktopAuthBridgeContent() {
             )}
 
             {/* Case 2: Authorizing / Redirecting state (Instant handoff) */}
-            {port && status !== "error" && (status === "authorizing" || (user && !authPayloadString)) && (
+            {isAuthorizing && (
               <motion.div
                 key="authorizing"
                 initial={{ opacity: 0, y: 10 }}
@@ -210,7 +230,7 @@ function DesktopAuthBridgeContent() {
             )}
 
             {/* Case 3: Ready for User to Click Sign in (Pop-up flow, NO REDIRECT LOOPS) */}
-            {port && !user && status !== "authorizing" && status !== "error" && (
+            {showLoginPrompt && (
               <motion.div
                 key="needs-login"
                 initial={{ opacity: 0, y: 10 }}
