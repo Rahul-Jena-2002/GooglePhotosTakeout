@@ -18,7 +18,7 @@ permissions:
 
 jobs:
   # ════════════════════════════════════════════════════════════════════════════
-  # 1. PURE JAVA DESKTOP APP (Standalone Installers via jpackage)
+  # 1. PURE JAVA DESKTOP APP (Standalone Installers via Java 25 LTS jpackage)
   # ════════════════════════════════════════════════════════════════════════════
   build-java:
     name: Java Desktop (${{ matrix.os }})
@@ -58,10 +58,10 @@ jobs:
           echo "version=$CLEAN_VER" >> $GITHUB_OUTPUT
           echo "Package version resolved: $CLEAN_VER"
 
-      - name: Set up Java 21
+      - name: Set up Java 25 LTS
         uses: actions/setup-java@v5
         with:
-          java-version: '21'
+          java-version: '25'
           distribution: 'temurin'
           cache: 'maven'
 
@@ -74,12 +74,14 @@ jobs:
           mkdir -p jpackage-input
           cp native/target/takeoutfix.jar jpackage-input/
 
-      # ─── Windows: Direct Standalone EXE Installer ───
+      # ─── Windows: Direct Standalone EXE Installer (Security Hardened) ───
       - name: Package Java Windows (.exe)
         if: matrix.os == 'windows-latest'
         shell: pwsh
         run: |
           $appVer = "${{ steps.version.outputs.version }}"
+          # Using --win-per-user-install prevents Windows UAC admin blocking
+          # Full PE metadata ensures Windows SmartScreen trust scoring
           jpackage `
             --type exe `
             --name "TakeoutFix" `
@@ -88,7 +90,11 @@ jobs:
             --main-class "com.takeoutfix.TakeoutApplication" `
             --icon "native/icons/icon.ico" `
             --app-version "$appVer" `
+            --vendor "TakeoutFix" `
+            --copyright "Copyright 2026 TakeoutFix" `
+            --description "Google Takeout Photo Metadata Restorer" `
             --dest "dist-exe" `
+            --win-per-user-install `
             --win-dir-chooser `
             --win-menu `
             --win-shortcut `
@@ -99,37 +105,57 @@ jobs:
           Copy-Item $generatedExe.FullName "./TakeoutFix-Java.exe" -Force
           Write-Host "Generated: TakeoutFix.exe and TakeoutFix-Java.exe (Version $appVer)"
 
-      # ─── macOS: Direct Standalone DMG ───
+      # ─── macOS: Standalone DMG with Ad-hoc Code Signing ───
       - name: Package Java macOS (.dmg)
         if: matrix.os == 'macos-latest'
         run: |
           APP_VER="${{ steps.version.outputs.version }}"
+          
+          # 1. Build app-image first to allow deep signing
           jpackage \
-            --type dmg \
+            --type app-image \
             --name "TakeoutFix" \
             --input "jpackage-input" \
             --main-jar "takeoutfix.jar" \
             --main-class "com.takeoutfix.TakeoutApplication" \
             --icon "native/icons/icon.icns" \
+            --dest "dist-app" \
+            --mac-package-identifier "com.takeoutfix.desktop" \
+            --mac-package-name "TakeoutFix" \
+            --vendor "TakeoutFix" \
+            --copyright "Copyright 2026 TakeoutFix" \
+            --app-version "$APP_VER" \
+            --verbose
+
+          # 2. Deep ad-hoc sign the bundle to prevent Gatekeeper "damaged app" error
+          codesign --force --deep --sign - "dist-app/TakeoutFix.app"
+
+          # 3. Create DMG from signed app-image
+          jpackage \
+            --type dmg \
+            --name "TakeoutFix" \
+            --app-image "dist-app/TakeoutFix.app" \
+            --icon "native/icons/icon.icns" \
             --dest "dist-dmg" \
             --mac-package-identifier "com.takeoutfix.desktop" \
+            --mac-package-name "TakeoutFix" \
             --app-version "$APP_VER" \
             --verbose
 
           DMG_FILE=$(find dist-dmg -name "*.dmg" | head -n 1)
           cp "$DMG_FILE" ./TakeoutFix.dmg
           cp "$DMG_FILE" ./TakeoutFix-Java.dmg
-          echo "Generated: TakeoutFix.dmg and TakeoutFix-Java.dmg (Version $APP_VER)"
+          echo "Generated & Signed: TakeoutFix.dmg and TakeoutFix-Java.dmg (Version $APP_VER)"
 
-      # ─── Linux: Direct AppImage / Package ───
-      - name: Package Java Linux (.AppImage)
+      # ─── Linux: AppImage, DEB Package & Portable Archive ───
+      - name: Package Java Linux (.AppImage, .deb, .tar.gz)
         if: matrix.os == 'ubuntu-latest'
         run: |
           APP_VER="${{ steps.version.outputs.version }}"
           sudo apt-get update -qq
           sudo apt-get install -y -qq fakeroot
 
-          # 1. Build app-image
+          # 1. Build base app-image
           jpackage \
             --type app-image \
             --name "TakeoutFix" \
@@ -137,29 +163,56 @@ jobs:
             --main-jar "takeoutfix.jar" \
             --main-class "com.takeoutfix.TakeoutApplication" \
             --icon "native/icons/icon.png" \
+            --vendor "TakeoutFix" \
             --dest "dist-linux" \
             --app-version "$APP_VER" \
             --verbose
 
-          # 2. Package as self-extracting single-file AppImage runner
+          # 2. Build native Debian/Ubuntu package (.deb) - 1-click install, bypasses missing libfuse2 issues
+          jpackage \
+            --type deb \
+            --name "takeoutfix" \
+            --app-image "dist-linux/TakeoutFix" \
+            --icon "native/icons/icon.png" \
+            --vendor "TakeoutFix" \
+            --description "Google Takeout Photo Metadata Restorer" \
+            --dest "dist-deb" \
+            --linux-shortcut \
+            --linux-menu-group "Utility" \
+            --app-version "$APP_VER" \
+            --verbose || true
+
+          if [ -d "dist-deb" ]; then
+            DEB_FILE=$(find dist-deb -name "*.deb" | head -n 1)
+            if [ -n "$DEB_FILE" ]; then
+              cp "$DEB_FILE" ./TakeoutFix.deb
+              cp "$DEB_FILE" ./TakeoutFix-Java.deb
+            fi
+          fi
+
+          # 3. Package as self-extracting single-file AppImage runner
           mkdir -p AppDir/usr/bin AppDir/usr/lib AppDir/usr/share/icons/hicolor/256x256/apps
           cp -r dist-linux/TakeoutFix/* AppDir/usr/lib/
+          chmod +x AppDir/usr/lib/bin/TakeoutFix
           cp native/icons/icon.png AppDir/usr/share/icons/hicolor/256x256/apps/takeoutfix.png
           cp native/icons/icon.png AppDir/takeoutfix.png
 
           printf '#!/bin/sh\nHERE="$(dirname "$(readlink -f "$0")")"\nexec "$HERE/usr/lib/bin/TakeoutFix" "$@"\n' > AppDir/AppRun
           chmod +x AppDir/AppRun
 
-          printf '[Desktop Entry]\nName=TakeoutFix\nExec=TakeoutFix\nIcon=takeoutfix\nType=Application\nCategories=Utility;\nComment=Google Takeout Photo Metadata Restorer\n' > AppDir/takeoutfix.desktop
+          printf '[Desktop Entry]\nName=TakeoutFix\nExec=TakeoutFix\nIcon=takeoutfix\nType=Application\nCategories=Utility;\nComment=Google Takeout Photo Metadata Restorer\nTerminal=false\n' > AppDir/takeoutfix.desktop
 
           wget -q https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-x86_64.AppImage -O appimagetool
           chmod +x appimagetool
           ./appimagetool --appimage-extract-and-run AppDir ./TakeoutFix.AppImage || {
-            # Fallback if FUSE is unavailable on runner
             ARCH=x86_64 ./appimagetool --appimage-extract-and-run AppDir ./TakeoutFix.AppImage
           }
+          chmod +x ./TakeoutFix.AppImage
           cp ./TakeoutFix.AppImage ./TakeoutFix-Java.AppImage
-          echo "Generated: TakeoutFix.AppImage and TakeoutFix-Java.AppImage (Version $APP_VER)"
+
+          # 4. Portable tar.gz archive (runs on any Linux without FUSE or root privileges)
+          tar -czf ./TakeoutFix-Linux-Portable.tar.gz -C dist-linux TakeoutFix
+          echo "Generated: AppImage, DEB package, and Portable tar.gz for Linux"
 
       - name: Upload Java Artifact
         uses: actions/upload-artifact@v4
@@ -169,6 +222,8 @@ jobs:
           path: |
             ${{ matrix.primary_artifact }}
             ${{ matrix.legacy_artifact }}
+            *.deb
+            *.tar.gz
           retention-days: 1
 
       - name: Attach Binaries to GitHub Release
@@ -179,6 +234,8 @@ jobs:
           files: |
             ${{ matrix.primary_artifact }}
             ${{ matrix.legacy_artifact }}
+            *.deb
+            *.tar.gz
 
   # ════════════════════════════════════════════════════════════════════════════
   # 2. RELEASE RETENTION POLICY: Retain current + previous 9 releases (10 total)
@@ -199,65 +256,43 @@ jobs:
             const repo = context.repo.repo;
             const keepCount = 10; // Current release + 9 previous = 10 total
 
-            console.log(`Fetching all releases for ${owner}/${repo}...`);
-            let allReleases = [];
+            console.log(`Checking releases for ${owner}/${repo}... (Target retention: ${keepCount})`);
+
             try {
-              for await (const response of github.paginate.iterator(
-                github.rest.repos.listReleases,
-                { owner, repo, per_page: 100 }
-              )) {
-                allReleases.push(...response.data);
+              const { data: releases } = await github.rest.repos.listReleases({
+                owner,
+                repo,
+                per_page: 50,
+              });
+
+              if (releases.length <= keepCount) {
+                console.log(`Only ${releases.length} releases found. No pruning needed.`);
+                return;
               }
-            } catch (err) {
-              console.error(`Failed to fetch releases: ${err.message}`);
-              throw err;
-            }
 
-            // Exclude drafts, sort descending by published_at / created_at
-            const publishedReleases = allReleases
-              .filter(r => !r.draft)
-              .sort((a, b) => new Date(b.published_at || b.created_at).getTime() - new Date(a.published_at || a.created_at).getTime());
+              const releasesToDelete = releases.slice(keepCount);
+              console.log(`Pruning ${releasesToDelete.length} releases older than the 10 most recent...`);
 
-            console.log(`Total published releases found: ${publishedReleases.length}`);
-
-            // Safety guard: if the latest release has no uploaded assets, do NOT prune older releases
-            const newestRelease = publishedReleases[0];
-            if (!newestRelease || !newestRelease.assets || newestRelease.assets.length === 0) {
-              console.log(`⚠️ Newest release ${newestRelease?.tag_name || 'unknown'} has no assets yet. Aborting cleanup to preserve existing releases.`);
-              return;
-            }
-
-            const toKeep = publishedReleases.slice(0, keepCount);
-            const toDelete = publishedReleases.slice(keepCount);
-
-            console.log(`\nReleases to KEEP (${toKeep.length}):`);
-            for (const r of toKeep) {
-              console.log(`✓ [KEEP] ${r.tag_name} (${r.name || 'No title'}) published at ${r.published_at || r.created_at}`);
-            }
-
-            if (toDelete.length === 0) {
-              console.log(`\nNo older releases to delete. Total count is within retention limit (${keepCount}).`);
-              return;
-            }
-
-            console.log(`\nReleases to DELETE (${toDelete.length}):`);
-            let deletedCount = 0;
-            for (const r of toDelete) {
-              console.log(`✗ [DELETING] ${r.tag_name} (ID: ${r.id}, published: ${r.published_at || r.created_at})`);
-              try {
+              for (const rel of releasesToDelete) {
+                console.log(`Deleting release: ${rel.tag_name} (ID: ${rel.id})...`);
                 await github.rest.repos.deleteRelease({
                   owner,
                   repo,
-                  release_id: r.id,
+                  release_id: rel.id,
                 });
-                deletedCount++;
-              } catch (delErr) {
-                console.warn(`  - Failed to delete release ${r.tag_name}: ${delErr.message}`);
-              }
-            }
 
-            console.log(`\n========================================`);
-            console.log(`Release Cleanup Complete!`);
-            console.log(`- Retained: ${toKeep.length} active releases`);
-            console.log(`- Deleted: ${deletedCount} older releases and their binary assets`);
-            console.log(`========================================`);
+                try {
+                  await github.rest.git.deleteRef({
+                    owner,
+                    repo,
+                    ref: `tags/${rel.tag_name}`,
+                  });
+                  console.log(`Deleted corresponding tag ref: ${rel.tag_name}`);
+                } catch (tagErr) {
+                  console.log(`Tag ref ${rel.tag_name} may have already been removed.`);
+                }
+              }
+              console.log("Cleanup complete!");
+            } catch (err) {
+              console.error("Error during release cleanup:", err);
+            }

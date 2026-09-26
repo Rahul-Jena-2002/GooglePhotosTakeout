@@ -23,7 +23,11 @@ jpackage `
   --name "TakeoutFix" `
   --icon "native/icons/icon.ico" `
   --app-version "2.1.7" `
+  --vendor "TakeoutFix" `
+  --copyright "Copyright 2026 TakeoutFix" `
+  --description "Google Takeout Photo Metadata Restorer" `
   --dest "dist-exe" `
+  --win-per-user-install `
   --win-dir-chooser `
   --win-menu `
   --win-shortcut `
