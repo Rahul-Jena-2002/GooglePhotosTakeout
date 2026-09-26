@@ -74,20 +74,50 @@ jobs:
           mkdir -p jpackage-input
           cp native/target/takeoutfix.jar jpackage-input/
 
-      # ─── Windows: Direct Standalone EXE Installer (Security Hardened) ───
+      # ─── Windows: Direct Standalone EXE (Zero Installation) + Setup Installer ───
       - name: Package Java Windows (.exe)
         if: matrix.os == 'windows-latest'
         shell: pwsh
         run: |
           $appVer = "${{ steps.version.outputs.version }}"
-          # Using --win-per-user-install prevents Windows UAC admin blocking
-          # Full PE metadata ensures Windows SmartScreen trust scoring
+          
+          # 1. Build Native Application Image (Portable Standalone Runtime + App)
+          Write-Host "Building native application image..."
           jpackage `
-            --type exe `
-            --name "TakeoutFix" `
+            --type app-image `
             --input "jpackage-input" `
             --main-jar "takeoutfix.jar" `
             --main-class "com.takeoutfix.TakeoutApplication" `
+            --name "TakeoutFix" `
+            --icon "native/icons/icon.ico" `
+            --vendor "TakeoutFix" `
+            --app-version "$appVer" `
+            --dest "dist-app" `
+            --verbose
+
+          # 2. Package into Direct Standalone Single-File EXE (Zero-Install, Runs Immediately on Double-Click)
+          Write-Host "Creating Direct Standalone TakeoutFix.exe (No Installation Wizard)..."
+          $payloadZip = "dist-app/payload.zip"
+          Compress-Archive -Path "dist-app/TakeoutFix/*" -DestinationPath $payloadZip -Force
+
+          $cscPath = "C:\Windows\Microsoft.NET\Framework64\v4.0.30319\csc.exe"
+          & $cscPath `
+            /target:winexe `
+            /win32icon:native/icons/icon.ico `
+            /reference:System.IO.Compression.dll,System.IO.Compression.FileSystem.dll,System.Windows.Forms.dll `
+            /resource:$payloadZip,payload.zip `
+            /out:./TakeoutFix.exe `
+            native/launcher/SingleFileLauncher.cs
+
+          Copy-Item "./TakeoutFix.exe" "./TakeoutFix-Java.exe" -Force
+          Remove-Item $payloadZip -Force
+
+          # 3. Optional: Build Setup Installer via WiX
+          Write-Host "Generating optional TakeoutFix-Setup.exe installer..."
+          jpackage `
+            --type exe `
+            --app-image "dist-app/TakeoutFix" `
+            --name "TakeoutFix-Setup" `
             --icon "native/icons/icon.ico" `
             --app-version "$appVer" `
             --vendor "TakeoutFix" `
@@ -100,10 +130,11 @@ jobs:
             --win-shortcut `
             --verbose
 
-          $generatedExe = Get-ChildItem "dist-exe/*.exe" | Select-Object -First 1
-          Copy-Item $generatedExe.FullName "./TakeoutFix.exe" -Force
-          Copy-Item $generatedExe.FullName "./TakeoutFix-Java.exe" -Force
-          Write-Host "Generated: TakeoutFix.exe and TakeoutFix-Java.exe (Version $appVer)"
+          $generatedSetup = Get-ChildItem "dist-exe/*.exe" | Select-Object -First 1
+          if ($generatedSetup) {
+            Copy-Item $generatedSetup.FullName "./TakeoutFix-Setup.exe" -Force
+          }
+          Write-Host "Generated: Direct Run TakeoutFix.exe and TakeoutFix-Setup.exe (Version $appVer)"
 
       # ─── macOS: Standalone DMG with Ad-hoc Code Signing ───
       - name: Package Java macOS (.dmg)
@@ -222,6 +253,7 @@ jobs:
           path: |
             ${{ matrix.primary_artifact }}
             ${{ matrix.legacy_artifact }}
+            TakeoutFix-Setup.exe
             *.deb
             *.tar.gz
           retention-days: 1
@@ -234,6 +266,7 @@ jobs:
           files: |
             ${{ matrix.primary_artifact }}
             ${{ matrix.legacy_artifact }}
+            TakeoutFix-Setup.exe
             *.deb
             *.tar.gz
 

@@ -8,13 +8,13 @@ import { initializeApp } from "firebase/app";
 import { getFirestore, doc, setDoc, collection, addDoc } from "firebase/firestore";
 
 const firebaseConfig = {
-  apiKey: "AIzaSyDBTj1lcAbftiAYwnv5upjHK7ET_sNgZNk",
-  authDomain: "takeout-fix.firebaseapp.com",
-  projectId: "takeout-fix",
-  storageBucket: "takeout-fix.firebasestorage.app",
-  messagingSenderId: "1089411779683",
-  appId: "1:1089411779683:web:a0afa9043f9f7cecdabc56",
-  measurementId: "G-YNTVCXYR6N"
+  apiKey: process.env.PUBLIC_FIREBASE_API_KEY || process.env.FIREBASE_API_KEY || "",
+  authDomain: process.env.PUBLIC_FIREBASE_AUTH_DOMAIN || "takeout-fix.firebaseapp.com",
+  projectId: process.env.PUBLIC_FIREBASE_PROJECT_ID || "takeout-fix",
+  storageBucket: process.env.PUBLIC_FIREBASE_STORAGE_BUCKET || "takeout-fix.firebasestorage.app",
+  messagingSenderId: process.env.PUBLIC_FIREBASE_MESSAGING_SENDER_ID || "",
+  appId: process.env.PUBLIC_FIREBASE_APP_ID || "",
+  measurementId: process.env.PUBLIC_FIREBASE_MEASUREMENT_ID || ""
 };
 
 const app = initializeApp(firebaseConfig);
