@@ -58,11 +58,11 @@ jobs:
           echo "version=$CLEAN_VER" >> $GITHUB_OUTPUT
           echo "Package version resolved: $CLEAN_VER"
 
-      - name: Set up Java 25 LTS
-        uses: actions/setup-java@v5
+      - name: Set up JDK 26
+        uses: actions/setup-java@v4
         with:
-          java-version: '25'
-          distribution: 'temurin'
+          java-version: '26'
+          distribution: 'oracle'
           cache: 'maven'
 
       - name: Build Java Backend with Maven

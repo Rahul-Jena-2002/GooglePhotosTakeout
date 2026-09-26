@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { X } from "lucide-react";
 import { db } from "../../firebase";
 
@@ -17,18 +17,13 @@ const DEFAULT_FAQS: FaqItem[] = [
   },
   {    id: "privacy-servers",
     tag: "Privacy",
-    question: "Are my photos uploaded to your servers?",
-    answer: "No. Never. The entire application runs locally inside your web browser using HTML5 File APIs. Your photos, videos, and JSON files never leave your computer and are never uploaded to any server. This guarantees 100% privacy and security for your personal archives."
+    question: "Are my photos safe? / Do you see my photos?",
+    answer: "Yes, they are 100% safe. TakeoutFix runs entirely on your own computer. We never see, upload, or store your photos."
   },
   {    id: "archive-limits",
     tag: "Limits",
     question: "Is there a limit on archive sizes?",
-    answer: "Free accounts have a 250 files (500 MB) limit. The Recovery Pass unlocks unlimited files & storage for 24 hours from purchase — perfect for processing your full library in one session. Pro/Super Lifetime gives you unlimited access forever."
-  },
-  {    id: "refund-policy",
-    tag: "Billing",
-    question: "What is your refund policy?",
-    answer: "We want you to have a great experience with Takeout Fix. If you experience a genuine technical issue that prevents the software from working as described, and our support team is unable to resolve it, you may request a refund within 7 days of purchase. See our Refund Policy page for full details."
+    answer: "The browser tool handles standard archives directly on your machine. If you have a huge photo collection (over 50GB), our free desktop app is also available to process massive files without crashing."
   }
 ];
 
@@ -38,24 +33,23 @@ export default function ExpandableFaq() {
 
   // Load FAQs from Firestore, fall back to defaults
   useEffect(() => {
-    let unsub: (() => void) | null = null;
-    import("firebase/firestore").then(({ doc, onSnapshot }) => {
-      unsub = onSnapshot(doc(db, "settings", "faqs"), (snap) => {
+    let isMounted = true;
+    import("firebase/firestore").then(({ doc, getDoc }) => {
+      getDoc(doc(db, "settings", "faqs")).then((snap) => {
+        if (!isMounted) return;
         if (snap.exists()) {
           const data = snap.data();
           if (Array.isArray(data.items) && data.items.length > 0) {
             setFaqs(data.items);
           }
         }
-      }, () => {
-        // On error, keep defaults
+      }).catch(() => {
+        // On error, keep defaults quietly
       });
-    }).catch(err => {
-      console.warn("Failed to load FAQs from Firestore dynamically:", err);
-    });
+    }).catch(() => {});
 
     return () => {
-      if (unsub) unsub();
+      isMounted = false;
     };
   }, []);
 

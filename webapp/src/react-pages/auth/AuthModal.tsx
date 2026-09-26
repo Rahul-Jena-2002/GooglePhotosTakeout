@@ -178,7 +178,7 @@ export default function AuthModal() {
             {mode === "signin" ? "Welcome Back" : mode === "signup" ? "Create Account" : "Reset Password"}
           </h2>
           <p className="text-xs sm:text-sm text-zinc-500 dark:text-zinc-400 mt-1">
-            {mode === "signin" ? "Sign in to your TakeoutFix account." : mode === "signup" ? "Join TakeoutFix — free forever." : "Enter your email for a reset link."}
+            {mode === "signin" ? "Sign in to your TakeoutFix account." : mode === "signup" ? "Join TakeoutFix — free to get started." : "Enter your email for a reset link."}
           </p>
         </div>
 

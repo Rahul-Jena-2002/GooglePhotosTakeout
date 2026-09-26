@@ -95,11 +95,16 @@ public class NativeExifToolEngine {
                     relativePath = entryName.substring(entryName.indexOf("/") + 1);
                 }
 
+                Path targetPath = extractDir.resolve(relativePath).normalize();
+                if (!targetPath.startsWith(extractDir.normalize())) {
+                    throw new SecurityException("Zip Slip detected in archive entry: " + entryName);
+                }
+
                 File outFile;
                 if (relativePath.equalsIgnoreCase("exiftool(-k).exe") || relativePath.equalsIgnoreCase("exiftool.exe")) {
                     outFile = exe;
                 } else {
-                    outFile = extractDir.resolve(relativePath).toFile();
+                    outFile = targetPath.toFile();
                 }
 
                 File parent = outFile.getParentFile();

@@ -48,6 +48,7 @@ public class DashboardView extends JPanel {
     private RecoveryCenterPanel recoveryCenterPanel;
     private DealsRotatorBanner dealsRotatorBanner;
     private UpdateNotificationBanner updateNotificationBanner;
+    private com.takeoutfix.auth.ui.AuthStatusBanner authStatusBanner;
     private final PowerManager powerManager = new PowerManager();
     private Timer progressTimer;
 
@@ -191,8 +192,16 @@ public class DashboardView extends JPanel {
         container.setOpaque(false);
         headerBar = new HeaderBar(networkMonitorService, userSyncBridgeService, parentFrame);
         updateNotificationBanner = new UpdateNotificationBanner();
+        authStatusBanner = new com.takeoutfix.auth.ui.AuthStatusBanner();
+
+        JPanel bannersPanel = new JPanel();
+        bannersPanel.setLayout(new BoxLayout(bannersPanel, BoxLayout.Y_AXIS));
+        bannersPanel.setOpaque(false);
+        bannersPanel.add(authStatusBanner);
+        bannersPanel.add(updateNotificationBanner);
+
         container.add(headerBar, BorderLayout.NORTH);
-        container.add(updateNotificationBanner, BorderLayout.SOUTH);
+        container.add(bannersPanel, BorderLayout.SOUTH);
         return container;
     }
 
@@ -264,9 +273,21 @@ public class DashboardView extends JPanel {
         recoveryCenterPanel.setRunningState(true, false);
         commandCenterPanel.setState("RUNNING (UNLIMITED)", ThemeColors.successLight(), ThemeColors.success());
 
+        File inDir = new File(inPath);
+        File outDir = new File(outPath);
+        File restoreBase = outDir.getName().equalsIgnoreCase("TakeoutFix Restore") ? outDir : new File(outDir, "TakeoutFix Restore");
+        String targetOutput = restoreBase.getAbsolutePath();
+        if (inDir.getName() != null && !inDir.getName().isBlank()) {
+            String dirName = inDir.getName().trim();
+            if (dirName.toLowerCase().endsWith(".zip")) {
+                dirName = dirName.substring(0, dirName.length() - 4);
+            }
+            targetOutput = new File(restoreBase, dirName).getAbsolutePath();
+        }
+
         ConsoleCard console = recoveryCenterPanel.getConsoleCard();
         console.appendLog("INFO", "Starting restoration for source: " + inPath);
-        console.appendLog("INFO", "Destination directory: " + outPath);
+        console.appendLog("INFO", "Destination directory: " + targetOutput);
         console.appendLog("INFO", "Restoration Mode: UNLIMITED | Account: " + userSyncBridgeService.getCurrentEmail());
 
         Optional<Instant> dateOverride = recoveryCenterPanel.getArchiveDateOverride();
@@ -438,8 +459,26 @@ public class DashboardView extends JPanel {
 
     private void handleOpenOutput() {
         String outPath = recoveryCenterPanel.getOutputPath();
+        String inPath = recoveryCenterPanel.getSourcePath();
         if (outPath != null && !outPath.isEmpty()) {
             File folder = new File(outPath);
+            File restoreBase = folder.getName().equalsIgnoreCase("TakeoutFix Restore") ? folder : new File(folder, "TakeoutFix Restore");
+            if (restoreBase.exists()) {
+                folder = restoreBase;
+            }
+            if (inPath != null && !inPath.isEmpty()) {
+                File inFolder = new File(inPath);
+                String dirName = inFolder.getName();
+                if (dirName != null && !dirName.isBlank()) {
+                    if (dirName.toLowerCase().endsWith(".zip")) {
+                        dirName = dirName.substring(0, dirName.length() - 4);
+                    }
+                    File effective = new File(restoreBase, dirName);
+                    if (effective.exists()) {
+                        folder = effective;
+                    }
+                }
+            }
             if (folder.exists()) {
                 try {
                     Desktop.getDesktop().open(folder);
@@ -458,5 +497,35 @@ public class DashboardView extends JPanel {
 
     public ConsoleCard getConsoleCard() {
         return recoveryCenterPanel != null ? recoveryCenterPanel.getConsoleCard() : null;
+    }
+
+    public void showAuthenticatingBanner(String message) {
+        if (authStatusBanner != null) {
+            authStatusBanner.showAuthenticating(message);
+        }
+    }
+
+    public void showAuthenticatedBanner(String email, String plan) {
+        if (authStatusBanner != null) {
+            authStatusBanner.showAuthenticated(email, plan);
+        }
+    }
+
+    public void showOfflineBanner(String email) {
+        if (authStatusBanner != null) {
+            authStatusBanner.showOffline(email);
+        }
+    }
+
+    public void showAuthFailedBanner(Runnable onSignIn) {
+        if (authStatusBanner != null) {
+            authStatusBanner.showSessionExpired(onSignIn);
+        }
+    }
+
+    public void hideAuthBanner() {
+        if (authStatusBanner != null) {
+            authStatusBanner.hideBanner();
+        }
     }
 }

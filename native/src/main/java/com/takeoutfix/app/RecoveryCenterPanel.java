@@ -29,13 +29,13 @@ import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Optional;
-import java.util.UUID;
 import java.util.function.Consumer;
 
 /**
  * Clean, grid-aligned Recovery Center main dashboard component.
  * Features tool switching between:
- * 1. Restore Archive (Source, Destination, Combined Options & Controls, Terminal Logs)
+ * 1. Restore Archive (Source, Destination, Combined Options & Controls,
+ * Terminal Logs)
  * 2. EXIF Viewer (Super)
  * 3. Comparison (Super)
  * 4. Duplicates (Super)
@@ -57,7 +57,8 @@ public class RecoveryCenterPanel extends JPanel {
     // Header labels & Tool Switcher Dropdown
     private JPanel headerRow;
     private final JLabel mainTitle = new JLabel("RECOVERY OPS CENTER");
-    private final JLabel subtitle = new JLabel("Select Takeout archive source, choose destination folder, and restore metadata.");
+    private final JLabel subtitle = new JLabel(
+            "Select Takeout archive source, choose destination folder, and restore metadata.");
     private JComboBox<String> moduleSelect;
     private boolean updatingModuleSelect = false;
 
@@ -72,7 +73,7 @@ public class RecoveryCenterPanel extends JPanel {
     // Options
     private final JTextField dateOverrideField = UiFactory.createTextField("YYYY-MM-DD");
     private final JButton btnDatePicker = UiFactory.createIconButton("calendar", "📅", "Pick a date");
-    private final JCheckBox organizeYearMonthCheckbox = new JCheckBox("Organize into Month/Year subfolders", true);
+    private final JCheckBox organizeYearMonthCheckbox = new JCheckBox("Organize into Month subfolders", false);
     private final JCheckBox splitVolumesCheckbox = new JCheckBox("Compress output into 2GB ZIP volumes");
     private final JCheckBox smartInterpolationCheckbox = new JCheckBox("Smart Timestamp Interpolation", true);
     private final JCheckBox powerKeepAwakeCheckbox = new JCheckBox("Keep System Awake while processing", true);
@@ -120,11 +121,13 @@ public class RecoveryCenterPanel extends JPanel {
         return adSyncService;
     }
 
-    public RecoveryCenterPanel(Component parentFrame, NetworkMonitorService netService, UserSyncBridgeService userService) {
+    public RecoveryCenterPanel(Component parentFrame, NetworkMonitorService netService,
+            UserSyncBridgeService userService) {
         this(parentFrame, netService, userService, null);
     }
 
-    public RecoveryCenterPanel(Component parentFrame, NetworkMonitorService netService, UserSyncBridgeService userService, com.takeoutfix.ads.AdSyncService adSyncService) {
+    public RecoveryCenterPanel(Component parentFrame, NetworkMonitorService netService,
+            UserSyncBridgeService userService, com.takeoutfix.ads.AdSyncService adSyncService) {
         this.parentFrame = parentFrame;
         this.netService = netService;
         this.userService = userService;
@@ -152,8 +155,10 @@ public class RecoveryCenterPanel extends JPanel {
         btnCancel.setEnabled(false);
 
         btnOpenFolder = UiFactory.createSecondaryButton("Open Output Folder");
-        javax.swing.Icon folderOutIcon = UiFactory.svgDynamicIcon("output-folder", 15, () -> ThemeColors.secondaryButtonText());
-        if (folderOutIcon != null) btnOpenFolder.setIcon(folderOutIcon);
+        javax.swing.Icon folderOutIcon = UiFactory.svgDynamicIcon("output-folder", 15,
+                () -> ThemeColors.secondaryButtonText());
+        if (folderOutIcon != null)
+            btnOpenFolder.setIcon(folderOutIcon);
         btnOpenFolder.setPreferredSize(new Dimension(170, 36));
 
         // Instantiate sub-tool panels
@@ -188,7 +193,8 @@ public class RecoveryCenterPanel extends JPanel {
             if (authenticated) {
                 consoleCard.appendLog("SUCCESS", "Session validated: " + userService.getCurrentEmail() + ".");
             } else {
-                consoleCard.appendLog("INFO", "Running in Guest mode. Sign in with Google to activate tool restoration engines.");
+                consoleCard.appendLog("INFO",
+                        "Running in Guest mode. Sign in with Google to activate tool restoration engines.");
             }
         });
     }
@@ -198,8 +204,10 @@ public class RecoveryCenterPanel extends JPanel {
         panel.setOpaque(false);
         int gridY = 0;
 
-        // 1. Unified 2-Column Restore Workspace (60/40 Split: Operations Pipeline | Controls & Options)
-        panel.add(createUnifiedRestoreWorkspaceCard(), createConstraints(gridY++, 0.0, GridBagConstraints.HORIZONTAL, 10));
+        // 1. Unified 2-Column Restore Workspace (60/40 Split: Operations Pipeline |
+        // Controls & Options)
+        panel.add(createUnifiedRestoreWorkspaceCard(),
+                createConstraints(gridY++, 0.0, GridBagConstraints.HORIZONTAL, 10));
 
         // 2. Logs Terminal — consumes ALL remaining vertical space
         GridBagConstraints logsGbc = new GridBagConstraints();
@@ -218,13 +226,13 @@ public class RecoveryCenterPanel extends JPanel {
     /**
      * Unified 2-column workspace layout matching the user's Excalidraw design:
      * - Left column (60% width): Operations Pipeline
-     *     1. Source selection (Browse Folder, ZIP File, Path display, Clear)
-     *     2. Destination selection (Select Destination Folder, Path display, Clear)
-     *     3. Action buttons (Start, Pause, Cancel, Open Output Folder)
-     *     4. Live Progress & Telemetry (Status, %, Progress bar, Elapsed, Speed, ETA)
+     * 1. Source selection (Browse Folder, ZIP File, Path display, Clear)
+     * 2. Destination selection (Select Destination Folder, Path display, Clear)
+     * 3. Action buttons (Start, Pause, Cancel, Open Output Folder)
+     * 4. Live Progress & Telemetry (Status, %, Progress bar, Elapsed, Speed, ETA)
      * - Right column (40% width): Controls & Options
-     *     - Fallback Date picker
-     *     - 4 vertically stacked restoration checkboxes
+     * - Fallback Date picker
+     * - 4 vertically stacked restoration checkboxes
      */
     private JPanel createUnifiedRestoreWorkspaceCard() {
         JPanel card = UiFactory.createCard();
@@ -260,7 +268,8 @@ public class RecoveryCenterPanel extends JPanel {
         srcBtns.setOpaque(false);
         JButton btnFolder = UiFactory.createPrimaryButton("Browse Folder");
         javax.swing.Icon folderIcon = UiFactory.svgDynamicIcon("folder", 14, () -> ThemeColors.primaryButtonText());
-        if (folderIcon != null) btnFolder.setIcon(folderIcon);
+        if (folderIcon != null)
+            btnFolder.setIcon(folderIcon);
         btnFolder.setPreferredSize(new Dimension(135, 30));
         btnFolder.setFont(new Font("Segoe UI", Font.BOLD, 11));
         btnFolder.setToolTipText("Select extracted Takeout directory");
@@ -269,7 +278,8 @@ public class RecoveryCenterPanel extends JPanel {
 
         JButton btnZip = UiFactory.createSecondaryButton("ZIP File");
         javax.swing.Icon zipIcon = UiFactory.svgDynamicIcon("zip", 14, () -> ThemeColors.secondaryButtonText());
-        if (zipIcon != null) btnZip.setIcon(zipIcon);
+        if (zipIcon != null)
+            btnZip.setIcon(zipIcon);
         btnZip.setPreferredSize(new Dimension(95, 30));
         btnZip.setFont(new Font("Segoe UI", Font.BOLD, 11));
         btnZip.setToolTipText("Select Google Takeout .zip archive");
@@ -283,8 +293,7 @@ public class RecoveryCenterPanel extends JPanel {
         sourcePathLabel.setForeground(ThemeColors.textMuted());
         sourcePathLabel.setBorder(BorderFactory.createCompoundBorder(
                 new javax.swing.border.LineBorder(ThemeColors.cardBorder(), 1, true),
-                new EmptyBorder(4, 10, 4, 10)
-        ));
+                new EmptyBorder(4, 10, 4, 10)));
         srcPathRow.add(sourcePathLabel, BorderLayout.CENTER);
 
         btnSourceClear.setFont(new Font("Segoe UI", Font.BOLD, 10));
@@ -299,13 +308,17 @@ public class RecoveryCenterPanel extends JPanel {
         // Drag & drop on source box
         if (!GraphicsEnvironment.isHeadless()) {
             srcBox.setDropTarget(new java.awt.dnd.DropTarget() {
-                @Override public synchronized void drop(java.awt.dnd.DropTargetDropEvent evt) {
+                @Override
+                public synchronized void drop(java.awt.dnd.DropTargetDropEvent evt) {
                     try {
                         evt.acceptDrop(java.awt.dnd.DnDConstants.ACTION_COPY);
                         @SuppressWarnings("unchecked")
-                        List<File> files = (List<File>) evt.getTransferable().getTransferData(java.awt.datatransfer.DataFlavor.javaFileListFlavor);
-                        if (files != null && !files.isEmpty()) setSourceFile(files.get(0));
-                    } catch (Exception ignored) {}
+                        List<File> files = (List<File>) evt.getTransferable()
+                                .getTransferData(java.awt.datatransfer.DataFlavor.javaFileListFlavor);
+                        if (files != null && !files.isEmpty())
+                            setSourceFile(files.get(0));
+                    } catch (Exception ignored) {
+                    }
                 }
             });
         }
@@ -329,7 +342,8 @@ public class RecoveryCenterPanel extends JPanel {
 
         JButton btnDest = UiFactory.createSecondaryButton("Select Destination Folder");
         javax.swing.Icon destIcon = UiFactory.svgDynamicIcon("folder", 14, () -> ThemeColors.secondaryButtonText());
-        if (destIcon != null) btnDest.setIcon(destIcon);
+        if (destIcon != null)
+            btnDest.setIcon(destIcon);
         btnDest.setPreferredSize(new Dimension(195, 30));
         btnDest.setFont(new Font("Segoe UI", Font.BOLD, 11));
         btnDest.setToolTipText("Select folder where restored photos will be saved");
@@ -342,8 +356,7 @@ public class RecoveryCenterPanel extends JPanel {
         outputPathLabel.setForeground(ThemeColors.textMuted());
         outputPathLabel.setBorder(BorderFactory.createCompoundBorder(
                 new javax.swing.border.LineBorder(ThemeColors.cardBorder(), 1, true),
-                new EmptyBorder(4, 10, 4, 10)
-        ));
+                new EmptyBorder(4, 10, 4, 10)));
         dstPathRow.add(outputPathLabel, BorderLayout.CENTER);
 
         btnDestClear.setFont(new Font("Segoe UI", Font.BOLD, 10));
@@ -358,16 +371,19 @@ public class RecoveryCenterPanel extends JPanel {
         // Drag & drop on destination box
         if (!GraphicsEnvironment.isHeadless()) {
             dstBox.setDropTarget(new java.awt.dnd.DropTarget() {
-                @Override public synchronized void drop(java.awt.dnd.DropTargetDropEvent evt) {
+                @Override
+                public synchronized void drop(java.awt.dnd.DropTargetDropEvent evt) {
                     try {
                         evt.acceptDrop(java.awt.dnd.DnDConstants.ACTION_COPY);
                         @SuppressWarnings("unchecked")
-                        List<File> files = (List<File>) evt.getTransferable().getTransferData(java.awt.datatransfer.DataFlavor.javaFileListFlavor);
+                        List<File> files = (List<File>) evt.getTransferable()
+                                .getTransferData(java.awt.datatransfer.DataFlavor.javaFileListFlavor);
                         if (files != null && !files.isEmpty()) {
                             File f = files.get(0);
                             setDestinationFile(f.isDirectory() ? f : f.getParentFile());
                         }
-                    } catch (Exception ignored) {}
+                    } catch (Exception ignored) {
+                    }
                 }
             });
         }
@@ -464,7 +480,6 @@ public class RecoveryCenterPanel extends JPanel {
         l.insets = new Insets(0, 0, 0, 0);
         leftCol.add(progBox, l);
 
-
         // ── Right Column: Controls & Options (25% Width - Compact & Snug) ─────
         JPanel rightCol = UiFactory.createInnerContainer(12);
         rightCol.setLayout(new GridBagLayout());
@@ -528,7 +543,7 @@ public class RecoveryCenterPanel extends JPanel {
         styleCheckbox(smartInterpolationCheckbox);
         styleCheckbox(powerKeepAwakeCheckbox);
         styleCheckbox(splitVolumesCheckbox);
-        organizeYearMonthCheckbox.setToolTipText("Organize into Month/Year subfolders (Album/YYYY-MM)");
+        organizeYearMonthCheckbox.setToolTipText("Organize into Month subfolders (Album/MM - Month)");
         smartInterpolationCheckbox.setToolTipText("Infer missing timestamps using adjacent photo chronologies");
         powerKeepAwakeCheckbox.setToolTipText("Prevent PC from entering sleep mode while restoration is active");
         splitVolumesCheckbox.setToolTipText("Automatically split destination into 2GB ZIP archive volumes");
@@ -540,7 +555,6 @@ public class RecoveryCenterPanel extends JPanel {
         r.gridy = 2;
         r.insets = new Insets(0, 0, 0, 0);
         rightCol.add(cbCol, r);
-
 
         // ── Combine Left (75%) & Right (25%) Columns into card ────────────────
         gbc.gridx = 0;
@@ -558,16 +572,16 @@ public class RecoveryCenterPanel extends JPanel {
             dstTitle.setForeground(ThemeColors.textMuted());
             ctrlTitle.setForeground(ThemeColors.textMuted());
             dateLbl.setForeground(ThemeColors.textSecondary());
-            sourcePathLabel.setForeground(selectedSourcePath.isEmpty() ? ThemeColors.textMuted() : ThemeColors.textPrimary());
-            outputPathLabel.setForeground(selectedOutputPath.isEmpty() ? ThemeColors.textMuted() : ThemeColors.textPrimary());
+            sourcePathLabel
+                    .setForeground(selectedSourcePath.isEmpty() ? ThemeColors.textMuted() : ThemeColors.textPrimary());
+            outputPathLabel
+                    .setForeground(selectedOutputPath.isEmpty() ? ThemeColors.textMuted() : ThemeColors.textPrimary());
             sourcePathLabel.setBorder(BorderFactory.createCompoundBorder(
                     new javax.swing.border.LineBorder(ThemeColors.cardBorder(), 1, true),
-                    new EmptyBorder(4, 10, 4, 10)
-            ));
+                    new EmptyBorder(4, 10, 4, 10)));
             outputPathLabel.setBorder(BorderFactory.createCompoundBorder(
                     new javax.swing.border.LineBorder(ThemeColors.cardBorder(), 1, true),
-                    new EmptyBorder(4, 10, 4, 10)
-            ));
+                    new EmptyBorder(4, 10, 4, 10)));
             progressStatusLabel.setForeground(ThemeColors.textPrimary());
             progressPercentLabel.setForeground(ThemeColors.accent());
             elapsedLabel.setForeground(ThemeColors.textSecondary());
@@ -621,12 +635,13 @@ public class RecoveryCenterPanel extends JPanel {
 
         row.add(titleBlock, BorderLayout.WEST);
 
-        // Tool Switcher Dropdown on EAST (secondary recovery tools only, Dashboard excluded)
+        // Tool Switcher Dropdown on EAST (secondary recovery tools only, Dashboard
+        // excluded)
         String[] tools = {
-            CARD_RESTORE,
-            CARD_EXIF,
-            CARD_COMPARE,
-            CARD_DUPLICATE
+                CARD_RESTORE,
+                CARD_EXIF,
+                CARD_COMPARE,
+                CARD_DUPLICATE
         };
         moduleSelect = new JComboBox<>(tools);
         moduleSelect.setFont(new Font("Segoe UI", Font.BOLD, 12));
@@ -636,7 +651,8 @@ public class RecoveryCenterPanel extends JPanel {
         moduleSelect.setLightWeightPopupEnabled(true);
         moduleSelect.putClientProperty("JComboBox.isPopDown", true);
 
-        // Auto-close popup when switching applications or window loses focus on Linux/X11
+        // Auto-close popup when switching applications or window loses focus on
+        // Linux/X11
         KeyboardFocusManager.getCurrentKeyboardFocusManager().addPropertyChangeListener(evt -> {
             String prop = evt.getPropertyName();
             if ("focusedWindow".equals(prop) || "activeWindow".equals(prop)) {
@@ -649,11 +665,13 @@ public class RecoveryCenterPanel extends JPanel {
         try {
             Toolkit.getDefaultToolkit().addAWTEventListener(event -> {
                 int id = event.getID();
-                if (id == WindowEvent.WINDOW_LOST_FOCUS || id == WindowEvent.WINDOW_DEACTIVATED || id == WindowEvent.WINDOW_ICONIFIED) {
+                if (id == WindowEvent.WINDOW_LOST_FOCUS || id == WindowEvent.WINDOW_DEACTIVATED
+                        || id == WindowEvent.WINDOW_ICONIFIED) {
                     SwingUtilities.invokeLater(() -> closeOpenPopups());
                 }
             }, AWTEvent.WINDOW_EVENT_MASK | AWTEvent.WINDOW_FOCUS_EVENT_MASK);
-        } catch (SecurityException ignored) {}
+        } catch (SecurityException ignored) {
+        }
 
         moduleSelect.addHierarchyListener(e -> {
             if ((e.getChangeFlags() & HierarchyEvent.SHOWING_CHANGED) != 0 && moduleSelect.isShowing()) {
@@ -664,10 +682,12 @@ public class RecoveryCenterPanel extends JPanel {
                         public void windowLostFocus(WindowEvent we) {
                             closeOpenPopups();
                         }
+
                         @Override
                         public void windowDeactivated(WindowEvent we) {
                             closeOpenPopups();
                         }
+
                         @Override
                         public void windowIconified(WindowEvent we) {
                             closeOpenPopups();
@@ -678,6 +698,7 @@ public class RecoveryCenterPanel extends JPanel {
                         public void componentMoved(ComponentEvent ce) {
                             closeOpenPopups();
                         }
+
                         @Override
                         public void componentResized(ComponentEvent ce) {
                             closeOpenPopups();
@@ -688,7 +709,8 @@ public class RecoveryCenterPanel extends JPanel {
         });
 
         moduleSelect.addActionListener(e -> {
-            if (updatingModuleSelect) return;
+            if (updatingModuleSelect)
+                return;
             String selected = (String) moduleSelect.getSelectedItem();
             if (selected != null && !selected.equals(currentCard)) {
                 switchTo(selected);
@@ -730,9 +752,11 @@ public class RecoveryCenterPanel extends JPanel {
 
         gbc.gridy = 2;
         gbc.insets = new Insets(0, 20, 16, 20);
-        JLabel desc = new JLabel("<html><center style='width: 420px; font-size: 12px; color: #888888; line-height: 1.5;'>"
-                + "Sign in with your Google account to unlock TakeoutFix restoration engines, EXIF timestamp matching, and multi-archive deduplication."
-                + "</center></html>", SwingConstants.CENTER);
+        JLabel desc = new JLabel(
+                "<html><center style='width: 420px; font-size: 12px; color: #888888; line-height: 1.5;'>"
+                        + "Sign in with your Google account to unlock TakeoutFix restoration engines, EXIF timestamp matching, and multi-archive deduplication."
+                        + "</center></html>",
+                SwingConstants.CENTER);
         card.add(desc, gbc);
 
         // Feature benefits row
@@ -740,9 +764,9 @@ public class RecoveryCenterPanel extends JPanel {
         gbc.insets = new Insets(0, 0, 24, 0);
         JPanel featsRow = new JPanel(new FlowLayout(FlowLayout.CENTER, 8, 0));
         featsRow.setOpaque(false);
-        featsRow.add(UiFactory.createBadge("✓ Full Access Unlocked", ThemeColors.pillBg(), ThemeColors.textSecondary()));
-        featsRow.add(UiFactory.createBadge("✓ Lossless EXIF Fixes", ThemeColors.pillBg(), ThemeColors.textSecondary()));
-        featsRow.add(UiFactory.createBadge("✓ Cloud History Sync", ThemeColors.pillBg(), ThemeColors.textSecondary()));
+        featsRow.add(UiFactory.createBadge("Full Access Unlocked", ThemeColors.pillBg(), ThemeColors.textSecondary()));
+        featsRow.add(UiFactory.createBadge("Lossless EXIF Fixes", ThemeColors.pillBg(), ThemeColors.textSecondary()));
+        featsRow.add(UiFactory.createBadge("Cloud History Sync", ThemeColors.pillBg(), ThemeColors.textSecondary()));
         card.add(featsRow, gbc);
 
         // Buttons row: Sign in + Return to Dashboard
@@ -760,33 +784,21 @@ public class RecoveryCenterPanel extends JPanel {
         btnGoogle.setPreferredSize(new Dimension(180, 38));
         btnGoogle.addActionListener(e -> {
             btnGoogle.setEnabled(false);
-            btnGoogle.setText("Opening browser...");
-            String stateToken = UUID.randomUUID().toString().replace("-", "");
-            int port = com.takeoutfix.network.DesktopAuthServer.start(profile -> {
-                SwingUtilities.invokeLater(() -> {
-                    com.takeoutfix.auth.UserController.syncUser(profile);
-                    updatePlanBadge();
-                });
-            }, stateToken);
-            if (port > 0) {
-                String url = "https://takeoutfix.pages.dev/login?desktop_port=" + port + "&port=" + port + "&state=" + stateToken + "&provider=google&prompt=select_account";
-                boolean opened = com.takeoutfix.shared.util.BrowserUtil.openBrowser(url);
-                if (opened) {
-                    btnGoogle.setText("Waiting for auth...");
-                } else {
-                    btnGoogle.setEnabled(true);
-                    btnGoogle.setText("Sign In with Google");
-                    Window win = SwingUtilities.getWindowAncestor(this);
-                    Frame frame = (win instanceof Frame) ? (Frame) win : null;
-                    new SignInDialog(frame, userService).setVisible(true);
-                }
-            } else {
+            btnGoogle.setText("Signing in...");
+            userService.getGoogleAuthService().authenticate().whenComplete((session, error) -> SwingUtilities.invokeLater(() -> {
                 btnGoogle.setEnabled(true);
                 btnGoogle.setText("Sign In with Google");
-                Window win = SwingUtilities.getWindowAncestor(this);
-                Frame frame = (win instanceof Frame) ? (Frame) win : null;
-                new SignInDialog(frame, userService).setVisible(true);
-            }
+                if (error != null) {
+                    JOptionPane.showMessageDialog(this,
+                            "Google Sign-In was cancelled or failed:\n" + error.getMessage(),
+                            "Sign-In Error", JOptionPane.ERROR_MESSAGE);
+                } else if (session != null && session.isAuthenticated()) {
+                    com.takeoutfix.auth.UserController.syncUser(session.toMap());
+                    userService.triggerCloudSync(null);
+                    updatePlanBadge();
+                    switchTo(CARD_RESTORE);
+                }
+            }));
         });
         btnRow.add(btnGoogle);
         card.add(btnRow, gbc);
@@ -881,7 +893,9 @@ public class RecoveryCenterPanel extends JPanel {
         card.add(btnPanel, gbc1);
 
         // Row 2: Centered Helper Text
-        JLabel helper = new JLabel("Supports extracted Takeout directories or ZIP archives. Drag & drop here or browse.", SwingConstants.CENTER);
+        JLabel helper = new JLabel(
+                "Supports extracted Takeout directories or ZIP archives. Drag & drop here or browse.",
+                SwingConstants.CENTER);
         helper.setFont(new Font("Segoe UI", Font.PLAIN, 11));
         helper.setForeground(ThemeColors.textSecondary());
 
@@ -901,8 +915,7 @@ public class RecoveryCenterPanel extends JPanel {
         sourcePathLabel.setForeground(ThemeColors.textMuted());
         sourcePathLabel.setBorder(BorderFactory.createCompoundBorder(
                 new LineBorder(ThemeColors.cardBorder(), 1, true),
-                new EmptyBorder(6, 12, 6, 12)
-        ));
+                new EmptyBorder(6, 12, 6, 12)));
         pathRow.add(sourcePathLabel, BorderLayout.CENTER);
 
         btnSourceClear.setFont(new Font("Segoe UI", Font.BOLD, 10));
@@ -928,7 +941,8 @@ public class RecoveryCenterPanel extends JPanel {
                     try {
                         evt.acceptDrop(DnDConstants.ACTION_COPY);
                         @SuppressWarnings("unchecked")
-                        List<File> droppedFiles = (List<File>) evt.getTransferable().getTransferData(DataFlavor.javaFileListFlavor);
+                        List<File> droppedFiles = (List<File>) evt.getTransferable()
+                                .getTransferData(DataFlavor.javaFileListFlavor);
                         if (droppedFiles != null && !droppedFiles.isEmpty()) {
                             setSourceFile(droppedFiles.get(0));
                         }
@@ -942,11 +956,11 @@ public class RecoveryCenterPanel extends JPanel {
         ThemeColors.addThemeListener(() -> {
             title.setForeground(ThemeColors.textPrimary());
             helper.setForeground(ThemeColors.textSecondary());
-            sourcePathLabel.setForeground(selectedSourcePath.isEmpty() ? ThemeColors.textMuted() : ThemeColors.textPrimary());
+            sourcePathLabel
+                    .setForeground(selectedSourcePath.isEmpty() ? ThemeColors.textMuted() : ThemeColors.textPrimary());
             sourcePathLabel.setBorder(BorderFactory.createCompoundBorder(
                     new LineBorder(ThemeColors.cardBorder(), 1, true),
-                    new EmptyBorder(6, 12, 6, 12)
-            ));
+                    new EmptyBorder(6, 12, 6, 12)));
         });
 
         return card;
@@ -989,7 +1003,9 @@ public class RecoveryCenterPanel extends JPanel {
         card.add(btnPanel, gbc1);
 
         // Row 2: Centered Helper Text
-        JLabel helper = new JLabel("Photos and videos will be saved here with EXIF metadata. Drag & drop folder here or browse.", SwingConstants.CENTER);
+        JLabel helper = new JLabel(
+                "Photos and videos will be saved here with EXIF metadata. Drag & drop folder here or browse.",
+                SwingConstants.CENTER);
         helper.setFont(new Font("Segoe UI", Font.PLAIN, 11));
         helper.setForeground(ThemeColors.textSecondary());
 
@@ -1009,8 +1025,7 @@ public class RecoveryCenterPanel extends JPanel {
         outputPathLabel.setForeground(ThemeColors.textMuted());
         outputPathLabel.setBorder(BorderFactory.createCompoundBorder(
                 new LineBorder(ThemeColors.cardBorder(), 1, true),
-                new EmptyBorder(6, 12, 6, 12)
-        ));
+                new EmptyBorder(6, 12, 6, 12)));
         pathRow.add(outputPathLabel, BorderLayout.CENTER);
 
         btnDestClear.setFont(new Font("Segoe UI", Font.BOLD, 10));
@@ -1036,7 +1051,8 @@ public class RecoveryCenterPanel extends JPanel {
                     try {
                         evt.acceptDrop(DnDConstants.ACTION_COPY);
                         @SuppressWarnings("unchecked")
-                        List<File> droppedFiles = (List<File>) evt.getTransferable().getTransferData(DataFlavor.javaFileListFlavor);
+                        List<File> droppedFiles = (List<File>) evt.getTransferable()
+                                .getTransferData(DataFlavor.javaFileListFlavor);
                         if (droppedFiles != null && !droppedFiles.isEmpty()) {
                             File dropped = droppedFiles.get(0);
                             setDestinationFile(dropped.isDirectory() ? dropped : dropped.getParentFile());
@@ -1051,19 +1067,15 @@ public class RecoveryCenterPanel extends JPanel {
         ThemeColors.addThemeListener(() -> {
             title.setForeground(ThemeColors.textPrimary());
             helper.setForeground(ThemeColors.textSecondary());
-            outputPathLabel.setForeground(selectedOutputPath.isEmpty() ? ThemeColors.textMuted() : ThemeColors.textPrimary());
+            outputPathLabel
+                    .setForeground(selectedOutputPath.isEmpty() ? ThemeColors.textMuted() : ThemeColors.textPrimary());
             outputPathLabel.setBorder(BorderFactory.createCompoundBorder(
                     new LineBorder(ThemeColors.cardBorder(), 1, true),
-                    new EmptyBorder(6, 12, 6, 12)
-            ));
+                    new EmptyBorder(6, 12, 6, 12)));
         });
 
         return card;
     }
-
-
-
-
 
     // F. Logs Panel
     public JPanel createLogsPanel() {
@@ -1085,16 +1097,20 @@ public class RecoveryCenterPanel extends JPanel {
                 new SignInDialog(frame, userService).setVisible(true);
                 return;
             }
-            if (onStartCallback != null) onStartCallback.run();
+            if (onStartCallback != null)
+                onStartCallback.run();
         });
         btnPause.addActionListener(e -> {
-            if (onPauseCallback != null) onPauseCallback.run();
+            if (onPauseCallback != null)
+                onPauseCallback.run();
         });
         btnCancel.addActionListener(e -> {
-            if (onCancelCallback != null) onCancelCallback.run();
+            if (onCancelCallback != null)
+                onCancelCallback.run();
         });
         btnOpenFolder.addActionListener(e -> {
-            if (onOpenFolderCallback != null) onOpenFolderCallback.run();
+            if (onOpenFolderCallback != null)
+                onOpenFolderCallback.run();
         });
     }
 
@@ -1134,7 +1150,8 @@ public class RecoveryCenterPanel extends JPanel {
     }
 
     private void setSourceFile(File sel) {
-        if (sel == null || !sel.exists()) return;
+        if (sel == null || !sel.exists())
+            return;
         selectedSourcePath = sel.getAbsolutePath();
         sourcePathLabel.setText("✓ " + sel.getName());
         sourcePathLabel.setForeground(ThemeColors.textPrimary());
@@ -1152,12 +1169,13 @@ public class RecoveryCenterPanel extends JPanel {
                     long bytes = 0;
                     if (files != null) {
                         for (File f : files) {
-                            if (f.isFile()) bytes += f.length();
+                            if (f.isFile())
+                                bytes += f.length();
                         }
                     }
-                    return String.format("✓ %s (%d items, %s)", sel.getName(), count, formatBytes(bytes));
+                    return String.format("%s (%d items, %s)", sel.getName(), count, formatBytes(bytes));
                 } else {
-                    return String.format("✓ %s (Archive, %s)", sel.getName(), formatBytes(sel.length()));
+                    return String.format("%s (Archive, %s)", sel.getName(), formatBytes(sel.length()));
                 }
             }
 
@@ -1166,7 +1184,8 @@ public class RecoveryCenterPanel extends JPanel {
                 try {
                     String info = get();
                     sourcePathLabel.setText(info);
-                } catch (Exception ignored) {}
+                } catch (Exception ignored) {
+                }
             }
         }.execute();
     }
@@ -1180,15 +1199,19 @@ public class RecoveryCenterPanel extends JPanel {
     }
 
     private void setDestinationFile(File sel) {
-        if (sel == null) return;
+        if (sel == null)
+            return;
         File dir = sel.isDirectory() ? sel : sel.getParentFile();
-        if (dir == null || !dir.exists()) return;
+        if (dir == null || !dir.exists())
+            return;
         selectedOutputPath = dir.getAbsolutePath();
-        outputPathLabel.setText("✓ " + selectedOutputPath);
+        long usable = dir.getUsableSpace();
+        String storageInfo = usable > 0 ? " (" + formatBytes(usable) + " free)" : "";
+        outputPathLabel.setText(selectedOutputPath + storageInfo);
         outputPathLabel.setForeground(ThemeColors.textPrimary());
-        outputPathLabel.setToolTipText(selectedOutputPath);
+        outputPathLabel.setToolTipText(selectedOutputPath + storageInfo);
         btnDestClear.setVisible(true);
-        consoleCard.appendLog("INFO", "Selected destination directory: " + selectedOutputPath);
+        consoleCard.appendLog("INFO", "Selected destination directory: " + selectedOutputPath + (usable > 0 ? " [" + formatBytes(usable) + " free disk space]" : ""));
     }
 
     private void clearDestination() {
@@ -1200,9 +1223,12 @@ public class RecoveryCenterPanel extends JPanel {
     }
 
     private static String formatBytes(long bytes) {
-        if (bytes < 1024) return bytes + " B";
-        if (bytes < 1024 * 1024) return String.format("%.1f KB", bytes / 1024.0);
-        if (bytes < 1024 * 1024 * 1024L) return String.format("%.1f MB", bytes / (1024.0 * 1024.0));
+        if (bytes < 1024)
+            return bytes + " B";
+        if (bytes < 1024 * 1024)
+            return String.format("%.1f KB", bytes / 1024.0);
+        if (bytes < 1024 * 1024 * 1024L)
+            return String.format("%.1f MB", bytes / (1024.0 * 1024.0));
         return String.format("%.2f GB", bytes / (1024.0 * 1024.0 * 1024.0));
     }
 
@@ -1270,14 +1296,16 @@ public class RecoveryCenterPanel extends JPanel {
         });
     }
 
-    public void setProgressTelemetry(int percent, String message, long elapsedSec, long etaSec, double filesPerSec, double mbPerSec) {
+    public void setProgressTelemetry(int percent, String message, long elapsedSec, long etaSec, double filesPerSec,
+            double mbPerSec) {
         SwingUtilities.invokeLater(() -> {
             progressBar.setValue(percent);
             progressPercentLabel.setText(percent + "%");
             progressStatusLabel.setText(message);
 
             String elapsedStr = formatDuration(elapsedSec);
-            String etaStr = (etaSec > 0 && percent < 100) ? formatDuration(etaSec) : (percent >= 100 ? "00:00" : "--:--");
+            String etaStr = (etaSec > 0 && percent < 100) ? formatDuration(etaSec)
+                    : (percent >= 100 ? "00:00" : "--:--");
             elapsedLabel.setText("⏱ Elapsed: " + elapsedStr);
             speedLabel.setText(String.format(java.util.Locale.US, "⚡ %.1f files/s • %.1f MB/s", filesPerSec, mbPerSec));
             etaLabel.setText("⏳ ETA: " + etaStr);
@@ -1350,7 +1378,8 @@ public class RecoveryCenterPanel extends JPanel {
                 this.pendingToolCard = target;
                 this.currentCard = CARD_AUTH_REQUIRED;
                 cardLayout.show(centerCards, CARD_AUTH_REQUIRED);
-                if (headerRow != null) headerRow.setVisible(true);
+                if (headerRow != null)
+                    headerRow.setVisible(true);
                 updateHeaderForCard(CARD_AUTH_REQUIRED);
                 if (moduleSelect != null) {
                     updatingModuleSelect = true;
@@ -1361,7 +1390,10 @@ public class RecoveryCenterPanel extends JPanel {
                     }
                 }
                 if (onCardChange != null) {
-                    try { onCardChange.accept(target); } catch (Exception ignored) {}
+                    try {
+                        onCardChange.accept(target);
+                    } catch (Exception ignored) {
+                    }
                 }
                 return;
             }
@@ -1369,9 +1401,11 @@ public class RecoveryCenterPanel extends JPanel {
             this.currentCard = target;
             cardLayout.show(centerCards, target);
             if (CARD_DASHBOARD.equalsIgnoreCase(target)) {
-                if (headerRow != null) headerRow.setVisible(false);
+                if (headerRow != null)
+                    headerRow.setVisible(false);
             } else {
-                if (headerRow != null) headerRow.setVisible(true);
+                if (headerRow != null)
+                    headerRow.setVisible(true);
                 updateHeaderForCard(target);
                 if (moduleSelect != null && !target.equals(moduleSelect.getSelectedItem())) {
                     updatingModuleSelect = true;
@@ -1383,7 +1417,10 @@ public class RecoveryCenterPanel extends JPanel {
                 }
             }
             if (onCardChange != null) {
-                try { onCardChange.accept(target); } catch (Exception ignored) {}
+                try {
+                    onCardChange.accept(target);
+                } catch (Exception ignored) {
+                }
             }
         });
     }
@@ -1417,13 +1454,19 @@ public class RecoveryCenterPanel extends JPanel {
     }
 
     public static String mapToCardName(String input) {
-        if (input == null) return CARD_DASHBOARD;
+        if (input == null)
+            return CARD_DASHBOARD;
         String s = input.trim();
-        if (s.equalsIgnoreCase("Dashboard") || s.equalsIgnoreCase(CARD_DASHBOARD)) return CARD_DASHBOARD;
-        if (s.equalsIgnoreCase("Restore") || s.equalsIgnoreCase(CARD_RESTORE)) return CARD_RESTORE;
-        if (s.contains("EXIF") || s.contains("Inspector")) return CARD_EXIF;
-        if (s.contains("Compare") || s.contains("Comparison")) return CARD_COMPARE;
-        if (s.contains("Duplicate") || s.contains("Cleaner")) return CARD_DUPLICATE;
+        if (s.equalsIgnoreCase("Dashboard") || s.equalsIgnoreCase(CARD_DASHBOARD))
+            return CARD_DASHBOARD;
+        if (s.equalsIgnoreCase("Restore") || s.equalsIgnoreCase(CARD_RESTORE))
+            return CARD_RESTORE;
+        if (s.contains("EXIF") || s.contains("Inspector"))
+            return CARD_EXIF;
+        if (s.contains("Compare") || s.contains("Comparison"))
+            return CARD_COMPARE;
+        if (s.contains("Duplicate") || s.contains("Cleaner"))
+            return CARD_DUPLICATE;
         return s;
     }
 

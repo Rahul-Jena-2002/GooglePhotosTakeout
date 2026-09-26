@@ -7,6 +7,7 @@
   Strict-Transport-Security: max-age=31536000; includeSubDomains; preload
   X-XSS-Protection: 1; mode=block
   Cross-Origin-Opener-Policy: same-origin-allow-popups
+  Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://apis.google.com https://www.gstatic.com; connect-src 'self' https://*.firebaseio.com https://*.googleapis.com https://freeipapi.com https://*.dodopayments.com wss://*.firebaseio.com; img-src 'self' data: blob: https://*.googleusercontent.com https://ui-avatars.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; frame-src 'self' https://*.firebaseapp.com; worker-src 'self' blob:; object-src 'none';
 
 /*.html
   Cache-Control: public, max-age=0, must-revalidate

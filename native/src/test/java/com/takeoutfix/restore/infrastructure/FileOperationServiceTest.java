@@ -52,6 +52,6 @@ public class FileOperationServiceTest {
 
         assertNotNull(copied);
         assertTrue(copied.exists(), "Chronological file must exist");
-        assertTrue(copied.getAbsolutePath().contains("2023-08"), "Path must contain Year-Month subfolder");
+        assertTrue(copied.getAbsolutePath().contains("08 - August"), "Path must contain Month subfolder");
     }
 }

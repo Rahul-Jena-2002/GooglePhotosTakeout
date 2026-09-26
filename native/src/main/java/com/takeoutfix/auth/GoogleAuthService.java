@@ -5,6 +5,10 @@ import org.springframework.beans.factory.ObjectFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
 import java.util.Base64;
 import java.util.Map;
@@ -51,16 +55,18 @@ public class GoogleAuthService {
 
     /**
      * Initiates Google OAuth 2.0 flow:
-     * 1. Generates anti-CSRF state token
+     * 1. Generates anti-CSRF state token and PKCE code challenge
      * 2. Starts local loopback listener bound specifically to 127.0.0.1 on an ephemeral port
-     * 3. Launches system browser to authenticate with forced account selection
-     * 4. Exchanges received authorization payload for Firebase tokens and persists session
+     * 3. Launches system browser directly to accounts.google.com
+     * 4. Exchanges received authorization code for tokens and persists session
      */
     public CompletableFuture<AuthSession> authenticate() {
         CompletableFuture<AuthSession> resultFuture = new CompletableFuture<>();
 
-        // Generate Anti-CSRF State Parameter
+        // Generate Anti-CSRF State Parameter & PKCE Verifier
         String stateToken = generateSecureRandomString(32);
+        String codeVerifier = generateSecureRandomString(64);
+        String codeChallenge = generateCodeChallenge(codeVerifier);
 
         AuthCallbackServer callbackServer = callbackServerProvider.getObject();
         CompletableFuture<Map<String, Object>> callbackFuture = new CompletableFuture<>();
@@ -71,13 +77,30 @@ public class GoogleAuthService {
                 return resultFuture;
             }
 
-            String baseUrl = resolveBaseAuthUrl();
+            String redirectUri = "http://127.0.0.1:" + port + "/auth/callback";
+            String clientId = FirebaseConfig.getGoogleClientId();
 
-            String authUrl = baseUrl + "?port=" + port
-                    + "&desktop_port=" + port
-                    + "&state=" + stateToken
-                    + "&select_account=true"
-                    + "&prompt=select_account";
+            String authUrl;
+            if (clientId != null && !clientId.isBlank()) {
+                // Direct RFC 8252 + RFC 7636 OAuth 2.0 directly to accounts.google.com
+                authUrl = "https://accounts.google.com/o/oauth2/v2/auth?"
+                        + "client_id=" + URLEncoder.encode(clientId, StandardCharsets.UTF_8)
+                        + "&response_type=code"
+                        + "&scope=" + URLEncoder.encode("openid profile email", StandardCharsets.UTF_8)
+                        + "&redirect_uri=" + URLEncoder.encode(redirectUri, StandardCharsets.UTF_8)
+                        + "&state=" + URLEncoder.encode(stateToken, StandardCharsets.UTF_8)
+                        + "&code_challenge=" + URLEncoder.encode(codeChallenge, StandardCharsets.UTF_8)
+                        + "&code_challenge_method=S256"
+                        + "&prompt=select_account";
+            } else {
+                // Fallback to webapp bridge
+                String baseUrl = resolveBaseAuthUrl();
+                authUrl = baseUrl + "?port=" + port
+                        + "&desktop_port=" + port
+                        + "&state=" + stateToken
+                        + "&select_account=true"
+                        + "&prompt=select_account";
+            }
 
             boolean opened = BrowserUtil.openBrowser(authUrl);
             if (!opened) {
@@ -95,6 +118,10 @@ public class GoogleAuthService {
                 }
 
                 try {
+                    // Inject PKCE verifier and redirectUri for the token exchange
+                    params.put("code_verifier", codeVerifier);
+                    params.put("redirect_uri", redirectUri);
+
                     // Exchange received credential / authorization code for Firebase tokens
                     AuthSession session = tokenService.exchangeGoogleCredential(params);
                     if (session == null || !session.isAuthenticated()) {
@@ -105,6 +132,22 @@ public class GoogleAuthService {
                     // Save session securely to session.json via CredentialStore and SessionManager
                     credentialStore.saveSession(session);
                     sessionManager.save(session);
+
+                    // Auto-focus TakeoutFix Desktop window so user transitions seamlessly
+                    javax.swing.SwingUtilities.invokeLater(() -> {
+                        for (java.awt.Window win : java.awt.Window.getWindows()) {
+                            if (win instanceof javax.swing.JFrame frame && frame.isVisible()) {
+                                frame.setState(java.awt.Frame.NORMAL);
+                                frame.toFront();
+                                frame.requestFocus();
+                                try {
+                                    frame.setAlwaysOnTop(true);
+                                    frame.setAlwaysOnTop(false);
+                                } catch (Exception ignored) {}
+                            }
+                        }
+                    });
+
                     resultFuture.complete(session);
 
                 } catch (Exception e) {
@@ -135,13 +178,15 @@ public class GoogleAuthService {
     }
 
     private boolean isLocalPortListening(int port) {
-        try (java.net.Socket s = new java.net.Socket()) {
-            s.connect(new java.net.InetSocketAddress("127.0.0.1", port), 100);
-            return true;
-        } catch (Exception ignored) {
-            // Local development server port is not active; fallback to production URL
-            return false;
+        for (String host : new String[]{"localhost", "127.0.0.1"}) {
+            try (java.net.Socket s = new java.net.Socket()) {
+                s.connect(new java.net.InetSocketAddress(host, port), 250);
+                return true;
+            } catch (Exception ignored) {
+                // Try next host candidate
+            }
         }
+        return false;
     }
 
     // ── PKCE and State Utilities (RFC 7636 & RFC 6749) ───────────────────────
@@ -150,5 +195,16 @@ public class GoogleAuthService {
         byte[] randomBytes = new byte[byteLength];
         SECURE_RANDOM.nextBytes(randomBytes);
         return Base64.getUrlEncoder().withoutPadding().encodeToString(randomBytes);
+    }
+
+    private String generateCodeChallenge(String codeVerifier) {
+        try {
+            byte[] bytes = codeVerifier.getBytes(StandardCharsets.US_ASCII);
+            MessageDigest md = MessageDigest.getInstance("SHA-256");
+            byte[] digest = md.digest(bytes);
+            return Base64.getUrlEncoder().withoutPadding().encodeToString(digest);
+        } catch (NoSuchAlgorithmException e) {
+            throw new IllegalStateException("SHA-256 not available for PKCE", e);
+        }
     }
 }

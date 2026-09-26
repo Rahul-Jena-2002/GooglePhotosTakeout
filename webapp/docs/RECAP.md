@@ -68,16 +68,16 @@ To keep the main Admin Settings panel clean and modular, configuration areas wer
 
 ---
 
-## 10. Real-time Keys Sync & MEK Fallback
+## 10. Real-time Keys Sync & Secure Decryption
 *   **Real-time `onSnapshot` Sync**: Subscribed both admin configuration pages to `settings/system` and `settings/secure` snapshots, synchronizing keys instantly between the Keys and Payment Gateway dashboards without a browser refresh.
-*   **Default Master Encryption Key (MEK) Fallback**: Auto-falls back to the default MEK (`92elPvQ63jp_SXOmGbLyOgvfcGHVP-GfDbbiyLV4rpw`) if none is active, decrypting all keys automatically upon visiting the panel.
+*   **Master Encryption Key (MEK) Security**: Requires admin MEK passphrase or deployment environment variable `ENCRYPTION_KEY` to decrypt keys, preventing unauthorized key access.
 *   **Eye Visibility Button Fix**: Centered the eye toggle buttons and adjusted z-indices to prevent focus/overlay click blocking.
 
 ---
 
 ## 11. Dynamic Gateway Hosts & Backend Decryption
 *   **Mode Detection based on Prefix**: Updated `local-server.js` and Cloud Functions `index.js` to route requests to Dodo Payments sandbox (`test.dodopayments.com`) or production (`live.dodopayments.com`) dynamically based on the decrypted key's prefix (`sk_test_` or `sk_live_`).
-*   **Zero-Config Local Backend Decryption**: Pre-loaded the default MEK inside the backend decrypt utility, allowing local server runs without manual terminal environment variables.
+*   **Secure Backend Decryption**: Decrypts keys at runtime via `ENCRYPTION_KEY` environment variable.
 
 ---
 

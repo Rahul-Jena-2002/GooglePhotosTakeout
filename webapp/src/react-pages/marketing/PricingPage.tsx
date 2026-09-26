@@ -69,73 +69,18 @@ const getTableCellStyle = (val: string, plan: 'free' | 'recovery_pass' | 'pro' |
 };
 
 function PricingPageContent() {
-  const { userData, region, campaigns, pricingTiers, featuresConfig, tierThresholds, recoveryPassHours, refundPolicy, comparisonRows, telemetryAccuracy, enablePricingAndPayments } = useAuth();
+  const { userData, region, campaigns, pricingTiers, featuresConfig, tierThresholds, recoveryPassHours, comparisonRows, telemetryAccuracy, enablePricingAndPayments } = useAuth();
   const isPricingLoading = Object.keys(pricingTiers).length === 0;
 
   const [comparisonRowsLocal, setComparisonRowsLocal] = useState<ComparisonRow[] | null>(null);
-  const [refundPolicyLocal, setRefundPolicyLocal] = useState<string | null>(null);
   const activeComparisonRows = comparisonRowsLocal || comparisonRows;
-  const activeRefundPolicy = refundPolicyLocal ?? refundPolicy;
 
   const [isPromoActiveLocal, setIsPromoActiveLocal] = useState(false);
   const [timeLeftStr, setTimeLeftStr] = useState("");
   const [activeCoupons, setActiveCoupons] = useState<Record<string, string>>({});
   const [activeCouponDiscountsLocal, setActiveCouponDiscountsLocal] = useState<Record<string, number>>({});
 
-  // ─── Limited-Time Unlimited Free Tier Promo (Overrides All Other Banners) ───
-  const [isFreePromoActive, setIsFreePromoActive] = useState(false);
-  const [freePromoEndsAt, setFreePromoEndsAt] = useState<number | null>(null);
-  const [freePromoTimeLeft, setFreePromoTimeLeft] = useState("");
 
-  useEffect(() => {
-    const unsub = onSnapshot(doc(db, "settings", "global"), (snap) => {
-      if (snap.exists()) {
-        const data = snap.data();
-        if (data.comparisonRows && Array.isArray(data.comparisonRows)) {
-          setComparisonRowsLocal(data.comparisonRows);
-        }
-        if (data.refundPolicy !== undefined) {
-          setRefundPolicyLocal(data.refundPolicy);
-        }
-        const promo = data.freeUnlimitedPromo;
-        if (promo && promo.enabled && promo.endsAt && Date.now() < promo.endsAt) {
-          setIsFreePromoActive(true);
-          setFreePromoEndsAt(promo.endsAt);
-        } else {
-          setIsFreePromoActive(false);
-          setFreePromoEndsAt(null);
-        }
-      }
-    }, (err) => {
-      console.error("Failed to listen to global promo settings:", err);
-    });
-    return () => unsub();
-  }, []);
-
-  useEffect(() => {
-    if (!isFreePromoActive || !freePromoEndsAt) {
-      setFreePromoTimeLeft("");
-      return;
-    }
-    const updateCountdown = () => {
-      const diff = freePromoEndsAt - Date.now();
-      if (diff <= 0) {
-        setIsFreePromoActive(false);
-        setFreePromoTimeLeft("");
-        return;
-      }
-      const totalSecs = Math.floor(diff / 1000);
-      const days = Math.floor(totalSecs / 86400);
-      const hours = Math.floor((totalSecs % 86400) / 3600);
-      const mins = Math.floor((totalSecs % 3600) / 60);
-      const pad = (n: number) => String(n).padStart(2, '0');
-      let str = `${pad(days)}d : ${pad(hours)}h : ${pad(mins)}m`;
-      setFreePromoTimeLeft(str);
-    };
-    updateCountdown();
-    const timer = setInterval(updateCountdown, 1000);
-    return () => clearInterval(timer);
-  }, [isFreePromoActive, freePromoEndsAt]);
 
   useEffect(() => {
     const checkPromoActive = () => {
@@ -376,7 +321,6 @@ function PricingPageContent() {
       }
     }
     if (!tierThresholds?.[planKey]) return text;
-    const { maxFiles, maxSizeMB } = tierThresholds[planKey];
     
     if (planKey === 'free' && text.toLowerCase().includes('250 files') && text.toLowerCase().includes('500mb')) {
       return "Unlimited photos & videos in your browser";
@@ -396,40 +340,39 @@ function PricingPageContent() {
         {/* Trust badge */}
         <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-bold uppercase tracking-wider mb-6">
           <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-          100% Free &amp; Open Community Edition
+          Free to use. No subscription required.
         </div>
 
         <h1 className="text-4xl md:text-6xl font-black mb-6 text-zinc-900 dark:text-white tracking-tight">
-          No Paywalls. No Pricing.<br />
-          <span className="text-emerald-500">100% Free &amp; Unlimited.</span>
+          Restore your memories without paying today.
         </h1>
 
         <p className="text-base md:text-lg text-zinc-600 dark:text-zinc-300 max-w-2xl mx-auto leading-relaxed mb-10">
-          We believe building trust is everything. Google Takeout separates your photos from their dates and locations. TakeoutFix reconnects them and restores all your photos and videos completely on your computer for free.
+          TakeoutFix is currently free to use, with no payment required to restore your photos.
         </p>
 
         {/* Feature Grid */}
         <div className="grid sm:grid-cols-3 gap-6 mb-12 text-left">
-          <div className="p-6 rounded-2xl bg-white/[0.02] border border-white/10 backdrop-blur-md">
+          <div className="p-6 rounded-2xl bg-zinc-50 dark:bg-white/[0.02] border border-zinc-200 dark:border-white/10 backdrop-blur-md">
             <div className="text-2xl mb-2">⚡</div>
-            <h3 className="text-base font-bold text-white mb-1.5">Unlimited Restorations</h3>
-            <p className="text-xs text-zinc-400 leading-relaxed">
-              No artificial limits. Restore small family folders or massive 50GB+ Google Takeout libraries easily.
+            <h3 className="text-base font-bold text-zinc-900 dark:text-white mb-1.5">Free to get started</h3>
+            <p className="text-xs text-zinc-600 dark:text-zinc-400 leading-relaxed">
+              Start restoring your photos immediately directly in your browser or desktop app with zero payment required.
             </p>
           </div>
 
-          <div className="p-6 rounded-2xl bg-white/[0.02] border border-white/10 backdrop-blur-md">
+          <div className="p-6 rounded-2xl bg-zinc-50 dark:bg-white/[0.02] border border-zinc-200 dark:border-white/10 backdrop-blur-md">
             <div className="text-2xl mb-2">🔒</div>
-            <h3 className="text-base font-bold text-white mb-1.5">100% Local Privacy</h3>
-            <p className="text-xs text-zinc-400 leading-relaxed">
-              Zero cloud uploads. Everything is processed directly inside your browser so your personal pictures never leave your device.
+            <h3 className="text-base font-bold text-zinc-900 dark:text-white mb-1.5">Process your photos locally</h3>
+            <p className="text-xs text-zinc-600 dark:text-zinc-400 leading-relaxed">
+              Zero cloud uploads. Everything is processed directly on your computer so your personal pictures never leave your device.
             </p>
           </div>
 
-          <div className="p-6 rounded-2xl bg-white/[0.02] border border-white/10 backdrop-blur-md">
+          <div className="p-6 rounded-2xl bg-zinc-50 dark:bg-white/[0.02] border border-zinc-200 dark:border-white/10 backdrop-blur-md">
             <div className="text-2xl mb-2">🎯</div>
-            <h3 className="text-base font-bold text-white mb-1.5">Original Dates &amp; Locations</h3>
-            <p className="text-xs text-zinc-400 leading-relaxed">
+            <h3 className="text-base font-bold text-zinc-900 dark:text-white mb-1.5">Restore original dates &amp; locations</h3>
+            <p className="text-xs text-zinc-600 dark:text-zinc-400 leading-relaxed">
               Puts your pictures back in chronological order with original camera timestamps, GPS locations, and descriptions intact.
             </p>
           </div>
@@ -439,12 +382,12 @@ function PricingPageContent() {
         <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
           <a href="/tool">
             <button className="btn-monochrome-primary px-8 h-14 font-bold text-sm rounded-xl cursor-pointer shadow-lg hover:scale-105 transition-all">
-              Launch Free Web Studio &rarr;
+              Launch Web Tool &rarr;
             </button>
           </a>
           <a href="/download">
             <button className="btn-monochrome-secondary px-8 h-14 font-bold text-sm rounded-xl cursor-pointer hover:bg-white/10 transition-all">
-              Download Free Desktop App
+              Download Desktop App
             </button>
           </a>
         </div>
@@ -467,94 +410,16 @@ function PricingPageContent() {
         </p>
       </div>
 
-      {/* ─── BANNER SECTION: Free Unlimited Promo OVERRIDES Every Other Banner ─── */}
-      {isFreePromoActive ? (
-        <div className="mb-12 max-w-2xl mx-auto bg-gradient-to-b from-emerald-50/90 via-emerald-50/40 to-white dark:from-emerald-950/40 dark:via-zinc-900/40 dark:to-zinc-900/60 border-2 border-emerald-400/50 dark:border-emerald-500/40 backdrop-blur-md rounded-2xl p-7 text-center flex flex-col gap-4 items-center shadow-lg shadow-emerald-500/10 animate-in fade-in zoom-in-95 duration-300">
-          <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-emerald-100 dark:bg-emerald-500/20 text-emerald-800 dark:text-emerald-300 text-xs font-black uppercase tracking-wider border border-emerald-300 dark:border-emerald-500/40 shadow-xs">
-            <span className="w-2 h-2 rounded-full bg-emerald-600 dark:bg-emerald-400 animate-ping" />
-            Special Limited-Time Event
-          </div>
-          <h2 className="text-2xl md:text-3xl font-black text-zinc-950 dark:text-white tracking-tight">
-            🎉 100% Free Unlimited Restoration is Live!
-          </h2>
-          <p className="text-sm md:text-base text-zinc-750 dark:text-zinc-300 max-w-lg leading-relaxed font-medium">
-            All file count and storage limits have been lifted for all Free accounts! Enjoy unlimited photo and video restoration with zero cost.
-          </p>
-          {freePromoTimeLeft && (
-            <div className="inline-flex items-center gap-2.5 px-4 py-2 rounded-xl bg-white dark:bg-zinc-950 border border-emerald-300/80 dark:border-emerald-500/40 shadow-sm font-mono text-xs md:text-sm">
-              <span className="text-emerald-800 dark:text-emerald-300 font-bold flex items-center gap-1.5">
-                <span>⏳</span> Special Offer Ends in:
-              </span>
-              <span className="text-zinc-950 dark:text-white font-black tracking-wider bg-emerald-100/70 dark:bg-zinc-900 px-2.5 py-0.5 rounded border border-emerald-200 dark:border-zinc-800">
-                {freePromoTimeLeft}
-              </span>
-            </div>
-          )}
-          <a
-            href="/tool"
-            className="mt-1 inline-flex items-center gap-2 px-7 py-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white dark:bg-emerald-500 dark:hover:bg-emerald-400 dark:text-zinc-950 font-black text-sm transition-all cursor-pointer shadow-md hover:shadow-emerald-500/25 hover:scale-105 active:scale-95"
-          >
-            Start Unlimited Free Fix <ArrowRight className="w-4 h-4" />
-          </a>
-        </div>
-      ) : isPromoActiveLocal ? (
-        <div className="mb-12 max-w-xl mx-auto bg-gradient-to-r from-indigo-50/80 via-purple-50/80 to-indigo-50/80 dark:from-indigo-500/10 dark:via-purple-500/10 dark:to-indigo-500/10 border border-indigo-200 dark:border-indigo-500/20 backdrop-blur-md rounded-2xl p-5 text-center flex flex-col gap-3.5 items-center shadow-sm">
-          <span className="text-sm font-bold text-indigo-800 dark:text-indigo-400">
-            {bannerText}
-          </span>
-          {Object.keys(activeCoupons).length > 0 && (
-            <div className="flex flex-wrap items-center justify-center gap-2 text-xs">
-              <span className="text-zinc-600 dark:text-zinc-400 font-medium">Active Coupons (click to copy):</span>
-              {Object.entries(activeCoupons).map(([planKey, code]) => {
-                const codeStr = String(code);
-                const planLabel = planKey === 'recovery_pass' ? 'Recovery' : planKey === 'pro' ? 'Pro' : 'Super';
-                const colorClass = planKey === 'recovery_pass' 
-                  ? 'text-zinc-800 dark:text-zinc-300 bg-zinc-100 dark:bg-zinc-800 border-zinc-300 dark:border-zinc-700 hover:bg-zinc-200 dark:hover:bg-zinc-750' 
-                  : planKey === 'pro'
-                    ? 'text-blue-700 dark:text-blue-400 bg-blue-50 dark:bg-blue-500/10 border-blue-200 dark:border-blue-500/20 hover:bg-blue-100 dark:hover:bg-blue-500/25'
-                    : 'text-amber-800 dark:text-amber-400 bg-amber-50 dark:bg-amber-500/10 border-amber-200 dark:border-amber-500/20 hover:bg-amber-100 dark:hover:bg-amber-500/25';
-                return (
-                  <button
-                    key={planKey}
-                    type="button"
-                    onClick={(e) => {
-                      e.preventDefault();
-                      navigator.clipboard.writeText(codeStr);
-                      useToastStore.getState().addToast(`Coupon code ${codeStr} copied!`, "success", 3000, "Copied");
-                    }}
-                    className={`px-2.5 py-1 rounded-lg font-mono font-bold border ${colorClass} transition-colors cursor-pointer select-none inline-flex items-center gap-1`}
-                    title={`Copy ${planLabel} coupon code`}
-                  >
-                    <span>{planLabel}: {codeStr}</span>
-                    <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" />
-                    </svg>
-                  </button>
-                );
-              })}
-            </div>
-          )}
-        </div>
-      ) : null}
+      {/* Plans Grid */}
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-16 items-stretch">
         
         {/* FREE PLAN */}
-        <div className={`flex flex-col bg-white dark:bg-zinc-900/50 border ${isFreePromoActive ? 'border-emerald-500/50 dark:border-emerald-500/40 shadow-lg shadow-emerald-500/10 ring-1 ring-emerald-500/20' : 'border-zinc-200 dark:border-zinc-800'} rounded-2xl p-6 h-full justify-between hover:border-zinc-300 dark:hover:border-zinc-700 shadow-sm transition-all relative overflow-hidden`}>
-          {isFreePromoActive && (
-            <div className="absolute top-0 right-0 bg-emerald-500 text-black text-[9px] font-black uppercase px-3 py-1 rounded-bl-xl tracking-wider">
-              Unlimited Event
-            </div>
-          )}
+        <div className="flex flex-col bg-white dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-6 h-full justify-between hover:border-zinc-300 dark:hover:border-zinc-700 shadow-sm transition-all relative overflow-hidden">
           <div>
             <div className="mb-6">
               <h2 className="text-2xl font-bold text-zinc-900 dark:text-white font-semibold flex items-center gap-2">
                 {featuresConfig?.headings?.free || 'Free'}
-                {isFreePromoActive && (
-                  <span className="text-[10px] font-black text-emerald-400 uppercase tracking-widest px-2 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/20">
-                    Unlimited
-                  </span>
-                )}
               </h2>
               <p className="text-zinc-500 dark:text-zinc-400 text-xs mt-1">{getFreeSubheading()}</p>
             </div>
@@ -584,8 +449,8 @@ function PricingPageContent() {
           </div>
           <div className="mt-8">
             <a href="/tool" className="w-full">
-              <button className={`w-full py-3 rounded-xl font-bold text-xs cursor-pointer transition-all ${isFreePromoActive ? 'bg-emerald-500 hover:bg-emerald-400 text-black font-extrabold shadow-md' : 'btn-monochrome-primary'}`}>
-                {isFreePromoActive ? 'Start Unlimited Free Fix' : 'Start Free Fix'}
+              <button className="w-full py-3 rounded-xl font-bold text-xs cursor-pointer transition-all btn-monochrome-primary">
+                Start Free Fix
               </button>
             </a>
           </div>
@@ -605,27 +470,10 @@ function PricingPageContent() {
                 ) : (
                 <div className="flex items-baseline flex-wrap gap-2">
                   <span className="text-4xl font-bold text-zinc-900 dark:text-white">{formattedRecoveryCurrent}</span>
-                  {(showRecoveryDiscount || activeCoupons['recovery_pass']) && (
+                  {showRecoveryDiscount && (
                     <div className="flex items-center gap-1.5 flex-wrap">
-                      {showRecoveryDiscount && <span className="text-sm text-zinc-500 line-through font-medium">{formattedRecoveryWas}</span>}
-                      {showRecoveryDiscount && <span className="text-[10px] font-bold text-green-400 bg-green-500/10 border border-green-500/20 px-1.5 py-0.5 rounded-md">{recoveryDisc}% OFF</span>}
-                      {activeCoupons['recovery_pass'] && (
-                        <span 
-                          onClick={(e) => {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            navigator.clipboard.writeText(activeCoupons['recovery_pass']);
-                            useToastStore.getState().addToast(`Coupon code ${activeCoupons['recovery_pass']} copied!`, "success", 3000, "Copied");
-                          }}
-                          className="text-[10px] font-bold text-indigo-400 bg-indigo-500/10 border border-indigo-500/20 px-1.5 py-0.5 rounded-md cursor-pointer hover:bg-indigo-500/20 transition-all select-none inline-flex items-center gap-1"
-                          title="Click to copy coupon code"
-                        >
-                          Code: {activeCoupons['recovery_pass']}
-                          <svg className="w-2.5 h-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" />
-                          </svg>
-                        </span>
-                      )}
+                      <span className="text-sm text-zinc-500 line-through font-medium">{formattedRecoveryWas}</span>
+                      <span className="text-[10px] font-bold text-green-400 bg-green-500/10 border border-green-500/20 px-1.5 py-0.5 rounded-md">{recoveryDisc}% OFF</span>
                     </div>
                   )}
                 </div>
@@ -681,49 +529,16 @@ function PricingPageContent() {
                 ) : (
                 <div className="flex items-baseline flex-wrap gap-2">
                   <span className="text-4xl font-bold text-zinc-900 dark:text-white">{formattedProCurrent}</span>
-                  {(showProDiscount || activeCoupons['pro']) && (
+                  {showProDiscount && (
                     <div className="flex items-center gap-1.5 flex-wrap">
-                      {showProDiscount && <span className="text-sm text-zinc-500 line-through font-medium">{formattedProWas}</span>}
-                      {showProDiscount && <span className="text-[10px] font-bold text-green-400 bg-green-500/10 border border-green-500/20 px-1.5 py-0.5 rounded-md">{proDisc}% OFF</span>}
-                      {activeCoupons['pro'] && (
-                        <span 
-                          onClick={(e) => {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            navigator.clipboard.writeText(activeCoupons['pro']);
-                            useToastStore.getState().addToast(`Coupon code ${activeCoupons['pro']} copied!`, "success", 3000, "Copied");
-                          }}
-                          className="text-[10px] font-bold text-indigo-400 bg-indigo-500/10 border border-indigo-500/20 px-1.5 py-0.5 rounded-md cursor-pointer hover:bg-indigo-500/20 transition-all select-none inline-flex items-center gap-1"
-                          title="Click to copy coupon code"
-                        >
-                          Code: {activeCoupons['pro']}
-                          <svg className="w-2.5 h-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" />
-                          </svg>
-                        </span>
-                      )}
+                      <span className="text-sm text-zinc-500 line-through font-medium">{formattedProWas}</span>
+                      <span className="text-[10px] font-bold text-green-400 bg-green-500/10 border border-green-500/20 px-1.5 py-0.5 rounded-md">{proDisc}% OFF</span>
                     </div>
                   )}
                 </div>
                 )}
 
-                {( (isPromoActiveLocal && proDisc > 0) || activeCoupons['pro'] ) && (
-                  <div className="mt-2 flex flex-col gap-1.5">
-                    {isPromoActiveLocal && proDisc > 0 && campaigns?.maxPurchaseLimit && (
-                      <div className="text-[10px] text-blue-500 dark:text-blue-400 font-bold bg-blue-500/10 border border-blue-500/20 rounded-lg p-1.5 inline-block">
-                        🔥 Claims: {campaigns?.currentPurchaseCount ?? 0} / {campaigns?.maxPurchaseLimit} claimed
-                      </div>
-                    )}
-                    {isPromoActiveLocal && proDisc > 0 && timeLeftStr && (
-                      <div className="text-[10px] text-blue-500 dark:text-blue-400 font-bold bg-blue-500/10 border border-blue-500/20 rounded-lg p-1.5 inline-block">
-                        ⏳ Expires in: {timeLeftStr}
-                      </div>
-                    )}
-
-                  </div>
-                )}
-
-                <p className="text-[11px] text-blue-600 dark:text-blue-300 mt-2.5 leading-relaxed font-medium">Use forever · On up to 2 devices</p>
+                <p className="text-[11px] text-blue-600 dark:text-blue-300 mt-2.5 leading-relaxed font-medium">Lifetime access · On up to 2 devices</p>
                 {priceIncludesTax && (
                   <span className="inline-flex items-center gap-1 mt-1.5 text-[9px] font-bold text-emerald-500 dark:text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-1.5 py-0.5 rounded-md">
                     ✓ incl. tax
@@ -764,49 +579,16 @@ function PricingPageContent() {
                 ) : (
                 <div className="flex items-baseline flex-wrap gap-2">
                   <span className="text-4xl font-bold text-zinc-900 dark:text-white">{formattedSuperCurrent}</span>
-                  {(showSuperDiscount || activeCoupons['super']) && (
+                  {showSuperDiscount && (
                     <div className="flex items-center gap-1.5 flex-wrap">
-                      {showSuperDiscount && <span className="text-sm text-zinc-500 line-through font-medium">{formattedSuperWas}</span>}
-                      {showSuperDiscount && <span className="text-[10px] font-bold text-green-400 bg-green-500/10 border border-green-500/20 px-1.5 py-0.5 rounded-md">{superDisc}% OFF</span>}
-                      {activeCoupons['super'] && (
-                        <span 
-                          onClick={(e) => {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            navigator.clipboard.writeText(activeCoupons['super']);
-                            useToastStore.getState().addToast(`Coupon code ${activeCoupons['super']} copied!`, "success", 3000, "Copied");
-                          }}
-                          className="text-[10px] font-bold text-indigo-400 bg-indigo-500/10 border border-indigo-500/20 px-1.5 py-0.5 rounded-md cursor-pointer hover:bg-indigo-500/20 transition-all select-none inline-flex items-center gap-1"
-                          title="Click to copy coupon code"
-                        >
-                          Code: {activeCoupons['super']}
-                          <svg className="w-2.5 h-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" />
-                          </svg>
-                        </span>
-                      )}
+                      <span className="text-sm text-zinc-500 line-through font-medium">{formattedSuperWas}</span>
+                      <span className="text-[10px] font-bold text-green-400 bg-green-500/10 border border-green-500/20 px-1.5 py-0.5 rounded-md">{superDisc}% OFF</span>
                     </div>
                   )}
                 </div>
                 )}
 
-                {( (isPromoActiveLocal && superDisc > 0) || activeCoupons['super'] ) && (
-                  <div className="mt-2 flex flex-col gap-1.5">
-                    {isPromoActiveLocal && superDisc > 0 && campaigns?.maxPurchaseLimit && (
-                      <div className="text-[10px] text-amber-500 dark:text-amber-400 font-bold bg-amber-500/10 border border-amber-500/20 rounded-lg p-1.5 inline-block">
-                        🔥 Claims: {campaigns?.currentPurchaseCount ?? 0} / {campaigns?.maxPurchaseLimit} claimed
-                      </div>
-                    )}
-                    {isPromoActiveLocal && superDisc > 0 && timeLeftStr && (
-                      <div className="text-[10px] text-amber-500 dark:text-amber-400 font-bold bg-amber-500/10 border border-amber-500/20 rounded-lg p-1.5 inline-block">
-                        ⏳ Expires in: {timeLeftStr}
-                      </div>
-                    )}
-
-                  </div>
-                )}
-
-                <p className="text-[11px] text-amber-600 dark:text-amber-400 mt-2.5 leading-relaxed font-medium">Use forever · On up to 3 devices</p>
+                <p className="text-[11px] text-amber-600 dark:text-amber-400 mt-2.5 leading-relaxed font-medium">Lifetime access · On up to 3 devices</p>
                 {priceIncludesTax && (
                   <span className="inline-flex items-center gap-1 mt-1.5 text-[9px] font-bold text-emerald-500 dark:text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-1.5 py-0.5 rounded-md">
                     ✓ incl. tax
@@ -926,33 +708,6 @@ function PricingPageContent() {
         <p className="text-[11px] text-zinc-500 dark:text-zinc-400 text-center mt-3 px-4">
           * Recovery accuracy based on standard Google Takeout exports with complete JSON sidecar files. Results may vary with partial or corrupted exports.
         </p>
-      </div>
-
-      <div className="mt-20 w-full max-w-5xl mx-auto text-center">
-        <h2 className="text-2xl font-bold mb-8 text-zinc-900 dark:text-white font-semibold">Plan Limits & Guarantee Conditions</h2>
-        
-        <div className="bg-zinc-50 dark:bg-zinc-950/45 border border-zinc-200 dark:border-zinc-900 p-8 sm:p-10 rounded-2xl space-y-8 shadow-sm">
-          <div>
-            <h3 className="text-sm font-bold text-zinc-900 dark:text-white uppercase tracking-wider mb-3">Enforcement of Limits</h3>
-            <p className="text-xs text-zinc-700 dark:text-zinc-300 leading-relaxed max-w-3xl mx-auto">
-              Limits on <strong>Free</strong> ({tierThresholds?.free?.maxFiles === 0 ? "Unlimited" : `${tierThresholds?.free?.maxFiles.toLocaleString()} files`}/{tierThresholds?.free?.maxSizeMB === 0 ? "Unlimited" : (tierThresholds?.free?.maxSizeMB >= 1024 ? `${(tierThresholds?.free?.maxSizeMB / 1024).toFixed(0)} GB` : `${tierThresholds?.free?.maxSizeMB} MB`)}) and <strong>Recovery Pass</strong> ({tierThresholds?.recovery_pass?.maxFiles === 0 ? "Unlimited" : `${tierThresholds?.recovery_pass?.maxFiles.toLocaleString()} files`}/{tierThresholds?.recovery_pass?.maxSizeMB === 0 ? "Unlimited" : (tierThresholds?.recovery_pass?.maxSizeMB >= 1024 ? `${(tierThresholds?.recovery_pass?.maxSizeMB / 1024).toFixed(0)} GB` : `${tierThresholds?.recovery_pass?.maxSizeMB} MB`)}) are enforced on a <strong>"whichever comes first"</strong> basis. You can access your account seamlessly across your devices.
-            </p>
-          </div>
-          
-          <div className="border-t border-zinc-200 dark:border-zinc-900 pt-6">
-            <h3 className="text-sm font-bold text-zinc-900 dark:text-white uppercase tracking-wider mb-3">Photo Matching & Recovery Accuracy*</h3>
-            <p className="text-xs text-zinc-700 dark:text-zinc-300 leading-relaxed max-w-3xl mx-auto">
-              * Recovery accuracy based on standard Google Takeout exports with complete JSON sidecar files. Results may vary with partial or corrupted exports.
-            </p>
-          </div>
-
-          <div className="border-t border-zinc-200 dark:border-zinc-900 pt-6">
-            <h3 className="text-sm font-bold text-zinc-900 dark:text-white uppercase tracking-wider mb-3">7-Day Refund Policy</h3>
-            <p className="text-xs text-zinc-700 dark:text-zinc-300 leading-relaxed max-w-3xl mx-auto whitespace-pre-wrap">
-              {renderFormattedText(activeRefundPolicy)}
-            </p>
-          </div>
-        </div>
       </div>
     </div>
   );

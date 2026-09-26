@@ -566,34 +566,19 @@ export function useToolPipeline() {
 
   useEffect(() => {
     const timer = setInterval(() => {
-      // 1. Attempt to poll live OS hardware telemetry from TakeoutFix Desktop bridge if running
-      fetch('http://127.0.0.1:47823/api/telemetry', { signal: AbortSignal.timeout(1200) })
-        .then(res => res.json())
-        .then(data => {
-          if (data && typeof data.cpuLoad === 'number') {
-            setTelemetryCpu(parseFloat(data.cpuLoad.toFixed(1)));
-            setTelemetryMem(parseFloat((data.ramUsedGB * 1024).toFixed(0)));
-            setTelemetryTabHeap(parseFloat((data.ramTotalGB * 1024).toFixed(0)));
-            setTelemetryWorkers(data.logicalThreads || navigator.hardwareConcurrency || 4);
-          }
-        })
-        .catch(() => {
-          // 2. Fallback to real browser heap telemetry
-          let heap = 0;
-          const perf = performance as unknown as { memory?: { usedJSHeapSize: number; totalJSHeapSize: number } };
-          if (perf.memory) {
-            heap = perf.memory.usedJSHeapSize / (1024 * 1024);
-          }
-          const baseHeap = heap > 0 ? heap : (isProcessing ? 240.0 : 120.0);
-          setTelemetryTabHeap(parseFloat(baseHeap.toFixed(1)));
+      let heap = 0;
+      const perf = performance as unknown as { memory?: { usedJSHeapSize: number; totalJSHeapSize: number } };
+      if (perf.memory) {
+        heap = perf.memory.usedJSHeapSize / (1024 * 1024);
+      }
+      const baseHeap = heap > 0 ? heap : (isProcessing ? 240.0 : 120.0);
+      setTelemetryTabHeap(parseFloat(baseHeap.toFixed(1)));
 
-          const cores = navigator.hardwareConcurrency || 4;
-          const activeCount = activeWorkersCount;
-          setTelemetryWorkers(activeCount > 0 ? activeCount : (isProcessing ? 1 : 0));
-          const cpuPercent = isProcessing ? Math.min(99, Math.max(8, (activeCount / Math.max(1, maxWorkers)) * 75 + 10)) : 1.2;
-          setTelemetryCpu(parseFloat(cpuPercent.toFixed(1)));
-          setTelemetryMem(parseFloat((baseHeap * 0.8).toFixed(1)));
-        });
+      const activeCount = activeWorkersCount;
+      setTelemetryWorkers(activeCount > 0 ? activeCount : (isProcessing ? 1 : 0));
+      const cpuPercent = isProcessing ? Math.min(99, Math.max(8, (activeCount / Math.max(1, maxWorkers)) * 75 + 10)) : 1.2;
+      setTelemetryCpu(parseFloat(cpuPercent.toFixed(1)));
+      setTelemetryMem(parseFloat((baseHeap * 0.8).toFixed(1)));
 
       if (isProcessingRef.current) {
         setTimeTick(t => t + 1);

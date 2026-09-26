@@ -6,6 +6,7 @@ import java.time.Instant;
 import java.util.*;
 
 import org.json.JSONObject;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -64,7 +65,7 @@ public class ExtractionService {
     private volatile int limitFiles = -1;
     private volatile int offsetFiles = 0;
     private volatile boolean interpolateMissing = false;
-    private volatile boolean organizeYearMonth = true;
+    private volatile boolean organizeYearMonth = false;
     private java.io.PrintWriter logWriter = null;
     private volatile ExecutorService activeWorkersPool = null;
     
@@ -143,9 +144,24 @@ public class ExtractionService {
     }
 
     private void runExtraction(File input, File output, PowerManager.PostAction postAction, Optional<Instant> takeoutDate, boolean cleanupInput, boolean outputZip) {
+        File restoreBase;
+        if (output.getName().equalsIgnoreCase("TakeoutFix Restore")) {
+            restoreBase = output;
+        } else {
+            restoreBase = new File(output, "TakeoutFix Restore");
+        }
+        File effectiveOutput = restoreBase;
+        String dirName = input.getName();
+        if (dirName != null && !dirName.isBlank()) {
+            if (dirName.toLowerCase().endsWith(".zip")) {
+                dirName = dirName.substring(0, dirName.length() - 4);
+            }
+            effectiveOutput = new File(restoreBase, dirName);
+        }
+
         try {
-            File logFile = new File(output, "restoration_log.log");
-            output.mkdirs();
+            File logFile = new File(effectiveOutput, "restoration_log.log");
+            effectiveOutput.mkdirs();
             this.logWriter = new java.io.PrintWriter(new java.io.FileWriter(logFile, true));
         } catch (Exception e) {
             System.err.println("Could not create log file in output directory: " + e.getMessage());
@@ -156,6 +172,7 @@ public class ExtractionService {
             power.startKeepAwake();
             this.startTimeMs = System.currentTimeMillis();
 
+            albumDetailsCache.clear();
             List<File> mediaFiles = scanner.listMediaFiles(input);
             totalFiles = mediaFiles.size();
             sendLog("INFO", "Found " + totalFiles + " media files in source archive.");
@@ -176,9 +193,9 @@ public class ExtractionService {
             
             try {
                 if (outputZip) {
-                    processAsZipChunks(mediaFiles, input, output, takeoutDate, dirCache, workers, matched, unmatched, errors);
+                    processAsZipChunks(mediaFiles, input, effectiveOutput, takeoutDate, dirCache, workers, matched, unmatched, errors);
                 } else {
-                    processAsLooseFiles(mediaFiles, input, output, takeoutDate, dirCache, workers, matched, unmatched, errors);
+                    processAsLooseFiles(mediaFiles, input, effectiveOutput, output, takeoutDate, dirCache, workers, matched, unmatched, errors);
                 }
             } finally {
                 workers.shutdownNow();
@@ -192,8 +209,25 @@ public class ExtractionService {
 
 
             if (cleanupInput) {
-                sendLog("INFO", "Cleaning up temporary input files to save disk space...");
-                fileService.deleteDirectory(input);
+                if (input != null && input.exists()) {
+                    try {
+                        java.nio.file.Path inputPathNormalized = input.toPath().toAbsolutePath().normalize();
+                        java.nio.file.Path outputPathNormalized = effectiveOutput.toPath().toAbsolutePath().normalize();
+                        java.nio.file.Path baseOutputPathNormalized = output.toPath().toAbsolutePath().normalize();
+
+                        if (outputPathNormalized.startsWith(inputPathNormalized) 
+                                || inputPathNormalized.startsWith(outputPathNormalized)
+                                || baseOutputPathNormalized.startsWith(inputPathNormalized)
+                                || inputPathNormalized.startsWith(baseOutputPathNormalized)) {
+                            sendLog("WARN", "Skipping input cleanup: source and destination directories overlap or are identical.");
+                        } else {
+                            sendLog("INFO", "Cleaning up temporary input files to save disk space...");
+                            fileService.deleteDirectory(input);
+                        }
+                    } catch (Exception ex) {
+                        sendLog("WARN", "Could not verify path boundaries for cleanup: " + ex.getMessage());
+                    }
+                }
             }
 
             if (postAction == PowerManager.PostAction.KEEP_AWAKE_THEN_SHUTDOWN) {
@@ -209,7 +243,7 @@ public class ExtractionService {
         }
     }
 
-    private void processAsLooseFiles(List<File> mediaFiles, File input, File output, Optional<Instant> takeoutDate, Map<String, File[]> dirCache, ExecutorService workers, java.util.concurrent.atomic.AtomicInteger matched, java.util.concurrent.atomic.AtomicInteger unmatched, java.util.concurrent.atomic.AtomicInteger errors) {
+    private void processAsLooseFiles(List<File> mediaFiles, File input, File effectiveOutput, File baseOutput, Optional<Instant> takeoutDate, Map<String, File[]> dirCache, ExecutorService workers, java.util.concurrent.atomic.AtomicInteger matched, java.util.concurrent.atomic.AtomicInteger unmatched, java.util.concurrent.atomic.AtomicInteger errors) {
         List<java.util.concurrent.CompletableFuture<Void>> futures = new ArrayList<>();
         for (File media : mediaFiles) {
             futures.add(java.util.concurrent.CompletableFuture.runAsync(() -> {
@@ -228,23 +262,25 @@ public class ExtractionService {
                         Instant targetTs = restorer.parseInstantFromJson(json.get(), takeoutDate);
                         File copiedFile;
                         if (organizeYearMonth) {
-                            copiedFile = fileService.copyToChronologicalOutput(media, input, output, targetTs);
+                            copiedFile = fileService.copyToChronologicalOutput(media, input, effectiveOutput, targetTs);
                         } else {
-                            java.nio.file.Path relativePath = fileService.copyToOutput(media, input, output);
-                            copiedFile = new File(output, relativePath.toString());
+                            java.nio.file.Path relativePath = fileService.copyToOutput(media, input, effectiveOutput);
+                            copiedFile = new File(effectiveOutput, relativePath.toString());
                         }
                         if (cancelled) return;
                         String displayPath = getDisplayPath(media, input);
-                        // Single merged ExifTool call: injects EXIF + GPS + album in one pass
-                        String albumTitle = getAlbumTitle(media);
-                        metadataInjector.injectMetadataAndAlbum(copiedFile, json.get(), albumTitle);
+                        // Single merged ExifTool call: injects EXIF + GPS + album details in one pass
+                        Optional<AlbumDetails> album = getAlbumDetails(media);
+                        String albumTitle = album.map(AlbumDetails::getTitle).orElse(null);
+                        String albumDesc = album.map(AlbumDetails::getDescription).orElse(null);
+                        metadataInjector.injectMetadataAndAlbum(copiedFile, json.get(), albumTitle, albumDesc);
                         Instant applied = restorer.restoreFromJson(copiedFile, json.get(), takeoutDate);
                         mediaTimestampCache.put(media.getAbsolutePath(), applied);
                         matched.incrementAndGet();
                         processedBytes.addAndGet(media.length());
                         notifyStats(totalFiles, totalFiles, matched.get(), unmatched.get(), errors.get());
-                        String destRelative = output.toPath().relativize(copiedFile.toPath()).toString();
-                        sendLog("SUCCESS", "[SUCCESS] Restored " + displayPath + (organizeYearMonth ? " -> " + destRelative : ""));
+                        String destRelative = baseOutput.toPath().relativize(copiedFile.toPath()).toString();
+                        sendLog("SUCCESS", "[SUCCESS] Restored " + displayPath + " -> " + destRelative);
                     } else {
                         if (cancelled) return;
                         
@@ -256,21 +292,25 @@ public class ExtractionService {
                             Instant fnInstant = filenameDate.get();
                             File copiedFile;
                             if (organizeYearMonth) {
-                                copiedFile = fileService.copyToChronologicalOutput(media, input, output, fnInstant);
+                                copiedFile = fileService.copyToChronologicalOutput(media, input, effectiveOutput, fnInstant);
                             } else {
-                                java.nio.file.Path relativePath = fileService.copyToOutput(media, input, output);
-                                copiedFile = new File(output, relativePath.toString());
+                                java.nio.file.Path relativePath = fileService.copyToOutput(media, input, effectiveOutput);
+                                copiedFile = new File(effectiveOutput, relativePath.toString());
                             }
                             if (cancelled) return;
                             String displayPath = getDisplayPath(media, input);
+                            Optional<AlbumDetails> album = getAlbumDetails(media);
+                            if (album.isPresent()) {
+                                metadataInjector.injectAlbumName(copiedFile, album.get().getTitle(), album.get().getDescription());
+                            }
                             restorer.applyInstant(copiedFile, fnInstant);
                             mediaTimestampCache.put(media.getAbsolutePath(), fnInstant);
                             matched.incrementAndGet();
                             processedBytes.addAndGet(media.length());
                             notifyStats(totalFiles, totalFiles, matched.get(), unmatched.get(), errors.get());
                             String formattedDate = java.time.LocalDateTime.ofInstant(fnInstant, java.time.ZoneId.systemDefault()).format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
-                            String destRelative = output.toPath().relativize(copiedFile.toPath()).toString();
-                            sendLog("SUCCESS", "[FILENAME DATE] " + displayPath + " -> Extracted timestamp: " + formattedDate + (organizeYearMonth ? " -> " + destRelative : ""));
+                            String destRelative = baseOutput.toPath().relativize(copiedFile.toPath()).toString();
+                            sendLog("SUCCESS", "[FILENAME DATE] " + displayPath + " -> Extracted timestamp: " + formattedDate + " -> " + destRelative);
                         } else {
                             // Priority 3: Fallback to adjacent media estimation
                             if (interpolateMissing) {
@@ -281,12 +321,16 @@ public class ExtractionService {
                                 Instant est = interpolated.get();
                                 File estimatedFile;
                                 if (organizeYearMonth) {
-                                    estimatedFile = fileService.copyToChronologicalFolder(media, input, output, "estimated_metadata", est);
+                                    estimatedFile = fileService.copyToChronologicalFolder(media, input, effectiveOutput, "estimated_metadata", est);
                                 } else {
-                                    estimatedFile = fileService.copyToEstimated(media, input, output);
+                                    estimatedFile = fileService.copyToEstimated(media, input, effectiveOutput);
                                 }
                                 if (cancelled) return;
                                 String displayPath = getDisplayPath(media, input);
+                                Optional<AlbumDetails> album = getAlbumDetails(media);
+                                if (album.isPresent()) {
+                                    metadataInjector.injectAlbumName(estimatedFile, album.get().getTitle(), album.get().getDescription());
+                                }
                                 restorer.applyInstant(estimatedFile, est);
                                 mediaTimestampCache.put(media.getAbsolutePath(), est);
                                 matched.incrementAndGet();
@@ -301,9 +345,9 @@ public class ExtractionService {
                                 String displayPath = getDisplayPath(media, input);
                                 sendLog("WARN", "[NO META] " + displayPath + " -> copying to metadata_not_found");
                                 if (organizeYearMonth) {
-                                    fileService.copyToChronologicalFolder(media, input, output, "metadata_not_found", null);
+                                    fileService.copyToChronologicalFolder(media, input, effectiveOutput, "metadata_not_found", null);
                                 } else {
-                                    fileService.copyToUnmatched(media, input, output);
+                                    fileService.copyToUnmatched(media, input, effectiveOutput);
                                 }
                             }
                         }
@@ -314,7 +358,7 @@ public class ExtractionService {
                     notifyStats(totalFiles, totalFiles, matched.get(), unmatched.get(), errors.get());
                     String displayPath = getDisplayPath(media, input);
                     sendLog("ERROR", "[ERROR] " + displayPath + " -> " + ex.getMessage());
-                    fileService.copyToUnmatchedSafe(media, input, output);
+                    fileService.copyToUnmatchedSafe(media, input, effectiveOutput);
                 } finally {
                     checkLimitsAndIncrement(media.getName());
                 }
@@ -358,7 +402,11 @@ public class ExtractionService {
                             zipPart++;
                             zout = new java.util.zip.ZipOutputStream(new java.io.FileOutputStream(new File(output, "Restored_Takeout_Part" + zipPart + ".zip")));
                         }
-                        java.util.zip.ZipEntry entry = new java.util.zip.ZipEntry(input.toPath().relativize(zi.originalMedia.toPath()).toString());
+                        String entryPath = input.toPath().relativize(zi.originalMedia.toPath()).toString().replace('\\', '/');
+                        if (input.isDirectory() && input.getName() != null && !input.getName().isBlank()) {
+                            entryPath = input.getName() + "/" + entryPath;
+                        }
+                        java.util.zip.ZipEntry entry = new java.util.zip.ZipEntry(entryPath);
                         if (zi.timestamp != null) {
                             entry.setLastModifiedTime(java.nio.file.attribute.FileTime.from(zi.timestamp));
                         }
@@ -405,8 +453,10 @@ public class ExtractionService {
                                 java.nio.file.Files.copy(media.toPath(), tempCopied.toPath(), java.nio.file.StandardCopyOption.REPLACE_EXISTING);
 
                                 // Single merged ExifTool call (parallel — no lock needed)
-                                String albumTitle = getAlbumTitle(media);
-                                metadataInjector.injectMetadataAndAlbum(tempCopied, json.get(), albumTitle);
+                                Optional<AlbumDetails> album = getAlbumDetails(media);
+                                String albumTitle = album.map(AlbumDetails::getTitle).orElse(null);
+                                String albumDesc = album.map(AlbumDetails::getDescription).orElse(null);
+                                metadataInjector.injectMetadataAndAlbum(tempCopied, json.get(), albumTitle, albumDesc);
                                 Instant applied = restorer.restoreFromJson(tempCopied, json.get(), takeoutDate);
 
                                 String displayPath = getDisplayPath(media, input);
@@ -434,6 +484,10 @@ public class ExtractionService {
                                     if (cancelled) { tempCopied.delete(); return; }
                                     java.nio.file.Files.copy(media.toPath(), tempCopied.toPath(), java.nio.file.StandardCopyOption.REPLACE_EXISTING);
                                     Instant fnInstant = filenameDate.get();
+                                    Optional<AlbumDetails> album = getAlbumDetails(media);
+                                    if (album.isPresent()) {
+                                        metadataInjector.injectAlbumName(tempCopied, album.get().getTitle(), album.get().getDescription());
+                                    }
                                     restorer.applyInstant(tempCopied, fnInstant);
                                     zipQueue.put(new ZipItem(tempCopied, media, fnInstant));
                                     mediaTimestampCache.put(media.getAbsolutePath(), fnInstant);
@@ -459,6 +513,10 @@ public class ExtractionService {
                                         if (cancelled) { tempCopied.delete(); return; }
                                         java.nio.file.Files.copy(media.toPath(), tempCopied.toPath(), java.nio.file.StandardCopyOption.REPLACE_EXISTING);
                                         Instant est = interpolated.get();
+                                        Optional<AlbumDetails> album = getAlbumDetails(media);
+                                        if (album.isPresent()) {
+                                            metadataInjector.injectAlbumName(tempCopied, album.get().getTitle(), album.get().getDescription());
+                                        }
                                         restorer.applyInstant(tempCopied, est);
                                         zipQueue.put(new ZipItem(tempCopied, media, est));
                                         mediaTimestampCache.put(media.getAbsolutePath(), est);
@@ -590,7 +648,11 @@ public class ExtractionService {
     public record ProgressUpdate(int current, int total, long processedBytes) {}
     private String getDisplayPath(File media, File input) {
         try {
-            return input.toPath().relativize(media.toPath()).toString();
+            String rel = input.toPath().relativize(media.toPath()).toString();
+            if (input.isDirectory() && input.getName() != null && !input.getName().isBlank()) {
+                return input.getName() + File.separator + rel;
+            }
+            return rel;
         } catch (Exception e) {
             return media.getName();
         }
@@ -694,38 +756,82 @@ public class ExtractionService {
         return null;
     }
 
-    private String getAlbumTitle(File mediaFile) {
+    public static class AlbumDetails {
+        private final String title;
+        private final String description;
+
+        public AlbumDetails(String title, String description) {
+            this.title = title;
+            this.description = description;
+        }
+
+        public String getTitle() { return title; }
+        public String getDescription() { return description; }
+    }
+
+    private final Map<String, Optional<AlbumDetails>> albumDetailsCache = new ConcurrentHashMap<>();
+
+    private Optional<AlbumDetails> getAlbumDetails(File mediaFile) {
         try {
             File parent = mediaFile.getParentFile();
-            if (parent == null) return null;
-            
-            String folderName = parent.getName().trim().toLowerCase();
+            if (parent == null) return Optional.empty();
+
+            String parentPath = parent.getAbsolutePath();
+            Optional<AlbumDetails> cached = albumDetailsCache.get(parentPath);
+            if (cached != null) {
+                return cached;
+            }
+
+            String originalFolderName = parent.getName().trim();
+            String folderName = originalFolderName.toLowerCase();
+
             // Exclude Takeout organizational folders ("Photos from YYYY") and system folders
             if (folderName.matches("^photos from \\d{4}$")
                 || folderName.equals("archive")
                 || folderName.equals("locked folder")
                 || folderName.equals("bin")
                 || folderName.equals("trash")
-                || folderName.equals("similar shots")) {
-                return null;
+                || folderName.equals("similar shots")
+                || folderName.equals("takeout")
+                || folderName.equals("google photos")
+                || folderName.equals("takeoutfix restore")) {
+                albumDetailsCache.put(parentPath, Optional.empty());
+                return Optional.empty();
             }
-            
+
+            String title = originalFolderName;
+            String description = null;
+
+            // Check if folder contains Google Takeout's album metadata.json
             File metadataJson = new File(parent, "metadata.json");
             if (metadataJson.isFile()) {
-                String content = Files.readString(metadataJson.toPath());
-                JSONObject json = new JSONObject(content);
-                if (json.has("title") && !json.isNull("title")) {
-                    String title = json.getString("title").trim();
-                    if (!title.isEmpty() && !title.toLowerCase().matches("^photos from \\d{4}$")) {
-                        return title;
+                try {
+                    String content = Files.readString(metadataJson.toPath());
+                    JSONObject json = new JSONObject(content);
+                    if (json.has("title") && !json.isNull("title")) {
+                        String parsedTitle = json.getString("title").trim();
+                        if (!parsedTitle.isEmpty() && !parsedTitle.toLowerCase().matches("^photos from \\d{4}$")) {
+                            title = parsedTitle;
+                        }
                     }
-                }
+                    if (json.has("description") && !json.isNull("description")) {
+                        String parsedDesc = json.getString("description").trim();
+                        if (!parsedDesc.isEmpty()) {
+                            description = parsedDesc;
+                        }
+                    }
+                } catch (Exception ignored) {}
             }
+
+            AlbumDetails details = new AlbumDetails(title, description);
+            Optional<AlbumDetails> opt = Optional.of(details);
+            albumDetailsCache.put(parentPath, opt);
+            return opt;
         } catch (Exception ignored) {
-            // Ignore parse errors or missing files
+            return Optional.empty();
         }
-        return null;
     }
+
 
     public long getProcessedBytes() {
         return processedBytes.get();

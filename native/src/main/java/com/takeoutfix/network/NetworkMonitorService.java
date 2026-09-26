@@ -2,6 +2,7 @@ package com.takeoutfix.network;
 
 import org.springframework.stereotype.Service;
 
+import java.net.URI;
 import java.net.URL;
 import java.net.URLConnection;
 import java.util.List;
@@ -57,7 +58,7 @@ public class NetworkMonitorService {
 
     private boolean pingTest() {
         try {
-            URL url = new URL("https://www.google.com");
+            URL url = URI.create("https://www.google.com").toURL();
             URLConnection conn = url.openConnection();
             conn.setConnectTimeout(2500);
             conn.setReadTimeout(2500);
@@ -65,7 +66,7 @@ public class NetworkMonitorService {
             return true;
         } catch (Exception e) {
             try {
-                URL url2 = new URL("https://takeout-fix.firebaseapp.com");
+                URL url2 = URI.create("https://takeout-fix.firebaseapp.com").toURL();
                 URLConnection conn2 = url2.openConnection();
                 conn2.setConnectTimeout(2500);
                 conn2.setReadTimeout(2500);

@@ -1,7 +1,6 @@
 package com.takeoutfix.auth;
 
 import com.takeoutfix.network.DirectAuthHttpsService;
-import com.takeoutfix.network.DesktopAuthServer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -14,7 +13,6 @@ import java.nio.file.Files;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.UUID;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -24,9 +22,9 @@ import java.util.function.Consumer;
  * Bridge between auth state, local persistent session file, and the GUI.
  *
  * Persistent login strategy:
- *  - On startup, silent token verification is executed via SessionManager.
- *  - Tokens are stored in the OS Keyring via CredentialStore.
- *  - Public metadata is stored in ~/.takeoutfix/session.json.
+ * - On startup, silent token verification is executed via SessionManager.
+ * - Tokens are stored in the OS Keyring via CredentialStore.
+ * - Public metadata is stored in ~/.takeoutfix/session.json.
  */
 @Service
 public class UserSyncBridgeService {
@@ -117,7 +115,8 @@ public class UserSyncBridgeService {
 
     // ── Direct Email/Password & HTTPS Auth Methods ───────────────────────────
 
-    public void signInWithEmail(String email, String password, Component parent, Consumer<Map<String, Object>> onSuccess, Consumer<String> onError) {
+    public void signInWithEmail(String email, String password, Component parent,
+            Consumer<Map<String, Object>> onSuccess, Consumer<String> onError) {
         executorService.submit(() -> {
             try {
                 Map<String, Object> profile = DirectAuthHttpsService.signInWithEmailPassword(email, password);
@@ -141,7 +140,8 @@ public class UserSyncBridgeService {
         });
     }
 
-    public void signUpWithEmail(String email, String password, Component parent, Consumer<Map<String, Object>> onSuccess, Consumer<String> onError) {
+    public void signUpWithEmail(String email, String password, Component parent,
+            Consumer<Map<String, Object>> onSuccess, Consumer<String> onError) {
         executorService.submit(() -> {
             try {
                 Map<String, Object> profile = DirectAuthHttpsService.signUpWithEmailPassword(email, password);
@@ -185,7 +185,8 @@ public class UserSyncBridgeService {
         });
     }
 
-    public void signInWithLinkOrToken(String input, Component parent, Consumer<Map<String, Object>> onSuccess, Consumer<String> onError) {
+    public void signInWithLinkOrToken(String input, Component parent, Consumer<Map<String, Object>> onSuccess,
+            Consumer<String> onError) {
         executorService.submit(() -> {
             try {
                 Map<String, Object> profile = DirectAuthHttpsService.parseAndAuthenticate(input);
@@ -212,35 +213,19 @@ public class UserSyncBridgeService {
     // ── Browser Google Authentication Flow ───────────────────────────────────
 
     public static void openGoogleLogin(Component parent) {
-        try {
-            String stateToken = UUID.randomUUID().toString().replace("-", "");
-            int port = DesktopAuthServer.start(profile -> SwingUtilities.invokeLater(() -> {
-                UserController.syncUser(profile);
-                saveSessionFile(profile);
+        new GoogleAuthService().authenticate().whenComplete((session, error) -> SwingUtilities.invokeLater(() -> {
+            if (error != null) {
                 JOptionPane.showMessageDialog(parent,
-                        "Welcome back, " + profile.getOrDefault("displayName", profile.getOrDefault(KEY_EMAIL, "User")) + "!\nYour session is active.",
-                        "Sign-In Successful", JOptionPane.INFORMATION_MESSAGE);
-            }), stateToken);
-
-            if (port <= 0) {
-                JOptionPane.showMessageDialog(parent,
-                        "Failed to initialize local authentication listener.",
+                        "Google Sign-In was cancelled or failed:\n" + error.getMessage(),
                         "Sign-In Error", JOptionPane.ERROR_MESSAGE);
-                return;
-            }
-
-            String url = "https://takeoutfix.pages.dev/login?desktop_port=" + port + "&port=" + port + "&state=" + stateToken + "&provider=google&prompt=select_account";
-            boolean opened = com.takeoutfix.shared.util.BrowserUtil.openBrowser(url);
-            if (!opened) {
+            } else if (session != null && session.isAuthenticated()) {
+                UserController.syncUser(session.toMap());
+                saveSessionFile(session.toMap());
                 JOptionPane.showMessageDialog(parent,
-                        "Could not open browser automatically.\nPlease visit:\n" + url,
-                        "Open Browser", JOptionPane.INFORMATION_MESSAGE);
+                        "Welcome back, " + session.getDisplayName() + "!\nYour session is active.",
+                        "Sign-In Successful", JOptionPane.INFORMATION_MESSAGE);
             }
-        } catch (Exception ex) {
-            JOptionPane.showMessageDialog(parent,
-                    "Failed to open browser for Google login:\n" + ex.getMessage(),
-                    "Sign-In Error", JOptionPane.ERROR_MESSAGE);
-        }
+        }));
     }
 
     public void startBrowserSignIn(Component parent) {
@@ -262,7 +247,8 @@ public class UserSyncBridgeService {
     // ── Session persistence ──────────────────────────────────────────────────
 
     public static void saveSessionFile(Map<String, Object> profile) {
-        if (profile == null || profile.isEmpty()) return;
+        if (profile == null || profile.isEmpty())
+            return;
         try {
             AuthSession session = AuthSession.fromMap(profile);
             if (session != null && session.isValid()) {
@@ -303,7 +289,8 @@ public class UserSyncBridgeService {
         String refreshToken = (String) p.getOrDefault("refreshToken", "");
         String idToken = (String) p.getOrDefault("idToken", p.getOrDefault("token", ""));
         return email != null && !email.trim().isEmpty() &&
-                ((refreshToken != null && !refreshToken.trim().isEmpty()) || (idToken != null && !idToken.trim().isEmpty()));
+                ((refreshToken != null && !refreshToken.trim().isEmpty())
+                        || (idToken != null && !idToken.trim().isEmpty()));
     }
 
     public String getCurrentEmail() {
@@ -316,7 +303,8 @@ public class UserSyncBridgeService {
     }
 
     public String getCurrentPlan() {
-        if (!isSignedIn()) return "none";
+        if (!isSignedIn())
+            return "none";
         boolean pricingEnabled = Boolean.TRUE.equals(getCurrentProfile().get("enablePricingAndPayments"));
         if (!pricingEnabled) {
             return "free";
@@ -392,7 +380,8 @@ public class UserSyncBridgeService {
     }
 
     /**
-     * Explicit user-initiated sign-out. Deletes all local session and repository state.
+     * Explicit user-initiated sign-out. Deletes all local session and repository
+     * state.
      */
     public void signOut() {
         try {
@@ -448,9 +437,12 @@ public class UserSyncBridgeService {
     }
 
     public static long getNumeric(Object obj) {
-        if (obj instanceof Number num) return num.longValue();
+        if (obj instanceof Number num)
+            return num.longValue();
         if (obj instanceof String str) {
-            try { return Long.parseLong(str); } catch (Exception ignored) {
+            try {
+                return Long.parseLong(str);
+            } catch (Exception ignored) {
                 // Return fallback 0 if parse fails
             }
         }

@@ -90,50 +90,80 @@ public class ApplicationStartupController {
      *     show Sign-In dialog (Step 1)
      */
     public void startApplication() {
+        System.out.println("[ApplicationStartupController] startApplication() triggered");
         initMainFrame();
 
         com.takeoutfix.auth.CredentialStore credStore = new com.takeoutfix.auth.CredentialStore();
-        if (!credStore.hasStoredCredential()) {
+        boolean hasCred = credStore.hasStoredCredential();
+        System.out.println("[ApplicationStartupController] hasStoredCredential: " + hasCred);
+        if (!hasCred) {
             // Unauthenticated / fresh start: Open dashboard directly in Guest Mode
             showDashboard(AuthSession.unauthenticated());
             return;
         }
 
-        // Session exists with refreshToken: Revalidate silently BEFORE rendering main dashboard
-        showLoadingView();
+        // 1. Instantly display Dashboard with cached session (no jarring small-window resize!)
+        AuthSession cachedSession = credStore.loadSession();
+        if (cachedSession == null) {
+            cachedSession = AuthSession.unauthenticated();
+        }
+        showDashboard(cachedSession);
 
+        // 2. Display the sleek "⚠️ Authenticating..." banner matching the requested style
+        if (dashboardView != null) {
+            dashboardView.showAuthenticatingBanner("Authenticating...");
+        }
+
+        // 3. Silently revalidate credentials in the background
+        final AuthSession finalCachedSession = cachedSession;
         CompletableFuture.supplyAsync(sessionManager::restore)
                 .thenAccept(result -> SwingUtilities.invokeLater(() -> {
                     if (result instanceof SessionRestoreResult.Authenticated auth) {
                         isAuthenticated = true;
                         UserController.syncUser(auth.session().toMap());
+                        userSyncBridgeService.signIn(auth.session().getEmail(), auth.session().getPlan());
                         userSyncBridgeService.triggerCloudSync(null);
-                        showDashboard(auth.session());
+                        if (dashboardView != null) {
+                            dashboardView.showAuthenticatedBanner(auth.session().getEmail(), auth.session().getPlan());
+                        }
                     } else if (result instanceof SessionRestoreResult.AuthUnavailable) {
                         // Preserved offline session during transient network failures
-                        AuthSession stored = credStore.loadSession();
-                        if (stored != null && stored.isAuthenticated()) {
+                        if (finalCachedSession != null && finalCachedSession.isAuthenticated()) {
                             isAuthenticated = true;
-                            UserController.syncUser(stored.toMap());
-                            showDashboard(stored);
+                            UserController.syncUser(finalCachedSession.toMap());
+                            userSyncBridgeService.signIn(finalCachedSession.getEmail(), finalCachedSession.getPlan());
+                            if (dashboardView != null) {
+                                dashboardView.showOfflineBanner(finalCachedSession.getEmail());
+                            }
                         } else {
                             isAuthenticated = false;
-                            showDashboard(AuthSession.unauthenticated());
+                            userSyncBridgeService.signOut();
+                            if (dashboardView != null) {
+                                dashboardView.hideAuthBanner();
+                            }
                         }
                     } else {
                         // 400, invalid_grant, expired or corrupt token:
-                        // Fall back to Dashboard in Guest Mode
                         isAuthenticated = false;
                         credStore.clear();
                         userSyncBridgeService.signOut();
-                        showDashboard(AuthSession.unauthenticated());
+                        if (dashboardView != null) {
+                            dashboardView.showAuthFailedBanner(() -> {
+                                if (mainFrame != null) {
+                                    new com.takeoutfix.auth.ui.SignInDialog(mainFrame, userSyncBridgeService).setVisible(true);
+                                }
+                            });
+                        }
                     }
                 }))
                 .exceptionally(error -> {
                     SwingUtilities.invokeLater(() -> {
                         isAuthenticated = false;
                         credStore.clear();
-                        showDashboard(AuthSession.unauthenticated());
+                        userSyncBridgeService.signOut();
+                        if (dashboardView != null) {
+                            dashboardView.hideAuthBanner();
+                        }
                     });
                     return null;
                 });
@@ -254,6 +284,7 @@ public class ApplicationStartupController {
         this.currentView = dashboardView;
 
         if (mainFrame != null) {
+            System.out.println("[ApplicationStartupController] Configuring and displaying mainFrame (visible=true)...");
             mainFrame.setTitle(isAuthenticated ? "TakeoutFix Operations Center" : "TakeoutFix Operations Center — Guest Mode");
             mainFrame.setResizable(true);
             mainFrame.setMinimumSize(new Dimension(1060, 740));
@@ -263,12 +294,11 @@ public class ApplicationStartupController {
             mainFrame.revalidate();
             mainFrame.repaint();
             mainFrame.setVisible(true);
-
-            SwingUtilities.invokeLater(() -> {
-                mainFrame.setExtendedState(JFrame.MAXIMIZED_BOTH);
-                mainFrame.toFront();
-                mainFrame.requestFocus();
-            });
+            mainFrame.toFront();
+            mainFrame.requestFocus();
+            System.out.println("[ApplicationStartupController] mainFrame display complete. isShowing=" + mainFrame.isShowing() + " bounds=" + mainFrame.getBounds());
+        } else {
+            System.err.println("[ApplicationStartupController] ERROR: mainFrame is null in showDashboard!");
         }
     }
 

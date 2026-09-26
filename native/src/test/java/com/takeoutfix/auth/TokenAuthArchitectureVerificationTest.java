@@ -5,7 +5,6 @@ import com.takeoutfix.app.ApplicationStartupController;
 import com.takeoutfix.network.NetworkMonitorService;
 import com.takeoutfix.restore.SessionStatsService;
 import com.takeoutfix.restore.infrastructure.ExtractionService;
-import com.takeoutfix.ui.auth.SignInView;
 import org.json.JSONObject;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;

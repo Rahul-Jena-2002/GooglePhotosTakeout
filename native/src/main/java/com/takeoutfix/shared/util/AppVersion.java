@@ -9,8 +9,8 @@ import java.util.Properties;
  */
 public class AppVersion {
 
-    private static String version = "2.1.7";
-    private static int buildNumber = 117;
+    private static String version = "2.1.8";
+    private static int buildNumber = 118;
     private static String buildTimestamp = "";
 
     static {

@@ -22,11 +22,25 @@ import org.springframework.stereotype.Service;
 @Service
 public class FirebaseTokenService {
 
-    public static final String FIREBASE_WEB_API_KEY = "AIzaSyDBTj1lcAbftiAYwnv5upjHK7ET_sNgZNk";
-    private static final String FIREBASE_SIGNIN_IDP_ENDPOINT = "https://identitytoolkit.googleapis.com/v1/accounts:signInWithIdp?key=" + FIREBASE_WEB_API_KEY;
-    private static final String FIREBASE_LOOKUP_ENDPOINT = "https://identitytoolkit.googleapis.com/v1/accounts:lookup?key=" + FIREBASE_WEB_API_KEY;
-    private static final String FIREBASE_REFRESH_ENDPOINT = "https://securetoken.googleapis.com/v1/token?key=" + FIREBASE_WEB_API_KEY;
-    private static final String FIRESTORE_USER_ENDPOINT = "https://firestore.googleapis.com/v1/projects/takeout-fix/databases/(default)/documents/users/";
+    public static String getFirebaseApiKey() {
+        return FirebaseConfig.getApiKey();
+    }
+
+    private static String getSigninIdpEndpoint() {
+        return "https://identitytoolkit.googleapis.com/v1/accounts:signInWithIdp?key=" + FirebaseConfig.getApiKey();
+    }
+
+    private static String getLookupEndpoint() {
+        return "https://identitytoolkit.googleapis.com/v1/accounts:lookup?key=" + FirebaseConfig.getApiKey();
+    }
+
+    private static String getRefreshEndpoint() {
+        return "https://securetoken.googleapis.com/v1/token?key=" + FirebaseConfig.getApiKey();
+    }
+
+    private static String getFirestoreUserEndpoint() {
+        return "https://firestore.googleapis.com/v1/projects/" + FirebaseConfig.getProjectId() + "/databases/(default)/documents/users/";
+    }
 
     private final HttpClient httpClient;
 
@@ -60,8 +74,55 @@ public class FirebaseTokenService {
             return new AuthSession(uid, email, displayName, photoUrl, idToken, refreshToken, plan, expiresAt);
         }
 
-        // Otherwise exchange raw Google ID token via Firebase signInWithIdp
+        // If an OAuth authorization code was received directly from accounts.google.com
+        String code = String.valueOf(callbackParams.getOrDefault("code", ""));
         String googleIdToken = String.valueOf(callbackParams.getOrDefault("google_id_token", callbackParams.getOrDefault("id_token", "")));
+
+        if (googleIdToken.isBlank() && !code.isBlank()) {
+            try {
+                String clientId = FirebaseConfig.getGoogleClientId();
+                String clientSecret = FirebaseConfig.getGoogleClientSecret();
+                String redirectUri = String.valueOf(callbackParams.getOrDefault("redirect_uri", "http://127.0.0.1/auth/callback"));
+                String codeVerifier = String.valueOf(callbackParams.getOrDefault("code_verifier", ""));
+
+                StringBuilder form = new StringBuilder();
+                form.append("code=").append(java.net.URLEncoder.encode(code, StandardCharsets.UTF_8));
+                form.append("&client_id=").append(java.net.URLEncoder.encode(clientId, StandardCharsets.UTF_8));
+                if (clientSecret != null && !clientSecret.isBlank()) {
+                    form.append("&client_secret=").append(java.net.URLEncoder.encode(clientSecret, StandardCharsets.UTF_8));
+                }
+                form.append("&redirect_uri=").append(java.net.URLEncoder.encode(redirectUri, StandardCharsets.UTF_8));
+                form.append("&grant_type=authorization_code");
+                if (!codeVerifier.isBlank()) {
+                    form.append("&code_verifier=").append(java.net.URLEncoder.encode(codeVerifier, StandardCharsets.UTF_8));
+                }
+
+                HttpRequest tokenRequest = HttpRequest.newBuilder()
+                        .uri(URI.create("https://oauth2.googleapis.com/token"))
+                        .timeout(Duration.ofSeconds(12))
+                        .header("Content-Type", "application/x-www-form-urlencoded")
+                        .header("Accept", "application/json")
+                        .POST(HttpRequest.BodyPublishers.ofString(form.toString(), StandardCharsets.UTF_8))
+                        .build();
+
+                HttpResponse<String> tokenResponse = httpClient.send(tokenRequest, HttpResponse.BodyHandlers.ofString());
+                if (tokenResponse.statusCode() != 200) {
+                    throw new AuthException("Google token exchange failed (HTTP " + tokenResponse.statusCode() + "): " + tokenResponse.body());
+                }
+
+                JSONObject tokenJson = new JSONObject(tokenResponse.body());
+                googleIdToken = tokenJson.optString("id_token", "");
+                if (googleIdToken.isBlank()) {
+                    throw new AuthException("Google token response did not contain an id_token.");
+                }
+            } catch (AuthException ae) {
+                throw ae;
+            } catch (Exception e) {
+                throw new AuthException("Failed to exchange authorization code with Google: " + e.getMessage(), e);
+            }
+        }
+
+        // Exchange raw Google ID token via Firebase signInWithIdp
         if (!googleIdToken.isBlank()) {
             try {
                 JSONObject reqBody = new JSONObject();
@@ -71,7 +132,7 @@ public class FirebaseTokenService {
                 reqBody.put("returnIdpCredential", true);
 
                 HttpRequest request = HttpRequest.newBuilder()
-                        .uri(URI.create(FIREBASE_SIGNIN_IDP_ENDPOINT))
+                        .uri(URI.create(getSigninIdpEndpoint()))
                         .timeout(Duration.ofSeconds(12))
                         .header("Content-Type", "application/json")
                         .header("Accept", "application/json")
@@ -102,7 +163,7 @@ public class FirebaseTokenService {
             }
         }
 
-        throw new AuthException("Callback payload missing both Firebase ID token and Google ID token.");
+        throw new AuthException("Callback payload missing Firebase ID token, Google authorization code, or Google ID token.");
     }
 
     /**
@@ -135,7 +196,7 @@ public class FirebaseTokenService {
         try {
             String formBody = "grant_type=refresh_token&refresh_token=" + session.getRefreshToken();
             HttpRequest request = HttpRequest.newBuilder()
-                    .uri(URI.create(FIREBASE_REFRESH_ENDPOINT))
+                    .uri(URI.create(getRefreshEndpoint()))
                     .timeout(Duration.ofSeconds(12))
                     .header("Content-Type", "application/x-www-form-urlencoded")
                     .header("Accept", "application/json")
@@ -177,7 +238,7 @@ public class FirebaseTokenService {
             reqBody.put("idToken", idToken);
 
             HttpRequest request = HttpRequest.newBuilder()
-                    .uri(URI.create(FIREBASE_LOOKUP_ENDPOINT))
+                    .uri(URI.create(getLookupEndpoint()))
                     .timeout(Duration.ofSeconds(10))
                     .header("Content-Type", "application/json")
                     .header("Accept", "application/json")
@@ -217,7 +278,7 @@ public class FirebaseTokenService {
 
         try {
             HttpRequest.Builder reqBuilder = HttpRequest.newBuilder()
-                    .uri(URI.create(FIRESTORE_USER_ENDPOINT + uid))
+                    .uri(URI.create(getFirestoreUserEndpoint() + uid))
                     .timeout(Duration.ofSeconds(6))
                     .header("Accept", "application/json")
                     .GET();

@@ -481,6 +481,22 @@ public class SignInDialog extends JDialog {
                 FirebaseTokenService tokenService = new FirebaseTokenService();
                 java.util.Map<String, Object> map = new java.util.HashMap<>();
 
+                // Check if user pasted a callback URL with query parameters
+                if (rawInput.contains("token=") || rawInput.contains("state=")) {
+                    String query = rawInput.contains("?") ? rawInput.substring(rawInput.indexOf('?') + 1) : rawInput;
+                    for (String pair : query.split("&")) {
+                        int eq = pair.indexOf('=');
+                        if (eq > 0) {
+                            String k = java.net.URLDecoder.decode(pair.substring(0, eq), java.nio.charset.StandardCharsets.UTF_8);
+                            String v = java.net.URLDecoder.decode(pair.substring(eq + 1), java.nio.charset.StandardCharsets.UTF_8);
+                            map.put(k, v);
+                        }
+                    }
+                    if (map.containsKey("token") || map.containsKey("idToken")) {
+                        return tokenService.exchangeGoogleCredential(map);
+                    }
+                }
+
                 // Check if base64 encoded JSON string
                 if (!rawInput.startsWith("ey") && rawInput.length() > 20) {
                     try {

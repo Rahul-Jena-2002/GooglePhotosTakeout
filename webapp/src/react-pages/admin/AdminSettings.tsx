@@ -4,7 +4,7 @@ import { db } from "../../firebase"
 import { doc, setDoc, onSnapshot, collection, addDoc } from "firebase/firestore"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../../components/ui/card"
 import { Button } from "../../components/ui/button"
-import { Shield, Settings, MessageSquare, ChevronUp, ChevronDown, Plus, Trash2, CreditCard, Sparkles, Sliders } from "lucide-react"
+import { Shield, Settings, MessageSquare, ChevronUp, ChevronDown, Plus, Trash2, CreditCard } from "lucide-react"
 import { useToastStore } from "../../store/useToastStore"
 import { useSettingsStore } from "../../store/useSettingsStore"
 
@@ -18,11 +18,8 @@ export default function AdminSettings() {
   const FAQ_TAGS = ["Guide","Metadata","Privacy","Pricing","Billing","Formats","About","Problem","Limits","Feature","Technical","General"] as const;
   const DEFAULT_FAQS: FaqItem[] = [
     { id: "download-takeout", tag: "Guide",    question: "How do I download my Google Takeout?",                                                        answer: "Go to takeout.google.com, select Google Photos, and create an export. Once finished, download and unzip the folder." },
-    { id: "missing-dates",   tag: "Metadata", question: "Why are my photos missing dates?",                                                              answer: "Google removes EXIF metadata when you download through Takeout. Instead, it places the data in separate JSON sidecar files. TakeoutFix merges these files back together." },
-    { id: "upload-privacy",  tag: "Privacy",  question: "Does TakeoutFix upload my photos?",                                                             answer: "No. Everything is processed 100% locally on your machine. Your photos never leave your device." },
+    { id: "photos-safe",      tag: "Privacy",  question: "Are my photos safe? / Do you see my photos?",                                                   answer: "Yes, they are 100% safe. TakeoutFix runs entirely on your own computer. We never see, upload, or store your photos." },
     { id: "free-limit",      tag: "Pricing",  question: "Is there a limit on the free plan?",                                                            answer: "Yes, the free plan processes up to 500 MB or 250 files to let you test the tool. Upgrading removes this limit." },
-    { id: "refund-policy",   tag: "Billing",  question: "What is your refund policy?",                                                                   answer: "We want you to have a great experience with Takeout Fix. If you experience a genuine technical issue that prevents the software from working as described, and our support team is unable to resolve it, you may request a refund within 7 days of purchase. See our Refund Policy page for full details." },
-    { id: "server-upload",   tag: "Privacy",  question: "Are my photos uploaded to your servers?",                                                       answer: "No. Never. The entire application runs locally inside your web browser using HTML5 File APIs. Your photos and metadata never leave your computer." },
     { id: "offline-work",    tag: "Privacy",  question: "Does this work completely offline?",                                                            answer: "Once the web app has loaded in your browser, you can disconnect from the internet and it will still process all your files locally." },
     { id: "out-of-order",    tag: "Metadata", question: "Why are my photos showing today's date or out of order after exporting from Google Takeout?",   answer: "When you export your photos, Google Photos separates the EXIF metadata into separate JSON sidecar files. Without this metadata, your phone or computer defaults to showing today's date (the file modification date), causing your gallery to be completely out of order. TakeoutFix fixes this by merging the JSON sidecars back into your images." },
     { id: "metadata-types",  tag: "Metadata", question: "What metadata can be recovered?",                                                               answer: "We recover original creation dates (timestamps), GPS coordinates (latitude, longitude, altitude), and camera device information if it exists in the Google JSON sidecars." },

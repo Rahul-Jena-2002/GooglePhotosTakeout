@@ -3,7 +3,6 @@ package com.takeoutfix.app;
 import com.formdev.flatlaf.FlatLightLaf;
 import com.takeoutfix.ads.AdSyncService;
 import com.takeoutfix.auth.UserSyncBridgeService;
-import com.takeoutfix.network.DesktopTelemetryServer;
 import com.takeoutfix.network.NetworkMonitorService;
 import com.takeoutfix.restore.SessionStatsService;
 import com.takeoutfix.restore.infrastructure.ExtractionService;
@@ -56,9 +55,6 @@ public class NativeDesktopGui {
                 UIManager.put("TextComponent.arc", 8);
                 UIManager.put("ScrollBar.showButtons", false);
                 UIManager.put("ScrollBar.width", 10);
-
-                // Start local telemetry server so webapp receives genuine OS hardware metrics
-                DesktopTelemetryServer.startServer();
 
                 // Launch application with clean startup state and view transition
                 startupController.startApplication();

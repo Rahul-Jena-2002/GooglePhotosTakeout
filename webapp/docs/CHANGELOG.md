@@ -15,7 +15,7 @@ not listed here; it's in git history.
    - Automatically strip prefix headers on input copy-paste and restore them during DB writes.
 2. **Real-time Synchronization**:
    - Added active Snapshot listeners to both Keys and Payment Gateway pages to sync credentials instantly.
-   - Integrated a default Master Encryption Key (MEK) fallback (`92elPvQ63jp_SXOmGbLyOgvfcGHVP-GfDbbiyLV4rpw`) for automatic local decryption.
+   - Integrated Master Encryption Key (MEK) prompt with secure environment variable decryption.
    - Repositioned the eye toggle icons and set `z-10` to avoid focus overlay selection issues.
 3. **Backend Dynamic Pricing Host**:
    - Cloud Functions and local server dynamically route Dodo API requests to sandbox or live based on key prefix rather than manual env variables.

@@ -1,13 +1,12 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import {
   Download,
   ShieldCheck,
   Cpu,
   WifiOff,
   HardDrive,
-  Terminal,
+  CheckCircle2,
 } from "lucide-react";
-import AdUnit from "../../components/monetization/AdUnit";
 
 interface DownloadOption {
   title: string;
@@ -79,7 +78,7 @@ export default function DownloadPage() {
             Download TakeoutFix
           </h1>
           <p className="text-sm md:text-base text-zinc-600 dark:text-zinc-400 leading-relaxed font-medium">
-            Restore unlimited photo dates and GPS location tags 100% free on your computer. Bypasses browser memory limits, processes massive 500GB+ libraries at native multi-threaded disk speeds, and runs entirely offline.
+            If you have a huge photo collection (over 50GB), the desktop app is the best choice. It works faster and handles massive files without crashing.
           </p>
         </div>
 
@@ -186,11 +185,6 @@ export default function DownloadPage() {
           </div>
         </div>
 
-        {/* Ad below downloads */}
-        <div className="w-full max-w-xl mx-auto -mt-4 mb-2">
-          <AdUnit placement="DOWNLOAD_TOP" type="compact" />
-        </div>
-
         {/* Why Desktop App */}
         <div className="bg-white dark:bg-zinc-950/60 border border-zinc-200 dark:border-white/10 p-6 md:p-8 rounded-2xl space-y-6 shadow-sm dark:shadow-2xl">
           <div className="flex items-center justify-between border-b border-zinc-200 dark:border-white/10 pb-3">
@@ -243,30 +237,17 @@ export default function DownloadPage() {
           </div>
         </div>
 
-        {/* System Specs */}
-        <div className="bg-white dark:bg-zinc-950/60 border border-zinc-200 dark:border-white/10 p-6 rounded-2xl shadow-sm dark:shadow-2xl space-y-3.5">
-          <h3 className="text-xs font-bold uppercase tracking-wider text-zinc-900 dark:text-zinc-400 flex items-center gap-1.5">
-            <Terminal className="w-4 h-4" /> System Specs
-          </h3>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5 text-xs text-zinc-700 dark:text-zinc-300 font-medium">
-            <div className="p-3.5 rounded-xl bg-zinc-50/60 dark:bg-white/[0.02] border border-zinc-200/60 dark:border-white/5 space-y-1">
-              <span className="text-zinc-500 dark:text-zinc-400 text-[11px] block">Runtime Requirements</span>
-              <span className="font-semibold text-zinc-900 dark:text-white block">Self-Contained (Zero dependencies needed)</span>
-            </div>
-            <div className="p-3.5 rounded-xl bg-zinc-50/60 dark:bg-white/[0.02] border border-zinc-200/60 dark:border-white/5 space-y-1">
-              <span className="text-zinc-500 dark:text-zinc-400 text-[11px] block">Memory (RAM)</span>
-              <span className="font-semibold text-zinc-900 dark:text-white block">4 GB Minimum (8 GB Recommended)</span>
-            </div>
-            <div className="p-3.5 rounded-xl bg-zinc-50/60 dark:bg-white/[0.02] border border-zinc-200/60 dark:border-white/5 space-y-1">
-              <span className="text-zinc-500 dark:text-zinc-400 text-[11px] block">Free Space</span>
-              <span className="font-semibold text-zinc-900 dark:text-white block">~120 MB for installation</span>
-            </div>
+        {/* Compatibility Notice */}
+        <div className="bg-white dark:bg-zinc-950/60 border border-zinc-200 dark:border-white/10 p-5 sm:p-6 rounded-2xl shadow-sm dark:shadow-2xl flex items-center gap-4">
+          <div className="p-2.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400 shrink-0">
+            <CheckCircle2 className="w-5 h-5" />
           </div>
-        </div>
-
-        {/* Ad below system specs */}
-        <div className="w-full max-w-xl mx-auto -mt-4 mb-2">
-          <AdUnit placement="DOWNLOAD_BOTTOM" type="compact" />
+          <div>
+            <h3 className="text-sm font-bold text-zinc-900 dark:text-white">Universal Compatibility</h3>
+            <p className="text-xs text-zinc-600 dark:text-zinc-400 mt-0.5 leading-relaxed">
+              Works on any standard Windows, Mac, or Linux computer. Just download and double-click to run.
+            </p>
+          </div>
         </div>
 
         {/* Code Signing Notice */}
@@ -290,61 +271,21 @@ export default function DownloadPage() {
           </div>
         </div>
 
-        {/* Feature Comparison Table */}
-        <div className="space-y-4">
-          <div className="text-center space-y-1.5">
-            <h2 className="text-xl font-bold text-zinc-900 dark:text-white">Compare Browser vs. Desktop</h2>
-            <p className="text-xs text-zinc-600 dark:text-zinc-400 font-medium">See which platform fits your Google Takeout archive size best</p>
+        {/* Web Browser Option */}
+        <div className="p-6 rounded-2xl bg-zinc-50 dark:bg-zinc-900/40 border border-zinc-200 dark:border-zinc-800 text-left max-w-3xl mx-auto flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6">
+          <div className="space-y-1">
+            <h3 className="text-sm font-bold text-zinc-900 dark:text-white">
+              Prefer using your web browser?
+            </h3>
+            <p className="text-xs text-zinc-600 dark:text-zinc-400 leading-relaxed">
+              You can also restore photos directly in your browser with zero installation required.
+            </p>
           </div>
-
-          <div className="overflow-x-auto border border-zinc-200 dark:border-white/10 rounded-2xl bg-white dark:bg-zinc-950/20 shadow-sm">
-            <table className="w-full text-xs text-zinc-600 dark:text-zinc-400 border-collapse">
-              <thead>
-                <tr className="border-b border-zinc-200 dark:border-white/10 bg-zinc-50 dark:bg-white/[0.02] text-left text-zinc-900 dark:text-zinc-300 font-bold">
-                  <th className="p-4">Feature</th>
-                  <th className="p-4">&#127760; Web Browser Tool</th>
-                  <th className="p-4 text-indigo-600 dark:text-indigo-400">&#128187; Desktop Standalone App</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-zinc-200 dark:border-white/10 font-medium">
-                <tr>
-                  <td className="p-4 font-semibold text-zinc-900 dark:text-white">Installation</td>
-                  <td className="p-4">Instant (Open directly in browser)</td>
-                  <td className="p-4 text-zinc-800 dark:text-zinc-200 font-semibold">One-click app (Double-click and run, zero setup)</td>
-                </tr>
-                <tr>
-                  <td className="p-4 font-semibold text-zinc-900 dark:text-white">Processing Speed</td>
-                  <td className="p-4 text-amber-600 dark:text-amber-500/90 font-medium">Standard (Fast browser processing)</td>
-                  <td className="p-4 text-emerald-600 dark:text-emerald-400 font-bold">Native Speed (Fastest disk processing)</td>
-                </tr>
-                <tr>
-                  <td className="p-4 font-semibold text-zinc-900 dark:text-white">Ideal Archive Size</td>
-                  <td className="p-4">Standard to Large (Up to 50 GB – 100 GB)</td>
-                  <td className="p-4 text-zinc-800 dark:text-zinc-200 font-semibold">Massive libraries (50 GB to Multi-Terabyte 1 TB+)</td>
-                </tr>
-                <tr>
-                  <td className="p-4 font-semibold text-zinc-900 dark:text-white">Offline Use</td>
-                  <td className="p-4 text-rose-500 dark:text-rose-400">No (Requires internet connection)</td>
-                  <td className="p-4 text-emerald-600 dark:text-emerald-400 font-bold">Yes (100% Offline on your computer)</td>
-                </tr>
-                <tr>
-                  <td className="p-4 font-semibold text-zinc-900 dark:text-white">Fixes Dates on Physical Drive</td>
-                  <td className="p-4">Downloads repaired ZIP archives</td>
-                  <td className="p-4 text-zinc-800 dark:text-zinc-200 font-semibold">Directly updates your files in place</td>
-                </tr>
-                <tr>
-                  <td className="p-4 font-semibold text-zinc-900 dark:text-white">System Standby Prevention</td>
-                  <td className="p-4 text-rose-500 dark:text-rose-400">No</td>
-                  <td className="p-4 text-emerald-600 dark:text-emerald-400 font-bold">Yes (Includes Auto-Wake lock)</td>
-                </tr>
-                <tr>
-                  <td className="p-4 font-semibold text-zinc-900 dark:text-white">Auto PC Shutdown</td>
-                  <td className="p-4 text-rose-500 dark:text-rose-400">No</td>
-                  <td className="p-4 text-emerald-600 dark:text-emerald-400 font-bold">Yes (Optional post-action)</td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
+          <a href="/tool" className="flex-shrink-0 w-full sm:w-auto">
+            <button className="btn-monochrome-secondary px-5 py-2.5 text-xs font-semibold rounded-xl transition-all flex items-center justify-center gap-1.5 w-full sm:w-auto cursor-pointer">
+              <span>Try Web Browser Tool</span>
+            </button>
+          </a>
         </div>
 
       </div>

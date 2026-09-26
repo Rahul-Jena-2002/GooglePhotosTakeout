@@ -46,7 +46,7 @@ export const GATEWAY_CREDENTIALS: Record<string, GatewayConfig[]> = {
       description: "Stripe secret key used server-side to initiate sessions.",
       firestorePath: "settings/system",
       firestoreField: "stripe_secret_key",
-      placeholder: "sk_live_51xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+      placeholder: "sk_live_...",
       sensitive: true,
     },
     {

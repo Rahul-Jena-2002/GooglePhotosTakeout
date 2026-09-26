@@ -116,7 +116,7 @@ public class AuthCallbackServer {
             if (expectedState != null && !expectedState.isBlank()) {
                 String receivedState = String.valueOf(params.getOrDefault("state", ""));
                 boolean stateProvided = params.containsKey("state") && !receivedState.isBlank();
-                boolean hasVerifiedToken = params.containsKey("token") || params.containsKey("idToken");
+                boolean hasVerifiedToken = params.containsKey("token") || params.containsKey("idToken") || params.containsKey("code");
 
                 if (stateProvided && !expectedState.equals(receivedState)) {
                     String errorHtml = "<html><body style='background:#09090b;color:#f87171;font-family:sans-serif;padding:40px;text-align:center;'><h2>Security Error: OAuth State Mismatch</h2><p>Authentication rejected due to invalid state token.</p></body></html>";
@@ -157,175 +157,190 @@ public class AuthCallbackServer {
                 pendingFuture.complete(params);
             }
 
-            // Render enterprise gold-standard confirmation screen (IntelliJ / JetBrains style)
+            // Render enterprise clean confirmation screen (Google Antigravity style)
             String email = String.valueOf(params.getOrDefault("email", "Google Account"));
             String plan = String.valueOf(params.getOrDefault("plan", "Free")).toUpperCase();
+            String theme = String.valueOf(params.getOrDefault("theme", com.takeoutfix.shared.theme.ThemeColors.isDark() ? "dark" : "light")).toLowerCase();
 
             String template = """
                 <!DOCTYPE html>
-                <html lang="en">
+                <html lang="en" data-theme="{{THEME}}">
                 <head>
                     <meta charset="utf-8">
                     <meta name="viewport" content="width=device-width, initial-scale=1">
-                    <title>TakeoutFix — Authorization Successful</title>
+                    <title>TakeoutFix Auth Success</title>
+                    <link rel="preconnect" href="https://fonts.googleapis.com">
+                    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+                    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
                     <style>
                         * { box-sizing: border-box; margin: 0; padding: 0; }
+                        
+                        :root {
+                            --bg: #ffffff;
+                            --text: #1f1f1f;
+                            --brand: #202124;
+                            --sub: #5f6368;
+                            --link: #1a73e8;
+                            --pipe: #dadce0;
+                            --footer: #70757a;
+                        }
+
+                        @media (prefers-color-scheme: dark) {
+                            :root {
+                                --bg: #1f1f1f;
+                                --text: #f1f3f4;
+                                --brand: #f1f3f4;
+                                --sub: #9aa0a6;
+                                --link: #8ab4f8;
+                                --pipe: #3c4043;
+                                --footer: #9aa0a6;
+                            }
+                        }
+
+                        [data-theme="light"] {
+                            --bg: #ffffff;
+                            --text: #1f1f1f;
+                            --brand: #202124;
+                            --sub: #5f6368;
+                            --link: #1a73e8;
+                            --pipe: #dadce0;
+                            --footer: #70757a;
+                        }
+
+                        [data-theme="dark"] {
+                            --bg: #18181b;
+                            --text: #f4f4f5;
+                            --brand: #ffffff;
+                            --sub: #a1a1aa;
+                            --link: #818cf8;
+                            --pipe: #3f3f46;
+                            --footer: #71717a;
+                        }
+
                         body {
-                            background: radial-gradient(circle at 50% 20%, #151824 0%, #090a0f 100%);
-                            color: #f4f4f5;
-                            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+                            background-color: var(--bg);
+                            color: var(--text);
+                            font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
                             display: flex;
+                            flex-direction: column;
                             align-items: center;
                             justify-content: center;
                             min-height: 100vh;
                             padding: 24px;
                             -webkit-font-smoothing: antialiased;
-                        }
-                        .card {
-                            background: rgba(24, 26, 35, 0.85);
-                            backdrop-filter: blur(20px);
-                            -webkit-backdrop-filter: blur(20px);
-                            border: 1px solid rgba(255, 255, 255, 0.08);
-                            border-radius: 24px;
-                            padding: 44px 36px;
-                            max-width: 440px;
-                            width: 100%;
                             text-align: center;
-                            box-shadow: 0 30px 60px -15px rgba(0, 0, 0, 0.7), 0 0 40px -10px rgba(16, 185, 129, 0.15);
-                            animation: fadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+                            transition: background-color 0.2s ease, color 0.2s ease;
                         }
-                        @keyframes fadeIn {
-                            from { opacity: 0; transform: translateY(12px) scale(0.98); }
-                            to { opacity: 1; transform: translateY(0) scale(1); }
-                        }
-                        .icon-wrap {
-                            width: 68px;
-                            height: 68px;
-                            border-radius: 50%;
-                            background: radial-gradient(circle, rgba(16, 185, 129, 0.22) 0%, rgba(16, 185, 129, 0.06) 100%);
-                            border: 1px solid rgba(16, 185, 129, 0.4);
-                            color: #10b981;
+
+                        .container {
+                            max-width: 680px;
+                            width: 100%;
                             display: flex;
+                            flex-direction: column;
                             align-items: center;
                             justify-content: center;
-                            margin: 0 auto 22px;
-                            font-size: 30px;
-                            box-shadow: 0 0 24px rgba(16, 185, 129, 0.25);
                         }
+
+                        .brand-row {
+                            display: inline-flex;
+                            align-items: center;
+                            justify-content: center;
+                            gap: 12px;
+                            margin-bottom: 24px;
+                        }
+
+                        .brand-name {
+                            font-size: 28px;
+                            font-weight: 500;
+                            letter-spacing: -0.3px;
+                            color: var(--brand);
+                        }
+
                         h1 {
-                            font-size: 24px;
-                            font-weight: 700;
-                            margin-bottom: 8px;
-                            color: #ffffff;
-                            letter-spacing: -0.02em;
+                            font-size: 32px;
+                            font-weight: 400;
+                            line-height: 1.25;
+                            letter-spacing: -0.5px;
+                            margin-bottom: 20px;
+                            color: var(--text);
                         }
+
                         .subtitle {
                             font-size: 14px;
-                            color: #a1a1aa;
-                            margin-bottom: 20px;
-                            line-height: 1.5;
+                            color: var(--sub);
+                            line-height: 1.6;
+                            margin-bottom: 32px;
                         }
-                        .account-chip {
-                            display: inline-flex;
-                            align-items: center;
-                            gap: 8px;
-                            background: rgba(255, 255, 255, 0.04);
-                            border: 1px solid rgba(255, 255, 255, 0.1);
-                            padding: 6px 14px;
-                            border-radius: 999px;
-                            font-size: 13px;
-                            font-weight: 500;
-                            color: #e4e4e7;
-                            margin-bottom: 24px;
-                            max-width: 100%;
-                        }
-                        .account-chip .dot {
-                            width: 8px;
-                            height: 8px;
-                            border-radius: 50%;
-                            background: #10b981;
-                            box-shadow: 0 0 8px #10b981;
-                            flex-shrink: 0;
-                        }
-                        .account-chip .email {
-                            overflow: hidden;
-                            text-overflow: ellipsis;
-                            white-space: nowrap;
-                        }
-                        .account-chip .tier {
-                            background: rgba(16, 185, 129, 0.2);
-                            color: #34d399;
-                            font-size: 11px;
-                            font-weight: 700;
-                            padding: 2px 7px;
-                            border-radius: 6px;
-                            margin-left: 4px;
-                        }
-                        .instruction {
-                            background: rgba(255, 255, 255, 0.03);
-                            border: 1px solid rgba(255, 255, 255, 0.06);
-                            border-radius: 14px;
-                            padding: 16px 18px;
-                            font-size: 13px;
-                            color: #d4d4d8;
-                            line-height: 1.5;
-                            margin-bottom: 22px;
-                        }
-                        .btn-app {
-                            display: inline-flex;
-                            align-items: center;
-                            justify-content: center;
-                            width: 100%;
-                            padding: 13px 20px;
-                            background: #10b981;
-                            color: #ffffff;
-                            font-size: 14px;
-                            font-weight: 600;
-                            border-radius: 12px;
+
+                        .subtitle a, .links a {
+                            color: var(--link);
                             text-decoration: none;
-                            transition: all 0.2s ease;
-                            border: none;
                             cursor: pointer;
-                            box-shadow: 0 4px 14px rgba(16, 185, 129, 0.3);
                         }
-                        .btn-app:hover {
-                            background: #059669;
-                            transform: translateY(-1px);
-                            box-shadow: 0 6px 20px rgba(16, 185, 129, 0.4);
+
+                        .subtitle a:hover, .links a:hover {
+                            text-decoration: underline;
                         }
-                        .footer-note {
-                            font-size: 12px;
-                            color: #71717a;
-                            margin-top: 20px;
+
+                        .links {
+                            font-size: 13px;
+                            color: var(--footer);
+                            display: inline-flex;
+                            align-items: center;
+                            gap: 14px;
+                        }
+
+                        .links .sep {
+                            color: var(--pipe);
                         }
                     </style>
                 </head>
                 <body>
-                    <div class="card">
-                        <div class="icon-wrap">✓</div>
-                        <h1>You're All Set!</h1>
-                        <p class="subtitle">TakeoutFix Desktop is now authenticated.</p>
-                        
-                        <div class="account-chip">
-                            <span class="dot"></span>
-                            <span class="email">{{EMAIL}}</span>
-                            <span class="tier">{{PLAN}}</span>
+                    <div class="container">
+                        <div class="brand-row">
+                            <svg width="34" height="34" viewBox="0 0 32 32" fill="none">
+                                <rect width="32" height="32" rx="8" fill="url(#brand-grad)" />
+                                <path d="M8 22L13 16L17 20L21 14L24 18" stroke="#ffffff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" />
+                                <circle cx="21" cy="11" r="2" fill="#ffffff" />
+                                <defs>
+                                    <linearGradient id="brand-grad" x1="0" y1="0" x2="32" y2="32" gradientUnits="userSpaceOnUse">
+                                        <stop stop-color="#4f46e5" />
+                                        <stop offset="1" stop-color="#7c3aed" />
+                                    </linearGradient>
+                                </defs>
+                            </svg>
+                            <span class="brand-name">TakeoutFix</span>
                         </div>
 
-                        <div class="instruction">
-                            You can safely close this browser tab and return to <strong>TakeoutFix</strong>.
+                        <h1>You have successfully authenticated.</h1>
+                        <p class="subtitle">
+                            You should be redirected back to the product. 
+                            <a href="javascript:void(0)" onclick="closeNow()">Click here</a> if not working.
+                        </p>
+
+                        <div class="links">
+                            <a href="https://takeoutfix.pages.dev/docs" target="_blank">Docs</a>
+                            <span class="sep">|</span>
+                            <a href="https://takeoutfix.pages.dev/support" target="_blank">Support</a>
+                            <span class="sep">|</span>
+                            <a href="https://takeoutfix.pages.dev/terms" target="_blank">Terms</a>
                         </div>
-
-                        <a href="takeoutfix://auth" class="btn-app" onclick="window.focus();">
-                            Return to TakeoutFix Desktop
-                        </a>
-
-                        <p class="footer-note">Desktop client is connected & running locally.</p>
                     </div>
+
+                    <script>
+                        function closeNow() {
+                            try { window.close(); } catch(e) {}
+                            try { window.open('', '_self', ''); window.close(); } catch(e) {}
+                            try { window.top.close(); } catch(e) {}
+                        }
+                        // Attempt automatic tab close after brief confirmation
+                        setTimeout(closeNow, 1200);
+                    </script>
                 </body>
                 </html>
                 """;
             String html = template
+                    .replace("{{THEME}}", theme)
                     .replace("{{EMAIL}}", email)
                     .replace("{{PLAN}}", plan);
 

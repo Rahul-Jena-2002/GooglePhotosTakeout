@@ -28,7 +28,7 @@ public class MetadataInjector {
      * Injects ALL metadata (EXIF dates, GPS, description, title, AND album name) in a SINGLE ExifTool call.
      * This is the preferred method — ~2x faster than calling injectMetadata + injectAlbumName separately.
      */
-    public boolean injectMetadataAndAlbum(File mediaFile, File jsonFile, String albumName) {
+    public boolean injectMetadataAndAlbum(File mediaFile, File jsonFile, String albumName, String albumDescription) {
         try {
             String jsonContent = Files.readString(jsonFile.toPath());
             JSONObject json = new JSONObject(jsonContent);
@@ -61,9 +61,14 @@ public class MetadataInjector {
                 }
             }
 
-            // 2. GPS Data
-            if (json.has("geoData") && !json.isNull("geoData")) {
-                JSONObject geo = json.getJSONObject("geoData");
+            // 2. GPS Data (with geoDataExif fallback)
+            JSONObject geo = json.optJSONObject("geoData");
+            if (geo == null || (geo.optDouble("latitude", 0.0) == 0.0 && geo.optDouble("longitude", 0.0) == 0.0)) {
+                if (json.has("geoDataExif") && !json.isNull("geoDataExif")) {
+                    geo = json.optJSONObject("geoDataExif");
+                }
+            }
+            if (geo != null) {
                 double lat = geo.optDouble("latitude", 0.0);
                 double lon = geo.optDouble("longitude", 0.0);
                 if (lat != 0.0 || lon != 0.0) {
@@ -79,13 +84,41 @@ public class MetadataInjector {
                 }
             }
 
-            // 3. Description
-            if (json.has("description") && !json.isNull("description")) {
-                String desc = json.getString("description").trim();
-                if (!desc.isEmpty()) {
-                    args.add("-Description=" + desc);
-                    args.add("-ImageDescription=" + desc);
+            // 2b. People Tagging
+            if (json.has("people") && !json.isNull("people")) {
+                org.json.JSONArray peopleArr = json.optJSONArray("people");
+                if (peopleArr != null) {
+                    for (int i = 0; i < peopleArr.length(); i++) {
+                        JSONObject p = peopleArr.optJSONObject(i);
+                        if (p != null && p.has("name") && !p.isNull("name")) {
+                            String personName = p.getString("name").trim();
+                            if (!personName.isEmpty()) {
+                                args.add("-XMP-iptcExt:PersonInImage+=" + personName);
+                                args.add("-XMP-dc:Subject+=" + personName);
+                                args.add("-IPTC:Keywords+=" + personName);
+                            }
+                        }
+                    }
                 }
+            }
+
+            // 2c. Starred / Favorited Rating (Recognized by Apple Photos & Lightroom)
+            if (json.optBoolean("favorited", false)) {
+                args.add("-Rating=5");
+                args.add("-XMP:Rating=5");
+            }
+
+            // 3. Description (Media JSON description has priority; fallback to Album description)
+            String desc = null;
+            if (json.has("description") && !json.isNull("description")) {
+                desc = json.getString("description").trim();
+            }
+            if ((desc == null || desc.isEmpty()) && albumDescription != null && !albumDescription.isBlank()) {
+                desc = albumDescription.trim();
+            }
+            if (desc != null && !desc.isEmpty()) {
+                args.add("-Description=" + desc);
+                args.add("-ImageDescription=" + desc);
             }
 
             // 4. Title
@@ -97,11 +130,15 @@ public class MetadataInjector {
                 }
             }
 
-            // 5. Album Name (merged — avoids a second ExifTool call)
+            // 5. Album Details (merged — avoids a second ExifTool call)
             if (albumName != null && !albumName.isBlank()) {
                 args.add("-XMP-dc:Subject+=" + albumName);
                 args.add("-IPTC:Keywords+=" + albumName);
                 args.add("-XMP-lr:HierarchicalSubject+=Albums|" + albumName);
+                args.add("-XMP-xmpDM:album=" + albumName);
+                if (isVideo) {
+                    args.add("-QuickTime:Album=" + albumName);
+                }
             }
 
             // In-memory / native MP4 atom injector guarantee for QuickTime/MP4 videos
@@ -121,11 +158,19 @@ public class MetadataInjector {
         }
     }
 
+    public boolean injectMetadataAndAlbum(File mediaFile, File jsonFile, String albumName) {
+        return injectMetadataAndAlbum(mediaFile, jsonFile, albumName, null);
+    }
+
     public boolean injectMetadata(File mediaFile, File jsonFile) {
-        return injectMetadataAndAlbum(mediaFile, jsonFile, null);
+        return injectMetadataAndAlbum(mediaFile, jsonFile, null, null);
     }
 
     public boolean injectAlbumName(File mediaFile, String albumName) {
+        return injectAlbumName(mediaFile, albumName, null);
+    }
+
+    public boolean injectAlbumName(File mediaFile, String albumName, String albumDescription) {
         List<String> args = new ArrayList<>();
         args.add("-overwrite_original");
         
@@ -137,6 +182,18 @@ public class MetadataInjector {
         
         // Lightroom Hierarchical Subject (Albums|AlbumName format)
         args.add("-XMP-lr:HierarchicalSubject+=Albums|" + albumName);
+
+        // XMP Dynamic Media Album schema
+        args.add("-XMP-xmpDM:album=" + albumName);
+
+        if (isVideoFile(mediaFile)) {
+            args.add("-QuickTime:Album=" + albumName);
+        }
+
+        if (albumDescription != null && !albumDescription.isBlank()) {
+            args.add("-Description=" + albumDescription.trim());
+            args.add("-ImageDescription=" + albumDescription.trim());
+        }
         
         args.add(mediaFile.getAbsolutePath());
         return exifToolEngine.execute(args);

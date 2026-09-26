@@ -54,6 +54,8 @@ dist/
 !.env.local.example
 *.pem
 *.key
+*credentials*.properties
+*secret*.properties
 scripts/diagnostics/
 functions/scripts/
 

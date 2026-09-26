@@ -32,10 +32,22 @@ public class FirebaseSyncService {
 
     private static final Logger log = LoggerFactory.getLogger(FirebaseSyncService.class);
 
-    private static final String FIREBASE_API_KEY = "AIzaSyDBTj1lcAbftiAYwnv5upjHK7ET_sNgZNk";
-    private static final String PROJECT_ID = "takeout-fix";
-    private static final String SECURE_TOKEN_URL = "https://securetoken.googleapis.com/v1/token?key=" + FIREBASE_API_KEY;
-    private static final String FIRESTORE_BASE_URL = "https://firestore.googleapis.com/v1/projects/" + PROJECT_ID + "/databases/(default)/documents";
+    private static String getFirebaseApiKey() {
+        return FirebaseConfig.getApiKey();
+    }
+
+    private static String getProjectId() {
+        return FirebaseConfig.getProjectId();
+    }
+
+    private static String getSecureTokenUrl() {
+        return "https://securetoken.googleapis.com/v1/token?key=" + getFirebaseApiKey();
+    }
+
+    private static String getFirestoreBaseUrl() {
+        return "https://firestore.googleapis.com/v1/projects/" + getProjectId() + "/databases/(default)/documents";
+    }
+
     private static final File SESSION_FILE = new File(System.getProperty("user.home"), ".takeoutfix/session.json");
 
     private final HttpClient httpClient = HttpClient.newBuilder()
@@ -156,7 +168,7 @@ public class FirebaseSyncService {
         // 2. Fetch User Document from Firestore
         boolean userSuccess = false;
         try {
-            String userUrl = FIRESTORE_BASE_URL + "/users/" + URLEncoder.encode(uid, StandardCharsets.UTF_8);
+            String userUrl = getFirestoreBaseUrl() + "/users/" + URLEncoder.encode(uid, StandardCharsets.UTF_8);
             HttpRequest req = HttpRequest.newBuilder()
                     .uri(URI.create(userUrl))
                     .header("Authorization", "Bearer " + tokenToUse)
@@ -192,7 +204,7 @@ public class FirebaseSyncService {
 
         // 3. Sync Global Settings (e.g. Free Unlimited Promo Window)
         try {
-            String settingsUrl = FIRESTORE_BASE_URL + "/settings/global";
+            String settingsUrl = getFirestoreBaseUrl() + "/settings/global";
             HttpRequest setReq = HttpRequest.newBuilder()
                     .uri(URI.create(settingsUrl))
                     .header("Authorization", "Bearer " + tokenToUse)
@@ -380,7 +392,7 @@ public class FirebaseSyncService {
 
     private boolean checkIfAdmin(String uid, String token) {
         try {
-            String adminUrl = FIRESTORE_BASE_URL + "/admins/" + URLEncoder.encode(uid, StandardCharsets.UTF_8);
+            String adminUrl = getFirestoreBaseUrl() + "/admins/" + URLEncoder.encode(uid, StandardCharsets.UTF_8);
             HttpRequest req = HttpRequest.newBuilder()
                     .uri(URI.create(adminUrl))
                     .header("Authorization", "Bearer " + token)
@@ -416,7 +428,7 @@ public class FirebaseSyncService {
         try {
             String form = "grant_type=refresh_token&refresh_token=" + URLEncoder.encode(this.currentRefreshToken, StandardCharsets.UTF_8);
             HttpRequest req = HttpRequest.newBuilder()
-                    .uri(URI.create(SECURE_TOKEN_URL))
+                    .uri(URI.create(getSecureTokenUrl()))
                     .header("Content-Type", "application/x-www-form-urlencoded")
                     .timeout(Duration.ofSeconds(5))
                     .POST(HttpRequest.BodyPublishers.ofString(form))
@@ -547,7 +559,7 @@ public class FirebaseSyncService {
             JSONObject body = new JSONObject();
             body.put("fields", fields);
 
-            String patchUrl = FIRESTORE_BASE_URL + "/users/" + URLEncoder.encode(uid, StandardCharsets.UTF_8)
+            String patchUrl = getFirestoreBaseUrl() + "/users/" + URLEncoder.encode(uid, StandardCharsets.UTF_8)
                     + "?updateMask.fieldPaths=usedFiles"
                     + "&updateMask.fieldPaths=usedBytes"
                     + "&updateMask.fieldPaths=lifetimeFiles"

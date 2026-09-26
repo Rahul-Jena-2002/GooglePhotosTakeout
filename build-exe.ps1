@@ -10,7 +10,7 @@ if (Test-Path $usersPath) { Remove-Item $usersPath -Force }
 New-Item -ItemType Directory -Force -Path "jpackage-input" | Out-Null
 Copy-Item "native/target/takeoutfix.jar" "jpackage-input/takeoutfix.jar" -Force
 
-$appVersion = "2.1.7"
+$appVersion = "2.1.8"
 
 # 1. Build Native Application Image (Standalone Runtime + App)
 Write-Host "Building native application image..."

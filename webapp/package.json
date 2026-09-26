@@ -6,7 +6,7 @@
   "type": "module",
   "scripts": {
     "dev": "astro dev",
-    "build": "node scripts/generate_sitemap.js && astro build && node scripts/append_spa_rewrite.js",
+    "build": "node scripts/generate_sitemap.js && astro build && node scripts/append_spa_rewrite.js && node scripts/audit_cloudflare_security.js",
     "preview": "astro preview",
     "lint": "eslint ."
   },

@@ -472,36 +472,17 @@ public class CommandCenterPanel extends JPanel {
         gbc.fill = GridBagConstraints.HORIZONTAL;
         gbc.insets = new Insets(0, 0, 6, 0);
 
-        JLabel lblTitle = new JLabel("DRIVE & ENGINE HEALTH");
+        JLabel lblTitle = new JLabel("ENGINE STATUS & TOOLS");
         lblTitle.setFont(new Font("Segoe UI", Font.BOLD, 10));
         lblTitle.setForeground(ThemeColors.textMuted());
         card.add(lblTitle, gbc);
-
-        // Drive Space detection
-        java.io.File currentDrive = new java.io.File(".");
-        long usable = currentDrive.getUsableSpace();
-        long total = currentDrive.getTotalSpace();
-        int usedPercent = total > 0 ? (int) Math.round(((total - usable) * 100.0) / total) : 0;
-
-        JLabel driveText = new JLabel("Target Disk: " + formatBytes(usable) + " Free of " + formatBytes(total));
-        driveText.setFont(new Font("Segoe UI", Font.BOLD, 11));
-        driveText.setForeground(ThemeColors.textPrimary());
-        gbc.gridy = 1;
-        gbc.insets = new Insets(0, 0, 4, 0);
-        card.add(driveText, gbc);
-
-        JProgressBar driveBar = UiFactory.createSlimProgressBar();
-        driveBar.setValue(usedPercent);
-        gbc.gridy = 2;
-        gbc.insets = new Insets(0, 0, 10, 0);
-        card.add(driveBar, gbc);
 
         // Multi-threaded Engine Status
         int cores = Runtime.getRuntime().availableProcessors();
         JLabel engineText = new JLabel("Engine: " + cores + "-Core High-Speed Parallel Workers");
         engineText.setFont(new Font("Segoe UI", Font.PLAIN, 11));
         engineText.setForeground(ThemeColors.textSecondary());
-        gbc.gridy = 3;
+        gbc.gridy = 1;
         gbc.insets = new Insets(0, 0, 8, 0);
         card.add(engineText, gbc);
 
@@ -525,13 +506,12 @@ public class CommandCenterPanel extends JPanel {
         linksPanel.add(btnGuide);
         linksPanel.add(btnWebPlatform);
 
-        gbc.gridy = 4;
+        gbc.gridy = 2;
         gbc.insets = new Insets(0, 0, 0, 0);
         card.add(linksPanel, gbc);
 
         ThemeColors.addThemeListener(() -> {
             lblTitle.setForeground(ThemeColors.textMuted());
-            driveText.setForeground(ThemeColors.textPrimary());
             engineText.setForeground(ThemeColors.textSecondary());
         });
 

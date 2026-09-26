@@ -122,6 +122,17 @@ public class HeaderBar extends JPanel {
         });
         brandBox.add(logo);
         brandBox.add(brandName);
+
+        JLabel versionBadge = UiFactory.createBadge("v" + AppVersion.getVersion(), ThemeColors.pillBg(), ThemeColors.textMuted());
+        versionBadge.setFont(new Font(FONT_FAMILY, Font.BOLD, 10));
+        versionBadge.setToolTipText(AppVersion.getFullVersionString());
+        ThemeColors.addThemeListener(() -> {
+            versionBadge.setBackground(ThemeColors.pillBg());
+            versionBadge.setForeground(ThemeColors.textMuted());
+            versionBadge.repaint();
+        });
+        brandBox.add(versionBadge);
+
         leftPanel.add(brandBox);
 
         leftPanel.add(btnNavDashboard);

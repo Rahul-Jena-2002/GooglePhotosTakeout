@@ -17,6 +17,13 @@ For every task, follow:
 
 ---
 
+## Default Operating Directives
+
+1. **Ponytail by Default:** Always adopt the Ponytail senior developer mindset (anti-bloat, reuse first, YAGNI, minimum viable diff). Never write speculative utilities or create redundant components.
+2. **Cloudflare Security Audit by Default:** Every build (`npm run build`) automatically executes an automated Cloudflare security audit gate (`scripts/audit_cloudflare_security.js`), enforcing hardened headers (CSP, HSTS, X-Content-Type-Options, COOP), zero secret leaks in client chunks, and safe redirects.
+
+---
+
 ## Architectural Hierarchy
 
 ```text

@@ -19,12 +19,29 @@ import java.util.Map;
  */
 public class DirectAuthHttpsService {
 
-    public static final String FIREBASE_WEB_API_KEY = "AIzaSyDBTj1lcAbftiAYwnv5upjHK7ET_sNgZNk";
-    private static final String FIREBASE_SIGNIN_ENDPOINT = "https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=" + FIREBASE_WEB_API_KEY;
-    private static final String FIREBASE_SIGNUP_ENDPOINT = "https://identitytoolkit.googleapis.com/v1/accounts:signUp?key=" + FIREBASE_WEB_API_KEY;
-    private static final String FIREBASE_RESET_ENDPOINT = "https://identitytoolkit.googleapis.com/v1/accounts:sendOobCode?key=" + FIREBASE_WEB_API_KEY;
-    private static final String FIREBASE_LOOKUP_ENDPOINT = "https://identitytoolkit.googleapis.com/v1/accounts:lookup?key=" + FIREBASE_WEB_API_KEY;
-    private static final String FIRESTORE_USER_ENDPOINT = "https://firestore.googleapis.com/v1/projects/takeout-fix/databases/(default)/documents/users/";
+    private static String getFirebaseApiKey() {
+        return com.takeoutfix.auth.FirebaseConfig.getApiKey();
+    }
+
+    private static String getSigninEndpoint() {
+        return "https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=" + getFirebaseApiKey();
+    }
+
+    private static String getSignupEndpoint() {
+        return "https://identitytoolkit.googleapis.com/v1/accounts:signUp?key=" + getFirebaseApiKey();
+    }
+
+    private static String getResetEndpoint() {
+        return "https://identitytoolkit.googleapis.com/v1/accounts:sendOobCode?key=" + getFirebaseApiKey();
+    }
+
+    private static String getLookupEndpoint() {
+        return "https://identitytoolkit.googleapis.com/v1/accounts:lookup?key=" + getFirebaseApiKey();
+    }
+
+    private static String getFirestoreUserEndpoint() {
+        return "https://firestore.googleapis.com/v1/projects/" + com.takeoutfix.auth.FirebaseConfig.getProjectId() + "/databases/(default)/documents/users/";
+    }
 
     private static final HttpClient HTTP_CLIENT = HttpClient.newBuilder()
             .connectTimeout(Duration.ofSeconds(10))
@@ -45,7 +62,7 @@ public class DirectAuthHttpsService {
         req.put("returnSecureToken", true);
 
         HttpRequest request = HttpRequest.newBuilder()
-                .uri(URI.create(FIREBASE_SIGNIN_ENDPOINT))
+                .uri(URI.create(getSigninEndpoint()))
                 .timeout(Duration.ofSeconds(12))
                 .header("Content-Type", "application/json")
                 .header("Accept", "application/json")
@@ -125,7 +142,7 @@ public class DirectAuthHttpsService {
         req.put("returnSecureToken", true);
 
         HttpRequest request = HttpRequest.newBuilder()
-                .uri(URI.create(FIREBASE_SIGNUP_ENDPOINT))
+                .uri(URI.create(getSignupEndpoint()))
                 .timeout(Duration.ofSeconds(12))
                 .header("Content-Type", "application/json")
                 .header("Accept", "application/json")
@@ -178,7 +195,7 @@ public class DirectAuthHttpsService {
         req.put("email", email.trim().toLowerCase());
 
         HttpRequest request = HttpRequest.newBuilder()
-                .uri(URI.create(FIREBASE_RESET_ENDPOINT))
+                .uri(URI.create(getResetEndpoint()))
                 .timeout(Duration.ofSeconds(12))
                 .header("Content-Type", "application/json")
                 .header("Accept", "application/json")
@@ -255,7 +272,7 @@ public class DirectAuthHttpsService {
         reqBody.put("idToken", idToken);
 
         HttpRequest request = HttpRequest.newBuilder()
-                .uri(URI.create(FIREBASE_LOOKUP_ENDPOINT))
+                .uri(URI.create(getLookupEndpoint()))
                 .timeout(Duration.ofSeconds(10))
                 .header("Content-Type", "application/json")
                 .header("Accept", "application/json")
@@ -294,7 +311,7 @@ public class DirectAuthHttpsService {
 
         try {
             HttpRequest.Builder reqBuilder = HttpRequest.newBuilder()
-                    .uri(URI.create(FIRESTORE_USER_ENDPOINT + uid))
+                    .uri(URI.create(getFirestoreUserEndpoint() + uid))
                     .timeout(Duration.ofSeconds(6))
                     .header("Accept", "application/json")
                     .GET();

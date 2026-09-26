@@ -20,7 +20,7 @@ namespace TakeoutFix {
                 string versionFile = Path.Combine(appDir, ".app_version");
                 
                 Assembly asm = Assembly.GetExecutingAssembly();
-                string currentVersion = asm.GetName().Version != null ? asm.GetName().Version.ToString() : "2.1.7";
+                string currentVersion = asm.GetName().Version != null ? asm.GetName().Version.ToString() : "2.1.8";
 
                 bool needsExtract = !File.Exists(exePath) || !File.Exists(versionFile) || File.ReadAllText(versionFile).Trim() != currentVersion;
 

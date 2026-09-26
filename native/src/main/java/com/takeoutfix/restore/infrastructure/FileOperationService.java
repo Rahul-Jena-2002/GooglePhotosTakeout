@@ -62,10 +62,11 @@ public class FileOperationService {
      * @throws IOException If the copy operation fails.
      */
     public File copyToChronologicalOutput(File media, File inputRoot, File outputRoot, Instant timestamp) throws IOException {
-        String yearMonth = "Unknown_Date";
+        String monthFolder = "Unknown_Date";
         if (timestamp != null) {
             java.time.ZonedDateTime zdt = timestamp.atZone(java.time.ZoneId.systemDefault());
-            yearMonth = String.format("%04d-%02d", zdt.getYear(), zdt.getMonthValue());
+            monthFolder = String.format("%02d - %s", zdt.getMonthValue(),
+                    zdt.getMonth().getDisplayName(java.time.format.TextStyle.FULL, java.util.Locale.ENGLISH));
         }
 
         Path relativeParent = null;
@@ -76,9 +77,9 @@ public class FileOperationService {
 
         Path targetDir;
         if (relativeParent != null && !relativeParent.toString().isEmpty()) {
-            targetDir = outputRoot.toPath().resolve(relativeParent).resolve(yearMonth);
+            targetDir = outputRoot.toPath().resolve(relativeParent).resolve(monthFolder);
         } else {
-            targetDir = outputRoot.toPath().resolve(yearMonth);
+            targetDir = outputRoot.toPath().resolve(monthFolder);
         }
 
         Files.createDirectories(targetDir);
@@ -92,10 +93,11 @@ public class FileOperationService {
     }
 
     public File copyToChronologicalFolder(File media, File inputRoot, File outputRoot, String subFolder, Instant timestamp) throws IOException {
-        String yearMonth = "Unknown_Date";
+        String monthFolder = "Unknown_Date";
         if (timestamp != null) {
             java.time.ZonedDateTime zdt = timestamp.atZone(java.time.ZoneId.systemDefault());
-            yearMonth = String.format("%04d-%02d", zdt.getYear(), zdt.getMonthValue());
+            monthFolder = String.format("%02d - %s", zdt.getMonthValue(),
+                    zdt.getMonth().getDisplayName(java.time.format.TextStyle.FULL, java.util.Locale.ENGLISH));
         }
 
         Path relativeParent = null;
@@ -107,9 +109,9 @@ public class FileOperationService {
         Path baseDir = outputRoot.toPath().resolve(subFolder);
         Path targetDir;
         if (relativeParent != null && !relativeParent.toString().isEmpty()) {
-            targetDir = baseDir.resolve(relativeParent).resolve(yearMonth);
+            targetDir = baseDir.resolve(relativeParent).resolve(monthFolder);
         } else {
-            targetDir = baseDir.resolve(yearMonth);
+            targetDir = baseDir.resolve(monthFolder);
         }
 
         Files.createDirectories(targetDir);
@@ -193,6 +195,15 @@ public class FileOperationService {
      * @return true if successfully deleted.
      */
     public boolean deleteDirectory(File directoryToBeDeleted) {
+        if (directoryToBeDeleted == null || !directoryToBeDeleted.exists()) {
+            return false;
+        }
+        // Safety boundary check: Never delete a filesystem root or top-level directory
+        java.nio.file.Path normalized = directoryToBeDeleted.toPath().toAbsolutePath().normalize();
+        if (normalized.getNameCount() <= 1) {
+            System.err.println("[SECURITY] Refusing to delete root or top-level directory: " + normalized);
+            return false;
+        }
         File[] allContents = directoryToBeDeleted.listFiles();
         if (allContents != null) {
             for (File file : allContents) {

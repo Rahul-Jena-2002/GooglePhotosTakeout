@@ -33,7 +33,6 @@ export { default as AdminUsers } from "./admin/AdminUsers";
 // ── 2. Authentication Modules ────────────────────────────────────────────────
 export { default as AuthModal } from "./auth/AuthModal";
 export { default as AuthPage } from "./auth/AuthPage";
-export { default as DesktopAuthBridge } from "./auth/DesktopAuthBridge";
 
 // ── 3. Core Tool Module ──────────────────────────────────────────────────────
 export { default as ToolWorkspace, ToolWorkspaceContent } from "./tool/ToolWorkspace";
