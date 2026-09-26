@@ -773,13 +773,7 @@ app.post("/decline-invite", async (req, res) => {
 });
 
 // Route: POST /get-dodo-product
-app.post("/get-dodo-product", async (req, res) => {
-  const customSecretKey = String(process.env.GATEWAY_API_KEY || "").trim();
-  const headerKey = String(req.headers["x-api-key"] || (req.headers.authorization || "").replace("Bearer ", "")).trim();
-  if (!customSecretKey || !headerKey || headerKey !== customSecretKey) {
-    return res.status(401).json({ error: "Unauthorized" });
-  }
-
+app.post("/get-dodo-product", authenticateApiKey, async (req, res) => {
   const { productId } = req.body;
   if (!productId) {
     return res.status(400).json({ error: "productId is required." });
@@ -864,15 +858,7 @@ const fetchDiscountByCode = (dodoHost, dodoApiKey, code) => {
 // POST /sync-coupon — Creates Dodo discount codes for each coupon target
 // Called from Admin Panel "Sync to Dodo" button (requires API key auth below)
 // ─────────────────────────────────────────────────────────────────────────────
-app.post("/sync-coupon", async (req, res) => {
-  // Note: authenticateApiKey middleware is applied AFTER this route so we
-  // need to manually check the key here since sync-coupon is called from frontend
-  const customSecretKey = String(process.env.GATEWAY_API_KEY || "").trim();
-  const headerKey = String(req.headers["x-api-key"] || (req.headers.authorization || "").replace("Bearer ", "")).trim();
-  if (!customSecretKey || !headerKey || headerKey !== customSecretKey) {
-    return res.status(401).json({ error: "Unauthorized" });
-  }
-
+app.post("/sync-coupon", authenticateApiKey, async (req, res) => {
   const { couponId } = req.body;
   if (!couponId) {
     return res.status(400).json({ error: "couponId is required." });
@@ -1096,25 +1082,6 @@ app.post("/sync-dodo-prices", async (req, res) => {
 
   const https = require("https");
 
-  // Helper to fetch exchange rates
-  const fetchUsdExchangeRates = async () => {
-    return new Promise((resolve) => {
-      https.get("https://open.er-api.com/v6/latest/USD", (res) => {
-        let body = "";
-        res.on("data", chunk => body += chunk);
-        res.on("end", () => {
-          try {
-            const data = JSON.parse(body);
-            if (data?.result === "success" && data.rates) {
-              resolve({ JPY: Number(data.rates.JPY) || 150.0, CNY: Number(data.rates.CNY) || 7.25 });
-              return;
-            }
-          } catch (_) {}
-          resolve({ JPY: 150.0, CNY: 7.25 });
-        });
-      }).on("error", () => resolve({ JPY: 150.0, CNY: 7.25 }));
-    });
-  };
 
   // Resolve Dodo API Key and Host
   let { dodoApiKey, dodoHost } = await resolveDodoCredentials(db);
