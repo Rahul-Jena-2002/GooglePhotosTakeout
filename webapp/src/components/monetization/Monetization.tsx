@@ -198,14 +198,14 @@ export default function Monetization({
     setAffiliateUnavailable(false);
   }, [data]);
 
-  if (loading) {
+  if (loading && preview) {
     return (
       <div
         ref={containerRef}
         className={`w-full mx-auto py-2 flex items-center justify-center opacity-40 animate-pulse text-[11px] text-zinc-500 ${className}`}
       >
         <span className="w-2 h-2 rounded-full bg-zinc-400 mr-2 animate-ping" />
-        Loading...
+        Loading preview...
       </div>
     );
   }

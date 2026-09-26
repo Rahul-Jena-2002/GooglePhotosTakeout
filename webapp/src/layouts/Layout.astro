@@ -28,10 +28,10 @@ const {
 const currentPath = Astro.url.pathname.replace(/\/$/, "") || "/";
 const isHomePage = currentPath === "/" || currentPath === "/index" || currentPath === "/index.html";
 
-// Determine if sidebar empty-space gutter ads should show (NEVER on home, tool, or admin)
+// Determine if sidebar empty-space gutter ads should show (NEVER on home, tool, admin, or auth)
 const showSideAds = propShowSideAds !== undefined 
   ? propShowSideAds 
-  : (!isToolPage && !isHomePage && !currentPath.startsWith("/admin"));
+  : (!isToolPage && !isHomePage && !isAuthPage && !currentPath.startsWith("/admin") && !currentPath.startsWith("/auth") && currentPath !== "/login" && currentPath !== "/signup");
 
 // Flexible sidebar card length tailored to page content length:
 // Short pages (Reviews, Support, Terms, Privacy): 2 ads per sidebar
@@ -847,9 +847,9 @@ const canonicalUrl = `https://takeoutfix.pages.dev${cleanPath === "" ? "/" : cle
       </nav>
  
       <!-- MAIN CONTENT OUTLET -->
-      <main class="flex-1 pt-16 relative w-full overflow-x-clip">
+      <main class="flex-1 pt-16 relative w-full overflow-x-clip flex flex-col">
         { showSideAds ? (
-          <div class="relative w-full max-w-[1880px] mx-auto px-4 sm:px-6 2xl:px-8">
+          <div class="relative w-full max-w-[1880px] mx-auto px-4 sm:px-6 2xl:px-8 flex-1">
             <div class="flex justify-center items-start gap-6 2xl:gap-10">
               
               <!-- Left Gutter Ads: Single Unified Card with Flexible Card Count Inside -->
@@ -933,16 +933,14 @@ const canonicalUrl = `https://takeoutfix.pages.dev${cleanPath === "" ? "/" : cle
             </div>
           </div>
         ) : (
-          <div class="animate-page h-full">
+          <div class="animate-page flex-1 w-full flex flex-col">
             <slot />
           </div>
         )}
       </main>
 
-
- 
-      <!-- FOOTER — hidden on tool page since it's a full-screen app -->
-      { !isToolPage && <footer class="w-full border-t border-white/5 bg-black/40 backdrop-blur-md mt-auto py-16">
+      <!-- FOOTER — hidden on tool page and specialized for auth pages -->
+      { !isToolPage && !isAuthPage && <footer class="w-full border-t border-white/5 bg-black/40 backdrop-blur-md mt-auto py-16">
           <div class="max-w-7xl mx-auto px-6">
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-12 mb-12">
               
@@ -1052,9 +1050,24 @@ const canonicalUrl = `https://takeoutfix.pages.dev${cleanPath === "" ? "/" : cle
                 </div>
               </div>
             </div>
-          </div>
         </footer> }
-      <!-- ADBLOCKER SOFT BANNER -->
+
+      { isAuthPage && (
+        <footer class="w-full border-t border-zinc-200/50 dark:border-white/5 bg-white/40 dark:bg-black/30 backdrop-blur-md mt-auto py-5">
+          <div class="max-w-7xl mx-auto px-6 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-zinc-500">
+            <div class="flex items-center gap-2">
+              <span class="font-medium text-zinc-700 dark:text-zinc-300">TakeoutFix</span>
+              <span>&copy; {new Date().getFullYear()}</span>
+              <span class="hidden md:inline text-zinc-400">&bull; Local metadata restoration utility</span>
+            </div>
+            <div class="flex items-center gap-5 text-xs text-zinc-500 dark:text-zinc-400">
+              <a href="/terms" class="hover:text-zinc-900 dark:hover:text-white transition-colors">Terms of Service</a>
+              <a href="/privacy" class="hover:text-zinc-900 dark:hover:text-white transition-colors">Privacy Policy</a>
+              <a href="/support" class="hover:text-zinc-900 dark:hover:text-white transition-colors">Support</a>
+            </div>
+          </div>
+        </footer>
+      )}
       <div 
         id="adblock-banner" 
         class="fixed top-0 left-0 right-0 z-[9999] bg-zinc-950/95 border-b border-red-500/20 px-4 py-3 sm:py-2.5 backdrop-blur-lg shadow-xl transition-all duration-500 transform -translate-y-full flex flex-col sm:flex-row items-center justify-between gap-3 text-center sm:text-left hidden"

@@ -5,5 +5,9 @@ import CheckoutPage from "../react-pages/user/CheckoutPage";
 ---
 
 <Layout title="TakeoutFix | Checkout & Billing" description="Purchase the Recovery Pass or upgrade to Pro/Super Lifetime access to fix metadata for large archives.">
-  <CheckoutPage client:only="react" />
+  <CheckoutPage client:only="react">
+    <div slot="fallback" class="min-h-[75vh] max-w-5xl mx-auto px-4 py-20 animate-pulse">
+      <div class="h-96 rounded-2xl bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800"></div>
+    </div>
+  </CheckoutPage>
 </Layout>
