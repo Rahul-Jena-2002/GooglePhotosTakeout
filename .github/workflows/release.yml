@@ -103,13 +103,17 @@ jobs:
           $cscPath = "C:\Windows\Microsoft.NET\Framework64\v4.0.30319\csc.exe"
           & $cscPath `
             /target:winexe `
-            /win32icon:native/icons/icon.ico `
+            /win32icon:native\icons\icon.ico `
             /reference:System.IO.Compression.dll,System.IO.Compression.FileSystem.dll,System.Windows.Forms.dll `
             /resource:$payloadZip,payload.zip `
-            /out:./TakeoutFix.exe `
-            native/launcher/SingleFileLauncher.cs
+            /out:TakeoutFix.exe `
+            native\launcher\SingleFileLauncher.cs
 
-          Copy-Item "./TakeoutFix.exe" "./TakeoutFix-Java.exe" -Force
+          if (-not (Test-Path "TakeoutFix.exe")) {
+            throw "TakeoutFix.exe compilation failed."
+          }
+
+          Copy-Item "TakeoutFix.exe" "TakeoutFix-Java.exe" -Force
           Remove-Item $payloadZip -Force
 
           # 3. Optional: Build Setup Installer via WiX
