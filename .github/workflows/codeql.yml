@@ -21,15 +21,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        include:
-          - language: java-kotlin
-            build-mode: autobuild
-          - language: javascript-typescript
-            build-mode: none
-          - language: python
-            build-mode: none
-          - language: actions
-            build-mode: none
+        language: [ 'java-kotlin', 'javascript-typescript', 'python' ]
 
     steps:
       - name: Checkout repository
@@ -46,7 +38,9 @@ jobs:
         uses: github/codeql-action/init@v3
         with:
           languages: ${{ matrix.language }}
-          build-mode: ${{ matrix.build-mode }}
+
+      - name: Autobuild
+        uses: github/codeql-action/autobuild@v3
 
       - name: Perform CodeQL Analysis
         uses: github/codeql-action/analyze@v3
