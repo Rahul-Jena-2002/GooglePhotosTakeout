@@ -1,20 +1,38 @@
-# Explicit access for Google AdSense Crawler
+# Explicit access for Google AdSense & Ads Crawlers
 User-agent: Mediapartners-Google
 Allow: /
 
-# Explicit access for Google Ads Crawler
 User-agent: Googlebot
 Allow: /
 
-# Explicit access for Media.net Ad Crawler
 User-agent: Medianet
 Allow: /
 
-# Default rule for all web crawlers
+# Explicit access for AI Search & Answer Engines (GEO - Generative Engine Optimization)
+User-agent: GPTBot
+Allow: /
+
+User-agent: ClaudeBot
+Allow: /
+
+User-agent: PerplexityBot
+Allow: /
+
+User-agent: Google-Extended
+Allow: /
+
+User-agent: Applebot-Extended
+Allow: /
+
+# General Crawlers & Search Engines
 User-agent: *
 Allow: /
 Disallow: /admin/
 Disallow: /dashboard
 Disallow: /profile
+Disallow: /auth/
+Disallow: /auth/desktop
 
+# Sitemaps & LLM Context Standards
 Sitemap: https://takeoutfix.pages.dev/sitemap.xml
+# LLMs.txt Reference: https://takeoutfix.pages.dev/llms.txt
