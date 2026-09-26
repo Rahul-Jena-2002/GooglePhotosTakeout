@@ -4,6 +4,10 @@ import Layout from "../../layouts/Layout.astro";
 import DesktopAuthBridge from "../../react-pages/auth/DesktopAuthBridge";
 ---
 
-<Layout title="TakeoutFix Desktop Authentication Bridge" description="Authenticate TakeoutFix Desktop App with your Google account.">
+<Layout 
+  title="TakeoutFix Desktop Authentication Bridge" 
+  description="Authenticate TakeoutFix Desktop App with your Google account."
+  isAuthPage={true}
+>
   <DesktopAuthBridge client:only="react" />
 </Layout>

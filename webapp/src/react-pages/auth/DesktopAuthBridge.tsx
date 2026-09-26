@@ -1,15 +1,15 @@
 import { useState, useEffect, useRef } from "react";
 import { useAuth, AuthProvider } from "../../contexts/AuthContext";
-import { signInWithPopup, getRedirectResult, GoogleAuthProvider } from "firebase/auth";
+import { signInWithPopup, GoogleAuthProvider } from "firebase/auth";
 import { auth, googleProvider } from "../../lib/firebase/client";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "../../components/ui/card";
 import { Button } from "../../components/ui/button";
 import { ToastContainer } from "../../components/ui/toast";
-import { CheckCircle2, AlertCircle, Laptop, Copy, Check, ExternalLink } from "lucide-react";
+import { AlertCircle, Laptop, Copy, Check } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
 function DesktopAuthBridgeContent() {
-  const { user, userData, loading, login } = useAuth();
+  const { user, userData, loading } = useAuth();
   const [port, setPort] = useState<string | null>(null);
   const [status, setStatus] = useState<"idle" | "authorizing" | "error">("idle");
   const [stateToken, setStateToken] = useState<string>("");
@@ -17,8 +17,18 @@ function DesktopAuthBridgeContent() {
   const [copied, setCopied] = useState<boolean>(false);
   const [signingIn, setSigningIn] = useState<boolean>(false);
   const attemptedRef = useRef<boolean>(false);
+  const copyTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // 1. Parse port and anti-CSRF state from query parameters
+  // Clean up timer on unmount
+  useEffect(() => {
+    return () => {
+      if (copyTimerRef.current) {
+        clearTimeout(copyTimerRef.current);
+      }
+    };
+  }, []);
+
+  // 1. Parse and strictly validate port and anti-CSRF state token
   useEffect(() => {
     if (typeof window !== "undefined") {
       const searchParams = new URLSearchParams(window.location.search);
@@ -35,31 +45,22 @@ function DesktopAuthBridgeContent() {
       } else {
         try { stateParam = sessionStorage.getItem("takeoutfix_desktop_state") || ""; } catch (_) {}
       }
-      setStateToken(stateParam || "");
+      
+      // Sanitize state token to URL-safe alphanumeric and standard chars
+      const sanitizedState = stateParam ? stateParam.replace(/[^a-zA-Z0-9_-]/g, "") : "";
+      setStateToken(sanitizedState);
 
-      if (portParam && !Number.isNaN(Number(portParam))) {
-        setPort(portParam);
+      // Validate port range: unprivileged loopback ports (1024 - 65535)
+      const parsedPort = portParam ? parseInt(portParam, 10) : NaN;
+      if (Number.isInteger(parsedPort) && parsedPort >= 1024 && parsedPort <= 65535) {
+        setPort(String(parsedPort));
       } else {
         setStatus("error");
       }
     }
   }, []);
 
-  // 2. Handle redirect result if returning from any prior redirect
-  useEffect(() => {
-    if (!auth) return;
-    getRedirectResult(auth)
-      .then((result) => {
-        if (result && result.user) {
-          attemptedRef.current = false;
-        }
-      })
-      .catch((err) => {
-        console.warn("[DesktopAuthBridge] getRedirectResult check:", err);
-      });
-  }, []);
-
-  // 3. When user is signed in and port is available, hand off immediately to desktop
+  // 2. When user is signed in and port is available, hand off immediately to desktop
   useEffect(() => {
     if (!port || loading || !user) return;
     if (!attemptedRef.current) {
@@ -95,11 +96,15 @@ function DesktopAuthBridgeContent() {
         queryParams.state = stateToken;
       }
 
-      // Generate base64 token for manual copy-paste fallback
+      // Generate base64 token for manual copy-paste fallback using standard UTF-8 encoder
       try {
         const payloadJson = JSON.stringify(queryParams);
-        const encoded = btoa(unescape(encodeURIComponent(payloadJson)));
-        setAuthPayloadString(encoded);
+        const bytes = new TextEncoder().encode(payloadJson);
+        let binary = "";
+        for (let i = 0; i < bytes.length; i++) {
+          binary += String.fromCharCode(bytes[i]);
+        }
+        setAuthPayloadString(btoa(binary));
       } catch (_) {
         setAuthPayloadString(token);
       }
@@ -109,13 +114,14 @@ function DesktopAuthBridgeContent() {
       // Gold Standard: Top-level navigation directly to local loopback server
       window.location.replace(callbackUrl);
 
-    } catch (err: any) {
-      console.error("[DesktopAuthBridge] Auth dispatch error:", err);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.error("[DesktopAuthBridge] Auth dispatch error:", msg);
       setStatus("error");
     }
   };
 
-  // 4. Clean popup-based Google Sign-In — NEVER redirects the parent page, stopping all loops!
+  // 3. Clean popup-based Google Sign-In — NEVER redirects the parent page, stopping all loops!
   const handleGoogleSignIn = async () => {
     if (signingIn) return;
     setSigningIn(true);
@@ -125,9 +131,10 @@ function DesktopAuthBridgeContent() {
       const provider = googleProvider || new GoogleAuthProvider();
       provider.setCustomParameters({ prompt: "select_account" });
       await signInWithPopup(auth, provider);
-      // user state will be updated via onAuthStateChanged and effect 3 will fire!
-    } catch (err: any) {
-      console.warn("[DesktopAuthBridge] Google popup cancelled or failed:", err);
+      // user state will be updated via onAuthStateChanged and effect 2 will fire!
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.warn("[DesktopAuthBridge] Google popup cancelled or failed:", msg);
       setSigningIn(false);
     }
   };
@@ -136,8 +143,9 @@ function DesktopAuthBridgeContent() {
     if (!authPayloadString) return;
     navigator.clipboard.writeText(authPayloadString).then(() => {
       setCopied(true);
-      setTimeout(() => setCopied(false), 2500);
-    });
+      if (copyTimerRef.current) clearTimeout(copyTimerRef.current);
+      copyTimerRef.current = setTimeout(() => setCopied(false), 2500);
+    }).catch(() => {});
   };
 
   return (
@@ -149,7 +157,7 @@ function DesktopAuthBridgeContent() {
 
         <CardHeader className="text-center pb-4 pt-8">
           <div className="mx-auto w-14 h-14 rounded-2xl bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 flex items-center justify-center shadow-md mb-3 text-emerald-500">
-            <Laptop className="w-7 h-7" />
+            <Laptop className="w-7 h-7" aria-hidden="true" />
           </div>
           <CardTitle className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-white">
             TakeoutFix Desktop
@@ -161,16 +169,18 @@ function DesktopAuthBridgeContent() {
 
         <CardContent className="space-y-6 pt-2 pb-8 px-6">
           <AnimatePresence mode="wait">
-            {/* Case 1: Missing port parameter */}
-            {!port && (
+            {/* Case 1: Missing or invalid port parameter */}
+            {(!port || status === "error") && (
               <motion.div
                 key="no-port"
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -10 }}
+                role="alert"
+                aria-live="polite"
                 className="p-4 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-900 dark:text-amber-300 text-sm flex items-start gap-3"
               >
-                <AlertCircle className="w-5 h-5 flex-shrink-0 mt-0.5 text-amber-600 dark:text-amber-400" />
+                <AlertCircle className="w-5 h-5 flex-shrink-0 mt-0.5 text-amber-600 dark:text-amber-400" aria-hidden="true" />
                 <div>
                   <p className="font-semibold mb-1">Launch from Desktop App</p>
                   <p className="text-amber-800/80 dark:text-amber-200/80 text-xs leading-relaxed">
@@ -181,15 +191,17 @@ function DesktopAuthBridgeContent() {
             )}
 
             {/* Case 2: Authorizing / Redirecting state (Instant handoff) */}
-            {port && (status === "authorizing" || (user && !authPayloadString)) && (
+            {port && status !== "error" && (status === "authorizing" || (user && !authPayloadString)) && (
               <motion.div
                 key="authorizing"
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -10 }}
+                role="status"
+                aria-live="polite"
                 className="text-center py-6 space-y-4"
               >
-                <div className="w-12 h-12 border-3 border-emerald-500 border-t-transparent rounded-full animate-spin mx-auto" />
+                <div className="w-12 h-12 border-3 border-emerald-500 border-t-transparent rounded-full animate-spin mx-auto" aria-hidden="true" />
                 <div>
                   <p className="text-zinc-900 dark:text-white font-medium">Authorizing TakeoutFix Desktop...</p>
                   <p className="text-zinc-500 dark:text-zinc-400 text-xs mt-1">Returning you to the application</p>
@@ -198,7 +210,7 @@ function DesktopAuthBridgeContent() {
             )}
 
             {/* Case 3: Ready for User to Click Sign in (Pop-up flow, NO REDIRECT LOOPS) */}
-            {port && !user && status !== "authorizing" && (
+            {port && !user && status !== "authorizing" && status !== "error" && (
               <motion.div
                 key="needs-login"
                 initial={{ opacity: 0, y: 10 }}
@@ -213,12 +225,13 @@ function DesktopAuthBridgeContent() {
                 <Button
                   onClick={handleGoogleSignIn}
                   disabled={signingIn}
+                  aria-label="Continue with Google sign-in"
                   className="w-full h-12 bg-white text-zinc-900 hover:bg-zinc-100 border border-zinc-300 dark:border-zinc-700 dark:bg-zinc-900 dark:text-white dark:hover:bg-zinc-800 font-semibold flex items-center justify-center gap-3 rounded-xl shadow-sm transition-all cursor-pointer"
                 >
                   {signingIn ? (
-                    <div className="w-5 h-5 border-2 border-zinc-400 border-t-transparent rounded-full animate-spin" />
+                    <div className="w-5 h-5 border-2 border-zinc-400 border-t-transparent rounded-full animate-spin" aria-hidden="true" />
                   ) : (
-                    <svg className="w-5 h-5" viewBox="0 0 24 24">
+                    <svg className="w-5 h-5" viewBox="0 0 24 24" aria-hidden="true">
                       <path
                         fill="#4285F4"
                         d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
@@ -254,9 +267,10 @@ function DesktopAuthBridgeContent() {
                   <span>Using a strict corporate VPN?</span>
                   <button
                     onClick={copyTokenToClipboard}
+                    aria-label="Copy authorization code to clipboard"
                     className="text-emerald-500 hover:text-emerald-400 font-medium inline-flex items-center gap-1 cursor-pointer"
                   >
-                    {copied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+                    {copied ? <Check className="w-3.5 h-3.5" aria-hidden="true" /> : <Copy className="w-3.5 h-3.5" aria-hidden="true" />}
                     <span>{copied ? "Copied!" : "Copy Code"}</span>
                   </button>
                 </div>
