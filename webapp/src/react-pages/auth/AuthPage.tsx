@@ -31,6 +31,78 @@ import {
   ExternalLink,
 } from "lucide-react";
 
+const GMAIL_REGEX = /^[a-zA-Z0-9._%+-]+@gmail\.com$/;
+const PASSWORD_REGEX = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?`~]).{8,16}$/;
+
+/**
+ * Reads desktop loopback port from URL parameters with sessionStorage fallback.
+ */
+function getStoredDesktopPort(): string | null {
+  if (typeof window === "undefined") return null;
+  const params = new URLSearchParams(window.location.search);
+  const port = params.get("desktop_port") || params.get("port");
+  if (port) {
+    try { sessionStorage.setItem("takeoutfix_desktop_port", port); } catch (_) {}
+    return port;
+  }
+  try { return sessionStorage.getItem("takeoutfix_desktop_port"); } catch (_) { return null; }
+}
+
+/**
+ * Reads anti-CSRF state token from URL parameters with sessionStorage fallback.
+ */
+function getStoredDesktopState(): string {
+  if (typeof window === "undefined") return "";
+  const params = new URLSearchParams(window.location.search);
+  const state = params.get("state");
+  if (state) {
+    try { sessionStorage.setItem("takeoutfix_desktop_state", state); } catch (_) {}
+    return state;
+  }
+  try { return sessionStorage.getItem("takeoutfix_desktop_state") || ""; } catch (_) { return ""; }
+}
+
+/**
+ * Clears desktop session cache from browser storage.
+ */
+function clearDesktopSession() {
+  if (typeof window === "undefined") return;
+  try {
+    sessionStorage.removeItem("takeoutfix_desktop_port");
+    sessionStorage.removeItem("takeoutfix_desktop_state");
+  } catch (_) {}
+}
+
+/**
+ * Cryptographically generates a secure, compliant password.
+ */
+function generateSecurePassword(): string {
+  const getRandomInt = (max: number) => {
+    const arr = new Uint32Array(1);
+    window.crypto.getRandomValues(arr);
+    return arr[0] % max;
+  };
+  const uppers = "ABCDEFGHJKLMNPQRSTUVWXYZ";
+  const lowers = "abcdefghijkmnopqrstuvwxyz";
+  const digits = "23456789";
+  const specials = "!@#$%^&*()_+-=";
+  const pwd = [
+    uppers[getRandomInt(uppers.length)],
+    lowers[getRandomInt(lowers.length)],
+    digits[getRandomInt(digits.length)],
+    specials[getRandomInt(specials.length)],
+  ];
+  const all = uppers + lowers + digits + specials;
+  for (let i = 0; i < 8; i++) {
+    pwd.push(all[getRandomInt(all.length)]);
+  }
+  for (let i = pwd.length - 1; i > 0; i--) {
+    const j = getRandomInt(i + 1);
+    [pwd[i], pwd[j]] = [pwd[j], pwd[i]];
+  }
+  return pwd.join("");
+}
+
 export default function AuthPage() {
   const [mode, setMode] = useState<"signin" | "signup" | "forgot">(() => {
     if (typeof window !== "undefined") {
@@ -55,8 +127,7 @@ export default function AuthPage() {
 
   const [email, setEmail] = useState(() => {
     if (typeof window !== "undefined") {
-      const params = new URLSearchParams(window.location.search);
-      return params.get("email") || "";
+      return new URLSearchParams(window.location.search).get("email") || "";
     }
     return "";
   });
@@ -72,18 +143,7 @@ export default function AuthPage() {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [rememberMe, setRememberMe] = useState(true);
 
-  const [desktopPort] = useState<string | null>(() => {
-    if (typeof window !== "undefined") {
-      const params = new URLSearchParams(window.location.search);
-      const p = params.get("desktop_port") || params.get("port");
-      if (p) {
-        try { sessionStorage.setItem("takeoutfix_desktop_port", p); } catch (_) {}
-        return p;
-      }
-      try { return sessionStorage.getItem("takeoutfix_desktop_port"); } catch (_) { return null; }
-    }
-    return null;
-  });
+  const [desktopPort] = useState<string | null>(getStoredDesktopPort);
   const [fallbackAuthUrl, setFallbackAuthUrl] = useState<string | null>(null);
   const [authorizing, setAuthorizing] = useState(false);
   const [authorizedSuccessfully, setAuthorizedSuccessfully] = useState<boolean>(() => {
@@ -104,12 +164,8 @@ export default function AuthPage() {
       setAutoCloseSeconds((prev) => {
         if (prev <= 1) {
           clearInterval(timer);
-          try {
-            window.close();
-          } catch (_) {}
-          try {
-            window.open("", "_self", "").close();
-          } catch (_) {}
+          try { window.close(); } catch (_) {}
+          try { window.open("", "_self", "").close(); } catch (_) {}
           return 0;
         }
         return prev - 1;
@@ -119,31 +175,8 @@ export default function AuthPage() {
     return () => clearInterval(timer);
   }, [authorizedSuccessfully]);
 
-  const generateStrongPassword = () => {
-    const getRandomInt = (max: number) => {
-      const arr = new Uint32Array(1);
-      window.crypto.getRandomValues(arr);
-      return arr[0] % max;
-    };
-    const uppers = "ABCDEFGHJKLMNPQRSTUVWXYZ";
-    const lowers = "abcdefghijkmnopqrstuvwxyz";
-    const digits = "23456789";
-    const specials = "!@#$%^&*()_+-=";
-    const pwd = [
-      uppers[getRandomInt(uppers.length)],
-      lowers[getRandomInt(lowers.length)],
-      digits[getRandomInt(digits.length)],
-      specials[getRandomInt(specials.length)],
-    ];
-    const all = uppers + lowers + digits + specials;
-    for (let i = 0; i < 8; i++) {
-      pwd.push(all[getRandomInt(all.length)]);
-    }
-    for (let i = pwd.length - 1; i > 0; i--) {
-      const j = getRandomInt(i + 1);
-      [pwd[i], pwd[j]] = [pwd[j], pwd[i]];
-    }
-    const result = pwd.join("");
+  const handleGeneratePassword = () => {
+    const result = generateSecurePassword();
     setPassword(result);
     setConfirmPassword(result);
     setShowPassword(true);
@@ -194,25 +227,18 @@ export default function AuthPage() {
   };
 
   const handleSuccessRedirect = async (userObj?: User | null) => {
-    if (typeof window !== "undefined") {
-      const params = new URLSearchParams(window.location.search);
-      let port = params.get("desktop_port") || params.get("port") || desktopPort;
-      if (!port) {
-        try { port = sessionStorage.getItem("takeoutfix_desktop_port"); } catch (_) {}
-      }
-      const targetUser = userObj || currentUser || auth?.currentUser;
-      if (port && targetUser) {
-        try {
-          await authorizeDesktop(targetUser);
-          return;
-        } catch (e) {
-          console.warn("Desktop bridge error:", e);
-        }
+    const port = desktopPort || getStoredDesktopPort();
+    const targetUser = userObj || currentUser || auth?.currentUser;
+    if (port && targetUser) {
+      try {
+        await authorizeDesktop(targetUser);
+        return;
+      } catch (e) {
+        console.warn("Desktop bridge error:", e);
       }
     }
     setTimeout(() => {
       if (typeof window !== "undefined") {
-        // Trigger Astro progress bar before navigation
         document.dispatchEvent(new Event("astro:before-preparation"));
         window.location.href = getRedirectUrl();
       }
@@ -250,25 +276,14 @@ export default function AuthPage() {
     setGoogleLoading(true);
 
     try {
-      if (typeof window !== "undefined") {
-        const params = new URLSearchParams(window.location.search);
-        const stateParam = params.get("state");
-        if (stateParam) {
-          try { sessionStorage.setItem("takeoutfix_desktop_state", stateParam); } catch (_) {}
-        }
-        const portParam = params.get("desktop_port") || params.get("port") || desktopPort;
-        if (portParam) {
-          try { sessionStorage.setItem("takeoutfix_desktop_port", portParam); } catch (_) {}
-        }
-      }
-
+      getStoredDesktopState();
+      getStoredDesktopPort();
       executeRecaptcha("GOOGLE_SIGNIN").catch(() => {});
 
       if (googleProvider) {
         googleProvider.setCustomParameters({ prompt: 'select_account' });
       }
 
-      // Navigate the complete browser window directly to Google OAuth account chooser (just like other IDEs)
       await signInWithRedirect(auth, googleProvider);
     } catch (err: any) {
       console.error("Google sign in error:", err);
@@ -385,79 +400,71 @@ export default function AuthPage() {
   };
 
   const authorizeDesktop = async (targetUser: User) => {
-    if (typeof window !== "undefined" && targetUser) {
-      let port = desktopPort || new URLSearchParams(window.location.search).get("desktop_port") || new URLSearchParams(window.location.search).get("port");
-      if (!port) {
-        try { port = sessionStorage.getItem("takeoutfix_desktop_port"); } catch (_) {}
-      }
-      if (!port) return;
+    if (typeof window === "undefined" || !targetUser) return;
+    const port = desktopPort || getStoredDesktopPort();
+    if (!port) return;
 
-      setAuthorizing(true);
-      setErrorMsg("");
+    setAuthorizing(true);
+    setErrorMsg("");
+
+    try {
+      const token = await targetUser.getIdToken().catch(() => "");
+      const refreshToken = (targetUser as any).refreshToken || (targetUser as any).stsTokenManager?.refreshToken || "";
+      const stateParam = getStoredDesktopState();
+
+      const displayName = targetUser.displayName || targetUser.email?.split("@")[0] || "User";
+      const payload: Record<string, string> = {
+        uid: targetUser.uid,
+        googleId: targetUser.uid,
+        email: targetUser.email || "",
+        displayName,
+        name: displayName,
+        plan: "free",
+        token,
+        idToken: token,
+        refreshToken,
+      };
+
+      if (stateParam) {
+        payload.state = stateParam;
+      }
+
+      const callbackParams = new URLSearchParams(payload);
+      const callbackUrl = `http://127.0.0.1:${port}/callback?${callbackParams.toString()}`;
+      setFallbackAuthUrl(callbackUrl);
+
+      // Attempt POST handoff first
       try {
-        const token = await targetUser.getIdToken().catch(() => "");
-        const refreshToken = (targetUser as any).refreshToken || (targetUser as any).stsTokenManager?.refreshToken || "";
-        let stateParam = new URLSearchParams(window.location.search).get("state") || "";
-        if (!stateParam) {
-          try { stateParam = sessionStorage.getItem("takeoutfix_desktop_state") || ""; } catch (_) {}
-        }
-        const payload: Record<string, string> = {
-          uid: targetUser.uid,
-          googleId: targetUser.uid,
-          email: targetUser.email || "",
-          displayName: targetUser.displayName || targetUser.email?.split("@")[0] || "User",
-          name: targetUser.displayName || targetUser.email?.split("@")[0] || "User",
-          plan: "free",
-          token: token,
-          idToken: token,
-          refreshToken: refreshToken
-        };
-        if (stateParam) {
-          payload.state = stateParam;
-        }
-        const callbackParams = new URLSearchParams(payload);
-        const callbackUrl = `http://127.0.0.1:${port}/callback?${callbackParams.toString()}`;
-        setFallbackAuthUrl(callbackUrl);
+        await fetch(`http://127.0.0.1:${port}/callback`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+      } catch (_) {}
 
-        let ok = false;
-        try {
-          const res = await fetch(`http://127.0.0.1:${port}/callback`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(payload)
-          });
-          if (res.ok) ok = true;
-        } catch (_) {}
+      // Backup GET ping transport
+      try {
+        fetch(callbackUrl, { mode: "no-cors" }).catch(() => {});
+      } catch (_) {}
 
-        // Always also fire query GET ping as backup transport
-        try {
-          fetch(callbackUrl, { mode: "no-cors" }).catch(() => {});
-        } catch (_) {}
+      clearDesktopSession();
 
-        try {
-          sessionStorage.removeItem("takeoutfix_desktop_port");
-          sessionStorage.removeItem("takeoutfix_desktop_state");
-        } catch (_) {}
+      // Clean URL parameters to prevent re-authorization loops
+      try {
+        const cleanSearch = new URLSearchParams(window.location.search);
+        cleanSearch.delete("desktop_port");
+        cleanSearch.delete("port");
+        cleanSearch.set("authorized", "true");
+        window.history.replaceState({}, document.title, `${window.location.pathname}?${cleanSearch.toString()}`);
+      } catch (_) {}
 
-        // Strip desktop_port/port from URL immediately to permanently prevent any looping
-        try {
-          const cleanSearch = new URLSearchParams(window.location.search);
-          cleanSearch.delete("desktop_port");
-          cleanSearch.delete("port");
-          cleanSearch.set("authorized", "true");
-          const newUrl = window.location.pathname + "?" + cleanSearch.toString();
-          window.history.replaceState({}, document.title, newUrl);
-        } catch (_) {}
-
-        // Show successful authorization card right here on the login page ("here itself")
-        setAuthorizedSuccessfully(true);
-        setAutoCloseSeconds(10);
-      } catch (err: any) {
-        console.error("Authorization error:", err);
-        setErrorMsg("Failed to automatically connect to desktop. Please click 'Copy Auth Link' below.");
-      } finally {
-        setAuthorizing(false);
-      }
+      setAuthorizedSuccessfully(true);
+      setAutoCloseSeconds(10);
+    } catch (err: any) {
+      console.error("Authorization error:", err);
+      setErrorMsg("Failed to automatically connect to desktop. Please click 'Copy Auth Link' below.");
+    } finally {
+      setAuthorizing(false);
     }
   };
 
@@ -850,7 +857,7 @@ export default function AuthPage() {
                   {mode === "signup" && (
                     <button
                       type="button"
-                      onClick={generateStrongPassword}
+                      onClick={handleGeneratePassword}
                       className="text-[11px] text-indigo-600 dark:text-indigo-400 hover:underline cursor-pointer flex items-center gap-1 font-medium"
                       title="Auto-generate a compliant secure password"
                     >
