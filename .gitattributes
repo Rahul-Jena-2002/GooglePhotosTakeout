@@ -8,3 +8,7 @@
 *.json text eol=lf
 *.rules text eol=lf
 *.md text eol=lf
+
+# Vendored runtime binaries and headers (prevents GitHub Linguist/CodeQL from detecting JNI headers as project C/C++ code)
+native/runtime/** linguist-vendored
+native/runtime/** binary
