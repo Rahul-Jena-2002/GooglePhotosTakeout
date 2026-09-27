@@ -125,7 +125,7 @@ const prices = PLAN_PRICES[region] || PLAN_PRICES.us;
       </div>
       <div class="max-w-7xl mx-auto px-4 pb-4 grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 text-center">
         <div class="glass-card p-5 sm:p-8 flex flex-col items-center justify-center">
-          <div id="stat-users" class="text-2xl sm:text-4xl md:text-5xl font-black mb-2 sm:mb-3 text-foreground">27</div>
+          <div id="stat-users" class="text-2xl sm:text-4xl md:text-5xl font-black mb-2 sm:mb-3 text-foreground">29</div>
           <div class="text-[10px] sm:text-xs md:text-sm font-bold text-zinc-400 uppercase tracking-widest">Registered Users</div>
         </div>
         <div class="glass-card p-5 sm:p-8 flex flex-col items-center justify-center">
@@ -146,28 +146,12 @@ const prices = PLAN_PRICES[region] || PLAN_PRICES.us;
       </p>
     </section>
 
-    <!-- Sponsored Deals: Below Telemetry (4 Ads Grid) -->
+    <!-- Sponsored Deals: Below Telemetry -->
     <section class="w-full max-w-7xl mx-auto px-4 py-4 relative z-10" aria-label="Sponsored recommendations">
       <!-- BEGIN AADS AD UNIT 2456560 -->
       <div id="frame" style="width: 100%; margin: auto; position: relative; z-index: 99998;">
-        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 w-full">
-          <div class="w-full bg-zinc-50/80 dark:bg-zinc-900/60 rounded-xl border border-zinc-200/80 dark:border-zinc-800 p-1.5 overflow-hidden flex items-center justify-center min-h-[90px]">
-            <iframe data-aa='2456560' loading='lazy' src='//acceptable.a-ads.com/2456560/?size=Adaptive'
-              style='border:0; padding:0; width:100%; height:80px; overflow:hidden; display:block; margin:auto'></iframe>
-          </div>
-          <div class="w-full bg-zinc-50/80 dark:bg-zinc-900/60 rounded-xl border border-zinc-200/80 dark:border-zinc-800 p-1.5 overflow-hidden flex items-center justify-center min-h-[90px]">
-            <iframe data-aa='2456560' loading='lazy' src='//acceptable.a-ads.com/2456560/?size=Adaptive'
-              style='border:0; padding:0; width:100%; height:80px; overflow:hidden; display:block; margin:auto'></iframe>
-          </div>
-          <div class="w-full bg-zinc-50/80 dark:bg-zinc-900/60 rounded-xl border border-zinc-200/80 dark:border-zinc-800 p-1.5 overflow-hidden flex items-center justify-center min-h-[90px]">
-            <iframe data-aa='2456560' loading='lazy' src='//acceptable.a-ads.com/2456560/?size=Adaptive'
-              style='border:0; padding:0; width:100%; height:80px; overflow:hidden; display:block; margin:auto'></iframe>
-          </div>
-          <div class="w-full bg-zinc-50/80 dark:bg-zinc-900/60 rounded-xl border border-zinc-200/80 dark:border-zinc-800 p-1.5 overflow-hidden flex items-center justify-center min-h-[90px]">
-            <iframe data-aa='2456560' loading='lazy' src='//acceptable.a-ads.com/2456560/?size=Adaptive'
-              style='border:0; padding:0; width:100%; height:80px; overflow:hidden; display:block; margin:auto'></iframe>
-          </div>
-        </div>
+        <iframe data-aa='2456560' loading='lazy' src='//acceptable.a-ads.com/2456560/?size=Adaptive'
+          style='border:0; padding:0; width:100%; height:90px; overflow:hidden; display:block; margin:auto'></iframe>
       </div>
       <!-- END AADS AD UNIT 2456560 -->
     </section>
@@ -336,7 +320,7 @@ const prices = PLAN_PRICES[region] || PLAN_PRICES.us;
   // 1. Fetch Stats directly from Firestore REST API on the client side
   const loadKvStats = async () => {
     try {
-      const res = await fetch("https://firestore.googleapis.com/v1/projects/takeout-fix/databases/(default)/documents/platform_stats/global");
+      const res = await fetch("https://firestore.googleapis.com/v1/projects/takeout-fix/databases/(default)/documents/platform_stats/global", { cache: "no-store" });
       if (!res.ok) return;
       const data = await res.json();
       if (!data) return;
@@ -346,7 +330,7 @@ const prices = PLAN_PRICES[region] || PLAN_PRICES.us;
           filesRestored: parseInt(fields.filesRestored?.integerValue || "217668"),
           bytesProcessed: parseInt(fields.bytesProcessed?.integerValue || "245899264000"),
           ticketsResolved: parseInt(fields.ticketsResolved?.integerValue || "2"),
-          usersCount: parseInt(fields.usersCount?.integerValue || "27"),
+          usersCount: parseInt(fields.usersCount?.integerValue || "29"),
           filesScanned: parseInt(fields.filesScanned?.integerValue || "239722")
         };
         

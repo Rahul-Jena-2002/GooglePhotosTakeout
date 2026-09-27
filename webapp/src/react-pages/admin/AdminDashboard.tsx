@@ -25,6 +25,7 @@ const ROLE_LABEL: Record<AdminRole, string> = {
   ADMIN: "Admin",
   SUPPORT: "Support",
   MODERATOR: "Moderator",
+  DEVELOPER: "Developer",
 }
 
 const formatBytes = (bytes: number) => {

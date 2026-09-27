@@ -39,11 +39,7 @@ export function useTelemetrySync(enabled: boolean = true) {
         const globalRef = doc(db, 'platform_stats', 'global');
         const snap = await getDoc(globalRef);
         
-        // If platform_stats/global already exists and has data, no need to read collections
-        if (snap.exists() && snap.data()?.usersCount > 0) {
-          try { sessionStorage.setItem("takeoutfix_telemetry_synced", "true"); } catch (_) {}
-          return;
-        }
+
 
         // Only in the rare case that platform_stats/global is missing or empty: run a one-time calculation
         const [usersSnap, recoveriesSnap, ticketsSnap] = await Promise.all([

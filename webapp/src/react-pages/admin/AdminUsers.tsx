@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react"
-import { collection, query, onSnapshot, doc, updateDoc, deleteDoc, addDoc } from "firebase/firestore"
+import { collection, query, onSnapshot, doc, updateDoc, deleteDoc, addDoc, setDoc } from "firebase/firestore"
 import { db } from "../../firebase"
 import { Search, Trash2, ShieldAlert } from "lucide-react"
 import { useAuth } from "../../contexts/AuthContext"
@@ -307,6 +307,13 @@ export default function AdminUsers() {
       })
       setUsers(userList)
       setLoading(false)
+
+      // Automatically sync real-time user count to platform_stats/global
+      if (userList.length > 0) {
+        setDoc(doc(db, "platform_stats", "global"), {
+          usersCount: userList.length,
+        }, { merge: true }).catch(console.warn);
+      }
     }, (err) => {
       console.error(err)
       setLoading(false)

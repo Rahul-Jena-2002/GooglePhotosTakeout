@@ -21,7 +21,6 @@ export function UserAvatar({
         src={src}
         alt={alt || name || "User avatar"}
         referrerPolicy="no-referrer"
-        crossOrigin="anonymous"
         className={`${className} rounded-full object-cover flex-shrink-0`}
         onError={() => setError(true)}
       />

@@ -3,6 +3,7 @@ import { useLocation, Link, useNavigate } from "react-router-dom"
 import { useAuth, type AdminRole } from "../../../contexts/AuthContext"
 import { db } from "../../../firebase"
 import { collection, query, where, onSnapshot, doc, updateDoc, Timestamp } from "firebase/firestore"
+import { UserAvatar } from "../../common/UserAvatar"
 import {
   Search,
   Bell,
@@ -463,13 +464,7 @@ export default function AdminTopbar({ onMenuClick }: { onMenuClick?: () => void 
         {/* Profile Settings Dropdown */}
         <DropdownMenu>
           <DropdownMenuTrigger className="btn-profile-trigger flex items-center gap-2 hover:bg-zinc-900/60 p-1 sm:pr-2 rounded-full border border-transparent hover:border-zinc-800 transition-all focus:outline-none">
-            {adminData?.photoURL ? (
-              <img src={adminData.photoURL} alt="" className="w-7 h-7 rounded-full flex-shrink-0 border border-white/5" />
-            ) : (
-              <div className="w-7 h-7 rounded-full bg-zinc-900 dark:bg-zinc-200 flex-shrink-0 flex items-center justify-center font-bold text-xs text-zinc-100 dark:text-zinc-900 border border-zinc-800 dark:border-zinc-300">
-                {adminData?.displayName?.charAt(0) || "A"}
-              </div>
-            )}
+            <UserAvatar src={adminData?.photoURL} name={adminData?.displayName} className="w-7 h-7" />
             <ChevronDown className="w-3 h-3 text-zinc-500 hidden sm:inline" />
           </DropdownMenuTrigger>
           <DropdownMenuContent className="bg-zinc-900 border-zinc-800 text-zinc-200 min-w-[200px] p-1 shadow-2xl mr-2">
