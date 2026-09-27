@@ -19,4 +19,3 @@
 /restore-gps-google-takeout.html /restore-gps-google-takeout 301
 /fix-google-takeout-dates.html /fix-google-takeout-dates 301
 /auth/desktop /login 302
-/auth /login 302
