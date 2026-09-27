@@ -48,11 +48,18 @@ public class RecoveryCenterPanel extends JPanel {
     public static final String CARD_COMPARE = "Archive Compare (BETA)";
     public static final String CARD_DUPLICATE = "Duplicate Finder (BETA)";
     public static final String CARD_AUTH_REQUIRED = "Sign In Required";
+    public static final String CARD_UPGRADE_REQUIRED = "Upgrade Plan Required";
     public static final String CARD_AUTHENTICATING = "Authenticating Session";
 
     private final CardLayout cardLayout = new CardLayout();
     private final JPanel centerCards = new JPanel(cardLayout);
-    private String currentCard = CARD_DASHBOARD;
+    private String currentCard = CARD_RESTORE;
+
+    // Soft-Lock Card Components
+    private JLabel upgradeRequiredBadge;
+    private JLabel upgradeRequiredTitle;
+    private JLabel upgradeRequiredDesc;
+    private String pendingUpgradeFeature = null;
 
     // Header labels & Tool Switcher Dropdown
     private JPanel headerRow;
@@ -83,13 +90,15 @@ public class RecoveryCenterPanel extends JPanel {
     private final JButton btnPause;
     private final JButton btnCancel;
     private final JButton btnOpenFolder;
+    private boolean isCurrentlyRunning = false;
+    private boolean isCurrentlyPaused = false;
 
     private final JLabel progressStatusLabel = new JLabel("Status: Ready - Select source and destination to begin.");
     private final JProgressBar progressBar = UiFactory.createSlimProgressBar();
     private final JLabel progressPercentLabel = new JLabel("0%");
 
     private final JLabel elapsedLabel = new JLabel("⏱ Elapsed: 00:00");
-    private final JLabel speedLabel = new JLabel("⚡ Speed: 0.0 files/s • 0.0 MB/s");
+    private final JLabel speedLabel = new JLabel("Speed: 0.0 files/s • 0.0 MB/s");
     private final JLabel etaLabel = new JLabel("⏳ ETA: --:--");
 
     // Logs
@@ -112,6 +121,7 @@ public class RecoveryCenterPanel extends JPanel {
     private Runnable onOpenFolderCallback;
 
     private Consumer<String> onCardChange = null;
+    private String lastLoggedEmail = null;
 
     public void setOnCardChangeListener(Consumer<String> listener) {
         this.onCardChange = listener;
@@ -146,13 +156,44 @@ public class RecoveryCenterPanel extends JPanel {
         btnStart = UiFactory.createPrimaryButton("Start Restoration");
         btnStart.setPreferredSize(new Dimension(170, 36));
 
-        btnPause = UiFactory.createSecondaryButton("Pause");
+        btnPause = createCustomActionButton("Pause");
         btnPause.setPreferredSize(new Dimension(100, 36));
         btnPause.setEnabled(false);
+        btnPause.addMouseListener(new MouseAdapter() {
+            @Override public void mouseEntered(MouseEvent e) {
+                if (!btnPause.isEnabled()) return;
+                boolean dark = ThemeColors.isDark();
+                if (isCurrentlyPaused) {
+                    btnPause.setBackground(dark ? new Color(30, 64, 175) : new Color(219, 234, 254));
+                } else {
+                    btnPause.setBackground(dark ? new Color(120, 53, 15) : new Color(253, 230, 138));
+                }
+            }
+            @Override public void mouseExited(MouseEvent e) {
+                if (btnPause.isEnabled()) {
+                    updateActionButtonColors(isCurrentlyRunning, isCurrentlyPaused);
+                }
+            }
+        });
 
-        btnCancel = UiFactory.createSecondaryButton("Cancel");
+        btnCancel = createCustomActionButton("Cancel");
         btnCancel.setPreferredSize(new Dimension(100, 36));
         btnCancel.setEnabled(false);
+        btnCancel.addMouseListener(new MouseAdapter() {
+            @Override public void mouseEntered(MouseEvent e) {
+                if (!btnCancel.isEnabled()) return;
+                boolean dark = ThemeColors.isDark();
+                btnCancel.setBackground(dark ? new Color(127, 29, 29) : new Color(254, 226, 226));
+            }
+            @Override public void mouseExited(MouseEvent e) {
+                if (btnCancel.isEnabled()) {
+                    updateActionButtonColors(isCurrentlyRunning, isCurrentlyPaused);
+                }
+            }
+        });
+
+        updateActionButtonColors(false, false);
+        ThemeColors.addThemeListener(() -> updateActionButtonColors(isCurrentlyRunning, isCurrentlyPaused));
 
         btnOpenFolder = UiFactory.createSecondaryButton("Open Output Folder");
         javax.swing.Icon folderOutIcon = UiFactory.svgDynamicIcon("output-folder", 15,
@@ -181,6 +222,7 @@ public class RecoveryCenterPanel extends JPanel {
         centerCards.add(comparisonPanel, CARD_COMPARE);
         centerCards.add(duplicateFinderPanel, CARD_DUPLICATE);
         centerCards.add(createAuthRequiredCard(), CARD_AUTH_REQUIRED);
+        centerCards.add(createUpgradeRequiredCard(), CARD_UPGRADE_REQUIRED);
         add(centerCards, BorderLayout.CENTER);
 
         wireActions();
@@ -189,12 +231,13 @@ public class RecoveryCenterPanel extends JPanel {
         cardLayout.show(centerCards, CARD_AUTHENTICATING);
         userService.verifyStartupSession(authenticated -> {
             updatePlanBadge();
-            cardLayout.show(centerCards, CARD_DASHBOARD);
+            switchTo(CARD_RESTORE);
             if (authenticated) {
-                consoleCard.appendLog("SUCCESS", "Session validated: " + userService.getCurrentEmail() + ".");
+                lastLoggedEmail = userService.getCurrentEmail();
+                consoleCard.appendLog("SUCCESS", "Session validated: " + lastLoggedEmail + " • Cloud sync active.");
             } else {
                 consoleCard.appendLog("INFO",
-                        "Running in Guest mode. Sign in with Google to activate tool restoration engines.");
+                        "Running in Guest mode. Sign in with Google to enable cloud sync.");
             }
         });
     }
@@ -635,10 +678,10 @@ public class RecoveryCenterPanel extends JPanel {
 
         row.add(titleBlock, BorderLayout.WEST);
 
-        // Tool Switcher Dropdown on EAST (secondary recovery tools only, Dashboard
-        // excluded)
+        // Tool Switcher Dropdown on EAST
         String[] tools = {
                 CARD_RESTORE,
+                CARD_DASHBOARD,
                 CARD_EXIF,
                 CARD_COMPARE,
                 CARD_DUPLICATE
@@ -775,10 +818,10 @@ public class RecoveryCenterPanel extends JPanel {
         JPanel btnRow = new JPanel(new FlowLayout(FlowLayout.CENTER, 10, 0));
         btnRow.setOpaque(false);
 
-        JButton btnReturnDashboard = UiFactory.createSecondaryButton("← Operations Dashboard");
-        btnReturnDashboard.setPreferredSize(new Dimension(170, 38));
-        btnReturnDashboard.addActionListener(e -> switchTo(CARD_DASHBOARD));
-        btnRow.add(btnReturnDashboard);
+        JButton btnReturnRestorer = UiFactory.createSecondaryButton("← Back to Restorer");
+        btnReturnRestorer.setPreferredSize(new Dimension(170, 38));
+        btnReturnRestorer.addActionListener(e -> switchTo(CARD_RESTORE));
+        btnRow.add(btnReturnRestorer);
 
         JButton btnGoogle = UiFactory.createPrimaryButton("Sign In with Google");
         btnGoogle.setPreferredSize(new Dimension(180, 38));
@@ -808,6 +851,102 @@ public class RecoveryCenterPanel extends JPanel {
         });
 
         return card;
+    }
+
+    private JPanel createUpgradeRequiredCard() {
+        JPanel card = UiFactory.createGlassCard(18, new EmptyBorder(32, 40, 32, 40));
+        card.setLayout(new GridBagLayout());
+
+        GridBagConstraints gbc = new GridBagConstraints();
+        gbc.gridx = 0;
+        gbc.gridy = 0;
+        gbc.insets = new Insets(0, 0, 14, 0);
+
+        upgradeRequiredBadge = UiFactory.createBadge("PRO / SUPER TIER REQUIRED", new Color(243, 232, 255),
+                new Color(147, 51, 234));
+        upgradeRequiredBadge.setFont(new Font("Segoe UI", Font.BOLD, 11));
+        card.add(upgradeRequiredBadge, gbc);
+
+        gbc.gridy = 1;
+        gbc.insets = new Insets(0, 0, 6, 0);
+        upgradeRequiredTitle = new JLabel("Plan Upgrade Required");
+        upgradeRequiredTitle.setFont(new Font("Segoe UI", Font.BOLD, 20));
+        upgradeRequiredTitle.setForeground(ThemeColors.textPrimary());
+        card.add(upgradeRequiredTitle, gbc);
+
+        gbc.gridy = 2;
+        gbc.insets = new Insets(0, 20, 16, 20);
+        upgradeRequiredDesc = new JLabel(
+                "<html><center style='width: 460px; font-size: 12px; color: #888888; line-height: 1.5;'>"
+                        + "This advanced diagnostic module requires an upgraded subscription tier.<br/>"
+                        + "The Photo Metadata Restorer engine remains 100% free with unlimited local processing."
+                        + "</center></html>",
+                SwingConstants.CENTER);
+        card.add(upgradeRequiredDesc, gbc);
+
+        // Feature benefits row
+        gbc.gridy = 3;
+        gbc.insets = new Insets(0, 0, 24, 0);
+        JPanel featsRow = new JPanel(new FlowLayout(FlowLayout.CENTER, 8, 0));
+        featsRow.setOpaque(false);
+        featsRow.add(UiFactory.createBadge("EXIF Tag Inspector", ThemeColors.pillBg(), ThemeColors.textSecondary()));
+        featsRow.add(UiFactory.createBadge("Duplicate Photo Purge", ThemeColors.pillBg(), ThemeColors.textSecondary()));
+        featsRow.add(UiFactory.createBadge("Archive Side-by-Side Compare", ThemeColors.pillBg(), ThemeColors.textSecondary()));
+        featsRow.add(UiFactory.createBadge("2GB Volume Splitting", ThemeColors.pillBg(), ThemeColors.textSecondary()));
+        card.add(featsRow, gbc);
+
+        // Buttons row: Return to Restorer + Upgrade on Web
+        gbc.gridy = 4;
+        gbc.insets = new Insets(0, 0, 0, 0);
+        JPanel btnRow = new JPanel(new FlowLayout(FlowLayout.CENTER, 10, 0));
+        btnRow.setOpaque(false);
+
+        JButton btnReturnRestorer = UiFactory.createSecondaryButton("← Back to Restorer");
+        btnReturnRestorer.setPreferredSize(new Dimension(170, 38));
+        btnReturnRestorer.addActionListener(e -> switchTo(CARD_RESTORE));
+        btnRow.add(btnReturnRestorer);
+
+        JButton btnUpgradeWeb = UiFactory.createPrimaryButton("Upgrade on Web");
+        javax.swing.Icon zapIcon = UiFactory.svgDynamicIcon("zap", 13, () -> ThemeColors.primaryButtonText());
+        if (zapIcon != null) {
+            btnUpgradeWeb.setIcon(zapIcon);
+            btnUpgradeWeb.setIconTextGap(6);
+        }
+        btnUpgradeWeb.setPreferredSize(new Dimension(180, 38));
+        btnUpgradeWeb.addActionListener(
+                e -> com.takeoutfix.shared.util.BrowserUtil.openBrowser("https://takeoutfix.pages.dev/pricing"));
+        btnRow.add(btnUpgradeWeb);
+        card.add(btnRow, gbc);
+
+        ThemeColors.addThemeListener(() -> {
+            if (upgradeRequiredTitle != null) {
+                upgradeRequiredTitle.setForeground(ThemeColors.textPrimary());
+            }
+        });
+
+        return card;
+    }
+
+    private void updateUpgradeCardContent(String feature) {
+        if (upgradeRequiredTitle == null || upgradeRequiredDesc == null || upgradeRequiredBadge == null)
+            return;
+        boolean needsSuper = feature != null && (feature.contains("COMPARE") || feature.contains("DUPLICATE")
+                || feature.contains("SPLIT") || feature.contains("Compare") || feature.contains("Duplicate"));
+        if (needsSuper) {
+            upgradeRequiredBadge.setText("SUPER PLAN REQUIRED");
+            upgradeRequiredTitle.setText("Super Plan Required");
+            upgradeRequiredDesc.setText("<html><center style='width: 460px; font-size: 12px; color: #888888; line-height: 1.5;'>"
+                    + "The <b>" + (feature != null ? feature : "Selected") + "</b> engine is exclusive to the <b>Super</b> plan.<br/>"
+                    + "Upgrade your subscription to unlock cross-archive duplicate scanning, side-by-side comparison, and 2GB multi-volume archives."
+                    + "</center></html>");
+        } else {
+            upgradeRequiredBadge.setText("PRO / SUPER PLAN REQUIRED");
+            upgradeRequiredTitle.setText("Pro Plan Required");
+            upgradeRequiredDesc.setText("<html><center style='width: 460px; font-size: 12px; color: #888888; line-height: 1.5;'>"
+                    + "The <b>" + (feature != null ? feature : "Selected") + "</b> engine is included with <b>Pro</b> and <b>Super</b> tiers.<br/>"
+                    + "The core Photo Metadata Restorer remains 100% free with unlimited local processing."
+                    + "</center></html>");
+        }
     }
 
     private JPanel createAuthenticatingCard() {
@@ -1091,7 +1230,7 @@ public class RecoveryCenterPanel extends JPanel {
 
     private void wireActions() {
         btnStart.addActionListener(e -> {
-            if (!userService.isSignedIn()) {
+            if (!userService.isSignedIn() && com.takeoutfix.auth.GuestQuotaStore.isExhausted()) {
                 Window win = SwingUtilities.getWindowAncestor(this);
                 Frame frame = (win instanceof Frame) ? (Frame) win : null;
                 new SignInDialog(frame, userService).setVisible(true);
@@ -1112,6 +1251,22 @@ public class RecoveryCenterPanel extends JPanel {
             if (onOpenFolderCallback != null)
                 onOpenFolderCallback.run();
         });
+        splitVolumesCheckbox.addActionListener(e -> {
+            if (splitVolumesCheckbox.isSelected() && userService != null && !userService.isFeatureAllowed("SPLIT")) {
+                splitVolumesCheckbox.setSelected(false);
+                int opt = JOptionPane.showOptionDialog(this,
+                        "Compressing output into 2GB split archive volumes requires a Super plan.\nWould you like to review upgrade options on the web?",
+                        "Plan Upgrade Required",
+                        JOptionPane.YES_NO_OPTION,
+                        JOptionPane.INFORMATION_MESSAGE,
+                        null,
+                        new Object[] { "Upgrade on Web", "Later" },
+                        "Upgrade on Web");
+                if (opt == JOptionPane.YES_OPTION) {
+                    com.takeoutfix.shared.util.BrowserUtil.openBrowser("https://takeoutfix.pages.dev/pricing");
+                }
+            }
+        });
     }
 
     public void updatePlanBadge() {
@@ -1122,16 +1277,27 @@ public class RecoveryCenterPanel extends JPanel {
 
             boolean signedIn = userService.isSignedIn();
             if (!signedIn) {
-                btnStart.setEnabled(false);
-                btnStart.setText("Sign In to Start");
-                if (!CARD_DASHBOARD.equals(currentCard)) {
-                    cardLayout.show(centerCards, CARD_AUTH_REQUIRED);
+                lastLoggedEmail = null;
+                btnStart.setEnabled(true);
+                if (com.takeoutfix.auth.GuestQuotaStore.isExhausted()) {
+                    btnStart.setText("Sign In with Google to Continue");
+                    if (!CARD_RESTORE.equals(currentCard) && !CARD_DASHBOARD.equals(currentCard)) {
+                        cardLayout.show(centerCards, CARD_AUTH_REQUIRED);
+                    }
                 } else {
-                    cardLayout.show(centerCards, CARD_DASHBOARD);
+                    int remaining = com.takeoutfix.auth.GuestQuotaStore.getRemainingFiles();
+                    btnStart.setText("Start Restoration (Guest: " + remaining + " files left)");
+                    cardLayout.show(centerCards, currentCard);
                 }
                 revalidate();
                 repaint();
                 return;
+            }
+
+            String currentEmail = userService.getCurrentEmail();
+            if (currentEmail != null && !currentEmail.isBlank() && !currentEmail.equals(lastLoggedEmail)) {
+                lastLoggedEmail = currentEmail;
+                consoleCard.appendLog("SUCCESS", "Signed in as: " + currentEmail + " • Cloud sync active.");
             }
 
             btnStart.setEnabled(true);
@@ -1141,6 +1307,9 @@ public class RecoveryCenterPanel extends JPanel {
                         ? pendingToolCard
                         : CARD_RESTORE;
                 switchTo(dest);
+            } else if (CARD_UPGRADE_REQUIRED.equals(currentCard) && pendingUpgradeFeature != null
+                    && userService.isFeatureAllowed(pendingUpgradeFeature)) {
+                switchTo(pendingUpgradeFeature);
             } else {
                 cardLayout.show(centerCards, currentCard);
             }
@@ -1198,6 +1367,12 @@ public class RecoveryCenterPanel extends JPanel {
         btnSourceClear.setVisible(false);
     }
 
+    private java.util.function.Consumer<File> onDestinationChanged;
+
+    public void setOnDestinationChanged(java.util.function.Consumer<File> onDestinationChanged) {
+        this.onDestinationChanged = onDestinationChanged;
+    }
+
     private void setDestinationFile(File sel) {
         if (sel == null)
             return;
@@ -1212,6 +1387,9 @@ public class RecoveryCenterPanel extends JPanel {
         outputPathLabel.setToolTipText(selectedOutputPath + storageInfo);
         btnDestClear.setVisible(true);
         consoleCard.appendLog("INFO", "Selected destination directory: " + selectedOutputPath + (usable > 0 ? " [" + formatBytes(usable) + " free disk space]" : ""));
+        if (onDestinationChanged != null) {
+            onDestinationChanged.accept(dir);
+        }
     }
 
     private void clearDestination() {
@@ -1220,6 +1398,9 @@ public class RecoveryCenterPanel extends JPanel {
         outputPathLabel.setForeground(ThemeColors.textMuted());
         outputPathLabel.setToolTipText(null);
         btnDestClear.setVisible(false);
+        if (onDestinationChanged != null) {
+            onDestinationChanged.accept(null);
+        }
     }
 
     private static String formatBytes(long bytes) {
@@ -1268,12 +1449,15 @@ public class RecoveryCenterPanel extends JPanel {
     }
 
     public void setRunningState(boolean running, boolean paused) {
+        this.isCurrentlyRunning = running;
+        this.isCurrentlyPaused = paused;
         SwingUtilities.invokeLater(() -> {
             btnStart.setEnabled(!running);
             btnPause.setEnabled(running);
             btnPause.setText(paused ? "Resume" : "Pause");
             btnCancel.setEnabled(running);
             btnOpenFolder.setEnabled(!running);
+            updateActionButtonColors(running, paused);
             if (running) {
                 if (paused) {
                     progressStatusLabel.setText("Status: Paused");
@@ -1286,6 +1470,81 @@ public class RecoveryCenterPanel extends JPanel {
             revalidate();
             repaint();
         });
+    }
+
+    private JButton createCustomActionButton(String text) {
+        JButton btn = new JButton(text) {
+            @Override
+            protected void paintComponent(Graphics g) {
+                Graphics2D g2 = (Graphics2D) g.create();
+                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                int arc = 10;
+                g2.setColor(getBackground());
+                g2.fillRoundRect(0, 0, getWidth(), getHeight(), arc, arc);
+
+                Color borderCol = (Color) getClientProperty("customBorderColor");
+                if (borderCol == null) {
+                    borderCol = ThemeColors.cardBorder();
+                }
+                g2.setColor(borderCol);
+                g2.setStroke(new BasicStroke(1.2f));
+                g2.drawRoundRect(0, 0, getWidth() - 1, getHeight() - 1, arc, arc);
+                g2.dispose();
+                super.paintComponent(g);
+            }
+        };
+        btn.setContentAreaFilled(false);
+        btn.setOpaque(false);
+        btn.setFont(new Font("Segoe UI", Font.BOLD, 11));
+        btn.setFocusPainted(false);
+        btn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        btn.putClientProperty("JButton.buttonType", "roundRect");
+        btn.setBorder(new EmptyBorder(7, 14, 7, 14));
+        return btn;
+    }
+
+    private void updateActionButtonColors(boolean running, boolean paused) {
+        boolean dark = ThemeColors.isDark();
+        if (!running) {
+            btnPause.setBackground(ThemeColors.secondaryButtonBg());
+            btnPause.setForeground(ThemeColors.textMuted());
+            btnPause.putClientProperty("customBorderColor", ThemeColors.cardBorder());
+
+            btnCancel.setBackground(ThemeColors.secondaryButtonBg());
+            btnCancel.setForeground(ThemeColors.textMuted());
+            btnCancel.putClientProperty("customBorderColor", ThemeColors.cardBorder());
+        } else {
+            // Cancel: Always Red when running
+            Color cancelBg = dark ? new Color(69, 10, 10) : new Color(254, 242, 242);
+            Color cancelBorder = dark ? new Color(239, 68, 68, 200) : new Color(239, 68, 68, 180);
+            Color cancelFg = dark ? new Color(252, 165, 165) : new Color(220, 38, 38);
+
+            btnCancel.setBackground(cancelBg);
+            btnCancel.setForeground(cancelFg);
+            btnCancel.putClientProperty("customBorderColor", cancelBorder);
+
+            if (paused) {
+                // Resume: Vibrant Blue
+                Color resumeBg = dark ? new Color(30, 58, 138) : new Color(239, 246, 255);
+                Color resumeBorder = dark ? new Color(59, 130, 246, 200) : new Color(59, 130, 246, 180);
+                Color resumeFg = dark ? new Color(191, 219, 254) : new Color(29, 78, 216);
+
+                btnPause.setBackground(resumeBg);
+                btnPause.setForeground(resumeFg);
+                btnPause.putClientProperty("customBorderColor", resumeBorder);
+            } else {
+                // Pause: Amber / Yellow
+                Color pauseBg = dark ? new Color(69, 26, 3) : new Color(254, 243, 199);
+                Color pauseBorder = dark ? new Color(245, 158, 11, 200) : new Color(245, 158, 11, 180);
+                Color pauseFg = dark ? new Color(253, 230, 138) : new Color(180, 83, 9);
+
+                btnPause.setBackground(pauseBg);
+                btnPause.setForeground(pauseFg);
+                btnPause.putClientProperty("customBorderColor", pauseBorder);
+            }
+        }
+        btnPause.repaint();
+        btnCancel.repaint();
     }
 
     public void setProgress(int percent, String message) {
@@ -1307,7 +1566,7 @@ public class RecoveryCenterPanel extends JPanel {
             String etaStr = (etaSec > 0 && percent < 100) ? formatDuration(etaSec)
                     : (percent >= 100 ? "00:00" : "--:--");
             elapsedLabel.setText("⏱ Elapsed: " + elapsedStr);
-            speedLabel.setText(String.format(java.util.Locale.US, "⚡ %.1f files/s • %.1f MB/s", filesPerSec, mbPerSec));
+            speedLabel.setText(String.format(java.util.Locale.US, "Speed: %.1f files/s • %.1f MB/s", filesPerSec, mbPerSec));
             etaLabel.setText("⏳ ETA: " + etaStr);
         });
     }
@@ -1374,7 +1633,7 @@ public class RecoveryCenterPanel extends JPanel {
         SwingUtilities.invokeLater(() -> {
             String target = mapToCardName(cardName);
             boolean signedIn = userService != null && userService.isSignedIn();
-            if (!CARD_DASHBOARD.equalsIgnoreCase(target) && !signedIn) {
+            if (!CARD_RESTORE.equalsIgnoreCase(target) && !CARD_DASHBOARD.equalsIgnoreCase(target) && !signedIn) {
                 this.pendingToolCard = target;
                 this.currentCard = CARD_AUTH_REQUIRED;
                 cardLayout.show(centerCards, CARD_AUTH_REQUIRED);
@@ -1397,12 +1656,48 @@ public class RecoveryCenterPanel extends JPanel {
                 }
                 return;
             }
+
+            // Cloud Payment & Tier Locking Check
+            if (userService != null && !userService.isFeatureAllowed(target)) {
+                this.pendingUpgradeFeature = target;
+                this.currentCard = CARD_UPGRADE_REQUIRED;
+                updateUpgradeCardContent(target);
+                cardLayout.show(centerCards, CARD_UPGRADE_REQUIRED);
+                if (headerRow != null)
+                    headerRow.setVisible(true);
+                updateHeaderForCard(CARD_UPGRADE_REQUIRED);
+                if (moduleSelect != null && !target.equals(moduleSelect.getSelectedItem())) {
+                    updatingModuleSelect = true;
+                    try {
+                        moduleSelect.setSelectedItem(target);
+                    } finally {
+                        updatingModuleSelect = false;
+                    }
+                }
+                if (onCardChange != null) {
+                    try {
+                        onCardChange.accept(target);
+                    } catch (Exception ignored) {
+                    }
+                }
+                return;
+            }
+
             this.pendingToolCard = null;
+            this.pendingUpgradeFeature = null;
             this.currentCard = target;
             cardLayout.show(centerCards, target);
             if (CARD_DASHBOARD.equalsIgnoreCase(target)) {
                 if (headerRow != null)
                     headerRow.setVisible(false);
+                if (moduleSelect != null && !target.equals(moduleSelect.getSelectedItem())) {
+                    updatingModuleSelect = true;
+                    try {
+                        moduleSelect.setSelectedItem(target);
+                    } finally {
+                        updatingModuleSelect = false;
+                    }
+                }
             } else {
                 if (headerRow != null)
                     headerRow.setVisible(true);
@@ -1450,12 +1745,15 @@ public class RecoveryCenterPanel extends JPanel {
         } else if (CARD_AUTH_REQUIRED.equalsIgnoreCase(card)) {
             mainTitle.setText("AUTHENTICATION REQUIRED");
             subtitle.setText("Please sign in to access TakeoutFix restoration and diagnostic tools.");
+        } else if (CARD_UPGRADE_REQUIRED.equalsIgnoreCase(card)) {
+            mainTitle.setText("SUBSCRIPTION UPGRADE REQUIRED");
+            subtitle.setText("This diagnostic capability requires a Pro or Super subscription tier.");
         }
     }
 
     public static String mapToCardName(String input) {
         if (input == null)
-            return CARD_DASHBOARD;
+            return CARD_RESTORE;
         String s = input.trim();
         if (s.equalsIgnoreCase("Dashboard") || s.equalsIgnoreCase(CARD_DASHBOARD))
             return CARD_DASHBOARD;

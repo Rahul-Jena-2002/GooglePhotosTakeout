@@ -181,9 +181,11 @@ public class DashboardDealsSection extends JPanel {
         tile.add(details, BorderLayout.CENTER);
 
         // 3. Compact subtle link arrow
-        JLabel arrow = new JLabel("↗");
-        arrow.setFont(new Font("Segoe UI", Font.PLAIN, 10));
-        arrow.setForeground(ThemeColors.textMuted());
+        JLabel arrow = new JLabel();
+        javax.swing.Icon extIcon = UiFactory.svgDynamicIcon("external-link", 11, () -> ThemeColors.textMuted());
+        if (extIcon != null) {
+            arrow.setIcon(extIcon);
+        }
         arrow.setBorder(new EmptyBorder(0, 2, 0, 0));
         tile.add(arrow, BorderLayout.EAST);
 

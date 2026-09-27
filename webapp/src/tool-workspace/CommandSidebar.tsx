@@ -75,15 +75,24 @@ export function CommandSidebar({
       <div className="space-y-2 mb-3 bg-white/[0.02] border border-white/5 p-3 rounded-xl">
         <div className="flex justify-between items-center text-[9px] text-white/40 font-bold uppercase tracking-wider">
           <span className="flex items-center gap-1"><HardDrive className="w-3 h-3 text-emerald-400" /> Restoration Engine</span>
-          <span className="text-emerald-400 font-mono">100% Free</span>
+          <span className={`${plan === 'guest' ? 'text-amber-400' : 'text-emerald-400'} font-mono`}>
+            {plan === 'guest' ? 'Guest Mode' : '100% Free'}
+          </span>
         </div>
         <div className="text-xs font-bold text-zinc-150 flex items-center justify-between">
           <span>Processed Volume</span>
           <span className="font-mono text-zinc-300">{formatByteSize(sessionBytes)} ({sessionFiles.toLocaleString()} files)</span>
         </div>
         <div className="text-[10px] text-zinc-500 font-medium">
-          Unlimited batch processing enabled. All files are merged client-side.
+          {plan === 'guest'
+            ? `Guest limit: ${Math.max(0, 100 - (currentUsedFiles + sessionFiles))} files remaining. Sign in free for unlimited.`
+            : 'Unlimited batch processing enabled. All files are merged client-side.'}
         </div>
+      </div>
+
+      {/* Upper Ad Slot — Utilizes empty space above telemetry */}
+      <div className="mb-3">
+        <AdUnit type="compact" placement="TOOL_SIDEBAR_TOP" />
       </div>
 
       {/* Engine Resource Telemetry */}
@@ -156,10 +165,7 @@ export function CommandSidebar({
 
       {/* Engine Trust Card at bottom */}
       <div className="mt-auto pt-3 border-t border-white/5 space-y-2.5">
-        <div className="flex flex-col gap-2">
-          <AdUnit type="compact" placement="TOOL_SIDEBAR_1" />
-          <AdUnit type="compact" placement="TOOL_SIDEBAR_2" />
-        </div>
+        <AdUnit type="compact" placement="TOOL_SIDEBAR_BOTTOM" />
         <div className="p-3 rounded-xl border border-white/5 bg-white/[0.02]">
           <div className="flex justify-between items-center">
             <div className="flex items-center gap-1.5 text-xs font-bold text-white">

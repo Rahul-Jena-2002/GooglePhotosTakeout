@@ -7,6 +7,7 @@ import {
   HardDrive,
   CheckCircle2,
 } from "lucide-react";
+import AdUnit from "../../components/monetization/AdUnit";
 
 interface DownloadOption {
   title: string;
@@ -66,11 +67,11 @@ export default function DownloadPage() {
   const activeOption = downloadOptions[selectedOS];
 
   return (
-    <div className="min-h-screen text-zinc-900 dark:text-white relative py-12 px-4 sm:px-6">
-      <div className="w-full max-w-4xl mx-auto space-y-12">
+    <div className="min-h-screen text-zinc-900 dark:text-white relative py-12 px-4 sm:px-6 lg:px-8">
+      <div className="w-full max-w-7xl mx-auto space-y-12">
 
         {/* Header */}
-        <div className="text-center space-y-4 max-w-3xl mx-auto pt-2">
+        <div className="text-center space-y-4 max-w-4xl mx-auto pt-2">
           <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/30 text-emerald-600 dark:text-emerald-400 text-[10px] font-bold uppercase tracking-wider shadow-xs">
             <ShieldCheck className="w-3.5 h-3.5" /> 100% Free Desktop Restoration Engine
           </div>
@@ -185,6 +186,11 @@ export default function DownloadPage() {
           </div>
         </div>
 
+        {/* Sponsored Recommendations: Top Download Banner */}
+        <section className="w-full relative z-10" aria-label="Sponsored recommendations">
+          <AdUnit placement="ARTICLE_TOP" />
+        </section>
+
         {/* Why Desktop App */}
         <div className="bg-white dark:bg-zinc-950/60 border border-zinc-200 dark:border-white/10 p-6 md:p-8 rounded-2xl space-y-6 shadow-sm dark:shadow-2xl">
           <div className="flex items-center justify-between border-b border-zinc-200 dark:border-white/10 pb-3">
@@ -271,8 +277,13 @@ export default function DownloadPage() {
           </div>
         </div>
 
+        {/* Sponsored Recommendations: Bottom Download Banner */}
+        <section className="w-full relative z-10" aria-label="Sponsored recommendations">
+          <AdUnit placement="ARTICLE_BOTTOM" />
+        </section>
+
         {/* Web Browser Option */}
-        <div className="p-6 rounded-2xl bg-zinc-50 dark:bg-zinc-900/40 border border-zinc-200 dark:border-zinc-800 text-left max-w-3xl mx-auto flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6">
+        <div className="p-6 rounded-2xl bg-zinc-50 dark:bg-zinc-900/40 border border-zinc-200 dark:border-zinc-800 text-left w-full flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6">
           <div className="space-y-1">
             <h3 className="text-sm font-bold text-zinc-900 dark:text-white">
               Prefer using your web browser?

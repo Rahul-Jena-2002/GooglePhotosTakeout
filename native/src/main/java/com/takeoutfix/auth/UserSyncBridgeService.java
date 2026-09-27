@@ -302,30 +302,54 @@ public class UserSyncBridgeService {
                 getCurrentProfile().getOrDefault("displayName", "Operator"));
     }
 
+    public boolean isPaymentsEnabled() {
+        return Boolean.TRUE.equals(getCurrentProfile().get("enablePricingAndPayments"));
+    }
+
     public String getCurrentPlan() {
         if (!isSignedIn())
             return "none";
-        boolean pricingEnabled = Boolean.TRUE.equals(getCurrentProfile().get("enablePricingAndPayments"));
-        if (!pricingEnabled) {
+        if (!isPaymentsEnabled()) {
             return "free";
         }
         return (String) getCurrentProfile().getOrDefault("plan", "free");
     }
 
     public boolean isSuper() {
-        return true;
+        if (!isPaymentsEnabled()) return true;
+        String plan = (String) getCurrentProfile().getOrDefault("plan", "free");
+        return "super".equalsIgnoreCase(plan) || "admin".equalsIgnoreCase(plan);
     }
 
     public boolean isProOrSuper() {
-        return true;
+        if (!isPaymentsEnabled()) return true;
+        String plan = (String) getCurrentProfile().getOrDefault("plan", "free");
+        return isSuper() || "pro".equalsIgnoreCase(plan);
     }
 
     public boolean isFreeUnlimited() {
-        return true;
+        if (!isPaymentsEnabled()) return true;
+        return Boolean.TRUE.equals(getCurrentProfile().get("isFreeUnlimited"))
+                || Boolean.TRUE.equals(getCurrentProfile().get("isFreePromoActive"));
     }
 
     public boolean isFeaturesUnlocked() {
-        return true;
+        if (!isPaymentsEnabled()) return true;
+        return isProOrSuper();
+    }
+
+    public boolean isFeatureAllowed(String feature) {
+        if (!isPaymentsEnabled()) return true;
+        if (feature == null) return true;
+        String f = feature.toUpperCase();
+        if (f.contains("RESTORE")) return true; // Core Photo Metadata Restorer is ALWAYS free!
+        if (f.contains("EXIF") || f.contains("COMPARE")) {
+            return isProOrSuper();
+        }
+        if (f.contains("DUPLICATE") || f.contains("SPLIT") || f.contains("VOLUME")) {
+            return isSuper();
+        }
+        return isProOrSuper();
     }
 
     public long getUsedFiles() {
@@ -430,9 +454,17 @@ public class UserSyncBridgeService {
         UserController.incrementUsage(files, bytes);
         saveSessionFile(UserController.getCurrentUserProfile());
         if (synchronous) {
-            firebaseSyncService.pushCurrentTotalsToCloud();
+            boolean ok = firebaseSyncService.pushCurrentTotalsToCloud();
+            if (!ok) {
+                firebaseSyncService.recordPendingOfflineSync(files, bytes);
+            }
         } else {
-            executorService.submit(firebaseSyncService::pushCurrentTotalsToCloud);
+            executorService.submit(() -> {
+                boolean ok = firebaseSyncService.pushCurrentTotalsToCloud();
+                if (!ok) {
+                    firebaseSyncService.recordPendingOfflineSync(files, bytes);
+                }
+            });
         }
     }
 

@@ -34,7 +34,7 @@ interface CacheState {
 }
 
 const CACHE_TTL_MS = 15 * 60 * 1000; // 15 minutes persistent cache
-const STORAGE_KEY = "takeoutfix_monetization_cache_v3";
+const STORAGE_KEY = "takeoutfix_monetization_cache_v8";
 
 const cache: CacheState = {
   globalSettings: null,
@@ -241,7 +241,7 @@ export async function fetchAllMonetizationData(forceRefresh = false): Promise<Ca
       }
 
       // 6. Ad Units
-      if (adUnitsSnapRes.status === "fulfilled") {
+      if (adUnitsSnapRes.status === "fulfilled" && !adUnitsSnapRes.value.empty) {
         const units: AdUnit[] = [];
         adUnitsSnapRes.value.forEach((d) => {
           const u = { id: d.id, ...d.data() } as AdUnit;
@@ -249,13 +249,13 @@ export async function fetchAllMonetizationData(forceRefresh = false): Promise<Ca
             units.push(u);
           }
         });
-        cache.adUnits = units;
+        cache.adUnits = units.length > 0 ? units : DEFAULT_AD_UNITS;
       } else {
-        cache.adUnits = [];
+        cache.adUnits = DEFAULT_AD_UNITS;
       }
 
       // 7. Affiliate Links
-      if (affLinksSnapRes.status === "fulfilled") {
+      if (affLinksSnapRes.status === "fulfilled" && !affLinksSnapRes.value.empty) {
         const links: AffiliateLink[] = [];
         affLinksSnapRes.value.forEach((d) => {
           const l = { id: d.id, ...d.data() } as AffiliateLink;
@@ -263,9 +263,9 @@ export async function fetchAllMonetizationData(forceRefresh = false): Promise<Ca
             links.push(l);
           }
         });
-        cache.affiliateLinks = links;
+        cache.affiliateLinks = links.length > 0 ? links : DEFAULT_AFFILIATE_LINKS;
       } else {
-        cache.affiliateLinks = [];
+        cache.affiliateLinks = DEFAULT_AFFILIATE_LINKS;
       }
 
       cache.lastLoaded = Date.now();
@@ -556,19 +556,35 @@ export async function getMonetizationContent(
       .map((p) => p.id)
   );
 
-  const isSidebarPlacement = placementCode.startsWith("SIDEBAR") || placementCode.startsWith("GUTTER");
+  const isSidebarPlacement = 
+    placementCode.startsWith("SIDEBAR") || 
+    placementCode.startsWith("GUTTER") || 
+    placementCode.startsWith("TOOL_SIDEBAR");
+  const isToolPlacement = placementCode.startsWith("TOOL");
   const slotIndex = getPlacementSlotIndex(placementCode);
 
   // Filter Active Affiliate Links matching this placement (excluding any site upsells)
-  const affiliateCandidates = data.affiliateLinks.filter(
-    (l) =>
-      l.status === "ACTIVE" &&
-      !isInternalSitePromotion(l.destinationUrl, l.title, l.providerName) &&
-      (options.preview || activeAffProviderIds.has(l.providerId)) &&
-      (l.placementCodes.includes(placementCode) ||
-       (isSidebarPlacement && l.placementCodes.includes("SIDEBAR")) ||
-       l.placementCodes.length === 0)
-  );
+  // User directive: In desktop sidebars (GUTTER, SIDEBAR, TOOL_SIDEBAR), STRICTLY NO AFFILIATES, ONLY REAL ADS!
+  let affiliateCandidates = isSidebarPlacement ? [] : data.affiliateLinks.filter((l) => {
+    if (l.status && l.status !== "ACTIVE") return false;
+    if (isInternalSitePromotion(l.destinationUrl, l.title, l.providerName)) return false;
+    if (activeAffProviderIds.size > 0 && l.providerId && !activeAffProviderIds.has(l.providerId) && !options.preview) {
+      return false;
+    }
+    const placementCodes = Array.isArray(l.placementCodes) ? l.placementCodes : [];
+    if (placementCodes.length === 0) return true;
+    return placementCodes.includes(placementCode);
+  });
+
+  // If no placement-specific affiliate link matched, fall back to any active affiliate links (non-sidebar only)
+  if (!isSidebarPlacement && affiliateCandidates.length === 0 && fallback) {
+    const pool = data.affiliateLinks.length > 0 ? data.affiliateLinks : DEFAULT_AFFILIATE_LINKS;
+    affiliateCandidates = pool.filter((l) => {
+      if (l.status && l.status !== "ACTIVE") return false;
+      if (isInternalSitePromotion(l.destinationUrl, l.title, l.providerName)) return false;
+      return true;
+    });
+  }
 
   // Active Ad Providers
   const activeAdProviderIds = new Set(
@@ -578,15 +594,28 @@ export async function getMonetizationContent(
   );
 
   // Filter Active Ad Units matching this placement (excluding any site upsells)
-  const adCandidates = data.adUnits.filter(
+  let adCandidates = data.adUnits.filter(
     (u) =>
       u.status === "ACTIVE" &&
       !isInternalSitePromotion(u.destinationUrl, u.name, u.providerName) &&
       (options.preview || activeAdProviderIds.has(u.providerId)) &&
       (u.placementCodes.includes(placementCode) ||
-       (isSidebarPlacement && u.placementCodes.includes("SIDEBAR")) ||
+       (isSidebarPlacement && (u.placementCodes.includes("SIDEBAR") || u.placementCodes.includes("TOOL_SIDEBAR"))) ||
        u.placementCodes.length === 0)
   );
+
+  // Fallback: If no ad matched this exact placement code, fall back to ANY active ad unit (AADS / AdSense)
+  if (adCandidates.length === 0) {
+    adCandidates = data.adUnits.filter(
+      (u) =>
+        u.status === "ACTIVE" &&
+        !isInternalSitePromotion(u.destinationUrl, u.name, u.providerName) &&
+        (options.preview || activeAdProviderIds.has(u.providerId))
+    );
+  }
+  if (adCandidates.length === 0 && DEFAULT_AD_UNITS.length > 0) {
+    adCandidates = DEFAULT_AD_UNITS;
+  }
 
   // 5. Select Best Item per Category (Non-Repeating on same page + Continuously Rotating every 15s)
   const selectTopItem = <T extends { priority: number }>(items: T[], index?: number): T | null => {
@@ -601,7 +630,23 @@ export async function getMonetizationContent(
   };
 
   const selectedAffiliateRaw = (config.affiliateEnabled || options.preview) ? selectTopItem(affiliateCandidates, slotIndex) : null;
+  const secondaryPool = affiliateCandidates.length > 1
+    ? affiliateCandidates.filter((c) => c.id !== selectedAffiliateRaw?.id)
+    : DEFAULT_AFFILIATE_LINKS.filter((c) => c.id !== selectedAffiliateRaw?.id);
+  const selectedSecondaryAffiliateRaw = (config.affiliateEnabled || options.preview) && secondaryPool.length > 0
+    ? selectTopItem(secondaryPool, slotIndex + 1)
+    : null;
+
   const selectedAdRaw = (config.adsEnabled || options.preview) ? selectTopItem(adCandidates, slotIndex) : null;
+  const filteredCandidates = adCandidates.filter((c) => c.id !== selectedAdRaw?.id);
+  const secondaryAdPool = filteredCandidates.length > 0
+    ? filteredCandidates
+    : adCandidates.length > 0
+    ? adCandidates
+    : DEFAULT_AD_UNITS;
+  const selectedSecondaryAdRaw = (config.adsEnabled || options.preview) && secondaryAdPool.length > 0
+    ? selectTopItem(secondaryAdPool, slotIndex + 1)
+    : (selectedAdRaw ? { ...selectedAdRaw, id: `${selectedAdRaw.id}-clone` } : null);
 
   const selectedAffiliate: ResolvedMonetizationItem | null = selectedAffiliateRaw
     ? {
@@ -615,6 +660,21 @@ export async function getMonetizationContent(
         tag: selectedAffiliateRaw.tag,
         isExternal: selectedAffiliateRaw.isExternal,
         providerName: selectedAffiliateRaw.providerName,
+      }
+    : null;
+
+  const selectedSecondaryAffiliate: ResolvedMonetizationItem | null = selectedSecondaryAffiliateRaw
+    ? {
+        id: selectedSecondaryAffiliateRaw.id,
+        type: "AFFILIATE",
+        title: selectedSecondaryAffiliateRaw.title,
+        description: selectedSecondaryAffiliateRaw.description,
+        destinationUrl: selectedSecondaryAffiliateRaw.destinationUrl,
+        imageUrl: selectedSecondaryAffiliateRaw.imageUrl,
+        ctaText: selectedSecondaryAffiliateRaw.ctaText,
+        tag: selectedSecondaryAffiliateRaw.tag,
+        isExternal: selectedSecondaryAffiliateRaw.isExternal,
+        providerName: selectedSecondaryAffiliateRaw.providerName,
       }
     : null;
 
@@ -632,55 +692,96 @@ export async function getMonetizationContent(
       }
     : null;
 
-  // 6. Apply Selection Mode & Fallback Logic
+  const selectedSecondaryAd: ResolvedMonetizationItem | null = selectedSecondaryAdRaw
+    ? {
+        id: `${selectedSecondaryAdRaw.id}-sec-${slotIndex}`,
+        type: "AD",
+        title: selectedSecondaryAdRaw.name,
+        adType: selectedSecondaryAdRaw.adType,
+        embedCode: selectedSecondaryAdRaw.embedCode,
+        imageUrl: selectedSecondaryAdRaw.imageUrl,
+        destinationUrl: selectedSecondaryAdRaw.destinationUrl,
+        ctaText: selectedSecondaryAdRaw.ctaText || "Learn More",
+        providerName: selectedSecondaryAdRaw.providerName,
+      }
+    : null;
+
+  // 6. Multi-Item Resolution for Horizontal Banners on ALL pages except Tool
+  let resolvedItems: ResolvedMonetizationItem[] = [];
+
+  if (!isSidebarPlacement && !isToolPlacement && (config.adsEnabled || options.preview)) {
+    // Exactly 4 items divided into 25% each:
+    // Slot 1: Ad 1, Slot 2: Ad 2, Slot 3: Ad 3, Slot 4: Ad 4
+    const ad1Raw = selectTopItem(adCandidates, slotIndex);
+    const ad2Raw = selectTopItem(secondaryAdPool, slotIndex + 1);
+    const ad3Raw = selectTopItem(secondaryAdPool, slotIndex + 2);
+    const ad4Raw = selectTopItem(secondaryAdPool, slotIndex + 3);
+
+    const makeAdItem = (raw: typeof selectedAdRaw, suffix: string): ResolvedMonetizationItem | null => {
+      if (!raw) return null;
+      return {
+        id: `${raw.id}-${placementCode}-${suffix}`,
+        type: "AD",
+        title: raw.name,
+        adType: raw.adType,
+        embedCode: raw.embedCode,
+        imageUrl: raw.imageUrl,
+        destinationUrl: raw.destinationUrl,
+        ctaText: raw.ctaText || "Learn More",
+        providerName: raw.providerName,
+      };
+    };
+
+    const item1 = makeAdItem(ad1Raw, "1");
+    const item2 = makeAdItem(ad2Raw, "2");
+    const item3 = makeAdItem(ad3Raw, "3");
+    const item4 = makeAdItem(ad4Raw, "4");
+
+    resolvedItems = [item1, item2, item3, item4].filter(Boolean) as ResolvedMonetizationItem[];
+  }
+
+  // 7. Apply Selection Mode & Fallback Logic for standard/tool slots
   let resolvedAffiliate: ResolvedMonetizationItem | null = null;
   let resolvedAd: ResolvedMonetizationItem | null = null;
+  let resolvedSecondaryAd: ResolvedMonetizationItem | null = null;
 
-  // 80% Ads / 20% Affiliate Prioritization:
-  // In single/shared slots, 80% (4 out of 5 cycles) prioritizes Ads, while 20% showcases Affiliate.
-  // If an Ad is blocked by an adblocker, AdBlockDetector automatically swaps in the Affiliate item as 100% fallback!
-  const effectiveOffset = options.rotationOffset !== undefined ? options.rotationOffset : (pageVisitSeed + rotationTick);
-  const isAdFavored = ((slotIndex + effectiveOffset) % 5) !== 0; // 80% chance true (slots 1, 2, 3, 4 vs 0)
-
-  if (mode === "BOTH") {
-    if (selectedAffiliate && selectedAd) {
-      resolvedAffiliate = selectedAffiliate;
+  if (mode === "BOTH" || mode === "ADS_ONLY") {
+    if (selectedAd) {
       resolvedAd = selectedAd;
-    } else if (selectedAffiliate && !selectedAd) {
-      // Ad is unavailable
-      resolvedAffiliate = selectedAffiliate;
-      // Fallback: affiliate gets 100% of the display area!
-      resolvedAd = null;
-    } else if (!selectedAffiliate && selectedAd) {
-      // Affiliate is unavailable
-      // Fallback: ad gets 100% of the display area!
-      resolvedAffiliate = null;
-      resolvedAd = selectedAd;
+      if (selectedSecondaryAd) {
+        resolvedSecondaryAd = selectedSecondaryAd;
+      }
+    } else if (selectedSecondaryAd) {
+      resolvedAd = selectedSecondaryAd;
     }
   } else if (mode === "AFFILIATE_ONLY") {
     if (selectedAffiliate) {
       resolvedAffiliate = selectedAffiliate;
     } else if (fallback && selectedAd) {
-      // Fallback to Ad if affiliate unavailable and fallback enabled
       resolvedAd = selectedAd;
-    }
-  } else if (mode === "ADS_ONLY") {
-    if (selectedAd) {
-      resolvedAd = selectedAd;
-    } else if (fallback && selectedAffiliate) {
-      // Fallback to Affiliate if ad unavailable and fallback enabled
-      resolvedAffiliate = selectedAffiliate;
     }
   }
 
-  const isEmpty = !resolvedAffiliate && !resolvedAd;
+  // Tool and desktop sidebars never show affiliate deals, ONLY real ads
+  if (isSidebarPlacement || isToolPlacement || mode === "ADS_ONLY") {
+    resolvedAffiliate = null;
+  }
+
+  const isEmpty =
+    !resolvedAffiliate &&
+    !resolvedAd &&
+    !resolvedSecondaryAd &&
+    resolvedItems.length === 0;
 
   return {
     placement: placementCode,
     enabled: true,
     mode,
     affiliate: resolvedAffiliate,
+    secondaryAffiliate: selectedSecondaryAffiliate,
     ad: resolvedAd,
+    secondaryAd: resolvedSecondaryAd,
+    items: resolvedItems.length > 0 ? resolvedItems : undefined,
     empty: isEmpty,
     fallbackEnabled: fallback,
     adOpacity: globalSettings.adOpacity ?? 80,

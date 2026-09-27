@@ -1,0 +1,159 @@
+---
+export const prerender = true;
+import Layout from "../layouts/Layout.astro";
+import Icon from "../components/ui/Icon.astro";
+
+const docsSchema = {
+  "@context": "https://schema.org",
+  "@type": "TechArticle",
+  "headline": "TakeoutFix Documentation: Google Photos Metadata Restoration Architecture",
+  "description": "Comprehensive technical documentation for TakeoutFix. Learn how client-side EXIF/QuickTime restoration, sidecar pairing heuristics, and privacy-first local processing work.",
+  "author": {
+    "@type": "Organization",
+    "name": "TakeoutFix",
+    "url": "https://takeoutfix.pages.dev/"
+  }
+};
+---
+
+<Layout 
+  title="Documentation | TakeoutFix Google Photos Metadata Restoration" 
+  description="Comprehensive documentation on how TakeoutFix restores Google Takeout metadata, JSON sidecar matching heuristics, EXIF GPS injection, and privacy architecture."
+>
+  <script type="application/ld+json" set:html={JSON.stringify(docsSchema)} />
+
+  <div class="bg-background text-foreground min-h-screen py-12 sm:py-20 px-4 sm:px-6 lg:px-8 font-sans">
+    <div class="max-w-7xl mx-auto space-y-14">
+      
+      <!-- Doc Header -->
+      <header class="border-b border-zinc-200 dark:border-zinc-800 pb-8 text-center sm:text-left">
+        <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20 text-xs font-semibold font-mono mb-4">
+          <Icon name="book-open" class="w-3.5 h-3.5" />
+          <span>Project Documentation &amp; Reference</span>
+        </div>
+        <h1 class="text-3xl sm:text-4xl md:text-5xl font-extrabold tracking-tight text-zinc-900 dark:text-white mb-4">
+          TakeoutFix Architecture &amp; Guide
+        </h1>
+        <p class="text-base sm:text-lg text-zinc-600 dark:text-zinc-400 max-w-3xl leading-relaxed">
+          Learn how TakeoutFix reconciles severed Google Takeout JSON sidecars, injects binary EXIF and QuickTime headers, and restores your Google Photos library with 100% client-side privacy.
+        </p>
+      </header>
+
+      <!-- Section 1: The Core Problem -->
+      <section class="space-y-4">
+        <h2 class="text-2xl font-bold text-zinc-900 dark:text-white flex items-center gap-2.5">
+          <span class="w-7 h-7 rounded-lg bg-zinc-100 dark:bg-zinc-800 text-zinc-800 dark:text-zinc-200 text-xs font-mono font-bold flex items-center justify-center">01</span>
+          The Problem: Broken Timestamps &amp; JSON Sidecars
+        </h2>
+        <p class="text-sm sm:text-base text-zinc-600 dark:text-zinc-400 leading-relaxed">
+          When downloading Google Photos archives via Google Takeout, Google does not burn photo timestamps, descriptions, or updated GPS coordinates back into the media files. Instead, they export disconnected companion <code class="text-xs font-mono px-1.5 py-0.5 rounded bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700">.json</code> sidecar files.
+        </p>
+        <p class="text-sm sm:text-base text-zinc-600 dark:text-zinc-400 leading-relaxed">
+          Upon unzipping, host operating systems (Windows, macOS, Linux) assign the <em>extraction date</em> (today) as the filesystem creation timestamp. As a result, importing raw Takeout folders into Apple Photos, Synology Photos, Immich, or Google Drive flattens your chronological timeline into today's date.
+        </p>
+      </section>
+
+      <!-- Section 2: Heuristic Matching Pipeline -->
+      <section class="space-y-4">
+        <h2 class="text-2xl font-bold text-zinc-900 dark:text-white flex items-center gap-2.5">
+          <span class="w-7 h-7 rounded-lg bg-zinc-100 dark:bg-zinc-800 text-zinc-800 dark:text-zinc-200 text-xs font-mono font-bold flex items-center justify-center">02</span>
+          The 5-Stage Heuristic Resolver
+        </h2>
+        <p class="text-sm sm:text-base text-zinc-600 dark:text-zinc-400 leading-relaxed">
+          Google Takeout frequently mangles filenames by truncating strings at 47 characters, appending <code class="text-xs font-mono bg-zinc-100 dark:bg-zinc-800 px-1 py-0.5 rounded">-edited</code> tags, or attaching duplicate copy counters like <code class="text-xs font-mono bg-zinc-100 dark:bg-zinc-800 px-1 py-0.5 rounded">(1)</code> to the JSON instead of the photo. TakeoutFix resolves these edge cases deterministically:
+        </p>
+        
+        <div class="grid sm:grid-cols-2 gap-4 pt-2">
+          <div class="p-4 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/60 shadow-xs">
+            <h3 class="text-sm font-bold text-zinc-900 dark:text-zinc-100 mb-1">1. Exact Name Matching</h3>
+            <p class="text-xs text-zinc-600 dark:text-zinc-400 leading-relaxed">Pairs direct matches such as <code class="text-[11px] font-mono">IMG_1234.JPG</code> with <code class="text-[11px] font-mono">IMG_1234.JPG.json</code> or <code class="text-[11px] font-mono">IMG_1234.json</code>.</p>
+          </div>
+          <div class="p-4 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/60 shadow-xs">
+            <h3 class="text-sm font-bold text-zinc-900 dark:text-zinc-100 mb-1">2. Suffix &amp; Copy Inversion</h3>
+            <p class="text-xs text-zinc-600 dark:text-zinc-400 leading-relaxed">Resolves discrepancies where Google named the file <code class="text-[11px] font-mono">photo(1).jpg</code> but the sidecar is <code class="text-[11px] font-mono">photo.jpg(1).json</code>.</p>
+          </div>
+          <div class="p-4 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/60 shadow-xs">
+            <h3 class="text-sm font-bold text-zinc-900 dark:text-zinc-100 mb-1">3. Truncation Recovery</h3>
+            <p class="text-xs text-zinc-600 dark:text-zinc-400 leading-relaxed">Restores pairings for long filenames cut off by Google's legacy 47-character and 51-character archive limits.</p>
+          </div>
+          <div class="p-4 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/60 shadow-xs">
+            <h3 class="text-sm font-bold text-zinc-900 dark:text-zinc-100 mb-1">4. Live Photo &amp; Video Pairing</h3>
+            <p class="text-xs text-zinc-600 dark:text-zinc-400 leading-relaxed">Correlates paired Apple HEIC stills and companion MOV motion video clips to identical timestamp anchors.</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- Section 3: Supported Formats & EXIF Tags -->
+      <section class="space-y-4">
+        <h2 class="text-2xl font-bold text-zinc-900 dark:text-white flex items-center gap-2.5">
+          <span class="w-7 h-7 rounded-lg bg-zinc-100 dark:bg-zinc-800 text-zinc-800 dark:text-zinc-200 text-xs font-mono font-bold flex items-center justify-center">03</span>
+          Supported Formats &amp; Metadata Tags
+        </h2>
+        <div class="overflow-x-auto rounded-xl border border-zinc-200 dark:border-zinc-800">
+          <table class="w-full text-left text-xs font-mono">
+            <thead class="bg-zinc-50 dark:bg-zinc-900/80 border-b border-zinc-200 dark:border-zinc-800 text-zinc-600 dark:text-zinc-400 uppercase tracking-wider">
+              <tr>
+                <th class="px-4 py-3">Category</th>
+                <th class="px-4 py-3">Extensions</th>
+                <th class="px-4 py-3">Injected Metadata</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-zinc-200 dark:divide-zinc-800 text-zinc-700 dark:text-zinc-300">
+              <tr>
+                <td class="px-4 py-3 font-bold text-zinc-900 dark:text-white">Still Images</td>
+                <td class="px-4 py-3">JPG, JPEG, PNG, WEBP, TIFF</td>
+                <td class="px-4 py-3">EXIF: DateTimeOriginal, CreateDate, GPSLatitude, GPSLongitude, GPSAltitude</td>
+              </tr>
+              <tr>
+                <td class="px-4 py-3 font-bold text-zinc-900 dark:text-white">Apple Formats</td>
+                <td class="px-4 py-3">HEIC, HEIF, Apple Live Photos</td>
+                <td class="px-4 py-3">EXIF &amp; QuickTime metadata, paired timestamps</td>
+              </tr>
+              <tr>
+                <td class="px-4 py-3 font-bold text-zinc-900 dark:text-white">Video Media</td>
+                <td class="px-4 py-3">MP4, MOV, M4V, 3GP</td>
+                <td class="px-4 py-3">QuickTime mvhd creation time, GPS coordinates, local filesystem creation</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- Section 4: Privacy Architecture -->
+      <section class="space-y-4">
+        <h2 class="text-2xl font-bold text-zinc-900 dark:text-white flex items-center gap-2.5">
+          <span class="w-7 h-7 rounded-lg bg-zinc-100 dark:bg-zinc-800 text-zinc-800 dark:text-zinc-200 text-xs font-mono font-bold flex items-center justify-center">04</span>
+          Zero-Server Privacy Guarantee
+        </h2>
+        <div class="p-6 rounded-2xl bg-emerald-50/50 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-900/50 space-y-3">
+          <div class="flex items-center gap-2 text-emerald-800 dark:text-emerald-300 font-bold text-sm">
+            <Icon name="shield-check" class="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
+            <span>100% Client-Side In-Memory Processing</span>
+          </div>
+          <p class="text-xs sm:text-sm text-zinc-700 dark:text-zinc-300 leading-relaxed">
+            Your photos and private memories are never uploaded to any remote server or cloud bucket. The web application leverages standard browser WebAssembly (Wasm) and Web Workers via the modern File System Access API. 
+          </p>
+          <p class="text-xs sm:text-sm text-zinc-700 dark:text-zinc-300 leading-relaxed">
+            The native desktop application runs offline on your machine with multi-threaded parallel performance, zero network dependencies, and optional RAM disk acceleration for massive libraries.
+          </p>
+        </div>
+      </section>
+
+      <!-- Quick Action Navigation -->
+      <div class="pt-8 border-t border-zinc-200 dark:border-zinc-800 flex flex-wrap items-center justify-between gap-4">
+        <a href="/restore-data" class="text-xs font-semibold text-indigo-600 dark:text-indigo-400 hover:underline flex items-center gap-1.5">
+          <span>&larr; View Complete Restore Guide</span>
+        </a>
+        <div class="flex items-center gap-3">
+          <a href="/download" class="px-4 py-2 rounded-lg bg-zinc-900 hover:bg-zinc-800 text-white dark:bg-white dark:text-zinc-900 dark:hover:bg-zinc-100 text-xs font-bold transition-all shadow-xs">
+            Download Desktop App
+          </a>
+          <a href="/tool" class="px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold transition-all shadow-xs">
+            Launch Web Tool
+          </a>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</Layout>

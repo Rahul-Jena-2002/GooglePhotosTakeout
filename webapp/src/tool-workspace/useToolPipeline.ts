@@ -21,8 +21,8 @@ import { WorkerPool } from "../lib/WorkerPool"
 import { ZipReader, BlobReader, Uint8ArrayWriter, Writer, ZipWriter, BlobWriter, TextWriter } from "@zip.js/zip.js"
 import { useSettingsStore } from "../store/useSettingsStore";
 import { normalizeZipPath } from "../services/restoration/ZipMetadataMatcher"
-import { saveHandles } from "../lib/handleStore"
-import { generateSyncBatContent } from "../services/restoration/WindowsDateSyncScript"
+import { generateSyncBatContent, generateSyncShContent } from "../services/restoration/WindowsDateSyncScript"
+import { getGuestUsage, recordGuestUsage, GUEST_MAX_FILES, GUEST_MAX_BYTES } from "./guestQuota"
 
 // ---------------------------------------------------------------------------
 // Streaming zip.js writer that pipes directly to a FileSystemWritableFileStream
@@ -53,6 +53,7 @@ export type LogEntry = {
 }
 
 export const PLAN_LABELS: Record<string, string> = {
+  guest: "Guest Trial",
   free: "Free",
   recovery_pass: "Single Time",
   pro: "Pro",
@@ -104,6 +105,16 @@ export const getPlanCardStyles = (plan: string, thresholds?: {
         description: descText,
       };
     }
+    case 'guest':
+      return {
+        cardClass: "bg-white border-zinc-200 shadow-sm",
+        badgeClass: "bg-amber-100 border-amber-200 text-amber-800 font-semibold",
+        badgeText: "Guest Mode",
+        iconClass: "text-amber-600",
+        titleClass: "text-zinc-800",
+        titleText: "Guest Trial",
+        description: "Free guest mode (up to 100 files / 1 GB). Sign in free with Google for unlimited browser restorations!",
+      };
     case 'free':
     default: {
       if (isFreePromoActive) {
@@ -141,7 +152,7 @@ export function useToolPipeline() {
   const { user, userData, refreshUserData } = useAuth()
 
   const isPassExpired = userData?.plan === 'recovery_pass' && userData?.expiresAt && Date.now() >= userData.expiresAt;
-  const plan = (userData?.plan === 'recovery_pass' && isPassExpired) ? 'free' : (userData?.plan || 'free');
+  const plan = !user ? 'guest' : ((userData?.plan === 'recovery_pass' && isPassExpired) ? 'free' : (userData?.plan || 'free'));
 
   const getUserBytes = (u: Record<string, unknown> | null | undefined) => {
     if (!u) return 0;
@@ -167,11 +178,13 @@ export function useToolPipeline() {
     return recorded + legacyFiles;
   }
 
-  const currentUsedFiles = getUserFiles(userData as unknown as Record<string, unknown>)
-  const currentUsedBytes = getUserBytes(userData as unknown as Record<string, unknown>)
+  const guestUsage = !user ? getGuestUsage() : { files: 0, bytes: 0 };
+  const currentUsedFiles = !user ? guestUsage.files : getUserFiles(userData as unknown as Record<string, unknown>);
+  const currentUsedBytes = !user ? guestUsage.bytes : getUserBytes(userData as unknown as Record<string, unknown>);
 
   // Plan thresholds — Free tier is UNLIMITED for core browser restoration
   const [tierThresholds, setTierThresholds] = useState({
+    guest:         { maxFiles: GUEST_MAX_FILES, maxSizeMB: Math.round(GUEST_MAX_BYTES / (1024 * 1024)) },
     free:          { maxFiles: Infinity, maxSizeMB: Infinity },
     recovery_pass: { maxFiles: Infinity, maxSizeMB: Infinity },
     pro:           { maxFiles: Infinity, maxSizeMB: Infinity },
@@ -182,11 +195,15 @@ export function useToolPipeline() {
 
   // Core browser tool dynamically respects tier thresholds synced from Admin settings
   const activeTierCfg = tierThresholds[plan] || tierThresholds.free || { maxFiles: Infinity, maxSizeMB: Infinity };
-  const isFreeUnlimited = tierThresholds.free.maxFiles === Infinity && tierThresholds.free.maxSizeMB === Infinity;
-  const limitFiles = isFreePromoActive ? Infinity : (activeTierCfg.maxFiles ?? Infinity);
-  const limitBytes = isFreePromoActive || activeTierCfg.maxSizeMB === Infinity
-    ? Infinity
-    : (activeTierCfg.maxSizeMB * 1024 * 1024);
+  const isFreeUnlimited = plan !== 'guest' && tierThresholds.free.maxFiles === Infinity && tierThresholds.free.maxSizeMB === Infinity;
+  const limitFiles = !user
+    ? GUEST_MAX_FILES
+    : (isFreePromoActive ? Infinity : (activeTierCfg.maxFiles ?? Infinity));
+  const limitBytes = !user
+    ? GUEST_MAX_BYTES
+    : (isFreePromoActive || activeTierCfg.maxSizeMB === Infinity
+      ? Infinity
+      : (activeTierCfg.maxSizeMB * 1024 * 1024));
 
   const limitFilesRef = useRef(limitFiles)
   const limitBytesRef = useRef(limitBytes)
@@ -657,6 +674,11 @@ export function useToolPipeline() {
     setSessionFiles(0)
     await indexedDbService.remove('telemetry', 'takeoutfix_pending_usage')
 
+    if (!user) {
+      recordGuestUsage(filesToSave, bytesToSave)
+      return
+    }
+
     try {
       await saveUsageToFirestore(bytesToSave, filesToSave)
 
@@ -997,7 +1019,7 @@ export function useToolPipeline() {
           let writable: any = null;
           try {
             // Check quota limits
-            const isBypass = userData?.isAdmin || (import.meta as any).env?.DEV;
+            const isBypass = Boolean(user && (userData?.isAdmin || (import.meta as any).env?.DEV));
             if (!isBypass && (currentUsedBytesRef.current + sessionBytesRef.current > limitBytesRef.current || currentUsedFilesRef.current + sessionFilesRef.current > limitFilesRef.current)) {
               if (zipReader) {
                 try { await zipReader.close(); } catch {}
@@ -1327,6 +1349,9 @@ export function useToolPipeline() {
             sessionBytesRef.current += size;
             sessionFilesRef.current += 1;
             totalSessionBytesRef.current += size;
+            if (!user) {
+              recordGuestUsage(1, size);
+            }
 
             logsBuffer.current.push({
               level: levelStr,
@@ -1460,6 +1485,14 @@ export function useToolPipeline() {
       }
     }
 
+    if (!user) {
+      setQuotaAlert({
+        open: true,
+        message: `You have reached the free Guest limit (${GUEST_MAX_FILES} files / 1 GB). Sign in free with Google to continue restoring your photos!`
+      })
+      return
+    }
+
     const storageExceeded = (currentUsedBytesRef.current + finalBytes) > limitBytesRef.current
     const filesExceeded = (currentUsedFilesRef.current + finalFiles) > limitFilesRef.current
     let limitReason = ""
@@ -1523,7 +1556,7 @@ export function useToolPipeline() {
     setProgress(100)
     setCurrentFile("Processing Complete")
 
-    // Auto-generate sync_windows_dates.bat in output folder if direct folder mode was used
+    // Auto-generate sync scripts (.bat for Windows, .sh for Mac/Linux) in output folder if direct folder mode was used
     const outHandle = (currentSessionRef.current?.outputHandle as FileSystemDirectoryHandle) || outputFolder;
     if (outHandle && useSettingsStore.getState().generateSyncScript && restoredTimestampsCatalogRef.current.length > 0) {
       try {
@@ -1532,18 +1565,25 @@ export function useToolPipeline() {
         await jsonWritable.write(JSON.stringify(restoredTimestampsCatalogRef.current, null, 2));
         await jsonWritable.close();
 
+        // 1. Windows batch script
         const batHandle = await outHandle.getFileHandle('sync_windows_dates.bat', { create: true });
         const batWritable = await batHandle.createWritable();
         await batWritable.write(generateSyncBatContent());
         await batWritable.close();
 
+        // 2. macOS & Linux shell script
+        const shHandle = await outHandle.getFileHandle('sync_macos_linux.sh', { create: true });
+        const shWritable = await shHandle.createWritable();
+        await shWritable.write(generateSyncShContent());
+        await shWritable.close();
+
         logsBuffer.current.push({
           level: 'success',
-          filename: 'sync_windows_dates.bat',
-          action: 'Generated in output folder — run it to sync File Explorer Date Modified'
+          filename: 'sync_windows_dates.bat / sync_macos_linux.sh',
+          action: 'Generated in output folder — run to sync File Explorer / Finder Date Modified'
         });
       } catch (scriptErr) {
-        console.warn("Could not write sync_windows_dates.bat to destination folder:", scriptErr);
+        console.warn("Could not write sync scripts to destination folder:", scriptErr);
       }
     }
 
@@ -2078,8 +2118,16 @@ export function useToolPipeline() {
       console.warn("Failed to check directory handles:", err)
     }
 
-    const isBypass = userData?.isAdmin || (import.meta as any).env?.DEV;
+    const isBypass = Boolean(user && (userData?.isAdmin || (import.meta as any).env?.DEV));
     if (!isBypass && (currentUsedFiles >= limitFiles || currentUsedBytes >= limitBytes)) {
+      if (!user) {
+        setQuotaAlert({
+          open: true,
+          message: `You have reached the free Guest limit (${GUEST_MAX_FILES} files / 1 GB). Sign in free with Google to continue restoring your photos!`
+        })
+        return
+      }
+
       let limitReason = ""
       if (currentUsedFiles >= limitFiles && currentUsedBytes >= limitBytes) {
         limitReason = "both your storage and file count limits"

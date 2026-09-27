@@ -20,6 +20,7 @@ import { useToolPipeline } from "../../tool-workspace/useToolPipeline"
 import { RestorePanel } from "../../tool-workspace/RestorePanel"
 import { CommandSidebar } from "../../tool-workspace/CommandSidebar"
 import { ToolModals } from "../../tool-workspace/ToolModals"
+import { isGuestQuotaExhausted, getGuestUsage } from "../../tool-workspace/guestQuota"
 
 // ---------------------------------------------------------------------------
 // Inner component — rendered inside AuthProvider
@@ -101,22 +102,24 @@ export function ToolWorkspaceContent() {
     )
   }
 
-  // Login compulsory for accessing the restoration tool workspace:
-  if (!user) {
+  // Guest quota check — if not signed in and 100 files/1 GB already exhausted:
+  const guestExhausted = !user && isGuestQuotaExhausted();
+  if (!user && guestExhausted) {
+    const usage = getGuestUsage();
     return (
       <div className="min-h-[calc(100vh-64px)] bg-[#0A0A0A] flex flex-col items-center justify-center p-6 text-center relative">
         <div className="absolute top-1/4 left-1/4 w-[400px] h-[400px] bg-zinc-500/5 blur-[120px] rounded-full pointer-events-none"></div>
         <div className="absolute bottom-1/4 right-1/4 w-[400px] h-[400px] bg-zinc-700/5 blur-[120px] rounded-full pointer-events-none"></div>
 
         <Card className="bg-zinc-950/50 border-white/10 p-8 rounded-3xl backdrop-blur-2xl shadow-2xl max-w-md w-full relative overflow-hidden">
-          <div className="absolute top-0 left-0 right-0 h-1 bg-zinc-800 dark:bg-zinc-200"></div>
+          <div className="absolute top-0 left-0 right-0 h-1 bg-amber-500"></div>
           <CardHeader className="text-center pb-6">
-            <div className="w-12 h-12 bg-indigo-500/10 text-indigo-400 rounded-full flex items-center justify-center mx-auto mb-4 border border-indigo-500/20">
+            <div className="w-12 h-12 bg-amber-500/10 text-amber-400 rounded-full flex items-center justify-center mx-auto mb-4 border border-amber-500/20">
               <HardDrive className="w-6 h-6 animate-pulse" />
             </div>
-            <CardTitle className="text-2xl font-black text-white">Sign In Required</CardTitle>
+            <CardTitle className="text-2xl font-black text-white">Free Guest Limit Reached</CardTitle>
             <CardDescription className="text-zinc-400 text-sm mt-2">
-              Please sign in to access the TakeoutFix restoration tool workspace, track restored archives, and manage your account.
+              You have completed your {usage.files} free guest restorations. Sign in free with Google to continue restoring your photos!
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -130,7 +133,7 @@ export function ToolWorkspaceContent() {
                 <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z" fill="#FBBC05"/>
                 <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z" fill="#EA4335"/>
               </svg>
-              Sign In with Google
+              Sign In with Google to Continue
             </Button>
             <a href="/" className="block text-center text-xs text-zinc-500 hover:text-white transition-colors mt-2">
               Return to Home Page
@@ -138,7 +141,7 @@ export function ToolWorkspaceContent() {
           </CardContent>
         </Card>
       </div>
-    )
+    );
   }
 
   // ── Main workspace layout ─────────────────────────────────────────────────
@@ -246,6 +249,8 @@ export function ToolWorkspaceContent() {
           pipeline.resetForNewRestore()
         }}
         onRestoreCompleteDismiss={() => setShowRestoreComplete(false)}
+        isGuest={!user}
+        onSignIn={login}
       />
     </AdBlockGate>
   )

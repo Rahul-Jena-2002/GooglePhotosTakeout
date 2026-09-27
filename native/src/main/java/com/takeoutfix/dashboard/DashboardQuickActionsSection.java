@@ -40,22 +40,22 @@ public class DashboardQuickActionsSection extends JPanel {
 
         grid.add(createToolCard("FIX PHOTOS", "Takeout Restorer",
                 "Fix your Google Photos export — restore dates, captions, and organize everything neatly.",
-                "Open →", new Color(99, 102, 241),
+                "Open", new Color(99, 102, 241),
                 () -> { if (onNavigate != null) onNavigate.accept(AppRoutes.RESTORE); }));
 
         grid.add(createToolCard("BETA", "EXIF Viewer",
                 "See photo details like camera model, location, and when it was taken.",
-                "Open →", new Color(16, 185, 129),
+                "Open", new Color(16, 185, 129),
                 () -> { if (onNavigate != null) onNavigate.accept(AppRoutes.EXIF); }));
 
         grid.add(createToolCard("BETA", "Archive Compare",
                 "Check that your restored files match your original Takeout export perfectly.",
-                "Compare →", new Color(14, 165, 233),
+                "Compare", new Color(14, 165, 233),
                 () -> { if (onNavigate != null) onNavigate.accept(AppRoutes.COMPARE); }));
 
         grid.add(createToolCard("BETA", "Duplicate Finder",
                 "Find and remove duplicate photos and videos to free up space.",
-                "Scan →", new Color(168, 85, 247),
+                "Scan", new Color(168, 85, 247),
                 () -> { if (onNavigate != null) onNavigate.accept(AppRoutes.DUPLICATE); }));
 
         card.add(grid, BorderLayout.CENTER);

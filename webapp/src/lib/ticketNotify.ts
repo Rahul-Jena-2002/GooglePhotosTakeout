@@ -233,17 +233,14 @@ export async function notifyAdminsOnTicketRaised(
   // Also notify server endpoint if running
   try {
     if (typeof window !== "undefined") {
-      apiClient.post("/api/send-ticket-email", {
-        ticketId,
-        userEmail,
-        userName,
-        subject,
-        message,
-        recipients,
-        fromEmail: SUPPORT_EMAIL,
-      }).catch(() => {
-        // Non-blocking server dispatch fallback
-      });
+      const { getAuth } = await import("firebase/auth");
+      const idToken = await getAuth().currentUser?.getIdToken().catch(() => null);
+      if (idToken) {
+        apiClient.post("/api/send-ticket-email", {
+          ticketId, userEmail, userName, subject, message,
+          recipients, fromEmail: SUPPORT_EMAIL,
+        }, { headers: { Authorization: `Bearer ${idToken}` } }).catch(() => {});
+      }
     }
   } catch {
     // Ignore server dispatch errors

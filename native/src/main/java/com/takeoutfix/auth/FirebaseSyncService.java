@@ -49,6 +49,7 @@ public class FirebaseSyncService {
     }
 
     private static final File SESSION_FILE = new File(System.getProperty("user.home"), ".takeoutfix/session.json");
+    private static final File PENDING_SYNC_FILE = new File(System.getProperty("user.home"), ".takeoutfix/pending_sync.json");
 
     private final HttpClient httpClient = HttpClient.newBuilder()
             .connectTimeout(Duration.ofSeconds(6))
@@ -134,10 +135,65 @@ public class FirebaseSyncService {
         }
     }
 
+    public synchronized void recordPendingOfflineSync(long deltaFiles, long deltaBytes) {
+        if (deltaFiles <= 0 && deltaBytes <= 0) return;
+        try {
+            long existingFiles = 0;
+            long existingBytes = 0;
+            if (PENDING_SYNC_FILE.exists()) {
+                String content = Files.readString(PENDING_SYNC_FILE.toPath());
+                if (content != null && !content.isBlank()) {
+                    JSONObject json = new JSONObject(content);
+                    existingFiles = json.optLong("pendingFiles", 0);
+                    existingBytes = json.optLong("pendingBytes", 0);
+                }
+            } else {
+                File dir = PENDING_SYNC_FILE.getParentFile();
+                if (dir != null && !dir.exists()) dir.mkdirs();
+            }
+            JSONObject next = new JSONObject();
+            next.put("pendingFiles", existingFiles + deltaFiles);
+            next.put("pendingBytes", existingBytes + deltaBytes);
+            next.put("lastQueuedAt", java.time.Instant.now().toString());
+            Files.writeString(PENDING_SYNC_FILE.toPath(), next.toString(2));
+            log.info("Queued offline sync metrics to disk: +{} files, +{} bytes (total pending: {})", deltaFiles, deltaBytes, existingFiles + deltaFiles);
+        } catch (Exception e) {
+            log.warn("Failed to record pending offline sync: {}", e.getMessage());
+        }
+    }
+
+    public synchronized void drainPendingOfflineSync() {
+        if (!PENDING_SYNC_FILE.exists()) return;
+        try {
+            String content = Files.readString(PENDING_SYNC_FILE.toPath());
+            if (content == null || content.isBlank()) {
+                Files.deleteIfExists(PENDING_SYNC_FILE.toPath());
+                return;
+            }
+            JSONObject json = new JSONObject(content);
+            long pendingFiles = json.optLong("pendingFiles", 0);
+            long pendingBytes = json.optLong("pendingBytes", 0);
+            if (pendingFiles > 0 || pendingBytes > 0) {
+                log.info("Draining offline pending sync queue from disk: {} files, {} bytes", pendingFiles, pendingBytes);
+                UserController.incrementUsage(pendingFiles, pendingBytes);
+                boolean pushed = pushCurrentTotalsToCloud();
+                if (pushed) {
+                    Files.deleteIfExists(PENDING_SYNC_FILE.toPath());
+                    log.info("Successfully synced and cleared offline pending sync queue.");
+                }
+            } else {
+                Files.deleteIfExists(PENDING_SYNC_FILE.toPath());
+            }
+        } catch (Exception e) {
+            log.warn("Failed to drain offline pending sync: {}", e.getMessage());
+        }
+    }
+
     /**
      * Synchronizes user quota, tier, and promo state directly from Firestore.
      */
     public synchronized void syncWithFirebase() {
+        drainPendingOfflineSync();
         performSync();
     }
 

@@ -10,7 +10,6 @@ import { db } from "../../firebase"
 import { motion, AnimatePresence } from "framer-motion"
 import { ToastContainer } from "../../components/ui/toast"
 import { notifyAdminsOnTicketRaised, notifyAdminsOnTicketReply, notifyAdminsOnFeedback } from "../../lib/ticketNotify"
-import AdUnit from "../../components/monetization/AdUnit"
 import { apiClient } from "../../lib/api/apiClient"
 
 interface SupportFaq {
@@ -342,7 +341,7 @@ function SupportPageContent() {
   }
 
   return (
-    <div className="max-w-5xl mx-auto px-4 py-12 mt-16 relative min-h-[105vh]">
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 mt-16 relative min-h-[105vh]">
       <motion.div
         initial={{ opacity: 0, y: -10 }}
         animate={{ opacity: 1, y: 0 }}
@@ -353,11 +352,6 @@ function SupportPageContent() {
           Support & FAQ
         </h1>
       </motion.div>
-
-      {/* Sponsored Placement Above Support Content - only shown on mobile/tablet when vertical sidebar ads are hidden */}
-      <div className="xl:hidden w-full mb-8 relative z-10">
-        <AdUnit placement="ARTICLE_TOP" type="compact" />
-      </div>
 
       <div className="flex flex-col md:flex-row gap-8">
         

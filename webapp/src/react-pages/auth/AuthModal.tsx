@@ -10,7 +10,7 @@ import {
   type User,
 } from "firebase/auth";
 import { doc, getDoc, setDoc } from "firebase/firestore";
-import { executeRecaptcha } from "../../lib/recaptcha";
+import { executeRecaptcha, executeAndVerifyRecaptcha } from "../../lib/recaptcha";
 import {
   Mail, Lock, User as UserIcon, Eye, EyeOff, ArrowRight,
   CheckCircle2, AlertCircle, ShieldCheck, RotateCw, X,
@@ -103,7 +103,7 @@ export default function AuthModal() {
   const handleGoogleSignIn = async () => {
     setErrorMsg(""); setSuccessMsg(""); setGoogleLoading(true);
     try {
-      executeRecaptcha("GOOGLE_SIGNIN").catch(() => {});
+      executeAndVerifyRecaptcha("GOOGLE_SIGNIN").catch(() => {});
       if (googleProvider) {
         googleProvider.setCustomParameters({ prompt: 'select_account' });
       }
@@ -130,7 +130,7 @@ export default function AuthModal() {
     if (mode === "forgot") {
       setLoading(true);
       try {
-        await executeRecaptcha("FORGOT_PASSWORD");
+        await executeAndVerifyRecaptcha("FORGOT_PASSWORD");
         await sendPasswordResetEmail(auth, cleanEmail);
         setSuccessMsg("Reset link sent! Check your inbox.");
       } catch (err: any) { setErrorMsg(err.message || "Failed to send reset email."); }
@@ -141,7 +141,7 @@ export default function AuthModal() {
     if (mode === "signup" && password !== confirmPassword) { setErrorMsg("Passwords do not match."); return; }
     setLoading(true);
     try {
-      await executeRecaptcha(mode === "signin" ? "EMAIL_SIGNIN" : "EMAIL_SIGNUP");
+      await executeAndVerifyRecaptcha(mode === "signin" ? "EMAIL_SIGNIN" : "EMAIL_SIGNUP");
       if (mode === "signin") {
         const res = await signInWithEmailAndPassword(auth, cleanEmail, password);
         if (res.user) { await syncUserDoc(res.user); handleSuccess(); }

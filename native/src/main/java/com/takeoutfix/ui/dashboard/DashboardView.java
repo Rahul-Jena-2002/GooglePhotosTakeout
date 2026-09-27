@@ -133,6 +133,11 @@ public class DashboardView extends JPanel {
         // 4. SOUTH: Footer Status / Telemetry Bar
         ambientCanvas.add(createFooter(), BorderLayout.SOUTH);
 
+        // Dynamically update footer storage when user selects or clears destination folder
+        if (recoveryCenterPanel != null && dealsRotatorBanner != null) {
+            recoveryCenterPanel.setOnDestinationChanged(dealsRotatorBanner::setDestinationDirectory);
+        }
+
         // Header Navigation -> Recovery Center switcher with active tab synchronization
         if (headerBar != null && recoveryCenterPanel != null) {
             headerBar.setNavigationCallback(cardName -> {
@@ -144,9 +149,9 @@ public class DashboardView extends JPanel {
                 headerBar.setActiveTab(cardName);
                 handleActiveCardChanged(cardName);
             });
-            recoveryCenterPanel.switchTo(AppRoutes.DASHBOARD);
-            headerBar.setActiveTab("Dashboard");
-            handleActiveCardChanged(AppRoutes.DASHBOARD);
+            recoveryCenterPanel.switchTo(AppRoutes.RESTORE);
+            headerBar.setActiveTab("Restore");
+            handleActiveCardChanged(AppRoutes.RESTORE);
         }
 
         if (headerBar != null && onSignOutRequested != null) {
@@ -258,11 +263,16 @@ public class DashboardView extends JPanel {
             return;
         }
 
-        // 3. User Sign-in Check — Always require sign-in for tool access
+        // 3. User Sign-in Check — allow guest if quota remains
         if (!userSyncBridgeService.isSignedIn()) {
-            new com.takeoutfix.auth.ui.SignInDialog(parentFrame, userSyncBridgeService).setVisible(true);
-            if (!userSyncBridgeService.isSignedIn()) {
-                return;
+            if (com.takeoutfix.auth.GuestQuotaStore.isExhausted()) {
+                new com.takeoutfix.auth.ui.SignInDialog(parentFrame, userSyncBridgeService).setVisible(true);
+                if (!userSyncBridgeService.isSignedIn()) {
+                    return;
+                }
+            } else {
+                int remaining = com.takeoutfix.auth.GuestQuotaStore.getRemainingFiles();
+                recoveryCenterPanel.getConsoleCard().appendLog("INFO", "[GUEST TRIAL] Active: " + remaining + " files remaining in free trial (100 files / 1 GB max).");
             }
         }
 
@@ -288,7 +298,10 @@ public class DashboardView extends JPanel {
         ConsoleCard console = recoveryCenterPanel.getConsoleCard();
         console.appendLog("INFO", "Starting restoration for source: " + inPath);
         console.appendLog("INFO", "Destination directory: " + targetOutput);
-        console.appendLog("INFO", "Restoration Mode: UNLIMITED | Account: " + userSyncBridgeService.getCurrentEmail());
+        String account = userSyncBridgeService.getCurrentEmail();
+        if (account != null && !account.isBlank()) {
+            console.appendLog("INFO", "Account: " + account);
+        }
 
         Optional<Instant> dateOverride = recoveryCenterPanel.getArchiveDateOverride();
         dateOverride.ifPresent(d -> console.appendLog("INFO", "Archive date fallback override set to: " + d));

@@ -68,6 +68,15 @@ public class ApplicationStartupController {
         this.sessionStatsService = sessionStatsService;
         this.networkMonitorService = networkMonitorService;
         this.adSyncService = adSyncService;
+
+        if (this.userSyncBridgeService != null) {
+            this.userSyncBridgeService.addListener(user -> SwingUtilities.invokeLater(() -> {
+                if (mainFrame != null) {
+                    boolean authed = this.userSyncBridgeService.isSignedIn();
+                    mainFrame.setTitle(authed ? "TakeoutFix Operations Center" : "TakeoutFix Operations Center — Guest Mode");
+                }
+            }));
+        }
     }
 
     public ApplicationStartupController() {
@@ -107,6 +116,7 @@ public class ApplicationStartupController {
         if (cachedSession == null) {
             cachedSession = AuthSession.unauthenticated();
         }
+        isAuthenticated = cachedSession.isAuthenticated();
         showDashboard(cachedSession);
 
         // 2. Display the sleek "⚠️ Authenticating..." banner matching the requested style
@@ -123,6 +133,9 @@ public class ApplicationStartupController {
                         UserController.syncUser(auth.session().toMap());
                         userSyncBridgeService.signIn(auth.session().getEmail(), auth.session().getPlan());
                         userSyncBridgeService.triggerCloudSync(null);
+                        if (mainFrame != null) {
+                            mainFrame.setTitle("TakeoutFix Operations Center");
+                        }
                         if (dashboardView != null) {
                             dashboardView.showAuthenticatedBanner(auth.session().getEmail(), auth.session().getPlan());
                         }
@@ -132,12 +145,18 @@ public class ApplicationStartupController {
                             isAuthenticated = true;
                             UserController.syncUser(finalCachedSession.toMap());
                             userSyncBridgeService.signIn(finalCachedSession.getEmail(), finalCachedSession.getPlan());
+                            if (mainFrame != null) {
+                                mainFrame.setTitle("TakeoutFix Operations Center");
+                            }
                             if (dashboardView != null) {
                                 dashboardView.showOfflineBanner(finalCachedSession.getEmail());
                             }
                         } else {
                             isAuthenticated = false;
                             userSyncBridgeService.signOut();
+                            if (mainFrame != null) {
+                                mainFrame.setTitle("TakeoutFix Operations Center — Guest Mode");
+                            }
                             if (dashboardView != null) {
                                 dashboardView.hideAuthBanner();
                             }
@@ -147,6 +166,9 @@ public class ApplicationStartupController {
                         isAuthenticated = false;
                         credStore.clear();
                         userSyncBridgeService.signOut();
+                        if (mainFrame != null) {
+                            mainFrame.setTitle("TakeoutFix Operations Center — Guest Mode");
+                        }
                         if (dashboardView != null) {
                             dashboardView.showAuthFailedBanner(() -> {
                                 if (mainFrame != null) {
@@ -161,6 +183,9 @@ public class ApplicationStartupController {
                         isAuthenticated = false;
                         credStore.clear();
                         userSyncBridgeService.signOut();
+                        if (mainFrame != null) {
+                            mainFrame.setTitle("TakeoutFix Operations Center — Guest Mode");
+                        }
                         if (dashboardView != null) {
                             dashboardView.hideAuthBanner();
                         }

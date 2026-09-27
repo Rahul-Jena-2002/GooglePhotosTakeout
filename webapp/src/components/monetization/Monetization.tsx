@@ -1,17 +1,12 @@
-import React, { useEffect, useState, useRef } from "react";
-import {
-  getMonetizationContent,
-  getPlacementSlotIndex,
-  getPageVisitSeed,
-  getRotationTick,
-} from "../../services/monetization/monetizationEngine";
+import { useEffect, useState, useRef } from "react";
+import { getMonetizationContent } from "../../services/monetization/monetizationEngine";
 import type { MonetizationResponse, ResolvedMonetizationItem } from "../../services/monetization/types";
 import { useAuth } from "../../contexts/AuthContext";
 import { auth } from "../../firebase";
 import { ArrowRight, ExternalLink, Sparkles, ShieldCheck } from "lucide-react";
 import { detectAdBlock } from "../../services/monetization/AdBlockDetector";
 
-import { DEFAULT_AFFILIATE_LINKS, DEFAULT_AD_UNITS } from "../../services/monetization/defaultData";
+import { DEFAULT_AD_UNITS, DEFAULT_AFFILIATE_LINKS } from "../../services/monetization/defaultData";
 
 export interface MonetizationProps {
   placement: string;
@@ -25,42 +20,22 @@ function isValidExternalDestination(url?: string): boolean {
 }
 
 function getInitialDefaultResponse(placementCode: string): MonetizationResponse {
-  const isSidebar = placementCode.startsWith("SIDEBAR") || placementCode.startsWith("GUTTER");
-  const slotIndex = getPlacementSlotIndex(placementCode);
-  const rotationOffset = getPageVisitSeed() + getRotationTick();
-
-  const affMatches = DEFAULT_AFFILIATE_LINKS.filter(
-    (l) => l.placementCodes.length === 0 || l.placementCodes.includes(placementCode) || (isSidebar && l.placementCodes.includes("SIDEBAR"))
-  );
-
-  const affCandidate =
-    affMatches.length > 0
-      ? affMatches[(slotIndex + rotationOffset) % affMatches.length]
-      : DEFAULT_AFFILIATE_LINKS[0];
+  const isSidebar = placementCode.startsWith("SIDEBAR") || placementCode.startsWith("GUTTER") || placementCode.startsWith("TOOL_SIDEBAR");
 
   const adCandidate =
     DEFAULT_AD_UNITS.find(
-      (u) => u.placementCodes.includes(placementCode) || (isSidebar && u.placementCodes.includes("SIDEBAR")) || u.placementCodes.length === 0
+      (u) => u.placementCodes.includes(placementCode) || (isSidebar && (u.placementCodes.includes("SIDEBAR") || u.placementCodes.includes("TOOL_SIDEBAR"))) || u.placementCodes.length === 0
     ) || DEFAULT_AD_UNITS[0];
+
+  const secondaryAdCandidate =
+    DEFAULT_AD_UNITS.find((u) => u.id !== adCandidate?.id) || null;
 
   return {
     placement: placementCode,
     enabled: true,
     mode: "BOTH",
-    affiliate: affCandidate
-      ? {
-          id: affCandidate.id,
-          type: "AFFILIATE",
-          title: affCandidate.title,
-          description: affCandidate.description,
-          destinationUrl: affCandidate.destinationUrl,
-          imageUrl: affCandidate.imageUrl,
-          ctaText: affCandidate.ctaText,
-          tag: affCandidate.tag,
-          isExternal: affCandidate.isExternal,
-          providerName: affCandidate.providerName,
-        }
-      : null,
+    affiliate: null,
+    secondaryAffiliate: null,
     ad: adCandidate
       ? {
           id: adCandidate.id,
@@ -72,6 +47,19 @@ function getInitialDefaultResponse(placementCode: string): MonetizationResponse 
           destinationUrl: adCandidate.destinationUrl,
           ctaText: adCandidate.ctaText,
           providerName: adCandidate.providerName,
+        }
+      : null,
+    secondaryAd: secondaryAdCandidate
+      ? {
+          id: secondaryAdCandidate.id,
+          type: "AD",
+          title: secondaryAdCandidate.name,
+          adType: secondaryAdCandidate.adType,
+          embedCode: secondaryAdCandidate.embedCode,
+          imageUrl: secondaryAdCandidate.imageUrl,
+          destinationUrl: secondaryAdCandidate.destinationUrl,
+          ctaText: secondaryAdCandidate.ctaText,
+          providerName: secondaryAdCandidate.providerName,
         }
       : null,
     empty: false,
@@ -195,10 +183,12 @@ export default function Monetization({
   }, [placement, preview, userPlan, supportWithAds]);
 
   const [adUnavailable, setAdUnavailable] = useState(false);
+  const [secondaryAdUnavailable, setSecondaryAdUnavailable] = useState(false);
   const [affiliateUnavailable, setAffiliateUnavailable] = useState(false);
 
   useEffect(() => {
     setAdUnavailable(false);
+    setSecondaryAdUnavailable(false);
     setAffiliateUnavailable(false);
   }, [data]);
 
@@ -229,13 +219,24 @@ export default function Monetization({
     return true;
   };
 
-  const effectiveAffiliate =
-    !affiliateUnavailable && isAffiliateValid(data.affiliate) ? data.affiliate : null;
   const effectiveAd =
     !adUnavailable && isAdValid(data.ad) ? data.ad : null;
+  const effectiveSecondaryAd =
+    !secondaryAdUnavailable && isAdValid(data.secondaryAd)
+      ? data.secondaryAd
+      : null;
+  const effectiveAffiliate =
+    !affiliateUnavailable && isAffiliateValid(data.affiliate) ? data.affiliate : null;
+  const effectiveSecondaryAffiliate =
+    isAffiliateValid(data.secondaryAffiliate) && data.secondaryAffiliate?.id !== effectiveAffiliate?.id
+      ? data.secondaryAffiliate
+      : null;
 
-  // If both are missing or empty, gracefully collapse banner entirely to prevent whitespace
-  if (!effectiveAffiliate && !effectiveAd) {
+  const rawItems = data.items || [];
+  const effectiveItems = rawItems.filter((it) => (it.type === "AD" ? isAdValid(it) : isAffiliateValid(it)));
+
+  // If both ads and affiliates are missing or empty, gracefully collapse banner entirely to prevent whitespace
+  if (!effectiveAd && !effectiveSecondaryAd && !effectiveAffiliate && effectiveItems.length === 0) {
     return null;
   }
 
@@ -253,53 +254,137 @@ export default function Monetization({
         isCompact
           ? "rounded-xl border border-zinc-200/80 dark:border-white/10 bg-white/70 dark:bg-zinc-900/60 p-2 hover:border-zinc-300 dark:hover:border-zinc-700 shadow-xs"
           : isVertical
-          ? "rounded-xl border border-zinc-200/80 dark:border-white/10 bg-white/70 dark:bg-zinc-800/40 p-2.5 hover:border-zinc-300 dark:hover:border-zinc-600 shadow-xs"
-          : "my-3 rounded-2xl border border-zinc-200/90 dark:border-white/10 bg-white/90 dark:bg-zinc-900/70 p-3 shadow-sm backdrop-blur-xs hover:border-zinc-300 dark:hover:border-zinc-700"
+          ? "rounded-xl border border-zinc-200/80 dark:border-white/10 bg-white/70 dark:bg-zinc-800/40 p-2 hover:border-zinc-300 dark:hover:border-zinc-600 shadow-xs"
+          : "my-2 rounded-xl border border-zinc-200/90 dark:border-white/10 bg-white/90 dark:bg-zinc-900/70 p-2.5 shadow-sm backdrop-blur-xs hover:border-zinc-300 dark:hover:border-zinc-700"
       } ${className}`}
     >
-      {hasBoth ? (
-        // Mode = BOTH (Render side-by-side on desktop / stacked vertically when isVertical or on mobile)
-        <div
-          className={
-            isVertical
-              ? "flex flex-col gap-3 divide-y divide-zinc-200 dark:divide-zinc-800"
-              : "grid grid-cols-1 md:grid-cols-2 gap-4 divide-y md:divide-y-0 md:divide-x divide-dashed divide-zinc-200 dark:divide-zinc-800"
-          }
-        >
-          <div className="flex flex-col justify-between">
-            <AffiliateCardItem
-              key={effectiveAffiliate?.id || "aff"}
-              item={effectiveAffiliate!}
-              isVertical={isVertical}
-              isCompact={isCompact}
-              adSize={adSize}
-              onUnavailable={() => setAffiliateUnavailable(true)}
-            />
+      {isVertical ? (
+        // Vertical mode (Sidebar / Gutter): Divide into 2 ads inside single card if both exist
+        effectiveAd && effectiveSecondaryAd ? (
+          <div className="grid grid-cols-2 divide-x divide-zinc-200/80 dark:divide-white/10">
+            <div className="pr-2 flex flex-col justify-center">
+              <AdUnitItem
+                key={`${effectiveAd.id}-primary`}
+                item={effectiveAd}
+                preview={preview}
+                isCompact={isCompact}
+                adSize={adSize}
+                onUnavailable={() => setAdUnavailable(true)}
+              />
+            </div>
+            <div className="pl-2 flex flex-col justify-center">
+              <AdUnitItem
+                key={`${effectiveSecondaryAd.id}-secondary`}
+                item={effectiveSecondaryAd}
+                preview={preview}
+                isCompact={isCompact}
+                adSize={adSize}
+                onUnavailable={() => setSecondaryAdUnavailable(true)}
+              />
+            </div>
           </div>
-          <div className={`${isVertical ? "pt-3" : "pt-4 md:pt-0 md:pl-4"} flex flex-col justify-between`}>
+        ) : effectiveAd ? (
+          <AdUnitItem
+            key={effectiveAd.id}
+            item={effectiveAd}
+            preview={preview}
+            isCompact={isCompact}
+            adSize={adSize}
+            onUnavailable={() => setAdUnavailable(true)}
+          />
+        ) : effectiveSecondaryAd ? (
+          <AdUnitItem
+            key={effectiveSecondaryAd.id}
+            item={effectiveSecondaryAd}
+            preview={preview}
+            isCompact={isCompact}
+            adSize={adSize}
+            onUnavailable={() => setSecondaryAdUnavailable(true)}
+          />
+        ) : effectiveAffiliate ? (
+          <AffiliateCardItem
+            key={effectiveAffiliate.id}
+            item={effectiveAffiliate}
+            isVertical={true}
+            isCompact={isCompact}
+            adSize={adSize}
+            onUnavailable={() => setAffiliateUnavailable(true)}
+          />
+        ) : null
+      ) : effectiveItems.length >= 4 ? (
+        // Divide by 4: 4 real ads (25% each) side-by-side with vertical dashed divider lines!
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-2 sm:gap-3 divide-y sm:divide-y-0 sm:divide-x divide-dashed divide-zinc-200 dark:divide-zinc-800">
+          {effectiveItems.slice(0, 4).map((item, idx) => (
+            <div key={item.id} className={`${idx > 0 ? "sm:pl-3" : ""} flex flex-col justify-between overflow-hidden`}>
+              {item.type === "AD" ? (
+                <AdUnitItem
+                  item={item}
+                  preview={preview}
+                  isCompact={false}
+                  adSize="medium"
+                />
+              ) : (
+                <AffiliateCardItem
+                  item={item}
+                  fullWidth={false}
+                  isVertical={false}
+                  isCompact={false}
+                  adSize="medium"
+                />
+              )}
+            </div>
+          ))}
+        </div>
+      ) : effectiveItems.length === 3 ? (
+        // Divide by 3: 3 items (33.33% each) side-by-side
+        <div className="grid grid-cols-3 gap-2 sm:gap-3 divide-x divide-dashed divide-zinc-200 dark:divide-zinc-800">
+          {effectiveItems.slice(0, 3).map((item, idx) => (
+            <div key={item.id} className={`${idx > 0 ? "pl-2 sm:pl-3" : ""} flex flex-col justify-between overflow-hidden`}>
+              {item.type === "AD" ? (
+                <AdUnitItem
+                  item={item}
+                  preview={preview}
+                  isCompact={false}
+                  adSize="medium"
+                />
+              ) : (
+                <AffiliateCardItem
+                  item={item}
+                  fullWidth={false}
+                  isVertical={false}
+                  isCompact={false}
+                  adSize="medium"
+                />
+              )}
+            </div>
+          ))}
+        </div>
+      ) : effectiveAd && effectiveSecondaryAd ? (
+        // Divide by 2: 2 REAL ADS side-by-side in each card! (Zero sponsored affiliate cards)
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 divide-y md:divide-y-0 md:divide-x divide-dashed divide-zinc-200 dark:divide-zinc-800">
+          <div className="flex flex-col justify-between">
             <AdUnitItem
-              key={effectiveAd?.id || "ad"}
-              item={effectiveAd!}
+              key={effectiveAd.id}
+              item={effectiveAd}
               preview={preview}
               isCompact={isCompact}
               adSize={adSize}
               onUnavailable={() => setAdUnavailable(true)}
             />
           </div>
+          <div className="pt-3 md:pt-0 md:pl-3 flex flex-col justify-between">
+            <AdUnitItem
+              key={effectiveSecondaryAd.id}
+              item={effectiveSecondaryAd}
+              preview={preview}
+              isCompact={isCompact}
+              adSize={adSize}
+              onUnavailable={() => setSecondaryAdUnavailable(true)}
+            />
+          </div>
         </div>
-      ) : effectiveAffiliate ? (
-        // Mode = AFFILIATE_ONLY or Automatic Fallback to 100% Affiliate
-        <AffiliateCardItem
-          key={effectiveAffiliate.id}
-          item={effectiveAffiliate}
-          fullWidth
-          isVertical={isVertical}
-          isCompact={isCompact}
-          adSize={adSize}
-          onUnavailable={() => setAffiliateUnavailable(true)}
-        />
       ) : effectiveAd ? (
-        // Mode = ADS_ONLY or Automatic Fallback to 100% Ad
+        // Mode = ADS_ONLY or single ad fallback
         <AdUnitItem
           key={effectiveAd.id}
           item={effectiveAd}
@@ -308,6 +393,38 @@ export default function Monetization({
           isCompact={isCompact}
           adSize={adSize}
           onUnavailable={() => setAdUnavailable(true)}
+        />
+      ) : effectiveAffiliate && effectiveSecondaryAffiliate ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 divide-y md:divide-y-0 md:divide-x divide-dashed divide-zinc-200 dark:divide-zinc-800">
+          <div className="flex flex-col justify-between">
+            <AffiliateCardItem
+              key={effectiveAffiliate.id}
+              item={effectiveAffiliate}
+              isVertical={false}
+              isCompact={isCompact}
+              adSize={adSize}
+              onUnavailable={() => setAffiliateUnavailable(true)}
+            />
+          </div>
+          <div className="pt-3 md:pt-0 md:pl-3 flex flex-col justify-between">
+            <AffiliateCardItem
+              key={effectiveSecondaryAffiliate.id}
+              item={effectiveSecondaryAffiliate}
+              isVertical={false}
+              isCompact={isCompact}
+              adSize={adSize}
+            />
+          </div>
+        </div>
+      ) : effectiveAffiliate ? (
+        <AffiliateCardItem
+          key={effectiveAffiliate.id}
+          item={effectiveAffiliate}
+          fullWidth
+          isVertical={false}
+          isCompact={isCompact}
+          adSize={adSize}
+          onUnavailable={() => setAffiliateUnavailable(true)}
         />
       ) : null}
     </div>
@@ -330,9 +447,16 @@ function AffiliateCardItem({
   adSize?: "small" | "medium" | "large";
   onUnavailable?: () => void;
 }) {
-  // Never show internal website upsells/links in the monetization banner
-  if (!isValidExternalDestination(item.destinationUrl)) {
-    onUnavailable?.();
+  const isInvalid = !isValidExternalDestination(item.destinationUrl);
+
+  // Defensively notify parent only after render phase has committed
+  useEffect(() => {
+    if (isInvalid) {
+      onUnavailable?.();
+    }
+  }, [isInvalid, onUnavailable]);
+
+  if (isInvalid) {
     return null;
   }
 
@@ -341,15 +465,9 @@ function AffiliateCardItem({
       <div className="flex flex-col gap-1.5 text-left w-full group">
         {/* Compact Header Tag */}
         <div className="flex items-center justify-between gap-1">
-          <span className="text-[8.5px] font-bold tracking-wider uppercase text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/50 border border-amber-200/80 dark:border-amber-800/60 px-1.5 py-0.5 rounded flex items-center gap-1">
-            <Sparkles className="w-2 h-2" />
-            {item.tag || "Featured Deal"}
+          <span className="text-[8px] font-bold tracking-wider uppercase text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/50 border border-amber-200/80 dark:border-amber-800/60 px-1.5 py-0.5 rounded">
+            Sponsored
           </span>
-          {item.providerName && (
-            <span className="text-[8px] font-medium uppercase text-zinc-400 dark:text-zinc-500 bg-zinc-100 dark:bg-zinc-800/80 px-1 py-0.5 rounded border border-zinc-200/50 dark:border-zinc-700/50">
-              {item.providerName}
-            </span>
-          )}
         </div>
 
         {/* Compact Body: Thumbnail + Info */}
@@ -410,15 +528,9 @@ function AffiliateCardItem({
       <div className="flex flex-col h-full justify-between gap-1.5 text-left w-full group">
         {/* Header Tag */}
         <div className="flex items-center justify-between gap-1">
-          <span className="text-[8px] font-bold tracking-wider uppercase text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/50 border border-amber-200/80 dark:border-amber-800/60 px-1.5 py-0.5 rounded flex items-center gap-1">
-            <Sparkles className="w-2 h-2" />
-            {item.tag || "Featured Recommendation"}
+          <span className="text-[8px] font-bold tracking-wider uppercase text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/50 border border-amber-200/80 dark:border-amber-800/60 px-1.5 py-0.5 rounded">
+            Sponsored
           </span>
-          {item.providerName && (
-            <span className="text-[7px] font-medium uppercase tracking-wider text-zinc-400 dark:text-zinc-500 bg-zinc-100 dark:bg-zinc-800/80 px-1 py-0.5 rounded border border-zinc-200/60 dark:border-zinc-700/60">
-              {item.providerName}
-            </span>
-          )}
         </div>
 
         {/* Product Visual - Sleek, low-height compact thumbnail */}
@@ -480,15 +592,9 @@ function AffiliateCardItem({
       {/* Header Tag */}
       <div className="flex items-center justify-between gap-2">
         <div className="flex items-center gap-1.5">
-          <span className="text-[9px] font-bold tracking-wider uppercase text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/60 px-1.5 py-0.5 rounded flex items-center gap-1">
-            <Sparkles className="w-2.5 h-2.5" />
-            {item.tag || "Featured Recommendation"}
+          <span className="text-[8px] font-bold tracking-wider uppercase text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/60 px-1.5 py-0.5 rounded">
+            Sponsored
           </span>
-          {item.providerName && (
-            <span className="text-[8px] font-medium uppercase tracking-wider text-zinc-400 dark:text-zinc-500 bg-zinc-100 dark:bg-zinc-900 px-1.5 py-0.5 rounded border border-zinc-200 dark:border-zinc-800">
-              {item.providerName}
-            </span>
-          )}
         </div>
       </div>
 
@@ -554,24 +660,22 @@ function AdUnitItem({
   const adType = item.adType || "NATIVE";
   const embedRef = useRef<HTMLDivElement>(null);
 
-  if (isCompact) {
-    if (!isValidExternalDestination(item.destinationUrl)) {
+  const isEmbed = adType === "HTML" || adType === "SCRIPT" || adType === "DISPLAY";
+  const isInvalidCompact = isCompact && !isEmbed && !isValidExternalDestination(item.destinationUrl);
+
+  useEffect(() => {
+    if (isInvalidCompact) {
       onUnavailable?.();
-      return null;
     }
+  }, [isInvalidCompact, onUnavailable]);
+
+  if (isInvalidCompact) {
+    return null;
+  }
+
+  if (isCompact && !isEmbed) {
     return (
-      <div className="flex flex-col gap-1.5 text-left w-full group">
-        <div className="flex items-center justify-between gap-1">
-          <span className="text-[8.5px] font-bold tracking-wider uppercase text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/40 border border-blue-200/80 dark:border-blue-800/60 px-1.5 py-0.5 rounded flex items-center gap-1">
-            <ShieldCheck className="w-2 h-2" />
-            Sponsored
-          </span>
-          {item.providerName && (
-            <span className="text-[8px] font-medium uppercase text-zinc-400 dark:text-zinc-500 bg-zinc-100 dark:bg-zinc-800/80 px-1 py-0.5 rounded border border-zinc-200/50 dark:border-zinc-700/50">
-              {item.providerName}
-            </span>
-          )}
-        </div>
+      <div className="flex flex-col gap-1 text-left w-full group">
         <div className="flex items-center gap-2.5">
           {item.imageUrl ? (
             <a
@@ -620,6 +724,21 @@ function AdUnitItem({
       } catch (_) {}
     }
   }, [adType, item.embedCode]);
+
+  // Execute dynamic script tags in embedCode so external ad scripts run cleanly in React
+  useEffect(() => {
+    if (!embedRef.current || !item.embedCode) return;
+    const container = embedRef.current;
+    const scripts = container.querySelectorAll("script");
+    scripts.forEach((oldScript) => {
+      const newScript = document.createElement("script");
+      Array.from(oldScript.attributes).forEach((attr) => {
+        newScript.setAttribute(attr.name, attr.value);
+      });
+      newScript.text = oldScript.text || oldScript.innerHTML;
+      oldScript.parentNode?.replaceChild(newScript, oldScript);
+    });
+  }, [item.embedCode]);
 
   // Fallback Engine: Active detection of blocked or unfilled AdSense units
   useEffect(() => {
@@ -683,26 +802,16 @@ function AdUnitItem({
     }
   }, [adType, preview, onUnavailable]);
 
-  // HTML / Script / Embed Unit (e.g. Google AdSense auto / responsive unit)
+  // HTML / Script / Embed Unit (e.g. AADS, Google AdSense auto / responsive unit)
   if (adType === "HTML" || adType === "SCRIPT" || adType === "DISPLAY") {
     return (
-      <div className="flex flex-col h-full justify-between gap-2 text-left w-full min-h-[90px]">
-        <div className="flex items-center gap-1.5">
-          <span className="text-[9px] font-bold tracking-wider uppercase text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800/60 px-1.5 py-0.5 rounded flex items-center gap-1">
-            <ShieldCheck className="w-2.5 h-2.5" />
-            Sponsored
-          </span>
-          {item.providerName && (
-            <span className="text-[8px] font-medium uppercase tracking-wider text-zinc-400 dark:text-zinc-500 bg-zinc-100 dark:bg-zinc-900 px-1.5 py-0.5 rounded border border-zinc-200 dark:border-zinc-800">
-              {item.providerName}
-            </span>
-          )}
-        </div>
-
+      <div className="flex flex-col justify-start gap-1 text-left w-full overflow-hidden">
         {item.embedCode ? (
           <div
             ref={embedRef}
-            className="w-full overflow-hidden rounded-lg my-1 min-h-[80px] flex items-center justify-center"
+            className={`w-full overflow-hidden rounded-lg flex items-center justify-center ad-embed-container ${
+              isCompact ? "min-h-[110px]" : "min-h-[140px]"
+            }`}
             dangerouslySetInnerHTML={{ __html: item.embedCode }}
           />
         ) : null}
@@ -712,17 +821,16 @@ function AdUnitItem({
 
   // IFRAME Ad
   if (adType === "IFRAME") {
-    if (!item.destinationUrl || item.destinationUrl.startsWith("/") || item.destinationUrl.includes("takeoutfix")) {
-      onUnavailable?.();
+    const isInvalid = !item.destinationUrl || item.destinationUrl.startsWith("/") || item.destinationUrl.includes("takeoutfix");
+    useEffect(() => {
+      if (isInvalid) onUnavailable?.();
+    }, [isInvalid, onUnavailable]);
+
+    if (isInvalid) {
       return null;
     }
     return (
       <div className="flex flex-col h-full justify-between gap-2">
-        <div className="flex items-center gap-1.5">
-          <span className="text-[9px] font-bold tracking-wider uppercase text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800/60 px-1.5 py-0.5 rounded">
-            Sponsored Ad
-          </span>
-        </div>
         <iframe
           src={item.destinationUrl}
           title={item.title || "Sponsor Ad"}
@@ -737,8 +845,12 @@ function AdUnitItem({
 
   // IMAGE Banner
   if (adType === "IMAGE") {
-    if (!item.imageUrl || !item.destinationUrl || item.destinationUrl.startsWith("/") || item.destinationUrl.includes("takeoutfix")) {
-      onUnavailable?.();
+    const isInvalid = !item.imageUrl || !item.destinationUrl || item.destinationUrl.startsWith("/") || item.destinationUrl.includes("takeoutfix");
+    useEffect(() => {
+      if (isInvalid) onUnavailable?.();
+    }, [isInvalid, onUnavailable]);
+
+    if (isInvalid) {
       return null;
     }
     return (
@@ -767,8 +879,12 @@ function AdUnitItem({
   }
 
   // NATIVE Ad (Custom external sponsor card only)
-  if (!item.destinationUrl || item.destinationUrl.startsWith("/") || item.destinationUrl.includes("takeoutfix")) {
-    onUnavailable?.();
+  const isInvalidNative = !item.destinationUrl || item.destinationUrl.startsWith("/") || item.destinationUrl.includes("takeoutfix");
+  useEffect(() => {
+    if (isInvalidNative) onUnavailable?.();
+  }, [isInvalidNative, onUnavailable]);
+
+  if (isInvalidNative) {
     return null;
   }
 

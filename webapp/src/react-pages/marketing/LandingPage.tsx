@@ -243,22 +243,39 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* 2. STATS SECTION */}
+      {/* 2. STATS SECTION (5-CARD REALTIME TELEMETRY) */}
       <section className="w-full relative z-10">
-        <div className="max-w-5xl mx-auto px-4 py-16 sm:py-24 grid grid-cols-1 sm:grid-cols-3 gap-6 text-center">
-          <div className="glass-card p-6 sm:p-10 flex flex-col items-center justify-center">
-            <div className="text-3xl sm:text-5xl font-black mb-2 text-foreground">{(stats.filesRestored > 0 ? stats.filesRestored : 217579).toLocaleString()}+</div>
-            <div className="text-xs sm:text-sm font-bold text-zinc-400 uppercase tracking-widest">Files Restored</div>
-          </div>
-          <div className="glass-card p-6 sm:p-10 flex flex-col items-center justify-center">
-            <div className="text-3xl sm:text-5xl font-black mb-2 text-foreground">{formatBytes(stats.bytesProcessed > 0 ? stats.bytesProcessed : 1530000000000)}</div>
-            <div className="text-xs sm:text-sm font-bold text-zinc-400 uppercase tracking-widest">Data Processed</div>
-          </div>
-          <div className="glass-card p-6 sm:p-10 flex flex-col items-center justify-center">
-            <div className="text-3xl sm:text-5xl font-black mb-2 text-foreground">100%</div>
-            <div className="text-xs sm:text-sm font-bold text-zinc-400 uppercase tracking-widest">Private &amp; Client-Side</div>
+        <div className="flex items-center justify-end max-w-7xl mx-auto px-4 pt-8 pb-3">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-emerald-500/20 bg-emerald-50/50 dark:bg-emerald-950/20 text-xs font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider">
+            <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></div>
+            <span>Realtime Telemetry</span>
           </div>
         </div>
+        <div className="max-w-7xl mx-auto px-4 pb-4 grid grid-cols-2 lg:grid-cols-5 gap-4 sm:gap-6 text-center">
+          <div className="glass-card p-5 sm:p-8 flex flex-col items-center justify-center">
+            <div className="text-2xl sm:text-4xl md:text-5xl font-black mb-2 sm:mb-3 text-foreground">{(stats.usersCount > 0 ? stats.usersCount : 27).toLocaleString('en-IN')}</div>
+            <div className="text-[10px] sm:text-xs md:text-sm font-bold text-zinc-400 uppercase tracking-widest">Registered Users</div>
+          </div>
+          <div className="glass-card p-5 sm:p-8 flex flex-col items-center justify-center">
+            <div className="text-2xl sm:text-4xl md:text-5xl font-black mb-2 sm:mb-3 text-foreground">{(stats.filesRestored > 0 ? stats.filesRestored : 217668).toLocaleString('en-IN')}</div>
+            <div className="text-[10px] sm:text-xs md:text-sm font-bold text-zinc-400 uppercase tracking-widest">Files Restored</div>
+          </div>
+          <div className="glass-card p-5 sm:p-8 flex flex-col items-center justify-center">
+            <div className="text-2xl sm:text-4xl md:text-5xl font-black mb-2 sm:mb-3 text-foreground">{formatBytes(stats.bytesProcessed > 0 ? stats.bytesProcessed : 245899264000)}</div>
+            <div className="text-[10px] sm:text-xs md:text-sm font-bold text-zinc-400 uppercase tracking-widest">Data Processed</div>
+          </div>
+          <div className="glass-card p-5 sm:p-8 flex flex-col items-center justify-center">
+            <div className="text-2xl sm:text-4xl md:text-5xl font-black mb-2 sm:mb-3 text-foreground">{stats.filesScanned > 0 ? ((stats.filesRestored / stats.filesScanned) * 100).toFixed(1) + "%" : "90.8%"}</div>
+            <div className="text-[10px] sm:text-xs md:text-sm font-bold text-zinc-400 uppercase tracking-widest">Recovery Accuracy*</div>
+          </div>
+          <div className="glass-card p-5 sm:p-8 flex flex-col items-center justify-center col-span-2 lg:col-span-1">
+            <div className="text-2xl sm:text-4xl md:text-5xl font-black mb-2 sm:mb-3 text-foreground">{(stats.ticketsResolved > 0 ? stats.ticketsResolved : 2).toLocaleString('en-IN')}</div>
+            <div className="text-[10px] sm:text-xs md:text-sm font-bold text-zinc-400 uppercase tracking-widest">Tickets Resolved</div>
+          </div>
+        </div>
+        <p className="max-w-7xl mx-auto px-4 text-[10px] sm:text-[11px] text-zinc-500 dark:text-zinc-400 text-left pt-2 pb-6">
+          * Recovery accuracy based on standard Google Takeout exports with complete JSON sidecar files. Results may vary with partial or corrupted exports.
+        </p>
       </section>
 
       {/* 3. PROBLEM SECTION */}
@@ -286,6 +303,10 @@ export default function LandingPage() {
         </div>
       </section>
 
+      <div className="w-full max-w-4xl mx-auto px-6 my-8">
+        <AdUnit type="horizontal" slot="2" />
+      </div>
+
       {/* 4. SOLUTION (BEFORE / AFTER - INTERACTIVE COMPARE SLIDER) */}
       <section className="w-full py-24 sm:py-32 relative z-10">
         <div className="max-w-7xl mx-auto px-4 text-center">
@@ -293,6 +314,10 @@ export default function LandingPage() {
           <Compare />
         </div>
       </section>
+
+      <div className="w-full max-w-4xl mx-auto px-6 my-8">
+        <AdUnit type="horizontal" slot="3" />
+      </div>
 
       {/* 5. PRIVACY SECTION */}
       <section className="w-full max-w-7xl mx-auto px-4 py-24 sm:py-32 text-center relative z-10">
@@ -393,7 +418,7 @@ export default function LandingPage() {
       </section>
 
       <div className="w-full max-w-4xl mx-auto px-6 my-8">
-        <AdUnit type="horizontal" slot="1" />
+        <AdUnit type="horizontal" slot="4" />
       </div>
 
       {/* 9. FAQ (INTERACTIVE EXPANDABLE FAQ DECK) */}

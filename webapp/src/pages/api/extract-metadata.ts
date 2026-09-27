@@ -86,8 +86,13 @@ function isSafePublicUrl(url: URL): boolean {
     if (o1 === 0 || o1 >= 224) return false; // Reserved / Multicast
   }
 
-  // Raw integer or hex IPv4 notation check
+  // Raw integer or hex IPv4 notation check (e.g. 2130706433 or 0x7f000001)
   if (/^(?:0x[0-9a-f]+|\d+)$/i.test(hostname)) {
+    return false;
+  }
+
+  // Octal / mixed dotted notation (e.g. 0177.0.0.1 = 127.0.0.1)
+  if (/(?:^|\.)(0\d+)(?:\.|$)/.test(hostname)) {
     return false;
   }
 

@@ -40,9 +40,8 @@ export const POST: APIRoute = async ({ request }) => {
     if (!assessmentRes.ok) {
       const errText = await assessmentRes.text();
       console.warn("[reCAPTCHA Enterprise Assessment Error]", errText);
-      // Soft-pass on enterprise assessment API errors so legitimate users are never blocked
-      return new Response(JSON.stringify({ success: true, fallback: true }), {
-        status: 200,
+      return new Response(JSON.stringify({ success: false, reason: "Assessment unavailable" }), {
+        status: 503,
         headers: { "Content-Type": "application/json" }
       });
     }
@@ -65,8 +64,8 @@ export const POST: APIRoute = async ({ request }) => {
     });
   } catch (err: any) {
     console.error("[reCAPTCHA Assessment Exception]", err);
-    return new Response(JSON.stringify({ success: true, errorFallback: true }), {
-      status: 200,
+    return new Response(JSON.stringify({ success: false, reason: "Assessment error" }), {
+      status: 503,
       headers: { "Content-Type": "application/json" }
     });
   }

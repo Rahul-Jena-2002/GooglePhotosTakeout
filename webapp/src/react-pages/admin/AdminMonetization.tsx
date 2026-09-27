@@ -24,7 +24,6 @@ import {
   DEFAULT_AD_PROVIDERS,
   DEFAULT_AFFILIATE_PROVIDERS,
   DEFAULT_AD_UNITS,
-  DEFAULT_AFFILIATE_LINKS,
 } from "../../services/monetization/defaultData";
 
 import MonetizationOverviewTab from "../../components/admin/monetization/MonetizationOverviewTab";

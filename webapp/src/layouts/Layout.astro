@@ -29,20 +29,6 @@ const {
 const currentPath = Astro.url.pathname.replace(/\/$/, "") || "/";
 const isHomePage = currentPath === "/" || currentPath === "/index" || currentPath === "/index.html";
 
-// Disable sidebar gutter ads to maintain a clean, trustworthy experience
-const showSideAds = false;
-
-// Flexible sidebar card length tailored to page content length:
-// Short pages (Reviews, Support, Terms, Privacy): 2 ads per sidebar
-// Medium pages (Pricing, How it works, Download): 3 ads per sidebar
-// Long pages (Restore Data guide, documentation): 4 ads per sidebar
-let calculatedAdCount = 4;
-if (["/reviews", "/support", "/terms", "/privacy"].includes(currentPath)) {
-  calculatedAdCount = 2;
-} else if (["/pricing", "/how-it-works", "/download"].includes(currentPath)) {
-  calculatedAdCount = 3;
-}
-const effectiveAdCount = sidebarAdCount ?? calculatedAdCount;
 
 // Active Navigation Helper for Purple Highlighting
 const isActive = (path: string) => (path === "/" ? currentPath === "/" : currentPath === path || currentPath.startsWith(path + "/"));
@@ -79,21 +65,21 @@ const canonicalUrl = `https://takeoutfix.pages.dev${cleanPath === "" ? "/" : cle
 
       /* Dynamic Monetization Appearance Settings (Controlled from Admin Center) */
       :root {
-        --ad-opacity: 0.8;
-        --ad-gutter-width: 220px;
-        --ad-gutter-width-2xl: 250px;
+        --ad-opacity: 0.85;
+        --ad-gutter-width: 180px;
+        --ad-gutter-width-2xl: 205px;
       }
       [data-ad-size="small"] {
-        --ad-gutter-width: 220px;
-        --ad-gutter-width-2xl: 250px;
+        --ad-gutter-width: 180px;
+        --ad-gutter-width-2xl: 205px;
       }
       [data-ad-size="medium"] {
-        --ad-gutter-width: 260px;
-        --ad-gutter-width-2xl: 290px;
+        --ad-gutter-width: 200px;
+        --ad-gutter-width-2xl: 230px;
       }
       [data-ad-size="large"] {
-        --ad-gutter-width: 300px;
-        --ad-gutter-width-2xl: 330px;
+        --ad-gutter-width: 220px;
+        --ad-gutter-width-2xl: 250px;
       }
       .sidebar-gutter-ad {
         width: var(--ad-gutter-width);
@@ -107,6 +93,17 @@ const canonicalUrl = `https://takeoutfix.pages.dev${cleanPath === "" ? "/" : cle
       }
       .sidebar-gutter-ad:hover {
         opacity: 1 !important;
+      }
+      .sidebar-gutter-ad .ad-embed-container {
+        min-height: 120px;
+        max-height: 155px;
+        width: 100%;
+      }
+      .sidebar-gutter-ad .ad-embed-container iframe {
+        width: 100% !important;
+        min-height: 120px !important;
+        max-height: 150px !important;
+        border: 0 !important;
       }
       .ad-flow-banner {
         opacity: var(--ad-opacity);
@@ -245,25 +242,23 @@ const canonicalUrl = `https://takeoutfix.pages.dev${cleanPath === "" ? "/" : cle
     </script>
 
     
-    <!-- Google AdSense Account Setup (Production Only, not on auth pages) -->
-    {!isAuthPage && <meta name="google-adsense-account" content="ca-pub-7628736172233995">}
+    <!-- Google AdSense Account Verification & Auto Ads (Production Only, not on auth pages) -->
     {!isAuthPage && (
+      <>
+        <meta name="google-adsense-account" content="ca-pub-7628736172233995" />
+        <script
+          is:inline
+          async
+          src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-7628736172233995"
+          crossorigin="anonymous"
+        ></script>
+      </>
+    )}
+
+    <!-- Google Cloud reCAPTCHA Enterprise (Loaded on-demand or deferred for Auth protection) -->
     <script is:inline>
       window.addEventListener('load', function() {
         if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') return;
-        var s = document.createElement('script');
-        s.src = "https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-7628736172233995";
-        s.crossOrigin = "anonymous";
-        s.async = true;
-        document.head.appendChild(s);
-      });
-    </script>
-    )}
-
-    <!-- Google Cloud reCAPTCHA Enterprise — only on auth pages -->
-    {isAuthPage && (
-    <script is:inline>
-      window.addEventListener('load', function() {
         var rc = document.createElement('script');
         rc.src = "https://www.google.com/recaptcha/enterprise.js?render=6LdDpb4tAAAAADJHZzjrMIC-gvDXkAw0rhdgB5Sb";
         rc.async = true;
@@ -271,7 +266,6 @@ const canonicalUrl = `https://takeoutfix.pages.dev${cleanPath === "" ? "/" : cle
         document.head.appendChild(rc);
       });
     </script>
-    )}
 
     <title>{title}</title>
     <ClientRouter fallback="swap" />
@@ -727,95 +721,9 @@ const canonicalUrl = `https://takeoutfix.pages.dev${cleanPath === "" ? "/" : cle
  
       <!-- MAIN CONTENT OUTLET -->
       <main class="flex-1 pt-16 relative w-full overflow-x-clip flex flex-col">
-        { showSideAds ? (
-          <div class="relative w-full max-w-[1880px] mx-auto px-4 sm:px-6 2xl:px-8 flex-1">
-            <div class="flex justify-center items-start gap-6 2xl:gap-10">
-              
-              <!-- Left Gutter Ads: Single Unified Card with Flexible Card Count Inside -->
-              <aside 
-                class="sidebar-gutter-ad hidden xl:flex flex-col shrink-0 pt-6 pb-16 select-none sticky top-20 self-start h-fit"
-                aria-label="Sponsored Deals"
-              >
-                <div class="w-full rounded-2xl border border-zinc-200/80 dark:border-white/10 bg-white/80 dark:bg-zinc-900/60 p-3 shadow-xs backdrop-blur-xs flex flex-col gap-2.5">
-                  <!-- Single Card Header -->
-                  <div class="flex items-center justify-between pb-2 border-b border-zinc-200/70 dark:border-white/10 px-0.5">
-                    <span class="text-[9px] font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-400 flex items-center gap-1.5">
-                      <span class="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse"></span>
-                      Sponsored Deals
-                    </span>
-                    <span class="text-[8.5px] font-semibold text-zinc-400 dark:text-zinc-500 uppercase tracking-widest bg-zinc-100 dark:bg-zinc-800/80 px-1 py-0.5 rounded border border-zinc-200/50 dark:border-zinc-700/50">
-                      Ad
-                    </span>
-                  </div>
-
-                  <!-- Multiple Cards Inside It: Flexible height tailored to page size -->
-                  <div class="flex flex-col gap-2.5">
-                    {Array.from({ length: effectiveAdCount }).map((_, i) => (
-                      <AdUnit client:idle type="vertical" placement={`SIDEBAR_LEFT_${i + 1}`} />
-                    ))}
-                  </div>
-                </div>
-              </aside>
-
-              <!-- Center Main Content -->
-              <div class="flex-1 min-w-0 max-w-full 2xl:max-w-[1140px] animate-page h-full flex flex-col justify-between">
-                <div>
-                  <slot />
-                </div>
-
-                <!-- Responsive In-Flow Ad for Tablets & Mobile (< xl screens) -->
-                <div class="xl:hidden w-full pt-8 pb-4 mt-auto">
-                  <div class="w-full rounded-2xl border border-zinc-200/80 dark:border-white/10 bg-white/80 dark:bg-zinc-900/60 p-3 shadow-xs backdrop-blur-xs ad-flow-banner">
-                    <div class="flex items-center justify-between pb-1.5 mb-2 border-b border-zinc-200/70 dark:border-white/10 px-0.5">
-                      <span class="text-[9px] font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-400 flex items-center gap-1.5">
-                        <span class="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse"></span>
-                        Sponsored Deals & Offers
-                      </span>
-                      <span class="text-[8px] font-semibold text-zinc-400 dark:text-zinc-500 uppercase tracking-widest bg-zinc-100 dark:bg-zinc-800/80 px-1 py-0.5 rounded border border-zinc-200/50 dark:border-zinc-700/50">
-                        Ad
-                      </span>
-                    </div>
-                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                      <AdUnit client:idle type="compact" placement="SIDEBAR_LEFT_1" />
-                      <AdUnit client:idle type="compact" placement="SIDEBAR_RIGHT_1" />
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <!-- Right Gutter Ads: Single Unified Card with Flexible Card Count Inside -->
-              <aside 
-                class="sidebar-gutter-ad hidden xl:flex flex-col shrink-0 pt-6 pb-16 select-none sticky top-20 self-start h-fit"
-                aria-label="Partner Offers"
-              >
-                <div class="w-full rounded-2xl border border-zinc-200/80 dark:border-white/10 bg-white/80 dark:bg-zinc-900/60 p-3 shadow-xs backdrop-blur-xs flex flex-col gap-2.5">
-                  <!-- Single Card Header -->
-                  <div class="flex items-center justify-between pb-2 border-b border-zinc-200/70 dark:border-white/10 px-0.5">
-                    <span class="text-[9px] font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-400 flex items-center gap-1.5">
-                      <span class="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse"></span>
-                      Partner Offers
-                    </span>
-                    <span class="text-[8.5px] font-semibold text-zinc-400 dark:text-zinc-500 uppercase tracking-widest bg-zinc-100 dark:bg-zinc-800/80 px-1 py-0.5 rounded border border-zinc-200/50 dark:border-zinc-700/50">
-                      Ad
-                    </span>
-                  </div>
-
-                  <!-- Multiple Cards Inside It: Flexible height tailored to page size -->
-                  <div class="flex flex-col gap-2.5">
-                    {Array.from({ length: effectiveAdCount }).map((_, i) => (
-                      <AdUnit client:idle type="vertical" placement={`SIDEBAR_RIGHT_${i + 1}`} />
-                    ))}
-                  </div>
-                </div>
-              </aside>
-
-            </div>
-          </div>
-        ) : (
-          <div class="animate-page flex-1 w-full flex flex-col">
-            <slot />
-          </div>
-        )}
+        <div class="animate-page flex-1 w-full flex flex-col">
+          <slot />
+        </div>
       </main>
 
       <!-- FOOTER — hidden on tool page and specialized for auth pages -->

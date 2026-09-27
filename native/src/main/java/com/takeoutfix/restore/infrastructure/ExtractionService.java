@@ -110,8 +110,9 @@ public class ExtractionService {
         String email = prof != null ? (String) prof.getOrDefault("email", "") : "";
         boolean signedIn = (email != null && !email.trim().isEmpty())
                 || (userService != null && userService.isAuthenticated());
-        if (!signedIn) {
-            throw new SecurityException("Authentication Required: You must be signed in to perform restorations.");
+        if (!signedIn && com.takeoutfix.auth.GuestQuotaStore.isExhausted()) {
+            throw new SecurityException("Authentication Required: You have reached the Guest limit of "
+                    + com.takeoutfix.auth.GuestQuotaStore.MAX_GUEST_FILES + " files / 1 GB. Please sign in to continue.");
         }
         if (this.isRunning) {
             throw new IllegalStateException("An extraction process is already running. Please wait or cancel the current one.");
@@ -174,6 +175,17 @@ public class ExtractionService {
 
             albumDetailsCache.clear();
             List<File> mediaFiles = scanner.listMediaFiles(input);
+            Map<String, Object> prof = com.takeoutfix.auth.UserController.getCurrentUserProfile();
+            String email = prof != null ? (String) prof.getOrDefault("email", "") : "";
+            boolean signedIn = (email != null && !email.trim().isEmpty())
+                    || (userService != null && userService.isAuthenticated());
+            if (!signedIn) {
+                int maxAllowed = com.takeoutfix.auth.GuestQuotaStore.getRemainingFiles();
+                if (mediaFiles.size() > maxAllowed) {
+                    sendLog("WARN", "[GUEST MODE] Limiting processing to first " + maxAllowed + " files (100 files / 1 GB free trial limit).");
+                    mediaFiles = new java.util.ArrayList<>(mediaFiles.subList(0, maxAllowed));
+                }
+            }
             totalFiles = mediaFiles.size();
             sendLog("INFO", "Found " + totalFiles + " media files in source archive.");
             notifyStats(totalFiles, totalFiles, 0, 0, 0);

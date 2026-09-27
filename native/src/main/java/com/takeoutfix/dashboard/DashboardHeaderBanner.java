@@ -43,8 +43,15 @@ public class DashboardHeaderBanner extends JPanel {
         left.add(titles);
         card.add(left, BorderLayout.WEST);
 
-        JButton btnStartRestore = UiFactory.createPrimaryButton("Start Restoring →");
-        btnStartRestore.setPreferredSize(new Dimension(175, 34));
+        JButton btnStartRestore = UiFactory.createPrimaryButton("Photo Metadata Restorer");
+        btnStartRestore.setFont(new Font("Segoe UI", Font.BOLD, 12));
+        javax.swing.Icon folderIcon = UiFactory.svgDynamicIcon("output-folder", 14, () -> ThemeColors.primaryButtonText());
+        if (folderIcon != null) {
+            btnStartRestore.setIcon(folderIcon);
+            btnStartRestore.setIconTextGap(6);
+        }
+        btnStartRestore.setPreferredSize(new Dimension(200, 34));
+        btnStartRestore.setToolTipText("Switch to Photo Metadata Restorer workspace");
         btnStartRestore.addActionListener(e -> {
             if (onNavigate != null) {
                 onNavigate.accept(AppRoutes.RESTORE);

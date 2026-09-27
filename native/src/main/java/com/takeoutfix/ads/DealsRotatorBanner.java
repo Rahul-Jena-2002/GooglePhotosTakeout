@@ -51,9 +51,9 @@ public class DealsRotatorBanner extends JPanel {
         dotSep.setForeground(ThemeColors.textMuted());
         leftPanel.add(dotSep);
 
-        storageLabel = new JLabel("Available Storage: Calculating...");
+        storageLabel = new JLabel("Destination Storage: Select destination folder");
         storageLabel.setFont(new Font("Segoe UI", Font.PLAIN, 11));
-        storageLabel.setForeground(ThemeColors.textSecondary());
+        storageLabel.setForeground(ThemeColors.textMuted());
         leftPanel.add(storageLabel);
 
         // Right Panel: Non-technical system vitals
@@ -71,31 +71,54 @@ public class DealsRotatorBanner extends JPanel {
         ThemeColors.addThemeListener(() -> {
             engineLabel.setForeground(ThemeColors.textSecondary());
             dotSep.setForeground(ThemeColors.textMuted());
-            storageLabel.setForeground(ThemeColors.textSecondary());
+            if (currentDestinationDir == null) {
+                storageLabel.setForeground(ThemeColors.textMuted());
+            } else {
+                storageLabel.setForeground(ThemeColors.textSecondary());
+            }
             telemetryLabel.setForeground(ThemeColors.textMuted());
             repaint();
         });
 
-        updateStorageInfo();
         startTelemetryMonitor();
     }
 
+    private volatile File currentDestinationDir = null;
+
+    /**
+     * Dynamically updates the destination storage whenever the user chooses or clears the destination directory.
+     */
+    public void setDestinationDirectory(File dir) {
+        this.currentDestinationDir = dir;
+        updateStorageInfo();
+    }
+
     private void updateStorageInfo() {
+        if (currentDestinationDir == null || !currentDestinationDir.exists()) {
+            storageLabel.setText("Destination Storage: Select destination folder");
+            storageLabel.setForeground(ThemeColors.textMuted());
+            return;
+        }
         try {
-            File userHome = new File(System.getProperty("user.home", "."));
-            long freeBytes = userHome.getUsableSpace();
-            long totalBytes = userHome.getTotalSpace();
+            long freeBytes = currentDestinationDir.getUsableSpace();
+            long totalBytes = currentDestinationDir.getTotalSpace();
             if (totalBytes <= 0) {
-                File root = new File(".");
-                freeBytes = root.getUsableSpace();
-                totalBytes = root.getTotalSpace();
+                storageLabel.setText("Destination Storage: Ready");
+                storageLabel.setForeground(ThemeColors.textSecondary());
+                return;
             }
             double freeGb = freeBytes / (1024.0 * 1024.0 * 1024.0);
             double totalGb = totalBytes / (1024.0 * 1024.0 * 1024.0);
-            String storageText = String.format(Locale.US, "Available Storage: %.1f GB Free / %.1f GB Total", freeGb, totalGb);
+            String folderName = currentDestinationDir.getName();
+            if (folderName == null || folderName.isBlank()) {
+                folderName = currentDestinationDir.getPath();
+            }
+            String storageText = String.format(Locale.US, "Destination (%s): %.1f GB Free / %.1f GB Total", folderName, freeGb, totalGb);
             storageLabel.setText(storageText);
+            storageLabel.setForeground(ThemeColors.textSecondary());
         } catch (Exception ignored) {
-            storageLabel.setText("Available Storage: Ready");
+            storageLabel.setText("Destination Storage: Ready");
+            storageLabel.setForeground(ThemeColors.textSecondary());
         }
     }
 
@@ -107,7 +130,9 @@ public class DealsRotatorBanner extends JPanel {
                 double cpuLoad = SystemHardwareInfo.getCpuLoadPercent();
 
                 SwingUtilities.invokeLater(() -> {
-                    updateStorageInfo();
+                    if (currentDestinationDir != null) {
+                        updateStorageInfo();
+                    }
                     telemetryLabel.setText(String.format(Locale.US,
                             "System Status: Optimal  •  RAM: %.1f / %.1f GB  •  CPU: %.0f%%",
                             usedRamGB, totalRamGB, cpuLoad));

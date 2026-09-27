@@ -3,8 +3,18 @@ import type { APIRoute } from 'astro';
 
 export const POST: APIRoute = async ({ request }) => {
   try {
+    const authHeader = request.headers.get('authorization') || '';
+    if (!authHeader.startsWith('Bearer ')) {
+      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+        status: 401,
+        headers: { 'Content-Type': 'application/json' }
+      });
+    }
+
     const body = await request.json();
-    const { ticketId, userEmail, userName, subject, message, recipients, fromEmail = 'takeoutfix.support@gmail.com' } = body;
+    const { ticketId, userEmail, userName, subject, message, fromEmail = 'takeoutfix.support@gmail.com' } = body;
+    // Cap recipients to prevent bulk abuse
+    const recipients: string[] = Array.isArray(body.recipients) ? body.recipients.slice(0, 10) : [];
 
     if (!ticketId || !userEmail) {
       return new Response(JSON.stringify({ error: 'Missing required ticket fields' }), {

@@ -14,7 +14,7 @@ import {
   type User,
 } from "firebase/auth";
 import { doc, getDoc, setDoc } from "firebase/firestore";
-import { executeRecaptcha } from "../../lib/recaptcha";
+import { executeRecaptcha, executeAndVerifyRecaptcha } from "../../lib/recaptcha";
 import {
   Mail,
   Lock,
@@ -278,7 +278,7 @@ export default function AuthPage() {
     try {
       getStoredDesktopState();
       getStoredDesktopPort();
-      executeRecaptcha("GOOGLE_SIGNIN").catch(() => {});
+      executeAndVerifyRecaptcha("GOOGLE_SIGNIN").catch(() => {});
 
       if (googleProvider) {
         googleProvider.setCustomParameters({ prompt: 'select_account' });
@@ -308,7 +308,7 @@ export default function AuthPage() {
     if (mode === "forgot") {
       setLoading(true);
       try {
-        await executeRecaptcha("FORGOT_PASSWORD");
+        await executeAndVerifyRecaptcha("FORGOT_PASSWORD");
         await sendPasswordResetEmail(auth, cleanEmail);
         setSuccessMsg("Password reset link sent! Check your inbox.");
       } catch (err: any) {
@@ -351,7 +351,7 @@ export default function AuthPage() {
 
       setLoading(true);
       try {
-        await executeRecaptcha("SIGNUP");
+        await executeAndVerifyRecaptcha("SIGNUP");
         const res = await createUserWithEmailAndPassword(auth, cleanEmail, password);
         if (res.user) {
           const cleanName = fullName.trim() || cleanEmail.split("@")[0];
@@ -378,7 +378,7 @@ export default function AuthPage() {
     // Sign in flow
     setLoading(true);
     try {
-      await executeRecaptcha("LOGIN");
+      await executeAndVerifyRecaptcha("LOGIN");
       const res = await signInWithEmailAndPassword(auth, cleanEmail, password);
       if (res.user) {
         await syncUserDoc(res.user);

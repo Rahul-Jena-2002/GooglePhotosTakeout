@@ -115,23 +115,40 @@ const prices = PLAN_PRICES[region] || PLAN_PRICES.us;
 
 
 
-    <!-- 2. STATS SECTION -->
-    <!-- 2. STATS SECTION -->
+    <!-- 2. STATS SECTION (5-CARD REALTIME TELEMETRY) -->
     <section class="w-full relative z-10">
-      <div class="max-w-5xl mx-auto px-4 py-16 sm:py-24 grid grid-cols-1 sm:grid-cols-3 gap-6 text-center">
-        <div class="glass-card p-6 sm:p-10 flex flex-col items-center justify-center">
-          <div id="stat-restored" class="text-3xl sm:text-5xl font-black mb-2 text-foreground">217,579+</div>
-          <div class="text-xs sm:text-sm font-bold text-zinc-400 uppercase tracking-widest">Files Restored</div>
-        </div>
-        <div class="glass-card p-6 sm:p-10 flex flex-col items-center justify-center">
-          <div id="stat-bytes" class="text-3xl sm:text-5xl font-black mb-2 text-foreground">1.4+ TB</div>
-          <div class="text-xs sm:text-sm font-bold text-zinc-400 uppercase tracking-widest">Data Processed</div>
-        </div>
-        <div class="glass-card p-6 sm:p-10 flex flex-col items-center justify-center">
-          <div id="stat-success" class="text-3xl sm:text-5xl font-black mb-2 text-foreground">100%</div>
-          <div class="text-xs sm:text-sm font-bold text-zinc-400 uppercase tracking-widest">Private &amp; Client-Side</div>
+      <div class="flex items-center justify-end max-w-7xl mx-auto px-4 pt-8 pb-3">
+        <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-emerald-500/20 bg-emerald-50/50 dark:bg-emerald-950/20 text-xs font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider">
+          <div class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></div>
+          <span>Realtime Telemetry</span>
         </div>
       </div>
+      <div class="max-w-7xl mx-auto px-4 pb-4 grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 text-center">
+        <div class="glass-card p-5 sm:p-8 flex flex-col items-center justify-center">
+          <div id="stat-users" class="text-2xl sm:text-4xl md:text-5xl font-black mb-2 sm:mb-3 text-foreground">27</div>
+          <div class="text-[10px] sm:text-xs md:text-sm font-bold text-zinc-400 uppercase tracking-widest">Registered Users</div>
+        </div>
+        <div class="glass-card p-5 sm:p-8 flex flex-col items-center justify-center">
+          <div id="stat-restored" class="text-2xl sm:text-4xl md:text-5xl font-black mb-2 sm:mb-3 text-foreground">2,17,668</div>
+          <div class="text-[10px] sm:text-xs md:text-sm font-bold text-zinc-400 uppercase tracking-widest">Files Restored</div>
+        </div>
+        <div class="glass-card p-5 sm:p-8 flex flex-col items-center justify-center">
+          <div id="stat-bytes" class="text-2xl sm:text-4xl md:text-5xl font-black mb-2 sm:mb-3 text-foreground">229 GB</div>
+          <div class="text-[10px] sm:text-xs md:text-sm font-bold text-zinc-400 uppercase tracking-widest">Data Processed</div>
+        </div>
+        <div class="glass-card p-5 sm:p-8 flex flex-col items-center justify-center">
+          <div id="stat-success" class="text-2xl sm:text-4xl md:text-5xl font-black mb-2 sm:mb-3 text-foreground">90.8%</div>
+          <div class="text-[10px] sm:text-xs md:text-sm font-bold text-zinc-400 uppercase tracking-widest">Recovery Accuracy*</div>
+        </div>
+      </div>
+      <p class="max-w-7xl mx-auto px-4 text-[10px] sm:text-[11px] text-zinc-500 dark:text-zinc-400 text-left pt-2 pb-6">
+        * Recovery accuracy based on standard Google Takeout exports with complete JSON sidecar files. Results may vary with partial or corrupted exports.
+      </p>
+    </section>
+
+    <!-- Sponsored Deals: Below Telemetry -->
+    <section class="w-full max-w-7xl mx-auto px-4 py-4 relative z-10" aria-label="Sponsored recommendations">
+      <AdUnit client:load placement="HOMEPAGE_TOP" />
     </section>
 
     <!-- 3. PROBLEM SECTION -->
@@ -173,6 +190,11 @@ const prices = PLAN_PRICES[region] || PLAN_PRICES.us;
         <h2 class="text-4xl md:text-5xl font-bold tracking-tighter mb-16">The TakeoutFix Solution</h2>
         <Compare client:idle />
       </div>
+    </section>
+
+    <!-- Sponsored Deals: Below Solution -->
+    <section class="w-full max-w-7xl mx-auto px-4 py-4 relative z-10" aria-label="Sponsored recommendations">
+      <AdUnit client:load placement="HOMEPAGE_MIDDLE" />
     </section>
 
     <!-- 5. PRIVACY SECTION -->
@@ -260,6 +282,11 @@ const prices = PLAN_PRICES[region] || PLAN_PRICES.us;
       </div>
     </section>
 
+    <!-- Sponsored Deals & Recommendations -->
+    <section class="w-full max-w-7xl mx-auto px-4 py-4 relative z-10" aria-label="Sponsored recommendations">
+      <AdUnit client:load placement="HOMEPAGE_BOTTOM" />
+    </section>
+
     <section class="w-full max-w-5xl mx-auto px-4 py-36 relative z-10">
       <h2 class="text-4xl font-bold tracking-tighter mb-12 text-center">Frequently Asked Questions</h2>
       <ExpandableFaq client:idle />
@@ -289,17 +316,17 @@ const prices = PLAN_PRICES[region] || PLAN_PRICES.us;
   const loadKvStats = async () => {
     try {
       const res = await fetch("https://firestore.googleapis.com/v1/projects/takeout-fix/databases/(default)/documents/platform_stats/global");
-      if (res.ok) {
-        const data = await res.ok ? await res.json() : null;
-        if (!data) return;
-        const fields = data.fields || {};
+      if (!res.ok) return;
+      const data = await res.json();
+      if (!data) return;
+      const fields = data.fields || {};
         
         const stats = {
-          filesRestored: parseInt(fields.filesRestored?.integerValue || "11347"),
-          bytesProcessed: parseInt(fields.bytesProcessed?.integerValue || "14577672926"),
-          ticketsResolved: parseInt(fields.ticketsResolved?.integerValue || "1"),
-          usersCount: parseInt(fields.usersCount?.integerValue || "5"),
-          filesScanned: parseInt(fields.filesScanned?.integerValue || "11347")
+          filesRestored: parseInt(fields.filesRestored?.integerValue || "217668"),
+          bytesProcessed: parseInt(fields.bytesProcessed?.integerValue || "245899264000"),
+          ticketsResolved: parseInt(fields.ticketsResolved?.integerValue || "2"),
+          usersCount: parseInt(fields.usersCount?.integerValue || "27"),
+          filesScanned: parseInt(fields.filesScanned?.integerValue || "239722")
         };
         
         const formatBytes = (bytes: number) => {
@@ -316,17 +343,16 @@ const prices = PLAN_PRICES[region] || PLAN_PRICES.us;
         const successEl = document.getElementById("stat-success");
         const resolvedEl = document.getElementById("stat-resolved");
 
-        if (usersEl) usersEl.innerText = stats.usersCount.toLocaleString();
-        if (restoredEl) restoredEl.innerText = stats.filesRestored.toLocaleString();
+        if (usersEl) usersEl.innerText = stats.usersCount.toLocaleString('en-IN');
+        if (restoredEl) restoredEl.innerText = stats.filesRestored.toLocaleString('en-IN');
         if (bytesEl) bytesEl.innerText = formatBytes(stats.bytesProcessed);
         
         const successRate = stats.filesScanned > 0 
           ? (stats.filesRestored / stats.filesScanned) * 100 
-          : 99.9;
+          : 90.8;
         if (successEl) successEl.innerText = successRate.toFixed(1) + "%";
         
-        if (resolvedEl) resolvedEl.innerText = stats.ticketsResolved.toLocaleString();
-      }
+        if (resolvedEl) resolvedEl.innerText = stats.ticketsResolved.toLocaleString('en-IN');
     } catch (err) {
       console.warn("Failed to load global KV stats:", err);
     }
@@ -335,6 +361,7 @@ const prices = PLAN_PRICES[region] || PLAN_PRICES.us;
   // 2. Fetch Featured Reviews from Firestore
   const loadReviews = async () => {
     try {
+      const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
       const { collection, query, where, getDocs } = await import("firebase/firestore");
       const q = query(collection(db, "reviews"), where("status", "==", "APPROVED"));
       const snap = await getDocs(q);
@@ -350,23 +377,29 @@ const prices = PLAN_PRICES[region] || PLAN_PRICES.us;
         
         if (reviewsSection && container) {
           reviewsSection.classList.remove("hidden");
-          container.innerHTML = displayList.map(r => `
+          container.innerHTML = displayList.map(r => {
+            const name = esc(r.displayName || "Anonymous");
+            const msg = esc(r.message || "");
+            const initial = esc((r.displayName || "U").charAt(0));
+            const stars = Math.min(Math.max(Math.floor(r.rating || 5), 0), 10);
+            return `
             <div class="bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 p-8 rounded-lg text-left relative overflow-hidden group shadow-none">
               <div class="flex text-zinc-900 dark:text-zinc-100 mb-4">
-                ${Array(r.rating || 5).fill('<svg class="w-5 h-5 fill-current" viewBox="0 0 24 24"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg>').join("")}
+                ${Array(stars).fill('<svg class="w-5 h-5 fill-current" viewBox="0 0 24 24"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg>').join("")}
               </div>
-              <p class="text-zinc-500 italic mb-6 leading-relaxed">"${r.message}"</p>
+              <p class="text-zinc-500 italic mb-6 leading-relaxed">"${msg}"</p>
               <div class="flex items-center gap-3">
                 <div class="w-10 h-10 rounded-full bg-zinc-200 dark:bg-zinc-800 flex items-center justify-center font-bold text-lg text-foreground">
-                  ${(r.displayName || "U").charAt(0)}
+                  ${initial}
                 </div>
                 <div>
-                  <div class="font-bold text-foreground">${r.displayName || "Anonymous"}</div>
+                  <div class="font-bold text-foreground">${name}</div>
                   <div class="text-xs text-zinc-400">Verified Restoration</div>
                 </div>
               </div>
             </div>
-          `).join("");
+          `;
+          }).join("");
         }
       }
     } catch (e) {

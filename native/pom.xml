@@ -171,6 +171,16 @@
                     </execution>
                 </executions>
             </plugin>
+
+            <!-- Exec plugin for running directly via mvn exec:java -->
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>exec-maven-plugin</artifactId>
+                <version>3.5.0</version>
+                <configuration>
+                    <mainClass>com.takeoutfix.TakeoutApplication</mainClass>
+                </configuration>
+            </plugin>
         </plugins>
     </build>
 </project>

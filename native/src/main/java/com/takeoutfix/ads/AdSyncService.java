@@ -36,6 +36,9 @@ public class AdSyncService {
     private static final String FIRESTORE_AFFILIATE_URL =
             "https://firestore.googleapis.com/v1/projects/takeout-fix/databases/(default)/documents/affiliate_links";
 
+    private static final String FIRESTORE_AD_UNITS_URL =
+            "https://firestore.googleapis.com/v1/projects/takeout-fix/databases/(default)/documents/ad_units";
+
     private static final File CACHE_FILE = new File(
             System.getProperty("user.home"), ".takeoutfix/ads_cache.json");
 
@@ -109,11 +112,14 @@ public class AdSyncService {
         // 1. Load from local cache or fallback defaults immediately
         loadCacheOrDefault();
 
-        // 2. Fetch live ads from backend immediately on startup
+        // 2. Fetch live ads and affiliate deals from backend immediately on startup
         scheduler.submit(this::refreshAdsFromBackend);
     }
 
     public List<AdItem> getActiveAds() {
+        if (currentAds.isEmpty()) {
+            return Collections.unmodifiableList(getDefaultAdsPool());
+        }
         return Collections.unmodifiableList(new ArrayList<>(currentAds));
     }
 
@@ -127,33 +133,58 @@ public class AdSyncService {
     public void refreshAdsFromBackend() {
         scheduler.submit(() -> {
             try {
-                HttpRequest req = HttpRequest.newBuilder()
-                        .uri(URI.create(FIRESTORE_AFFILIATE_URL))
-                        .timeout(Duration.ofSeconds(8))
-                        .header("Accept", "application/json")
-                        .header("User-Agent", "TakeoutFix-Desktop/2.0")
-                        .GET()
-                        .build();
-
-                HttpResponse<String> res = httpClient.send(req, HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
-                if (res.statusCode() == 200 && res.body() != null && !res.body().isBlank()) {
-                    List<AdItem> parsed = parseFirestoreDocuments(res.body());
-                    if (!parsed.isEmpty()) {
-                        currentAds.clear();
-                        currentAds.addAll(parsed);
-                        saveCache(parsed);
-                        notifyListeners();
-                        log.info("Successfully synchronized {} ads from backend Firestore.", parsed.size());
-                        return;
+                // Fetch affiliate deals
+                List<AdItem> affiliateDeals = new ArrayList<>();
+                try {
+                    HttpRequest affReq = HttpRequest.newBuilder()
+                            .uri(URI.create(FIRESTORE_AFFILIATE_URL))
+                            .timeout(Duration.ofSeconds(8))
+                            .header("Accept", "application/json")
+                            .header("User-Agent", "TakeoutFix-Desktop/2.0")
+                            .GET()
+                            .build();
+                    HttpResponse<String> affRes = httpClient.send(affReq, HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
+                    if (affRes.statusCode() == 200 && affRes.body() != null && !affRes.body().isBlank()) {
+                        affiliateDeals = parseFirestoreAffiliates(affRes.body());
                     }
+                } catch (Exception e) {
+                    log.warn("Could not sync affiliate deals: {}", e.getMessage());
+                }
+
+                // Fetch ad units (A-ADS, web sponsors)
+                List<AdItem> adUnits = new ArrayList<>();
+                try {
+                    HttpRequest adReq = HttpRequest.newBuilder()
+                            .uri(URI.create(FIRESTORE_AD_UNITS_URL))
+                            .timeout(Duration.ofSeconds(8))
+                            .header("Accept", "application/json")
+                            .header("User-Agent", "TakeoutFix-Desktop/2.0")
+                            .GET()
+                            .build();
+                    HttpResponse<String> adRes = httpClient.send(adReq, HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
+                    if (adRes.statusCode() == 200 && adRes.body() != null && !adRes.body().isBlank()) {
+                        adUnits = parseFirestoreAdUnits(adRes.body());
+                    }
+                } catch (Exception e) {
+                    log.warn("Could not sync ad units: {}", e.getMessage());
+                }
+
+                // Merge enforcing 80% Ads, 20% Deals ratio
+                List<AdItem> merged = mergeWithRatio(adUnits, affiliateDeals);
+                if (!merged.isEmpty()) {
+                    currentAds.clear();
+                    currentAds.addAll(merged);
+                    saveCache(merged);
+                    notifyListeners();
+                    log.info("Successfully synchronized {} monetization items (80/20 Ads/Deals ratio).", merged.size());
                 }
             } catch (Exception e) {
-                log.warn("Could not sync ads from backend (will use cached ads if present): {}", e.getMessage());
+                log.warn("Error refreshing monetization pool: {}", e.getMessage());
             }
         });
     }
 
-    private List<AdItem> parseFirestoreDocuments(String jsonStr) {
+    private List<AdItem> parseFirestoreAdUnits(String jsonStr) {
         List<AdItem> list = new ArrayList<>();
         try {
             JSONObject root = new JSONObject(jsonStr);
@@ -168,14 +199,56 @@ public class AdSyncService {
                 String status = optString(fields, "status", "ACTIVE");
                 if (!"ACTIVE".equalsIgnoreCase(status)) continue;
 
-                String id = optString(fields, "id", "ad_" + i);
+                String id = optString(fields, "id", "ad_unit_" + i);
+                String name = optString(fields, "name", optString(fields, "title", "A-ADS Network"));
+                String destinationUrl = optString(fields, "destinationUrl", "");
+                String embedCode = optString(fields, "embedCode", "");
+                if (destinationUrl.isBlank()) {
+                    if (embedCode.contains("a-ads.com") || name.toUpperCase().contains("AADS") || name.toUpperCase().contains("A-ADS")) {
+                        destinationUrl = "https://a-ads.com?partner=2456560";
+                    } else {
+                        destinationUrl = "https://a-ads.com";
+                    }
+                }
+                String ctaText = optString(fields, "ctaText", "Learn More");
+                String providerName = optString(fields, "providerName", "A-ADS");
+                String tag = providerName.isBlank() ? "A-ADS" : providerName;
+                String discount = "AD";
+                int priority = optInt(fields, "priority", 10);
+                String imageUrl = optString(fields, "imageUrl", "");
+
+                list.add(new AdItem(id, name, "Privacy & tech advertisement", destinationUrl, ctaText, tag, discount, priority, imageUrl));
+            }
+            list.sort((a, b) -> Integer.compare(b.priority(), a.priority()));
+        } catch (Exception e) {
+            log.warn("Error parsing Firestore ad_units payload: {}", e.getMessage());
+        }
+        return list;
+    }
+
+    private List<AdItem> parseFirestoreAffiliates(String jsonStr) {
+        List<AdItem> list = new ArrayList<>();
+        try {
+            JSONObject root = new JSONObject(jsonStr);
+            JSONArray docs = root.optJSONArray("documents");
+            if (docs == null) return list;
+
+            for (int i = 0; i < docs.length(); i++) {
+                JSONObject doc = docs.getJSONObject(i);
+                JSONObject fields = doc.optJSONObject("fields");
+                if (fields == null) continue;
+
+                String status = optString(fields, "status", "ACTIVE");
+                if (!"ACTIVE".equalsIgnoreCase(status)) continue;
+
+                String id = optString(fields, "id", "aff_" + i);
                 String title = optString(fields, "title", "");
                 String description = optString(fields, "description", "");
                 String destinationUrl = optString(fields, "destinationUrl", "");
-                String ctaText = optString(fields, "ctaText", "View on Amazon");
-                String tag = optString(fields, "tag", "SPONSORED");
-                String discount = optString(fields, "discount", "");
-                int priority = optInt(fields, "priority", 5);
+                String ctaText = optString(fields, "ctaText", "Shop on Amazon");
+                String tag = optString(fields, "tag", "Amazon Special");
+                String discount = "DEAL";
+                int priority = optInt(fields, "priority", 10);
                 String imageUrl = optString(fields, "imageUrl", optString(fields, "image", optString(fields, "thumbnail", "")));
 
                 if (title.isBlank() || destinationUrl.isBlank()) continue;
@@ -188,10 +261,6 @@ public class AdSyncService {
                     }
                 }
 
-                if (discount.isBlank()) {
-                    discount = "DEAL";
-                }
-
                 if (imageUrl.isBlank()) {
                     imageUrl = extractAmazonImageUrl(destinationUrl);
                 }
@@ -199,12 +268,83 @@ public class AdSyncService {
                 list.add(new AdItem(id, title, description, destinationUrl, ctaText, tag, discount, priority, imageUrl));
             }
 
-            // Sort by priority descending
             list.sort((a, b) -> Integer.compare(b.priority(), a.priority()));
         } catch (Exception e) {
-            log.warn("Error parsing Firestore ads payload: {}", e.getMessage());
+            log.warn("Error parsing Firestore affiliate payload: {}", e.getMessage());
         }
         return list;
+    }
+
+    public static List<AdItem> getDefaultAdsOnly() {
+        List<AdItem> ads = new ArrayList<>();
+        ads.add(new AdItem("ad_aads_net", "A-ADS Privacy Ad Network", "Decentralized crypto & privacy web ads", "https://a-ads.com?partner=2456560", "Explore Ads", "A-ADS", "AD", 10, ""));
+        ads.add(new AdItem("ad_proton_drive", "Proton Encrypted Cloud", "End-to-end encrypted storage for archives", "https://proton.me/drive", "Get Started", "SPONSORED", "AD", 10, ""));
+        ads.add(new AdItem("ad_backblaze", "Backblaze Cloud Backup", "Automated offsite backup for photo archives", "https://www.backblaze.com/cloud-backup.html", "Protect Files", "SPONSORED", "AD", 10, ""));
+        ads.add(new AdItem("ad_nordvpn", "NordVPN Threat Protection", "Encrypted browsing & fast secure VPN", "https://nordvpn.com", "Learn More", "SPONSORED", "AD", 9, ""));
+        ads.add(new AdItem("ad_synology", "Synology DiskStation NAS", "Private on-premise cloud storage for photos", "https://www.synology.com", "Explore NAS", "SPONSORED", "AD", 9, ""));
+        ads.add(new AdItem("ad_brave", "Brave Privacy Browser", "Fast, private browser with native ad shield", "https://brave.com", "Download", "SPONSORED", "AD", 8, ""));
+        ads.add(new AdItem("ad_pcloud", "pCloud Lifetime Storage", "Swiss-based cloud storage with zero-knowledge", "https://www.pcloud.com", "View Plans", "SPONSORED", "AD", 8, ""));
+        ads.add(new AdItem("ad_aads_campaign", "Advertise with A-ADS", "Reach millions of privacy-first tech users", "https://a-ads.com/campaigns/new?partner=2456560", "Place Ad", "A-ADS", "AD", 8, ""));
+        return ads;
+    }
+
+    public static List<AdItem> getDefaultDealsOnly() {
+        List<AdItem> deals = new ArrayList<>();
+        deals.add(new AdItem("deal_murphy_light", "Murphy 6W 3-in-1 Wall Light", "LED Mirror Picture Wall Light with Warranty", "https://www.amazon.in/Murphy-Chnaging-Picture-Bathroom-Warranty/dp/B0BYT1DTVL?tag=rjtools-21", "Shop on Amazon", "Amazon Special", "DEAL", 10, "https://m.media-amazon.com/images/I/71HXtqzwPRL._SL1500_.jpg"));
+        deals.add(new AdItem("deal_grenaro_mic", "GRENARO Wireless Microphone", "3-level noise reduction mic for creators", "https://www.amazon.in/GRENARO-Adjustable-Reduction-S12-Microphone/dp/B0DQD8HWWG?tag=rjtools-21", "Shop on Amazon", "Amazon Special", "DEAL", 10, "https://m.media-amazon.com/images/I/71dhDqkgHPL._SL1500_.jpg"));
+        return deals;
+    }
+
+    public static List<AdItem> getDefaultAdsPool() {
+        return mergeWithRatio(getDefaultAdsOnly(), getDefaultDealsOnly());
+    }
+
+    /**
+     * Interleaves Ads and Affiliate Deals strictly adhering to the 80% Ads / 20% Deals ratio.
+     * Pattern across rotation: 3 Ads, 1 Deal, 3 Ads, 1 Deal (in 8 tiles = 6 Ads [75%], 2 Deals [25%]; in 10 tiles = 8 Ads [80%], 2 Deals [20%]).
+     */
+    public static List<AdItem> mergeWithRatio(List<AdItem> adsList, List<AdItem> dealsList) {
+        List<AdItem> ads = (adsList != null && !adsList.isEmpty()) ? new ArrayList<>(adsList) : new ArrayList<>(getDefaultAdsOnly());
+        List<AdItem> deals = (dealsList != null && !dealsList.isEmpty()) ? new ArrayList<>(dealsList) : new ArrayList<>(getDefaultDealsOnly());
+
+        // Ensure sufficient ads are available to fulfill 80%
+        if (ads.size() < 4) {
+            for (AdItem defAd : getDefaultAdsOnly()) {
+                if (ads.stream().noneMatch(a -> a.id().equals(defAd.id()))) {
+                    ads.add(defAd);
+                }
+            }
+        }
+        if (deals.isEmpty()) {
+            deals.addAll(getDefaultDealsOnly());
+        }
+
+        List<AdItem> result = new ArrayList<>();
+        int adIdx = 0;
+        int dealIdx = 0;
+        int total = Math.max(10, Math.max(ads.size(), deals.size() * 4));
+
+        for (int i = 0; i < total; i++) {
+            // Every 4th item (indices 3, 7, 11...) is a Deal (20%), others are Ads (80%)
+            if ((i + 1) % 4 == 0) {
+                if (!deals.isEmpty()) {
+                    result.add(deals.get(dealIdx % deals.size()));
+                    dealIdx++;
+                } else if (!ads.isEmpty()) {
+                    result.add(ads.get(adIdx % ads.size()));
+                    adIdx++;
+                }
+            } else {
+                if (!ads.isEmpty()) {
+                    result.add(ads.get(adIdx % ads.size()));
+                    adIdx++;
+                } else if (!deals.isEmpty()) {
+                    result.add(deals.get(dealIdx % deals.size()));
+                    dealIdx++;
+                }
+            }
+        }
+        return result;
     }
 
     private static String extractAmazonImageUrl(String url) {
@@ -265,23 +405,21 @@ public class AdSyncService {
                                 o.optString("title", ""),
                                 o.optString("description", ""),
                                 o.optString("destinationUrl", ""),
-                                o.optString("ctaText", "View on Amazon"),
+                                o.optString("ctaText", "Learn More"),
                                 o.optString("tag", "SPONSORED"),
-                                o.optString("discount", "DEAL"),
+                                o.optString("discount", "AD"),
                                 o.optInt("priority", 5),
                                 o.optString("imageUrl", "")
                         ));
                     }
                     if (!cached.isEmpty()) {
                         currentAds.addAll(cached);
+                        return;
                     }
                 }
             } catch (Exception ignored) {}
         }
-    }
-
-    public List<AdItem> getDefaultAds() {
-        return Collections.emptyList();
+        currentAds.addAll(getDefaultAdsPool());
     }
 
     private static String optString(JSONObject fields, String name, String fallback) {

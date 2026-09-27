@@ -229,20 +229,35 @@ public class CredentialStore {
      * Determines which storage tier is currently safeguarding credentials for the given account.
      */
     public StorageTier getStorageTier(String account) {
-        if (account != null && !account.isBlank()) {
+        if (account != null && !account.isBlank() && isKeyringUsable()) {
             try (Keyring keyring = Keyring.create()) {
                 String secret = keyring.getPassword(SERVICE_NAME, account);
                 if (secret != null && !secret.isBlank()) {
                     return StorageTier.OS_KEYRING;
                 }
             } catch (Exception ignored) {
-                // Keyring unavailable on this system
+                markKeyringUnavailable(ignored);
             }
         }
         if (ENCRYPTED_CREDENTIALS_FILE.exists()) {
             return StorageTier.ENCRYPTED_VAULT_FALLBACK;
         }
         return StorageTier.NONE;
+    }
+
+    private static final java.util.concurrent.atomic.AtomicBoolean KEYRING_AVAILABLE = new java.util.concurrent.atomic.AtomicBoolean(true);
+    private static final java.util.concurrent.atomic.AtomicBoolean KEYRING_LOGGED = new java.util.concurrent.atomic.AtomicBoolean(false);
+
+    private static boolean isKeyringUsable() {
+        return KEYRING_AVAILABLE.get();
+    }
+
+    private static void markKeyringUnavailable(Throwable t) {
+        KEYRING_AVAILABLE.set(false);
+        if (KEYRING_LOGGED.compareAndSet(false, true)) {
+            log.info("[CredentialStore] OS native keyring not available ({}), utilizing machine-bound AES-256-GCM vault.",
+                    t != null ? t.getMessage() : "unsupported");
+        }
     }
 
     // ── OS Keyring & Authenticated AES-GCM Storage ───────────────────────────
@@ -257,15 +272,17 @@ public class CredentialStore {
         boolean keyringSuccess = false;
 
         // 1. Attempt writing to OS Native Keyring (Windows Credential Manager / macOS Keychain / Linux Secret Service)
-        try (Keyring keyring = Keyring.create()) {
-            keyring.setPassword(SERVICE_NAME, account, serialized);
-            keyringSuccess = true;
-            // Clean up any stale fallback file so tokens don't linger on disk
-            if (ENCRYPTED_CREDENTIALS_FILE.exists()) {
-                Files.deleteIfExists(ENCRYPTED_CREDENTIALS_FILE.toPath());
+        if (isKeyringUsable()) {
+            try (Keyring keyring = Keyring.create()) {
+                keyring.setPassword(SERVICE_NAME, account, serialized);
+                keyringSuccess = true;
+                // Clean up any stale fallback file so tokens don't linger on disk
+                if (ENCRYPTED_CREDENTIALS_FILE.exists()) {
+                    Files.deleteIfExists(ENCRYPTED_CREDENTIALS_FILE.toPath());
+                }
+            } catch (Exception t) {
+                markKeyringUnavailable(t);
             }
-        } catch (Exception t) {
-            log.warn("[CredentialStore] OS native keyring not available (Windows Credential Manager / Keychain / Secret Service). Falling back to AES-256-GCM vault: {}", t.getMessage());
         }
 
         // 2. Only write encrypted fallback if OS Keyring failed
@@ -276,13 +293,15 @@ public class CredentialStore {
 
     private JSONObject loadTokensFromSecureStore(String account) {
         // 1. Try OS Native Keyring first
-        try (Keyring keyring = Keyring.create()) {
-            String secret = keyring.getPassword(SERVICE_NAME, account);
-            if (secret != null && !secret.isBlank()) {
-                return new JSONObject(secret);
+        if (isKeyringUsable()) {
+            try (Keyring keyring = Keyring.create()) {
+                String secret = keyring.getPassword(SERVICE_NAME, account);
+                if (secret != null && !secret.isBlank()) {
+                    return new JSONObject(secret);
+                }
+            } catch (Exception t) {
+                markKeyringUnavailable(t);
             }
-        } catch (Exception t) {
-            log.debug("[CredentialStore] OS native keyring read failed, trying encrypted vault: {}", t.getMessage());
         }
 
         // 2. Fall back to AES-256-GCM Encrypted Vault
@@ -304,13 +323,15 @@ public class CredentialStore {
     }
 
     private boolean hasSecureTokens(String account) {
-        try (Keyring keyring = Keyring.create()) {
-            String secret = keyring.getPassword(SERVICE_NAME, account);
-            if (secret != null && !secret.isBlank()) {
-                return true;
+        if (isKeyringUsable()) {
+            try (Keyring keyring = Keyring.create()) {
+                String secret = keyring.getPassword(SERVICE_NAME, account);
+                if (secret != null && !secret.isBlank()) {
+                    return true;
+                }
+            } catch (Exception ignored) {
+                markKeyringUnavailable(ignored);
             }
-        } catch (Exception ignored) {
-            // Keyring unavailable
         }
         return ENCRYPTED_CREDENTIALS_FILE.exists();
     }

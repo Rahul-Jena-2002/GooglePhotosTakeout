@@ -309,14 +309,33 @@ public class CommandCenterPanel extends JPanel {
         JPanel card = UiFactory.createCard();
         card.setLayout(new BorderLayout(0, 8));
 
+        JPanel headerRow = new JPanel(new BorderLayout(4, 0));
+        headerRow.setOpaque(false);
+
         JLabel lblAdsTitle = new JLabel("ADS & AFFILIATE LINKS");
         lblAdsTitle.setFont(new Font("Segoe UI", Font.BOLD, 10));
         lblAdsTitle.setForeground(ThemeColors.textMuted());
-        card.add(lblAdsTitle, BorderLayout.NORTH);
+        headerRow.add(lblAdsTitle, BorderLayout.WEST);
 
+        JLabel lblAdvertise = new JLabel("Advertise ↗");
+        lblAdvertise.setFont(new Font("Segoe UI", Font.PLAIN, 10));
+        lblAdvertise.setForeground(new Color(99, 102, 241));
+        lblAdvertise.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        lblAdvertise.setToolTipText("Advertise on TakeoutFix or explore ad network");
+        lblAdvertise.addMouseListener(new MouseAdapter() {
+            @Override public void mouseClicked(MouseEvent e) {
+                com.takeoutfix.shared.util.BrowserUtil.openBrowser("https://a-ads.com?partner=2456560");
+            }
+        });
+        headerRow.add(lblAdvertise, BorderLayout.EAST);
+
+        card.add(headerRow, BorderLayout.NORTH);
         card.add(adsContainer, BorderLayout.CENTER);
 
-        ThemeColors.addThemeListener(() -> lblAdsTitle.setForeground(ThemeColors.textMuted()));
+        ThemeColors.addThemeListener(() -> {
+            lblAdsTitle.setForeground(ThemeColors.textMuted());
+            lblAdvertise.setForeground(new Color(99, 102, 241));
+        });
         return card;
     }
 
@@ -346,14 +365,17 @@ public class CommandCenterPanel extends JPanel {
     }
 
     private JPanel createCompactAdTile(com.takeoutfix.ads.AdSyncService.AdItem ad) {
-        JLabel arrow = new JLabel("↗");
+        JLabel arrow = new JLabel();
+        javax.swing.Icon extIcon = UiFactory.svgDynamicIcon("external-link", 11, () -> ThemeColors.textMuted());
+        if (extIcon != null) {
+            arrow.setIcon(extIcon);
+        }
         JPanel tile = new JPanel(new BorderLayout(8, 0)) {
             private boolean hovered = false;
             {
                 addMouseListener(new MouseAdapter() {
                     @Override public void mouseEntered(MouseEvent e) {
                         hovered = true;
-                        arrow.setForeground(ThemeColors.accent());
                         repaint();
                     }
                     @Override public void mouseExited(MouseEvent e) {
@@ -396,7 +418,7 @@ public class CommandCenterPanel extends JPanel {
         tile.setPreferredSize(new Dimension(0, 42));
         tile.setToolTipText("Open: " + ad.title());
 
-        // 1. Compact 32x32 Thumbnail (Pre-added to prevent layout shift)
+        // 1. Compact 32x32 Thumbnail / Icon container (Pre-added to prevent layout shift)
         if (ad.imageUrl() != null && !ad.imageUrl().isBlank()) {
             JLabel imgLabel = new JLabel();
             imgLabel.setPreferredSize(new Dimension(32, 32));
@@ -410,6 +432,27 @@ public class CommandCenterPanel extends JPanel {
                     tile.repaint();
                 }
             });
+        } else {
+            JPanel iconPlaceholder = new JPanel(new GridBagLayout()) {
+                @Override
+                protected void paintComponent(Graphics g) {
+                    Graphics2D g2 = (Graphics2D) g.create();
+                    g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                    g2.setColor(ThemeColors.isDark() ? new Color(99, 102, 241, 35) : new Color(99, 102, 241, 20));
+                    g2.fillRoundRect(0, 0, getWidth(), getHeight(), 8, 8);
+                    g2.dispose();
+                    super.paintComponent(g);
+                }
+            };
+            iconPlaceholder.setOpaque(false);
+            iconPlaceholder.setPreferredSize(new Dimension(32, 32));
+            JLabel iconLabel = new JLabel();
+            javax.swing.Icon badgeIcon = UiFactory.svgDynamicIcon("external-link", 13, () -> new Color(99, 102, 241));
+            if (badgeIcon != null) {
+                iconLabel.setIcon(badgeIcon);
+            }
+            iconPlaceholder.add(iconLabel);
+            tile.add(iconPlaceholder, BorderLayout.WEST);
         }
 
         // 2. Compact Center Details (Tag/Discount + Title)
@@ -427,9 +470,10 @@ public class CommandCenterPanel extends JPanel {
         topRow.add(tag, BorderLayout.WEST);
 
         if (!ad.discount().isBlank()) {
+            boolean isAd = "AD".equalsIgnoreCase(ad.discount().trim());
             JLabel disc = new JLabel(ad.discount());
             disc.setFont(new Font("Segoe UI", Font.BOLD, 9));
-            disc.setForeground(ThemeColors.success());
+            disc.setForeground(isAd ? new Color(99, 102, 241) : ThemeColors.success());
             topRow.add(disc, BorderLayout.EAST);
         }
         details.add(topRow);

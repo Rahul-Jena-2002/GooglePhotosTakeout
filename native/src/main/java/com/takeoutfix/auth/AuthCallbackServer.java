@@ -158,9 +158,9 @@ public class AuthCallbackServer {
             }
 
             // Render enterprise clean confirmation screen (Google Antigravity style)
-            String email = String.valueOf(params.getOrDefault("email", "Google Account"));
-            String plan = String.valueOf(params.getOrDefault("plan", "Free")).toUpperCase();
-            String theme = String.valueOf(params.getOrDefault("theme", com.takeoutfix.shared.theme.ThemeColors.isDark() ? "dark" : "light")).toLowerCase();
+            String email = escHtml(String.valueOf(params.getOrDefault("email", "Google Account")));
+            String plan = escHtml(String.valueOf(params.getOrDefault("plan", "Free")).toUpperCase());
+            String theme = escHtml(String.valueOf(params.getOrDefault("theme", com.takeoutfix.shared.theme.ThemeColors.isDark() ? "dark" : "light")).toLowerCase());
 
             String template = """
                 <!DOCTYPE html>
@@ -367,5 +367,10 @@ public class AuthCallbackServer {
                 } catch (Exception ignored) {}
             }
         }
+    }
+
+    private static String escHtml(String s) {
+        if (s == null) return "";
+        return s.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace("\"", "&quot;").replace("'", "&#39;");
     }
 }

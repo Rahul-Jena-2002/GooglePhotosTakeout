@@ -119,7 +119,10 @@ export interface MonetizationResponse {
   mode: DisplayMode;
   reason?: string;
   affiliate?: ResolvedMonetizationItem | null;
+  secondaryAffiliate?: ResolvedMonetizationItem | null;
   ad?: ResolvedMonetizationItem | null;
+  secondaryAd?: ResolvedMonetizationItem | null;
+  items?: ResolvedMonetizationItem[];
   empty?: boolean;
   fallbackEnabled?: boolean;
   adOpacity?: number;

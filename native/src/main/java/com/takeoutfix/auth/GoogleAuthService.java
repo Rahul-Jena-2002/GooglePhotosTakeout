@@ -91,7 +91,8 @@ public class GoogleAuthService {
                         + "&state=" + URLEncoder.encode(stateToken, StandardCharsets.UTF_8)
                         + "&code_challenge=" + URLEncoder.encode(codeChallenge, StandardCharsets.UTF_8)
                         + "&code_challenge_method=S256"
-                        + "&prompt=select_account";
+                        + "&access_type=offline"
+                        + "&prompt=consent";
             } else {
                 // Fallback to webapp bridge
                 String baseUrl = resolveBaseAuthUrl();

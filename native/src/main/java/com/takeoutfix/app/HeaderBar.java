@@ -135,9 +135,6 @@ public class HeaderBar extends JPanel {
 
         leftPanel.add(brandBox);
 
-        leftPanel.add(btnNavDashboard);
-        leftPanel.add(btnNavRestore);
-
         JButton btnWebsite = UiFactory.createSecondaryButton("Website");
         javax.swing.Icon globeIcon = UiFactory.svgDynamicIcon("globe", 13, () -> ThemeColors.secondaryButtonText());
         if (globeIcon != null) {
@@ -170,7 +167,7 @@ public class HeaderBar extends JPanel {
     }
 
     private JButton createUpdateBannerButton() {
-        JButton btn = new JButton("⚡ Update Available") {
+        JButton btn = new JButton("Update Available") {
             private static final long serialVersionUID = 1L;
 
             @Override protected void paintComponent(Graphics g) {
@@ -182,6 +179,11 @@ public class HeaderBar extends JPanel {
                 super.paintComponent(g);
             }
         };
+        javax.swing.Icon zapIcon = UiFactory.svgDynamicIcon("zap", 11, () -> Color.WHITE);
+        if (zapIcon != null) {
+            btn.setIcon(zapIcon);
+            btn.setIconTextGap(5);
+        }
         btn.setContentAreaFilled(false);
         btn.setOpaque(false);
         btn.setFont(new Font(FONT_FAMILY, Font.BOLD, 11));
@@ -328,8 +330,36 @@ public class HeaderBar extends JPanel {
         pill.setOpaque(false);
         pill.setBackground(ThemeColors.pillBg());
         pill.setBorder(new EmptyBorder(4, 10, 4, 10));
+        pill.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        pill.setToolTipText("Toggle Operations Dashboard / Restorer");
+        pill.addMouseListener(new java.awt.event.MouseAdapter() {
+            @Override public void mouseEntered(java.awt.event.MouseEvent e) {
+                pill.setBackground(ThemeColors.cardBorder());
+                pill.repaint();
+            }
+            @Override public void mouseExited(java.awt.event.MouseEvent e) {
+                pill.setBackground(ThemeColors.pillBg());
+                pill.repaint();
+            }
+            @Override public void mouseClicked(java.awt.event.MouseEvent e) {
+                if ("Dashboard".equalsIgnoreCase(activeTab) || "Operations Dashboard".equalsIgnoreCase(activeTab)) {
+                    navigate(AppRoutes.RESTORE);
+                } else {
+                    navigate(AppRoutes.DASHBOARD);
+                }
+            }
+        });
         return pill;
     }
+
+    public void openProfileDashboard() {
+        if ("Dashboard".equalsIgnoreCase(activeTab) || "Operations Dashboard".equalsIgnoreCase(activeTab)) {
+            navigate(AppRoutes.RESTORE);
+        } else {
+            navigate(AppRoutes.DASHBOARD);
+        }
+    }
+
 
     private JLabel createUserNameLabel() {
         JLabel label = new JLabel("Not Signed In");
@@ -440,7 +470,7 @@ public class HeaderBar extends JPanel {
     public void setUpdateAvailable(UpdateCheckerService.UpdateInfo updateInfo) {
         this.currentUpdateInfo = updateInfo;
         SwingUtilities.invokeLater(() -> {
-            btnUpdateBanner.setText("⚡ Update: " + updateInfo.versionTag());
+            btnUpdateBanner.setText("Update: " + updateInfo.versionTag());
             btnUpdateBanner.setVisible(true);
             revalidate();
             repaint();
@@ -497,6 +527,9 @@ public class HeaderBar extends JPanel {
             if (userService == null || !userService.isSignedIn()) {
                 userPill.setVisible(false);
                 btnAuthAction.setText("Sign In");
+                if (mainFrame != null) {
+                    mainFrame.setTitle("TakeoutFix Operations Center — Guest Mode");
+                }
                 revalidate();
                 repaint();
                 return;
@@ -508,6 +541,9 @@ public class HeaderBar extends JPanel {
             userNameLabel.setText("Hi, " + firstName);
             avatarLabel.setText(firstName.substring(0, 1).toUpperCase());
             btnAuthAction.setText("Sign Out");
+            if (mainFrame != null) {
+                mainFrame.setTitle("TakeoutFix Operations Center");
+            }
         });
     }
 

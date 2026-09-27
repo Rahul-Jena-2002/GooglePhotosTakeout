@@ -127,8 +127,8 @@ public class SignInDialog extends JDialog {
         root.add(txtEmail);
         root.add(Box.createVerticalStrut(12));
 
-        // 3. Password Field
-        JPanel passwordLabelRow = createFieldLabelRow("Password");
+        // 3. Password Field with "Forgot?" link
+        JPanel passwordLabelRow = createPasswordLabelRow();
         root.add(passwordLabelRow);
         root.add(Box.createVerticalStrut(4));
 
@@ -227,6 +227,68 @@ public class SignInDialog extends JDialog {
         label.setForeground(ThemeColors.textSecondary());
         row.add(label);
         return row;
+    }
+
+    private JPanel createPasswordLabelRow() {
+        JPanel row = new JPanel(new BorderLayout());
+        row.setOpaque(false);
+        row.setPreferredSize(new Dimension(320, 18));
+        row.setMaximumSize(new Dimension(320, 18));
+        row.setAlignmentX(Component.CENTER_ALIGNMENT);
+
+        JLabel label = new JLabel("Password");
+        label.setFont(new Font(FONT_FAMILY, Font.BOLD, 11));
+        label.setForeground(ThemeColors.textSecondary());
+        row.add(label, BorderLayout.WEST);
+
+        JButton btnForgot = new JButton("Forgot?");
+        btnForgot.setFont(new Font(FONT_FAMILY, Font.PLAIN, 11));
+        btnForgot.setForeground(ThemeColors.accent());
+        btnForgot.setBorderPainted(false);
+        btnForgot.setContentAreaFilled(false);
+        btnForgot.setFocusPainted(false);
+        btnForgot.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        btnForgot.setBorder(BorderFactory.createEmptyBorder(0, 0, 0, 0));
+        btnForgot.addActionListener(e -> startPasswordReset());
+        row.add(btnForgot, BorderLayout.EAST);
+
+        return row;
+    }
+
+    private void startPasswordReset() {
+        String email = txtEmail.getText().trim();
+        if (email.isEmpty() || !email.contains("@")) {
+            statusLabel.setText("Please enter your email above to reset password.");
+            statusLabel.setForeground(ThemeColors.danger());
+            txtEmail.requestFocusInWindow();
+            return;
+        }
+
+        setLoading(true);
+        statusLabel.setText("Sending password reset email...");
+        statusLabel.setForeground(ThemeColors.accent());
+
+        CompletableFuture.runAsync(() -> {
+            try {
+                DirectAuthHttpsService.sendPasswordReset(email);
+                SwingUtilities.invokeLater(() -> {
+                    setLoading(false);
+                    statusLabel.setText("Reset link sent! Check your inbox.");
+                    statusLabel.setForeground(ThemeColors.success());
+                    JOptionPane.showMessageDialog(this,
+                            "A password reset link has been sent to:\n" + email + "\n\nPlease check your inbox and follow the instructions.",
+                            "Password Reset Email Sent",
+                            JOptionPane.INFORMATION_MESSAGE);
+                });
+            } catch (Exception ex) {
+                SwingUtilities.invokeLater(() -> {
+                    setLoading(false);
+                    String errorMsg = ex.getMessage() != null ? ex.getMessage() : "Failed to send reset email.";
+                    statusLabel.setText(errorMsg);
+                    statusLabel.setForeground(ThemeColors.danger());
+                });
+            }
+        });
     }
 
     private JPanel createDividerPanel() {
