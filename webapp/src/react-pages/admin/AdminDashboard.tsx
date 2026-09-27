@@ -8,7 +8,7 @@ import {
 } from "lucide-react"
 import {
   collection, query, where, orderBy, limit,
-  getCountFromServer, onSnapshot, doc
+  getCountFromServer, onSnapshot, doc, setDoc
 } from "firebase/firestore"
 import { db } from "../../firebase"
 import type { AdminData, AdminRole } from "../../contexts/AuthContext"
@@ -132,11 +132,21 @@ export default function AdminDashboard() {
       }
     }, console.error)
 
+    // 6. Dynamic real-time sync of actual users count to platform_stats/global
+    const unsubUsers = onSnapshot(collection(db, "users"), (snap) => {
+      if (!snap.empty) {
+        setDoc(doc(db, "platform_stats", "global"), {
+          usersCount: snap.docs.length,
+        }, { merge: true }).catch(console.warn);
+      }
+    }, (err) => console.warn("Users dynamic sync error:", err));
+
     return () => {
       unsubTx()
       unsubAdmins()
       unsubActivity()
       unsubGlobal()
+      unsubUsers()
     }
   }, [])
 

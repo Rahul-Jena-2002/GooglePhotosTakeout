@@ -28,20 +28,13 @@ export function useTelemetrySync(enabled: boolean = true) {
   useEffect(() => {
     if (!user || !isAdmin || !enabled) return;
 
-    // Check if telemetry was already verified in this browser session
-    try {
-      const alreadyChecked = sessionStorage.getItem("takeoutfix_telemetry_synced");
-      if (alreadyChecked) return;
-    } catch (_) {}
-
     const verifyTelemetry = async () => {
       try {
         const globalRef = doc(db, 'platform_stats', 'global');
         const snap = await getDoc(globalRef);
-        
+        const existingData = snap.exists() ? snap.data() : {};
 
-
-        // Only in the rare case that platform_stats/global is missing or empty: run a one-time calculation
+        // Query collections to get real live counts
         const [usersSnap, recoveriesSnap, ticketsSnap] = await Promise.all([
           getDocs(collection(db, "users")),
           getDocs(collection(db, "recoveries")),
@@ -52,26 +45,26 @@ export function useTelemetrySync(enabled: boolean = true) {
         const recoveriesList = recoveriesSnap.docs.map(d => d.data());
         const ticketsList = ticketsSnap.docs.map(d => d.data());
 
-        const calculatedBytes = usersList.reduce((acc, u) => acc + getUserBytes(u), 0);
-        const calculatedScanned = usersList.reduce((acc, u) => acc + getUserFiles(u), 0);
+        const calculatedBytes = Math.max(existingData.bytesProcessed || 0, usersList.reduce((acc, u) => acc + getUserBytes(u), 0));
+        const calculatedScanned = Math.max(existingData.filesScanned || 0, usersList.reduce((acc, u) => acc + getUserFiles(u), 0));
         
         const recoveriesScanned = recoveriesList.reduce((acc, r) => acc + (r.scanned || 0), 0);
         const recoveriesMatched = recoveriesList.reduce((acc, r) => acc + (r.matched || 0), 0);
         
         const ratio = recoveriesScanned > 0 ? (recoveriesMatched / recoveriesScanned) : 0.999;
-        const calculatedMatched = Math.round(calculatedScanned * ratio);
+        const calculatedMatched = Math.max(existingData.filesRestored || 0, Math.round(calculatedScanned * ratio));
         
-        const calculatedResolvedTickets = ticketsList.filter(t => t.status === "RESOLVED" || t.status === "CLOSED").length;
+        const calculatedResolvedTickets = Math.max(existingData.ticketsResolved || 0, ticketsList.filter(t => t.status === "RESOLVED" || t.status === "CLOSED").length);
+
+        const currentUsersCount = usersList.length > 0 ? usersList.length : (existingData.usersCount || 0);
 
         await setDoc(globalRef, {
           bytesProcessed: calculatedBytes,
           filesRestored: calculatedMatched,
           filesScanned: calculatedScanned,
-          usersCount: usersList.length,
+          usersCount: currentUsersCount,
           ticketsResolved: calculatedResolvedTickets
         }, { merge: true });
-
-        try { sessionStorage.setItem("takeoutfix_telemetry_synced", "true"); } catch (_) {}
       } catch (err) {
         console.warn("Telemetry verification completed with notice:", err);
       }
