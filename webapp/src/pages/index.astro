@@ -301,9 +301,20 @@ const prices = PLAN_PRICES[region] || PLAN_PRICES.us;
       </div>
     </section>
 
-    <!-- Sponsored Deals & Recommendations -->
+    <!-- Sponsored Deals & Recommendations: Above FAQ (2 Ads Grid) -->
     <section class="w-full max-w-7xl mx-auto px-4 py-4 relative z-10" aria-label="Sponsored recommendations">
-      <AdUnit client:only="react" placement="HOMEPAGE_BOTTOM" />
+      <div id="frame-bottom" style="width: 100%; margin: auto; position: relative; z-index: 99998;">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 w-full">
+          <div class="w-full bg-zinc-50/80 dark:bg-zinc-900/60 rounded-xl border border-zinc-200/80 dark:border-zinc-800 p-1.5 overflow-hidden flex items-center justify-center min-h-[96px]">
+            <iframe data-aa='2456619' loading='lazy' src='//acceptable.a-ads.com/2456619/?size=Adaptive'
+              style='border:0; padding:0; width:100%; height:90px; overflow:hidden; display:block; margin:auto'></iframe>
+          </div>
+          <div class="w-full bg-zinc-50/80 dark:bg-zinc-900/60 rounded-xl border border-zinc-200/80 dark:border-zinc-800 p-1.5 overflow-hidden flex items-center justify-center min-h-[96px]">
+            <iframe data-aa='2456620' loading='lazy' src='//acceptable.a-ads.com/2456620/?size=Adaptive'
+              style='border:0; padding:0; width:100%; height:90px; overflow:hidden; display:block; margin:auto'></iframe>
+          </div>
+        </div>
+      </div>
     </section>
 
     <section class="w-full max-w-5xl mx-auto px-4 py-36 relative z-10">
