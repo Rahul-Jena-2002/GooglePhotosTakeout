@@ -2,17 +2,20 @@ import { initializeApp } from 'firebase/app';
 import { getAuth, GoogleAuthProvider, signInWithPopup, signInWithRedirect, signOut, onAuthStateChanged } from 'firebase/auth';
 import type { User } from 'firebase/auth';
 
-const firebaseConfig = {
-  apiKey: import.meta.env.PUBLIC_FIREBASE_API_KEY || "",
-  authDomain: import.meta.env.PUBLIC_FIREBASE_AUTH_DOMAIN || "",
-  projectId: import.meta.env.PUBLIC_FIREBASE_PROJECT_ID || "",
-  storageBucket: import.meta.env.PUBLIC_FIREBASE_STORAGE_BUCKET || "",
-  messagingSenderId: import.meta.env.PUBLIC_FIREBASE_MESSAGING_SENDER_ID || "",
-  appId: import.meta.env.PUBLIC_FIREBASE_APP_ID || "",
-  measurementId: import.meta.env.PUBLIC_FIREBASE_MEASUREMENT_ID || "",
-};
+function getFirebaseConfig() {
+  const win = typeof window !== 'undefined' ? (window as any).__FIREBASE_CONFIG__ : null;
+  return {
+    apiKey: win?.apiKey || import.meta.env.PUBLIC_FIREBASE_API_KEY || "",
+    authDomain: win?.authDomain || import.meta.env.PUBLIC_FIREBASE_AUTH_DOMAIN || "",
+    projectId: win?.projectId || import.meta.env.PUBLIC_FIREBASE_PROJECT_ID || "",
+    storageBucket: win?.storageBucket || import.meta.env.PUBLIC_FIREBASE_STORAGE_BUCKET || "",
+    messagingSenderId: win?.messagingSenderId || import.meta.env.PUBLIC_FIREBASE_MESSAGING_SENDER_ID || "",
+    appId: win?.appId || import.meta.env.PUBLIC_FIREBASE_APP_ID || "",
+    measurementId: win?.measurementId || import.meta.env.PUBLIC_FIREBASE_MEASUREMENT_ID || "",
+  };
+}
 
-export const app = initializeApp(firebaseConfig);
+export const app = initializeApp(getFirebaseConfig());
 
 // Safe auth initialization for SSR/browser environments
 let authInstance: any = null;

@@ -37,12 +37,40 @@ const isActive = (path: string) => (path === "/" ? currentPath === "/" : current
 const rawPath = Astro.url.pathname || "/";
 const cleanPath = rawPath.replace(/\.html$/, "").replace(/\/index$/, "").replace(/\/$/, "") || "/";
 const canonicalUrl = `https://takeoutfix.pages.dev${cleanPath === "" ? "/" : cleanPath}`;
+
+// Cloudflare runtime secrets injection (No secrets hardcoded in git)
+const cfRuntimeEnv = (Astro.locals as any)?.runtime?.env || {};
+let cfWorkersEnv: any = {};
+try {
+  const cf = await import('cloudflare:workers');
+  cfWorkersEnv = cf.env || {};
+} catch (_) {}
+
+const firebaseConfig = {
+  apiKey: cfRuntimeEnv.PUBLIC_FIREBASE_API_KEY || cfWorkersEnv.PUBLIC_FIREBASE_API_KEY || import.meta.env.PUBLIC_FIREBASE_API_KEY || "",
+  authDomain: cfRuntimeEnv.PUBLIC_FIREBASE_AUTH_DOMAIN || cfWorkersEnv.PUBLIC_FIREBASE_AUTH_DOMAIN || import.meta.env.PUBLIC_FIREBASE_AUTH_DOMAIN || "",
+  projectId: cfRuntimeEnv.PUBLIC_FIREBASE_PROJECT_ID || cfWorkersEnv.PUBLIC_FIREBASE_PROJECT_ID || import.meta.env.PUBLIC_FIREBASE_PROJECT_ID || "",
+  storageBucket: cfRuntimeEnv.PUBLIC_FIREBASE_STORAGE_BUCKET || cfWorkersEnv.PUBLIC_FIREBASE_STORAGE_BUCKET || import.meta.env.PUBLIC_FIREBASE_STORAGE_BUCKET || "",
+  messagingSenderId: cfRuntimeEnv.PUBLIC_FIREBASE_MESSAGING_SENDER_ID || cfWorkersEnv.PUBLIC_FIREBASE_MESSAGING_SENDER_ID || import.meta.env.PUBLIC_FIREBASE_MESSAGING_SENDER_ID || "",
+  appId: cfRuntimeEnv.PUBLIC_FIREBASE_APP_ID || cfWorkersEnv.PUBLIC_FIREBASE_APP_ID || import.meta.env.PUBLIC_FIREBASE_APP_ID || "",
+  measurementId: cfRuntimeEnv.PUBLIC_FIREBASE_MEASUREMENT_ID || cfWorkersEnv.PUBLIC_FIREBASE_MEASUREMENT_ID || import.meta.env.PUBLIC_FIREBASE_MEASUREMENT_ID || "",
+};
+
+const googleClientId = cfRuntimeEnv.PUBLIC_GOOGLE_CLIENT_ID || cfWorkersEnv.PUBLIC_GOOGLE_CLIENT_ID || import.meta.env.PUBLIC_GOOGLE_CLIENT_ID || "";
 ---
 
 <!doctype html>
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
+    <script is:inline define:vars={{ firebaseConfig, googleClientId }}>
+      if (firebaseConfig && firebaseConfig.apiKey) {
+        window.__FIREBASE_CONFIG__ = firebaseConfig;
+      }
+      if (googleClientId) {
+        window.__GOOGLE_CLIENT_ID__ = googleClientId;
+      }
+    </script>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <!-- Preload hero image to speed up LCP -->

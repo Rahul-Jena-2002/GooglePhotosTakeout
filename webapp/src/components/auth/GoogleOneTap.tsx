@@ -13,7 +13,7 @@ export default function GoogleOneTap() {
   useEffect(() => {
     if (typeof window === "undefined") return;
 
-    const clientId = import.meta.env.PUBLIC_GOOGLE_CLIENT_ID || "1089411779683-ooa1g3ubga4lul3c3tu7mev12gobut3i.apps.googleusercontent.com";
+    const clientId = (typeof window !== "undefined" && (window as any).__GOOGLE_CLIENT_ID__) || import.meta.env.PUBLIC_GOOGLE_CLIENT_ID || "";
     if (!clientId) return;
 
     // Check if user is already authenticated
