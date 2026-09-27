@@ -48,14 +48,16 @@ jobs:
         id: version
         shell: bash
         run: |
-          RAW_TAG="${{ github.event.inputs.tag_name || github.ref_name || '2.1.7' }}"
+          RAW_TAG="${{ github.event.inputs.tag_name || github.ref_name || '2.1.8' }}"
           CLEAN_VER="${RAW_TAG#v}"
-          if [[ "$CLEAN_VER" == "main" || "$CLEAN_VER" == "latest" || -z "$CLEAN_VER" ]]; then
-            # Extract version from version.properties if available
-            if [ -f "native/src/main/resources/version.properties" ]; then
-              CLEAN_VER=$(grep "app.version" native/src/main/resources/version.properties | cut -d'=' -f2 | tr -d '\r')
-            else
-              CLEAN_VER="2.1.7"
+          # Validate that version consists only of numbers and dots (e.g., 2.1.8)
+          if [[ ! "$CLEAN_VER" =~ ^[0-9]+(\.[0-9]+)*$ ]]; then
+            # If triggered on a branch name like 'rjdevelop' or 'main', read pom.xml or use fallback
+            if [ -f "native/pom.xml" ]; then
+              CLEAN_VER=$(grep -m1 '<version>' native/pom.xml | sed -E 's/.*<version>([^<]+)<\/version>.*/\1/' | tr -d '\r')
+            fi
+            if [[ ! "$CLEAN_VER" =~ ^[0-9]+(\.[0-9]+)*$ ]]; then
+              CLEAN_VER="2.1.8"
             fi
           fi
           echo "version=$CLEAN_VER" >> $GITHUB_OUTPUT
