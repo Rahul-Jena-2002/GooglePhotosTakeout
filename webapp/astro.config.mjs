@@ -161,6 +161,7 @@ export default defineConfig({
         'firebase',
         'framer-motion',
         'piexifjs',
+        'zod',
       ]
     },
     plugins: [restorationObfuscatorPlugin()],
