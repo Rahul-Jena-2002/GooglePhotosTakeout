@@ -13,9 +13,9 @@
  *  - Push notifications: admin alerts, invite notifications
  */
 
-const CACHE_NAME   = 'takeoutfix-v3';
-const STATIC_CACHE = 'takeoutfix-static-v3';
-const FONT_CACHE   = 'takeoutfix-fonts-v3';
+const CACHE_NAME   = 'takeoutfix-v4';
+const STATIC_CACHE = 'takeoutfix-static-v4';
+const FONT_CACHE   = 'takeoutfix-fonts-v4';
 
 const APP_SHELL = [
   '/',
