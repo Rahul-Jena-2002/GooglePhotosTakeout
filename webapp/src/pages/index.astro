@@ -148,7 +148,7 @@ const prices = PLAN_PRICES[region] || PLAN_PRICES.us;
 
     <!-- Sponsored Deals: Below Telemetry -->
     <section class="w-full max-w-7xl mx-auto px-4 py-4 relative z-10" aria-label="Sponsored recommendations">
-      <AdUnit client:load placement="HOMEPAGE_TOP" />
+      <AdUnit client:only="react" placement="HOMEPAGE_TOP" />
     </section>
 
     <!-- 3. PROBLEM SECTION -->
@@ -194,7 +194,7 @@ const prices = PLAN_PRICES[region] || PLAN_PRICES.us;
 
     <!-- Sponsored Deals: Below Solution -->
     <section class="w-full max-w-7xl mx-auto px-4 py-4 relative z-10" aria-label="Sponsored recommendations">
-      <AdUnit client:load placement="HOMEPAGE_MIDDLE" />
+      <AdUnit client:only="react" placement="HOMEPAGE_MIDDLE" />
     </section>
 
     <!-- 5. PRIVACY SECTION -->
@@ -284,7 +284,7 @@ const prices = PLAN_PRICES[region] || PLAN_PRICES.us;
 
     <!-- Sponsored Deals & Recommendations -->
     <section class="w-full max-w-7xl mx-auto px-4 py-4 relative z-10" aria-label="Sponsored recommendations">
-      <AdUnit client:load placement="HOMEPAGE_BOTTOM" />
+      <AdUnit client:only="react" placement="HOMEPAGE_BOTTOM" />
     </section>
 
     <section class="w-full max-w-5xl mx-auto px-4 py-36 relative z-10">
