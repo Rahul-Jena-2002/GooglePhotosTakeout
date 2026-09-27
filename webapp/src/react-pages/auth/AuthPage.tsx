@@ -237,6 +237,18 @@ export default function AuthPage() {
         console.warn("Desktop bridge error:", e);
       }
     }
+    if (targetUser) {
+      try {
+        const previewData = {
+          uid: targetUser.uid,
+          email: targetUser.email,
+          displayName: targetUser.displayName,
+          photoURL: targetUser.photoURL,
+          plan: "free"
+        };
+        localStorage.setItem("takeoutfix_user_data", JSON.stringify(previewData));
+      } catch (_) {}
+    }
     setTimeout(() => {
       if (typeof window !== "undefined") {
         document.dispatchEvent(new Event("astro:before-preparation"));
@@ -284,10 +296,26 @@ export default function AuthPage() {
         googleProvider.setCustomParameters({ prompt: 'select_account' });
       }
 
-      await signInWithRedirect(auth, googleProvider);
+      const res = await signInWithPopup(auth, googleProvider);
+      if (res && res.user) {
+        await syncUserDoc(res.user);
+        setSuccessMsg("Signed in successfully! Redirecting...");
+        handleSuccessRedirect(res.user);
+      }
     } catch (err: any) {
+      if (err?.code === "auth/popup-closed-by-user" || err?.code === "auth/cancelled-popup-request") {
+        setGoogleLoading(false);
+        return;
+      }
+      if (err?.code === "auth/popup-blocked") {
+        try {
+          await signInWithRedirect(auth, googleProvider);
+          return;
+        } catch (_) {}
+      }
       console.error("Google sign in error:", err);
       setErrorMsg(err.message || "Failed to sign in with Google.");
+    } finally {
       setGoogleLoading(false);
     }
   };
@@ -621,6 +649,56 @@ export default function AuthPage() {
                 className="text-xs text-zinc-500 dark:text-zinc-400 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors cursor-pointer py-1"
               >
                 Sign in with a different Google account
+              </button>
+            </div>
+          </div>
+        ) : currentUser && !desktopPort ? (
+          /* ALREADY LOGGED IN VIEW */
+          <div className="bg-white dark:bg-zinc-900/95 border border-zinc-200/80 dark:border-zinc-800 rounded-3xl p-6 sm:p-8 shadow-2xl backdrop-blur-xl text-center">
+            <div className="w-12 h-12 rounded-2xl bg-emerald-500/10 text-emerald-500 font-bold flex items-center justify-center text-xl mx-auto mb-4 border border-emerald-500/20">
+              <CheckCircle2 className="w-6 h-6" />
+            </div>
+            <h1 className="text-xl sm:text-2xl font-extrabold text-zinc-900 dark:text-white mb-1">
+              Already Signed In
+            </h1>
+            <p className="text-xs text-zinc-500 dark:text-zinc-400 mb-6">
+              You are currently authenticated as:
+            </p>
+            <div className="mb-6 p-4 rounded-2xl bg-zinc-50 dark:bg-zinc-950/70 border border-zinc-200/80 dark:border-zinc-800 flex items-center gap-3 text-left">
+              {currentUser.photoURL ? (
+                <img src={currentUser.photoURL} alt="" className="w-10 h-10 rounded-full border border-zinc-200 dark:border-zinc-700" />
+              ) : (
+                <div className="w-10 h-10 rounded-full bg-indigo-600 text-white font-bold flex items-center justify-center text-sm">
+                  {currentUser.displayName?.charAt(0) || currentUser.email?.charAt(0) || "U"}
+                </div>
+              )}
+              <div className="flex-1 min-w-0">
+                <p className="text-xs sm:text-sm font-bold text-zinc-900 dark:text-zinc-100 truncate">
+                  {currentUser.displayName || currentUser.email}
+                </p>
+                <p className="text-[11px] text-zinc-500 dark:text-zinc-400 truncate">
+                  {currentUser.email}
+                </p>
+              </div>
+            </div>
+            <div className="flex flex-col sm:flex-row gap-3">
+              <button
+                type="button"
+                onClick={() => handleSuccessRedirect(currentUser)}
+                className="flex-1 py-3 px-4 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-xl text-sm transition-all flex items-center justify-center gap-2 cursor-pointer shadow-md shadow-indigo-600/20"
+              >
+                <span>Continue to Tool</span>
+                <ArrowRight className="w-4 h-4" />
+              </button>
+              <button
+                type="button"
+                onClick={async () => {
+                  if (auth) await auth.signOut();
+                  setCurrentUser(null);
+                }}
+                className="py-3 px-4 bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-zinc-700 dark:text-zinc-200 font-semibold rounded-xl text-sm transition-all cursor-pointer"
+              >
+                Sign Out / Switch
               </button>
             </div>
           </div>

@@ -183,11 +183,14 @@ export const syncUserUI = () => {
       }
       if (mobileToolLink) {
         mobileToolLink.href = "/tool";
-        mobileToolLink.innerText = "⚡ Launch Restore Tool";
+        const badge = mobileToolLink.querySelector("span:last-child");
+        if (badge) {
+          badge.textContent = "Active";
+          badge.className = "text-[10px] uppercase font-mono px-1.5 py-0.5 rounded bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 font-bold";
+        }
       }
       if (desktopToolLink) {
         desktopToolLink.href = "/tool";
-        desktopToolLink.innerText = "Restore My Data";
       }
     } catch (_) {}
   } else {
@@ -200,6 +203,18 @@ export const syncUserUI = () => {
     mobileAdminLink?.classList.add("hidden");
     notificationContainer?.classList.add("hidden");
     authLoading?.classList.add("hidden");
+
+    if (mobileToolLink) {
+      mobileToolLink.href = "/tool";
+      const badge = mobileToolLink.querySelector("span:last-child");
+      if (badge) {
+        badge.textContent = "Free Trial";
+        badge.className = "text-[10px] uppercase font-mono px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 font-bold";
+      }
+    }
+    if (desktopToolLink) {
+      desktopToolLink.href = "/tool";
+    }
     
     desktopMarketingLinks?.classList.add("lg:flex");
     desktopMarketingLinks?.classList.remove("xl:flex", "lg:hidden");

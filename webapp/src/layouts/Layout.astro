@@ -520,6 +520,7 @@ const googleClientId = cfRuntimeEnv.PUBLIC_GOOGLE_CLIENT_ID || import.meta.env.P
             <!-- Desktop Links -->
             <div id="desktop-marketing-links" class="hidden lg:flex gap-4 text-sm font-medium ml-4 font-sans items-center">
               <a href="/" class={`nav-link px-3 py-1.5 transition-colors duration-150 ${isActive('/') ? 'active text-[#8170CC] font-bold' : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white'}`} data-astro-prefetch="hover">Home</a>
+              <a id="desktop-tool-link" href="/tool" class={`nav-link px-3 py-1.5 transition-colors duration-150 ${isActive('/tool') ? 'active text-[#8170CC] font-bold' : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white'}`} data-astro-reload>Restore Tool</a>
               <a href="/restore-data" class={`nav-link px-3 py-1.5 transition-colors duration-150 ${isActive('/restore-data') ? 'active text-[#8170CC] font-bold' : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white'}`} data-astro-prefetch="hover">Restore Guide</a>
               <a href="/download" class={`nav-link px-3 py-1.5 transition-colors duration-150 ${isActive('/download') ? 'active text-[#8170CC] font-bold' : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white'}`} data-astro-prefetch="hover">Download App</a>
 
@@ -612,7 +613,6 @@ const googleClientId = cfRuntimeEnv.PUBLIC_GOOGLE_CLIENT_ID || import.meta.env.P
                 <div class="hidden lg:flex items-center gap-6 mr-2">
                   <a id="desktop-dashboard-link" href="/dashboard" class={`nav-link text-sm font-medium transition-colors duration-150 ${isActive('/dashboard') ? 'active text-[#8170CC] font-bold' : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white'}`} data-astro-prefetch="hover">Dashboard</a>
                   <a id="desktop-admin-link" href="/admin" class={`nav-link text-sm font-medium transition-colors duration-150 hidden ${isActive('/admin') ? 'active text-[#8170CC] font-bold' : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white'}`} data-astro-reload>Admin Center</a>
-                  <a id="desktop-tool-link" href="/tool" class={`nav-link text-sm font-medium transition-colors duration-150 ${isActive('/tool') ? 'active text-[#8170CC] font-bold' : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white'}`} data-astro-reload>Restore My Data</a>
                 </div>
                 <button 
                   id="profile-trigger-btn"
@@ -659,6 +659,10 @@ const googleClientId = cfRuntimeEnv.PUBLIC_GOOGLE_CLIENT_ID || import.meta.env.P
             </div>
 
             <a href="/" class={`mobile-nav-link py-2 px-3 rounded-lg text-sm font-medium transition-all ${isActive('/') ? 'active text-[#8170CC] font-bold bg-[#8170CC]/10 dark:bg-[#8170CC]/15' : 'text-zinc-700 dark:text-white/70 hover:text-zinc-900 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-white/5'}`} data-astro-prefetch="tap">Home</a>
+            <a id="mobile-tool-link" href="/tool" class={`mobile-nav-link py-2 px-3 rounded-lg text-sm font-semibold transition-all flex items-center justify-between ${isActive('/tool') ? 'active text-[#8170CC] font-bold bg-[#8170CC]/10 dark:bg-[#8170CC]/15' : 'text-zinc-700 dark:text-zinc-200 hover:text-zinc-900 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-zinc-900'}`} data-astro-reload>
+              <span>Restore Tool</span>
+              <span class="text-[10px] uppercase font-mono px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 font-bold">Free Trial</span>
+            </a>
             <a href="/restore-data" class={`mobile-nav-link py-2 px-3 rounded-lg text-sm font-medium transition-all ${isActive('/restore-data') ? 'active text-[#8170CC] font-bold bg-[#8170CC]/10 dark:bg-[#8170CC]/15' : 'text-zinc-700 dark:text-white/70 hover:text-zinc-900 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-white/5'}`} data-astro-prefetch="tap">Restore Guide</a>
             <a href="/download" class={`mobile-nav-link py-2 px-3 rounded-lg text-sm font-medium transition-all ${isActive('/download') ? 'active text-[#8170CC] font-bold bg-[#8170CC]/10 dark:bg-[#8170CC]/15' : 'text-zinc-700 dark:text-white/70 hover:text-zinc-900 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-white/5'}`} data-astro-prefetch="tap">Download Desktop App</a>
 
@@ -713,10 +717,6 @@ const googleClientId = cfRuntimeEnv.PUBLIC_GOOGLE_CLIENT_ID || import.meta.env.P
                 
                 <a id="mobile-admin-link" href="/admin" class={`mobile-nav-link py-2 px-3 rounded-lg text-sm font-semibold transition-all hidden ${isActive('/admin') ? 'active text-amber-500 font-bold bg-amber-500/10' : 'text-amber-600 dark:text-amber-400 hover:bg-amber-500/10'}`} data-astro-reload>
                   Admin Center
-                </a>
-
-                <a id="mobile-tool-link" href="/tool" class={`mobile-nav-link py-2 px-3 rounded-lg text-sm font-semibold transition-all flex items-center justify-between ${isActive('/tool') ? 'active text-[#8170CC] font-bold bg-[#8170CC]/10 dark:bg-[#8170CC]/15' : 'text-zinc-700 dark:text-zinc-200 hover:text-zinc-900 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-zinc-900'}`} data-astro-reload>
-                  Restore My Data
                 </a>
               </div>
             </div>
