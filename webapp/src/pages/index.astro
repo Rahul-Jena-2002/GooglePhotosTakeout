@@ -146,12 +146,28 @@ const prices = PLAN_PRICES[region] || PLAN_PRICES.us;
       </p>
     </section>
 
-    <!-- Sponsored Deals: Below Telemetry -->
+    <!-- Sponsored Deals: Below Telemetry (4 Ads Grid) -->
     <section class="w-full max-w-7xl mx-auto px-4 py-4 relative z-10" aria-label="Sponsored recommendations">
       <!-- BEGIN AADS AD UNIT 2456560 -->
-      <div id="frame" style="width: 100%;margin: auto;position: relative; z-index: 99998;">
-        <iframe data-aa='2456560' src='//acceptable.a-ads.com/2456560/?size=Adaptive'
-          style='border:0; padding:0; width:70%; height:auto; overflow:hidden;display: block;margin: auto'></iframe>
+      <div id="frame" style="width: 100%; margin: auto; position: relative; z-index: 99998;">
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 w-full">
+          <div class="w-full bg-zinc-50/80 dark:bg-zinc-900/60 rounded-xl border border-zinc-200/80 dark:border-zinc-800 p-1.5 overflow-hidden flex items-center justify-center min-h-[90px]">
+            <iframe data-aa='2456560' loading='lazy' src='//acceptable.a-ads.com/2456560/?size=Adaptive'
+              style='border:0; padding:0; width:100%; height:80px; overflow:hidden; display:block; margin:auto'></iframe>
+          </div>
+          <div class="w-full bg-zinc-50/80 dark:bg-zinc-900/60 rounded-xl border border-zinc-200/80 dark:border-zinc-800 p-1.5 overflow-hidden flex items-center justify-center min-h-[90px]">
+            <iframe data-aa='2456560' loading='lazy' src='//acceptable.a-ads.com/2456560/?size=Adaptive'
+              style='border:0; padding:0; width:100%; height:80px; overflow:hidden; display:block; margin:auto'></iframe>
+          </div>
+          <div class="w-full bg-zinc-50/80 dark:bg-zinc-900/60 rounded-xl border border-zinc-200/80 dark:border-zinc-800 p-1.5 overflow-hidden flex items-center justify-center min-h-[90px]">
+            <iframe data-aa='2456560' loading='lazy' src='//acceptable.a-ads.com/2456560/?size=Adaptive'
+              style='border:0; padding:0; width:100%; height:80px; overflow:hidden; display:block; margin:auto'></iframe>
+          </div>
+          <div class="w-full bg-zinc-50/80 dark:bg-zinc-900/60 rounded-xl border border-zinc-200/80 dark:border-zinc-800 p-1.5 overflow-hidden flex items-center justify-center min-h-[90px]">
+            <iframe data-aa='2456560' loading='lazy' src='//acceptable.a-ads.com/2456560/?size=Adaptive'
+              style='border:0; padding:0; width:100%; height:80px; overflow:hidden; display:block; margin:auto'></iframe>
+          </div>
+        </div>
       </div>
       <!-- END AADS AD UNIT 2456560 -->
     </section>

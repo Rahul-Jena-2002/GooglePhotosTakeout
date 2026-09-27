@@ -6,6 +6,7 @@ import { useAuth } from "../../contexts/AuthContext"
 import { Link } from "react-router-dom"
 import { useToastStore } from "../../store/useToastStore"
 import { AdminPagination } from "../../components/admin/AdminPagination"
+import { UserAvatar } from "../../components/common/UserAvatar"
 
 const PLAN_LABELS: Record<string, string> = {
   free: "Free",
@@ -419,7 +420,7 @@ export default function AdminUsers() {
                       <span className="text-xs font-mono text-zinc-500">{(page - 1) * pageSize + idx + 1}</span>
                     </td>                    <td className="px-6 py-4">
                       <div className="flex items-center gap-3">
-                        <img src={u.photoURL || `https://ui-avatars.com/api/?name=${u.displayName || 'U'}&background=random`} alt="" className="w-8 h-8 rounded-full" />
+                        <UserAvatar src={u.photoURL} name={u.displayName || u.email} className="w-8 h-8" />
                         <div>
                           <div className="font-semibold text-zinc-100 flex items-center gap-2">
                             {u.displayName || 'Unknown User'}
@@ -551,7 +552,7 @@ export default function AdminUsers() {
             </div>
             
             <div className="flex flex-col items-center text-center gap-4 mb-8">
-              <img src={selectedUser.photoURL || `https://ui-avatars.com/api/?name=${selectedUser.displayName || 'U'}&background=random`} alt="" className="w-20 h-20 rounded-full border-2 border-zinc-800 shadow-xl" />
+              <UserAvatar src={selectedUser.photoURL} name={selectedUser.displayName || selectedUser.email} className="w-20 h-20 border-2 border-zinc-800 shadow-xl" />
               <div>
                 <h3 className="text-xl font-bold text-white">{selectedUser.displayName || 'Unknown User'}</h3>
                 <p className="text-sm text-zinc-500">{selectedUser.email}</p>

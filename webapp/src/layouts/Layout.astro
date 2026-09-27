@@ -58,6 +58,9 @@ const googleClientId = cfRuntimeEnv.PUBLIC_GOOGLE_CLIENT_ID || import.meta.env.P
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
+    <!-- Google AdSense Verification & Auto Ads -->
+    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-7628736172233995"
+      crossorigin="anonymous"></script>
     <script is:inline define:vars={{ firebaseConfig, googleClientId }}>
       if (firebaseConfig && firebaseConfig.apiKey) {
         window.__FIREBASE_CONFIG__ = firebaseConfig;

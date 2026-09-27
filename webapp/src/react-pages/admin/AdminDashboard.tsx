@@ -12,6 +12,7 @@ import {
 } from "firebase/firestore"
 import { db } from "../../firebase"
 import type { AdminData, AdminRole } from "../../contexts/AuthContext"
+import { UserAvatar } from "../../components/common/UserAvatar"
 
 const STATUS_DOT: Record<string, string> = {
   online: "bg-zinc-100 dark:bg-white border border-zinc-400 dark:border-transparent shadow-sm",
@@ -248,13 +249,7 @@ export default function AdminDashboard() {
                     {onlineAdmins.map((a) => (
                       <div key={a.uid} className="flex items-center gap-3 px-5 py-3">
                         <div className="relative flex-shrink-0">
-                          {a.photoURL ? (
-                            <img src={a.photoURL} alt="" className="w-8 h-8 rounded-full" />
-                          ) : (
-                            <div className="w-8 h-8 rounded-full bg-zinc-900 dark:bg-zinc-200 flex items-center justify-center font-bold text-xs text-zinc-100 dark:text-zinc-800 border border-zinc-800 dark:border-zinc-300">
-                              {a.displayName?.charAt(0)}
-                            </div>
-                          )}
+                          <UserAvatar src={a.photoURL} name={a.displayName} className="w-8 h-8" />
                           <span className={`absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border-2 border-zinc-900 ${STATUS_DOT[a.status]}`}></span>
                         </div>
                         <div className="flex-1 min-w-0">
