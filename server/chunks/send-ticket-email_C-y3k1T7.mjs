@@ -1,5 +1,6 @@
 globalThis.process ??= {};
 globalThis.process.env ??= {};
+var define_process_env_default = {};
 const prerender = false;
 const POST = async ({ request }) => {
   try {
@@ -20,9 +21,9 @@ const POST = async ({ request }) => {
       });
     }
     console.log(`[API /send-ticket-email] Ticket alert received for ${ticketId} from ${userEmail}. Recipients:`, recipients);
-    const emailjsServiceId = process.env.VITE_EMAILJS_SERVICE_ID || process.env.PUBLIC_EMAILJS_SERVICE_ID || "";
-    const emailjsTemplateId = process.env.VITE_EMAILJS_TICKET_TEMPLATE_ID || process.env.VITE_EMAILJS_TEMPLATE_ID || "";
-    const emailjsPublicKey = process.env.VITE_EMAILJS_PUBLIC_KEY || process.env.PUBLIC_EMAILJS_PUBLIC_KEY || "";
+    const emailjsServiceId = define_process_env_default.VITE_EMAILJS_SERVICE_ID || define_process_env_default.PUBLIC_EMAILJS_SERVICE_ID || "";
+    const emailjsTemplateId = define_process_env_default.VITE_EMAILJS_TICKET_TEMPLATE_ID || define_process_env_default.VITE_EMAILJS_TEMPLATE_ID || "";
+    const emailjsPublicKey = define_process_env_default.VITE_EMAILJS_PUBLIC_KEY || define_process_env_default.PUBLIC_EMAILJS_PUBLIC_KEY || "";
     let serverDispatched = false;
     if (emailjsServiceId && emailjsTemplateId && emailjsPublicKey && Array.isArray(recipients)) {
       const emailResults = await Promise.allSettled(

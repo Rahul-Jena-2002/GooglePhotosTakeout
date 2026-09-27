@@ -1,5 +1,6 @@
 globalThis.process ??= {};
 globalThis.process.env ??= {};
+var define_process_env_default = {};
 const prerender = false;
 const RECAPTCHA_SITE_KEY = "6LdDpb4tAAAAADJHZzjrMIC-gvDXkAw0rhdgB5Sb";
 const PROJECT_ID = "takeout-fix";
@@ -12,7 +13,7 @@ const POST = async ({ request }) => {
         headers: { "Content-Type": "application/json" }
       });
     }
-    const apiKey = process.env.PUBLIC_FIREBASE_API_KEY || process.env.RECAPTCHA_API_KEY || "";
+    const apiKey = define_process_env_default.PUBLIC_FIREBASE_API_KEY || define_process_env_default.RECAPTCHA_API_KEY || "";
     if (!apiKey) {
       return new Response(JSON.stringify({ success: true, score: 0.9, mock: true }), {
         status: 200,

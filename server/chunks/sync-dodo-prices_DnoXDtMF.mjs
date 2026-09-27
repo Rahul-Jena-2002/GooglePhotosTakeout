@@ -323,6 +323,7 @@ async function syncSingleRegionPrices(dodoHost, dodoApiKey, envMode, payload) {
     updatedProductIds
   };
 }
+var define_process_env_default = {};
 const prerender = false;
 const OPTIONS = handleCorsOptions;
 const POST = async ({ request }) => {
@@ -341,7 +342,7 @@ const POST = async ({ request }) => {
     }
     const dodoTestModeVal = env.DODO_TEST_MODE || void 0;
     const testMode = payload.testMode !== void 0 ? Boolean(payload.testMode) : dodoTestModeVal === "true" || dodoTestModeVal === true;
-    const dodoApiKey = String(payload.dodoApiKey || payload.apiKey || (testMode ? env.DODO_TEST_API_KEY || void 0 || (typeof process !== "undefined" ? process.env.DODO_TEST_API_KEY : void 0) : env.DODO_API_KEY || void 0 || (typeof process !== "undefined" ? process.env.DODO_API_KEY : void 0)) || "").trim();
+    const dodoApiKey = String(payload.dodoApiKey || payload.apiKey || (testMode ? env.DODO_TEST_API_KEY || void 0 || (typeof process !== "undefined" ? define_process_env_default.DODO_TEST_API_KEY : void 0) : env.DODO_API_KEY || void 0 || (typeof process !== "undefined" ? define_process_env_default.DODO_API_KEY : void 0)) || "").trim();
     if (!dodoApiKey) {
       return jsonResponse(400, {
         error: `Dodo API key not provided (${testMode ? "DODO_TEST_API_KEY" : "DODO_API_KEY"}).`

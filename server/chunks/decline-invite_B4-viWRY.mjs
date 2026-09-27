@@ -2,6 +2,7 @@ globalThis.process ??= {};
 globalThis.process.env ??= {};
 import { env } from "cloudflare:workers";
 const __vite_import_meta_env__ = { "ASSETS_PREFIX": void 0, "BASE_URL": "/", "DEV": false, "MODE": "production", "PROD": true, "SITE": "https://takeoutfix.pages.dev", "SSR": true };
+var define_process_env_default = {};
 const prerender = false;
 function json(status, data) {
   return new Response(JSON.stringify(data), {
@@ -81,7 +82,7 @@ const POST = async ({ request, locals }) => {
       return json(400, { error: "inviteId is required." });
     }
     const runtimeEnv = locals?.runtime?.env;
-    const serviceAccountStr = env?.FIREBASE_SERVICE_ACCOUNT || runtimeEnv?.FIREBASE_SERVICE_ACCOUNT || Object.assign(__vite_import_meta_env__, { _: "/opt/hostedtoolcache/node/22.23.2/x64/bin/npm" })?.FIREBASE_SERVICE_ACCOUNT || process.env?.FIREBASE_SERVICE_ACCOUNT;
+    const serviceAccountStr = env?.FIREBASE_SERVICE_ACCOUNT || runtimeEnv?.FIREBASE_SERVICE_ACCOUNT || Object.assign(__vite_import_meta_env__, { _: "/opt/hostedtoolcache/node/22.23.2/x64/bin/npm" })?.FIREBASE_SERVICE_ACCOUNT || define_process_env_default?.FIREBASE_SERVICE_ACCOUNT;
     if (!serviceAccountStr) {
       return json(500, { error: "Server configuration error: missing service account credentials." });
     }

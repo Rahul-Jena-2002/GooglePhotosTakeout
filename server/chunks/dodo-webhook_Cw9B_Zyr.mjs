@@ -4007,9 +4007,10 @@ class Webhooks extends APIResource {
   }
 }
 Webhooks.Headers = Headers$1;
+var define_globalThis_process_env_default = {};
 const readEnv = (env2) => {
   if (typeof globalThis.process !== "undefined") {
-    return globalThis.process.env?.[env2]?.trim() || void 0;
+    return define_globalThis_process_env_default?.[env2]?.trim() || void 0;
   }
   if (typeof globalThis.Deno !== "undefined") {
     return globalThis.Deno.env?.get?.(env2)?.trim() || void 0;
