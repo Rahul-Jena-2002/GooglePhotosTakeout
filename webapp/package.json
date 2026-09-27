@@ -49,7 +49,7 @@
     "@types/react-dom": "^19.2.3",
     "@types/wicg-file-system-access": "^2023.10.7",
     "@vitejs/plugin-react": "^6.0.1",
-    "astro": "^6.4.6",
+    "astro": "^6.4.8",
     "autoprefixer": "^10.5.0",
     "eslint": "^10.3.0",
     "eslint-plugin-react-hooks": "^7.1.1",
@@ -66,17 +66,25 @@
     "wrangler": "^4.99.0"
   },
   "overrides": {
-    "vite": "^7.2.1"
+    "vite": "^7.2.1",
+    "uuid": "^11.1.1",
+    "sharp": "^0.35.4",
+    "esbuild": "^0.28.1",
+    "@opentelemetry/core": "^2.8.0"
   },
   "allowScripts": {
     "esbuild@0.27.7": true,
     "esbuild@0.28.1": true,
+    "esbuild@0.28.2": true,
     "workerd@1.20260617.1": true,
+    "workerd@1.20260915.1": true,
     "sharp@0.34.5": true,
     "@firebase/util@1.15.1": true,
     "@sentry/cli@2.58.6": true,
     "protobufjs@7.6.4": true,
+    "protobufjs@7.6.6": true,
     "re2@1.25.0": true,
+    "re2@1.26.1": true,
     "lucide-react@1.21.0": true
   }
 }
