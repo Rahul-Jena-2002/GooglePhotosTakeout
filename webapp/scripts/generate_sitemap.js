@@ -6,21 +6,28 @@ const today = new Date().toISOString().split('T')[0];
 
 // ─── High-Value Canonical & Editorial Pillar Pages (AdSense Compliant) ────────
 const indexablePages = [
-  { loc: "/",                              changefreq: "weekly",  priority: "1.0" },
-  { loc: "/restore-data",                  changefreq: "weekly",  priority: "0.9" },
-  { loc: "/pricing",                       changefreq: "monthly", priority: "0.8" },
-  { loc: "/download",                      changefreq: "monthly", priority: "0.8" },
-  { loc: "/reviews",                       changefreq: "weekly",  priority: "0.8" },
-  { loc: "/support",                       changefreq: "monthly", priority: "0.7" },
-  { loc: "/privacy",                       changefreq: "monthly", priority: "0.4" },
-  { loc: "/terms",                         changefreq: "monthly", priority: "0.4" },
-  { loc: "/refund",                        changefreq: "monthly", priority: "0.4" },
-  { loc: "/tool",                          changefreq: "monthly", priority: "0.9" },
+  { loc: "/",                                                      changefreq: "weekly",  priority: "1.0" },
+  { loc: "/about",                                                 changefreq: "monthly", priority: "0.8" },
+  { loc: "/contact",                                               changefreq: "monthly", priority: "0.8" },
+  { loc: "/disclaimer",                                            changefreq: "monthly", priority: "0.5" },
+  { loc: "/guides",                                                changefreq: "weekly",  priority: "0.9" },
+  { loc: "/guides/google-takeout-json-metadata-explained",         changefreq: "monthly", priority: "0.9" },
+  { loc: "/guides/how-to-save-takeout-photos-to-hard-drive-nas-cloud", changefreq: "monthly", priority: "0.9" },
+  { loc: "/guides/google-takeout-common-errors-fix",               changefreq: "monthly", priority: "0.9" },
+  { loc: "/restore-data",                                          changefreq: "weekly",  priority: "0.9" },
+  { loc: "/tool",                                                  changefreq: "monthly", priority: "0.9" },
+  { loc: "/pricing",                                               changefreq: "monthly", priority: "0.8" },
+  { loc: "/download",                                              changefreq: "monthly", priority: "0.8" },
+  { loc: "/reviews",                                               changefreq: "weekly",  priority: "0.8" },
+  { loc: "/support",                                               changefreq: "monthly", priority: "0.7" },
+  { loc: "/privacy",                                               changefreq: "monthly", priority: "0.4" },
+  { loc: "/terms",                                                 changefreq: "monthly", priority: "0.4" },
+  { loc: "/refund",                                                changefreq: "monthly", priority: "0.4" },
   // Distinct Technical Problem-Solving Pillar Guides
-  { loc: "/fix-google-takeout-dates",      changefreq: "monthly", priority: "0.8" },
-  { loc: "/restore-gps-google-takeout",    changefreq: "monthly", priority: "0.8" },
-  { loc: "/google-takeout-to-apple-photos", changefreq: "monthly", priority: "0.8" },
-  { loc: "/metadata-fixer",                changefreq: "monthly", priority: "0.8" },
+  { loc: "/fix-google-takeout-dates",                              changefreq: "monthly", priority: "0.8" },
+  { loc: "/restore-gps-google-takeout",                            changefreq: "monthly", priority: "0.8" },
+  { loc: "/google-takeout-to-apple-photos",                        changefreq: "monthly", priority: "0.8" },
+  { loc: "/metadata-fixer",                                        changefreq: "monthly", priority: "0.8" },
 ];
 
 let mainXml = `<?xml version="1.0" encoding="UTF-8"?>

@@ -111,6 +111,7 @@ export interface ResolvedMonetizationItem {
   // Ad-specific fields
   adType?: AdType;
   embedCode?: string;
+  fallbackItem?: ResolvedMonetizationItem;
 }
 
 export interface MonetizationResponse {

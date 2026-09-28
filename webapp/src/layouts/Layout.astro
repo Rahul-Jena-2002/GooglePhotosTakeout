@@ -58,9 +58,14 @@ const googleClientId = cfRuntimeEnv.PUBLIC_GOOGLE_CLIENT_ID || import.meta.env.P
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <!-- Google AdSense Verification & Auto Ads -->
-    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-7628736172233995"
-      crossorigin="anonymous"></script>
+    <!-- Google AdSense Verification & Auto Ads (Canonical Placement) -->
+    <meta name="google-adsense-account" content="ca-pub-7628736172233995" />
+    <script
+      is:inline
+      async
+      src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-7628736172233995"
+      crossorigin="anonymous"
+    ></script>
     <script is:inline define:vars={{ firebaseConfig, googleClientId }}>
       if (firebaseConfig && firebaseConfig.apiKey) {
         window.__FIREBASE_CONFIG__ = firebaseConfig;
@@ -187,35 +192,13 @@ const googleClientId = cfRuntimeEnv.PUBLIC_GOOGLE_CLIENT_ID || import.meta.env.P
       })();
     </script>
 
-    <!-- Production Anti-Inspection & DevTools Protection -->
+    <!-- Production Console Cleanliness (Preserves browser accessibility and inspectability for compliance) -->
     <script is:inline>
       (() => {
         try {
           const isDev = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
           if (!isDev) {
-            // 1. Disable shortcut keys used to inspect source
-            window.addEventListener('keydown', (e) => {
-              // F12
-              if (e.keyCode === 123) { e.preventDefault(); return false; }
-              // Ctrl+Shift+I, Ctrl+Shift+J, Ctrl+Shift+C
-              if (e.ctrlKey && e.shiftKey && (e.keyCode === 73 || e.keyCode === 74 || e.keyCode === 67)) {
-                e.preventDefault(); return false;
-              }
-              // Ctrl+U (View Source)
-              if (e.ctrlKey && e.keyCode === 85) {
-                e.preventDefault(); return false;
-              }
-            });
-
-            // 2. Disable context menu (Inspect Element) except on inputs
-            window.addEventListener('contextmenu', (e) => {
-              const target = e.target;
-              if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA')) return;
-              e.preventDefault();
-              return false;
-            });
-
-            // 3. Suppress console logging in production to hide internal URLs and parameters
+            // Suppress verbose console logging in production
             if (typeof console !== 'undefined') {
               console.log = () => {};
               console.debug = () => {};
@@ -267,19 +250,6 @@ const googleClientId = cfRuntimeEnv.PUBLIC_GOOGLE_CLIENT_ID || import.meta.env.P
       });
     </script>
 
-    
-    <!-- Google AdSense Account Verification & Auto Ads (Production Only, not on auth pages) -->
-    {!isAuthPage && (
-      <>
-        <meta name="google-adsense-account" content="ca-pub-7628736172233995" />
-        <script
-          is:inline
-          async
-          src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-7628736172233995"
-          crossorigin="anonymous"
-        ></script>
-      </>
-    )}
 
     <!-- Google Cloud reCAPTCHA Enterprise (Loaded on-demand or deferred for Auth protection) -->
     <script is:inline>
@@ -523,21 +493,19 @@ const googleClientId = cfRuntimeEnv.PUBLIC_GOOGLE_CLIENT_ID || import.meta.env.P
             <!-- Desktop Links -->
             <div id="desktop-marketing-links" class="hidden lg:flex gap-4 text-sm font-medium ml-4 font-sans items-center">
               <a href="/" class={`nav-link px-3 py-1.5 transition-colors duration-150 ${isActive('/') ? 'active text-[#8170CC] font-bold' : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white'}`} data-astro-prefetch="hover">Home</a>
-              <a id="desktop-tool-link" href="/tool" class={`nav-link px-3 py-1.5 transition-colors duration-150 ${isActive('/tool') ? 'active text-[#8170CC] font-bold' : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white'}`} data-astro-reload>Restore Tool</a>
-              <a href="/restore-data" class={`nav-link px-3 py-1.5 transition-colors duration-150 ${isActive('/restore-data') ? 'active text-[#8170CC] font-bold' : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white'}`} data-astro-prefetch="hover">Restore Guide</a>
+              <a href="/restore-data" class={`nav-link px-3 py-1.5 transition-colors duration-150 ${isActive('/restore-data') ? 'active text-[#8170CC] font-bold' : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white'}`} data-astro-prefetch="hover">Guides</a>
               <a href="/download" class={`nav-link px-3 py-1.5 transition-colors duration-150 ${isActive('/download') ? 'active text-[#8170CC] font-bold' : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white'}`} data-astro-prefetch="hover">Download App</a>
-
               <a href="/support" class={`nav-link px-3 py-1.5 transition-colors duration-150 ${isActive('/support') ? 'active text-[#8170CC] font-bold' : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white'}`} data-astro-prefetch="hover">Support & FAQ</a>
             </div>
           </div>
           
-          <div class="flex items-center gap-2.5 md:gap-4">
+          <div class="flex items-center gap-2.5 md:gap-3.5">
             <!-- Sponsor on GitHub (Funding Button) -->
             <a 
               href="https://github.com/sponsors/Rahul-Jena-2002" 
               target="_blank" 
               rel="noopener noreferrer"
-              class="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold bg-pink-500/10 hover:bg-pink-500/20 text-[#bf3989] dark:text-pink-400 border border-pink-500/30 transition-all hover:scale-105 cursor-pointer shadow-xs whitespace-nowrap"
+              class="hidden md:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold bg-pink-500/10 hover:bg-pink-500/20 text-[#bf3989] dark:text-pink-400 border border-pink-500/30 transition-all hover:scale-105 cursor-pointer shadow-xs whitespace-nowrap"
               title="Support TakeoutFix on GitHub Sponsors"
             >
               <svg aria-hidden="true" height="14" width="14" viewBox="0 0 16 16" class="fill-current flex-shrink-0">
@@ -593,6 +561,19 @@ const googleClientId = cfRuntimeEnv.PUBLIC_GOOGLE_CLIENT_ID || import.meta.env.P
                 </div>
               </div>
             </div>
+
+            <!-- Restore Tool Action Button (Left to Sign In / Sign Up) -->
+            <a 
+              id="desktop-tool-link" 
+              href="/tool" 
+              class={`hidden sm:inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-bold transition-all shadow-sm ${isActive('/tool') ? 'bg-indigo-600 text-white ring-2 ring-indigo-400/40 shadow-indigo-500/20' : 'bg-indigo-600/90 hover:bg-indigo-500 text-white hover:scale-[1.02]'} cursor-pointer whitespace-nowrap`}
+              data-astro-reload
+            >
+              <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+              </svg>
+              <span>Restore Tool</span>
+            </a>
 
             <!-- Auth Trigger Button / Dropdown -->
             <div id="auth-section" class="relative flex flex-col items-end">
@@ -666,7 +647,7 @@ const googleClientId = cfRuntimeEnv.PUBLIC_GOOGLE_CLIENT_ID || import.meta.env.P
               <span>Restore Tool</span>
               <span class="text-[10px] uppercase font-mono px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 font-bold">Free Trial</span>
             </a>
-            <a href="/restore-data" class={`mobile-nav-link py-2 px-3 rounded-lg text-sm font-medium transition-all ${isActive('/restore-data') ? 'active text-[#8170CC] font-bold bg-[#8170CC]/10 dark:bg-[#8170CC]/15' : 'text-zinc-700 dark:text-white/70 hover:text-zinc-900 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-white/5'}`} data-astro-prefetch="tap">Restore Guide</a>
+            <a href="/restore-data" class={`mobile-nav-link py-2 px-3 rounded-lg text-sm font-medium transition-all ${isActive('/restore-data') ? 'active text-[#8170CC] font-bold bg-[#8170CC]/10 dark:bg-[#8170CC]/15' : 'text-zinc-700 dark:text-white/70 hover:text-zinc-900 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-white/5'}`} data-astro-prefetch="tap">Guides</a>
             <a href="/download" class={`mobile-nav-link py-2 px-3 rounded-lg text-sm font-medium transition-all ${isActive('/download') ? 'active text-[#8170CC] font-bold bg-[#8170CC]/10 dark:bg-[#8170CC]/15' : 'text-zinc-700 dark:text-white/70 hover:text-zinc-900 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-white/5'}`} data-astro-prefetch="tap">Download Desktop App</a>
 
             <a href="/support" class={`mobile-nav-link py-2 px-3 rounded-lg text-sm font-medium transition-all ${isActive('/support') ? 'active text-[#8170CC] font-bold bg-[#8170CC]/10 dark:bg-[#8170CC]/15' : 'text-zinc-700 dark:text-white/70 hover:text-zinc-900 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-white/5'}`} data-astro-prefetch="tap">Support & FAQ</a>
@@ -798,38 +779,26 @@ const googleClientId = cfRuntimeEnv.PUBLIC_GOOGLE_CLIENT_ID || import.meta.env.P
 
               <!-- Column 3: Resources & Guides -->
               <div>
-                <h3 class="text-xs font-bold text-white uppercase tracking-widest mb-4">Resources</h3>
+                <h3 class="text-xs font-bold text-white uppercase tracking-widest mb-4">Resources & Guides</h3>
                 <ul class="space-y-3 text-xs">
-                  <li><a href="/restore-data" class="text-zinc-400 hover:text-white transition-colors">How to Use</a></li>
-                  <li><a href="/restore-data#tech-deep-dive" class="text-zinc-400 hover:text-white transition-colors">JSON Sidecars Explained</a></li>
-                  <li><a href="/restore-data#dates-guide" class="text-zinc-400 hover:text-white transition-colors">Wrong Dates Guide</a></li>
-                  <li><a href="/dashboard" class="text-zinc-400 hover:text-white transition-colors">Account Dashboard</a></li>
+                  <li><a href="/restore-data" class="text-indigo-400 hover:text-indigo-300 font-medium transition-colors">Complete Restoration Guide</a></li>
+                  <li><a href="/fix-google-takeout-dates" class="text-zinc-400 hover:text-white transition-colors">Fix Wrong Photo Dates</a></li>
+                  <li><a href="/google-photos-metadata-fix" class="text-zinc-400 hover:text-white transition-colors">Metadata & GPS Restoration</a></li>
+                  <li><a href="/google-takeout-merger" class="text-zinc-400 hover:text-white transition-colors">Merge JSON Sidecars</a></li>
+                  <li><a href="/restore-data#tech-specs" class="text-zinc-400 hover:text-white transition-colors">Technical Architecture</a></li>
                 </ul>
               </div>
 
               <!-- Column 4: Company & Support -->
               <div>
-                <h3 class="text-xs font-bold text-white uppercase tracking-widest mb-4">Support & Legal</h3>
+                <h3 class="text-xs font-bold text-white uppercase tracking-widest mb-4">Company & Support</h3>
                 <ul class="space-y-3 text-xs">
-                  <li><a href="/support" class="text-zinc-400 hover:text-white transition-colors">Contact / Help Desk</a></li>
-                  <li class="pt-1">
-                    <a 
-                      href="https://github.com/sponsors/Rahul-Jena-2002" 
-                      target="_blank" 
-                      rel="noopener noreferrer" 
-                      class="flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl bg-pink-500/10 hover:bg-pink-500/20 border border-pink-500/30 text-[#bf3989] dark:text-pink-400 font-bold transition-all shadow-sm group hover:border-pink-500/50"
-                    >
-                      <svg aria-hidden="true" height="18" width="18" viewBox="0 0 16 16" class="fill-current flex-shrink-0 group-hover:scale-125 transition-transform">
-                        <path d="m8 14.25.345.666a.75.75 0 0 1-.69 0l-.008-.004-.018-.01a7.152 7.152 0 0 1-.31-.17 22.055 22.055 0 0 1-3.434-2.414C2.045 10.731 0 8.35 0 5.5 0 2.836 2.086 1 4.75 1 6.275 1 7.57 1.83 8 3.088 8.43 1.83 9.725 1 11.25 1 13.914 1 16 2.836 16 5.5c0 2.85-2.045 5.231-3.885 6.818a22.066 22.066 0 0 1-3.434 2.414 7.27 7.27 0 0 1-.31.17l-.018.01-.008.004-.002.001Z"></path>
-                      </svg>
-                      <div class="text-left">
-                        <div class="text-xs font-bold leading-tight">Sponsor on GitHub</div>
-                        <div class="text-[10px] text-zinc-500 dark:text-zinc-400 font-normal">Support free offline tools</div>
-                      </div>
-                    </a>
-                  </li>
+                  <li><a href="/about" class="text-zinc-400 hover:text-white transition-colors">About Us</a></li>
+                  <li><a href="/contact" class="text-zinc-400 hover:text-white transition-colors">Contact Support</a></li>
+                  <li><a href="/disclaimer" class="text-zinc-400 hover:text-white transition-colors">Disclaimer</a></li>
                   <li><a href="/privacy" class="text-zinc-400 hover:text-white transition-colors">Privacy Policy</a></li>
                   <li><a href="/terms" class="text-zinc-400 hover:text-white transition-colors">Terms of Service</a></li>
+                  <li><a href="/refund" class="text-zinc-400 hover:text-white transition-colors">Refund Policy</a></li>
                   <li class="pt-1">
                     <span class="text-zinc-400 block text-[10px] uppercase tracking-wider font-bold">Direct Email Support</span>
                     <a href="mailto:takeoutfix.support@gmail.com" class="text-indigo-400 hover:text-indigo-300 transition-colors font-medium">takeoutfix.support@gmail.com</a>
@@ -852,9 +821,11 @@ const googleClientId = cfRuntimeEnv.PUBLIC_GOOGLE_CLIENT_ID || import.meta.env.P
               <div class="flex flex-col md:flex-row items-center justify-between gap-4 w-full" style="width: 100%;">
                 <div>
                   &copy; {new Date().getFullYear()} TakeoutFix. All rights reserved. &middot;
-                  <a href="/privacy" class="hover:text-zinc-900 dark:hover:text-zinc-200 transition-colors ml-1">Privacy Policy</a> &middot;
-                  <a href="/terms" class="hover:text-zinc-900 dark:hover:text-zinc-200 transition-colors ml-1">Terms of Service</a> &middot;
-                  <a href="mailto:takeoutfix.support@gmail.com" class="hover:text-zinc-900 dark:hover:text-zinc-200 transition-colors ml-1">Contact Support</a>
+                  <a href="/about" class="hover:text-zinc-900 dark:hover:text-zinc-200 transition-colors ml-1">About</a> &middot;
+                  <a href="/contact" class="hover:text-zinc-900 dark:hover:text-zinc-200 transition-colors ml-1">Contact</a> &middot;
+                  <a href="/disclaimer" class="hover:text-zinc-900 dark:hover:text-zinc-200 transition-colors ml-1">Disclaimer</a> &middot;
+                  <a href="/privacy" class="hover:text-zinc-900 dark:hover:text-zinc-200 transition-colors ml-1">Privacy</a> &middot;
+                  <a href="/terms" class="hover:text-zinc-900 dark:hover:text-zinc-200 transition-colors ml-1">Terms</a>
                 </div>
                 <div class="flex items-center gap-3">
                   <span>Version 1.0.6</span>
@@ -1129,8 +1100,20 @@ const googleClientId = cfRuntimeEnv.PUBLIC_GOOGLE_CLIENT_ID || import.meta.env.P
             }).catch(() => {});
           }
         } else {
+          // Purge stale service worker caches (v5 and below) from client browsers
+          if ("caches" in window) {
+            caches.keys().then((keys) => {
+              for (const key of keys) {
+                if (key.includes('v5') || key.includes('v4') || key.includes('v3') || key.includes('v2') || key.includes('v1')) {
+                  caches.delete(key);
+                }
+              }
+            }).catch(() => {});
+          }
           window.addEventListener("load", () => {
-            navigator.serviceWorker.register("/sw.js").catch(() => {});
+            navigator.serviceWorker.register("/sw.js").then((reg) => {
+              reg.update().catch(() => {});
+            }).catch(() => {});
           });
         }
       }

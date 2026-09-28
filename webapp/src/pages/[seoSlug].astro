@@ -7,24 +7,13 @@ import Icon from "../components/ui/Icon.astro";
 import { CURATED_SEO_PAGES } from "../config/seoPages";
 
 export function getStaticPaths() {
-  const actionKeys = ["restore", "fix", "recover"];
-  const targetKeys = ["metadata", "exif", "gps", "date-taken", "timestamp"];
-  const sourceKeys = ["takeout", "photos"];
   const paths = [];
 
-  // Register curated high-intent SEO pages
+  // Register exclusively curated, high-intent SEO pages with substantial unique value
   for (const slug of Object.keys(CURATED_SEO_PAGES)) {
     paths.push({ params: { seoSlug: slug } });
   }
 
-  // Register generic combination paths
-  for (const action of actionKeys) {
-    for (const target of targetKeys) {
-      for (const source of sourceKeys) {
-        paths.push({ params: { seoSlug: `how-to-${action}-${target}-from-${source}` } });
-      }
-    }
-  }
   return paths;
 }
 
@@ -33,112 +22,24 @@ const slug = (seoSlug || "").toLowerCase();
 
 const curated = CURATED_SEO_PAGES[slug];
 
-let pageTitle = "";
-let pageDescription = "";
-let badgeText = "";
-let badgeColor = "text-indigo-400";
-let headlineGrad = "";
-let headlineRest = "";
-let introText = "";
-let ctaButtonText = "Restore My Data";
-let ctaButtonLink = "/tool";
-let robotsDirective = "noindex, follow";
-
-let matchedAction = "Restore";
-let matchedTarget = "EXIF Metadata";
-let matchedSource = "Google Takeout";
-
-if (curated) {
-  pageTitle = curated.title;
-  pageDescription = curated.description;
-  badgeText = curated.badge;
-  badgeColor = curated.badgeColor;
-  headlineGrad = curated.headlineGradient;
-  headlineRest = curated.headlineText;
-  introText = curated.intro;
-  ctaButtonText = curated.ctaText;
-  ctaButtonLink = curated.ctaLink;
-  robotsDirective = "index, follow"; // Curated pages are indexed for SEO
-} else {
-  const actionMap: Record<string, string> = {
-    "restore": "Restore",
-    "recover": "Recover",
-    "fix": "Fix",
-    "repair": "Repair",
-    "merge": "Merge",
-    "sync": "Sync",
-    "rebuild": "Rebuild",
-    "reconstruct": "Reconstruct",
-    "retrieve": "Retrieve",
-    "preserve": "Preserve",
-    "extract": "Extract",
-    "convert": "Convert",
-    "transfer": "Transfer"
-  };
-
-  const targetMap: Record<string, string> = {
-    "metadata": "EXIF Metadata",
-    "meta-data": "EXIF Meta Data",
-    "exif": "EXIF Header Tags",
-    "gps": "GPS Coordinates",
-    "location": "GPS Locations",
-    "timestamp": "Original Timestamps",
-    "date-taken": "Date Taken Tags",
-    "creation-date": "Creation Dates",
-    "albums": "Photo Albums",
-    "people-tags": "People Tags",
-    "camera-data": "Camera and Lens Data",
-    "photo-information": "Photo Metadata",
-    "video-information": "Video Metadata"
-  };
-
-  const sourceMap: Record<string, string> = {
-    "takeout": "Google Takeout",
-    "photos": "Google Photos",
-    "export": "Google Photos Export"
-  };
-
-  let isValidSeo = false;
-
-  for (const [key, val] of Object.entries(actionMap)) {
-    if (slug.includes(key)) {
-      matchedAction = val;
-      isValidSeo = true;
-      break;
-    }
-  }
-
-  for (const [key, val] of Object.entries(targetMap)) {
-    if (slug.includes(key)) {
-      matchedTarget = val;
-      isValidSeo = true;
-      break;
-    }
-  }
-
-  for (const [key, val] of Object.entries(sourceMap)) {
-    if (slug.includes(key)) {
-      matchedSource = val;
-      isValidSeo = true;
-      break;
-    }
-  }
-
-  if (slug.startsWith("google-") || slug.includes("takeout") || slug.includes("metadata") || slug.includes("exif")) {
-    isValidSeo = true;
-  }
-
-  if (!isValidSeo) {
-    return Astro.redirect("/", 302);
-  }
-
-  pageTitle = `How to ${matchedAction} ${matchedTarget} from ${matchedSource} | TakeoutFix`;
-  pageDescription = `Learn how to ${matchedAction.toLowerCase()} your ${matchedTarget.toLowerCase()} from your ${matchedSource} export. Restore photo dates, GPS locations, timestamps, and EXIF information locally.`;
-  badgeText = "100% Local Browser Engine · Privacy Guaranteed";
-  headlineGrad = `${matchedAction} ${matchedTarget}`;
-  headlineRest = ` from ${matchedSource}`;
-  introText = `Did your ${matchedSource} export separate your photos from their metadata? TakeoutFix restores missing EXIF dates, GPS coordinates, timestamps, and other metadata from your archives. Everything runs locally in your browser—your files never leave your device.`;
+if (!curated) {
+  return Astro.redirect("/restore-data", 301);
 }
+
+const pageTitle = curated.title;
+const pageDescription = curated.description;
+const badgeText = curated.badge;
+const badgeColor = curated.badgeColor;
+const headlineGrad = curated.headlineGradient;
+const headlineRest = curated.headlineText;
+const introText = curated.intro;
+const ctaButtonText = curated.ctaText;
+const ctaButtonLink = curated.ctaLink;
+const robotsDirective = "index, follow"; // Curated pages are indexed for SEO
+
+const matchedAction = "Restore";
+const matchedTarget = "EXIF Metadata";
+const matchedSource = "Google Takeout";
 ---
 
 <Layout title={pageTitle} description={pageDescription} robots={robotsDirective}>
@@ -343,30 +244,37 @@ if (curated) {
 
     </div>
 
-    <!-- Related Guides -->
+    <!-- Related Guides & Knowledge Base -->
     <div class="max-w-4xl mx-auto mb-20 relative z-10">
       <div class="bg-zinc-950/40 border border-white/5 backdrop-blur-md rounded-2xl p-8">
-        <h2 class="text-xl font-bold text-white mb-6">Related Guides</h2>
+        <div class="flex items-center justify-between mb-6">
+          <h2 class="text-xl font-bold text-white">Authoritative Guides & Deep Dives</h2>
+          <a href="/guides" class="text-xs font-semibold text-indigo-400 hover:text-indigo-300">View All Guides &rarr;</a>
+        </div>
         <div class="grid sm:grid-cols-2 md:grid-cols-3 gap-4">
-          <a href="/restore-data" class="block p-4 bg-zinc-900/50 rounded-lg border border-zinc-800 hover:border-pink-500/30 transition-colors">
-            <div class="text-sm font-semibold text-zinc-200 mb-1">Restore Data Guide</div>
-            <div class="text-xs text-zinc-500">Complete walkthrough for restoring all metadata</div>
+          <a href="/guides/google-takeout-json-metadata-explained" class="block p-4 bg-zinc-900/50 rounded-lg border border-zinc-800 hover:border-indigo-500/40 transition-colors">
+            <div class="text-sm font-semibold text-zinc-200 mb-1">JSON Sidecars Explained</div>
+            <div class="text-xs text-zinc-400">Deep technical breakdown of Google Takeout JSON files</div>
           </a>
-          <a href="/takeout-fix" class="block p-4 bg-zinc-900/50 rounded-lg border border-zinc-800 hover:border-pink-500/30 transition-colors">
-            <div class="text-sm font-semibold text-zinc-200 mb-1">Takeout Fix</div>
-            <div class="text-xs text-zinc-500">Fix your Google Takeout photos & restore metadata</div>
+          <a href="/guides/how-to-save-takeout-photos-to-hard-drive-nas-cloud" class="block p-4 bg-zinc-900/50 rounded-lg border border-zinc-800 hover:border-emerald-500/40 transition-colors">
+            <div class="text-sm font-semibold text-zinc-200 mb-1">Save to USB, NAS & Cloud</div>
+            <div class="text-xs text-zinc-400">Store on USB drives, home NAS, or any cloud provider</div>
           </a>
-          <a href="/fix-google-takeout-dates" class="block p-4 bg-zinc-900/50 rounded-lg border border-zinc-800 hover:border-pink-500/30 transition-colors">
-            <div class="text-sm font-semibold text-zinc-200 mb-1">Fix Takeout Dates</div>
-            <div class="text-xs text-zinc-500">Restore original timestamps to photos</div>
+          <a href="/guides/google-takeout-common-errors-fix" class="block p-4 bg-zinc-900/50 rounded-lg border border-zinc-800 hover:border-amber-500/40 transition-colors">
+            <div class="text-sm font-semibold text-zinc-200 mb-1">Troubleshooting Errors</div>
+            <div class="text-xs text-zinc-400">Fix truncated names, missing GPS, and timezone shifts</div>
           </a>
-          <a href="/restore-gps-google-takeout" class="block p-4 bg-zinc-900/50 rounded-lg border border-zinc-800 hover:border-pink-500/30 transition-colors">
-            <div class="text-sm font-semibold text-zinc-200 mb-1">Restore GPS Data</div>
-            <div class="text-xs text-zinc-500">Recover GPS coordinates from Google Takeout</div>
+          <a href="/restore-data" class="block p-4 bg-zinc-900/50 rounded-lg border border-zinc-800 hover:border-purple-500/40 transition-colors">
+            <div class="text-sm font-semibold text-zinc-200 mb-1">Full Technical Specs</div>
+            <div class="text-xs text-zinc-400">EXIF 2.32, TIFF, and WebAssembly architecture</div>
           </a>
-          <a href="/google-takeout-to-apple-photos" class="block p-4 bg-zinc-900/50 rounded-lg border border-zinc-800 hover:border-pink-500/30 transition-colors">
-            <div class="text-sm font-semibold text-zinc-200 mb-1">Takeout → Apple Photos</div>
-            <div class="text-xs text-zinc-500">Migrate Google Takeout to Apple Photos</div>
+          <a href="/about" class="block p-4 bg-zinc-900/50 rounded-lg border border-zinc-800 hover:border-pink-500/40 transition-colors">
+            <div class="text-sm font-semibold text-zinc-200 mb-1">About TakeoutFix</div>
+            <div class="text-xs text-zinc-400">Our team, mission, and local-first principles</div>
+          </a>
+          <a href="/contact" class="block p-4 bg-zinc-900/50 rounded-lg border border-zinc-800 hover:border-emerald-500/40 transition-colors">
+            <div class="text-sm font-semibold text-zinc-200 mb-1">Support & Help Desk</div>
+            <div class="text-xs text-zinc-400">Contact the developer & engineering team directly</div>
           </a>
         </div>
       </div>

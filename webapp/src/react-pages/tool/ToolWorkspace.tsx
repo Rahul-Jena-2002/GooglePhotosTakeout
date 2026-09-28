@@ -147,7 +147,7 @@ export function ToolWorkspaceContent() {
   // ── Main workspace layout ─────────────────────────────────────────────────
   return (
     <AdBlockGate>
-      <div className="w-full lg:h-[calc(100vh-64px)] h-auto flex flex-col lg:flex-row bg-[#0A0A0A] lg:overflow-hidden overflow-y-auto">
+      <div className="w-full min-h-[calc(100vh-64px)] h-auto flex flex-col lg:flex-row bg-[#0A0A0A]">
 
         {/* Main content: 4 tool tabs */}
         <RestorePanel

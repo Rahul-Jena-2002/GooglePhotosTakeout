@@ -1,0 +1,95 @@
+---
+export const prerender = true;
+import Layout from "../layouts/Layout.astro";
+import Icon from "../components/ui/Icon.astro";
+---
+
+<Layout 
+  title="Legal Disclaimer & Trademark Disclosures – TakeoutFix" 
+  description="Read the official TakeoutFix legal disclaimers, trademark notices, and limitations regarding Google LLC, Apple Inc., and local file handling."
+>
+  <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-16 mt-12 font-sans">
+    
+    <div class="text-center mb-16">
+      <div class="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-amber-500/10 border border-amber-500/20 text-amber-400 text-xs font-semibold uppercase tracking-wider mb-6 font-mono">
+        <Icon name="alert-triangle" class="w-4 h-4" />
+        Legal Notices & Disclosures
+      </div>
+      <h1 class="text-4xl md:text-5xl font-extrabold tracking-tight text-white mb-4">
+        Disclaimer & Disclosures
+      </h1>
+      <p class="text-base text-zinc-400">Last updated: September 28, 2026</p>
+    </div>
+
+    <div class="space-y-10 text-zinc-300 leading-relaxed text-sm font-normal">
+      
+      <!-- Primary Non-Affiliation Box -->
+      <section class="bg-amber-500/5 border border-amber-500/20 rounded-2xl p-6 sm:p-8 relative overflow-hidden">
+        <div class="absolute top-0 left-0 w-1.5 h-full bg-amber-500"></div>
+        <h2 class="text-xl font-bold text-white mb-3 flex items-center gap-2">
+          <Icon name="shield-alert" class="w-5 h-5 text-amber-400" />
+          Independent Software Notice & Non-Affiliation
+        </h2>
+        <p class="text-zinc-300 leading-relaxed mb-3">
+          <strong>TakeoutFix is an independent utility software project.</strong> TakeoutFix is not affiliated with, sponsored by, endorsed by, authorized by, or in any way officially connected with <strong>Google LLC</strong>, <strong>Alphabet Inc.</strong>, <strong>Apple Inc.</strong>, or any of their subsidiaries or affiliates.
+        </p>
+        <p class="text-zinc-300 leading-relaxed">
+          The names <em>Google Takeout™</em>, <em>Google Photos™</em>, <em>Google Drive™</em>, and <em>Android™</em> are registered trademarks of Google LLC. The names <em>Apple Photos™</em>, <em>iCloud™</em>, <em>macOS™</em>, and <em>iOS™</em> are registered trademarks of Apple Inc. The use of these trademarks on this website is strictly nominative to describe file compatibility and export processes.
+        </p>
+      </section>
+
+      <!-- As-Is Warranty -->
+      <section class="space-y-4">
+        <h2 class="text-xl font-bold text-white">1. "As-Is" Software Provision</h2>
+        <p>
+          TakeoutFix is provided on an "as is" and "as available" basis without warranties of any kind, whether express or implied, including, but not limited to, implied warranties of merchantability, fitness for a particular purpose, or non-infringement.
+        </p>
+        <p>
+          While our matching algorithms and EXIF writers are comprehensively tested against millions of photo combinations, we do not warrant that the software will be uninterrupted, error-free, or compatible with every possible hardware and corrupted archive configuration.
+        </p>
+      </section>
+
+      <!-- Data Backup Recommendation -->
+      <section class="space-y-4">
+        <h2 class="text-xl font-bold text-white">2. Data Safety & Backup Responsibility</h2>
+        <p>
+          Users are strongly encouraged to maintain an unaltered backup copy of their original Google Takeout ZIP archives or exported directory before initiating any metadata write operations. 
+        </p>
+        <p>
+          TakeoutFix processes files locally on your machine and writes metadata tags into headers. Although our operations are non-destructive and preserve raw image pixel arrays, the user bears ultimate responsibility for ensuring adequate backup redundancies for their personal data.
+        </p>
+      </section>
+
+      <!-- Informational Content Disclaimer -->
+      <section class="space-y-4">
+        <h2 class="text-xl font-bold text-white">3. Informational & Educational Content</h2>
+        <p>
+          All tutorials, guides, articles, and troubleshooting steps published on TakeoutFix are provided for informational and educational purposes. While we strive to ensure technical accuracy regarding EXIF specifications, QuickTime atom structures, and platform behaviors, digital storage platforms and operating systems frequently update their software behaviors.
+        </p>
+      </section>
+
+      <!-- Limitation of Liability -->
+      <section class="space-y-4">
+        <h2 class="text-xl font-bold text-white">4. Limitation of Liability</h2>
+        <p>
+          To the maximum extent permitted by applicable law, in no event shall TakeoutFix, its creator (Rahul Jena), contributors, or affiliates be liable for any direct, indirect, incidental, special, consequential, or punitive damages, including loss of data, photos, profits, or goodwill arising out of or in connection with the use or inability to use this utility.
+        </p>
+      </section>
+
+      <!-- Contact Link -->
+      <section class="pt-6 border-t border-white/10 flex flex-col sm:flex-row items-center justify-between gap-4">
+        <div>
+          <h3 class="text-white font-semibold">Have questions regarding this disclaimer?</h3>
+          <p class="text-xs text-zinc-400">Reach out to our support team directly.</p>
+        </div>
+        <a 
+          href="/contact" 
+          class="px-5 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-white font-semibold text-xs transition-colors"
+        >
+          Contact Legal / Support Desk &rarr;
+        </a>
+      </section>
+
+    </div>
+  </div>
+</Layout>

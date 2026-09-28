@@ -4,7 +4,6 @@ import Layout from "../layouts/Layout.astro";
 import AdUnit from "../components/monetization/AdUnit";
 import { PLAN_PRICES } from "../lib/planPrices";
 import Compare from "../components/ui/Compare";
-import ExpandableFaq from "../components/ui/ExpandableFaq";
 
 // Fallback pricing tier region default
 const region = "us";
@@ -317,15 +316,7 @@ const prices = PLAN_PRICES[region] || PLAN_PRICES.us;
       </div>
     </section>
 
-    <section class="w-full max-w-5xl mx-auto px-4 py-36 relative z-10">
-      <h2 class="text-4xl font-bold tracking-tighter mb-12 text-center">Frequently Asked Questions</h2>
-      <ExpandableFaq client:idle />
-      <div class="mt-12 text-center">
-        <a href="/support" class="inline-flex items-center justify-center min-h-[48px] px-6 py-2.5 text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 font-semibold text-sm transition-colors cursor-pointer" aria-label="View all frequently asked questions on support page">
-          View all frequently asked questions &rarr;
-        </a>
-      </div>
-    </section>
+
 
   </div>
 </Layout>
