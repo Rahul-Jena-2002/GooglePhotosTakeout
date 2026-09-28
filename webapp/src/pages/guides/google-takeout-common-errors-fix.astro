@@ -1,0 +1,235 @@
+---
+export const prerender = true;
+import Layout from "../../layouts/Layout.astro";
+import Icon from "../../components/ui/Icon.astro";
+import AdUnit from "../../components/monetization/AdUnit";
+
+const troubleshootingFaqSchema = {
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  "mainEntity": [
+    {
+      "@type": "Question",
+      "name": "Why does Google Takeout truncate long photo filenames?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Google Takeout enforces a 47-character (or 51-character including extension) limit when writing ZIP entries. This causes names like '2023-Summer-Vacation-Roadtrip-Grand-Canyon.jpg' to become truncated, breaking exact string matching with the JSON sidecar."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Why is GPS location data missing from photos in shared albums?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "By default, Google Photos strips precise GPS coordinates from shared albums to protect user privacy. Photos exported from personal timeline albums retain GPS, whereas shared album exports may have 0.0, 0.0 coordinates in the JSON."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Why are my photo timestamps off by several hours after restoration?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Google Takeout records photoTakenTime in UTC (Coordinated Universal Time). If an image editor or script fails to account for your local timezone offset, photos will appear shifted by your UTC offset (e.g. -5 hours for EST or +8 hours for SGT)."
+      }
+    }
+  ]
+};
+
+const articleSchema = {
+  "@context": "https://schema.org",
+  "@type": "TechArticle",
+  "headline": "Troubleshooting Common Google Takeout Errors & Metadata Failures",
+  "description": "Comprehensive troubleshooting manual for resolving truncated filenames, duplicate JSON sidecars, missing GPS tags, and timezone offsets in Google Takeout exports.",
+  "author": {
+    "@type": "Person",
+    "name": "Rahul Jena",
+    "jobTitle": "Lead Systems Engineer",
+    "url": "https://github.com/Rahul-Jena-2002"
+  },
+  "publisher": {
+    "@type": "Organization",
+    "name": "TakeoutFix",
+    "url": "https://takeoutfix.pages.dev"
+  },
+  "datePublished": "2026-09-20",
+  "dateModified": "2026-09-28"
+};
+---
+
+<Layout 
+  title="Troubleshooting Google Takeout Errors & Metadata Glitches | TakeoutFix" 
+  description="Fix truncated filenames, missing GPS, timezone offsets, and mismatched JSON sidecars in your Google Takeout export with this practical troubleshooting guide."
+>
+  <script type="application/ld+json" set:html={JSON.stringify(troubleshootingFaqSchema)} />
+  <script type="application/ld+json" set:html={JSON.stringify(articleSchema)} />
+
+  <article class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-16 mt-12 font-sans text-zinc-300">
+    
+    <!-- Breadcrumb & Header -->
+    <div class="mb-8">
+      <nav class="flex items-center gap-2 text-xs text-zinc-500 font-mono mb-4">
+        <a href="/" class="hover:text-zinc-300 transition-colors">Home</a>
+        <span>/</span>
+        <a href="/guides" class="hover:text-zinc-300 transition-colors">Guides</a>
+        <span>/</span>
+        <span class="text-indigo-400">Troubleshooting Takeout Errors</span>
+      </nav>
+
+      <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-amber-500/10 border border-amber-500/20 text-amber-400 text-xs font-semibold uppercase tracking-wider mb-4 font-mono">
+        <Icon name="alert-triangle" class="w-3.5 h-3.5" />
+        Troubleshooting Manual
+      </div>
+
+      <h1 class="text-3xl sm:text-4xl md:text-5xl font-extrabold tracking-tight text-white mb-6 leading-tight">
+        Troubleshooting Common Google Takeout Errors &amp; Metadata Glitches
+      </h1>
+
+      <div class="flex flex-wrap items-center gap-4 text-xs text-zinc-400 font-mono pb-6 border-b border-white/10">
+        <span>By <strong>Rahul Jena</strong></span>
+        <span>&bull;</span>
+        <span>Published September 2026</span>
+        <span>&bull;</span>
+        <span>1,420 words &bull; 10 min read</span>
+      </div>
+    </div>
+
+    <!-- Executive Summary Box -->
+    <div class="bg-amber-950/20 border border-amber-500/30 rounded-2xl p-6 sm:p-8 mb-12">
+      <h2 class="text-lg font-bold text-white mb-2 flex items-center gap-2">
+        <Icon name="info" class="w-5 h-5 text-amber-400" />
+        Overview of Edge Cases
+      </h2>
+      <p class="text-sm leading-relaxed text-zinc-300">
+        Google Takeout is notorious among archivists for edge cases that break standard restoration scripts. These include 47-character truncated names, irregular parenthesis placement in duplicate files, timezone skew between UTC and camera local clocks, and missing GPS data in shared albums. This manual diagnoses each failure mode and provides battle-tested remediation steps.
+      </p>
+    </div>
+
+    <!-- Ad Unit: Article Top Placement -->
+    <div class="my-8">
+      <AdUnit client:only="react" placement="ARTICLE_TOP" />
+    </div>
+
+    <!-- Main Content -->
+    <div class="space-y-10 text-base leading-relaxed font-normal">
+      
+      <section>
+        <h2 class="text-2xl sm:text-3xl font-bold text-white mb-4">
+          Problem 1: The 47-Character Filename Truncation Bug
+        </h2>
+        <p class="mb-4">
+          One of the most perplexing anomalies in Google Takeout archives is truncated filenames. When Google's export packager creates ZIP archives, it caps file entry names at approximately 47 characters before the extension.
+        </p>
+        <div class="bg-zinc-950 border border-zinc-800 rounded-xl p-5 font-mono text-xs text-zinc-300 mb-6 space-y-2">
+          <div class="text-rose-400"># Original file name in Google Photos:</div>
+          <div>2024_08_15_Summer_Holiday_Family_Reunion_Barbecue_At_The_Lake.jpg</div>
+          <div class="text-amber-400 mt-2"># How Takeout names the image:</div>
+          <div>2024_08_15_Summer_Holiday_Family_Reunion_Ba.jpg</div>
+          <div class="text-indigo-400 mt-2"># How Takeout names the companion JSON sidecar:</div>
+          <div>2024_08_15_Summer_Holiday_Family_Reunion_Barbecue_At_The_Lake.jpg.json</div>
+        </div>
+        <p class="mb-4">
+          Because the image name is truncated while the JSON sidecar retains the full original title (or truncates at a different byte boundary), naive string matching algorithms fail completely.
+        </p>
+        <div class="bg-zinc-900/60 border border-white/5 rounded-xl p-4 text-sm text-zinc-300">
+          <strong class="text-white block mb-1">How to fix it:</strong>
+          TakeoutFix uses dynamic fuzzy prefix matching and directory index maps. If an exact 1:1 match is not found, it evaluates candidate sidecars sharing common prefixes and verifies timestamp correlation before applying metadata.
+        </div>
+      </section>
+
+      <section>
+        <h2 class="text-2xl sm:text-3xl font-bold text-white mb-4">
+          Problem 2: Parenthesis Placement in Duplicates and Copies
+        </h2>
+        <p class="mb-4">
+          When multiple photos share identical names, or when you export copies, Takeout appends numeric counters. However, the placement of the number in the JSON file is inconsistent:
+        </p>
+        <ul class="list-disc pl-6 space-y-2 mb-6 text-sm text-zinc-300">
+          <li>Media file: <code class="font-mono text-xs text-indigo-300">IMG_1024(1).jpg</code></li>
+          <li>Sidecar Pattern A: <code class="font-mono text-xs text-indigo-300">IMG_1024(1).jpg.json</code></li>
+          <li>Sidecar Pattern B: <code class="font-mono text-xs text-indigo-300">IMG_1024.jpg(1).json</code></li>
+          <li>Sidecar Pattern C: <code class="font-mono text-xs text-indigo-300">IMG_1024.json(1)</code></li>
+        </ul>
+        <p>
+          Standard batch scripts fail when encountering Pattern B and C. TakeoutFix normalizes suffix permutations automatically, stripping trailing numbers and inspecting candidate sidecars within the same subfolder.
+        </p>
+      </section>
+
+      <!-- Ad Unit: Article Middle Placement -->
+      <div class="my-8">
+        <AdUnit client:only="react" placement="ARTICLE_MIDDLE" />
+      </div>
+
+      <section>
+        <h2 class="text-2xl sm:text-3xl font-bold text-white mb-4">
+          Problem 3: Missing GPS Data in Shared Album Exports
+        </h2>
+        <p class="mb-4">
+          If you download photos that were part of a "Shared Album", you may inspect the JSON sidecar and find:
+        </p>
+        <div class="bg-zinc-950 border border-zinc-800 rounded-xl p-5 font-mono text-xs text-zinc-300 mb-6">
+<pre>{`"geoData": {
+  "latitude": 0.0,
+  "longitude": 0.0,
+  "altitude": 0.0
+}`}</pre>
+        </div>
+        <p class="mb-4">
+          This is an intentional Google privacy safeguard. When photos are shared in group albums or collaborative links, Google strips location coordinates to protect contributors.
+        </p>
+        <div class="bg-zinc-900/60 border border-white/5 rounded-xl p-4 text-sm text-zinc-300">
+          <strong class="text-white block mb-1">Solution:</strong>
+          When requesting a Google Takeout export, always select <strong>"Photos from [Year]"</strong> folders (your primary personal timeline) rather than individual "Shared Album" entries. Primary timeline exports contain the unstripped <code class="font-mono text-xs text-indigo-300">geoDataExif</code> coordinates.
+        </div>
+      </section>
+
+      <section>
+        <h2 class="text-2xl sm:text-3xl font-bold text-white mb-4">
+          Problem 4: Timezone Shifts (UTC vs. Local Time)
+        </h2>
+        <p class="mb-4">
+          Google Takeout exports timestamp values as UTC Unix epoch seconds in <code class="font-mono text-xs text-indigo-300">photoTakenTime.timestamp</code>.
+        </p>
+        <p class="mb-4">
+          However, standard camera EXIF (<code class="font-mono text-xs">DateTimeOriginal</code>) does not natively specify a timezone offset unless tag <code class="font-mono text-xs">0x9011</code> (<code>OffsetTimeOriginal</code>) is populated. If a tool writes UTC time as local time without offset compensation, a photo taken at 8:00 PM in California (UTC-7) will display as 3:00 AM the next day.
+        </p>
+        <p class="text-sm text-zinc-300">
+          TakeoutFix reconciles the formatted local string (<code class="font-mono text-xs">formatted</code> field) against the UTC timestamp to derive the original shooting timezone, embedding proper EXIF 2.31/2.32 offset tags (<code class="font-mono text-xs">OffsetTime</code>, <code class="font-mono text-xs">OffsetTimeOriginal</code>) so your photos display the correct local capture hour anywhere in the world.
+        </p>
+      </section>
+
+      <section>
+        <h2 class="text-2xl sm:text-3xl font-bold text-white mb-4">
+          Problem 5: Apple Live Photo Separation (HEIC + MOV)
+        </h2>
+        <p class="mb-4">
+          On iOS, a Live Photo is comprised of a still image (<code class="font-mono text-xs">.HEIC</code>) and a short video clip (<code class="font-mono text-xs">.MOV</code>) sharing a common Content Identifier UUID in their metadata.
+        </p>
+        <p class="mb-4">
+          Google Takeout exports both files, but frequently only provides a JSON sidecar for the HEIC file, leaving the companion MOV without direct metadata. TakeoutFix correlates the still HEIC and video MOV files using name matching and embeds matching QuickTime creation dates into the video stream so Apple Photos and Google Photos recognize them as a unified Live Photo upon re-import.
+        </p>
+      </section>
+
+      <!-- Ad Unit: Article Bottom Placement -->
+      <div class="my-8">
+        <AdUnit client:only="react" placement="ARTICLE_BOTTOM" />
+      </div>
+
+      <!-- Action Footer -->
+      <section class="bg-zinc-950/60 border border-white/10 rounded-2xl p-8 backdrop-blur-xl text-center">
+        <h3 class="text-2xl font-bold text-white mb-3">Fix Truncated Names &amp; Timezone Glitches</h3>
+        <p class="text-sm text-zinc-400 max-w-xl mx-auto mb-6">
+          TakeoutFix is specifically designed to handle every known Google Takeout edge case automatically without code or terminal commands.
+        </p>
+        <div class="flex flex-wrap gap-4 justify-center">
+          <a href="/tool" class="px-6 py-3 rounded-xl bg-amber-600 hover:bg-amber-500 text-white font-semibold text-sm transition-all shadow-lg shadow-amber-500/20">
+            Launch TakeoutFixer &rarr;
+          </a>
+          <a href="/guides" class="px-6 py-3 rounded-xl bg-white/5 hover:bg-white/10 text-white font-semibold text-sm border border-white/10 transition-all">
+            Return to Guides Hub
+          </a>
+        </div>
+      </section>
+
+    </div>
+  </article>
+</Layout>

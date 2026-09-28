@@ -820,7 +820,7 @@ function AdUnitItem({
       });
 
       // 2. Check if embed container or ins tag is unfilled or empty
-      const checkAdSenseFilled = () => {
+      const checkAdSenseFilled = (isTimeout = false) => {
         if (!embedRef.current) return;
         const ins = embedRef.current.querySelector("ins.adsbygoogle");
         if (ins) {
@@ -830,15 +830,17 @@ function AdUnitItem({
             onUnavailable?.();
             return;
           }
-          // If no iframe is injected and ins has no visual children/content
-          const hasIframe = !!ins.querySelector("iframe");
-          const hasChildren = ins.children.length > 0;
-          if (!hasIframe && !hasChildren) {
-            onUnavailable?.();
-            return;
+          // Only check for missing iframe on timeout, giving Google AdSense sufficient time to fetch & inject
+          if (isTimeout) {
+            const hasIframe = !!ins.querySelector("iframe");
+            const hasChildren = ins.children.length > 0;
+            if (!hasIframe && !hasChildren) {
+              onUnavailable?.();
+              return;
+            }
           }
-          if (hasIframe) {
-            const iframe = ins.querySelector("iframe");
+          const iframe = ins.querySelector("iframe");
+          if (iframe) {
             try {
               const src = iframe?.getAttribute("src") || iframe?.src || "";
               if (src.includes("chrome-error") || src.includes("chromewebdata")) {
@@ -847,7 +849,7 @@ function AdUnitItem({
               }
             } catch (_) {}
           }
-        } else if (!embedRef.current.innerHTML.trim()) {
+        } else if (isTimeout && !embedRef.current.innerHTML.trim()) {
           onUnavailable?.();
         }
       };
@@ -856,13 +858,13 @@ function AdUnitItem({
         typeof window !== "undefined" &&
         (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1");
 
-      // Give AdSense script a brief moment to load and inject (150ms on localhost, 350ms in production)
-      const timer = setTimeout(checkAdSenseFilled, isLocalhost ? 150 : 350);
+      // Give AdSense script sufficient time to load from CDN and render (1500ms on localhost, 4500ms in production)
+      const timer = setTimeout(() => checkAdSenseFilled(true), isLocalhost ? 1500 : 4500);
 
       let observer: MutationObserver | null = null;
       if (embedRef.current && typeof MutationObserver !== "undefined") {
         observer = new MutationObserver(() => {
-          checkAdSenseFilled();
+          checkAdSenseFilled(false);
         });
         observer.observe(embedRef.current, {
           attributes: true,
@@ -932,7 +934,7 @@ function AdUnitItem({
       <div className="flex flex-col h-full justify-between gap-2">
         <div className="flex items-center gap-1.5">
           <span className="text-[9px] font-bold tracking-wider uppercase text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800/60 px-1.5 py-0.5 rounded">
-            Partner
+            Advertisement
           </span>
         </div>
         <a
@@ -968,7 +970,7 @@ function AdUnitItem({
       <div className="flex items-center gap-1.5">
         <span className="text-[9px] font-bold tracking-wider uppercase text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/40 border border-indigo-200 dark:border-indigo-800/60 px-1.5 py-0.5 rounded flex items-center gap-1">
           <ShieldCheck className="w-2.5 h-2.5" />
-          Featured Partner
+          Sponsored Link
         </span>
         {item.providerName && (
           <span className="text-[8px] font-medium uppercase tracking-wider text-zinc-400 dark:text-zinc-500 bg-zinc-100 dark:bg-zinc-900 px-1.5 py-0.5 rounded border border-zinc-200 dark:border-zinc-800">

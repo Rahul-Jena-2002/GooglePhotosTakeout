@@ -64,6 +64,11 @@ const toolFaqSchema = {
   <!-- 1. INTERACTIVE TOOL WORKSPACE (UNMODIFIED UI) -->
   <ToolWorkspace client:only="react" />
 
+  <!-- In-Page Sponsored Recommendations Banner -->
+  <section class="w-full max-w-5xl mx-auto px-4 py-3 relative z-10" aria-label="Sponsored recommendations">
+    <AdUnit client:only="react" placement="TOOL_MANUAL_TOP" />
+  </section>
+
   <!-- 2. SCROLLABLE USER MANUAL & POST-RESTORATION GUIDE (BELOW WORKSPACE) -->
   <div class="w-full bg-zinc-950 border-t border-zinc-800/80 text-zinc-300 font-sans relative z-10">
     <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-16">

@@ -572,6 +572,11 @@ export function RestorePanel({
             </div>
           </div>
 
+          {/* In-Workspace Responsive Ad Unit */}
+          <div className="px-4 py-2 bg-black/40 border-b border-white/5">
+            <AdUnit type="horizontal" placement="TOOL_RESTORE_TOP" />
+          </div>
+
           {/* Logs Terminal */}
           <div className="flex-grow flex flex-col overflow-hidden min-h-[200px]">
             {/* Logs Header with Tabs & ETA */}
