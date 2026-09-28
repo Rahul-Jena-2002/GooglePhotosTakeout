@@ -578,7 +578,7 @@ export default function AuthPage() {
             {/* Current user card */}
             <div className="mb-6 p-4 rounded-2xl bg-zinc-50 dark:bg-zinc-950/70 border border-zinc-200/80 dark:border-zinc-800 flex items-center gap-3 text-left">
               {currentUser.photoURL ? (
-                <img src={currentUser.photoURL} alt="" className="w-10 h-10 rounded-full border border-zinc-200 dark:border-zinc-700" />
+                <img src={currentUser.photoURL} alt="" referrerPolicy="no-referrer" className="w-10 h-10 rounded-full border border-zinc-200 dark:border-zinc-700 object-cover" />
               ) : (
                 <div className="w-10 h-10 rounded-full bg-indigo-600 text-white font-bold flex items-center justify-center text-sm">
                   {currentUser.displayName?.charAt(0) || currentUser.email?.charAt(0) || "U"}
@@ -666,7 +666,7 @@ export default function AuthPage() {
             </p>
             <div className="mb-6 p-4 rounded-2xl bg-zinc-50 dark:bg-zinc-950/70 border border-zinc-200/80 dark:border-zinc-800 flex items-center gap-3 text-left">
               {currentUser.photoURL ? (
-                <img src={currentUser.photoURL} alt="" className="w-10 h-10 rounded-full border border-zinc-200 dark:border-zinc-700" />
+                <img src={currentUser.photoURL} alt="" referrerPolicy="no-referrer" className="w-10 h-10 rounded-full border border-zinc-200 dark:border-zinc-700 object-cover" />
               ) : (
                 <div className="w-10 h-10 rounded-full bg-indigo-600 text-white font-bold flex items-center justify-center text-sm">
                   {currentUser.displayName?.charAt(0) || currentUser.email?.charAt(0) || "U"}

@@ -41,7 +41,8 @@ export const highlightActiveLinks = () => {
 
   navLinks.forEach((link: any) => {
     const href = (link.getAttribute("href") || "").replace(/\/$/, "") || "/";
-    const isActive = href === "/" ? path === "/" : (path === href || path.startsWith(href + "/"));
+    const isGuidesMatch = href === "/guides" && (path === "/guides" || path.startsWith("/guides/") || path === "/restore-data");
+    const isActive = isGuidesMatch || (href === "/" ? path === "/" : (path === href || path.startsWith(href + "/")));
     if (isActive) {
       link.classList.add("active", "text-[#8170CC]", "font-bold");
       link.classList.remove("text-purple-600", "dark:text-purple-400", "text-zinc-600", "dark:text-zinc-400", "text-zinc-400", "text-white", "text-zinc-900");
@@ -53,7 +54,8 @@ export const highlightActiveLinks = () => {
 
   mobileLinks.forEach((link: any) => {
     const href = (link.getAttribute("href") || "").replace(/\/$/, "") || "/";
-    const isActive = href === "/" ? path === "/" : (path === href || path.startsWith(href + "/"));
+    const isGuidesMatch = href === "/guides" && (path === "/guides" || path.startsWith("/guides/") || path === "/restore-data");
+    const isActive = isGuidesMatch || (href === "/" ? path === "/" : (path === href || path.startsWith(href + "/")));
     if (isActive) {
       link.classList.add("active", "text-[#8170CC]", "font-bold", "bg-[#8170CC]/10", "dark:bg-[#8170CC]/15");
       link.classList.remove("text-purple-600", "dark:text-purple-400", "text-white/70", "text-zinc-700", "text-indigo-600", "dark:text-indigo-400", "bg-zinc-100", "dark:bg-white/5");

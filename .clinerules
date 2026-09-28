@@ -1,0 +1,11 @@
+# Cline Rules & Safe Engineering Directives
+
+## 1. Zero-Touch Security Boundaries (NEVER TOUCH)
+- **NEVER** edit, create, or modify `.env*`, `*.key`, `*.pem`, service account JSONs, or any API keys.
+- **NEVER** modify or overwrite `webapp/src/lib/browserAdblock.ts` — Ad blocking recovery is handled officially and natively by Google Funding Choices in `webapp/src/layouts/Layout.astro`.
+- **NEVER** remove or weaken Content Security Policy (CSP) headers in `webapp/public/_headers` or `webapp/firebase.json`.
+
+## 2. Safe Engineering & Scope Discipline
+- **Only touch files strictly required** by the user's specific request.
+- **Preserve working code:** Existing working code is intentional. Do not refactor unrelated files or introduce speculative rewrites.
+- **Minimum Viable Diff:** Write the simplest, cleanest solution that solves the issue without bloat.

@@ -457,7 +457,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // Cached config loader — uses 3-minute sessionStorage cache to drastically reduce
   // Firestore reads across page navigations. Admin pages call refreshConfig() to force re-fetch.
   const CACHE_KEY = "takeoutfix_cached_global_config";
-  const CACHE_TTL = 3 * 60 * 1000;
+  const CACHE_TTL = 30 * 60 * 1000; // 30 minutes cache to minimize Firestore reads
 
   const loadGlobalConfig = async (forceRefresh: boolean = false) => {
     if (!forceRefresh && typeof window !== 'undefined') {
@@ -604,30 +604,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setFoundingCount(newFounding);
       }
 
-      // 3. pricing_tiers (collection)
-      const tiersSnap = await getDocs(collection(db, "pricing_tiers"));
-      const tiersData: Record<string, any> = {};
-      tiersSnap.forEach((d) => {
-        tiersData[d.id] = d.data();
-      });
-      setPricingTiers(tiersData);
-
-      // 4. campaigns (collection) — pick active+enabled campaign
-      const campaignsSnap = await getDocs(collection(db, "campaigns"));
-      const activeCampaign = campaignsSnap.docs
-        .map(d => ({ id: d.id, ...d.data() }))
-        .find((c: any) => c.isEnabled === true && c.status === 'ACTIVE') || null;
-      setCampaigns(activeCampaign);
-
-      let discounts: Record<string, { discountType: string; discountValue: number }> = {};
-      if (activeCampaign?.id) {
-        const discSnap = await getDocs(collection(db, "campaigns", activeCampaign.id, "discounts"));
-        discSnap.forEach(d => {
-          const data = d.data();
-          discounts[data.planCode] = { discountType: data.discountType, discountValue: data.discountValue };
-        });
-      }
-      setActiveCampaignDiscounts(discounts);
+      // 3. pricing_tiers, campaigns, discounts — defaults kept empty as site is 100% free
+      setPricingTiers({});
+      setCampaigns(null);
+      setActiveCampaignDiscounts({});
 
       // Cache snapshot into sessionStorage
       if (typeof window !== 'undefined') {

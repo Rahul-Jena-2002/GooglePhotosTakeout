@@ -8,12 +8,6 @@ import { db } from "../../firebase"
 import { ShieldAlert, User, Check, AlertCircle } from "lucide-react"
 import { motion } from "framer-motion"
 
-const PLAN_LABELS: Record<string, string> = {
-  free: "Free Tier",
-  recovery_pass: "Single Pass",
-  pro: "Pro Tier",
-  super: "Super Tier",
-}
 
 import { AuthProvider } from "../../contexts/AuthContext"
 import { ToastContainer } from "../../components/ui/toast"
@@ -30,6 +24,7 @@ function ProfilePageContent() {
   const [errorMsg, setErrorMsg] = useState("")
   const [successMsg, setSuccessMsg] = useState("")
   const [saveLoading, setSaveLoading] = useState(false)
+  const [failedPhotoUrl, setFailedPhotoUrl] = useState<string | null>(null)
 
   // Sync inputs with userData when loaded
   useEffect(() => {
@@ -171,7 +166,8 @@ function ProfilePageContent() {
     )
   }
 
-  const plan = userData?.plan || 'free'
+  const photoUrl = user?.photoURL || userData?.photoURL
+  const userInitial = (firstName || userData?.firstName || user?.displayName || user?.email || "U").charAt(0).toUpperCase()
 
   return (
     <div className="max-w-xl mx-auto px-4 py-16 mt-16 relative min-h-[85vh]">
@@ -181,12 +177,21 @@ function ProfilePageContent() {
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={{ duration: 0.4, ease: "easeOut" }}
-            className="profile-avatar-mono w-20 h-20 mx-auto mb-4 rounded-full flex items-center justify-center border shadow-sm"
+            className="profile-avatar-mono w-20 h-20 mx-auto mb-4 rounded-full flex items-center justify-center border shadow-sm overflow-hidden"
           >
-            {user.photoURL ? (
-              <img src={user.photoURL} alt="Profile" className="w-full h-full rounded-full object-cover" />
+            {photoUrl && failedPhotoUrl !== photoUrl ? (
+              <img 
+                key={photoUrl}
+                src={photoUrl} 
+                alt={user?.displayName || "Profile"} 
+                referrerPolicy="no-referrer"
+                onError={() => setFailedPhotoUrl(photoUrl)}
+                className="w-full h-full rounded-full object-cover" 
+              />
+            ) : userInitial ? (
+              <span className="text-2xl font-bold select-none">{userInitial}</span>
             ) : (
-              <User className="w-10 h-10 text-white" />
+              <User className="w-10 h-10" />
             )}
           </motion.div>
           <motion.h1 
@@ -262,9 +267,10 @@ function ProfilePageContent() {
                       <span className="text-sm font-semibold font-mono text-zinc-450 dark:text-zinc-300">@{userData?.username || "—"}</span>
                     </div>
                     <div className="text-right">
-                      <span className="text-[10px] text-white/45 block uppercase font-bold tracking-wider mb-1">Active Plan</span>
-                      <span className="text-xs font-bold text-zinc-400 dark:text-zinc-300 bg-zinc-850/50 dark:bg-zinc-800/60 border border-zinc-800 px-2.5 py-0.5 rounded-full inline-block">
-                        {PLAN_LABELS[plan] || plan}
+                      <span className="text-[10px] text-white/45 block uppercase font-bold tracking-wider mb-1">Account Access</span>
+                      <span className="text-xs font-bold text-emerald-400 dark:text-emerald-300 bg-emerald-500/10 border border-emerald-500/20 px-2.5 py-0.5 rounded-full inline-flex items-center gap-1.5">
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                        100% Free & Unlimited
                       </span>
                     </div>
                   </div>

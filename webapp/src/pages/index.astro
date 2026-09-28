@@ -379,14 +379,33 @@ const prices = PLAN_PRICES[region] || PLAN_PRICES.us;
     }
   };
 
-  // 2. Fetch Featured Reviews from Firestore
+  // 2. Fetch Featured Reviews from Firestore (with 1-hour localStorage caching)
   const loadReviews = async () => {
     try {
       const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
-      const { collection, query, where, getDocs } = await import("firebase/firestore");
-      const q = query(collection(db, "reviews"), where("status", "==", "APPROVED"));
-      const snap = await getDocs(q);
-      const allApproved = snap.docs.map(d => ({ id: d.id, ...d.data() as any }));
+      const CACHE_KEY = "takeoutfix_featured_reviews_cache";
+      const CACHE_TTL = 3600 * 1000; // 1 hour
+
+      let allApproved: any[] = [];
+      try {
+        const cached = localStorage.getItem(CACHE_KEY);
+        if (cached) {
+          const { data, timestamp } = JSON.parse(cached);
+          if (Date.now() - timestamp < CACHE_TTL && Array.isArray(data) && data.length > 0) {
+            allApproved = data;
+          }
+        }
+      } catch (_) {}
+
+      if (allApproved.length === 0) {
+        const { collection, query, where, getDocs, limit } = await import("firebase/firestore");
+        const q = query(collection(db, "reviews"), where("status", "==", "APPROVED"), limit(10));
+        const snap = await getDocs(q);
+        allApproved = snap.docs.map(d => ({ id: d.id, ...d.data() as any }));
+        try {
+          localStorage.setItem(CACHE_KEY, JSON.stringify({ data: allApproved, timestamp: Date.now() }));
+        } catch (_) {}
+      }
       
       if (allApproved.length > 0) {
         allApproved.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));

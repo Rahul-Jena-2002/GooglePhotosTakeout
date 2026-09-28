@@ -26,8 +26,8 @@ export function useAdminPresence() {
     // Go online immediately
     setStatus('online');
 
-    // Heartbeat every 30 seconds to stay "online"
-    const heartbeat = setInterval(() => setStatus('online'), 30_000);
+    // Heartbeat every 2 minutes to stay "online" (conserves Firestore write quota)
+    const heartbeat = setInterval(() => setStatus('online'), 120_000);
 
     // Go idle when tab is hidden
     const handleVisibility = () => {

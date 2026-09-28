@@ -108,10 +108,7 @@ export const syncUserUI = () => {
         }
       }
 
-      let planLabel = "Free Tier";
-      if (cachedUser.plan === "pro") planLabel = "Pro Tier";
-      else if (cachedUser.plan === "super") planLabel = "Super Tier";
-      else if (cachedUser.plan === "recovery_pass") planLabel = "Single Pass";
+      let planLabel = "100% Free & Unlimited";
       if (dropdownPlan) dropdownPlan.innerText = planLabel;
       if (mobileUserPlan) mobileUserPlan.innerText = planLabel;
       

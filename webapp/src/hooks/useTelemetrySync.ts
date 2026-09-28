@@ -28,8 +28,16 @@ export function useTelemetrySync(enabled: boolean = true) {
   useEffect(() => {
     if (!user || !isAdmin || !enabled) return;
 
+    // Run at most once per admin session to avoid burning Firestore reads on every navigation
+    if (typeof window !== 'undefined' && sessionStorage.getItem('takeoutfix_telemetry_synced')) {
+      return;
+    }
+
     const verifyTelemetry = async () => {
       try {
+        if (typeof window !== 'undefined') {
+          sessionStorage.setItem('takeoutfix_telemetry_synced', 'true');
+        }
         const globalRef = doc(db, 'platform_stats', 'global');
         const snap = await getDoc(globalRef);
         const existingData = snap.exists() ? snap.data() : {};

@@ -230,7 +230,7 @@ function ReviewsPageContent() {
                   <div>
                     <div className="flex items-center gap-3 mb-4">
                       {review.photoURL ? (
-                        <img src={review.photoURL} alt="" className="w-8 h-8 rounded-full" />
+                        <img src={review.photoURL} alt="" referrerPolicy="no-referrer" loading="lazy" className="w-8 h-8 rounded-full object-cover" />
                       ) : (
                         <div className="w-8 h-8 rounded-full bg-zinc-200 dark:bg-zinc-800 flex items-center justify-center text-xs font-bold uppercase text-zinc-700 dark:text-zinc-300">
                           {review.displayName?.charAt(0) || "U"}

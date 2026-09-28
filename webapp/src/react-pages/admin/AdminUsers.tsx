@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react"
-import { collection, query, onSnapshot, doc, updateDoc, deleteDoc, addDoc, setDoc } from "firebase/firestore"
+import { collection, query, onSnapshot, doc, updateDoc, deleteDoc, addDoc, setDoc, limit } from "firebase/firestore"
 import { db } from "../../firebase"
 import { Search, Trash2, ShieldAlert } from "lucide-react"
 import { useAuth } from "../../contexts/AuthContext"
@@ -292,7 +292,7 @@ export default function AdminUsers() {
   }
 
   useEffect(() => {
-    const q = query(collection(db, "users"))
+    const q = query(collection(db, "users"), limit(50))
     const unsubscribe = onSnapshot(q, (snap) => {
       const userList = snap.docs.map(d => ({ id: d.id, ...d.data() }))
       // Sort by join date ascending (oldest members first — #1 = founding user)
@@ -319,7 +319,7 @@ export default function AdminUsers() {
       setLoading(false)
     })
 
-    const unsubRecoveries = onSnapshot(collection(db, "recoveries"), (snap) => {
+    const unsubRecoveries = onSnapshot(query(collection(db, "recoveries"), limit(50)), (snap) => {
       setRecoveries(snap.docs.map(d => ({ id: d.id, ...d.data() })))
     }, console.error)
 
