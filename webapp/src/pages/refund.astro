@@ -1,61 +1,106 @@
 ---
 export const prerender = true;
 import Layout from "../layouts/Layout.astro";
+import Icon from "../components/ui/Icon.astro";
 ---
 
 <Layout title="TakeoutFix | Refund Policy" description="Read the Refund Policy for TakeoutFix. Learn about our verified software issue refund guarantee and request conditions.">
-  <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-16 mt-12 font-sans min-h-[80vh]">
-    <div class="text-center mb-16">
-      <div class="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-indigo-600 dark:text-indigo-400 text-xs font-semibold uppercase tracking-wider mb-6 font-mono">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 mt-12 font-sans min-h-[80vh]">
+    
+    <!-- Hero Header -->
+    <div class="text-center mb-16 relative">
+      <div class="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-zinc-900 dark:text-zinc-100 text-xs font-semibold uppercase tracking-wider mb-6 font-mono">
+        <Icon name="file-text" class="w-4 h-4 text-zinc-900 dark:text-zinc-100" />
         Pricing &amp; Refund Policy
       </div>
-      <h1 class="text-4xl sm:text-5xl font-extrabold tracking-tight text-zinc-900 dark:text-white mb-4">Refund &amp; Pricing Policy</h1>
+      <h1 class="text-4xl sm:text-5xl md:text-6xl font-extrabold tracking-tight text-zinc-900 dark:text-white mb-4">Refund &amp; Pricing Policy</h1>
       <p class="text-lg md:text-xl text-zinc-600 dark:text-zinc-400">Last updated: September 28, 2026</p>
     </div>
 
-    <div class="space-y-12 leading-relaxed">
+    <!-- 2-Column Responsive Layout -->
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-10">
       
-      <section class="bg-zinc-50 dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-6 sm:p-8 relative overflow-hidden">
-        <div class="absolute top-0 left-0 w-1.5 h-full bg-indigo-500"></div>
-        <h2 class="text-2xl font-bold text-zinc-900 dark:text-white mb-3">100% Free &amp; Open Software</h2>
-        <p class="text-base text-zinc-700 dark:text-zinc-300 leading-relaxed">
-          TakeoutFix is an open, client-side utility that is <strong>100% free to use</strong> for all users. We do not charge fees, require paid subscriptions, or sell software licenses. Because there are no mandatory purchases or paywalls, standard software purchase refunds do not apply.
-        </p>
-      </section>
+      <!-- Main Content (lg:col-span-8) -->
+      <div class="lg:col-span-8 space-y-12 leading-relaxed">
+        
+        <section id="policy-free" class="bg-zinc-50 dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-8 relative overflow-hidden shadow-sm">
+          <div class="absolute top-0 left-0 w-1.5 h-full bg-zinc-900 dark:bg-white"></div>
+          <h2 class="text-2xl font-bold text-zinc-900 dark:text-white mb-3">100% Free &amp; Open Software</h2>
+          <p class="text-base text-zinc-700 dark:text-zinc-300 leading-relaxed">
+            TakeoutFix is an open, client-side utility that is <strong>100% free to use</strong> for all users. We do not charge fees, require paid subscriptions, or sell software licenses. Because there are no mandatory purchases or paywalls, standard software purchase refunds do not apply.
+          </p>
+        </section>
 
-      <section class="space-y-4">
-        <h2 class="text-2xl font-bold text-zinc-900 dark:text-white">1. Voluntary Sponsorships &amp; Donations</h2>
-        <p class="text-zinc-600 dark:text-zinc-400 text-sm leading-relaxed">
-          If you choose to support the project via voluntary sponsorship (such as GitHub Sponsors), these contributions directly fund maintenance, bug fixes, and development of open-source format decoders. Sponsorship donations are voluntary and handled in accordance with GitHub Sponsors terms.
-        </p>
-      </section>
+        <section id="policy-sponsorships" class="space-y-4">
+          <h2 class="text-2xl font-bold text-zinc-900 dark:text-white">1. Voluntary Sponsorships &amp; Donations</h2>
+          <p class="text-zinc-600 dark:text-zinc-400 text-sm leading-relaxed">
+            If you choose to support the project via voluntary sponsorship, these contributions directly fund maintenance, bug fixes, and development of format decoders. Sponsorship donations are voluntary and handled in accordance with platform sponsor terms.
+          </p>
+        </section>
 
-      <section class="space-y-4">
-        <h2 class="text-2xl font-bold text-zinc-900 dark:text-white">2. Technical Assistance &amp; Support Guarantee</h2>
-        <p class="text-zinc-600 dark:text-zinc-400 text-sm leading-relaxed">
-          Even though the software is free, we stand by our code. If you encounter an unhandled Takeout format, timestamp anomaly, or edge-case error while processing your library, our engineering team is committed to reviewing your debug logs and patching the client engine promptly.
-        </p>
-      </section>
+        <section id="policy-support" class="space-y-4">
+          <h2 class="text-2xl font-bold text-zinc-900 dark:text-white">2. Technical Assistance &amp; Support Guarantee</h2>
+          <p class="text-zinc-600 dark:text-zinc-400 text-sm leading-relaxed">
+            Even though the software is free, we stand by our code. If you encounter an unhandled Takeout format, timestamp anomaly, or edge-case error while processing your library, our engineering team is committed to reviewing your debug logs and patching the client engine promptly.
+          </p>
+        </section>
 
-      <section class="space-y-4">
-        <h2 class="text-2xl font-bold text-zinc-900 dark:text-white">3. How to Report Issues</h2>
-        <p class="text-zinc-600 dark:text-zinc-400 text-sm leading-relaxed">
-          To report any parsing issues or request support:
-        </p>
-        <ol class="list-decimal pl-6 space-y-2 text-zinc-600 dark:text-zinc-400 text-sm">
-          <li>Open a support ticket through our <a href="/support" class="text-indigo-600 dark:text-indigo-400 hover:underline font-semibold">Support Center</a> or open an issue on GitHub.</li>
-          <li>Describe your operating system, browser, and the format of the problematic media files.</li>
-          <li>Our engineering team will review your report and release an update.</li>
-        </ol>
-      </section>
+        <section id="policy-reporting" class="space-y-4">
+          <h2 class="text-2xl font-bold text-zinc-900 dark:text-white">3. How to Report Issues</h2>
+          <p class="text-zinc-600 dark:text-zinc-400 text-sm leading-relaxed">
+            To report any parsing issues or request technical assistance:
+          </p>
+          <ol class="list-decimal pl-6 space-y-2 text-zinc-600 dark:text-zinc-400 text-sm">
+            <li>Submit a message through our <a href="/contact" class="text-zinc-900 dark:text-white underline font-semibold">Contact Page</a>.</li>
+            <li>Describe your operating system, browser, and the format of the problematic media files.</li>
+            <li>Our engineering team will review your report and release an update.</li>
+          </ol>
+        </section>
 
-      <section class="space-y-4">
-        <h2 class="text-2xl font-bold text-zinc-900 dark:text-white">4. Contact Desk</h2>
-        <p class="text-zinc-600 dark:text-zinc-400 text-sm leading-relaxed">
-          For any questions regarding our policies, please contact us via our <a href="/contact" class="text-indigo-600 dark:text-indigo-400 hover:underline font-semibold">Contact Page</a> or by email at <a href="mailto:takeoutfix.support@gmail.com" class="text-indigo-600 dark:text-indigo-400 hover:underline font-semibold">takeoutfix.support@gmail.com</a>.
-        </p>
-      </section>
+        <section id="policy-contact" class="space-y-4">
+          <h2 class="text-2xl font-bold text-zinc-900 dark:text-white">4. Contact Desk</h2>
+          <p class="text-zinc-600 dark:text-zinc-400 text-sm leading-relaxed">
+            For any questions regarding our policies, please contact us via our <a href="/contact" class="text-zinc-900 dark:text-white underline font-semibold">Contact Page</a> or by email at <a href="mailto:takeoutfix.support@gmail.com" class="text-zinc-900 dark:text-white underline font-semibold">takeoutfix.support@gmail.com</a>.
+          </p>
+        </section>
+
+      </div>
+
+      <!-- Sticky Quick-Navigation Sidebar (lg:col-span-4) -->
+      <div class="lg:col-span-4 space-y-6">
+        <div class="sticky top-28 space-y-6">
+          
+          <div class="bg-zinc-50 dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-6 shadow-sm">
+            <h3 class="text-sm font-bold uppercase tracking-wider text-zinc-900 dark:text-white mb-4 flex items-center gap-2">
+              <Icon name="book-open" class="w-4 h-4 text-zinc-900 dark:text-white" />
+              On This Page
+            </h3>
+            <nav class="space-y-2 text-sm text-zinc-600 dark:text-zinc-400">
+              <a href="#policy-free" class="block hover:text-zinc-900 dark:hover:text-white transition-colors py-1">Free Software Notice</a>
+              <a href="#policy-sponsorships" class="block hover:text-zinc-900 dark:hover:text-white transition-colors py-1">1. Voluntary Sponsorships</a>
+              <a href="#policy-support" class="block hover:text-zinc-900 dark:hover:text-white transition-colors py-1">2. Technical Assistance</a>
+              <a href="#policy-reporting" class="block hover:text-zinc-900 dark:hover:text-white transition-colors py-1">3. How to Report Issues</a>
+              <a href="#policy-contact" class="block hover:text-zinc-900 dark:hover:text-white transition-colors py-1">4. Contact Desk</a>
+            </nav>
+          </div>
+
+          <div class="bg-zinc-50 dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-6 shadow-sm">
+            <h4 class="font-bold text-zinc-900 dark:text-white text-base mb-2">Need Direct Help?</h4>
+            <p class="text-xs leading-relaxed text-zinc-600 dark:text-zinc-400 mb-4">
+              Our engineering team is always ready to assist with Takeout parsing issues.
+            </p>
+            <a 
+              href="/contact" 
+              class="inline-flex items-center gap-2 text-xs font-semibold px-4 py-2.5 rounded-xl bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 hover:opacity-90 transition-opacity"
+            >
+              Contact Us &rarr;
+            </a>
+          </div>
+
+        </div>
+      </div>
 
     </div>
+
   </div>
 </Layout>

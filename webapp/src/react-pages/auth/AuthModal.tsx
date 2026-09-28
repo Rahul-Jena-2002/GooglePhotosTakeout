@@ -279,6 +279,13 @@ export default function AuthModal() {
               <span>Protected by reCAPTCHA — <a href="https://policies.google.com/privacy" target="_blank" rel="noreferrer" className="underline">Privacy</a> &amp; <a href="https://policies.google.com/terms" target="_blank" rel="noreferrer" className="underline">Terms</a>.</span>
             </div>
           )}
+          {mode === "signup" && (
+            <p className="text-[11px] text-zinc-500 dark:text-zinc-400 leading-normal pt-1">
+              By creating an account, you confirm that you are at least 13 years old (or 16 in the EU/UK) and agree to our{" "}
+              <a href="/terms" target="_blank" className="text-indigo-600 dark:text-indigo-400 underline">Terms</a> and{" "}
+              <a href="/privacy" target="_blank" className="text-indigo-600 dark:text-indigo-400 underline">Privacy Policy</a>.
+            </p>
+          )}
           <button type="submit" disabled={loading || googleLoading}
             className="w-full py-3 px-4 bg-indigo-600 hover:bg-indigo-500 text-white rounded-2xl text-xs sm:text-sm font-bold transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50">
             {loading

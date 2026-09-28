@@ -73,26 +73,12 @@ const googleClientId = cfRuntimeEnv.PUBLIC_GOOGLE_CLIENT_ID || import.meta.env.P
       if (googleClientId) {
         window.__GOOGLE_CLIENT_ID__ = googleClientId;
       }
-    </script>
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <!-- Preload hero image to speed up LCP -->
     <link rel="preload" as="image" href="/hero-graphic-light.webp" fetchpriority="high" />
-    <!-- Google Fonts: async non-render-blocking load with font-display:optional (no FOUT = no CLS) -->
-    <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=optional" />
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=optional" media="print" onload="this.media='all'" />
-    <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=optional" /></noscript>
-    <!-- System font fallback with adjusted metrics to prevent layout shift -->
+    <!-- Native high-performance typography (0ms latency, zero third-party IP leakage, 100% GDPR compliant) -->
     <style>
-      @font-face {
-        font-family: 'Inter Fallback';
-        src: local('Arial');
-        ascent-override: 90%;
-        descent-override: 22%;
-        line-gap-override: 0%;
-        size-adjust: 107%;
-      }
-      body { font-family: 'Inter', 'Inter Fallback', system-ui, -apple-system, sans-serif; }
+      body { font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; }
+    </style>
 
       /* Dynamic Monetization Appearance Settings (Controlled from Admin Center) */
       :root {

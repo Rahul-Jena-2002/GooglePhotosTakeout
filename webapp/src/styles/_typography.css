@@ -30,9 +30,12 @@
   color: #E8E8F0 !important;
 }
 
-/* Limit paragraph width for maximum typography readability (Apple/Premium style) */
-p {
+/* Limit paragraph width for maximum typography readability in long-form editorial text */
+.prose p,
+article p {
   max-width: 65ch;
+}
+p {
   color: #E8E8F0;
 }
 html.light p {

@@ -5,104 +5,161 @@ import Icon from "../components/ui/Icon.astro";
 ---
 
 <Layout title="TakeoutFix | Privacy Policy" description="Read the TakeoutFix Privacy Policy. We guarantee 100% offline local processing: your photos and videos never leave your device.">
-  <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-16 mt-12 font-sans">
-    <div class="text-center mb-16">
-      <div class="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-indigo-600 dark:text-indigo-400 text-xs font-semibold uppercase tracking-wider mb-6 font-mono">
-        <Icon name="shield" class="w-4 h-4" />
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 mt-12 font-sans">
+    
+    <!-- Hero Header -->
+    <div class="text-center mb-16 relative">
+      <div class="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-zinc-900 dark:text-zinc-100 text-xs font-semibold uppercase tracking-wider mb-6 font-mono">
+        <Icon name="shield" class="w-4 h-4 text-zinc-900 dark:text-zinc-100" />
         Data Privacy &amp; Security
       </div>
-      <h1 class="text-4xl sm:text-5xl font-extrabold tracking-tight text-zinc-900 dark:text-white mb-4">Privacy Policy</h1>
-      <p class="text-lg md:text-xl text-zinc-600 dark:text-zinc-400">Your files are yours. They never leave your device.</p>
-      <p class="text-sm text-zinc-500 mt-2">Last updated: June 12, 2026</p>
+      <h1 class="text-4xl sm:text-5xl md:text-6xl font-extrabold tracking-tight text-zinc-900 dark:text-white mb-4">Privacy Policy</h1>
+      <p class="text-lg md:text-xl text-zinc-600 dark:text-zinc-400 max-w-2xl mx-auto">Your files are yours. They never leave your device.</p>
+      <p class="text-xs text-zinc-500 mt-2">Last updated: June 12, 2026</p>
       <p class="text-xs text-zinc-500 dark:text-zinc-400 mt-3 max-w-xl mx-auto leading-relaxed">
         TakeoutFix is an independent software utility. Google Takeout™ and Google Photos™ are trademarks of Google LLC.
         TakeoutFix is not affiliated with, endorsed by, or sponsored by Google LLC.
       </p>
     </div>
 
-    <div class="space-y-12 leading-relaxed">
+    <!-- 2-Column Responsive Layout (Main Content + Sticky Sidebar) -->
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-10">
       
-      <section class="bg-zinc-50 dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-6 sm:p-8 relative overflow-hidden">
-        <div class="absolute top-0 left-0 w-1.5 h-full bg-indigo-500"></div>
-        <h2 class="text-2xl font-bold text-zinc-900 dark:text-white mb-4">The TakeoutFix Guarantee</h2>
-        <p class="text-base sm:text-lg text-zinc-700 dark:text-zinc-300">
-          <strong class="text-zinc-900 dark:text-white">TakeoutFix never uploads your files.</strong> We believe in local processing. Your photos, videos, and metadata remain strictly on your local device at all times.
-        </p>
-      </section>
+      <!-- Main Content (lg:col-span-8) -->
+      <div class="lg:col-span-8 space-y-12 leading-relaxed">
+        
+        <section id="guarantee" class="bg-zinc-50 dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-8 relative overflow-hidden shadow-sm">
+          <div class="absolute top-0 left-0 w-1.5 h-full bg-zinc-900 dark:bg-white"></div>
+          <h2 class="text-2xl font-bold text-zinc-900 dark:text-white mb-3">The TakeoutFix Guarantee</h2>
+          <p class="text-base sm:text-lg text-zinc-700 dark:text-zinc-300">
+            <strong class="text-zinc-900 dark:text-white">TakeoutFix never uploads your files.</strong> We believe in local processing. Your photos, videos, and metadata remain strictly on your local device at all times.
+          </p>
+        </section>
 
-      <section class="space-y-4">
-        <h2 class="text-2xl font-bold text-zinc-900 dark:text-white mb-4">Data We DO NOT Collect</h2>
-        <ul class="grid sm:grid-cols-2 gap-4">
-          {['Photos', 'Videos', 'EXIF metadata', 'GPS coordinates', 'File contents', 'Folder contents', 'Album contents', 'Personal media'].map(item => (
-            <li class="flex items-center gap-3 bg-red-500/10 border border-red-500/20 text-red-600 dark:text-red-400 rounded-xl p-4 text-sm font-semibold">
-              <Icon name="shield-alert" class="w-5 h-5 text-red-500 flex-shrink-0" />
-              {item}
+        <section id="not-collected" class="space-y-4">
+          <h2 class="text-2xl font-bold text-zinc-900 dark:text-white mb-4">Data We DO NOT Collect</h2>
+          <ul class="grid sm:grid-cols-2 gap-4">
+            {['Photos', 'Videos', 'EXIF metadata', 'GPS coordinates', 'File contents', 'Folder contents', 'Album contents', 'Personal media'].map(item => (
+              <li class="flex items-center gap-3 bg-red-500/10 border border-red-500/20 text-red-600 dark:text-red-400 rounded-xl p-4 text-sm font-semibold">
+                <Icon name="shield-alert" class="w-5 h-5 text-red-500 flex-shrink-0" />
+                {item}
+              </li>
+            ))}
+          </ul>
+        </section>
+
+        <section id="collected" class="space-y-4">
+          <h2 class="text-2xl font-bold text-zinc-900 dark:text-white mb-4">Data We DO Collect</h2>
+          <p class="text-zinc-600 dark:text-zinc-400 text-sm">To provide and improve our service, we collect minimal operational data:</p>
+          <ul class="list-disc pl-6 space-y-2 text-zinc-600 dark:text-zinc-400 text-sm">
+            <li><strong class="text-zinc-900 dark:text-white">Google Account Information:</strong> Optional authentication via Google Sign-In for profile synchronization and community reviews.</li>
+            <li><strong class="text-zinc-900 dark:text-white">Support Inquiries:</strong> Any information you voluntarily provide when contacting customer support.</li>
+            <li><strong class="text-zinc-900 dark:text-white">Anonymous Error Telemetry:</strong> General client error telemetry (via Sentry) to help us identify and fix browser-specific crashes.</li>
+            <li><strong class="text-zinc-900 dark:text-white">Aggregated Platform Metrics:</strong> High-level aggregated counts (e.g., number of files processed, success rates) to power our public telemetry counter. We never see file names or media contents.</li>
+          </ul>
+        </section>
+
+        <section id="coppa" class="space-y-4">
+          <h2 class="text-2xl font-bold text-zinc-900 dark:text-white mb-4">Children's Privacy (COPPA Compliance)</h2>
+          <p class="text-zinc-600 dark:text-zinc-400 text-sm leading-relaxed">
+            TakeoutFix is intended for general audiences and is not directed to children under the age of 13. In accordance with the Children's Online Privacy Protection Act (COPPA) and Article 8 of the GDPR, we do not knowingly collect, solicit, or maintain personal information from individuals under 13 (or under 16 in the European Economic Area / UK). If we become aware that personal information from an underage user has been submitted without verifiable parental consent, we will take prompt steps to remove such information immediately.
+          </p>
+        </section>
+
+        <section id="local-processing" class="space-y-4">
+          <h2 class="text-2xl font-bold text-zinc-900 dark:text-white mb-4">Local Processing</h2>
+          <p class="text-zinc-600 dark:text-zinc-400 text-sm leading-relaxed">
+            The core TakeoutFix engine runs entirely within your web browser using Web Workers and the File System Access API. All matching, metadata parsing, and deep EXIF injection happens locally using your device's CPU and RAM. No server receives your Takeout data.
+          </p>
+        </section>
+
+        <section id="cookies" class="space-y-4">
+          <h2 class="text-2xl font-bold text-zinc-900 dark:text-white mb-4">Cookies &amp; Third-Party Services</h2>
+          <p class="text-zinc-600 dark:text-zinc-400 text-sm leading-relaxed mb-4">
+            We use essential cookies and local browser storage to manage authentication sessions, remember theme preferences, and track local application state. We do not sell, rent, or trade your personal data to third parties.
+          </p>
+          <p class="text-zinc-600 dark:text-zinc-400 text-sm leading-relaxed mb-4">
+            We integrate trusted third-party service providers to support our operations:
+          </p>
+          <ul class="list-disc pl-6 space-y-2 mb-4 text-zinc-600 dark:text-zinc-400 text-sm">
+            <li><strong class="text-zinc-900 dark:text-white">Firebase (Google LLC):</strong> Authentication, hosting, and operational database services.</li>
+            <li><strong class="text-zinc-900 dark:text-white">Sentry:</strong> Anonymous error reporting and diagnostic logging to identify application defects.</li>
+            <li><strong class="text-zinc-900 dark:text-white">Cloudflare Pages:</strong> Edge content delivery network and static asset hosting.</li>
+          </ul>
+        </section>
+
+        <section id="advertising" class="bg-zinc-50 dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-8 shadow-sm">
+          <h2 class="text-2xl font-bold text-zinc-900 dark:text-white mb-4">Google AdSense &amp; Advertising Cookies</h2>
+          <p class="mb-3 text-zinc-600 dark:text-zinc-400 text-sm leading-relaxed">
+            We use Google AdSense and third-party advertising partners to serve ads when you visit our website. These partners may use cookies, web beacons, and similar tracking technologies to collect non-personally identifiable information about your visits to this and other websites in order to provide advertisements about goods and services of interest to you.
+          </p>
+          <ul class="list-disc pl-6 space-y-2 mb-4 text-sm text-zinc-600 dark:text-zinc-400">
+            <li>
+              <strong class="text-zinc-900 dark:text-white">Third-Party Vendors &amp; Google:</strong> Third-party vendors, including Google, use cookies to serve ads based on a user's prior visits to this website or other websites across the Internet.
             </li>
-          ))}
-        </ul>
-      </section>
+            <li>
+              <strong class="text-zinc-900 dark:text-white">Advertising Cookies:</strong> Google's use of advertising cookies enables it and its partners to serve ads to users based on their visits to this site and/or other sites on the Internet.
+            </li>
+            <li>
+              <strong class="text-zinc-900 dark:text-white">Personalized Advertising Opt-Out:</strong> Users may opt out of personalized advertising by visiting Google's <a href="https://adssettings.google.com" target="_blank" rel="noopener noreferrer" class="text-zinc-900 dark:text-white underline font-semibold">Google Ads Settings</a>.
+            </li>
+            <li>
+              <strong class="text-zinc-900 dark:text-white">Third-Party Ad Network Opt-Out:</strong> Alternatively, users can opt out of a third-party vendor's use of cookies for personalized advertising by visiting <a href="https://www.aboutads.info" target="_blank" rel="noopener noreferrer" class="text-zinc-900 dark:text-white underline font-semibold">www.aboutads.info</a> or the European Interactive Digital Advertising Alliance (EDAA) consumer choice page at <a href="https://www.youronlinechoices.eu" target="_blank" rel="noopener noreferrer" class="text-zinc-900 dark:text-white underline font-semibold">youronlinechoices.eu</a>.
+            </li>
+          </ul>
+        </section>
 
-      <section class="space-y-4">
-        <h2 class="text-2xl font-bold text-zinc-900 dark:text-white mb-4">Data We DO Collect</h2>
-        <p class="text-zinc-600 dark:text-zinc-400 text-sm">To provide and improve our service, we collect minimal operational data:</p>
-        <ul class="list-disc pl-6 space-y-2 text-zinc-600 dark:text-zinc-400 text-sm">
-          <li><strong class="text-zinc-900 dark:text-white">Google Account Information:</strong> Optional authentication via Google Sign-In for profile synchronization and community reviews.</li>
-          <li><strong class="text-zinc-900 dark:text-white">Support Inquiries:</strong> Any information you voluntarily provide when contacting customer support.</li>
-          <li><strong class="text-zinc-900 dark:text-white">Anonymous Error Telemetry:</strong> General client error telemetry (via Sentry) to help us identify and fix browser-specific crashes.</li>
-          <li><strong class="text-zinc-900 dark:text-white">Aggregated Platform Metrics:</strong> High-level aggregated counts (e.g., number of files processed, success rates) to power our public telemetry counter. We never see file names or media contents.</li>
-        </ul>
-      </section>
+        <section id="contact" class="space-y-4">
+          <h2 class="text-2xl font-bold text-zinc-900 dark:text-white mb-4">Contact</h2>
+          <p class="text-zinc-600 dark:text-zinc-400 text-sm leading-relaxed">
+            If you have questions about this privacy policy, please contact us via our <a href="/contact" class="text-zinc-900 dark:text-white underline font-semibold">Contact Page</a> or directly via email at <a href="mailto:takeoutfix.support@gmail.com" class="text-zinc-900 dark:text-white underline font-semibold">takeoutfix.support@gmail.com</a>.
+          </p>
+        </section>
 
-      <section class="space-y-4">
-        <h2 class="text-2xl font-bold text-zinc-900 dark:text-white mb-4">Local Processing</h2>
-        <p class="text-zinc-600 dark:text-zinc-400 text-sm leading-relaxed">
-          The core TakeoutFix engine runs entirely within your web browser using Web Workers and the File System Access API. All matching, metadata parsing, and deep EXIF injection happens locally using your device's CPU and RAM. No server receives your Takeout data.
-        </p>
-      </section>
+      </div>
 
-      <section class="space-y-4">
-        <h2 class="text-2xl font-bold text-zinc-900 dark:text-white mb-4">Cookies &amp; Third-Party Services</h2>
-        <p class="text-zinc-600 dark:text-zinc-400 text-sm leading-relaxed mb-4">
-          We use essential cookies and local browser storage to manage authentication sessions, remember theme preferences, and track local application state. We do not sell, rent, or trade your personal data to third parties.
-        </p>
-        <p class="text-zinc-600 dark:text-zinc-400 text-sm leading-relaxed mb-4">
-          We integrate trusted third-party service providers to support our operations:
-        </p>
-        <ul class="list-disc pl-6 space-y-2 mb-4 text-zinc-600 dark:text-zinc-400 text-sm">
-          <li><strong class="text-zinc-900 dark:text-white">Firebase (Google LLC):</strong> Authentication, hosting, and operational database services.</li>
-          <li><strong class="text-zinc-900 dark:text-white">Sentry:</strong> Anonymous error reporting and diagnostic logging to identify application defects.</li>
-          <li><strong class="text-zinc-900 dark:text-white">Cloudflare Pages:</strong> Edge content delivery network and static asset hosting.</li>
-        </ul>
-      </section>
+      <!-- Sticky Quick-Navigation Sidebar (lg:col-span-4) -->
+      <div class="lg:col-span-4 space-y-6">
+        <div class="sticky top-28 space-y-6">
+          
+          <div class="bg-zinc-50 dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-6 shadow-sm">
+            <h3 class="text-sm font-bold uppercase tracking-wider text-zinc-900 dark:text-white mb-4 flex items-center gap-2">
+              <Icon name="book-open" class="w-4 h-4 text-zinc-900 dark:text-white" />
+              On This Page
+            </h3>
+            <nav class="space-y-2 text-sm text-zinc-600 dark:text-zinc-400">
+              <a href="#guarantee" class="block hover:text-zinc-900 dark:hover:text-white transition-colors py-1">1. The TakeoutFix Guarantee</a>
+              <a href="#not-collected" class="block hover:text-zinc-900 dark:hover:text-white transition-colors py-1">2. Data We DO NOT Collect</a>
+              <a href="#collected" class="block hover:text-zinc-900 dark:hover:text-white transition-colors py-1">3. Data We DO Collect</a>
+              <a href="#coppa" class="block hover:text-zinc-900 dark:hover:text-white transition-colors py-1">4. Children's Privacy (COPPA)</a>
+              <a href="#local-processing" class="block hover:text-zinc-900 dark:hover:text-white transition-colors py-1">5. Local Processing</a>
+              <a href="#cookies" class="block hover:text-zinc-900 dark:hover:text-white transition-colors py-1">6. Cookies &amp; Third Parties</a>
+              <a href="#advertising" class="block hover:text-zinc-900 dark:hover:text-white transition-colors py-1">7. Google AdSense &amp; Ads</a>
+              <a href="#contact" class="block hover:text-zinc-900 dark:hover:text-white transition-colors py-1">8. Contact Desk</a>
+            </nav>
+          </div>
 
-      <section class="bg-zinc-50 dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-6 sm:p-8">
-        <h2 class="text-2xl font-bold text-zinc-900 dark:text-white mb-4">Google AdSense &amp; Advertising Cookies</h2>
-        <p class="mb-3 text-zinc-600 dark:text-zinc-400 text-sm leading-relaxed">
-          We use Google AdSense and third-party advertising partners to serve ads when you visit our website. These partners may use cookies, web beacons, and similar tracking technologies to collect non-personally identifiable information about your visits to this and other websites in order to provide advertisements about goods and services of interest to you.
-        </p>
-        <ul class="list-disc pl-6 space-y-2 mb-4 text-sm text-zinc-600 dark:text-zinc-400">
-          <li>
-            <strong class="text-zinc-900 dark:text-white">Third-Party Vendors &amp; Google:</strong> Third-party vendors, including Google, use cookies to serve ads based on a user's prior visits to this website or other websites across the Internet.
-          </li>
-          <li>
-            <strong class="text-zinc-900 dark:text-white">Advertising Cookies:</strong> Google's use of advertising cookies enables it and its partners to serve ads to users based on their visits to this site and/or other sites on the Internet.
-          </li>
-          <li>
-            <strong class="text-zinc-900 dark:text-white">Personalized Advertising Opt-Out:</strong> Users may opt out of personalized advertising by visiting Google's <a href="https://adssettings.google.com" target="_blank" rel="noopener noreferrer" class="text-indigo-600 dark:text-indigo-400 hover:underline font-semibold">Google Ads Settings</a>.
-          </li>
-          <li>
-            <strong class="text-zinc-900 dark:text-white">Third-Party Ad Network Opt-Out:</strong> Alternatively, users can opt out of a third-party vendor's use of cookies for personalized advertising by visiting <a href="https://www.aboutads.info" target="_blank" rel="noopener noreferrer" class="text-indigo-600 dark:text-indigo-400 hover:underline font-semibold">www.aboutads.info</a> or the European Interactive Digital Advertising Alliance (EDAA) consumer choice page at <a href="https://www.youronlinechoices.eu" target="_blank" rel="noopener noreferrer" class="text-indigo-600 dark:text-indigo-400 hover:underline font-semibold">youronlinechoices.eu</a>.
-          </li>
-        </ul>
-      </section>
+          <!-- Privacy Guarantee Badge Card -->
+          <div class="bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 rounded-2xl p-6 shadow-md">
+            <div class="flex items-center gap-3 mb-3">
+              <Icon name="shield-check" class="w-6 h-6 text-emerald-400 dark:text-emerald-600" />
+              <h4 class="font-bold text-base">Zero-Upload Guarantee</h4>
+            </div>
+            <p class="text-xs leading-relaxed text-zinc-300 dark:text-zinc-600 mb-4">
+              All files are processed entirely in your web browser. No photos, videos, or metadata ever touch our servers.
+            </p>
+            <a 
+              href="/tool" 
+              class="inline-flex items-center gap-2 text-xs font-semibold px-4 py-2 rounded-xl bg-white/10 dark:bg-zinc-100 hover:bg-white/20 dark:hover:bg-zinc-200 transition-colors"
+            >
+              Test Offline Tool &rarr;
+            </a>
+          </div>
 
-      <section class="space-y-4">
-        <h2 class="text-2xl font-bold text-zinc-900 dark:text-white mb-4">Contact</h2>
-        <p class="text-zinc-600 dark:text-zinc-400 text-sm leading-relaxed">
-          If you have questions about this privacy policy, please contact us via our <a href="/contact" class="text-indigo-600 dark:text-indigo-400 hover:underline font-semibold">Contact Page</a> or directly via email at <a href="mailto:takeoutfix.support@gmail.com" class="text-indigo-600 dark:text-indigo-400 hover:underline font-semibold">takeoutfix.support@gmail.com</a>.
-        </p>
-      </section>
+        </div>
+      </div>
 
     </div>
+
   </div>
 </Layout>

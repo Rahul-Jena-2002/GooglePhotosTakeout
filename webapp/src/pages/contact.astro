@@ -30,132 +30,137 @@ const contactPageSchema = {
   <!-- Schema.org JSON-LD Structured Data -->
   <script type="application/ld+json" set:html={JSON.stringify(contactPageSchema)} />
 
-  <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-16 mt-12 font-sans">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 mt-12 font-sans">
     
     <!-- Hero Section -->
     <div class="text-center mb-16 relative">
-      <div class="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-indigo-600 dark:text-indigo-400 text-xs font-semibold uppercase tracking-wider mb-6 font-mono">
-        <Icon name="mail" class="w-4 h-4" />
+      <div class="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-zinc-900 dark:text-zinc-100 text-xs font-semibold uppercase tracking-wider mb-6 font-mono">
+        <Icon name="mail" class="w-4 h-4 text-zinc-900 dark:text-zinc-100" />
         Get in Touch
       </div>
-      <h1 class="text-4xl sm:text-5xl font-extrabold tracking-tight text-zinc-900 dark:text-white mb-6 leading-tight">
+      <h1 class="text-4xl sm:text-5xl md:text-6xl font-extrabold tracking-tight text-zinc-900 dark:text-white mb-6 leading-tight">
         How Can We <br class="hidden sm:inline" />
-        <span class="text-indigo-600 dark:text-indigo-400">Help You Today?</span>
+        <span class="text-zinc-500 dark:text-zinc-400">Help You Today?</span>
       </h1>
-      <p class="text-base sm:text-lg text-zinc-600 dark:text-zinc-400 max-w-2xl mx-auto leading-relaxed font-normal">
-        Have a question about restoring your photo dates, migrating to Apple Photos, or encountering an unhandled Takeout format? We're here to help.
+      <p class="text-base sm:text-lg md:text-xl text-zinc-600 dark:text-zinc-400 max-w-3xl mx-auto leading-relaxed font-normal">
+        Have a question about restoring your photo dates, migrating to Apple Photos, or encountering an unhandled Takeout format? Our engineering desk is here to help.
       </p>
     </div>
 
-    <!-- Contact Channels Bento -->
-    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-16">
+    <!-- Contact Channels Bento (3-Card Full-Width Grid) -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-8 mb-16">
       
       <!-- Direct Email -->
-      <div class="bg-zinc-50 dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-6 hover:border-indigo-500/30 transition-all flex flex-col justify-between">
+      <div class="bg-zinc-50 dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-8 hover:border-zinc-400 dark:hover:border-zinc-600 transition-all flex flex-col justify-between shadow-sm">
         <div>
-          <div class="w-12 h-12 rounded-xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center mb-4 text-indigo-600 dark:text-indigo-400">
+          <div class="w-12 h-12 rounded-xl bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 flex items-center justify-center mb-5 text-zinc-900 dark:text-white">
             <Icon name="mail" class="w-6 h-6" />
           </div>
-          <h3 class="text-lg font-bold text-zinc-900 dark:text-white mb-2">Direct Email Support</h3>
-          <p class="text-xs text-zinc-600 dark:text-zinc-400 leading-relaxed font-normal mb-4">
-            For technical issues, bug reports, and account questions. We reply to all inquiries within 24 to 48 business hours.
+          <h3 class="text-xl font-bold text-zinc-900 dark:text-white mb-2">Direct Email Support</h3>
+          <p class="text-sm text-zinc-600 dark:text-zinc-400 leading-relaxed font-normal mb-6">
+            For technical issues, format questions, and debug logs. We reply to all engineering inquiries within 24 to 48 business hours.
           </p>
         </div>
         <a 
           href="mailto:takeoutfix.support@gmail.com" 
-          class="text-sm font-semibold text-indigo-600 dark:text-indigo-400 hover:underline break-all transition-colors flex items-center gap-1.5"
+          class="text-sm font-semibold text-zinc-900 dark:text-white hover:underline break-all transition-colors inline-flex items-center gap-2 pt-4 border-t border-zinc-200 dark:border-zinc-800"
         >
-          takeoutfix.support@gmail.com &rarr;
+          takeoutfix.support@gmail.com
+          <Icon name="arrow-right" class="w-4 h-4" />
         </a>
       </div>
 
       <!-- Technical Documentation -->
-      <div class="bg-zinc-50 dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-6 hover:border-indigo-500/30 transition-all flex flex-col justify-between">
+      <div class="bg-zinc-50 dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-8 hover:border-zinc-400 dark:hover:border-zinc-600 transition-all flex flex-col justify-between shadow-sm">
         <div>
-          <div class="w-12 h-12 rounded-xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center mb-4 text-indigo-600 dark:text-indigo-400">
+          <div class="w-12 h-12 rounded-xl bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 flex items-center justify-center mb-5 text-zinc-900 dark:text-white">
             <Icon name="book-open" class="w-6 h-6" />
           </div>
-          <h3 class="text-lg font-bold text-zinc-900 dark:text-white mb-2">Technical Guides &amp; Docs</h3>
-          <p class="text-xs text-zinc-600 dark:text-zinc-400 leading-relaxed font-normal mb-4">
-            Browse troubleshooting manuals, sidecar matching explanations, and step-by-step migration tutorials.
+          <h3 class="text-xl font-bold text-zinc-900 dark:text-white mb-2">Technical Guides &amp; Docs</h3>
+          <p class="text-sm text-zinc-600 dark:text-zinc-400 leading-relaxed font-normal mb-6">
+            Browse troubleshooting manuals, sidecar matching explanations, and step-by-step storage migration tutorials.
           </p>
         </div>
         <a 
           href="/guides" 
-          class="text-sm font-semibold text-indigo-600 dark:text-indigo-400 hover:underline transition-colors flex items-center gap-1.5"
+          class="text-sm font-semibold text-zinc-900 dark:text-white hover:underline transition-colors inline-flex items-center gap-2 pt-4 border-t border-zinc-200 dark:border-zinc-800"
         >
-          Browse Knowledge Base &rarr;
+          Browse Knowledge Base
+          <Icon name="arrow-right" class="w-4 h-4" />
         </a>
       </div>
 
       <!-- Support Center -->
-      <div class="bg-zinc-50 dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-6 hover:border-indigo-500/30 transition-all flex flex-col justify-between">
+      <div class="bg-zinc-50 dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-8 hover:border-zinc-400 dark:hover:border-zinc-600 transition-all flex flex-col justify-between shadow-sm">
         <div>
-          <div class="w-12 h-12 rounded-xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center mb-4 text-indigo-600 dark:text-indigo-400">
+          <div class="w-12 h-12 rounded-xl bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 flex items-center justify-center mb-5 text-zinc-900 dark:text-white">
             <Icon name="help-circle" class="w-6 h-6" />
           </div>
-          <h3 class="text-lg font-bold text-zinc-900 dark:text-white mb-2">Support &amp; FAQ</h3>
-          <p class="text-xs text-zinc-600 dark:text-zinc-400 leading-relaxed font-normal mb-4">
-            Manage your support tickets, view system status, and browse curated answers to common questions.
+          <h3 class="text-xl font-bold text-zinc-900 dark:text-white mb-2">Support &amp; FAQ</h3>
+          <p class="text-sm text-zinc-600 dark:text-zinc-400 leading-relaxed font-normal mb-6">
+            Manage your support tickets, view system status, and browse curated answers to common Takeout questions.
           </p>
         </div>
         <a 
           href="/support" 
-          class="text-sm font-semibold text-indigo-600 dark:text-indigo-400 hover:underline transition-colors flex items-center gap-1.5"
+          class="text-sm font-semibold text-zinc-900 dark:text-white hover:underline transition-colors inline-flex items-center gap-2 pt-4 border-t border-zinc-200 dark:border-zinc-800"
         >
-          Visit Support Center &rarr;
+          Visit Support Center
+          <Icon name="arrow-right" class="w-4 h-4" />
         </a>
       </div>
 
     </div>
 
-    <!-- Contact Form & FAQ Container -->
-    <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 mb-16">
+    <!-- Contact Form & FAQ Container (12-Column Grid) -->
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-10 mb-16">
       
-      <!-- Contact Form -->
-      <div class="lg:col-span-7 bg-zinc-50 dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-6 sm:p-8">
-        <h2 class="text-2xl font-bold text-zinc-900 dark:text-white mb-2">Send Us a Direct Message</h2>
-        <p class="text-xs text-zinc-500 dark:text-zinc-400 mb-6 font-normal">
+      <!-- Contact Form (lg:col-span-7) -->
+      <div class="lg:col-span-7 bg-zinc-50 dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-8 sm:p-10 shadow-sm">
+        <h2 class="text-2xl sm:text-3xl font-bold text-zinc-900 dark:text-white mb-2">Send Us a Direct Message</h2>
+        <p class="text-sm text-zinc-500 dark:text-zinc-400 mb-8 font-normal">
           Fill out this form and your message will be forwarded directly to our engineering desk.
         </p>
 
-        <form id="contact-page-form" class="space-y-4">
-          <div>
-            <label for="contact-name" class="block text-xs font-semibold text-zinc-700 dark:text-zinc-300 uppercase tracking-wider mb-1.5">
-              Your Name
-            </label>
-            <input 
-              type="text" 
-              id="contact-name" 
-              name="name" 
-              required
-              placeholder="e.g. Sarah Connor"
-              class="w-full bg-white dark:bg-zinc-900 border border-zinc-300 dark:border-zinc-700 rounded-xl px-4 py-3 text-sm text-zinc-900 dark:text-white placeholder-zinc-400 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all"
-            />
+        <form id="contact-page-form" class="space-y-5">
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
+            <div>
+              <label for="contact-name" class="block text-xs font-semibold text-zinc-700 dark:text-zinc-300 uppercase tracking-wider mb-2">
+                Your Name
+              </label>
+              <input 
+                type="text" 
+                id="contact-name" 
+                name="name" 
+                required
+                placeholder="e.g. Sarah Connor"
+                class="w-full bg-white dark:bg-zinc-900 border border-zinc-300 dark:border-zinc-700 rounded-xl px-4 py-3 text-sm text-zinc-900 dark:text-white placeholder-zinc-400 focus:outline-none focus:border-zinc-500 focus:ring-1 focus:ring-zinc-500 transition-all"
+              />
+            </div>
+
+            <div>
+              <label for="contact-email" class="block text-xs font-semibold text-zinc-700 dark:text-zinc-300 uppercase tracking-wider mb-2">
+                Email Address
+              </label>
+              <input 
+                type="email" 
+                id="contact-email" 
+                name="email" 
+                required
+                placeholder="e.g. sarah@example.com"
+                class="w-full bg-white dark:bg-zinc-900 border border-zinc-300 dark:border-zinc-700 rounded-xl px-4 py-3 text-sm text-zinc-900 dark:text-white placeholder-zinc-400 focus:outline-none focus:border-zinc-500 focus:ring-1 focus:ring-zinc-500 transition-all"
+              />
+            </div>
           </div>
 
           <div>
-            <label for="contact-email" class="block text-xs font-semibold text-zinc-700 dark:text-zinc-300 uppercase tracking-wider mb-1.5">
-              Email Address
-            </label>
-            <input 
-              type="email" 
-              id="contact-email" 
-              name="email" 
-              required
-              placeholder="e.g. sarah@example.com"
-              class="w-full bg-white dark:bg-zinc-900 border border-zinc-300 dark:border-zinc-700 rounded-xl px-4 py-3 text-sm text-zinc-900 dark:text-white placeholder-zinc-400 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all"
-            />
-          </div>
-
-          <div>
-            <label for="contact-category" class="block text-xs font-semibold text-zinc-700 dark:text-zinc-300 uppercase tracking-wider mb-1.5">
+            <label for="contact-category" class="block text-xs font-semibold text-zinc-700 dark:text-zinc-300 uppercase tracking-wider mb-2">
               Inquiry Type
             </label>
             <select 
               id="contact-category" 
               name="category"
-              class="w-full bg-white dark:bg-zinc-900 border border-zinc-300 dark:border-zinc-700 rounded-xl px-4 py-3 text-sm text-zinc-900 dark:text-white focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all"
+              class="w-full bg-white dark:bg-zinc-900 border border-zinc-300 dark:border-zinc-700 rounded-xl px-4 py-3 text-sm text-zinc-900 dark:text-white focus:outline-none focus:border-zinc-500 focus:ring-1 focus:ring-zinc-500 transition-all"
             >
               <option value="technical">Technical Support / Takeout Error</option>
               <option value="feature">Feature Request / Format Support</option>
@@ -165,25 +170,25 @@ const contactPageSchema = {
           </div>
 
           <div>
-            <label for="contact-message" class="block text-xs font-semibold text-zinc-700 dark:text-zinc-300 uppercase tracking-wider mb-1.5">
+            <label for="contact-message" class="block text-xs font-semibold text-zinc-700 dark:text-zinc-300 uppercase tracking-wider mb-2">
               Your Message
             </label>
             <textarea 
               id="contact-message" 
               name="message" 
-              rows="4" 
+              rows="5" 
               required
               placeholder="Please describe your issue or question in detail (include OS, browser, or camera model if applicable)..."
-              class="w-full bg-white dark:bg-zinc-900 border border-zinc-300 dark:border-zinc-700 rounded-xl px-4 py-3 text-sm text-zinc-900 dark:text-white placeholder-zinc-400 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all resize-y"
+              class="w-full bg-white dark:bg-zinc-900 border border-zinc-300 dark:border-zinc-700 rounded-xl px-4 py-3 text-sm text-zinc-900 dark:text-white placeholder-zinc-400 focus:outline-none focus:border-zinc-500 focus:ring-1 focus:ring-zinc-500 transition-all resize-y"
             ></textarea>
           </div>
 
-          <div id="contact-status" class="hidden text-xs py-2 px-3 rounded-lg"></div>
+          <div id="contact-status" class="hidden text-xs py-3 px-4 rounded-xl"></div>
 
           <button 
             type="submit" 
             id="contact-submit-btn"
-            class="w-full py-3.5 px-6 rounded-xl bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 hover:opacity-90 font-semibold text-sm transition-opacity shadow-sm cursor-pointer flex items-center justify-center gap-2"
+            class="w-full py-4 px-6 rounded-xl bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 hover:opacity-90 font-semibold text-sm transition-opacity shadow-sm cursor-pointer flex items-center justify-center gap-2"
           >
             <span>Send Message</span>
             <Icon name="arrow-right" class="w-4 h-4" />
@@ -194,9 +199,8 @@ const contactPageSchema = {
           document.addEventListener('DOMContentLoaded', () => {
             const form = document.getElementById('contact-page-form');
             const statusEl = document.getElementById('contact-status');
-            const submitBtn = document.getElementById('contact-submit-btn');
 
-            if (form) {
+            if (form && statusEl) {
               form.addEventListener('submit', (e) => {
                 e.preventDefault();
                 const name = document.getElementById('contact-name').value;
@@ -204,12 +208,11 @@ const contactPageSchema = {
                 const category = document.getElementById('contact-category').value;
                 const message = document.getElementById('contact-message').value;
 
-                // Open direct mailto fallback or submit
                 const subject = encodeURIComponent(`[TakeoutFix Contact - ${category}] From: ${name}`);
                 const body = encodeURIComponent(`Name: ${name}\nEmail: ${email}\nCategory: ${category}\n\nMessage:\n${message}`);
                 
-                statusEl.className = "text-xs py-2.5 px-3 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-emerald-600 dark:text-emerald-400 block font-medium";
-                statusEl.innerHTML = "Opening your email client... You can also email us directly at <strong>takeoutfix.support@gmail.com</strong>.";
+                statusEl.className = "text-xs py-3 px-4 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-700 dark:text-emerald-300 block font-medium";
+                statusEl.textContent = "Opening your email client... You can also email us directly at takeoutfix.support@gmail.com.";
                 
                 window.location.href = `mailto:takeoutfix.support@gmail.com?subject=${subject}&body=${body}`;
               });
@@ -218,13 +221,13 @@ const contactPageSchema = {
         </script>
       </div>
 
-      <!-- Quick FAQs -->
-      <div class="lg:col-span-5 space-y-4">
-        <h3 class="text-xl font-bold text-zinc-900 dark:text-white mb-4">Frequently Asked Questions</h3>
+      <!-- Quick FAQs & Telemetry Note (lg:col-span-5) -->
+      <div class="lg:col-span-5 space-y-6">
+        <h3 class="text-2xl font-bold text-zinc-900 dark:text-white mb-4">Frequently Asked Questions</h3>
 
-        <div class="bg-zinc-50 dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-5">
+        <div class="bg-zinc-50 dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-6 shadow-sm">
           <h4 class="text-sm font-semibold text-zinc-900 dark:text-white mb-2 flex items-center gap-2">
-            <Icon name="help-circle" class="w-4 h-4 text-indigo-600 dark:text-indigo-400 flex-shrink-0" />
+            <Icon name="help-circle" class="w-4 h-4 text-zinc-700 dark:text-zinc-300 flex-shrink-0" />
             Do my photos get uploaded to your servers?
           </h4>
           <p class="text-xs text-zinc-600 dark:text-zinc-400 leading-relaxed font-normal">
@@ -232,9 +235,9 @@ const contactPageSchema = {
           </p>
         </div>
 
-        <div class="bg-zinc-50 dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-5">
+        <div class="bg-zinc-50 dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-6 shadow-sm">
           <h4 class="text-sm font-semibold text-zinc-900 dark:text-white mb-2 flex items-center gap-2">
-            <Icon name="help-circle" class="w-4 h-4 text-indigo-600 dark:text-indigo-400 flex-shrink-0" />
+            <Icon name="help-circle" class="w-4 h-4 text-zinc-700 dark:text-zinc-300 flex-shrink-0" />
             Why did my photos have wrong dates?
           </h4>
           <p class="text-xs text-zinc-600 dark:text-zinc-400 leading-relaxed font-normal">
@@ -242,9 +245,9 @@ const contactPageSchema = {
           </p>
         </div>
 
-        <div class="bg-zinc-50 dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-5">
+        <div class="bg-zinc-50 dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-6 shadow-sm">
           <h4 class="text-sm font-semibold text-zinc-900 dark:text-white mb-2 flex items-center gap-2">
-            <Icon name="help-circle" class="w-4 h-4 text-indigo-600 dark:text-indigo-400 flex-shrink-0" />
+            <Icon name="help-circle" class="w-4 h-4 text-zinc-700 dark:text-zinc-300 flex-shrink-0" />
             Is TakeoutFix completely free to use?
           </h4>
           <p class="text-xs text-zinc-600 dark:text-zinc-400 leading-relaxed font-normal">
@@ -252,13 +255,29 @@ const contactPageSchema = {
           </p>
         </div>
 
-        <div class="p-5 rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-900/30 text-xs text-zinc-500 dark:text-zinc-400 leading-relaxed">
+        <div class="p-6 rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-900/30 text-xs text-zinc-500 dark:text-zinc-400 leading-relaxed">
           <p>
             <strong>Note:</strong> We are an independent software engineering team. For official Google Account or Google One storage recovery, please consult Google's official support directly.
           </p>
         </div>
       </div>
 
+    </div>
+
+    <!-- Trust Strip Matching Homepage -->
+    <div class="flex flex-wrap justify-center gap-x-8 gap-y-4 text-sm font-semibold text-zinc-700 dark:text-zinc-300 px-6 py-6 border-y border-zinc-200 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-950/20 rounded-xl">
+      <div class="flex items-center gap-2">
+        <Icon name="check" class="w-4 h-4 text-zinc-900 dark:text-zinc-100 flex-shrink-0" />
+        <span>100% Free &amp; Private</span>
+      </div>
+      <div class="flex items-center gap-2">
+        <Icon name="check" class="w-4 h-4 text-zinc-900 dark:text-zinc-100 flex-shrink-0" />
+        <span>Local Client Processing</span>
+      </div>
+      <div class="flex items-center gap-2">
+        <Icon name="check" class="w-4 h-4 text-zinc-900 dark:text-zinc-100 flex-shrink-0" />
+        <span>Zero Server Uploads</span>
+      </div>
     </div>
 
   </div>

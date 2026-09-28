@@ -34,51 +34,51 @@ const aboutPageSchema = {
   <!-- Schema.org JSON-LD Structured Data -->
   <script type="application/ld+json" set:html={JSON.stringify(aboutPageSchema)} />
 
-  <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-16 mt-12 font-sans">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 mt-12 font-sans">
     
     <!-- Hero Section -->
     <div class="text-center mb-16 relative">
-      <div class="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-indigo-600 dark:text-indigo-400 text-xs font-semibold uppercase tracking-wider mb-6 font-mono">
-        <Icon name="info" class="w-4 h-4" />
-        About Our Project & Team
+      <div class="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-zinc-900 dark:text-zinc-100 text-xs font-semibold uppercase tracking-wider mb-6 font-mono">
+        <Icon name="info" class="w-4 h-4 text-zinc-900 dark:text-zinc-100" />
+        About Our Project &amp; Architecture
       </div>
-      <h1 class="text-4xl sm:text-5xl font-extrabold tracking-tight text-zinc-900 dark:text-white mb-6 leading-tight">
+      <h1 class="text-4xl sm:text-5xl md:text-6xl font-extrabold tracking-tight text-zinc-900 dark:text-white mb-6 leading-tight">
         Preserving Digital Memories with <br class="hidden sm:inline" />
-        <span class="text-indigo-600 dark:text-indigo-400">Privacy-First Engineering</span>
+        <span class="text-zinc-500 dark:text-zinc-400">Privacy-First Engineering</span>
       </h1>
-      <p class="text-base sm:text-lg text-zinc-600 dark:text-zinc-400 max-w-3xl mx-auto leading-relaxed font-normal">
-        TakeoutFix was founded to solve a frustrating problem faced by millions: when you download your photo archives from Google Takeout, your photos lose their capture dates, camera tags, and GPS coordinates. We built a fast, zero-upload tool to reunite them.
+      <p class="text-base sm:text-lg md:text-xl text-zinc-600 dark:text-zinc-400 max-w-3xl mx-auto leading-relaxed font-normal">
+        TakeoutFix was founded to solve a frustrating problem faced by millions: when you export your photo archives from Google Takeout, your photos lose their capture dates, camera tags, and GPS coordinates. We built a fast, zero-upload tool to reunite them.
       </p>
     </div>
 
-    <!-- Core Philosophy Bento Grid -->
-    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-16">
+    <!-- Core Philosophy Bento Grid (3 Cards Full-Width) -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-8 mb-16">
       
-      <div class="bg-zinc-50 dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-6 sm:p-8 hover:border-indigo-500/30 transition-all flex flex-col">
-        <div class="w-12 h-12 rounded-xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center mb-5 text-indigo-600 dark:text-indigo-400">
+      <div class="bg-zinc-50 dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-8 hover:border-zinc-400 dark:hover:border-zinc-600 transition-all flex flex-col shadow-sm">
+        <div class="w-12 h-12 rounded-xl bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 flex items-center justify-center mb-6 text-zinc-900 dark:text-white">
           <Icon name="shield-check" class="w-6 h-6" />
         </div>
-        <h3 class="text-xl font-bold text-zinc-900 dark:text-white mb-2">100% Local-First</h3>
+        <h3 class="text-xl font-bold text-zinc-900 dark:text-white mb-3">100% Local-First</h3>
         <p class="text-sm text-zinc-600 dark:text-zinc-400 leading-relaxed font-normal">
           Your personal photos and memories never leave your device. All parsing, file matching, and EXIF injection execute inside your browser sandbox via WebAssembly and Web Workers.
         </p>
       </div>
 
-      <div class="bg-zinc-50 dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-6 sm:p-8 hover:border-indigo-500/30 transition-all flex flex-col">
-        <div class="w-12 h-12 rounded-xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center mb-5 text-indigo-600 dark:text-indigo-400">
+      <div class="bg-zinc-50 dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-8 hover:border-zinc-400 dark:hover:border-zinc-600 transition-all flex flex-col shadow-sm">
+        <div class="w-12 h-12 rounded-xl bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 flex items-center justify-center mb-6 text-zinc-900 dark:text-white">
           <Icon name="cpu" class="w-6 h-6" />
         </div>
-        <h3 class="text-xl font-bold text-zinc-900 dark:text-white mb-2">Lossless Integrity</h3>
+        <h3 class="text-xl font-bold text-zinc-900 dark:text-white mb-3">Lossless Integrity</h3>
         <p class="text-sm text-zinc-600 dark:text-zinc-400 leading-relaxed font-normal">
           We never recompress, re-encode, or alter your photo pixels. We directly write standard EXIF, IPTC, and QuickTime headers into file metadata segments with bit-for-bit preservation.
         </p>
       </div>
 
-      <div class="bg-zinc-50 dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-6 sm:p-8 hover:border-indigo-500/30 transition-all flex flex-col">
-        <div class="w-12 h-12 rounded-xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center mb-5 text-indigo-600 dark:text-indigo-400">
+      <div class="bg-zinc-50 dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-8 hover:border-zinc-400 dark:hover:border-zinc-600 transition-all flex flex-col shadow-sm">
+        <div class="w-12 h-12 rounded-xl bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 flex items-center justify-center mb-6 text-zinc-900 dark:text-white">
           <Icon name="zap" class="w-6 h-6" />
         </div>
-        <h3 class="text-xl font-bold text-zinc-900 dark:text-white mb-2">Multi-Platform Reach</h3>
+        <h3 class="text-xl font-bold text-zinc-900 dark:text-white mb-3">Multi-Platform Reach</h3>
         <p class="text-sm text-zinc-600 dark:text-zinc-400 leading-relaxed font-normal">
           Whether you prefer our zero-install web application or high-throughput standalone desktop utilities for Windows and macOS, we offer tools for libraries of any scale.
         </p>
@@ -87,73 +87,73 @@ const aboutPageSchema = {
     </div>
 
     <!-- The Problem We Solve (In-Depth Technical Story) -->
-    <div class="bg-zinc-50 dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-6 sm:p-10 mb-16">
+    <div class="bg-zinc-50 dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-8 sm:p-12 mb-16 shadow-sm">
       <h2 class="text-2xl sm:text-3xl font-extrabold text-zinc-900 dark:text-white mb-6">
         Why Was TakeoutFix Built?
       </h2>
-      <div class="space-y-5 text-zinc-700 dark:text-zinc-300 text-sm sm:text-base leading-relaxed font-normal">
+      <div class="space-y-6 text-zinc-700 dark:text-zinc-300 text-sm sm:text-base leading-relaxed font-normal">
         <p>
-          Google Takeout is the primary tool Google provides for users exercising their data portability rights to export their stored Google Photos archives. However, instead of baking the capture timestamps, geolocation data, and camera settings directly into each media file's EXIF header, Google separates this crucial information into companion files ending in <code class="text-xs font-mono px-2 py-0.5 rounded bg-zinc-200 dark:bg-zinc-800 text-zinc-800 dark:text-zinc-200 border border-zinc-300 dark:border-zinc-700">.json</code>.
+          Google Takeout is the primary service Google provides for users exercising their data portability rights to export their stored Google Photos archives. However, instead of baking the capture timestamps, geolocation data, and camera settings directly into each media file's EXIF header, Google separates this crucial information into companion files ending in <code class="text-xs font-mono px-2 py-0.5 rounded bg-zinc-200 dark:bg-zinc-800 text-zinc-800 dark:text-zinc-200 border border-zinc-300 dark:border-zinc-700">.json</code>.
         </p>
         <p>
           When you subsequently attempt to import these photos into Apple Photos, Synology Photos, Windows Photo Gallery, or Lightroom, these programs cannot read Google's proprietary JSON sidecars. As a consequence, thousands of irreplaceable family memories appear scrambled, all sharing the date you downloaded the zip archive instead of the year they were captured.
         </p>
         <p>
-          Traditional solutions required running complex Python scripts or terminal tools like ExifTool, which are intimidating and inaccessible for everyday users. TakeoutFix was engineered to provide an accessible, beautiful, and completely secure solution: a high-performance metadata restorer that runs right in your browser with no cloud uploads required.
+          Traditional solutions required running complex terminal tools or installing third-party Python environments, which are intimidating and inaccessible for everyday users. TakeoutFix was engineered to provide an accessible, beautiful, and completely secure solution: a high-performance metadata restorer that runs right in your browser with zero cloud uploads required.
         </p>
       </div>
     </div>
 
-    <!-- Meet the Creator & Engineering Standards -->
-    <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 mb-16 items-start">
+    <!-- Meet the Creator & Engineering Standards (12-Column Grid) -->
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-10 mb-16 items-start">
       
-      <div class="lg:col-span-5 bg-zinc-50 dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-6 sm:p-8 text-center sm:text-left">
-        <div class="w-16 h-16 rounded-2xl bg-indigo-600 text-white flex items-center justify-center text-xl font-bold mx-auto sm:mx-0 mb-5 shadow-md shadow-indigo-500/20">
+      <div class="lg:col-span-5 bg-zinc-50 dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-8 text-center sm:text-left shadow-sm">
+        <div class="w-16 h-16 rounded-2xl bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 flex items-center justify-center text-xl font-bold mx-auto sm:mx-0 mb-6 shadow-sm">
           RJ
         </div>
         <h3 class="text-2xl font-bold text-zinc-900 dark:text-white mb-1">Rahul Jena</h3>
-        <p class="text-indigo-600 dark:text-indigo-400 font-mono text-xs font-semibold mb-4">Founder &amp; Lead Software Engineer</p>
+        <p class="text-zinc-500 dark:text-zinc-400 font-mono text-xs font-semibold mb-4">Founder &amp; Software Engineer</p>
         <p class="text-sm text-zinc-600 dark:text-zinc-400 leading-relaxed font-normal mb-6">
           A software engineer specializing in systems architecture, web technologies, and multimedia processing. Creator and lead architect of the TakeoutFix client engine.
         </p>
         <div class="flex flex-wrap gap-3 justify-center sm:justify-start">
           <a 
             href="/contact" 
-            class="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-white dark:bg-zinc-800 hover:bg-zinc-100 dark:hover:bg-zinc-700 border border-zinc-200 dark:border-zinc-700 text-xs font-semibold text-zinc-900 dark:text-white transition-all shadow-sm"
+            class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white dark:bg-zinc-800 hover:bg-zinc-100 dark:hover:bg-zinc-700 border border-zinc-200 dark:border-zinc-700 text-xs font-semibold text-zinc-900 dark:text-white transition-all shadow-sm"
           >
             Get in Touch
           </a>
           <a 
-            href="/docs" 
-            class="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-indigo-50 dark:bg-indigo-950/30 hover:bg-indigo-100 dark:hover:bg-indigo-900/40 border border-indigo-200 dark:border-indigo-800 text-xs font-semibold text-indigo-700 dark:text-indigo-300 transition-all"
+            href="/guides" 
+            class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 border border-zinc-200 dark:border-zinc-700 text-xs font-semibold text-zinc-900 dark:text-white transition-all"
           >
-            Read Architecture
+            Technical Guides
           </a>
         </div>
       </div>
 
-      <div class="lg:col-span-7 space-y-6">
+      <div class="lg:col-span-7 bg-zinc-50 dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-8 sm:p-10 space-y-6 shadow-sm">
         <h3 class="text-2xl font-bold text-zinc-900 dark:text-white">Our Engineering &amp; Quality Standards</h3>
-        <ul class="space-y-4 text-sm text-zinc-600 dark:text-zinc-400 font-normal">
-          <li class="flex items-start gap-3">
-            <div class="w-6 h-6 rounded-full bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-600 dark:text-emerald-400 flex-shrink-0 mt-0.5">
-              <Icon name="check" class="w-3.5 h-3.5" />
+        <ul class="space-y-5 text-sm text-zinc-600 dark:text-zinc-400 font-normal">
+          <li class="flex items-start gap-4">
+            <div class="w-7 h-7 rounded-full bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-600 dark:text-emerald-400 flex-shrink-0 mt-0.5">
+              <Icon name="check" class="w-4 h-4" />
             </div>
             <span>
               <strong class="text-zinc-900 dark:text-white">Extensive Format Testing:</strong> Our algorithms are rigorously verified across JPEG, PNG, WebP, Apple HEIC/HEIF, Canon CR2/CR3, Nikon NEF, Sony ARW, and MP4/MOV QuickTime files.
             </span>
           </li>
-          <li class="flex items-start gap-3">
-            <div class="w-6 h-6 rounded-full bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-600 dark:text-emerald-400 flex-shrink-0 mt-0.5">
-              <Icon name="check" class="w-3.5 h-3.5" />
+          <li class="flex items-start gap-4">
+            <div class="w-7 h-7 rounded-full bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-600 dark:text-emerald-400 flex-shrink-0 mt-0.5">
+              <Icon name="check" class="w-4 h-4" />
             </div>
             <span>
               <strong class="text-zinc-900 dark:text-white">Edge Case Handling:</strong> We handle real-world Takeout anomalies including truncated JSON filenames (e.g., <code class="text-xs font-mono">IMG_1234(1).JPG</code> vs <code class="text-xs font-mono">IMG_1234.JPG(1).json</code>), edited suffixes, and timezone offsets.
             </span>
           </li>
-          <li class="flex items-start gap-3">
-            <div class="w-6 h-6 rounded-full bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-600 dark:text-emerald-400 flex-shrink-0 mt-0.5">
-              <Icon name="check" class="w-3.5 h-3.5" />
+          <li class="flex items-start gap-4">
+            <div class="w-7 h-7 rounded-full bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-600 dark:text-emerald-400 flex-shrink-0 mt-0.5">
+              <Icon name="check" class="w-4 h-4" />
             </div>
             <span>
               <strong class="text-zinc-900 dark:text-white">Zero Telemetry of Personal Data:</strong> We never log, track, or collect file names, photo thumbnails, or EXIF metadata. Everything stays securely on your machine.
@@ -165,14 +165,14 @@ const aboutPageSchema = {
     </div>
 
     <!-- Legal Transparency & Trademark Disclosure -->
-    <div class="border border-zinc-200 dark:border-zinc-800 rounded-2xl p-6 sm:p-8 bg-zinc-50/50 dark:bg-zinc-900/30 text-xs text-zinc-500 dark:text-zinc-400 leading-relaxed font-normal">
+    <div class="border border-zinc-200 dark:border-zinc-800 rounded-2xl p-8 bg-zinc-50/50 dark:bg-zinc-900/30 text-xs text-zinc-500 dark:text-zinc-400 leading-relaxed font-normal">
       <h4 class="text-xs font-bold text-zinc-900 dark:text-white mb-2 uppercase tracking-wider">Independent Organization Disclosure</h4>
       <p class="mb-3">
         Google Takeout™ and Google Photos™ are registered trademarks of Google LLC. Apple Photos™ and iCloud™ are registered trademarks of Apple Inc. 
         TakeoutFix is an independent utility software project and is <strong>not affiliated with, endorsed by, sponsored by, or associated with Google LLC or Apple Inc.</strong>
       </p>
       <p>
-        For inquiries, press, or technical questions, please visit our <a href="/contact" class="text-indigo-600 dark:text-indigo-400 hover:underline font-semibold">Contact Page</a> or review our <a href="/disclaimer" class="text-indigo-600 dark:text-indigo-400 hover:underline font-semibold">Full Legal Disclaimer</a>.
+        For inquiries, press, or technical questions, please visit our <a href="/contact" class="text-zinc-900 dark:text-white hover:underline font-semibold">Contact Page</a> or review our <a href="/disclaimer" class="text-zinc-900 dark:text-white hover:underline font-semibold">Full Legal Disclaimer</a>.
       </p>
     </div>
 

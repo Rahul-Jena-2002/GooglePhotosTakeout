@@ -1020,6 +1020,14 @@ export default function AuthPage() {
               </div>
             )}
 
+            {mode === "signup" && (
+              <p className="text-[11px] text-zinc-500 dark:text-zinc-400 leading-normal pt-1">
+                By creating an account, you confirm that you are at least 13 years old (or 16 in the EU/UK) and agree to our{" "}
+                <a href="/terms" target="_blank" className="text-indigo-600 dark:text-indigo-400 underline">Terms</a> and{" "}
+                <a href="/privacy" target="_blank" className="text-indigo-600 dark:text-indigo-400 underline">Privacy Policy</a>.
+              </p>
+            )}
+
             {/* Action Submit Button */}
             <button
               type="submit"
