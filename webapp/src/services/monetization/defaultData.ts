@@ -421,7 +421,7 @@ export const DEFAULT_AD_UNITS: AdUnit[] = [
     embedCode: `<ins class="adsbygoogle" style="display:block" data-ad-client="ca-pub-7628736172233995" data-ad-slot="auto" data-ad-format="auto" data-full-width-responsive="true"></ins>`,
     status: "ACTIVE",
     priority: 10,
-    placementCodes: ["ARTICLE_TOP", "ARTICLE_MIDDLE", "ARTICLE_BOTTOM", "HOMEPAGE_TOP", "HOMEPAGE_MIDDLE", "HOMEPAGE_BOTTOM", "SIDEBAR", "TOOL_BOTTOM"],
+    placementCodes: ["ARTICLE_TOP", "ARTICLE_MIDDLE", "ARTICLE_BOTTOM", "HOMEPAGE_TOP", "HOMEPAGE_MIDDLE", "HOMEPAGE_BOTTOM", "SIDEBAR", "TOOL_BOTTOM", "TOOL_SIDEBAR_TOP", "TOOL_SIDEBAR_BOTTOM", "TOOL_RESTORE_TOP", "TOOL_RESTORE_BOTTOM", "TOOL_MANUAL_TOP"],
   },
   {
     id: "ad_unit_adsense_responsive_2",
@@ -432,7 +432,7 @@ export const DEFAULT_AD_UNITS: AdUnit[] = [
     embedCode: `<ins class="adsbygoogle" style="display:block" data-ad-client="ca-pub-7628736172233995" data-ad-slot="auto" data-ad-format="auto" data-full-width-responsive="true"></ins>`,
     status: "ACTIVE",
     priority: 9,
-    placementCodes: ["ARTICLE_TOP", "ARTICLE_MIDDLE", "ARTICLE_BOTTOM", "HOMEPAGE_TOP", "HOMEPAGE_MIDDLE", "HOMEPAGE_BOTTOM", "SIDEBAR", "TOOL_BOTTOM"],
+    placementCodes: ["ARTICLE_TOP", "ARTICLE_MIDDLE", "ARTICLE_BOTTOM", "HOMEPAGE_TOP", "HOMEPAGE_MIDDLE", "HOMEPAGE_BOTTOM", "SIDEBAR", "TOOL_BOTTOM", "TOOL_SIDEBAR_TOP", "TOOL_SIDEBAR_BOTTOM", "TOOL_RESTORE_TOP", "TOOL_RESTORE_BOTTOM", "TOOL_MANUAL_TOP"],
   },
 ];
 

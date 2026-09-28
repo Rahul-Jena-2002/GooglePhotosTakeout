@@ -2,8 +2,375 @@
 export const prerender = true;
 import Layout from "../layouts/Layout.astro";
 import ToolWorkspace from "../react-pages/tool/ToolWorkspace";
+import Icon from "../components/ui/Icon.astro";
+import AdUnit from "../components/monetization/AdUnit";
+
+// Structured Schema.org data for SEO and AdSense crawler trust
+const toolFaqSchema = {
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  "mainEntity": [
+    {
+      "@type": "Question",
+      "name": "What should I do after TakeoutFix finishes restoring my files?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Once TakeoutFix finishes repairing your library, open your selected destination folder. To make Windows File Explorer or Mac Finder display original capture dates in file lists, double-click the generated sync_windows_dates.bat (Windows) or execute sync_macos_linux.sh (Mac/Linux)."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Why do restored files show today's date in Windows Explorer or Mac Finder?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Web browsers run in a secure sandbox that permits binary EXIF header injection into the image itself, but forbids modifying operating system filesystem attributes (CreationTime and LastWriteTime). Running the companion sync_windows_dates.bat or sync_macos_linux.sh script updates the OS filesystem attributes to match the embedded EXIF capture date in 2 to 3 seconds."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "What does sync_windows_dates.bat do?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "The sync_windows_dates.bat script reads the generated file_timestamps.json catalog and executes a localized PowerShell routine to update Windows filesystem CreationTime and LastWriteTime on every restored photo and video, so File Explorer sorts them chronologically."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Does the web tool compress or reduce photo resolution?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "No. TakeoutFix performs lossless binary metadata injection. Only the EXIF, XMP, and QuickTime header blocks are updated. Your underlying JPEG, HEIC, PNG, or video bitstreams remain 100% bit-for-bit identical to the originals."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Are my photos uploaded to any server while using the tool?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "No. Processing occurs 100% locally on your computer inside client-side Web Workers using the File System Access API. Your files and photos never leave your device."
+      }
+    }
+  ]
+};
 ---
 
-<Layout title="TakeoutFix | Google Takeout Photos Metadata Merger & Rebuilder" isToolPage={true}>
+<Layout 
+  title="Google Takeout Photos Metadata Fixer & Merger Online | TakeoutFix"
+  description="Restore Google Takeout photo dates, GPS coordinates, and EXIF metadata directly in your browser. 100% private, client-side Web Worker engine with zero server uploads."
+  isToolPage={true}
+>
+  <script type="application/ld+json" set:html={JSON.stringify(toolFaqSchema)} />
+
+  <!-- 1. INTERACTIVE TOOL WORKSPACE (UNMODIFIED UI) -->
   <ToolWorkspace client:only="react" />
+
+  <!-- In-Page Sponsored Recommendations Banner -->
+  <section class="w-full max-w-5xl mx-auto px-4 py-3 relative z-10" aria-label="Sponsored recommendations">
+    <AdUnit client:only="react" placement="TOOL_MANUAL_TOP" />
+  </section>
+
+  <!-- 2. SCROLLABLE USER MANUAL & POST-RESTORATION GUIDE (BELOW WORKSPACE) -->
+  <div class="w-full bg-zinc-950 border-t border-zinc-800/80 text-zinc-300 font-sans relative z-10">
+    <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
+      
+      <!-- Section Header -->
+      <div class="text-center mb-12">
+        <div class="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 text-xs font-semibold uppercase tracking-wider mb-4 font-mono">
+          <Icon name="file-text" class="w-4 h-4" />
+          <span>Tool User Manual &amp; Instructions</span>
+        </div>
+        <h2 class="text-3xl sm:text-4xl font-extrabold text-white tracking-tight mb-3">
+          How to Use the TakeoutFix Restore Tool
+        </h2>
+        <p class="text-base text-zinc-400 max-w-2xl mx-auto leading-relaxed">
+          Learn how the client-side injection engine pairs your Google Photos JSON sidecars, and what to do after the restoration completes.
+        </p>
+      </div>
+
+      <!-- Quick Jump Navigation Strip -->
+      <div class="flex flex-wrap items-center justify-center gap-2 pb-10 mb-12 border-b border-zinc-800 text-xs">
+        <a href="#post-restoration" class="px-3 py-1.5 rounded-lg bg-zinc-900 hover:bg-zinc-800 text-zinc-300 hover:text-white transition-colors border border-zinc-800">
+          ⚡ What to Do After Injecting (Sync Scripts)
+        </a>
+        <a href="#how-it-works" class="px-3 py-1.5 rounded-lg bg-zinc-900 hover:bg-zinc-800 text-zinc-300 hover:text-white transition-colors border border-zinc-800">
+          🔍 How Metadata Pairing Works
+        </a>
+        <a href="#supported-formats" class="px-3 py-1.5 rounded-lg bg-zinc-900 hover:bg-zinc-800 text-zinc-300 hover:text-white transition-colors border border-zinc-800">
+          📁 Supported Formats
+        </a>
+        <a href="#privacy-architecture" class="px-3 py-1.5 rounded-lg bg-zinc-900 hover:bg-zinc-800 text-zinc-300 hover:text-white transition-colors border border-zinc-800">
+          🔒 Privacy &amp; Offline Guarantee
+        </a>
+        <a href="#tool-faq" class="px-3 py-1.5 rounded-lg bg-zinc-900 hover:bg-zinc-800 text-zinc-300 hover:text-white transition-colors border border-zinc-800">
+          ❓ Frequently Asked Questions
+        </a>
+      </div>
+
+      <!-- ========================================================================= -->
+      <!-- CRUCIAL SECTION: WHAT TO DO AFTER INJECTING (THE BAT / SH SCRIPTS)         -->
+      <!-- ========================================================================= -->
+      <section id="post-restoration" class="mb-16 scroll-mt-20">
+        <div class="p-6 sm:p-8 rounded-2xl bg-gradient-to-b from-zinc-900 to-zinc-900/60 border border-emerald-500/30 shadow-xl relative overflow-hidden">
+          
+          <div class="flex items-center gap-3 mb-6">
+            <div class="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400">
+              <Icon name="check-circle-2" class="w-5 h-5" />
+            </div>
+            <div>
+              <span class="text-xs font-mono font-bold uppercase tracking-wider text-emerald-400">Crucial Next Step</span>
+              <h3 class="text-xl sm:text-2xl font-bold text-white">What to do after clicking "Start Restore"</h3>
+            </div>
+          </div>
+
+          <div class="space-y-6 text-sm text-zinc-300 leading-relaxed">
+            <p>
+              When TakeoutFix finishes restoring your photos, it writes all your repaired media into your designated output folder. However, you will notice that in <strong>Windows File Explorer</strong> or <strong>Mac Finder</strong>, the files might still show today's date in the folder column.
+            </p>
+
+            <!-- Explanation Callout -->
+            <div class="p-4 rounded-xl bg-black/50 border border-zinc-800 text-xs space-y-2">
+              <div class="font-bold text-white flex items-center gap-2">
+                <span>💡 Why does File Explorer / Finder show today's date?</span>
+              </div>
+              <p class="text-zinc-400">
+                Web browsers run inside a sandboxed environment for your computer's security. While the browser can write files and inject permanent binary EXIF metadata directly inside your photos, operating systems <em>do not allow web browsers to modify the operating system's filesystem creation dates</em>.
+              </p>
+              <p class="text-zinc-400">
+                Photo applications like <strong>Apple Photos, Google Photos, and Adobe Lightroom</strong> immediately read the restored internal EXIF dates correctly. But to fix the date shown in your desktop folder view, TakeoutFix automatically generates a companion synchronization script.
+              </p>
+            </div>
+
+            <!-- What the Script Does -->
+            <div class="grid md:grid-cols-2 gap-4 pt-2">
+              
+              <!-- Windows .bat Card -->
+              <div class="p-5 rounded-xl bg-zinc-950 border border-zinc-800 flex flex-col justify-between">
+                <div>
+                  <div class="flex items-center justify-between mb-3">
+                    <span class="font-mono text-xs font-bold text-emerald-400 px-2 py-0.5 rounded bg-emerald-500/10 border border-emerald-500/20">
+                      sync_windows_dates.bat
+                    </span>
+                    <span class="text-[11px] font-mono text-zinc-500">Windows Users</span>
+                  </div>
+                  <h4 class="font-bold text-white mb-2 text-sm">How to run on Windows:</h4>
+                  <ol class="list-decimal list-inside space-y-2 text-xs text-zinc-400">
+                    <li>Open your restored output folder in File Explorer.</li>
+                    <li>Look for the generated file named <code class="text-white font-mono bg-zinc-900 px-1 py-0.5 rounded">sync_windows_dates.bat</code>.</li>
+                    <li>Double-click the file to run it.</li>
+                    <li>A command window will scan your folder and update Windows <code class="text-zinc-300 font-mono">CreationTime</code> and <code class="text-zinc-300 font-mono">LastWriteTime</code> to match your photos' exact original dates in 2 to 3 seconds.</li>
+                  </ol>
+                </div>
+                <div class="mt-4 pt-3 border-t border-zinc-800 text-[11px] text-zinc-500">
+                  ✓ Safe, self-contained local PowerShell routine. No internet required.
+                </div>
+              </div>
+
+              <!-- Mac/Linux .sh Card -->
+              <div class="p-5 rounded-xl bg-zinc-950 border border-zinc-800 flex flex-col justify-between">
+                <div>
+                  <div class="flex items-center justify-between mb-3">
+                    <span class="font-mono text-xs font-bold text-blue-400 px-2 py-0.5 rounded bg-blue-500/10 border border-blue-500/20">
+                      sync_macos_linux.sh
+                    </span>
+                    <span class="text-[11px] font-mono text-zinc-500">Mac &amp; Linux Users</span>
+                  </div>
+                  <h4 class="font-bold text-white mb-2 text-sm">How to run on macOS / Linux:</h4>
+                  <ol class="list-decimal list-inside space-y-2 text-xs text-zinc-400">
+                    <li>Open your restored output folder in Finder.</li>
+                    <li>Open <strong>Terminal</strong> (<kbd class="px-1 py-0.5 rounded bg-zinc-800 text-[10px] text-zinc-300">Cmd + Space</kbd> &rarr; Terminal).</li>
+                    <li>Type <code class="text-white font-mono bg-zinc-900 px-1 py-0.5 rounded">bash </code>, drag the <code class="text-white font-mono bg-zinc-900 px-1 py-0.5 rounded">sync_macos_linux.sh</code> file into Terminal, and press Enter.</li>
+                    <li>The script runs native <code class="text-zinc-300 font-mono">SetFile -d</code> and <code class="text-zinc-300 font-mono">touch</code> commands to sync Finder timestamps instantly.</li>
+                  </ol>
+                </div>
+                <div class="mt-4 pt-3 border-t border-zinc-800 text-[11px] text-zinc-500">
+                  ✓ Uses native macOS and POSIX command-line utilities.
+                </div>
+              </div>
+
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Sponsored Recommendations: In-Manual Banner -->
+      <section class="mb-14 relative z-10" aria-label="Sponsored recommendations">
+        <AdUnit client:only="react" placement="TOOL_BOTTOM" />
+      </section>
+
+      <!-- ========================================================================= -->
+      <!-- HOW THE RESTORATION ENGINE WORKS                                          -->
+      <!-- ========================================================================= -->
+      <section id="how-it-works" class="mb-16 scroll-mt-20">
+        <h3 class="text-xl sm:text-2xl font-bold text-white mb-6 flex items-center gap-2">
+          <Icon name="cpu" class="w-5 h-5 text-indigo-400" />
+          <span>How the Client-Side Pairing Engine Works</span>
+        </h3>
+        
+        <div class="grid md:grid-cols-3 gap-5">
+          <div class="p-5 rounded-xl bg-zinc-900/60 border border-zinc-800">
+            <div class="font-mono text-xs font-bold text-indigo-400 mb-1">STAGE 01</div>
+            <h4 class="font-bold text-white text-sm mb-2">Folder Traversal &amp; Indexing</h4>
+            <p class="text-xs text-zinc-400 leading-relaxed">
+              When you select your unzipped Takeout folder, the engine uses the W3C File System Access API to catalog all photos, videos, and <code class="font-mono text-[10px] bg-zinc-800 px-1 py-0.5 rounded">.json</code> sidecar files into high-speed memory maps.
+            </p>
+          </div>
+
+          <div class="p-5 rounded-xl bg-zinc-900/60 border border-zinc-800">
+            <div class="font-mono text-xs font-bold text-indigo-400 mb-1">STAGE 02</div>
+            <h4 class="font-bold text-white text-sm mb-2">Heuristic Sidecar Pairing</h4>
+            <p class="text-xs text-zinc-400 leading-relaxed">
+              Google alters filenames by truncating long titles (at 47/51 characters) or adding tags like <code class="font-mono text-[10px] bg-zinc-800 px-1 py-0.5 rounded">-edited</code> and <code class="font-mono text-[10px] bg-zinc-800 px-1 py-0.5 rounded">(1)</code>. TakeoutFix resolves these variants to locate the exact original JSON sidecar.
+            </p>
+          </div>
+
+          <div class="p-5 rounded-xl bg-zinc-900/60 border border-zinc-800">
+            <div class="font-mono text-xs font-bold text-indigo-400 mb-1">STAGE 03</div>
+            <h4 class="font-bold text-white text-sm mb-2">Lossless Binary Header Injection</h4>
+            <p class="text-xs text-zinc-400 leading-relaxed">
+              Timestamps, camera tags, and GPS coordinates are injected into standard EXIF IFD and QuickTime user-data atoms. Your image pixels and video frames are never re-encoded or compressed.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <!-- ========================================================================= -->
+      <!-- SUPPORTED FORMATS & TAG SPECIFICATIONS                                    -->
+      <!-- ========================================================================= -->
+      <section id="supported-formats" class="mb-16 scroll-mt-20">
+        <h3 class="text-xl sm:text-2xl font-bold text-white mb-6 flex items-center gap-2">
+          <Icon name="binary" class="w-5 h-5 text-indigo-400" />
+          <span>Supported File Formats &amp; Metadata Tags</span>
+        </h3>
+
+        <div class="grid md:grid-cols-2 gap-6">
+          <div class="p-6 rounded-xl bg-zinc-900/60 border border-zinc-800">
+            <h4 class="font-bold text-white text-sm mb-3">Supported Image Types</h4>
+            <ul class="space-y-2 text-xs text-zinc-400">
+              <li class="flex items-center justify-between py-1 border-b border-zinc-800/60">
+                <span class="text-white font-medium">JPEG / JPG</span>
+                <span class="font-mono text-emerald-400">Full EXIF 2.31 + GPS IFD</span>
+              </li>
+              <li class="flex items-center justify-between py-1 border-b border-zinc-800/60">
+                <span class="text-white font-medium">Apple HEIC / HEIF</span>
+                <span class="font-mono text-emerald-400">Native EXIF Container</span>
+              </li>
+              <li class="flex items-center justify-between py-1 border-b border-zinc-800/60">
+                <span class="text-white font-medium">PNG &amp; WebP</span>
+                <span class="font-mono text-emerald-400">eXIf Chunk + XMP</span>
+              </li>
+              <li class="flex items-center justify-between py-1">
+                <span class="text-white font-medium">Live Photos (HEIC + MOV)</span>
+                <span class="font-mono text-emerald-400">Paired Synchronization</span>
+              </li>
+            </ul>
+          </div>
+
+          <div class="p-6 rounded-xl bg-zinc-900/60 border border-zinc-800">
+            <h4 class="font-bold text-white text-sm mb-3">Supported Video Types</h4>
+            <ul class="space-y-2 text-xs text-zinc-400">
+              <li class="flex items-center justify-between py-1 border-b border-zinc-800/60">
+                <span class="text-white font-medium">MP4 (MPEG-4 Part 14)</span>
+                <span class="font-mono text-emerald-400">mvhd &amp; udta QuickTime Atoms</span>
+              </li>
+              <li class="flex items-center justify-between py-1 border-b border-zinc-800/60">
+                <span class="text-white font-medium">MOV (QuickTime Movie)</span>
+                <span class="font-mono text-emerald-400">Creation Date + GPS Coordinates</span>
+              </li>
+              <li class="flex items-center justify-between py-1 border-b border-zinc-800/60">
+                <span class="text-white font-medium">M4V &amp; 3GP</span>
+                <span class="font-mono text-emerald-400">Binary Container Metadata</span>
+              </li>
+              <li class="flex items-center justify-between py-1">
+                <span class="text-white font-medium">AVI (Legacy)</span>
+                <span class="font-mono text-amber-400">RIFF INFO Timestamp Header</span>
+              </li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <!-- ========================================================================= -->
+      <!-- PRIVACY & OFFLINE GUARANTEE                                               -->
+      <!-- ========================================================================= -->
+      <section id="privacy-architecture" class="mb-16 scroll-mt-20">
+        <div class="p-6 sm:p-8 rounded-2xl bg-zinc-900/80 border border-zinc-800">
+          <div class="flex items-center gap-3 mb-4">
+            <div class="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400">
+              <Icon name="shield-check" class="w-5 h-5" />
+            </div>
+            <div>
+              <span class="text-xs font-mono font-bold uppercase tracking-wider text-emerald-400">Zero-Knowledge Architecture</span>
+              <h3 class="text-xl font-bold text-white">100% Client-Side Privacy Guarantee</h3>
+            </div>
+          </div>
+          <p class="text-xs sm:text-sm text-zinc-400 leading-relaxed mb-4">
+            TakeoutFix does not transmit your photos, videos, or Takeout archives across the internet. All file reads, JSON parsing, and metadata injections are executed locally on your computer's CPU via multi-threaded background Web Workers.
+          </p>
+          <div class="p-3.5 rounded-xl bg-black/40 border border-zinc-800/80 text-xs text-zinc-400 font-mono">
+            🧪 <strong>Offline Test:</strong> Once the page is loaded, you can disconnect your computer from the Wi-Fi or internet. The TakeoutFix restore engine will continue processing your entire library at full speed with zero network connectivity.
+          </div>
+        </div>
+      </section>
+
+      <!-- ========================================================================= -->
+      <!-- TOOL FREQUENTLY ASKED QUESTIONS                                           -->
+      <!-- ========================================================================= -->
+      <section id="tool-faq" class="mb-12 scroll-mt-20">
+        <h3 class="text-xl sm:text-2xl font-bold text-white mb-6">
+          Frequently Asked Questions About the Web Tool
+        </h3>
+
+        <div class="space-y-4">
+          <details class="p-4 rounded-xl bg-zinc-900/60 border border-zinc-800 group">
+            <summary class="font-bold text-sm text-white cursor-pointer select-none flex justify-between items-center">
+              <span>Can TakeoutFix handle massive archives (over 50,000 photos)?</span>
+              <span class="text-zinc-500 group-open:rotate-180 transition-transform">▼</span>
+            </summary>
+            <div class="pt-3 text-xs text-zinc-400 leading-relaxed border-t border-zinc-800/60 mt-3">
+              Yes. The web tool runs parallel Web Workers to prevent UI freezing. For extremely large archives (100GB+), we recommend processing in album batches or using our <a href="/download" class="underline text-indigo-400 hover:text-white">Desktop Application</a>, which runs a multi-threaded native engine without browser memory boundaries.
+            </div>
+          </details>
+
+          <details class="p-4 rounded-xl bg-zinc-900/60 border border-zinc-800 group">
+            <summary class="font-bold text-sm text-white cursor-pointer select-none flex justify-between items-center">
+              <span>Will my original Google Takeout files be altered or overwritten?</span>
+              <span class="text-zinc-500 group-open:rotate-180 transition-transform">▼</span>
+            </summary>
+            <div class="pt-3 text-xs text-zinc-400 leading-relaxed border-t border-zinc-800/60 mt-3">
+              Never. TakeoutFix only reads your original Takeout directory and writes newly repaired files to your designated output directory. Your original Takeout download is preserved bit-for-bit as an immutable backup.
+            </div>
+          </details>
+
+          <details class="p-4 rounded-xl bg-zinc-900/60 border border-zinc-800 group">
+            <summary class="font-bold text-sm text-white cursor-pointer select-none flex justify-between items-center">
+              <span>What if a photo does not have a companion JSON sidecar?</span>
+              <span class="text-zinc-500 group-open:rotate-180 transition-transform">▼</span>
+            </summary>
+            <div class="pt-3 text-xs text-zinc-400 leading-relaxed border-t border-zinc-800/60 mt-3">
+              TakeoutFix features a deterministic fallback engine. If a sidecar JSON is absent, the engine extracts embedded capture dates from standard filename patterns (e.g. <code class="font-mono text-zinc-300">IMG_20220815_142312.jpg</code>) or preserves the file safely in your unmatched catalog so no media is ever misplaced.
+            </div>
+          </details>
+        </div>
+      </section>
+
+      <!-- Navigation & Compliance Links at Bottom of Manual -->
+      <div class="pt-8 border-t border-zinc-800/80 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-zinc-500">
+        <div class="flex items-center gap-4 flex-wrap">
+          <a href="/restore-data" class="hover:text-white transition-colors">Complete Restoration Guide</a>
+          <span>•</span>
+          <a href="/about" class="hover:text-white transition-colors">About Us</a>
+          <span>•</span>
+          <a href="/contact" class="hover:text-white transition-colors">Contact Support</a>
+          <span>•</span>
+          <a href="/privacy" class="hover:text-white transition-colors">Privacy Policy</a>
+          <span>•</span>
+          <a href="/terms" class="hover:text-white transition-colors">Terms of Service</a>
+        </div>
+        <div class="text-[11px] text-zinc-600">
+          TakeoutFix © {new Date().getFullYear()} • 100% Client-Side Engine
+        </div>
+      </div>
+
+    </div>
+  </div>
 </Layout>

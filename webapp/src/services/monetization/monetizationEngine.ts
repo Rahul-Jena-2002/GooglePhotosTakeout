@@ -717,7 +717,29 @@ export async function getMonetizationContent(
     const ad3Raw = selectTopItem(secondaryAdPool, slotIndex + 2);
     const ad4Raw = selectTopItem(secondaryAdPool, slotIndex + 3);
 
-    const makeAdItem = (raw: typeof selectedAdRaw, suffix: string): ResolvedMonetizationItem | null => {
+    const affPool = affiliateCandidates.length > 0 ? affiliateCandidates : [];
+    const aff1Raw = selectTopItem(affPool, slotIndex);
+    const aff2Raw = selectTopItem(affPool, slotIndex + 1);
+    const aff3Raw = selectTopItem(affPool, slotIndex + 2);
+    const aff4Raw = selectTopItem(affPool, slotIndex + 3);
+
+    const makeAffItem = (raw: typeof selectedAffiliateRaw, suffix: string): ResolvedMonetizationItem | null => {
+      if (!raw) return null;
+      return {
+        id: `${raw.id}-${placementCode}-${suffix}`,
+        type: "AFFILIATE",
+        title: raw.title,
+        description: raw.description,
+        destinationUrl: raw.destinationUrl,
+        imageUrl: raw.imageUrl,
+        ctaText: raw.ctaText || "Shop on Amazon",
+        tag: raw.tag,
+        isExternal: raw.isExternal,
+        providerName: raw.providerName,
+      };
+    };
+
+    const makeAdItem = (raw: typeof selectedAdRaw, suffix: string, fallbackRaw?: typeof selectedAffiliateRaw): ResolvedMonetizationItem | null => {
       if (!raw) return null;
       return {
         id: `${raw.id}-${placementCode}-${suffix}`,
@@ -729,13 +751,14 @@ export async function getMonetizationContent(
         destinationUrl: raw.destinationUrl,
         ctaText: raw.ctaText || "Learn More",
         providerName: raw.providerName,
+        fallbackItem: fallbackRaw ? makeAffItem(fallbackRaw, `fb-${suffix}`) || undefined : undefined,
       };
     };
 
-    const item1 = makeAdItem(ad1Raw, "1");
-    const item2 = makeAdItem(ad2Raw, "2");
-    const item3 = makeAdItem(ad3Raw, "3");
-    const item4 = makeAdItem(ad4Raw, "4");
+    const item1 = makeAdItem(ad1Raw, "1", aff1Raw);
+    const item2 = makeAdItem(ad2Raw, "2", aff2Raw);
+    const item3 = makeAdItem(ad3Raw, "3", aff3Raw);
+    const item4 = makeAdItem(ad4Raw, "4", aff4Raw);
 
     resolvedItems = [item1, item2, item3, item4].filter(Boolean) as ResolvedMonetizationItem[];
   }
@@ -753,6 +776,12 @@ export async function getMonetizationContent(
       }
     } else if (selectedSecondaryAd) {
       resolvedAd = selectedSecondaryAd;
+    }
+    if (mode === "BOTH" && selectedAffiliate) {
+      resolvedAffiliate = selectedAffiliate;
+      if (selectedSecondaryAffiliate) {
+        resolvedSecondaryAffiliate = selectedSecondaryAffiliate;
+      }
     }
   } else if (mode === "AFFILIATE_ONLY") {
     if (selectedAffiliate) {

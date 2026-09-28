@@ -13,13 +13,12 @@
  *  - Push notifications: admin alerts, invite notifications
  */
 
-const CACHE_NAME   = 'takeoutfix-v4';
-const STATIC_CACHE = 'takeoutfix-static-v4';
-const FONT_CACHE   = 'takeoutfix-fonts-v4';
+const CACHE_NAME   = 'takeoutfix-v6';
+const STATIC_CACHE = 'takeoutfix-static-v6';
+const FONT_CACHE   = 'takeoutfix-fonts-v6';
 
 const APP_SHELL = [
   '/',
-  '/tool',
   '/pricing',
   '/favicon.ico',
   '/favicon.svg',
@@ -100,9 +99,9 @@ if (isLocalhost) {
       return;
     }
 
-    // HTML pages — stale-while-revalidate
+    // HTML pages — network-first (always get latest deployed build, fallback to cache if offline)
     if (request.headers.get('accept')?.includes('text/html') && url.origin === self.location.origin) {
-      event.respondWith(staleWhileRevalidate(request, CACHE_NAME));
+      event.respondWith(networkFirst(request, CACHE_NAME));
       return;
     }
 

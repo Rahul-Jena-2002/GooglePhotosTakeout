@@ -1,49 +1,52 @@
-# Implementation Plan: Desktop App Redesign, Profile Overlay & Cloud-Synced Entitlements
+# Implementation Plan: AdSense "Low Value Content" Resolution & Content Authority Overhaul
 
 ## Overview
-Transform the TakeoutFix native desktop Java application into a clean, tool-first utility. The app boots directly into the Photo Metadata Restorer (no landing dashboard). Clicking the top Profile Pill opens a non-destructive glassmorphic Profile Dashboard Modal featuring privacy email masking (`ra***l@domain.com` with an eye toggle), usage quotas, session history, and cloud actions. The app synchronizes restoration metrics to Firestore on pause, completion, and app close, queueing unsynced stats to disk when offline, and flushing them upon startup after re-authenticating with Google. Pro/Super features are dynamically soft-locked with upgrade prompts whenever cloud payments are toggled on.
+Resolve Google AdSense rejection (`Needs attention -> Status details: Low value content`) on `takeoutfix.pages.dev` by executing a comprehensive overhaul across technical foundation, essential trust/legal pages, authoritative original content, and navigation cleanup in accordance with Google Publisher Policies and the Master Pre-Resubmission Checklist.
 
 ## Architecture Decisions
-1. **Tool-First Launch:** Switch the default launch card in `RecoveryCenterPanel` from `CARD_DASHBOARD` to `CARD_RESTORE`. Simplify `HeaderBar` by removing top tab buttons.
-2. **Modal Over Full View Swap:** Implement `ProfileDashboardDialog` as a `JDialog` modal over the main frame, preserving all drag-and-drop file paths, options, and terminal logs underneath.
-3. **Privacy by Default:** Mask user email (`ra***l@domain.com`) with a toggle button that automatically re-masks on blur or after 15 seconds.
-4. **Offline-First Disk Queue:** Write unsynced files and bytes to `~/.takeoutfix/pending_sync.json` when network is unreachable on pause or close; drain this queue on startup after re-authenticating with Google.
-5. **Dynamic Entitlement Gate:** Query Firestore `paymentsEnabled` switch. When false, unlock all tools. When true, enforce tier requirements (`free` vs `pro` vs `super`) using soft-lock upgrade cards.
+1. **Pillar Content Architecture:** Create dedicated, high-value, deeply researched technical guides with rich diagrams, tables, and step-by-step instructions (1,000–1,800+ words each) covering Google Takeout JSON sidecars, EXIF restoration, Apple Photos migration, and troubleshooting.
+2. **De-indexing Thin Combinatorial URLs:** Remove or `noindex` the 30 templated algorithmic permutations (`how-to-${action}-${target}-from-${source}`) in `[seoSlug].astro` so search crawlers and AdSense reviewers only evaluate substantial, unique content.
+3. **Trust & Transparency Suite:** Build first-class `/about`, `/contact`, and `/disclaimer` pages with explicit organization details, developer credentials, direct contact channels, response commitments, and trademark disclaimers.
+4. **Navigation & Footer Integrity:** Link all trust pages and knowledge hubs in the main navigation and footer; ensure zero broken links, zero placeholder text, and consistent mobile responsiveness.
+5. **Schema.org & GEO Optimization:** Integrate `Organization`, `ContactPage`, `TechArticle`, and `FAQPage` JSON-LD schemas.
 
-## Task Breakdown
+---
 
-### Phase 1: Tool-First Default View & Header Cleanup
-- **Task 1:** Make Photo Metadata Restorer the default launch view in `ApplicationStartupController` and `RecoveryCenterPanel`.
-- **Task 2:** Clean up `HeaderBar` by removing top navigation tabs and converting `userPill` into an interactive clickable profile button.
+## Tasks Breakdown
 
-### Checkpoint 1
-- Verify application launches directly to `Photo Metadata Restorer` in 1200x800 resolution with clean header bar.
+### Phase 1: Essential Trust, Legal & Transparency Pages
+- [ ] Task 1: Build comprehensive `/about` page (Who we are, developer bio, mission, local-first privacy commitment, technical architecture, and editorial principles).
+- [ ] Task 2: Build dedicated `/contact` page (Support channels, email, response times, feedback form, location/jurisdiction, FAQ pointers).
+- [ ] Task 3: Build dedicated `/disclaimer` page (Trademark disclaimers for Google LLC, Apple Inc., file handling disclaimers, no warranties).
+- [ ] Checkpoint: Trust pages built, tested, and responsive.
 
-### Phase 2: Rich Profile Dashboard Modal & Email Masking
-- **Task 3:** Create `ProfileDashboardDialog.java` with privacy-masked email (`ra***l@domain.com`), reveal eye toggle, plan badge, quota gauges, telemetry, and web links.
-- **Task 4:** Wire `HeaderBar` profile pill click to open `ProfileDashboardDialog` without disturbing active tool state.
+### Phase 2: High-Value Original Pillar Content Hub
+- [ ] Task 4: Create Knowledge Hub / Guides index (`/guides`) with categorised technical articles.
+- [ ] Task 5: Author Pillar Guide 1: *The Definitive Guide to Google Takeout Photo Metadata: Why JSON Sidecars Exist & How EXIF Works* (In-depth 1,500+ words with JSON structure breakdown, EXIF tags table, timezone math).
+- [ ] Task 6: Author Pillar Guide 2: *Migrating Google Photos to Apple Photos (iCloud) Without Losing Dates, Locations, or Quality* (Comprehensive tutorial with common pitfalls, Mac/Windows workflows).
+- [ ] Task 7: Author Pillar Guide 3: *Troubleshooting Google Takeout: Missing GPS, Truncated JSON Names, and Duplicate Files*.
+- [ ] Checkpoint: Content hub and pillar articles render beautifully with high typography quality and rich metadata.
 
-### Checkpoint 2
-- Verify opening profile modal shows correct user info, masked email, and eye toggle works smoothly without closing or resetting the restorer underneath.
+### Phase 3: De-Index Thin Pages & Clean Programmatic Slugs
+- [ ] Task 8: In `[seoSlug].astro`, remove the 30 thin combinatorial routes or mark all non-curated pages with `robots="noindex, follow"`.
+- [ ] Task 9: Enhance the curated landing pages (`fix-google-takeout-dates`, `restore-gps-google-takeout`, `google-takeout-to-apple-photos`) with unique custom content and deep explanations rather than boilerplate.
+- [ ] Checkpoint: No thin boilerplate pages indexed.
 
-### Phase 3: Offline Queue & Google Re-Authentication / Pending Sync
-- **Task 5:** Implement `pending_sync.json` persistence in `UserSyncBridgeService` / `FirebaseSyncService` on pause, stop, and close when offline.
-- **Task 6:** Enhance startup sequence to re-check Google OAuth token, flush pending offline sync queue to Firestore, and update user quota.
+### Phase 4: Navigation, Sitemap & SEO Optimization
+- [ ] Task 10: Update `Layout.astro` header and footer navigation to prominently feature About, Guides, Contact, and Disclaimer.
+- [ ] Task 11: Update `sitemap.xml` with fresh pillar guides, About, Contact, and Disclaimer pages; remove any thin URLs.
+- [ ] Task 12: Verify robots.txt and structured data (JSON-LD schemas).
+- [ ] Checkpoint: All internal navigation verified, zero 404s.
 
-### Checkpoint 3
-- Verify that offline restoration counts accumulate to disk and automatically sync to Firestore upon opening with internet connection.
+### Phase 5: Verification, Audit Gate & Build Verification
+- [ ] Task 13: Run `npm run build` in `webapp/` and verify Cloudflare security audit gate (`audit_cloudflare_security.js`).
+- [ ] Task 14: Verify mobile responsiveness, accessibility, and zero console errors.
 
-### Phase 4: Cloud-Synced Payment & Dynamic Tier Locking
-- **Task 7:** Fetch cloud `paymentsEnabled` setting in `UserSyncBridgeService` and implement `isFeatureAllowed(feature)` checks.
-- **Task 8:** Wire soft-lock upgrade cards in `RecoveryCenterPanel` for Pro/Super tools (EXIF, Compare, Duplicate, Volume Split) when payments are enabled.
+---
 
-### Checkpoint 4 (Final Verification)
-- Run `mvn compile` and `mvn test` in `native/`.
-- Verify full end-to-end flow with payments toggle ON and OFF.
-
-## Risks & Mitigations
+## Risks and Mitigations
 | Risk | Impact | Mitigation |
 |---|---|---|
-| Transient network failure during close sync | High (lost progress) | Write to `~/.takeoutfix/pending_sync.json` synchronously before JVM terminates. |
-| UI freeze while fetching payment toggle | Medium | Always fetch on background thread via `CompletableFuture` and update via `SwingUtilities.invokeLater`. |
-| Screen recording email leak | Medium | Email is masked by default with 15s auto-remasking timeout. |
+| Broken links or redirects during review | High | Validate every link and anchor tag; maintain canonical URLs. |
+| Duplicate content signals | High | Strictly `noindex` any programmatic variation; ensure each guide is 100% unique. |
+| Cloudflare build size / security gate failure | Med | Build incrementally, test with `npm run build`. |

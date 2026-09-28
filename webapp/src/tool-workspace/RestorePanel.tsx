@@ -196,7 +196,7 @@ export function RestorePanel({
   }, [logTab, dedupedLogs, restoredLogs, errorLogs, skippedLogs, fallbackLogs]);
 
   return (
-    <div className="flex-grow w-full lg:w-[72%] bg-black flex flex-col lg:h-full h-auto overflow-hidden order-1 lg:order-2">
+    <div className="flex-grow w-full lg:w-[72%] bg-black flex flex-col h-auto order-1 lg:order-2">
 
       {/* ── Persistent Handle Re-grant Banner (VS Code model) ──────────── */}
       {needsReGrant && !takeoutFolder && (
@@ -570,6 +570,11 @@ export function RestorePanel({
                 )}
               </div>
             </div>
+          </div>
+
+          {/* In-Workspace Responsive Ad Unit */}
+          <div className="px-4 py-2 bg-black/40 border-b border-white/5">
+            <AdUnit type="horizontal" placement="TOOL_RESTORE_TOP" />
           </div>
 
           {/* Logs Terminal */}

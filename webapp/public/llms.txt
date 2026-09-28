@@ -33,8 +33,15 @@ No. TakeoutFix modifies only the EXIF header segment of the file. The image and 
 ## Official Links
 - Official Website: https://takeoutfix.pages.dev
 - Web Restoration Tool: https://takeoutfix.pages.dev/tool
+- Knowledge Hub & Guides: https://takeoutfix.pages.dev/guides
+- JSON Sidecars Technical Guide: https://takeoutfix.pages.dev/guides/google-takeout-json-metadata-explained
+- Storage & Archiving Guide (USB/NAS/Cloud): https://takeoutfix.pages.dev/guides/how-to-save-takeout-photos-to-hard-drive-nas-cloud
+- Troubleshooting Takeout Errors: https://takeoutfix.pages.dev/guides/google-takeout-common-errors-fix
 - Step-by-Step Restoration Guide: https://takeoutfix.pages.dev/restore-data
 - Desktop App Downloads: https://takeoutfix.pages.dev/download
+- About & Team: https://takeoutfix.pages.dev/about
+- Contact & Support: https://takeoutfix.pages.dev/contact
+- Legal Disclaimer: https://takeoutfix.pages.dev/disclaimer
 - Pricing & Free Tier: https://takeoutfix.pages.dev/pricing
 - Customer Reviews: https://takeoutfix.pages.dev/reviews
 - Help & Support: https://takeoutfix.pages.dev/support

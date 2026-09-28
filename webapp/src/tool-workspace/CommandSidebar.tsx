@@ -55,7 +55,7 @@ export function CommandSidebar({
   resetUserQuota,
 }: CommandSidebarProps) {
   return (
-    <div className="w-full lg:w-[28%] lg:min-w-[340px] p-3 border-t lg:border-t-0 lg:border-r border-white/5 flex flex-col lg:h-full h-auto lg:overflow-y-auto overflow-visible scrollbar-thin scrollbar-thumb-zinc-800 order-2 lg:order-1">
+    <div className="w-full lg:w-[28%] lg:min-w-[340px] p-3 border-t lg:border-t-0 lg:border-r border-white/5 flex flex-col h-auto order-2 lg:order-1">
 
       <div className="mb-2 flex items-center justify-between">
         <h1 className="text-sm font-bold tracking-wider text-white flex items-center gap-1.5 uppercase">
