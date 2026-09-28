@@ -29,7 +29,7 @@ export default function DownloadPage() {
       desc: "Fast, single-file desktop app. Double-click to run immediately with zero installation required.",
       file: "TakeoutFix.exe",
       url: "https://takeoutfix-download.takeoutfix.workers.dev/download/windows/rust",
-      directUrl: "https://github.com/Rahul-Jena-2002/GooglePhotosTakeout/releases/latest/download/TakeoutFix.exe",
+      directUrl: "https://takeoutfix-download.takeoutfix.workers.dev/download/windows/rust",
       instructions: [
         "Click the download button below to get 'TakeoutFix.exe'.",
         "Double-click 'TakeoutFix.exe' in your Downloads folder to open it.",
@@ -42,7 +42,7 @@ export default function DownloadPage() {
       desc: "Universal Mac app compatible with all modern macOS versions and M-series or Intel chips.",
       file: "TakeoutFix.dmg",
       url: "https://takeoutfix-download.takeoutfix.workers.dev/download/macos/rust",
-      directUrl: "https://github.com/Rahul-Jena-2002/GooglePhotosTakeout/releases/latest/download/TakeoutFix.dmg",
+      directUrl: "https://takeoutfix-download.takeoutfix.workers.dev/download/macos/rust",
       instructions: [
         "Download 'TakeoutFix.dmg' using the button below.",
         "Double-click the downloaded DMG file and drag TakeoutFix into your Applications folder.",
@@ -55,7 +55,7 @@ export default function DownloadPage() {
       desc: "Universal self-contained AppImage. Double-click to run on any major Linux distribution.",
       file: "TakeoutFix.AppImage",
       url: "https://takeoutfix-download.takeoutfix.workers.dev/download/linux/rust",
-      directUrl: "https://github.com/Rahul-Jena-2002/GooglePhotosTakeout/releases/latest/download/TakeoutFix.AppImage",
+      directUrl: "https://takeoutfix-download.takeoutfix.workers.dev/download/linux/rust",
       instructions: [
         "Download 'TakeoutFix.AppImage' using the button below.",
         "Right-click the file > Properties > Permissions > check 'Allow executing file as program'.",

@@ -4,71 +4,55 @@ import Layout from "../layouts/Layout.astro";
 ---
 
 <Layout title="TakeoutFix | Refund Policy" description="Read the Refund Policy for TakeoutFix. Learn about our verified software issue refund guarantee and request conditions.">
-  <div class="max-w-4xl mx-auto px-4 py-16 mt-20 min-h-[105vh]">
+  <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-16 mt-12 font-sans min-h-[80vh]">
     <div class="text-center mb-16">
-      <h1 class="text-4xl md:text-5xl font-bold tracking-tighter mb-4">Refund Policy</h1>
-      <p class="text-xl text-white/60">Last updated: June 12, 2026</p>
+      <div class="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-indigo-600 dark:text-indigo-400 text-xs font-semibold uppercase tracking-wider mb-6 font-mono">
+        Pricing &amp; Refund Policy
+      </div>
+      <h1 class="text-4xl sm:text-5xl font-extrabold tracking-tight text-zinc-900 dark:text-white mb-4">Refund &amp; Pricing Policy</h1>
+      <p class="text-lg md:text-xl text-zinc-600 dark:text-zinc-400">Last updated: September 28, 2026</p>
     </div>
 
-    <div class="space-y-12 text-white/80 leading-relaxed">
+    <div class="space-y-12 leading-relaxed">
       
-      <section>
-        <h2 class="text-2xl font-bold text-white mb-4">1. Our Commitment</h2>
-        <p>
-          We want you to have a great experience with Takeout Fix. If you experience a genuine technical issue that prevents the software from functioning as described, we'll work with you to resolve it. If we're unable to resolve the issue, you may be eligible for a refund.
+      <section class="bg-zinc-50 dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-6 sm:p-8 relative overflow-hidden">
+        <div class="absolute top-0 left-0 w-1.5 h-full bg-indigo-500"></div>
+        <h2 class="text-2xl font-bold text-zinc-900 dark:text-white mb-3">100% Free &amp; Open Software</h2>
+        <p class="text-base text-zinc-700 dark:text-zinc-300 leading-relaxed">
+          TakeoutFix is an open, client-side utility that is <strong>100% free to use</strong> for all users. We do not charge fees, require paid subscriptions, or sell software licenses. Because there are no mandatory purchases or paywalls, standard software purchase refunds do not apply.
         </p>
       </section>
 
-      <section>
-        <h2 class="text-2xl font-bold text-white mb-4">2. Refund Eligibility</h2>
-        <p>
-          You may request a refund within <strong class="text-white">7 days</strong> of your purchase if:
+      <section class="space-y-4">
+        <h2 class="text-2xl font-bold text-zinc-900 dark:text-white">1. Voluntary Sponsorships &amp; Donations</h2>
+        <p class="text-zinc-600 dark:text-zinc-400 text-sm leading-relaxed">
+          If you choose to support the project via voluntary sponsorship (such as GitHub Sponsors), these contributions directly fund maintenance, bug fixes, and development of open-source format decoders. Sponsorship donations are voluntary and handled in accordance with GitHub Sponsors terms.
         </p>
-        <ul class="list-disc pl-6 space-y-2 mt-3 text-zinc-350">
-          <li>Takeout Fix is unable to perform its advertised functionality due to a verified software issue.</li>
-          <li>Our support team is unable to provide a working solution within a reasonable time.</li>
-          <li>The purchase was made directly through Takeout Fix.</li>
-        </ul>
       </section>
 
-      <section>
-        <h2 class="text-2xl font-bold text-white mb-4">3. Non-Refundable Situations</h2>
-        <p>
-          Refunds are generally not provided for:
+      <section class="space-y-4">
+        <h2 class="text-2xl font-bold text-zinc-900 dark:text-white">2. Technical Assistance &amp; Support Guarantee</h2>
+        <p class="text-zinc-600 dark:text-zinc-400 text-sm leading-relaxed">
+          Even though the software is free, we stand by our code. If you encounter an unhandled Takeout format, timestamp anomaly, or edge-case error while processing your library, our engineering team is committed to reviewing your debug logs and patching the client engine promptly.
         </p>
-        <ul class="list-disc pl-6 space-y-2 mt-3 text-zinc-350">
-          <li>Changing your mind after purchase.</li>
-          <li>Purchasing the wrong plan.</li>
-          <li>Recoveries that completed successfully.</li>
-          <li>Unsupported or corrupted Google Takeout exports.</li>
-          <li>Issues caused by third-party software or modifications outside Takeout Fix.</li>
-          <li>Requests submitted more than 7 days after purchase.</li>
-        </ul>
       </section>
 
-      <section>
-        <h2 class="text-2xl font-bold text-white mb-4">4. How to Request a Refund</h2>
-        <ol class="list-decimal pl-6 space-y-2 mt-3 text-zinc-350">
-          <li>Open a support ticket through the Takeout Fix Support Center.</li>
-          <li>Describe the issue and attach your processing log if available.</li>
-          <li>Our team will investigate the issue and respond as quickly as possible.</li>
+      <section class="space-y-4">
+        <h2 class="text-2xl font-bold text-zinc-900 dark:text-white">3. How to Report Issues</h2>
+        <p class="text-zinc-600 dark:text-zinc-400 text-sm leading-relaxed">
+          To report any parsing issues or request support:
+        </p>
+        <ol class="list-decimal pl-6 space-y-2 text-zinc-600 dark:text-zinc-400 text-sm">
+          <li>Open a support ticket through our <a href="/support" class="text-indigo-600 dark:text-indigo-400 hover:underline font-semibold">Support Center</a> or open an issue on GitHub.</li>
+          <li>Describe your operating system, browser, and the format of the problematic media files.</li>
+          <li>Our engineering team will review your report and release an update.</li>
         </ol>
-        <p class="mt-4">
-          Most refund requests are reviewed within <strong class="text-white">2–5 business days</strong>.
-        </p>
       </section>
 
-      <section>
-        <h2 class="text-2xl font-bold text-white mb-4">5. Our Promise</h2>
-        <p>
-          Our goal is to solve your problem—not simply close your ticket. We'll make every reasonable effort to help you recover your metadata before considering a refund.
-        </p>
-      </section>
-
-      <section>
-        <h2 class="text-2xl font-bold text-white mb-4">6. Contact</h2>
-        <p>
-          All refund requests must be submitted through the in-app <a href="/support" class="text-indigo-400 hover:text-indigo-300 font-bold">Support Center</a>. For general questions or if you cannot log in, you can contact us at <a href="mailto:takeoutfix.support@gmail.com" class="text-indigo-400 hover:text-indigo-300 font-semibold underline">takeoutfix.support@gmail.com</a>.
+      <section class="space-y-4">
+        <h2 class="text-2xl font-bold text-zinc-900 dark:text-white">4. Contact Desk</h2>
+        <p class="text-zinc-600 dark:text-zinc-400 text-sm leading-relaxed">
+          For any questions regarding our policies, please contact us via our <a href="/contact" class="text-indigo-600 dark:text-indigo-400 hover:underline font-semibold">Contact Page</a> or by email at <a href="mailto:takeoutfix.support@gmail.com" class="text-indigo-600 dark:text-indigo-400 hover:underline font-semibold">takeoutfix.support@gmail.com</a>.
         </p>
       </section>
 

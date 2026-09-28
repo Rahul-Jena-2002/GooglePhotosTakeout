@@ -174,34 +174,67 @@ export default {
       }
 
       // Direct streaming (HTTP 200 / 206) with NO REDIRECTION for Microsoft Store & Package Managers
-      let downloadUrl = targetAsset.browser_download_url;
-      const downloadHeaders = {
-        "User-Agent": "TakeoutFix-Direct-Proxy"
-      };
+      let binaryRes = null;
 
-      if (request.headers.has("Range")) {
-        downloadHeaders["Range"] = request.headers.get("Range");
+      // 1. If GITHUB_PAT is configured, use GitHub's authenticated API asset endpoint
+      // This is mandatory for Private Repositories where browser_download_url requires a browser login
+      if (env.GITHUB_PAT && env.GITHUB_PAT.trim() !== "") {
+        try {
+          const assetApiUrl = `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/releases/assets/${targetAsset.id}`;
+          const assetRes = await fetch(assetApiUrl, {
+            method: "GET",
+            headers: {
+              "User-Agent": "TakeoutFix-Direct-Proxy",
+              "Authorization": `Bearer ${env.GITHUB_PAT.trim()}`,
+              "Accept": "application/octet-stream"
+            },
+            redirect: "manual" // Intercept the 302 redirect to get pre-signed storage URL
+          });
+
+          // GitHub API returns 302 with signed AWS S3/Azure storage URL in Location header
+          if (assetRes.status === 302 || assetRes.status === 301) {
+            const signedStorageUrl = assetRes.headers.get("Location");
+            if (signedStorageUrl) {
+              const streamHeaders = {
+                "User-Agent": "TakeoutFix-Direct-Proxy"
+              };
+              if (request.headers.has("Range")) {
+                streamHeaders["Range"] = request.headers.get("Range");
+              }
+              // Fetch from signed storage WITHOUT GitHub Authorization header (avoids AWS auth conflict)
+              binaryRes = await fetch(signedStorageUrl, {
+                method: request.method === "HEAD" ? "HEAD" : "GET",
+                headers: streamHeaders,
+                redirect: "follow"
+              });
+            }
+          } else if (assetRes.ok) {
+            binaryRes = assetRes;
+          }
+        } catch (_) {}
       }
 
-      if (!downloadUrl && env.GITHUB_PAT && env.GITHUB_PAT.trim() !== "") {
-        downloadUrl = `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/releases/assets/${targetAsset.id}`;
-        downloadHeaders["Authorization"] = `Bearer ${env.GITHUB_PAT.trim()}`;
-        downloadHeaders["Accept"] = "application/octet-stream";
-      }
-
-      if (!downloadUrl) {
-        return new Response("Unable to resolve download URL for asset.", {
-          status: 500,
-          headers: { "Content-Type": "text/plain" }
+      // 2. Fallback to public browser download URL if unauthenticated or public repository
+      if (!binaryRes && targetAsset.browser_download_url) {
+        const downloadHeaders = {
+          "User-Agent": "TakeoutFix-Direct-Proxy"
+        };
+        if (request.headers.has("Range")) {
+          downloadHeaders["Range"] = request.headers.get("Range");
+        }
+        binaryRes = await fetch(targetAsset.browser_download_url, {
+          method: request.method === "HEAD" ? "HEAD" : "GET",
+          headers: downloadHeaders,
+          redirect: "follow"
         });
       }
 
-      // Fetch upstream binary (follows redirects automatically to Azure Blob / S3)
-      const binaryRes = await fetch(downloadUrl, {
-        method: request.method === "HEAD" ? "HEAD" : "GET",
-        headers: downloadHeaders,
-        redirect: "follow"
-      });
+      if (!binaryRes || (!binaryRes.ok && binaryRes.status !== 206)) {
+        return new Response("Unable to stream download asset from release storage.", {
+          status: binaryRes ? binaryRes.status : 500,
+          headers: { "Content-Type": "text/plain", "Access-Control-Allow-Origin": "*" }
+        });
+      }
 
       const outHeaders = new Headers();
       outHeaders.set("Content-Type", binaryRes.headers.get("Content-Type") || "application/octet-stream");

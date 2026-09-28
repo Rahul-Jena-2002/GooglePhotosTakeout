@@ -70,17 +70,17 @@ const collectionSchema = {
     
     <!-- Hero Header -->
     <div class="text-center mb-16 relative">
-      <div class="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 text-xs font-semibold uppercase tracking-wider mb-6 font-mono">
+      <div class="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-indigo-600 dark:text-indigo-400 text-xs font-semibold uppercase tracking-wider mb-6 font-mono">
         <Icon name="book-open" class="w-4 h-4" />
         Educational Knowledge Base
       </div>
-      <h1 class="text-4xl sm:text-5xl md:text-6xl font-extrabold tracking-tight text-white mb-6 leading-tight">
+      <h1 class="text-4xl sm:text-5xl md:text-6xl font-extrabold tracking-tight text-zinc-900 dark:text-white mb-6 leading-tight">
         Mastering Google Takeout <br class="hidden sm:inline" />
-        <span class="text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 via-purple-400 to-pink-500">
+        <span class="text-indigo-600 dark:text-indigo-400">
           Metadata &amp; Data Portability
         </span>
       </h1>
-      <p class="text-lg md:text-xl text-zinc-400 max-w-3xl mx-auto leading-relaxed font-normal">
+      <p class="text-base sm:text-lg text-zinc-600 dark:text-zinc-400 max-w-3xl mx-auto leading-relaxed font-normal">
         Authoritative, peer-reviewed engineering guides to help you understand Google Takeout archives, resolve missing photo dates, and preserve your family memories with 100% privacy.
       </p>
     </div>
@@ -90,7 +90,7 @@ const collectionSchema = {
       {guides.map((guide) => (
         <a 
           href={guide.slug.startsWith("../") ? guide.slug.replace("../", "/") : `/guides/${guide.slug}`}
-          class="group bg-zinc-950/40 border border-white/10 rounded-2xl p-7 sm:p-8 backdrop-blur-md flex flex-col justify-between hover:border-indigo-500/40 hover:bg-zinc-950/60 transition-all duration-200 shadow-xl"
+          class="group bg-zinc-50 dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-7 sm:p-8 flex flex-col justify-between hover:border-indigo-500/40 hover:bg-zinc-100 dark:hover:bg-zinc-900/80 transition-all duration-200 shadow-sm"
         >
           <div>
             <div class="flex items-center justify-between gap-3 mb-4">
@@ -102,18 +102,18 @@ const collectionSchema = {
               </span>
             </div>
 
-            <h2 class="text-xl sm:text-2xl font-bold text-white group-hover:text-indigo-400 transition-colors mb-3 leading-snug">
+            <h2 class="text-xl sm:text-2xl font-bold text-zinc-900 dark:text-white group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors mb-3 leading-snug">
               {guide.title}
             </h2>
 
-            <p class="text-sm text-zinc-400 leading-relaxed font-normal mb-6">
+            <p class="text-sm text-zinc-600 dark:text-zinc-400 leading-relaxed font-normal mb-6">
               {guide.description}
             </p>
           </div>
 
-          <div class="pt-4 border-t border-white/5 flex items-center justify-between text-xs text-zinc-500">
+          <div class="pt-4 border-t border-zinc-200 dark:border-zinc-800 flex items-center justify-between text-xs text-zinc-500">
             <span>Updated {guide.updatedAt}</span>
-            <span class="text-indigo-400 font-semibold flex items-center gap-1 group-hover:translate-x-1 transition-transform">
+            <span class="text-indigo-600 dark:text-indigo-400 font-semibold flex items-center gap-1 group-hover:translate-x-1 transition-transform">
               Read Guide &rarr;
             </span>
           </div>
@@ -122,37 +122,37 @@ const collectionSchema = {
     </div>
 
     <!-- Additional Learning Topics Bento -->
-    <div class="bg-zinc-950/60 border border-white/10 rounded-3xl p-8 sm:p-12 mb-16 backdrop-blur-xl">
-      <h3 class="text-2xl font-bold text-white mb-6">Explore Specific Problem Solvers</h3>
+    <div class="bg-zinc-50 dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 rounded-3xl p-8 sm:p-12 mb-16">
+      <h3 class="text-2xl font-bold text-zinc-900 dark:text-white mb-6">Explore Specific Problem Solvers</h3>
       <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <a href="/fix-google-takeout-dates" class="p-4 rounded-xl bg-zinc-900/50 border border-zinc-800 hover:border-rose-500/40 transition-colors">
-          <div class="text-sm font-bold text-rose-400 mb-1">Fix Wrong Dates</div>
-          <p class="text-xs text-zinc-400">Why your photos display today's extraction date and how to fix it.</p>
+        <a href="/fix-google-takeout-dates" class="p-4 rounded-xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 hover:border-indigo-500/40 transition-colors shadow-sm">
+          <div class="text-sm font-bold text-indigo-600 dark:text-indigo-400 mb-1">Fix Wrong Dates</div>
+          <p class="text-xs text-zinc-600 dark:text-zinc-400">Why your photos display today's extraction date and how to fix it.</p>
         </a>
-        <a href="/restore-gps-google-takeout" class="p-4 rounded-xl bg-zinc-900/50 border border-zinc-800 hover:border-indigo-500/40 transition-colors">
-          <div class="text-sm font-bold text-indigo-400 mb-1">Restore GPS Coordinates</div>
-          <p class="text-xs text-zinc-400">Re-inject latitude, longitude, and altitude tags into EXIF segments.</p>
+        <a href="/restore-gps-google-takeout" class="p-4 rounded-xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 hover:border-indigo-500/40 transition-colors shadow-sm">
+          <div class="text-sm font-bold text-indigo-600 dark:text-indigo-400 mb-1">Restore GPS Coordinates</div>
+          <p class="text-xs text-zinc-600 dark:text-zinc-400">Re-inject latitude, longitude, and altitude tags into EXIF segments.</p>
         </a>
-        <a href="/google-takeout-to-apple-photos" class="p-4 rounded-xl bg-zinc-900/50 border border-zinc-800 hover:border-sky-500/40 transition-colors">
-          <div class="text-sm font-bold text-sky-400 mb-1">Apple Photos Migration</div>
-          <p class="text-xs text-zinc-400">Prepare your archive so iCloud sorts photos chronologically.</p>
+        <a href="/google-takeout-to-apple-photos" class="p-4 rounded-xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 hover:border-indigo-500/40 transition-colors shadow-sm">
+          <div class="text-sm font-bold text-indigo-600 dark:text-indigo-400 mb-1">Apple Photos Migration</div>
+          <p class="text-xs text-zinc-600 dark:text-zinc-400">Prepare your archive so iCloud sorts photos chronologically.</p>
         </a>
-        <a href="/google-takeout-merger" class="p-4 rounded-xl bg-zinc-900/50 border border-zinc-800 hover:border-amber-500/40 transition-colors">
-          <div class="text-sm font-bold text-amber-400 mb-1">Merge JSON Sidecars</div>
-          <p class="text-xs text-zinc-400">Reunite detached sidecars with raw media files seamlessly.</p>
+        <a href="/google-takeout-merger" class="p-4 rounded-xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 hover:border-indigo-500/40 transition-colors shadow-sm">
+          <div class="text-sm font-bold text-indigo-600 dark:text-indigo-400 mb-1">Merge JSON Sidecars</div>
+          <p class="text-xs text-zinc-600 dark:text-zinc-400">Reunite detached sidecars with raw media files seamlessly.</p>
         </a>
       </div>
     </div>
 
     <!-- Author & Trust Box -->
-    <div class="border border-white/10 rounded-2xl p-6 sm:p-8 bg-zinc-900/30 text-xs text-zinc-400 leading-relaxed font-normal flex flex-col sm:flex-row items-center justify-between gap-6">
+    <div class="border border-zinc-200 dark:border-zinc-800 rounded-2xl p-6 sm:p-8 bg-zinc-50/50 dark:bg-zinc-900/30 text-xs text-zinc-600 dark:text-zinc-400 leading-relaxed font-normal flex flex-col sm:flex-row items-center justify-between gap-6">
       <div>
-        <h4 class="text-sm font-bold text-white mb-1">Maintained by TakeoutFix Engineering</h4>
+        <h4 class="text-sm font-bold text-zinc-900 dark:text-white mb-1">Maintained by TakeoutFix Engineering</h4>
         <p>
           Written and maintained by software engineers specializing in digital preservation and client-side processing. All tools execute locally on your device.
         </p>
       </div>
-      <a href="/tool" class="px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-xs transition-all whitespace-nowrap">
+      <a href="/tool" class="px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-xs transition-all whitespace-nowrap shadow-sm">
         Open Restore Tool
       </a>
     </div>
