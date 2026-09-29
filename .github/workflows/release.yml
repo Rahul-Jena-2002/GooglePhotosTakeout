@@ -107,29 +107,30 @@ jobs:
             --dest "dist-app" `
             --verbose
 
-          # 2. Build Standalone Single-File EXE
-          # /win32manifest  → Option 2: embeds app.manifest so Windows sees a known, trusted app identity
-          # /win32icon      → branded icon in Explorer/taskbar
-          # AssemblyVersion in .cs → populates EXE Properties > Details tab (FileVersion, Company, etc.)
-          Write-Host "Compiling TakeoutFix.exe with embedded manifest + version resource..."
-          $payloadZip = "dist-app\payload.zip"
-          Compress-Archive -Path "dist-app\TakeoutFix\*" -DestinationPath $payloadZip -Force
+          # 2. Build payload ZIP — uploaded to GitHub Releases, downloaded by the launcher at runtime.
+          #    Users never see this file; TakeoutFix.exe fetches and extracts it silently on first run.
+          Write-Host "Packaging TakeoutFix-payload.zip (runtime payload for self-updating launcher)..."
+          Compress-Archive -Path "dist-app\TakeoutFix\*" -DestinationPath "TakeoutFix-payload.zip" -Force
 
+          # 3. Compile self-updating launcher EXE (stable downloader — no payload embedded).
+          #    AssemblyVersion is FIXED at 1.0.0.0 so the binary hash stays the same across app releases.
+          #    SmartScreen reputation accumulates on this hash permanently.
+          Write-Host "Compiling TakeoutFix.exe (self-updating launcher, stable hash)..."
           $cscPath = "C:\Windows\Microsoft.NET\Framework64\v4.0.30319\csc.exe"
           & $cscPath `
             "/target:winexe" `
             "/win32icon:takeoutfix\icons\icon.ico" `
             "/win32manifest:takeoutfix\launcher\app.manifest" `
-            "/reference:System.IO.Compression.dll,System.IO.Compression.FileSystem.dll,System.Windows.Forms.dll" `
-            "/resource:$payloadZip,payload.zip" `
+            "/reference:System.IO.Compression.dll,System.IO.Compression.FileSystem.dll,System.Windows.Forms.dll,System.Drawing.dll" `
             "/out:TakeoutFix.exe" `
             "takeoutfix\launcher\SingleFileLauncher.cs"
 
           if (-not (Test-Path "TakeoutFix.exe")) {
             throw "TakeoutFix.exe compilation failed."
           }
-          # 3. Self-sign with a temp Authenticode cert (changes "Unknown Publisher" → "TakeoutFix")
-          Write-Host "Self-signing TakeoutFix.exe with temporary Authenticode cert..."
+
+          # 4. Self-sign (changes "Unknown Publisher" → "TakeoutFix"; non-blocking if it fails)
+          Write-Host "Self-signing TakeoutFix.exe..."
           try {
             $cert = New-SelfSignedCertificate `
               -Subject "CN=TakeoutFix, O=TakeoutFix, C=US" `
@@ -137,18 +138,16 @@ jobs:
               -CertStoreLocation "Cert:\CurrentUser\My" `
               -NotAfter (Get-Date).AddYears(2) `
               -HashAlgorithm SHA256
-            $thumbprint = $cert.Thumbprint
             Set-AuthenticodeSignature -FilePath "TakeoutFix.exe" -Certificate $cert -HashAlgorithm SHA256 -TimestampServer "http://timestamp.digicert.com" | Out-Null
-            Write-Host "Signed TakeoutFix.exe with cert thumbprint: $thumbprint"
+            Write-Host "Signed OK: $($cert.Thumbprint)"
           } catch {
             Write-Host "Self-signing step failed (non-fatal): $_"
           }
 
           Copy-Item "TakeoutFix.exe" "TakeoutFix-Java.exe" -Force
-          Remove-Item $payloadZip -Force
 
-          # 5. Build WiX Setup Installer — PRIMARY download (installers have higher SmartScreen reputation)
-          Write-Host "Generating TakeoutFix-Setup.exe installer (PRIMARY download)..."
+          # 5. Build WiX Setup Installer (alternative for users who prefer an installer)
+          Write-Host "Generating TakeoutFix-Setup.exe installer..."
           jpackage `
             --type exe `
             --app-image "dist-app/TakeoutFix" `
@@ -165,13 +164,11 @@ jobs:
             --win-shortcut `
             --verbose
 
-          # Rename setup installer to TakeoutFix-Setup.exe
           $generatedSetup = Get-ChildItem "dist-exe/*.exe" | Select-Object -First 1
           if ($generatedSetup) {
             Copy-Item $generatedSetup.FullName "./TakeoutFix-Setup.exe" -Force
-            Write-Host "Setup installer: $($generatedSetup.Name) → TakeoutFix-Setup.exe"
           }
-          Write-Host "Done. Artifacts: TakeoutFix.exe (standalone), TakeoutFix-Setup.exe (installer / primary)"
+          Write-Host "Done. Artifacts: TakeoutFix.exe (launcher), TakeoutFix-payload.zip (runtime payload), TakeoutFix-Setup.exe (installer)"
 
       # ─── macOS: Standalone DMG with Gatekeeper-compatible signing ───
       - name: Package Java macOS (.dmg)
@@ -301,6 +298,7 @@ jobs:
             ${{ matrix.primary_artifact }}
             ${{ matrix.legacy_artifact }}
             TakeoutFix-Setup.exe
+            TakeoutFix-payload.zip
             *.deb
             *.tar.gz
           retention-days: 1
@@ -314,6 +312,7 @@ jobs:
             ${{ matrix.primary_artifact }}
             ${{ matrix.legacy_artifact }}
             TakeoutFix-Setup.exe
+            TakeoutFix-payload.zip
             *.deb
             *.tar.gz
 

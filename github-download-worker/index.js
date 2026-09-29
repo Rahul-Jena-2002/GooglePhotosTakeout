@@ -30,7 +30,8 @@ export default {
 
     // Map download paths to expected file names
     // PRIMARY: /download/windows → TakeoutFix-Setup.exe (WiX installer, higher SmartScreen reputation)
-    // SECONDARY: /download/windows/standalone → TakeoutFix.exe (single-file launcher)
+    // LAUNCHER: /download/windows/standalone → TakeoutFix.exe (self-updating single-file launcher)
+    // PAYLOAD:  /download/windows/payload → TakeoutFix-payload.zip (downloaded by the launcher at runtime)
     let targetFileName = "";
     if (
       path === "/download/windows" ||
@@ -43,6 +44,12 @@ export default {
       path === "/download/windows/takeoutfix-setup.exe"
     ) {
       targetFileName = "TakeoutFix-Setup.exe";
+    } else if (
+      path === "/download/windows/payload" ||
+      path === "/download/windows/payload.zip" ||
+      path === "/download/takeoutfix-payload.zip"
+    ) {
+      targetFileName = "TakeoutFix-payload.zip";
     } else if (
       path === "/download/windows/exe" ||
       path === "/download/windows/standalone" ||
@@ -273,7 +280,10 @@ export default {
       const outHeaders = new Headers();
       outHeaders.set("Content-Type", binaryRes.headers.get("Content-Type") || "application/octet-stream");
       outHeaders.set("Content-Disposition", `attachment; filename="${targetFileName}"`);
-      
+      // X-App-Version: used by the self-updating launcher to detect new releases without a separate API call
+      if (releaseData.tag_name) {
+        outHeaders.set("X-App-Version", releaseData.tag_name.replace(/^v/, ""));
+      }
       const contentLength = binaryRes.headers.get("Content-Length");
       if (contentLength) {
         outHeaders.set("Content-Length", contentLength);
