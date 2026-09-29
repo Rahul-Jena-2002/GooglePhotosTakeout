@@ -1,7 +1,89 @@
 /*
-  X-Frame-Options: DENY
+  Cache-Control: public, max-age=0, must-revalidate
   X-Content-Type-Options: nosniff
+  X-Frame-Options: DENY
+  Referrer-Policy: strict-origin-when-cross-origin
+  Permissions-Policy: camera=(), microphone=(), geolocation=()
+  Strict-Transport-Security: max-age=31536000; includeSubDomains; preload
   X-XSS-Protection: 1; mode=block
-  Referrer-Policy: no-referrer
-  Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=()
-  Content-Security-Policy: default-src 'self'; script-src 'self' https://pagead2.googlesyndication.com https://www.googletagservices.com https://adservice.google.com https://*.a-ads.com https://ad.a-ads.com 'unsafe-inline'; style-src 'self' https://fonts.googleapis.com 'unsafe-inline'; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https:; connect-src 'self' https://pagead2.googlesyndication.com https://*.a-ads.com https://ad.a-ads.com; frame-src https://googleads.g.doubleclick.net https://*.a-ads.com https://ad.a-ads.com; frame-ancestors 'none';
+  Cross-Origin-Opener-Policy: same-origin-allow-popups
+  Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://apis.google.com https://www.gstatic.com https://pagead2.googlesyndication.com https://*.googlesyndication.com https://adservice.google.com https://www.google.com https://*.google.com https://fundingchoicesmessages.google.com https://*.recaptcha.net https://*.a-ads.com https://ad.a-ads.com; connect-src 'self' https://*.firebaseio.com https://*.googleapis.com https://freeipapi.com https://*.dodopayments.com wss://*.firebaseio.com https://pagead2.googlesyndication.com https://*.google.com https://*.googlesyndication.com https://*.doubleclick.net https://*.recaptcha.net https://*.a-ads.com https://ad.a-ads.com; img-src 'self' data: blob: https://*.googleusercontent.com https://*.gstatic.com https://ui-avatars.com https://pagead2.googlesyndication.com https://*.googlesyndication.com https://*.doubleclick.net https://*.google.com https://*.a-ads.com https://ad.a-ads.com; style-src 'self' 'unsafe-inline'; font-src 'self' data:; frame-src 'self' https://*.firebaseapp.com https://googleads.g.doubleclick.net https://*.google.com https://tpc.googlesyndication.com https://*.recaptcha.net https://*.a-ads.com https://ad.a-ads.com; worker-src 'self' blob:; object-src 'none';
+
+
+/ads.txt
+  Cache-Control: public, max-age=3600
+  Content-Type: text/plain; charset=utf-8
+  Access-Control-Allow-Origin: *
+
+/*.html
+  Cache-Control: public, max-age=0, must-revalidate
+
+/
+  Cache-Control: public, max-age=0, must-revalidate
+
+/takeout-fix
+  Cache-Control: public, max-age=0, must-revalidate
+
+/takeout-fixer
+  Cache-Control: public, max-age=0, must-revalidate
+
+/metadata-fixer
+  Cache-Control: public, max-age=0, must-revalidate
+
+/google-photos-metadata-fix
+  Cache-Control: public, max-age=0, must-revalidate
+
+/google-takeout-merger
+  Cache-Control: public, max-age=0, must-revalidate
+
+/restore-data
+  Cache-Control: public, max-age=0, must-revalidate
+
+/pricing
+  Cache-Control: public, max-age=0, must-revalidate
+
+/reviews
+  Cache-Control: public, max-age=0, must-revalidate
+
+/how-to-*
+  Cache-Control: public, max-age=0, must-revalidate
+
+/api/*
+  Cache-Control: no-store, no-cache, must-revalidate
+
+/_astro/*
+  Cache-Control: public, max-age=31536000, immutable
+
+/*.js
+  Cache-Control: public, max-age=31536000, immutable
+
+/*.css
+  Cache-Control: public, max-age=31536000, immutable
+
+/*.woff2
+  Cache-Control: public, max-age=31536000, immutable
+
+/*.webp
+  Cache-Control: public, max-age=604800, s-maxage=2592000
+
+/*.png
+  Cache-Control: public, max-age=604800, s-maxage=2592000
+
+/*.ico
+  Cache-Control: public, max-age=604800
+
+/sitemap.xml
+  Cache-Control: public, max-age=3600, s-maxage=86400
+  Content-Type: application/xml; charset=utf-8
+
+/robots.txt
+  Cache-Control: public, max-age=3600
+  Content-Type: text/plain; charset=utf-8
+
+/sw.js
+  Cache-Control: no-cache, no-store, must-revalidate
+  Service-Worker-Allowed: /
+
+/manifest.webmanifest
+  Cache-Control: public, max-age=3600
+  Content-Type: application/manifest+json; charset=utf-8
