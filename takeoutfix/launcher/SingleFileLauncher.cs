@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.IO;
 using System.IO.Compression;
 using System.Diagnostics;
@@ -134,7 +134,7 @@ namespace TakeoutFix {
             Controls.Add(_bar);
 
             Shown       += (s, e) => BeginDownload();
-            FormClosing += (s, e) => _client?.CancelAsync();
+            FormClosing += (s, e) => { if (_client != null) _client.CancelAsync(); };
         }
 
         void BeginDownload() {
