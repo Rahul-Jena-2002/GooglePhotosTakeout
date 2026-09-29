@@ -1,52 +1,100 @@
-# Implementation Plan: AdSense "Low Value Content" Resolution & Content Authority Overhaul
+# Implementation Plan: All-in-One Photo Studio & EXIF Editor (Batch Date, Geotag, Presets)
 
 ## Overview
-Resolve Google AdSense rejection (`Needs attention -> Status details: Low value content`) on `takeoutfix.pages.dev` by executing a comprehensive overhaul across technical foundation, essential trust/legal pages, authoritative original content, and navigation cleanup in accordance with Google Publisher Policies and the Master Pre-Resubmission Checklist.
-
-## Architecture Decisions
-1. **Pillar Content Architecture:** Create dedicated, high-value, deeply researched technical guides with rich diagrams, tables, and step-by-step instructions (1,000–1,800+ words each) covering Google Takeout JSON sidecars, EXIF restoration, Apple Photos migration, and troubleshooting.
-2. **De-indexing Thin Combinatorial URLs:** Remove or `noindex` the 30 templated algorithmic permutations (`how-to-${action}-${target}-from-${source}`) in `[seoSlug].astro` so search crawlers and AdSense reviewers only evaluate substantial, unique content.
-3. **Trust & Transparency Suite:** Build first-class `/about`, `/contact`, and `/disclaimer` pages with explicit organization details, developer credentials, direct contact channels, response commitments, and trademark disclaimers.
-4. **Navigation & Footer Integrity:** Link all trust pages and knowledge hubs in the main navigation and footer; ensure zero broken links, zero placeholder text, and consistent mobile responsiveness.
-5. **Schema.org & GEO Optimization:** Integrate `Organization`, `ContactPage`, `TechArticle`, and `FAQPage` JSON-LD schemas.
+The **Photo Studio Suite** is an advanced batch metadata editor integrated directly into TakeoutFix Studio as a dedicated workspace. While EXIF Viewer is strictly read-only, Photo Studio gives photographers and archivists non-destructive batch editing capabilities. Its primary focus is **Batch Date Remediation** (relative time-shifting for travel/timezone offsets and sequential auto-incrementing for scanned film/albums), supplemented by **Location Tagging/Stripping** and **Copyright Presets**.
 
 ---
 
-## Tasks Breakdown
+## Architectural Principles (Ponytail & Safe Engineering)
+1. **Reuse Over Reinvention (Ponytail):**
+   - Leverage the existing `NativeExifToolEngine` worker pool (`-stay_open 1`) for all deep metadata writes (JPEG, HEIC, PNG, MP4, MOV, DNG, RAW).
+   - Standard Java 26 NIO (`Files`, `BasicFileAttributeView`) for filesystem timestamp synchronizations.
+   - Zero new external libraries or Maven dependencies.
+2. **Safety & Zero Data Loss (Safe Engineering):**
+   - **Safe Copy Pipeline:** By default, writes output to an export destination or preserves an untouched backup before mutating.
+   - Atomic in-place operations (`-overwrite_original_in_place`) only when explicitly requested by user with safety checks.
+   - Pre-flight validation: verifies read/write permissions and disk space before initiating batch processing.
+3. **Responsive UI (JavaFX SaaS Architecture):**
+   - Heavy ExifTool I/O runs asynchronously on background thread pools (`CompletableFuture` / virtual threads).
+   - Real-time progress bar, live thumbnail strip/grid, and before-and-after date comparison preview table.
 
-### Phase 1: Essential Trust, Legal & Transparency Pages
-- [ ] Task 1: Build comprehensive `/about` page (Who we are, developer bio, mission, local-first privacy commitment, technical architecture, and editorial principles).
-- [ ] Task 2: Build dedicated `/contact` page (Support channels, email, response times, feedback form, location/jurisdiction, FAQ pointers).
-- [ ] Task 3: Build dedicated `/disclaimer` page (Trademark disclaimers for Google LLC, Apple Inc., file handling disclaimers, no warranties).
-- [ ] Checkpoint: Trust pages built, tested, and responsive.
+---
 
-### Phase 2: High-Value Original Pillar Content Hub
-- [ ] Task 4: Create Knowledge Hub / Guides index (`/guides`) with categorised technical articles.
-- [ ] Task 5: Author Pillar Guide 1: *The Definitive Guide to Google Takeout Photo Metadata: Why JSON Sidecars Exist & How EXIF Works* (In-depth 1,500+ words with JSON structure breakdown, EXIF tags table, timezone math).
-- [ ] Task 6: Author Pillar Guide 2: *Migrating Google Photos to Apple Photos (iCloud) Without Losing Dates, Locations, or Quality* (Comprehensive tutorial with common pitfalls, Mac/Windows workflows).
-- [ ] Task 7: Author Pillar Guide 3: *Troubleshooting Google Takeout: Missing GPS, Truncated JSON Names, and Duplicate Files*.
-- [ ] Checkpoint: Content hub and pillar articles render beautifully with high typography quality and rich metadata.
+## Architecture & Dependency Map
+```text
+TakeoutFxApplication (WorkspaceType.PHOTO_STUDIO)
+  │
+  ├── SidebarNav / HeaderBar (Studio Nav Item)
+  │
+  ├── PhotoStudioFxView (UI Container)
+  │     ├── FileQueuePanel (Table / File List with Status)
+  │     ├── DateRemediationCard (Shift ±H/M/S or Base + Increment)
+  │     ├── LocationCard (GPS Coordinates & Privacy Strip)
+  │     ├── PresetCard (Artist, Copyright, Description)
+  │     └── StudioExecutionFooter (Progress Bar, Dry Run, Execute Batch)
+  │
+  └── PhotoStudioService (Backend Core Engine)
+        ├── NativeExifToolEngine (Reused persistent worker pool)
+        ├── DateShiftCalculator (Calculates timestamps and dry-run preview)
+        └── OutputSafetyManager (Destination directory & backup handler)
+```
 
-### Phase 3: De-Index Thin Pages & Clean Programmatic Slugs
-- [ ] Task 8: In `[seoSlug].astro`, remove the 30 thin combinatorial routes or mark all non-curated pages with `robots="noindex, follow"`.
-- [ ] Task 9: Enhance the curated landing pages (`fix-google-takeout-dates`, `restore-gps-google-takeout`, `google-takeout-to-apple-photos`) with unique custom content and deep explanations rather than boilerplate.
-- [ ] Checkpoint: No thin boilerplate pages indexed.
+---
 
-### Phase 4: Navigation, Sitemap & SEO Optimization
-- [ ] Task 10: Update `Layout.astro` header and footer navigation to prominently feature About, Guides, Contact, and Disclaimer.
-- [ ] Task 11: Update `sitemap.xml` with fresh pillar guides, About, Contact, and Disclaimer pages; remove any thin URLs.
-- [ ] Task 12: Verify robots.txt and structured data (JSON-LD schemas).
-- [ ] Checkpoint: All internal navigation verified, zero 404s.
+## Task List
 
-### Phase 5: Verification, Audit Gate & Build Verification
-- [ ] Task 13: Run `npm run build` in `webapp/` and verify Cloudflare security audit gate (`audit_cloudflare_security.js`).
-- [ ] Task 14: Verify mobile responsiveness, accessibility, and zero console errors.
+### Phase 1: Core Engine & Data Models (Foundation)
+- [ ] **Task 1: Photo Studio Models & Date Shift Calculator**
+  - Define `StudioEditRequest` (date shifts, GPS coordinates, presets, destination settings).
+  - Implement `DateShiftCalculator` supporting relative offset (`±days, ±hours, ±minutes`) and sequential increment (`baseDate + i * step`).
+  - Unit tests covering edge cases (leap years, month rollovers, negative shifts).
+- [ ] **Task 2: Batch PhotoStudioService Engine**
+  - Implement `PhotoStudioService` interfacing with `NativeExifToolEngine`.
+  - Build command arguments: `-DateTimeOriginal`, `-CreateDate`, `-ModifyDate`, `-GPSLatitude`, `-GPSLongitude`, `-Artist`, `-Copyright`.
+  - Implement dry-run preview generator (shows before vs. calculated after dates without touching disk).
+
+### Checkpoint: Foundation
+- [ ] All unit tests pass (`mvn test -pl takeoutfix`).
+- [ ] No regression on existing TakeoutFix or MetaSync suites.
+
+### Phase 2: JavaFX UI Implementation (Vertical Slice)
+- [ ] **Task 3: PhotoStudioFxView Layout & File Selection**
+  - Create `PhotoStudioFxView` following shadcn-inspired dark/light theme.
+  - Implement drag-and-drop file ingestion, file table with status columns (Filename, Original Date, New Date, Location, Status).
+- [ ] **Task 4: Batch Date Control Panel (Primary Focus)**
+  - Implement segmented tab selector: `[ Time Shift (± Offset) ]` vs `[ Fixed Date + Auto-Increment ]`.
+  - Add quick presets: `+1 Hour (DST)`, `-1 Hour`, `Match Timezone`, `Scanned Photo Album (+1 min/photo)`.
+  - Live table preview updating in real-time as offset sliders/pickers change.
+- [ ] **Task 5: Optional Modules (GPS Geotag & Copyright Presets)**
+  - Expandable `LocationCard`: Decimal lat/long inputs, quick clear/strip GPS toggle.
+  - Expandable `PresetsCard`: Artist/Photographer name, Copyright notice, description.
+
+### Checkpoint: UI & Interaction
+- [ ] Workspace renders cleanly in both Light and Dark themes.
+- [ ] Drag-and-drop adds files and parses initial EXIF dates asynchronously.
+
+### Phase 3: Execution, Safety & Integration
+- [ ] **Task 6: Execution Pipeline & Workspace Registration**
+  - Implement asynchronous batch execution with progress bar, cancellation token, and error handling.
+  - Register `WorkspaceType.PHOTO_STUDIO` in `TakeoutFxApplication`, `SidebarNav`, and `HeaderBar`.
+  - Output handling: option to write to designated output directory or in-place with `.original` safety.
+
+### Checkpoint: Final Verification
+- [ ] End-to-end execution on sample JPEG, HEIC, and MP4 files.
+- [ ] All 75+ unit tests passing cleanly.
+- [ ] Knowledge graph updated via `python -m graphify update .`.
 
 ---
 
 ## Risks and Mitigations
 | Risk | Impact | Mitigation |
-|---|---|---|
-| Broken links or redirects during review | High | Validate every link and anchor tag; maintain canonical URLs. |
-| Duplicate content signals | High | Strictly `noindex` any programmatic variation; ensure each guide is 100% unique. |
-| Cloudflare build size / security gate failure | Med | Build incrementally, test with `npm run build`. |
+| :--- | :--- | :--- |
+| **File Corruption during In-Place Write** | High | Default to exporting modified photos to a separate directory, preserving folder hierarchy. If in-place is chosen, enforce atomic copy or `.original` backup. |
+| **Video Metadata Formatting (MP4/MOV)** | Medium | QuickTime atom tags require `-CreateDate` and `-TrackCreateDate` in UTC format; `NativeExifToolEngine` encapsulates QuickTime formatting. |
+| **Slow Batch Parsing on 5,000+ Photos** | Medium | Initial file queue loads metadata via multi-threaded worker pool with progressive UI table population. |
+
+---
+
+## Open Decisions & Feedback
+1. **Destination Default:** Should the studio default to outputting to a separate folder (`[Source]_studio_export/`) to prevent modifying originals? *(Recommended: Yes, per safe engineering).*
+2. **Sidebar Placement:** Position directly under **EXIF Viewer** in the primary navigation list.

@@ -1,7 +1,9 @@
-name: Deploy Web App to GitHub Pages
+name: Build & Deploy Web App
 
 on:
   push:
+    branches: [main, rjdevelop]
+  pull_request:
     branches: [main, rjdevelop]
   workflow_dispatch:
 
@@ -12,7 +14,7 @@ jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
+      - name: Checkout Code
         uses: actions/checkout@v4
 
       - name: Setup Node.js
@@ -22,33 +24,21 @@ jobs:
           cache: 'npm'
           cache-dependency-path: webapp/package-lock.json
 
-      - name: Install dependencies
+      - name: Install Dependencies
         working-directory: webapp
         run: npm ci
 
-      - name: Build
+      - name: Build Web App & Run Security Audit
         working-directory: webapp
         run: npm run build
         env:
           NODE_ENV: production
 
-      - name: Add Security Headers via _headers file (Netlify compatible)
-        working-directory: webapp/dist
-        run: |
-          cat > _headers << 'EOF'
-          /*
-            X-Frame-Options: DENY
-            X-Content-Type-Options: nosniff
-            X-XSS-Protection: 1; mode=block
-            Referrer-Policy: no-referrer
-            Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=()
-            Content-Security-Policy: default-src 'self'; script-src 'self' https://pagead2.googlesyndication.com https://www.googletagservices.com https://adservice.google.com https://*.a-ads.com https://ad.a-ads.com 'unsafe-inline'; style-src 'self' https://fonts.googleapis.com 'unsafe-inline'; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https:; connect-src 'self' https://pagead2.googlesyndication.com https://*.a-ads.com https://ad.a-ads.com; frame-src https://googleads.g.doubleclick.net https://*.a-ads.com https://ad.a-ads.com; frame-ancestors 'none';
-          EOF
-
       - name: Deploy to GitHub Pages
-        if: github.ref == 'refs/heads/main'
+        if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
         uses: peaceiris/actions-gh-pages@v3
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: webapp/dist
-          cname: ''   # Leave blank for github.io URL; set to your custom domain if you have one
+          cname: ''
+

@@ -4,7 +4,7 @@ import { Card, CardContent } from "../../components/ui/card"
 import { Button } from "../../components/ui/button"
 import { Input } from "../../components/ui/input"
 import { Textarea } from "../../components/ui/textarea"
-import { LifeBuoy, FileText, History, PlusCircle, AlertCircle, CheckCircle2, MessageSquare, X } from "lucide-react"
+import { LifeBuoy, FileText, History, PlusCircle, CheckCircle2, MessageSquare, X } from "lucide-react"
 import { collection, query, where, getDocs, addDoc, doc, updateDoc, onSnapshot } from "firebase/firestore"
 import { db } from "../../firebase"
 import { motion, AnimatePresence } from "framer-motion"
@@ -67,7 +67,7 @@ function SupportPageContent() {
   const [loading, setLoading] = useState(false)
   const [submitStatus, setSubmitStatus] = useState<"idle" | "submitting" | "success" | "error">("idle")
   
-  const [newTicket, setNewTicket] = useState({ subject: "", message: "" })
+  const [newTicket, setNewTicket] = useState({ subject: "", message: "", name: "", email: "" })
 
   // Feedback Form State
   const [feedbackRating, setFeedbackRating] = useState(5)
@@ -204,16 +204,18 @@ function SupportPageContent() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!user || !isPaid) return
     if (!newTicket.subject.trim() || !newTicket.message.trim()) return
-    
+
     setSubmitStatus("submitting")
     const ticketId = 'TKT-' + Math.floor(100000 + Math.random() * 900000)
+    const submitterName = user?.displayName || newTicket.name.trim() || "Anonymous"
+    const submitterEmail = user?.email || newTicket.email.trim() || "anonymous"
     try {
       const docRef = await addDoc(collection(db, "tickets"), {
         ticketId,
-        uid: user.uid,
-        email: user.email,
+        uid: user?.uid || "anonymous",
+        email: submitterEmail,
+        name: submitterName,
         subject: newTicket.subject,
         message: newTicket.message,
         status: "OPEN",
@@ -222,15 +224,10 @@ function SupportPageContent() {
       })
       setSubmitStatus("success")
 
-      // Non-blocking notification dispatch: all admins + takeoutfix.support@gmail.com
-      const senderDisplayName = userData?.firstName 
-        ? `${userData.firstName} ${userData.lastName || ''}`.trim()
-        : (user.displayName || user.email || "User")
-
       notifyAdminsOnTicketRaised({
         ticketId,
-        userEmail: user.email || "",
-        userName: senderDisplayName,
+        userEmail: submitterEmail,
+        userName: submitterName,
         subject: newTicket.subject,
         message: newTicket.message,
         ticketDocId: docRef.id
@@ -238,7 +235,7 @@ function SupportPageContent() {
         console.warn("[SupportPage] Background ticket alert dispatch error:", err)
       })
 
-      setNewTicket({ subject: "", message: "" })
+      setNewTicket({ subject: "", message: "", name: "", email: "" })
       setTimeout(() => {
         setActiveTab("tickets")
         setSubmitStatus("idle")
@@ -513,20 +510,29 @@ function SupportPageContent() {
                 <div>
                   <h2 className="text-xl font-bold mb-6">Submit a Support Request</h2>
                   
-                  {!user ? (
-                    <Card className="bg-black/40 border-red-500/30 backdrop-blur-md">
-                      <CardContent className="pt-6 text-center">
-                        <AlertCircle className="w-12 h-12 text-red-400 mx-auto mb-4" />
-                        <h3 className="text-lg font-bold mb-2">Sign In Required</h3>
-                        <p className="text-white/60 mb-4 font-normal leading-relaxed">
-                          Please sign in to submit a support ticket. Alternatively, you can reach our team directly at{" "}
-                          <a href="mailto:takeoutfix.support@gmail.com" className="text-indigo-400 hover:text-indigo-300 font-bold underline">
-                            takeoutfix.support@gmail.com
-                          </a>.
-                        </p>
-                      </CardContent>
-                    </Card>
-                  ) : (
+                  {!user && (
+                    <>
+                      <div>
+                        <label className="block text-sm font-medium text-white/70 mb-1">Your Name <span className="text-white/40 font-normal">(optional)</span></label>
+                        <Input
+                          value={newTicket.name}
+                          onChange={(e) => setNewTicket({...newTicket, name: e.target.value})}
+                          placeholder="e.g. Rahul"
+                          className="bg-white/5 border-white/10 rounded-xl"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-white/70 mb-1">Email <span className="text-white/40 font-normal">(optional — for follow-up)</span></label>
+                        <Input
+                          type="email"
+                          value={newTicket.email}
+                          onChange={(e) => setNewTicket({...newTicket, email: e.target.value})}
+                          placeholder="your@email.com"
+                          className="bg-white/5 border-white/10 rounded-xl"
+                        />
+                      </div>
+                    </>
+                  )}
                     <form onSubmit={handleSubmit} className="space-y-4">
                       {submitStatus === "success" ? (
                         <motion.div 
@@ -578,7 +584,6 @@ function SupportPageContent() {
                         </Card>
                       )}
                     </form>
-                  )}
                 </div>
               )}
 

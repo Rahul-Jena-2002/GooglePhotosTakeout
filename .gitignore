@@ -32,6 +32,7 @@ build/
 
 ### VS Code ###
 .vscode/
+*.code-workspace
 
 ### Mac OS ###
 .DS_Store
@@ -85,8 +86,8 @@ rel_*.json
 latest_runs.json
 __pycache__/
 *.pyc
-TAKEOUT_EDGE_CASES_TEST_SUITE/
-test files/
+takeoutfix/test-suite/
+takeoutfix/test-files/
 graphify-out/
-webapp/graphify-out/
-webapp/scripts/verify_slice1.cjs
+takeoutfix/webapp/graphify-out/
+takeoutfix/webapp/scripts/verify_slice1.cjs
