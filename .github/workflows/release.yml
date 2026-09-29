@@ -86,14 +86,14 @@ jobs:
           mkdir -p jpackage-input
           cp takeoutfix/target/takeoutfix.jar jpackage-input/
 
-      # ─── Windows: Direct Standalone EXE (Zero Installation) + Setup Installer ───
+      # ─── Windows: Standalone EXE + Setup Installer (SmartScreen hardened) ───
       - name: Package Java Windows (.exe)
         if: matrix.os == 'windows-latest'
         shell: pwsh
         run: |
           $appVer = "${{ steps.version.outputs.version }}"
-          
-          # 1. Build Native Application Image (Portable Standalone Runtime + App)
+
+          # 1. Build Native Application Image
           Write-Host "Building native application image..."
           jpackage `
             --type app-image `
@@ -107,8 +107,11 @@ jobs:
             --dest "dist-app" `
             --verbose
 
-          # 2. Package into Direct Standalone Single-File EXE (Zero-Install, Runs Immediately on Double-Click)
-          Write-Host "Creating Direct Standalone TakeoutFix.exe (No Installation Wizard)..."
+          # 2. Build Standalone Single-File EXE
+          # /win32manifest  → Option 2: embeds app.manifest so Windows sees a known, trusted app identity
+          # /win32icon      → branded icon in Explorer/taskbar
+          # AssemblyVersion in .cs → populates EXE Properties > Details tab (FileVersion, Company, etc.)
+          Write-Host "Compiling TakeoutFix.exe with embedded manifest + version resource..."
           $payloadZip = "dist-app\payload.zip"
           Compress-Archive -Path "dist-app\TakeoutFix\*" -DestinationPath $payloadZip -Force
 
@@ -116,6 +119,7 @@ jobs:
           & $cscPath `
             "/target:winexe" `
             "/win32icon:takeoutfix\icons\icon.ico" `
+            "/win32manifest:takeoutfix\launcher\app.manifest" `
             "/reference:System.IO.Compression.dll,System.IO.Compression.FileSystem.dll,System.Windows.Forms.dll" `
             "/resource:$payloadZip,payload.zip" `
             "/out:TakeoutFix.exe" `
@@ -125,15 +129,32 @@ jobs:
             throw "TakeoutFix.exe compilation failed."
           }
 
+          # 3. Self-sign with a temp Authenticode cert (changes "Unknown Publisher" → "TakeoutFix")
+          #    This is NOT EV signing — SmartScreen warning may still appear but is clickable.
+          Write-Host "Self-signing TakeoutFix.exe with temporary Authenticode cert..."
+          try {
+            $cert = New-SelfSignedCertificate `
+              -Subject "CN=TakeoutFix, O=TakeoutFix, C=US" `
+              -Type CodeSigningCert `
+              -CertStoreLocation "Cert:\CurrentUser\My" `
+              -NotAfter (Get-Date).AddYears(2) `
+              -HashAlgorithm SHA256
+            $thumbprint = $cert.Thumbprint
+            Set-AuthenticodeSignature -FilePath "TakeoutFix.exe" -Certificate $cert -HashAlgorithm SHA256 -TimestampServer "http://timestamp.digicert.com" | Out-Null
+            Write-Host "Signed TakeoutFix.exe with cert thumbprint: $thumbprint"
+          } catch {
+            Write-Host "Self-signing step failed (non-fatal): $_"
+          }
+
           Copy-Item "TakeoutFix.exe" "TakeoutFix-Java.exe" -Force
           Remove-Item $payloadZip -Force
 
-          # 3. Optional: Build Setup Installer via WiX
-          Write-Host "Generating optional TakeoutFix-Setup.exe installer..."
+          # 5. Build WiX Setup Installer — PRIMARY download (installers have higher SmartScreen reputation)
+          Write-Host "Generating TakeoutFix-Setup.exe installer (PRIMARY download)..."
           jpackage `
             --type exe `
             --app-image "dist-app/TakeoutFix" `
-            --name "TakeoutFix-Setup" `
+            --name "TakeoutFix" `
             --icon "takeoutfix/icons/icon.ico" `
             --app-version "$appVer" `
             --vendor "TakeoutFix" `
@@ -146,18 +167,20 @@ jobs:
             --win-shortcut `
             --verbose
 
+          # Rename setup installer to TakeoutFix-Setup.exe
           $generatedSetup = Get-ChildItem "dist-exe/*.exe" | Select-Object -First 1
           if ($generatedSetup) {
             Copy-Item $generatedSetup.FullName "./TakeoutFix-Setup.exe" -Force
+            Write-Host "Setup installer: $($generatedSetup.Name) → TakeoutFix-Setup.exe"
           }
-          Write-Host "Generated: Direct Run TakeoutFix.exe and TakeoutFix-Setup.exe (Version $appVer)"
+          Write-Host "Done. Artifacts: TakeoutFix.exe (standalone), TakeoutFix-Setup.exe (installer / primary)"
 
-      # ─── macOS: Standalone DMG with Ad-hoc Code Signing ───
+      # ─── macOS: Standalone DMG with Gatekeeper-compatible signing ───
       - name: Package Java macOS (.dmg)
         if: matrix.os == 'macos-latest'
         run: |
           APP_VER="${{ steps.version.outputs.version }}"
-          
+
           # 1. Build app-image first to allow deep signing
           jpackage \
             --type app-image \
@@ -174,10 +197,15 @@ jobs:
             --app-version "$APP_VER" \
             --verbose
 
-          # 2. Deep ad-hoc sign the bundle to prevent Gatekeeper "damaged app" error
-          codesign --force --deep --sign - "dist-app/TakeoutFix.app"
+          # 2. Strip quarantine extended attributes (prevents Gatekeeper "damaged app" popup)
+          xattr -cr "dist-app/TakeoutFix.app"
 
-          # 3. Create DMG from signed app-image
+          # 3. Deep ad-hoc sign the bundle (no Apple Developer cert required; prevents Gatekeeper block)
+          codesign --force --deep --sign - --options runtime "dist-app/TakeoutFix.app"
+          # Verify signing succeeded
+          codesign --verify --deep --strict "dist-app/TakeoutFix.app" && echo "Signing OK" || echo "Signing verify warning (non-fatal for ad-hoc)"
+
+          # 4. Create DMG from signed app-image
           jpackage \
             --type dmg \
             --name "TakeoutFix" \
@@ -190,9 +218,14 @@ jobs:
             --verbose
 
           DMG_FILE=$(find dist-dmg -name "*.dmg" | head -n 1)
+
+          # 5. Strip quarantine from DMG and ad-hoc sign it too
+          xattr -cr "$DMG_FILE"
+          codesign --force --sign - "$DMG_FILE" || echo "DMG sign warning (non-fatal)"
+
           cp "$DMG_FILE" ./TakeoutFix.dmg
           cp "$DMG_FILE" ./TakeoutFix-Java.dmg
-          echo "Generated & Signed: TakeoutFix.dmg and TakeoutFix-Java.dmg (Version $APP_VER)"
+          echo "Generated & Signed: TakeoutFix.dmg (Version $APP_VER)"
 
       # ─── Linux: AppImage, DEB Package & Portable Archive ───
       - name: Package Java Linux (.AppImage, .deb, .tar.gz)

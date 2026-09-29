@@ -5,9 +5,14 @@ using System.Diagnostics;
 using System.Reflection;
 
 [assembly: AssemblyTitle("TakeoutFix")]
+[assembly: AssemblyDescription("Google Takeout Photo Metadata Restorer")]
 [assembly: AssemblyProduct("TakeoutFix")]
 [assembly: AssemblyCompany("TakeoutFix")]
 [assembly: AssemblyCopyright("Copyright 2026 TakeoutFix")]
+[assembly: AssemblyTrademark("")]
+[assembly: AssemblyVersion("2.2.0.0")]
+[assembly: AssemblyFileVersion("2.2.0.0")]
+[assembly: AssemblyInformationalVersion("2.2.0")]
 
 namespace TakeoutFix {
     static class SingleFileLauncher {

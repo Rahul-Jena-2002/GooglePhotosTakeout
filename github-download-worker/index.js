@@ -28,18 +28,12 @@ export default {
       path = "/download" + (versionMatch[2] ? "/" + versionMatch[2] : "");
     }
 
-    // Map download paths to expected file names (Direct runnable Standalone .exe, .dmg, .AppImage)
+    // Map download paths to expected file names
+    // PRIMARY: /download/windows → TakeoutFix-Setup.exe (WiX installer, higher SmartScreen reputation)
+    // SECONDARY: /download/windows/standalone → TakeoutFix.exe (single-file launcher)
     let targetFileName = "";
     if (
       path === "/download/windows" ||
-      path === "/download/windows/exe" ||
-      path === "/download/windows/standalone" ||
-      path === "/download/windows/rust" ||
-      path === "/download/takeoutfix.exe" ||
-      path === "/download/windows/takeoutfix.exe"
-    ) {
-      targetFileName = "TakeoutFix.exe";
-    } else if (
       path === "/download/windows/setup" ||
       path === "/download/windows/installer" ||
       path === "/download/windows/msi" ||
@@ -49,6 +43,14 @@ export default {
       path === "/download/windows/takeoutfix-setup.exe"
     ) {
       targetFileName = "TakeoutFix-Setup.exe";
+    } else if (
+      path === "/download/windows/exe" ||
+      path === "/download/windows/standalone" ||
+      path === "/download/windows/rust" ||
+      path === "/download/takeoutfix.exe" ||
+      path === "/download/windows/takeoutfix.exe"
+    ) {
+      targetFileName = "TakeoutFix.exe";
     } else if (
       path === "/download/windows/java" ||
       path === "/download/takeoutfix-java.exe" ||
@@ -102,7 +104,7 @@ export default {
     } else if (path === "/" || path === "/download") {
       return Response.redirect("https://takeoutfix.pages.dev/download", 302);
     } else {
-      return new Response("Not Found. Available routes:\n- /download/windows (TakeoutFix.exe - Pure Standalone, No ZIP)\n- /download/windows/setup (TakeoutFix-Setup.exe - Optional Installer)\n- /download/macos (TakeoutFix.dmg)\n- /download/linux (TakeoutFix.AppImage)\n- /download/linux/deb (TakeoutFix.deb)\n- /download/linux/portable (TakeoutFix-Linux-Portable.tar.gz)", {
+      return new Response("Not Found. Available routes:\n- /download/windows (TakeoutFix-Setup.exe - Installer, SmartScreen-friendly)\n- /download/windows/standalone (TakeoutFix.exe - Standalone, No Install)\n- /download/macos (TakeoutFix.dmg)\n- /download/linux (TakeoutFix.AppImage)\n- /download/linux/deb (TakeoutFix.deb)\n- /download/linux/portable (TakeoutFix-Linux-Portable.tar.gz)", {
         status: 404,
         headers: { "Content-Type": "text/plain", "Access-Control-Allow-Origin": "*" }
       });
