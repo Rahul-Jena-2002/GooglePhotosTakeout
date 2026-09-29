@@ -92,9 +92,6 @@ export default function AdminLayout() {
         { label: "Tool Center", path: "/admin/tool", icon: ActivitySquare, show: true },
         { label: "Users", path: "/admin/users", icon: Users, show: isAdminOrAbove },
         { label: "Tickets", path: "/admin/support", icon: LifeBuoy, show: isSupportOrAbove },
-        { label: "Payments", path: "/admin/payments", icon: CreditCard, show: isAdminOrAbove },
-        { label: "Product Catalogue", path: "/admin/catalog", icon: Package, show: isAdminOrAbove },
-        { label: "Monetization", path: "/admin/monetization", icon: Coins, show: isAdminOrAbove },
       ],
     },
     {
@@ -109,10 +106,6 @@ export default function AdminLayout() {
       items: [
         { label: "Admin Team", path: "/admin/team", icon: Users2, show: isSuperAdmin },
         { label: "Audit Logs", path: "/admin/audit", icon: ShieldCheck, show: isAdminOrAbove },
-        { label: "Keys & Secrets", path: "/admin/keys", icon: Key, show: isSuperAdmin || isDev },
-        { label: "Payment Gateway", path: "/admin/payment-gateway", icon: CreditCard, show: isSuperAdmin || isDev },
-        { label: "Plan Thresholds", path: "/admin/plan-thresholds", icon: Sliders, show: isSuperAdmin || isDev },
-        { label: "Tier Features", path: "/admin/tier-features", icon: List, show: isSuperAdmin || isDev },
         { label: "Settings", path: "/admin/settings", icon: Settings, show: isSuperAdmin || isDev },
         { label: "Dev Options", path: "/admin/dev", icon: Sliders, show: isDeveloper },
       ],

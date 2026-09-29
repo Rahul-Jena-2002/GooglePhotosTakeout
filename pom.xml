@@ -4,16 +4,16 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
-    <groupId>com.takeoutfix</groupId>
-    <artifactId>takeoutfix-root</artifactId>
-    <version>2.1.8</version>
+    <groupId>com.takeout</groupId>
+    <artifactId>takeout-workspace</artifactId>
+    <version>1.0.0</version>
     <packaging>pom</packaging>
 
-    <name>TakeoutFix Root</name>
-    <description>Google Takeout Photo Metadata Restorer (Root Project)</description>
+    <name>Takeout Workspace</name>
+    <description>Workspace aggregator for IDE project discovery</description>
 
     <modules>
-        <module>native</module>
+        <module>takeoutfix</module>
+        <module>photovault</module>
     </modules>
-
 </project>

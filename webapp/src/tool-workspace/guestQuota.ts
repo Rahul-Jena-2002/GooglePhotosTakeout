@@ -7,8 +7,8 @@
 
 import { indexedDbService } from "../lib/indexedDbService";
 
-export const GUEST_MAX_FILES = 100;
-export const GUEST_MAX_BYTES = 1024 * 1024 * 1024; // 1 GB in bytes
+export const GUEST_MAX_FILES = Infinity;
+export const GUEST_MAX_BYTES = Infinity;
 
 const STORAGE_KEY = "takeoutfix_guest_usage_v1";
 const COOKIE_NAME = "takeoutfix_gq_v1";
@@ -127,16 +127,14 @@ export function recordGuestUsage(files: number, bytes: number): GuestUsage {
 }
 
 export function isGuestQuotaExhausted(): boolean {
-  const usage = getGuestUsage();
-  return usage.files >= GUEST_MAX_FILES || usage.bytes >= GUEST_MAX_BYTES;
+  // Sign-in is optional; client-side browser restoration is unlimited for guests
+  return false;
 }
 
 export function getRemainingGuestFiles(): number {
-  const usage = getGuestUsage();
-  return Math.max(0, GUEST_MAX_FILES - usage.files);
+  return Infinity;
 }
 
 export function getRemainingGuestBytes(): number {
-  const usage = getGuestUsage();
-  return Math.max(0, GUEST_MAX_BYTES - usage.bytes);
+  return Infinity;
 }

@@ -28,7 +28,7 @@ import { AuthProvider } from "../../contexts/AuthContext"
 import { ToastContainer } from "../../components/ui/toast"
 
 function DashboardPageContent() {
-  const { user, userData, loading, logout } = useAuth()
+  const { user, userData, loading, logout, login } = useAuth()
   // No react-router-dom hooks
   const [activeTab, setActiveTab] = useState<"history" | "billing">("history")
   const [transactions, setTransactions] = useState<any[]>([])
@@ -80,13 +80,22 @@ function DashboardPageContent() {
   
   if (!user) {
     return (
-      <div className="max-w-md mx-auto mt-32 p-6 bg-black/40 border border-white/10 rounded-xl text-center">
-        <ShieldAlert className="w-12 h-12 text-red-400 mx-auto mb-4" />
-        <h2 className="text-xl font-bold mb-2">Authentication Required</h2>
-        <p className="text-white/60 mb-6">You must be signed in to view your dashboard.</p>
-        <a href="/">
-          <Button className="w-full bg-white text-black hover:bg-white/90">Return Home</Button>
-        </a>
+      <div className="max-w-md mx-auto mt-24 p-8 bg-zinc-950 border border-white/10 rounded-2xl text-center shadow-2xl">
+        <ShieldAlert className="w-12 h-12 text-zinc-400 mx-auto mb-4" />
+        <h2 className="text-xl font-bold mb-2 text-white">Sign In to View Dashboard</h2>
+        <p className="text-zinc-400 text-sm mb-6 leading-relaxed">
+          Sign-in is optional on TakeoutFix. Your cloud history, billing receipts, and account sync live here. You can also use the Restore Tool directly without an account.
+        </p>
+        <div className="space-y-3">
+          <Button onClick={login} className="btn-monochrome-primary w-full h-11 font-bold rounded-xl flex items-center justify-center gap-2 border-0 cursor-pointer shadow-none">
+            Sign In with Google
+          </Button>
+          <a href="/tool" className="block">
+            <Button variant="outline" className="w-full h-11 font-medium rounded-xl border-zinc-800 text-zinc-300 hover:text-white hover:bg-zinc-900">
+              Open Restore Tool (No Sign-In Required)
+            </Button>
+          </a>
+        </div>
       </div>
     )
   }

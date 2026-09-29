@@ -9,7 +9,7 @@ import { motion } from "framer-motion"
 import AdUnit from "../../components/monetization/AdUnit"
 
 function ReviewsPageContent() {
-  const { user, login } = useAuth()
+  const { user } = useAuth()
   const [reviews, setReviews] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   
@@ -17,20 +17,11 @@ function ReviewsPageContent() {
   const [showForm, setShowForm] = useState(false)
   const [rating, setRating] = useState(5)
   const [message, setMessage] = useState("")
+  const [displayName, setDisplayName] = useState("")
   const [submitting, setSubmitting] = useState(false)
   const [submitSuccess, setSubmitSuccess] = useState(false)
 
-  const handleWriteReviewClick = async () => {
-    if (!user) {
-      try {
-        await login()
-      } catch (err) {
-        console.error("Login failed:", err)
-      }
-    } else {
-      setShowForm(true)
-    }
-  }
+  const handleWriteReviewClick = () => setShowForm(true)
 
   useEffect(() => {
     fetchReviews()
@@ -56,24 +47,25 @@ function ReviewsPageContent() {
 
   const handleSubmitReview = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!user || !message.trim()) return
+    if (!message.trim()) return
 
+    const name = displayName.trim() || user?.displayName || "Anonymous"
     setSubmitting(true)
     try {
       await addDoc(collection(db, "reviews"), {
-        uid: user.uid,
-        displayName: user.displayName || "Anonymous User",
-        photoURL: user.photoURL || null,
+        uid: user?.uid || "anonymous",
+        displayName: name,
+        photoURL: user?.photoURL || null,
         rating,
         message,
-        status: "APPROVED", // Auto-approved directly
+        status: "APPROVED",
         createdAt: serverTimestamp()
       })
       setSubmitSuccess(true)
       setShowForm(false)
       setMessage("")
+      setDisplayName("")
       setRating(5)
-      // Fetch latest reviews immediately so the user sees their review on screen right away
       fetchReviews()
     } catch (err) {
       console.error("Error submitting review", err)
@@ -121,7 +113,7 @@ function ReviewsPageContent() {
               size="lg" 
               className="btn-monochrome-primary rounded-full px-8 py-3 font-semibold"
             >
-              {user ? "Write a Review" : "Sign in to Write a Review"}
+            Write a Review
             </Button>
           </motion.div>
         )}
@@ -145,15 +137,22 @@ function ReviewsPageContent() {
           transition={{ duration: 0.4 }}
           className="max-w-2xl mx-auto mb-16 relative z-10"
         >
-          {!user ? (
-            <div className="text-center p-8 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl shadow-md">
-              <p className="text-zinc-600 dark:text-zinc-400 mb-4">You must be signed in to submit a review.</p>
-              <Button onClick={() => setShowForm(false)} variant="outline">Cancel</Button>
-            </div>
-          ) : (
             <form onSubmit={handleSubmitReview} className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl p-6 shadow-xl text-left">
               <h3 className="text-xl font-bold mb-6 text-zinc-900 dark:text-white">Write your Review</h3>
-              
+
+              {!user && (
+                <div className="mb-4">
+                  <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">Your Name <span className="text-zinc-400 font-normal">(optional)</span></label>
+                  <input
+                    type="text"
+                    value={displayName}
+                    onChange={(e) => setDisplayName(e.target.value)}
+                    placeholder="e.g. Rahul"
+                    className="w-full bg-zinc-50 dark:bg-black border border-zinc-200 dark:border-zinc-800 rounded-lg p-3 text-zinc-900 dark:text-white focus:outline-none focus:border-indigo-500"
+                  />
+                </div>
+              )}
+
               <div className="mb-6">
                 <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">Rating</label>
                 <div className="flex gap-2">
@@ -189,7 +188,6 @@ function ReviewsPageContent() {
                 </Button>
               </div>
             </form>
-          )}
         </motion.div>
       )}
 

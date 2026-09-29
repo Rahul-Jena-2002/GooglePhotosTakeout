@@ -3,23 +3,29 @@
  * Renders the 4 tool tabs: Restore Archive, EXIF Viewer, Comparison, Duplicates.
  */
 
-import { useState, useMemo } from "react"
-import { FolderUp, HardDrive, Play, Square, Pause, Activity, Database, CheckCircle2, AlertCircle, AlertTriangle, Download, Eye, Layers, Copy, Lock, FileImage, FileJson, Search, Zap, Sparkles, ShieldCheck, RotateCcw } from "lucide-react"
+import { useState, useMemo, useRef, useEffect } from "react"
+import { FolderUp, HardDrive, Play, Square, Pause, Activity, Database, CheckCircle2, AlertCircle, AlertTriangle, Download, Eye, Layers, Copy, Lock, FileImage, FileJson, Search, Zap, Sparkles, ShieldCheck, RotateCcw, ChevronDown, FolderTree, Scale, Sliders } from "lucide-react"
 import { Button } from "../components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "../components/ui/card"
 import { Progress } from "../components/ui/progress"
 import AdUnit from "../components/monetization/AdUnit"
-import { type LogEntry } from "./useToolPipeline"
+import { type LogEntry, type ToolTab } from "./useToolPipeline"
 import type { ActiveSession } from "../lib/SessionManager"
 import { usePersistentHandles } from "../hooks/usePersistentHandles"
 import { useSettingsStore } from "../store/useSettingsStore"
 import { useAuth } from "../contexts/AuthContext"
 import { downloadSyncScript, downloadSyncBat } from "../services/restoration/WindowsDateSyncScript"
+import { PhotoStudioPanel } from "./PhotoStudioPanel"
+import { PhotoVaultPanel } from "./PhotoVaultPanel"
+import { FolderFlowPanel } from "./FolderFlowPanel"
+import { ExifViewerPanel } from "./ExifViewerPanel"
+import { ComparisonPanel } from "./ComparisonPanel"
+import { DuplicateHunterPanel } from "./DuplicateHunterPanel"
 
 interface RestorePanelProps {
   // Tool tab routing
-  activeToolTab: 'restore' | 'viewer' | 'comparison' | 'duplicates'
-  setActiveToolTab: (tab: 'restore' | 'viewer' | 'comparison' | 'duplicates') => void
+  activeToolTab: ToolTab
+  setActiveToolTab: (tab: ToolTab) => void
   plan: string
   unlockFreeFeatures?: boolean
   tierThresholds: {
@@ -195,6 +201,32 @@ export function RestorePanel({
     return dedupedLogs;
   }, [logTab, dedupedLogs, restoredLogs, errorLogs, skippedLogs, fallbackLogs]);
 
+  // Tool menu dropdown state & outside click handler
+  const [toolMenuOpen, setToolMenuOpen] = useState(false)
+  const toolMenuRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (toolMenuRef.current && !toolMenuRef.current.contains(event.target as Node)) {
+        setToolMenuOpen(false)
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside)
+    return () => document.removeEventListener("mousedown", handleClickOutside)
+  }, [])
+
+  const TOOLS_LIST: { id: ToolTab; name: string; tag: string; icon: any; desc: string; badge?: string }[] = [
+    { id: 'restore', name: 'TakeoutFix', tag: 'Metadata Restorer', icon: <Layers className="w-4 h-4 text-indigo-400" />, desc: 'Google Photos JSON metadata injector & sidecar merger', badge: 'Core' },
+    { id: 'studio', name: 'Photo Studio', tag: 'Batch EXIF Suite', icon: <Sliders className="w-4 h-4 text-purple-400" />, desc: 'Batch shift dates, timezones, and stamp creator presets', badge: 'New' },
+    { id: 'photovault', name: 'PhotoVault', tag: 'Backup Verifier', icon: <ShieldCheck className="w-4 h-4 text-emerald-400" />, desc: 'Bit-for-bit SHA-256 backup audit & certificate generator', badge: 'New' },
+    { id: 'folderflow', name: 'FolderFlow', tag: 'Media Organizer', icon: <FolderTree className="w-4 h-4 text-violet-400" />, desc: 'Chronologically sort photos into Year/Month folder trees' },
+    { id: 'viewer', name: 'EXIF Inspector', tag: 'Metadata Viewer', icon: <Eye className="w-4 h-4 text-sky-400" />, desc: 'Deep camera IFD, exposure tags, and GPS coordinates' },
+    { id: 'comparison', name: 'Comparator', tag: 'Sidecar Diff', icon: <Scale className="w-4 h-4 text-amber-400" />, desc: 'Compare Google Takeout JSON sidecar vs image EXIF' },
+    { id: 'duplicates', name: 'Duplicate Hunter', tag: 'Space Reclaimer', icon: <Copy className="w-4 h-4 text-rose-400" />, desc: 'Find duplicate photos & reclaim gigabytes of storage' },
+  ]
+
+  const currentTool = TOOLS_LIST.find(t => t.id === activeToolTab) || TOOLS_LIST[0]
+
   return (
     <div className="flex-grow w-full lg:w-[72%] bg-black flex flex-col h-auto order-1 lg:order-2">
 
@@ -219,19 +251,86 @@ export function RestorePanel({
         </div>
       )}
 
-      {/* ── Studio Header ────────────────────────────────────────────────── */}
-      <div className="p-4 border-b border-white/5 bg-white/[0.01] flex items-center justify-between gap-3">
-        <div>
-          <h2 className="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2">
-            <Layers className="w-4.5 h-4.5 text-indigo-400" />
-            Photo &amp; Video Restoration Studio
-          </h2>
-          <p className="text-[10px] text-zinc-400 mt-0.5">100% Free &amp; Private — merges Google Takeout JSON metadata back into your photos locally.</p>
+      {/* ── Studio Header with Multi-Tool Dropdown Switcher ────────────────── */}
+      <div className="p-3 sm:p-4 border-b border-white/5 bg-white/[0.01] flex flex-wrap items-center justify-between gap-3">
+        <div className="flex items-center gap-3">
+          {/* Interactive Tool Switcher Dropdown */}
+          <div className="relative" ref={toolMenuRef}>
+            <button
+              onClick={() => setToolMenuOpen(!toolMenuOpen)}
+              className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-zinc-900 border border-zinc-800 hover:border-zinc-700 hover:bg-zinc-800/80 text-white font-semibold text-xs transition-all shadow-sm cursor-pointer"
+              title="Click to switch tool"
+            >
+              <span className="flex items-center gap-2">
+                {currentTool.icon}
+                <span className="font-bold text-sm text-white">{currentTool.name}</span>
+                <span className="text-[10px] text-zinc-400 font-normal hidden sm:inline">• {currentTool.tag}</span>
+              </span>
+              <ChevronDown className={`w-3.5 h-3.5 text-zinc-400 transition-transform ${toolMenuOpen ? 'rotate-180' : ''}`} />
+            </button>
+
+            {toolMenuOpen && (
+              <div className="absolute left-0 top-full mt-2 w-80 bg-zinc-950/95 border border-zinc-800 rounded-2xl p-2 shadow-2xl backdrop-blur-2xl z-50 animate-in fade-in slide-in-from-top-1 duration-150">
+                <div className="px-3 py-1.5 text-[10px] font-bold font-mono uppercase tracking-wider text-zinc-500 border-b border-zinc-800 mb-1 flex items-center justify-between">
+                  <span>Available Tools</span>
+                  <span className="text-emerald-400">100% Offline</span>
+                </div>
+                <div className="space-y-1">
+                  {TOOLS_LIST.map((tool) => (
+                    <button
+                      key={tool.id}
+                      onClick={() => {
+                        setActiveToolTab(tool.id)
+                        setToolMenuOpen(false)
+                      }}
+                      className={`w-full flex items-start gap-2.5 p-2 rounded-xl text-left transition-colors cursor-pointer ${
+                        activeToolTab === tool.id
+                          ? 'bg-zinc-900 text-white border border-zinc-800'
+                          : 'text-zinc-300 hover:bg-zinc-900/60 hover:text-white'
+                      }`}
+                    >
+                      <div className="p-1.5 rounded-lg bg-black border border-zinc-800 flex-shrink-0 mt-0.5">
+                        {tool.icon}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs font-bold text-white">{tool.name}</span>
+                          {tool.badge && (
+                            <span className="text-[9px] font-mono uppercase px-1.5 py-0.2 rounded bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 font-bold">
+                              {tool.badge}
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-[11px] text-zinc-400 truncate mt-0.5">{tool.desc}</p>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Quick desktop switcher pills */}
+          <div className="hidden xl:flex items-center gap-1 bg-zinc-950 p-1 rounded-xl border border-zinc-800/80 text-xs">
+            {TOOLS_LIST.map((t) => (
+              <button
+                key={t.id}
+                onClick={() => setActiveToolTab(t.id)}
+                className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold transition-all cursor-pointer ${
+                  activeToolTab === t.id
+                    ? 'bg-zinc-800 text-white shadow-xs font-bold'
+                    : 'text-zinc-400 hover:text-white hover:bg-zinc-900/50'
+                }`}
+              >
+                {t.name}
+              </button>
+            ))}
+          </div>
         </div>
 
         <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-[10px] font-bold shadow-xs">
           <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
-          Free &amp; Unlimited
+          Free &amp; Offline
         </div>
       </div>
 
@@ -693,6 +792,48 @@ export function RestorePanel({
         </div>
 
         </>
+      )}
+
+      {/* ── PHOTO STUDIO BATCH EXIF SUITE TAB ───────────────────────── */}
+      {activeToolTab === 'studio' && <PhotoStudioPanel />}
+
+      {/* ── PHOTOVAULT BACKUP VERIFIER TAB ───────────────────────────── */}
+      {activeToolTab === 'photovault' && <PhotoVaultPanel />}
+
+      {/* ── FOLDERFLOW MEDIA ORGANIZER TAB ──────────────────────────── */}
+      {activeToolTab === 'folderflow' && <FolderFlowPanel />}
+
+      {/* ── EXIF & GPS INSPECTOR TAB ─────────────────────────────────── */}
+      {activeToolTab === 'viewer' && (
+        <ExifViewerPanel
+          viewerFile={viewerFile}
+          viewerExif={viewerExif}
+          viewerLoading={viewerLoading}
+          handleViewerFileChange={handleViewerFileChange}
+        />
+      )}
+
+      {/* ── METADATA COMPARATOR TAB ──────────────────────────────────── */}
+      {activeToolTab === 'comparison' && (
+        <ComparisonPanel
+          compMediaFile={compMediaFile}
+          compJsonFile={compJsonFile}
+          compResult={compResult}
+          handleCompFilesChange={handleCompFilesChange}
+        />
+      )}
+
+      {/* ── DUPLICATE MEDIA HUNTER TAB ───────────────────────────────── */}
+      {activeToolTab === 'duplicates' && (
+        <DuplicateHunterPanel
+          dupFolder={dupFolder}
+          dupIsScanning={dupIsScanning}
+          dupStats={dupStats}
+          dupGroups={dupGroups}
+          dupScanStatus={dupScanStatus}
+          handleSelectDupFolder={handleSelectDupFolder}
+          startDuplicateScan={startDuplicateScan}
+        />
       )}
 
     </div>

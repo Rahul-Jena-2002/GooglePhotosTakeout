@@ -76,7 +76,7 @@ export function CommandSidebar({
         <div className="flex justify-between items-center text-[9px] text-white/40 font-bold uppercase tracking-wider">
           <span className="flex items-center gap-1"><HardDrive className="w-3 h-3 text-emerald-400" /> Restoration Engine</span>
           <span className={`${plan === 'guest' ? 'text-amber-400' : 'text-emerald-400'} font-mono`}>
-            {plan === 'guest' ? 'Guest Mode' : '100% Free'}
+            {plan === 'guest' ? 'Guest (Local)' : '100% Free'}
           </span>
         </div>
         <div className="text-xs font-bold text-zinc-150 flex items-center justify-between">
@@ -85,7 +85,7 @@ export function CommandSidebar({
         </div>
         <div className="text-[10px] text-zinc-500 font-medium">
           {plan === 'guest'
-            ? `Guest limit: ${Math.max(0, 100 - (currentUsedFiles + sessionFiles))} files remaining. Sign in free for unlimited.`
+            ? 'Local browser processing. Sign-in is optional (cloud backup & sync).'
             : 'Unlimited batch processing enabled. All files are merged client-side.'}
         </div>
       </div>

@@ -7,6 +7,10 @@ on:
     branches:
       - main
       - rjdevelop
+  pull_request:
+    branches:
+      - main
+      - rjdevelop
   release:
     types: [created, published]
   workflow_dispatch:
@@ -21,7 +25,7 @@ permissions:
 
 jobs:
   # ════════════════════════════════════════════════════════════════════════════
-  # 1. PURE JAVA DESKTOP APP (Standalone Installers via Java 25 LTS jpackage)
+  # 1. PURE JAVA DESKTOP APP (Standalone Installers via Java 26 jpackage)
   # ════════════════════════════════════════════════════════════════════════════
   build-java:
     name: Java Desktop (${{ matrix.os }})
@@ -53,8 +57,8 @@ jobs:
           # Validate that version consists only of numbers and dots (e.g., 2.1.8)
           if [[ ! "$CLEAN_VER" =~ ^[0-9]+(\.[0-9]+)*$ ]]; then
             # If triggered on a branch name like 'rjdevelop' or 'main', read pom.xml or use fallback
-            if [ -f "native/pom.xml" ]; then
-              CLEAN_VER=$(grep -m1 '<version>' native/pom.xml | sed -E 's/.*<version>([^<]+)<\/version>.*/\1/' | tr -d '\r')
+            if [ -f "takeoutfix/pom.xml" ]; then
+              CLEAN_VER=$(grep -m1 '<version>' takeoutfix/pom.xml | sed -E 's/.*<version>([^<]+)<\/version>.*/\1/' | tr -d '\r')
             fi
             if [[ ! "$CLEAN_VER" =~ ^[0-9]+(\.[0-9]+)*$ ]]; then
               CLEAN_VER="2.1.8"
@@ -70,14 +74,17 @@ jobs:
           distribution: 'oracle'
           cache: 'maven'
 
+      - name: Run Java Desktop Tests
+        run: mvn test -f takeoutfix/pom.xml
+
       - name: Build Java Backend with Maven
-        run: mvn clean package -DskipTests
+        run: mvn clean package -DskipTests -f takeoutfix/pom.xml
 
       - name: Prepare jpackage Input
         shell: bash
         run: |
           mkdir -p jpackage-input
-          cp native/target/takeoutfix.jar jpackage-input/
+          cp takeoutfix/target/takeoutfix.jar jpackage-input/
 
       # ─── Windows: Direct Standalone EXE (Zero Installation) + Setup Installer ───
       - name: Package Java Windows (.exe)
@@ -94,7 +101,7 @@ jobs:
             --main-jar "takeoutfix.jar" `
             --main-class "com.takeoutfix.TakeoutApplication" `
             --name "TakeoutFix" `
-            --icon "native/icons/icon.ico" `
+            --icon "takeoutfix/icons/icon.ico" `
             --vendor "TakeoutFix" `
             --app-version "$appVer" `
             --dest "dist-app" `
@@ -108,11 +115,11 @@ jobs:
           $cscPath = "C:\Windows\Microsoft.NET\Framework64\v4.0.30319\csc.exe"
           & $cscPath `
             "/target:winexe" `
-            "/win32icon:native\icons\icon.ico" `
+            "/win32icon:takeoutfix\icons\icon.ico" `
             "/reference:System.IO.Compression.dll,System.IO.Compression.FileSystem.dll,System.Windows.Forms.dll" `
             "/resource:$payloadZip,payload.zip" `
             "/out:TakeoutFix.exe" `
-            "native\launcher\SingleFileLauncher.cs"
+            "takeoutfix\launcher\SingleFileLauncher.cs"
 
           if (-not (Test-Path "TakeoutFix.exe")) {
             throw "TakeoutFix.exe compilation failed."
@@ -127,7 +134,7 @@ jobs:
             --type exe `
             --app-image "dist-app/TakeoutFix" `
             --name "TakeoutFix-Setup" `
-            --icon "native/icons/icon.ico" `
+            --icon "takeoutfix/icons/icon.ico" `
             --app-version "$appVer" `
             --vendor "TakeoutFix" `
             --copyright "Copyright 2026 TakeoutFix" `
@@ -158,7 +165,7 @@ jobs:
             --input "jpackage-input" \
             --main-jar "takeoutfix.jar" \
             --main-class "com.takeoutfix.TakeoutApplication" \
-            --icon "native/icons/icon.icns" \
+            --icon "takeoutfix/icons/icon.icns" \
             --dest "dist-app" \
             --mac-package-identifier "com.takeoutfix.desktop" \
             --mac-package-name "TakeoutFix" \
@@ -175,7 +182,7 @@ jobs:
             --type dmg \
             --name "TakeoutFix" \
             --app-image "dist-app/TakeoutFix.app" \
-            --icon "native/icons/icon.icns" \
+            --icon "takeoutfix/icons/icon.icns" \
             --dest "dist-dmg" \
             --mac-package-identifier "com.takeoutfix.desktop" \
             --mac-package-name "TakeoutFix" \
@@ -202,7 +209,7 @@ jobs:
             --input "jpackage-input" \
             --main-jar "takeoutfix.jar" \
             --main-class "com.takeoutfix.TakeoutApplication" \
-            --icon "native/icons/icon.png" \
+            --icon "takeoutfix/icons/icon.png" \
             --vendor "TakeoutFix" \
             --dest "dist-linux" \
             --app-version "$APP_VER" \
@@ -213,7 +220,7 @@ jobs:
             --type deb \
             --name "takeoutfix" \
             --app-image "dist-linux/TakeoutFix" \
-            --icon "native/icons/icon.png" \
+            --icon "takeoutfix/icons/icon.png" \
             --vendor "TakeoutFix" \
             --description "Google Takeout Photo Metadata Restorer" \
             --dest "dist-deb" \
@@ -234,8 +241,8 @@ jobs:
           mkdir -p AppDir/usr/bin AppDir/usr/lib AppDir/usr/share/icons/hicolor/256x256/apps
           cp -r dist-linux/TakeoutFix/* AppDir/usr/lib/
           chmod +x AppDir/usr/lib/bin/TakeoutFix
-          cp native/icons/icon.png AppDir/usr/share/icons/hicolor/256x256/apps/takeoutfix.png
-          cp native/icons/icon.png AppDir/takeoutfix.png
+          cp takeoutfix/icons/icon.png AppDir/usr/share/icons/hicolor/256x256/apps/takeoutfix.png
+          cp takeoutfix/icons/icon.png AppDir/takeoutfix.png
 
           printf '#!/bin/sh\nHERE="$(dirname "$(readlink -f "$0")")"\nexec "$HERE/usr/lib/bin/TakeoutFix" "$@"\n' > AppDir/AppRun
           chmod +x AppDir/AppRun
@@ -269,7 +276,7 @@ jobs:
 
       - name: Attach Binaries to GitHub Release
         uses: softprops/action-gh-release@v2
-        if: startsWith(github.ref, 'refs/tags/') || github.event_name == 'release' || github.event_name == 'workflow_dispatch'
+        if: (startsWith(github.ref, 'refs/tags/') || github.event_name == 'release' || github.event_name == 'workflow_dispatch') && github.event_name != 'pull_request'
         with:
           tag_name: ${{ github.event.inputs.tag_name || github.ref_name || 'latest' }}
           files: |
@@ -286,7 +293,7 @@ jobs:
     name: Retain Current + Previous 9 Releases (10 Total)
     needs: [build-java]
     runs-on: ubuntu-latest
-    if: success() && (startsWith(github.ref, 'refs/tags/') || github.event_name == 'release' || github.event_name == 'workflow_dispatch')
+    if: success() && (startsWith(github.ref, 'refs/tags/') || github.event_name == 'release' || github.event_name == 'workflow_dispatch') && github.event_name != 'pull_request'
     permissions:
       contents: write
     steps:

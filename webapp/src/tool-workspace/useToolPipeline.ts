@@ -52,6 +52,8 @@ export type LogEntry = {
   action?: string;
 }
 
+export type ToolTab = 'restore' | 'photovault' | 'folderflow' | 'viewer' | 'comparison' | 'duplicates' | 'studio';
+
 export const PLAN_LABELS: Record<string, string> = {
   guest: "Guest Trial",
   free: "Free",
@@ -112,8 +114,8 @@ export const getPlanCardStyles = (plan: string, thresholds?: {
         badgeText: "Guest Mode",
         iconClass: "text-amber-600",
         titleClass: "text-zinc-800",
-        titleText: "Guest Trial",
-        description: "Free guest mode (up to 100 files / 1 GB). Sign in free with Google for unlimited browser restorations!",
+        titleText: "Guest Mode",
+        description: "Sign-in is optional. 100% private, local browser restoration with no file limits.",
       };
     case 'free':
     default: {
@@ -182,9 +184,8 @@ export function useToolPipeline() {
   const currentUsedFiles = !user ? guestUsage.files : getUserFiles(userData as unknown as Record<string, unknown>);
   const currentUsedBytes = !user ? guestUsage.bytes : getUserBytes(userData as unknown as Record<string, unknown>);
 
-  // Plan thresholds — Free tier is UNLIMITED for core browser restoration
   const [tierThresholds, setTierThresholds] = useState({
-    guest:         { maxFiles: GUEST_MAX_FILES, maxSizeMB: Math.round(GUEST_MAX_BYTES / (1024 * 1024)) },
+    guest:         { maxFiles: Infinity, maxSizeMB: Infinity },
     free:          { maxFiles: Infinity, maxSizeMB: Infinity },
     recovery_pass: { maxFiles: Infinity, maxSizeMB: Infinity },
     pro:           { maxFiles: Infinity, maxSizeMB: Infinity },
@@ -195,15 +196,11 @@ export function useToolPipeline() {
 
   // Core browser tool dynamically respects tier thresholds synced from Admin settings
   const activeTierCfg = tierThresholds[plan] || tierThresholds.free || { maxFiles: Infinity, maxSizeMB: Infinity };
-  const isFreeUnlimited = plan !== 'guest' && tierThresholds.free.maxFiles === Infinity && tierThresholds.free.maxSizeMB === Infinity;
-  const limitFiles = !user
-    ? GUEST_MAX_FILES
-    : (isFreePromoActive ? Infinity : (activeTierCfg.maxFiles ?? Infinity));
-  const limitBytes = !user
-    ? GUEST_MAX_BYTES
-    : (isFreePromoActive || activeTierCfg.maxSizeMB === Infinity
-      ? Infinity
-      : (activeTierCfg.maxSizeMB * 1024 * 1024));
+  const isFreeUnlimited = tierThresholds.free.maxFiles === Infinity && tierThresholds.free.maxSizeMB === Infinity;
+  const limitFiles = isFreePromoActive ? Infinity : (activeTierCfg.maxFiles ?? Infinity);
+  const limitBytes = isFreePromoActive || activeTierCfg.maxSizeMB === Infinity
+    ? Infinity
+    : (activeTierCfg.maxSizeMB * 1024 * 1024);
 
   const limitFilesRef = useRef(limitFiles)
   const limitBytesRef = useRef(limitBytes)
@@ -350,7 +347,24 @@ export function useToolPipeline() {
   const currentSessionRef = useRef<ActiveSession | null>(null)
   const restoredTimestampsCatalogRef = useRef<{ path: string; epoch: number }[]>([])
 
-  const [activeToolTab, setActiveToolTab] = useState<'restore' | 'viewer' | 'comparison' | 'duplicates'>('restore')
+  const [activeToolTab, setActiveToolTabState] = useState<ToolTab>(() => {
+    if (typeof window !== 'undefined') {
+      const param = new URLSearchParams(window.location.search).get('tab');
+      if (param && ['restore', 'studio', 'photovault', 'folderflow', 'viewer', 'comparison', 'duplicates'].includes(param)) {
+        return param as ToolTab;
+      }
+    }
+    return 'restore';
+  })
+
+  const setActiveToolTab = (tab: ToolTab) => {
+    setActiveToolTabState(tab);
+    if (typeof window !== 'undefined') {
+      const url = new URL(window.location.href);
+      url.searchParams.set('tab', tab);
+      window.history.replaceState({}, '', url.toString());
+    }
+  };
 
   // local drag-and-drop / zip processing states
   const [zipFile, setZipFile] = useState<File | null>(null)
@@ -1486,10 +1500,7 @@ export function useToolPipeline() {
     }
 
     if (!user) {
-      setQuotaAlert({
-        open: true,
-        message: `You have reached the free Guest limit (${GUEST_MAX_FILES} files / 1 GB). Sign in free with Google to continue restoring your photos!`
-      })
+      // Sign-in is optional for client-side restoration
       return
     }
 
@@ -2118,13 +2129,9 @@ export function useToolPipeline() {
       console.warn("Failed to check directory handles:", err)
     }
 
-    const isBypass = Boolean(user && (userData?.isAdmin || (import.meta as any).env?.DEV));
+    const isBypass = Boolean(!user || (user && (userData?.isAdmin || (import.meta as any).env?.DEV)));
     if (!isBypass && (currentUsedFiles >= limitFiles || currentUsedBytes >= limitBytes)) {
       if (!user) {
-        setQuotaAlert({
-          open: true,
-          message: `You have reached the free Guest limit (${GUEST_MAX_FILES} files / 1 GB). Sign in free with Google to continue restoring your photos!`
-        })
         return
       }
 
