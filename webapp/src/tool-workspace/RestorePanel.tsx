@@ -228,21 +228,21 @@ export function RestorePanel({
   const currentTool = TOOLS_LIST.find(t => t.id === activeToolTab) || TOOLS_LIST[0]
 
   return (
-    <div className="flex-grow w-full lg:w-[72%] bg-black flex flex-col h-auto order-1 lg:order-2">
+    <div className="flex-grow w-full lg:w-[72%] bg-white dark:bg-black text-zinc-900 dark:text-white flex flex-col h-auto order-1 lg:order-2 transition-colors">
 
       {/* ── Persistent Handle Re-grant Banner (VS Code model) ──────────── */}
       {needsReGrant && !takeoutFolder && (
-        <div className="flex items-center justify-between gap-3 px-4 py-2.5 bg-indigo-950/60 border-b border-indigo-500/20 text-sm">
+        <div className="flex items-center justify-between gap-3 px-4 py-2.5 bg-indigo-50 dark:bg-indigo-950/60 border-b border-indigo-200 dark:border-indigo-500/20 text-sm">
           <div className="flex items-center gap-2 min-w-0">
-            <FolderUp className="w-4 h-4 text-indigo-400 flex-shrink-0" />
-            <span className="text-zinc-300 truncate">
-              Previous workspace{storedFolderName ? <> — <strong className="text-white">{storedFolderName}</strong></> : ''} needs access to resume.
+            <FolderUp className="w-4 h-4 text-indigo-600 dark:text-indigo-400 flex-shrink-0" />
+            <span className="text-zinc-800 dark:text-zinc-300 truncate">
+              Previous workspace{storedFolderName ? <> — <strong className="text-zinc-900 dark:text-white">{storedFolderName}</strong></> : ''} needs access to resume.
             </span>
           </div>
           <button
             onClick={handleReGrantBanner}
             disabled={reGrantState === 'granting'}
-            className="flex items-center gap-1.5 flex-shrink-0 px-3 py-1 rounded-lg bg-indigo-600 hover:bg-indigo-500 disabled:opacity-60 text-white text-xs font-bold transition-all"
+            className="flex items-center gap-1.5 flex-shrink-0 px-3 py-1 rounded-lg bg-indigo-600 hover:bg-indigo-500 disabled:opacity-60 text-white text-xs font-bold transition-all shadow-xs"
           >
             {reGrantState === 'granting'
               ? <><RotateCcw className="w-3 h-3 animate-spin" /> Restoring...</>
@@ -252,28 +252,28 @@ export function RestorePanel({
       )}
 
       {/* ── Studio Header with Multi-Tool Dropdown Switcher ────────────────── */}
-      <div className="p-3 sm:p-4 border-b border-white/5 bg-white/[0.01] flex flex-wrap items-center justify-between gap-3">
+      <div className="p-3 sm:p-4 border-b border-zinc-200 dark:border-white/5 bg-zinc-50/50 dark:bg-white/[0.01] flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-3">
           {/* Interactive Tool Switcher Dropdown */}
           <div className="relative" ref={toolMenuRef}>
             <button
               onClick={() => setToolMenuOpen(!toolMenuOpen)}
-              className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-zinc-900 border border-zinc-800 hover:border-zinc-700 hover:bg-zinc-800/80 text-white font-semibold text-xs transition-all shadow-sm cursor-pointer"
+              className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-white dark:bg-zinc-900 border border-zinc-300 dark:border-zinc-800 hover:border-zinc-400 dark:hover:border-zinc-700 hover:bg-zinc-50 dark:hover:bg-zinc-800/80 text-zinc-900 dark:text-white font-semibold text-xs transition-all shadow-xs cursor-pointer"
               title="Click to switch tool"
             >
               <span className="flex items-center gap-2">
                 {currentTool.icon}
-                <span className="font-bold text-sm text-white">{currentTool.name}</span>
-                <span className="text-[10px] text-zinc-400 font-normal hidden sm:inline">• {currentTool.tag}</span>
+                <span className="font-bold text-sm text-zinc-900 dark:text-white">{currentTool.name}</span>
+                <span className="text-[10px] text-zinc-500 dark:text-zinc-400 font-normal hidden sm:inline">• {currentTool.tag}</span>
               </span>
-              <ChevronDown className={`w-3.5 h-3.5 text-zinc-400 transition-transform ${toolMenuOpen ? 'rotate-180' : ''}`} />
+              <ChevronDown className={`w-3.5 h-3.5 text-zinc-500 dark:text-zinc-400 transition-transform ${toolMenuOpen ? 'rotate-180' : ''}`} />
             </button>
 
             {toolMenuOpen && (
-              <div className="absolute left-0 top-full mt-2 w-80 bg-zinc-950/95 border border-zinc-800 rounded-2xl p-2 shadow-2xl backdrop-blur-2xl z-50 animate-in fade-in slide-in-from-top-1 duration-150">
-                <div className="px-3 py-1.5 text-[10px] font-bold font-mono uppercase tracking-wider text-zinc-500 border-b border-zinc-800 mb-1 flex items-center justify-between">
+              <div className="absolute left-0 top-full mt-2 w-80 bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-2 shadow-xl dark:shadow-2xl z-50 animate-in fade-in slide-in-from-top-1 duration-150">
+                <div className="px-3 py-1.5 text-[10px] font-bold font-mono uppercase tracking-wider text-zinc-500 border-b border-zinc-100 dark:border-zinc-800 mb-1 flex items-center justify-between">
                   <span>Available Tools</span>
-                  <span className="text-emerald-400">100% Offline</span>
+                  <span className="text-emerald-600 dark:text-emerald-400">100% Offline</span>
                 </div>
                 <div className="space-y-1">
                   {TOOLS_LIST.map((tool) => (
@@ -285,23 +285,23 @@ export function RestorePanel({
                       }}
                       className={`w-full flex items-start gap-2.5 p-2 rounded-xl text-left transition-colors cursor-pointer ${
                         activeToolTab === tool.id
-                          ? 'bg-zinc-900 text-white border border-zinc-800'
-                          : 'text-zinc-300 hover:bg-zinc-900/60 hover:text-white'
+                          ? 'bg-zinc-100 dark:bg-zinc-900 text-zinc-900 dark:text-white border border-zinc-300 dark:border-zinc-800 font-bold'
+                          : 'text-zinc-600 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-900/60 hover:text-zinc-900 dark:hover:text-white'
                       }`}
                     >
-                      <div className="p-1.5 rounded-lg bg-black border border-zinc-800 flex-shrink-0 mt-0.5">
+                      <div className="p-1.5 rounded-lg bg-zinc-100 dark:bg-black border border-zinc-200 dark:border-zinc-800 flex-shrink-0 mt-0.5">
                         {tool.icon}
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center justify-between">
-                          <span className="text-xs font-bold text-white">{tool.name}</span>
+                          <span className="text-xs font-bold text-zinc-900 dark:text-white">{tool.name}</span>
                           {tool.badge && (
-                            <span className="text-[9px] font-mono uppercase px-1.5 py-0.2 rounded bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 font-bold">
+                            <span className="text-[9px] font-mono uppercase px-1.5 py-0.2 rounded bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20 font-bold">
                               {tool.badge}
                             </span>
                           )}
                         </div>
-                        <p className="text-[11px] text-zinc-400 truncate mt-0.5">{tool.desc}</p>
+                        <p className="text-[11px] text-zinc-500 dark:text-zinc-400 truncate mt-0.5">{tool.desc}</p>
                       </div>
                     </button>
                   ))}
@@ -311,15 +311,15 @@ export function RestorePanel({
           </div>
 
           {/* Quick desktop switcher pills */}
-          <div className="hidden xl:flex items-center gap-1 bg-zinc-950 p-1 rounded-xl border border-zinc-800/80 text-xs">
+          <div className="hidden xl:flex items-center gap-1 bg-zinc-100 dark:bg-zinc-950 p-1 rounded-xl border border-zinc-200 dark:border-zinc-800/80 text-xs">
             {TOOLS_LIST.map((t) => (
               <button
                 key={t.id}
                 onClick={() => setActiveToolTab(t.id)}
                 className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold transition-all cursor-pointer ${
                   activeToolTab === t.id
-                    ? 'bg-zinc-800 text-white shadow-xs font-bold'
-                    : 'text-zinc-400 hover:text-white hover:bg-zinc-900/50'
+                    ? 'bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white shadow-xs font-bold'
+                    : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white hover:bg-zinc-200/60 dark:hover:bg-zinc-900/50'
                 }`}
               >
                 {t.name}
@@ -328,8 +328,8 @@ export function RestorePanel({
           </div>
         </div>
 
-        <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-[10px] font-bold shadow-xs">
-          <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+        <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400 text-[10px] font-bold shadow-xs">
+          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 dark:bg-emerald-400 animate-pulse"></span>
           Free &amp; Offline
         </div>
       </div>
@@ -385,9 +385,8 @@ export function RestorePanel({
         <>
           <div className="flex-grow flex flex-col overflow-hidden">
 
-          {/* Setup Grid: 2 balanced rows aligned across 3 columns */}
           {/* Setup Grid: Left 2 columns for Source & Destination, Right 1 column for Actions & Options */}
-          <div className="p-4 grid grid-cols-1 lg:grid-cols-3 gap-4 border-b border-white/5 bg-white/[0.005]">
+          <div className="p-4 grid grid-cols-1 lg:grid-cols-3 gap-4 border-b border-zinc-200 dark:border-white/5 bg-zinc-50/50 dark:bg-white/[0.005]">
             {/* Left 2 Columns: Source & Destination cards stacked neatly */}
             <div className="lg:col-span-2 space-y-3 flex flex-col justify-between">
               {/* 1. Source Card */}
@@ -395,20 +394,20 @@ export function RestorePanel({
                 onDragOver={handleDragOver}
                 onDragLeave={handleDragLeave}
                 onDrop={handleDrop}
-                className={`bg-white/[0.01] border-white/10 shadow-md transition-all duration-150 ${
+                className={`bg-white dark:bg-white/[0.01] border-zinc-200 dark:border-white/10 shadow-sm transition-all duration-150 ${
                   isDragOver ? 'border-indigo-500/40 bg-indigo-500/[0.01] scale-[1.005]' : ''
                 }`}
               >
-                <CardHeader className="border-b border-white/5 bg-black/20 py-2 px-3">
-                  <CardTitle className="flex items-center justify-between text-[11px] font-bold uppercase tracking-wider text-zinc-350">
+                <CardHeader className="border-b border-zinc-200 dark:border-white/5 bg-zinc-50 dark:bg-black/20 py-2 px-3">
+                  <CardTitle className="flex items-center justify-between text-[11px] font-bold uppercase tracking-wider text-zinc-700 dark:text-zinc-350">
                     <span className="flex items-center gap-1.5">
-                      <FolderUp className="w-3.5 h-3.5 text-zinc-400"/>
+                      <FolderUp className="w-3.5 h-3.5 text-zinc-500 dark:text-zinc-400"/>
                       1. Source
                     </span>
                     {(takeoutFolder || zipFile) && (
                       <button
                         onClick={handleSelectTakeout}
-                        className="text-[9px] text-zinc-400 hover:text-white font-bold transition-all px-1.5 py-0.5 rounded border border-white/10 hover:border-white/20 bg-white/[0.02] cursor-pointer"
+                        className="text-[9px] text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white font-bold transition-all px-1.5 py-0.5 rounded border border-zinc-300 dark:border-white/10 hover:border-zinc-400 dark:hover:border-white/20 bg-zinc-100 dark:bg-white/[0.02] cursor-pointer"
                       >
                         Change
                       </button>
@@ -417,14 +416,14 @@ export function RestorePanel({
                 </CardHeader>
                 <CardContent className="p-3">
                   {zipFile ? (
-                    <div className="p-2 bg-indigo-500/5 border border-indigo-500/15 rounded flex justify-between items-center text-zinc-350 text-[10px]">
+                    <div className="p-2 bg-indigo-500/5 border border-indigo-500/15 rounded flex justify-between items-center text-zinc-700 dark:text-zinc-350 text-[10px]">
                       <span className="font-mono truncate mr-2">ZIP: {zipFile.name}</span>
-                      <CheckCircle2 className="w-3.5 h-3.5 text-indigo-400 flex-shrink-0" />
+                      <CheckCircle2 className="w-3.5 h-3.5 text-indigo-500 dark:text-indigo-400 flex-shrink-0" />
                     </div>
                   ) : takeoutFolder ? (
-                    <div className="p-2 bg-zinc-800/10 border border-zinc-800/25 rounded flex justify-between items-center text-zinc-400 text-[10px]">
+                    <div className="p-2 bg-zinc-100 dark:bg-zinc-800/10 border border-zinc-200 dark:border-zinc-800/25 rounded flex justify-between items-center text-zinc-700 dark:text-zinc-400 text-[10px]">
                       <span className="font-mono truncate mr-2">{takeoutFolder.name}</span>
-                      <CheckCircle2 className="w-3.5 h-3.5 text-green-400 flex-shrink-0" />
+                      <CheckCircle2 className="w-3.5 h-3.5 text-green-500 dark:text-green-400 flex-shrink-0" />
                     </div>
                   ) : (
                     <div className="space-y-2">
@@ -461,17 +460,17 @@ export function RestorePanel({
               </Card>
 
               {/* 2. Destination Card */}
-              <Card className="bg-white/[0.01] border-white/10 shadow-md">
-                <CardHeader className="border-b border-white/5 bg-black/20 py-2 px-3">
-                  <CardTitle className="flex items-center justify-between text-[11px] font-bold uppercase tracking-wider text-zinc-350">
+              <Card className="bg-white dark:bg-white/[0.01] border-zinc-200 dark:border-white/10 shadow-sm">
+                <CardHeader className="border-b border-zinc-200 dark:border-white/5 bg-zinc-50 dark:bg-black/20 py-2 px-3">
+                  <CardTitle className="flex items-center justify-between text-[11px] font-bold uppercase tracking-wider text-zinc-700 dark:text-zinc-350">
                     <span className="flex items-center gap-1.5">
-                      <HardDrive className="w-3.5 h-3.5 text-zinc-400"/>
+                      <HardDrive className="w-3.5 h-3.5 text-zinc-500 dark:text-zinc-400"/>
                       2. Destination
                     </span>
                     {outputFolder && (
                       <button
                         onClick={handleSelectOutput}
-                        className="text-[9px] text-zinc-400 hover:text-white font-bold transition-all px-1.5 py-0.5 rounded border border-white/10 hover:border-white/20 bg-white/[0.02] cursor-pointer"
+                        className="text-[9px] text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white font-bold transition-all px-1.5 py-0.5 rounded border border-zinc-300 dark:border-white/10 hover:border-zinc-400 dark:hover:border-white/20 bg-zinc-100 dark:bg-white/[0.02] cursor-pointer"
                       >
                         Change
                       </button>
@@ -481,18 +480,18 @@ export function RestorePanel({
                 <CardContent className="p-3">
                   {outputFolder ? (
                     <div className="space-y-1.5">
-                      <div className="p-2 bg-zinc-800/10 border border-zinc-800/25 rounded flex justify-between items-center text-zinc-400 text-[10px]">
+                      <div className="p-2 bg-zinc-100 dark:bg-zinc-800/10 border border-zinc-200 dark:border-zinc-800/25 rounded flex justify-between items-center text-zinc-700 dark:text-zinc-400 text-[10px]">
                         <span className="font-mono truncate mr-2">{outputFolder.name}</span>
-                        <CheckCircle2 className="w-3.5 h-3.5 text-green-400 flex-shrink-0" />
+                        <CheckCircle2 className="w-3.5 h-3.5 text-green-500 dark:text-green-400 flex-shrink-0" />
                       </div>
                       <div className="flex items-center justify-between text-[9px] px-0.5">
-                        <span className="text-emerald-400 flex items-center gap-1">
+                        <span className="text-emerald-600 dark:text-emerald-400 flex items-center gap-1 font-medium">
                           <CheckCircle2 className="w-2.5 h-2.5" /> Output Ready
                         </span>
                         <button
                           type="button"
                           onClick={() => downloadSyncScript()}
-                          className="text-zinc-400 hover:text-white underline cursor-pointer flex items-center gap-1 transition-colors"
+                          className="text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white underline cursor-pointer flex items-center gap-1 transition-colors"
                         >
                           <Download className="w-2.5 h-2.5" /> Download sync script (.bat / .sh)
                         </button>
@@ -521,34 +520,34 @@ export function RestorePanel({
                 )}
 
                 {!isProcessing && progress === 0 && (
-                  <div className="flex items-center gap-2.5 p-2.5 rounded-lg bg-zinc-950/40 border border-white/5 text-[9.5px] text-zinc-300">
+                  <div className="flex items-center gap-2.5 p-2.5 rounded-lg bg-zinc-100 dark:bg-zinc-950/40 border border-zinc-200 dark:border-white/5 text-[9.5px] text-zinc-700 dark:text-zinc-300">
                     <input
                       type="checkbox"
                       id="organize-ym-checkbox"
                       checked={organizeYearMonth}
                       onChange={(e) => setOrganizeYearMonth(e.target.checked)}
-                      className="w-3.5 h-3.5 rounded border-white/10 bg-zinc-900 text-white focus:ring-0 focus:ring-offset-0 cursor-pointer accent-zinc-800 flex-shrink-0"
+                      className="w-3.5 h-3.5 rounded border-zinc-300 dark:border-white/10 bg-white dark:bg-zinc-900 text-zinc-900 dark:text-white focus:ring-0 focus:ring-offset-0 cursor-pointer accent-zinc-800 flex-shrink-0"
                     />
                     <label htmlFor="organize-ym-checkbox" className="cursor-pointer select-none leading-relaxed">
-                      Organize restored output into clean <strong className="text-white font-medium">Year/Month folders</strong> (YYYY/YYYY-MM)
+                      Organize restored output into clean <strong className="text-zinc-900 dark:text-white font-medium">Year/Month folders</strong> (YYYY/YYYY-MM)
                     </label>
                   </div>
                 )}
 
 
                 {!isProcessing && progress === 0 && (
-                  <div className="flex items-start gap-2.5 p-2.5 rounded-lg bg-zinc-950/40 border border-white/5 text-[9.5px] text-zinc-400">
+                  <div className="flex items-start gap-2.5 p-2.5 rounded-lg bg-zinc-100 dark:bg-zinc-950/40 border border-zinc-200 dark:border-white/5 text-[9.5px] text-zinc-600 dark:text-zinc-400">
                     <input
                       type="checkbox"
                       id="agree-checkbox"
                       checked={agreedToTerms}
                       onChange={(e) => setAgreedToTerms(e.target.checked)}
-                      className="w-3.5 h-3.5 rounded border-white/10 bg-zinc-900 text-white focus:ring-0 focus:ring-offset-0 cursor-pointer accent-zinc-800 mt-0.5 flex-shrink-0"
+                      className="w-3.5 h-3.5 rounded border-zinc-300 dark:border-white/10 bg-white dark:bg-zinc-900 text-zinc-900 dark:text-white focus:ring-0 focus:ring-offset-0 cursor-pointer accent-zinc-800 mt-0.5 flex-shrink-0"
                     />
                     <label htmlFor="agree-checkbox" className="cursor-pointer select-none leading-relaxed">
-                      I agree to the <a href="/terms" target="_blank" rel="noopener noreferrer" className="text-white underline hover:text-zinc-350 transition-colors">Terms of Service</a>
+                      I agree to the <a href="/terms" target="_blank" rel="noopener noreferrer" className="text-zinc-900 dark:text-white underline hover:text-zinc-600 dark:hover:text-zinc-350 transition-colors">Terms of Service</a>
                       {enablePricingAndPayments ? (
-                        <> and <a href="/refund" target="_blank" rel="noopener noreferrer" className="text-white underline hover:text-zinc-350 transition-colors">Refund Policy</a></>
+                        <> and <a href="/refund" target="_blank" rel="noopener noreferrer" className="text-zinc-900 dark:text-white underline hover:text-zinc-600 dark:hover:text-zinc-350 transition-colors">Refund Policy</a></>
                       ) : null}.
                     </label>
                   </div>
@@ -556,26 +555,26 @@ export function RestorePanel({
 
                 {/* What to do before starting & Windows timestamp sync guide */}
                 {!isProcessing && progress === 0 && (
-                  <div className="text-[9px] text-zinc-400 pt-0.5">
+                  <div className="text-[9px] text-zinc-500 dark:text-zinc-400 pt-0.5">
                     <button
                       type="button"
                       onClick={() => setShowPrestartGuide(!showPrestartGuide)}
-                      className="text-zinc-400 hover:text-white transition-colors flex items-center gap-1 font-semibold cursor-pointer select-none"
+                      className="text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white transition-colors flex items-center gap-1 font-semibold cursor-pointer select-none"
                     >
-                      <Zap className="w-3 h-3 text-indigo-400" />
+                      <Zap className="w-3 h-3 text-indigo-500 dark:text-indigo-400" />
                       <span>{showPrestartGuide ? 'Hide' : 'Show'} Guide: OS Timestamps &amp; Folder vs ZIP</span>
                       <span className="text-[10px]">{showPrestartGuide ? '▴' : '▾'}</span>
                     </button>
                     {showPrestartGuide && (
-                      <div className="mt-2 p-2.5 rounded-lg bg-zinc-900/60 border border-white/10 space-y-1.5 text-[9px] leading-relaxed text-zinc-350">
+                      <div className="mt-2 p-2.5 rounded-lg bg-zinc-100 dark:bg-zinc-900/60 border border-zinc-200 dark:border-white/10 space-y-1.5 text-[9px] leading-relaxed text-zinc-700 dark:text-zinc-350">
                         <div>
-                          <strong className="text-white">Why videos are QuickTime &amp; photos have deep EXIF:</strong> Photos store metadata in EXIF headers (DateTimeOriginal, GPS). Videos use standard ISO QuickTime atoms (mvhd/tkhd) for encoded creation times.
+                          <strong className="text-zinc-900 dark:text-white">Why videos are QuickTime &amp; photos have deep EXIF:</strong> Photos store metadata in EXIF headers (DateTimeOriginal, GPS). Videos use standard ISO QuickTime atoms (mvhd/tkhd) for encoded creation times.
                         </div>
                         <div>
-                          <strong className="text-white">Why File Explorer / Finder shows today's date:</strong> Browsers cannot directly modify OS filesystem timestamps due to sandbox security. Double-clicking the generated <span className="text-emerald-400 font-mono">sync_windows_dates.bat</span> (Windows) or running <span className="text-emerald-400 font-mono">sync_macos_linux.sh</span> (Mac/Linux) in your output folder syncs file modified dates in 2 seconds!
+                          <strong className="text-zinc-900 dark:text-white">Why File Explorer / Finder shows today's date:</strong> Browsers cannot directly modify OS filesystem timestamps due to sandbox security. Double-clicking the generated <span className="text-emerald-600 dark:text-emerald-400 font-mono">sync_windows_dates.bat</span> (Windows) or running <span className="text-emerald-600 dark:text-emerald-400 font-mono">sync_macos_linux.sh</span> (Mac/Linux) in your output folder syncs file modified dates in 2 seconds!
                         </div>
                         <div>
-                          <strong className="text-white">Download as ZIP:</strong> The ZIP method stores taken timestamps directly into the zip archive headers. Extracting it on Windows/Mac automatically sets the modified date without needing any script.
+                          <strong className="text-zinc-900 dark:text-white">Download as ZIP:</strong> The ZIP method stores taken timestamps directly into the zip archive headers. Extracting it on Windows/Mac automatically sets the modified date without needing any script.
                         </div>
                       </div>
                     )}
@@ -672,21 +671,21 @@ export function RestorePanel({
           </div>
 
           {/* In-Workspace Responsive Ad Unit */}
-          <div className="px-4 py-2 bg-black/40 border-b border-white/5">
+          <div className="px-4 py-2 bg-zinc-100/50 dark:bg-black/40 border-b border-zinc-200 dark:border-white/5">
             <AdUnit type="horizontal" placement="TOOL_RESTORE_TOP" />
           </div>
 
           {/* Logs Terminal */}
           <div className="flex-grow flex flex-col overflow-hidden min-h-[200px]">
             {/* Logs Header with Tabs & ETA */}
-            <div className="border-b border-white/5 bg-black/40 px-6 py-2 flex flex-col gap-1.5">
+            <div className="border-b border-zinc-200 dark:border-white/5 bg-zinc-100/80 dark:bg-black/40 px-6 py-2 flex flex-col gap-1.5">
               <div className="flex justify-between items-center text-xs font-bold">
-                <span className="text-white uppercase tracking-wider flex items-center gap-1.5">
-                  <Database className="w-3.5 h-3.5 text-zinc-450" />
+                <span className="text-zinc-900 dark:text-white uppercase tracking-wider flex items-center gap-1.5">
+                  <Database className="w-3.5 h-3.5 text-zinc-500 dark:text-zinc-450" />
                   Logs
                 </span>
                 {(isProcessing || progress > 0) && (
-                  <span className="text-[10px] text-zinc-400 font-mono">
+                  <span className="text-[10px] text-zinc-600 dark:text-zinc-400 font-mono">
                     {getEstimatedRestoreTime().replace(/^⏱️\s*(Est\. restoration time:\s*)?/, '')}
                   </span>
                 )}

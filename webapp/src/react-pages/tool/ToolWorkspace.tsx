@@ -57,23 +57,23 @@ export function ToolWorkspaceContent() {
   // ── Auth / system guards (all hooks are above — React rules of hooks) ──────
   if (loading) {
     return (
-      <div className="min-h-[calc(100vh-64px)] bg-[#0A0A0A] flex items-center justify-center">
-        <div className="w-8 h-8 border-4 border-t-zinc-200 border-zinc-800 rounded-full animate-spin"></div>
+      <div className="min-h-[calc(100vh-64px)] bg-zinc-50 dark:bg-[#0A0A0A] flex items-center justify-center">
+        <div className="w-8 h-8 border-4 border-t-indigo-600 dark:border-t-zinc-200 border-zinc-300 dark:border-zinc-800 rounded-full animate-spin"></div>
       </div>
     )
   }
 
   if (pipeline.maintenance) {
     return (
-      <div className="min-h-[calc(100vh-64px)] bg-black flex flex-col items-center justify-center p-6 text-center">
-        <div className="w-16 h-16 bg-amber-500/10 border border-amber-500/20 text-amber-400 rounded-full flex items-center justify-center mb-6">
+      <div className="min-h-[calc(100vh-64px)] bg-zinc-50 dark:bg-black flex flex-col items-center justify-center p-6 text-center text-zinc-900 dark:text-white">
+        <div className="w-16 h-16 bg-amber-500/10 border border-amber-500/20 text-amber-500 dark:text-amber-400 rounded-full flex items-center justify-center mb-6">
           <AlertCircle className="w-8 h-8 animate-pulse" />
         </div>
-        <h1 className="text-2xl font-bold tracking-tight text-white mb-2">Workspace Under Maintenance</h1>
-        <p className="text-zinc-400 max-w-md mb-8">
+        <h1 className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-white mb-2">Workspace Under Maintenance</h1>
+        <p className="text-zinc-600 dark:text-zinc-400 max-w-md mb-8">
           The TakeoutFix restoration engine is currently undergoing system updates. Normal operations will resume shortly. Thank you for your patience!
         </p>
-        <a href="/dashboard" className="px-6 py-2.5 rounded-full bg-zinc-900 border border-zinc-800 text-sm text-zinc-300 hover:text-white transition-all font-semibold">
+        <a href="/dashboard" className="px-6 py-2.5 rounded-full bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-sm text-zinc-800 dark:text-zinc-300 hover:text-indigo-600 dark:hover:text-white transition-all font-semibold shadow-xs">
           Return to Dashboard
         </a>
       </div>
@@ -82,16 +82,16 @@ export function ToolWorkspaceContent() {
 
   if (user && userData?.suspended) {
     return (
-      <div className="min-h-screen bg-black flex flex-col items-center justify-center p-6 text-center">
+      <div className="min-h-screen bg-zinc-50 dark:bg-black flex flex-col items-center justify-center p-6 text-center text-zinc-900 dark:text-white">
         <div className="w-16 h-16 bg-red-500/10 border border-red-500/20 text-red-500 rounded-full flex items-center justify-center mb-6">
           <AlertCircle className="w-8 h-8" />
         </div>
-        <h1 className="text-2xl font-bold tracking-tight text-white mb-2">Account Suspended</h1>
-        <p className="text-zinc-400 max-w-md mb-8">
+        <h1 className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-white mb-2">Account Suspended</h1>
+        <p className="text-zinc-600 dark:text-zinc-400 max-w-md mb-8">
           Your account has been suspended for violating our terms of service or due to an administrative hold. If you believe this is a mistake, please contact our support team.
         </p>
         <div className="flex gap-4">
-          <a href="/support" className="px-5 py-2 rounded-full bg-zinc-900 border border-zinc-800 text-sm text-zinc-300 hover:text-white transition-all">
+          <a href="/support" className="px-5 py-2 rounded-full bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-sm text-zinc-800 dark:text-zinc-300 hover:text-indigo-600 dark:hover:text-white transition-all shadow-xs">
             Contact Support
           </a>
         </div>
@@ -103,7 +103,7 @@ export function ToolWorkspaceContent() {
   // ── Main workspace layout ─────────────────────────────────────────────────
   return (
     <AdBlockGate>
-      <div className="w-full min-h-[calc(100vh-64px)] h-auto flex flex-col lg:flex-row bg-[#0A0A0A]">
+      <div className="w-full min-h-[calc(100vh-64px)] h-auto flex flex-col lg:flex-row bg-white dark:bg-[#0A0A0A] text-zinc-900 dark:text-white transition-colors duration-150">
 
         {/* Main content: 4 tool tabs */}
         <RestorePanel

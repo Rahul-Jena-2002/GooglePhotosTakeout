@@ -55,9 +55,23 @@ const googleClientId = cfRuntimeEnv.PUBLIC_GOOGLE_CLIENT_ID || import.meta.env.P
 ---
 
 <!doctype html>
-<html lang="en">
+<html lang="en" class="light">
   <head>
     <meta charset="UTF-8" />
+    <script is:inline>
+      (function() {
+        try {
+          var t = localStorage.getItem("takeoutfix_theme");
+          if (t === "dark") {
+            document.documentElement.classList.add("dark");
+            document.documentElement.classList.remove("light");
+          } else {
+            document.documentElement.classList.add("light");
+            document.documentElement.classList.remove("dark");
+          }
+        } catch(e) {}
+      })();
+    </script>
     <!-- Google AdSense Verification & Auto Ads (Canonical Placement) -->
     <meta name="google-adsense-account" content="ca-pub-7628736172233995" />
     <script
@@ -139,32 +153,7 @@ const googleClientId = cfRuntimeEnv.PUBLIC_GOOGLE_CLIENT_ID || import.meta.env.P
     <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
     <link rel="shortcut icon" href="/favicon.ico" />
     <link rel="manifest" href="/manifest.webmanifest" />
-    <meta name="theme-color" content="#09090b" />
-    <meta name="mobile-web-app-capable" content="yes" />
-    <meta name="apple-mobile-web-app-capable" content="yes" />
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-    <meta name="apple-mobile-web-app-title" content="TakeoutFix" />
-    <meta name="application-name" content="TakeoutFix" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
-
-
-
-
-    
-    <!-- Theme Initialization Script -->
-    <script is:inline>
-      (() => {
-        const saved = localStorage.getItem("takeoutfix_theme");
-        const theme = saved || "light";
-        if (theme === "dark") {
-          document.documentElement.classList.add("dark");
-          document.documentElement.classList.remove("light");
-        } else {
-          document.documentElement.classList.add("light");
-          document.documentElement.classList.remove("dark");
-        }
-      })();
-    </script>
+    <meta name="theme-color" content="#ffffff" id="theme-color-meta" />
 
     <!-- Suppress React DevTools inspection in production -->
     <script is:inline>

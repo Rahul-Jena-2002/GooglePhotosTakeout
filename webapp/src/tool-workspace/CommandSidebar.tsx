@@ -55,35 +55,35 @@ export function CommandSidebar({
   resetUserQuota,
 }: CommandSidebarProps) {
   return (
-    <div className="w-full lg:w-[28%] lg:min-w-[340px] p-3 border-t lg:border-t-0 lg:border-r border-white/5 flex flex-col h-auto order-2 lg:order-1">
+    <div className="w-full lg:w-[28%] lg:min-w-[340px] p-3 border-t lg:border-t-0 lg:border-r border-zinc-200 dark:border-white/5 bg-zinc-50/60 dark:bg-black/40 flex flex-col h-auto order-2 lg:order-1 transition-colors">
 
       <div className="mb-2 flex items-center justify-between">
-        <h1 className="text-sm font-bold tracking-wider text-white flex items-center gap-1.5 uppercase">
-          <Activity className="w-4 h-4 text-indigo-400 animate-pulse" />
+        <h1 className="text-sm font-bold tracking-wider text-zinc-900 dark:text-white flex items-center gap-1.5 uppercase">
+          <Activity className="w-4 h-4 text-indigo-500 dark:text-indigo-400 animate-pulse" />
           Command Center
         </h1>
         <span className={`text-[9px] font-bold font-mono px-2 py-0.5 rounded border ${
           isProcessing
-            ? isPaused ? 'bg-zinc-800 border-zinc-700 text-zinc-300' : 'bg-indigo-500/10 border-indigo-500/20 text-indigo-400 animate-pulse'
-            : 'bg-zinc-500/10 border-zinc-500/20 text-zinc-400'
+            ? isPaused ? 'bg-zinc-200 dark:bg-zinc-800 border-zinc-300 dark:border-zinc-700 text-zinc-700 dark:text-zinc-300' : 'bg-indigo-500/10 border-indigo-500/20 text-indigo-600 dark:text-indigo-400 animate-pulse'
+            : 'bg-zinc-200/60 dark:bg-zinc-500/10 border-zinc-300 dark:border-zinc-500/20 text-zinc-600 dark:text-zinc-400'
         }`}>
           {isProcessing ? isPaused ? 'PAUSED' : (useDeepExif ? 'DEEP RESTORE' : 'ACTIVE') : 'IDLE'}
         </span>
       </div>
 
       {/* Engine Status */}
-      <div className="space-y-2 mb-3 bg-white/[0.02] border border-white/5 p-3 rounded-xl">
-        <div className="flex justify-between items-center text-[9px] text-white/40 font-bold uppercase tracking-wider">
-          <span className="flex items-center gap-1"><HardDrive className="w-3 h-3 text-emerald-400" /> Restoration Engine</span>
-          <span className={`${plan === 'guest' ? 'text-amber-400' : 'text-emerald-400'} font-mono`}>
+      <div className="space-y-2 mb-3 bg-white dark:bg-white/[0.02] border border-zinc-200 dark:border-white/5 p-3 rounded-xl shadow-xs">
+        <div className="flex justify-between items-center text-[9px] text-zinc-500 dark:text-white/40 font-bold uppercase tracking-wider">
+          <span className="flex items-center gap-1"><HardDrive className="w-3 h-3 text-emerald-600 dark:text-emerald-400" /> Restoration Engine</span>
+          <span className={`${plan === 'guest' ? 'text-amber-600 dark:text-amber-400' : 'text-emerald-600 dark:text-emerald-400'} font-mono font-bold`}>
             {plan === 'guest' ? 'Guest (Local)' : '100% Free'}
           </span>
         </div>
-        <div className="text-xs font-bold text-zinc-150 flex items-center justify-between">
+        <div className="text-xs font-bold text-zinc-900 dark:text-zinc-150 flex items-center justify-between">
           <span>Processed Volume</span>
-          <span className="font-mono text-zinc-300">{formatByteSize(sessionBytes)} ({sessionFiles.toLocaleString()} files)</span>
+          <span className="font-mono text-zinc-700 dark:text-zinc-300">{formatByteSize(sessionBytes)} ({sessionFiles.toLocaleString()} files)</span>
         </div>
-        <div className="text-[10px] text-zinc-500 font-medium">
+        <div className="text-[10px] text-zinc-500 dark:text-zinc-400 font-medium">
           {plan === 'guest'
             ? 'Local browser processing. Sign-in is optional (cloud backup & sync).'
             : 'Unlimited batch processing enabled. All files are merged client-side.'}
@@ -96,44 +96,44 @@ export function CommandSidebar({
       </div>
 
       {/* Engine Resource Telemetry */}
-      <div className="space-y-2.5 mb-3 bg-white/[0.01] border border-white/5 p-2.5 rounded-lg">
-        <span className="text-[9px] text-white/40 font-bold uppercase tracking-wider flex items-center gap-1">
-          <Cpu className="w-3.5 h-3.5 text-zinc-450" /> Resource Telemetry
+      <div className="space-y-2.5 mb-3 bg-white dark:bg-white/[0.01] border border-zinc-200 dark:border-white/5 p-2.5 rounded-lg shadow-xs">
+        <span className="text-[9px] text-zinc-500 dark:text-white/40 font-bold uppercase tracking-wider flex items-center gap-1">
+          <Cpu className="w-3.5 h-3.5 text-zinc-500 dark:text-zinc-450" /> Resource Telemetry
         </span>
         <div className="space-y-2">
           <div>
-            <div className="flex justify-between text-[9px] font-bold text-zinc-400 mb-1">
+            <div className="flex justify-between text-[9px] font-bold text-zinc-600 dark:text-zinc-400 mb-1">
               <span>CPU Cores</span>
-              <span className="font-mono text-zinc-350">{telemetryWorkers} / {navigator.hardwareConcurrency || 4} Cores ({telemetryCpu}%)</span>
+              <span className="font-mono text-zinc-800 dark:text-zinc-350">{telemetryWorkers} / {navigator.hardwareConcurrency || 4} Cores ({telemetryCpu}%)</span>
             </div>
-            <Progress value={telemetryCpu} className="h-1 bg-white/10" />
+            <Progress value={telemetryCpu} className="h-1 bg-zinc-200 dark:bg-white/10" />
           </div>
 
           <div>
-            <div className="flex justify-between text-[9px] font-bold text-zinc-400 mb-1">
+            <div className="flex justify-between text-[9px] font-bold text-zinc-600 dark:text-zinc-400 mb-1">
               <span>RAM (Engine/Tab)</span>
-              <span className="font-mono text-zinc-350">{telemetryMem.toFixed(0)}MB / {telemetryTabHeap.toFixed(0)}MB</span>
+              <span className="font-mono text-zinc-800 dark:text-zinc-350">{telemetryMem.toFixed(0)}MB / {telemetryTabHeap.toFixed(0)}MB</span>
             </div>
-            <Progress value={Math.min(100, ((telemetryMem + telemetryTabHeap) / 2048) * 100)} className="h-1 bg-white/10" />
+            <Progress value={Math.min(100, ((telemetryMem + telemetryTabHeap) / 2048) * 100)} className="h-1 bg-zinc-200 dark:bg-white/10" />
           </div>
 
-          <div className="flex justify-between items-center text-[9px] text-zinc-400 border-t border-white/5 pt-2 mt-1">
+          <div className="flex justify-between items-center text-[9px] text-zinc-600 dark:text-zinc-400 border-t border-zinc-200 dark:border-white/5 pt-2 mt-1">
             <span>Concurrency</span>
-            <span className="font-mono text-white">Auto ({maxWorkers} Threads)</span>
+            <span className="font-mono text-zinc-900 dark:text-white font-bold">Auto ({maxWorkers} Threads)</span>
           </div>
         </div>
       </div>
 
       {/* Scanning/Loading Logo Indicator */}
       {isProcessing && (
-        <div className="mb-3 bg-white/[0.01] border border-white/5 p-4 rounded-lg flex flex-col items-center justify-center text-center space-y-2">
+        <div className="mb-3 bg-white dark:bg-white/[0.01] border border-zinc-200 dark:border-white/5 p-4 rounded-lg flex flex-col items-center justify-center text-center space-y-2">
           <div className="relative flex items-center justify-center">
             {/* Dynamic spinning outer ring */}
             <div className="w-10 h-10 border-2 border-indigo-500/20 border-t-indigo-500 rounded-full animate-spin"></div>
             {/* Pulsing inner dot */}
-            <Activity className="absolute w-4 h-4 text-indigo-400 animate-pulse" />
+            <Activity className="absolute w-4 h-4 text-indigo-500 dark:text-indigo-400 animate-pulse" />
           </div>
-          <div className="text-[10px] text-zinc-400 font-bold uppercase tracking-wider animate-pulse">Restoring Assets...</div>
+          <div className="text-[10px] text-zinc-600 dark:text-zinc-400 font-bold uppercase tracking-wider animate-pulse">Restoring Assets...</div>
         </div>
       )}
 
@@ -164,19 +164,19 @@ export function CommandSidebar({
       </div>
 
       {/* Engine Trust Card at bottom */}
-      <div className="mt-auto pt-3 border-t border-white/5 space-y-2.5">
+      <div className="mt-auto pt-3 border-t border-zinc-200 dark:border-white/5 space-y-2.5">
         <AdUnit type="compact" placement="TOOL_SIDEBAR_BOTTOM" />
-        <div className="p-3 rounded-xl border border-white/5 bg-white/[0.02]">
+        <div className="p-3 rounded-xl border border-zinc-200 dark:border-white/5 bg-white dark:bg-white/[0.02] shadow-xs">
           <div className="flex justify-between items-center">
-            <div className="flex items-center gap-1.5 text-xs font-bold text-white">
-              <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
+            <div className="flex items-center gap-1.5 text-xs font-bold text-zinc-900 dark:text-white">
+              <ShieldCheck className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
               100% Free &amp; Offline
             </div>
-            <span className="text-[9px] font-mono tracking-wide px-2 py-0.5 rounded border border-emerald-500/20 bg-emerald-500/10 text-emerald-400 uppercase font-bold">
+            <span className="text-[9px] font-mono tracking-wide px-2 py-0.5 rounded border border-emerald-500/20 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 uppercase font-bold">
               Active
             </span>
           </div>
-          <p className="mt-2 text-[9.5px] text-zinc-400 leading-normal font-medium">
+          <p className="mt-2 text-[9.5px] text-zinc-600 dark:text-zinc-400 leading-normal font-medium">
             Zero server uploads. Your photos and JSON companion sidecars are restored directly in your browser with unlimited capacity.
           </p>
         </div>
