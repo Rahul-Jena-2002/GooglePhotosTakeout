@@ -29,12 +29,10 @@ export default {
     }
 
     // Map download paths to expected file names
-    // PRIMARY: /download/windows → TakeoutFix-Setup.exe (WiX installer, higher SmartScreen reputation)
-    // LAUNCHER: /download/windows/standalone → TakeoutFix.exe (self-updating single-file launcher)
-    // PAYLOAD:  /download/windows/payload → TakeoutFix-payload.zip (downloaded by the launcher at runtime)
+    // PRIMARY: /download/windows → TakeoutFix.exe (direct standalone zero-install single-file executable)
+    // INSTALLER: /download/windows/setup → TakeoutFix-Setup.exe (WiX setup wizard)
     let targetFileName = "";
     if (
-      path === "/download/windows" ||
       path === "/download/windows/setup" ||
       path === "/download/windows/installer" ||
       path === "/download/windows/msi" ||
@@ -45,25 +43,23 @@ export default {
     ) {
       targetFileName = "TakeoutFix-Setup.exe";
     } else if (
+      path === "/download/windows" ||
+      path === "/download/windows/exe" ||
+      path === "/download/windows/standalone" ||
+      path === "/download/windows/rust" ||
+      path === "/download/windows/java" ||
+      path === "/download/takeoutfix.exe" ||
+      path === "/download/windows/takeoutfix.exe" ||
+      path === "/download/takeoutfix-java.exe" ||
+      path === "/download/windows/takeoutfix-java.exe"
+    ) {
+      targetFileName = "TakeoutFix.exe";
+    } else if (
       path === "/download/windows/payload" ||
       path === "/download/windows/payload.zip" ||
       path === "/download/takeoutfix-payload.zip"
     ) {
       targetFileName = "TakeoutFix-payload.zip";
-    } else if (
-      path === "/download/windows/exe" ||
-      path === "/download/windows/standalone" ||
-      path === "/download/windows/rust" ||
-      path === "/download/takeoutfix.exe" ||
-      path === "/download/windows/takeoutfix.exe"
-    ) {
-      targetFileName = "TakeoutFix.exe";
-    } else if (
-      path === "/download/windows/java" ||
-      path === "/download/takeoutfix-java.exe" ||
-      path === "/download/windows/takeoutfix-java.exe"
-    ) {
-      targetFileName = "TakeoutFix-Java.exe";
     } else if (
       path === "/download/macos" ||
       path === "/download/macos/dmg" ||
