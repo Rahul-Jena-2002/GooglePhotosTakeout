@@ -28,56 +28,68 @@ export default {
       path = "/download" + (versionMatch[2] ? "/" + versionMatch[2] : "");
     }
 
-    // Map download paths to expected file names (Direct runnable Rust & Java editions)
+    // Map download paths to expected file names (Direct runnable Standalone .exe, .dmg, .AppImage)
     let targetFileName = "";
     if (
-      path === "/download/windows/rust" ||
-      path === "/download/windows/exe" ||
       path === "/download/windows" ||
+      path === "/download/windows/exe" ||
+      path === "/download/windows/standalone" ||
+      path === "/download/windows/rust" ||
       path === "/download/takeoutfix.exe" ||
-      path === "/download/windows/takeoutfix.exe" ||
-      path === "/download/setup.exe" ||
-      path === "/download/windows/setup.exe"
+      path === "/download/windows/takeoutfix.exe"
     ) {
       targetFileName = "TakeoutFix.exe";
     } else if (
-      path === "/download/windows/java" ||
+      path === "/download/windows/setup" ||
       path === "/download/windows/installer" ||
       path === "/download/windows/msi" ||
+      path === "/download/setup.exe" ||
+      path === "/download/windows/setup.exe" ||
+      path === "/download/takeoutfix-setup.exe" ||
+      path === "/download/windows/takeoutfix-setup.exe"
+    ) {
+      targetFileName = "TakeoutFix-Setup.exe";
+    } else if (
+      path === "/download/windows/java" ||
       path === "/download/takeoutfix-java.exe" ||
       path === "/download/windows/takeoutfix-java.exe"
     ) {
       targetFileName = "TakeoutFix-Java.exe";
     } else if (
-      path === "/download/macos/rust" ||
-      path === "/download/macos/dmg" ||
       path === "/download/macos" ||
-      path === "/download/takeoutfix.dmg" ||
-      path === "/download/macos/takeoutfix.dmg"
-    ) {
-      targetFileName = "TakeoutFix.dmg";
-    } else if (
+      path === "/download/macos/dmg" ||
+      path === "/download/macos/rust" ||
       path === "/download/macos/java" ||
+      path === "/download/takeoutfix.dmg" ||
+      path === "/download/macos/takeoutfix.dmg" ||
       path === "/download/takeoutfix-java.dmg" ||
       path === "/download/macos/takeoutfix-java.dmg"
     ) {
-      targetFileName = "TakeoutFix-Java.dmg";
+      targetFileName = "TakeoutFix.dmg";
     } else if (
-      path === "/download/linux/rust" ||
-      path === "/download/linux/appimage" ||
       path === "/download/linux" ||
-      path === "/download/takeoutfix.appimage" ||
-      path === "/download/linux/takeoutfix.appimage"
-    ) {
-      targetFileName = "TakeoutFix.AppImage";
-    } else if (
+      path === "/download/linux/appimage" ||
+      path === "/download/linux/rust" ||
       path === "/download/linux/java" ||
+      path === "/download/takeoutfix.appimage" ||
+      path === "/download/linux/takeoutfix.appimage" ||
       path === "/download/takeoutfix-java.appimage" ||
       path === "/download/linux/takeoutfix-java.appimage"
     ) {
-      targetFileName = "TakeoutFix-Java.AppImage";
-    } else if (path === "/download/linux/deb" || path === "/download/takeoutfix-linux.deb") {
-      targetFileName = "TakeoutFix-Linux.deb";
+      targetFileName = "TakeoutFix.AppImage";
+    } else if (
+      path === "/download/linux/deb" ||
+      path === "/download/takeoutfix.deb" ||
+      path === "/download/takeoutfix-linux.deb" ||
+      path === "/download/takeoutfix-java.deb"
+    ) {
+      targetFileName = "TakeoutFix.deb";
+    } else if (
+      path === "/download/linux/tar" ||
+      path === "/download/linux/portable" ||
+      path === "/download/takeoutfix-linux-portable.tar.gz"
+    ) {
+      targetFileName = "TakeoutFix-Linux-Portable.tar.gz";
     } else if (path === "/download/linux/rpm" || path === "/download/takeoutfix-linux.rpm") {
       targetFileName = "TakeoutFix-Linux.rpm";
     } else if (
@@ -90,7 +102,7 @@ export default {
     } else if (path === "/" || path === "/download") {
       return Response.redirect("https://takeoutfix.pages.dev/download", 302);
     } else {
-      return new Response("Not Found. Available routes:\n- /download/windows/rust (TakeoutFix.exe)\n- /download/windows/java (TakeoutFix-Java.exe)\n- /download/macos/rust (TakeoutFix.dmg)\n- /download/macos/java (TakeoutFix-Java.dmg)\n- /download/linux/rust (TakeoutFix.AppImage)\n- /download/linux/java (TakeoutFix-Java.AppImage)\n- /download/android (TakeoutFix.apk)", {
+      return new Response("Not Found. Available routes:\n- /download/windows (TakeoutFix.exe - Pure Standalone, No ZIP)\n- /download/windows/setup (TakeoutFix-Setup.exe - Optional Installer)\n- /download/macos (TakeoutFix.dmg)\n- /download/linux (TakeoutFix.AppImage)\n- /download/linux/deb (TakeoutFix.deb)\n- /download/linux/portable (TakeoutFix-Linux-Portable.tar.gz)", {
         status: 404,
         headers: { "Content-Type": "text/plain", "Access-Control-Allow-Origin": "*" }
       });
@@ -154,7 +166,27 @@ export default {
       }
 
       const assets = releaseData.assets || [];
-      const targetAsset = assets.find(asset => asset.name.toLowerCase() === targetFileName.toLowerCase());
+      
+      // Smart asset resolver prioritizing pure binaries over any zip archives
+      let targetAsset = assets.find(asset => asset.name.toLowerCase() === targetFileName.toLowerCase());
+
+      if (!targetAsset) {
+        if (targetFileName === "TakeoutFix.exe") {
+          // Find standalone .exe, explicitly excluding zip archives and setups
+          targetAsset = assets.find(asset => {
+            const name = asset.name.toLowerCase();
+            return name.endsWith(".exe") && !name.includes("setup") && !name.endsWith(".zip");
+          }) || assets.find(asset => asset.name.toLowerCase().endsWith(".exe"));
+        } else if (targetFileName === "TakeoutFix-Setup.exe") {
+          targetAsset = assets.find(asset => asset.name.toLowerCase().includes("setup") && asset.name.toLowerCase().endsWith(".exe"));
+        } else if (targetFileName === "TakeoutFix.dmg") {
+          targetAsset = assets.find(asset => asset.name.toLowerCase().endsWith(".dmg"));
+        } else if (targetFileName === "TakeoutFix.AppImage") {
+          targetAsset = assets.find(asset => asset.name.toLowerCase().endsWith(".appimage"));
+        } else if (targetFileName === "TakeoutFix.deb") {
+          targetAsset = assets.find(asset => asset.name.toLowerCase().endsWith(".deb"));
+        }
+      }
 
       if (!targetAsset) {
         return new Response(

@@ -26,14 +26,14 @@ export default function DownloadPage() {
     win: {
       title: "TakeoutFix for Windows",
       badge: "Windows 10 & 11",
-      desc: "Fast, single-file desktop app. Double-click to run immediately with zero installation required.",
+      desc: "Fast, pure single-file executable (.exe). Double-click to run immediately with zero installation and no ZIP extraction.",
       file: "TakeoutFix.exe",
-      url: "https://takeoutfix-download.takeoutfix.workers.dev/download/windows/rust",
-      directUrl: "https://takeoutfix-download.takeoutfix.workers.dev/download/windows/rust",
+      url: "https://takeoutfix-download.takeoutfix.workers.dev/download/windows",
+      directUrl: "https://takeoutfix-download.takeoutfix.workers.dev/download/windows",
       instructions: [
-        "Click the download button below to get 'TakeoutFix.exe'.",
+        "Click the download button below to get pure 'TakeoutFix.exe'.",
         "Double-click 'TakeoutFix.exe' in your Downloads folder to open it.",
-        "Select your unzipped Google Takeout folder to automatically restore all photo dates and locations."
+        "Select your unzipped Google Takeout folder to automatically restore all photo dates, duplicates, and locations."
       ]
     },
     mac: {
@@ -41,8 +41,8 @@ export default function DownloadPage() {
       badge: "Apple Silicon & Intel",
       desc: "Universal Mac app compatible with all modern macOS versions and M-series or Intel chips.",
       file: "TakeoutFix.dmg",
-      url: "https://takeoutfix-download.takeoutfix.workers.dev/download/macos/rust",
-      directUrl: "https://takeoutfix-download.takeoutfix.workers.dev/download/macos/rust",
+      url: "https://takeoutfix-download.takeoutfix.workers.dev/download/macos",
+      directUrl: "https://takeoutfix-download.takeoutfix.workers.dev/download/macos",
       instructions: [
         "Download 'TakeoutFix.dmg' using the button below.",
         "Double-click the downloaded DMG file and drag TakeoutFix into your Applications folder.",
@@ -54,8 +54,8 @@ export default function DownloadPage() {
       badge: "Ubuntu, Fedora, Mint",
       desc: "Universal self-contained AppImage. Double-click to run on any major Linux distribution.",
       file: "TakeoutFix.AppImage",
-      url: "https://takeoutfix-download.takeoutfix.workers.dev/download/linux/rust",
-      directUrl: "https://takeoutfix-download.takeoutfix.workers.dev/download/linux/rust",
+      url: "https://takeoutfix-download.takeoutfix.workers.dev/download/linux",
+      directUrl: "https://takeoutfix-download.takeoutfix.workers.dev/download/linux",
       instructions: [
         "Download 'TakeoutFix.AppImage' using the button below.",
         "Right-click the file > Properties > Permissions > check 'Allow executing file as program'.",
