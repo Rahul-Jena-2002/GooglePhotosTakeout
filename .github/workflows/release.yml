@@ -128,9 +128,7 @@ jobs:
           if (-not (Test-Path "TakeoutFix.exe")) {
             throw "TakeoutFix.exe compilation failed."
           }
-
           # 3. Self-sign with a temp Authenticode cert (changes "Unknown Publisher" → "TakeoutFix")
-          #    This is NOT EV signing — SmartScreen warning may still appear but is clickable.
           Write-Host "Self-signing TakeoutFix.exe with temporary Authenticode cert..."
           try {
             $cert = New-SelfSignedCertificate `
