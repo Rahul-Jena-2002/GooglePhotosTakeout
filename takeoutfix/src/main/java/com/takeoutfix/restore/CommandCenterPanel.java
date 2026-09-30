@@ -38,22 +38,14 @@ public class CommandCenterPanel extends JPanel {
 
     private final UserSyncBridgeService userService;
     private final SessionStatsService statsService;
-    private final com.takeoutfix.ads.AdSyncService adSyncService;
-    private final JPanel adsContainer;
-    private final JPanel adsCard;
 
     public SessionStatsService getStatsService() {
         return statsService;
     }
 
     public CommandCenterPanel(UserSyncBridgeService userService, SessionStatsService statsService) {
-        this(userService, statsService, null);
-    }
-
-    public CommandCenterPanel(UserSyncBridgeService userService, SessionStatsService statsService, com.takeoutfix.ads.AdSyncService adSyncService) {
         this.userService = userService;
         this.statsService = statsService;
-        this.adSyncService = adSyncService;
 
         setLayout(new BorderLayout(0, 8));
         setPreferredSize(new Dimension(320, 0));
@@ -94,12 +86,6 @@ public class CommandCenterPanel extends JPanel {
         threadLabel = (JLabel) kpiCard.getClientProperty("threadLabel");
         scrollBody.add(kpiCard, createRowConstraints(gridY++));
 
-        // 3. Dynamic Backend-Synced Hardware Deals & Ads in SEPARATE BOX (Card)
-        adsContainer = new JPanel();
-        adsContainer.setOpaque(false);
-        adsCard = createAdsCard();
-        scrollBody.add(adsCard, createRowConstraints(gridY++));
-
         // 4. System & Drive Status Quick Utilities Card (Fills empty sidebar space)
         JPanel systemHealthCard = createSystemHealthCard();
         scrollBody.add(systemHealthCard, createRowConstraints(gridY++));
@@ -126,13 +112,6 @@ public class CommandCenterPanel extends JPanel {
         userService.addListener(this::updateUserData);
         updateUserData(userService.getCurrentProfile());
         startHardwareMonitor();
-
-        // Dynamic backend-synchronized ads
-        if (adSyncService != null) {
-            adSyncService.addListener(this::updateAds);
-        } else {
-            updateAds(java.util.Collections.emptyList());
-        }
     }
 
     private GridBagConstraints createRowConstraints(int row) {
@@ -302,207 +281,6 @@ public class CommandCenterPanel extends JPanel {
         });
 
         return card;
-    }
-
-    // 3. Dynamic Backend-Synced Hardware Deals & Ads in SEPARATE BOX (Card)
-    private JPanel createAdsCard() {
-        JPanel card = UiFactory.createCard();
-        card.setLayout(new BorderLayout(0, 8));
-
-        JPanel headerRow = new JPanel(new BorderLayout(4, 0));
-        headerRow.setOpaque(false);
-
-        JLabel lblAdsTitle = new JLabel("ADS & AFFILIATE LINKS");
-        lblAdsTitle.setFont(new Font("Segoe UI", Font.BOLD, 10));
-        lblAdsTitle.setForeground(ThemeColors.textMuted());
-        headerRow.add(lblAdsTitle, BorderLayout.WEST);
-
-        JLabel lblAdvertise = new JLabel("Advertise ↗");
-        lblAdvertise.setFont(new Font("Segoe UI", Font.PLAIN, 10));
-        lblAdvertise.setForeground(new Color(99, 102, 241));
-        lblAdvertise.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-        lblAdvertise.setToolTipText("Advertise on TakeoutFix or explore ad network");
-        lblAdvertise.addMouseListener(new MouseAdapter() {
-            @Override public void mouseClicked(MouseEvent e) {
-                com.takeoutfix.shared.util.BrowserUtil.openBrowser("https://a-ads.com?partner=2456560");
-            }
-        });
-        headerRow.add(lblAdvertise, BorderLayout.EAST);
-
-        card.add(headerRow, BorderLayout.NORTH);
-        card.add(adsContainer, BorderLayout.CENTER);
-
-        ThemeColors.addThemeListener(() -> {
-            lblAdsTitle.setForeground(ThemeColors.textMuted());
-            lblAdvertise.setForeground(new Color(99, 102, 241));
-        });
-        return card;
-    }
-
-    public void updateAds(java.util.List<com.takeoutfix.ads.AdSyncService.AdItem> ads) {
-        SwingUtilities.invokeLater(() -> {
-            adsContainer.removeAll();
-            java.util.List<com.takeoutfix.ads.AdSyncService.AdItem> list = (ads != null && !ads.isEmpty()) ? ads :
-                    (adSyncService != null ? adSyncService.getActiveAds() : java.util.Collections.emptyList());
-
-            if (list.isEmpty()) {
-                adsCard.setVisible(false);
-                adsContainer.removeAll();
-                adsContainer.revalidate();
-                adsContainer.repaint();
-                return;
-            }
-            adsCard.setVisible(true);
-            final int targetCount = 8;
-            adsContainer.setLayout(new GridLayout(targetCount, 1, 0, 5));
-            for (int i = 0; i < targetCount; i++) {
-                com.takeoutfix.ads.AdSyncService.AdItem ad = list.get(i % list.size());
-                adsContainer.add(createCompactAdTile(ad));
-            }
-            adsContainer.revalidate();
-            adsContainer.repaint();
-        });
-    }
-
-    private JPanel createCompactAdTile(com.takeoutfix.ads.AdSyncService.AdItem ad) {
-        JLabel arrow = new JLabel();
-        javax.swing.Icon extIcon = UiFactory.svgDynamicIcon("external-link", 11, () -> ThemeColors.textMuted());
-        if (extIcon != null) {
-            arrow.setIcon(extIcon);
-        }
-        JPanel tile = new JPanel(new BorderLayout(8, 0)) {
-            private boolean hovered = false;
-            {
-                addMouseListener(new MouseAdapter() {
-                    @Override public void mouseEntered(MouseEvent e) {
-                        hovered = true;
-                        repaint();
-                    }
-                    @Override public void mouseExited(MouseEvent e) {
-                        hovered = false;
-                        arrow.setForeground(ThemeColors.textMuted());
-                        repaint();
-                    }
-                    @Override public void mouseClicked(MouseEvent e) {
-                        com.takeoutfix.shared.util.BrowserUtil.openBrowser(ad.destinationUrl());
-                    }
-                });
-            }
-
-            @Override
-            protected void paintComponent(Graphics g) {
-                Graphics2D g2 = (Graphics2D) g.create();
-                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-                boolean dark = ThemeColors.isDark();
-                Color bg;
-                Color border;
-                if (dark) {
-                    bg = hovered ? new Color(30, 40, 58, 220) : new Color(20, 26, 38, 160);
-                    border = hovered ? new Color(99, 102, 241, 180) : new Color(38, 48, 68, 140);
-                } else {
-                    bg = hovered ? new Color(238, 242, 255, 230) : new Color(241, 245, 249, 170);
-                    border = hovered ? new Color(99, 102, 241, 150) : new Color(226, 232, 240, 160);
-                }
-                g2.setColor(bg);
-                g2.fillRoundRect(0, 0, getWidth(), getHeight(), 10, 10);
-                g2.setColor(border);
-                g2.setStroke(new BasicStroke(1f));
-                g2.drawRoundRect(0, 0, getWidth() - 1, getHeight() - 1, 10, 10);
-                g2.dispose();
-                super.paintComponent(g);
-            }
-        };
-        tile.setOpaque(false);
-        tile.setBorder(new EmptyBorder(4, 8, 4, 8));
-        tile.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-        tile.setPreferredSize(new Dimension(0, 42));
-        tile.setToolTipText("Open: " + ad.title());
-
-        // 1. Compact 32x32 Thumbnail / Icon container (Pre-added to prevent layout shift)
-        if (ad.imageUrl() != null && !ad.imageUrl().isBlank()) {
-            JLabel imgLabel = new JLabel();
-            imgLabel.setPreferredSize(new Dimension(32, 32));
-            imgLabel.setOpaque(false);
-            imgLabel.setHorizontalAlignment(SwingConstants.CENTER);
-            imgLabel.setVerticalAlignment(SwingConstants.CENTER);
-            tile.add(imgLabel, BorderLayout.WEST);
-            com.takeoutfix.ads.AdSyncService.loadThumbnailAsync(ad.imageUrl(), 32, 32, icon -> {
-                if (icon != null) {
-                    imgLabel.setIcon(icon);
-                    tile.repaint();
-                }
-            });
-        } else {
-            JPanel iconPlaceholder = new JPanel(new GridBagLayout()) {
-                @Override
-                protected void paintComponent(Graphics g) {
-                    Graphics2D g2 = (Graphics2D) g.create();
-                    g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-                    g2.setColor(ThemeColors.isDark() ? new Color(99, 102, 241, 35) : new Color(99, 102, 241, 20));
-                    g2.fillRoundRect(0, 0, getWidth(), getHeight(), 8, 8);
-                    g2.dispose();
-                    super.paintComponent(g);
-                }
-            };
-            iconPlaceholder.setOpaque(false);
-            iconPlaceholder.setPreferredSize(new Dimension(32, 32));
-            JLabel iconLabel = new JLabel();
-            javax.swing.Icon badgeIcon = UiFactory.svgDynamicIcon("external-link", 13, () -> new Color(99, 102, 241));
-            if (badgeIcon != null) {
-                iconLabel.setIcon(badgeIcon);
-            }
-            iconPlaceholder.add(iconLabel);
-            tile.add(iconPlaceholder, BorderLayout.WEST);
-        }
-
-        // 2. Compact Center Details (Tag/Discount + Title)
-        JPanel details = new JPanel(new GridLayout(2, 1, 0, 1));
-        details.setOpaque(false);
-
-        JPanel topRow = new JPanel(new BorderLayout(4, 0));
-        topRow.setOpaque(false);
-
-        String tagText = ad.tag().isBlank() ? "SPONSORED" : ad.tag().trim();
-        if (tagText.length() > 18) tagText = tagText.substring(0, 16) + "..";
-        JLabel tag = new JLabel(tagText);
-        tag.setFont(new Font("Segoe UI", Font.BOLD, 9));
-        tag.setForeground(ThemeColors.textMuted());
-        topRow.add(tag, BorderLayout.WEST);
-
-        if (!ad.discount().isBlank()) {
-            boolean isAd = "AD".equalsIgnoreCase(ad.discount().trim());
-            JLabel disc = new JLabel(ad.discount());
-            disc.setFont(new Font("Segoe UI", Font.BOLD, 9));
-            disc.setForeground(isAd ? new Color(99, 102, 241) : ThemeColors.success());
-            topRow.add(disc, BorderLayout.EAST);
-        }
-        details.add(topRow);
-
-        String cleanTitle = ad.title() != null ? ad.title().trim() : "";
-        if (cleanTitle.length() > 28) {
-            cleanTitle = cleanTitle.substring(0, 26).trim() + "...";
-        }
-        JLabel title = new JLabel(cleanTitle);
-        title.setFont(new Font("Segoe UI", Font.BOLD, 10));
-        title.setForeground(ThemeColors.textPrimary());
-        details.add(title);
-
-        tile.add(details, BorderLayout.CENTER);
-
-        // 3. Compact subtle arrow link
-        arrow.setFont(new Font("Segoe UI", Font.BOLD, 10));
-        arrow.setForeground(ThemeColors.textMuted());
-        arrow.setBorder(new EmptyBorder(0, 2, 0, 0));
-        tile.add(arrow, BorderLayout.EAST);
-
-        ThemeColors.addThemeListener(() -> {
-            tag.setForeground(ThemeColors.textMuted());
-            title.setForeground(ThemeColors.textPrimary());
-            arrow.setForeground(ThemeColors.textMuted());
-            tile.repaint();
-        });
-
-        return tile;
     }
 
     private JPanel createSystemHealthCard() {

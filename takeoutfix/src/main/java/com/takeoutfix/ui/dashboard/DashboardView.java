@@ -1,7 +1,5 @@
 package com.takeoutfix.ui.dashboard;
 
-import com.takeoutfix.ads.AdSyncService;
-import com.takeoutfix.ads.DealsRotatorBanner;
 import com.takeoutfix.app.HeaderBar;
 import com.takeoutfix.app.RecoveryCenterPanel;
 import com.takeoutfix.auth.UserSyncBridgeService;
@@ -40,13 +38,11 @@ public class DashboardView extends JPanel {
     private final SessionStatsService sessionStatsService;
     private final NetworkMonitorService networkMonitorService;
     private final UserSyncBridgeService userSyncBridgeService;
-    private final AdSyncService adSyncService;
     private final Runnable onSignOutRequested;
 
     private HeaderBar headerBar;
     private CommandCenterPanel commandCenterPanel;
     private RecoveryCenterPanel recoveryCenterPanel;
-    private DealsRotatorBanner dealsRotatorBanner;
     private UpdateNotificationBanner updateNotificationBanner;
     private com.takeoutfix.auth.ui.AuthStatusBanner authStatusBanner;
     private final PowerManager powerManager = new PowerManager();
@@ -61,7 +57,6 @@ public class DashboardView extends JPanel {
                          SessionStatsService sessionStatsService,
                          NetworkMonitorService networkMonitorService,
                          UserSyncBridgeService userSyncBridgeService,
-                         AdSyncService adSyncService,
                          Runnable onSignOutRequested) {
         super(new BorderLayout(0, 0));
         this.parentFrame = parentFrame;
@@ -69,7 +64,6 @@ public class DashboardView extends JPanel {
         this.sessionStatsService = sessionStatsService != null ? sessionStatsService : new SessionStatsService();
         this.networkMonitorService = networkMonitorService != null ? networkMonitorService : new NetworkMonitorService();
         this.userSyncBridgeService = userSyncBridgeService != null ? userSyncBridgeService : new UserSyncBridgeService();
-        this.adSyncService = adSyncService != null ? adSyncService : new AdSyncService();
         this.onSignOutRequested = onSignOutRequested;
 
         buildInterface();
@@ -129,14 +123,6 @@ public class DashboardView extends JPanel {
 
         // 3. CENTER: Recovery Center (Main Content)
         ambientCanvas.add(createRecoveryCenter(), BorderLayout.CENTER);
-
-        // 4. SOUTH: Footer Status / Telemetry Bar
-        ambientCanvas.add(createFooter(), BorderLayout.SOUTH);
-
-        // Dynamically update footer storage when user selects or clears destination folder
-        if (recoveryCenterPanel != null && dealsRotatorBanner != null) {
-            recoveryCenterPanel.setOnDestinationChanged(dealsRotatorBanner::setDestinationDirectory);
-        }
 
         // Header Navigation -> Recovery Center switcher with active tab synchronization
         if (headerBar != null && recoveryCenterPanel != null) {
@@ -211,13 +197,13 @@ public class DashboardView extends JPanel {
     }
 
     private JComponent createSidebar() {
-        commandCenterPanel = new CommandCenterPanel(userSyncBridgeService, sessionStatsService, adSyncService);
+        commandCenterPanel = new CommandCenterPanel(userSyncBridgeService, sessionStatsService);
         userSyncBridgeService.addListener(user -> commandCenterPanel.updateUserData());
         return commandCenterPanel;
     }
 
     private JPanel createRecoveryCenter() {
-        recoveryCenterPanel = new RecoveryCenterPanel(parentFrame, networkMonitorService, userSyncBridgeService, adSyncService);
+        recoveryCenterPanel = new RecoveryCenterPanel(parentFrame, networkMonitorService, userSyncBridgeService);
         recoveryCenterPanel.setExecutionCallbacks(
                 this::handleStart,
                 this::handlePause,
@@ -226,11 +212,6 @@ public class DashboardView extends JPanel {
         );
         userSyncBridgeService.addListener(user -> recoveryCenterPanel.updatePlanBadge());
         return recoveryCenterPanel;
-    }
-
-    private JPanel createFooter() {
-        dealsRotatorBanner = new DealsRotatorBanner();
-        return dealsRotatorBanner;
     }
 
     // Execution Logic

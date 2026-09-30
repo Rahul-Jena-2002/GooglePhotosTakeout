@@ -11,10 +11,14 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 
+import org.junit.jupiter.api.condition.EnabledOnOs;
+import org.junit.jupiter.api.condition.OS;
+
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
 
+@EnabledOnOs(OS.WINDOWS)
 public class HistoryAndSettingsViewTest {
 
     @BeforeAll
@@ -47,7 +51,7 @@ public class HistoryAndSettingsViewTest {
         assertTrue(latch.await(5, TimeUnit.SECONDS));
         if (error.get() != null) {
             error.get().printStackTrace();
-            fail("HistoryView instantiation failed: " + error.get().getMessage(), error.get());
+            fail("HistoryView instantiation failed: " + error.get().getMessage());
         }
     }
 
@@ -71,7 +75,7 @@ public class HistoryAndSettingsViewTest {
         assertTrue(latch.await(5, TimeUnit.SECONDS));
         if (error.get() != null) {
             error.get().printStackTrace();
-            fail("SettingsView instantiation failed: " + error.get().getMessage(), error.get());
+            fail("SettingsView instantiation failed: " + error.get().getMessage());
         }
     }
 }

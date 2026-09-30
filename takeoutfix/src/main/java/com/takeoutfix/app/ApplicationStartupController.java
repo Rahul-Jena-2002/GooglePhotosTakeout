@@ -1,6 +1,5 @@
 package com.takeoutfix.app;
 
-import com.takeoutfix.ads.AdSyncService;
 import com.takeoutfix.auth.AuthSession;
 import com.takeoutfix.auth.GoogleAuthService;
 import com.takeoutfix.auth.SessionManager;
@@ -47,7 +46,6 @@ public class ApplicationStartupController {
     private final ExtractionService extractionService;
     private final SessionStatsService sessionStatsService;
     private final NetworkMonitorService networkMonitorService;
-    private final AdSyncService adSyncService;
 
     private JFrame mainFrame;
     private LoadingView loadingView;
@@ -59,15 +57,13 @@ public class ApplicationStartupController {
     public ApplicationStartupController(UserSyncBridgeService userSyncBridgeService,
                                         ExtractionService extractionService,
                                         SessionStatsService sessionStatsService,
-                                        NetworkMonitorService networkMonitorService,
-                                        AdSyncService adSyncService) {
+                                        NetworkMonitorService networkMonitorService) {
         this.userSyncBridgeService = userSyncBridgeService;
         this.sessionManager = userSyncBridgeService != null ? userSyncBridgeService.getSessionManager() : new SessionManager();
         this.googleAuthService = userSyncBridgeService != null ? userSyncBridgeService.getGoogleAuthService() : new GoogleAuthService();
         this.extractionService = extractionService;
         this.sessionStatsService = sessionStatsService;
         this.networkMonitorService = networkMonitorService;
-        this.adSyncService = adSyncService;
 
         if (this.userSyncBridgeService != null) {
             this.userSyncBridgeService.addListener(user -> SwingUtilities.invokeLater(() -> {
@@ -81,7 +77,7 @@ public class ApplicationStartupController {
 
     public ApplicationStartupController() {
         this(new UserSyncBridgeService(), new ExtractionService(), new SessionStatsService(),
-                new NetworkMonitorService(), new AdSyncService());
+                new NetworkMonitorService());
     }
 
     /**
@@ -302,7 +298,6 @@ public class ApplicationStartupController {
                     sessionStatsService,
                     networkMonitorService,
                     userSyncBridgeService,
-                    adSyncService,
                     this::handleSignOut
             );
         }

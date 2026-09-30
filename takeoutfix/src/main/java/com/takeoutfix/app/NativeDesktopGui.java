@@ -1,7 +1,6 @@
 package com.takeoutfix.app;
 
 import com.formdev.flatlaf.FlatLightLaf;
-import com.takeoutfix.ads.AdSyncService;
 import com.takeoutfix.auth.UserSyncBridgeService;
 import com.takeoutfix.network.NetworkMonitorService;
 import com.takeoutfix.restore.SessionStatsService;
@@ -33,10 +32,9 @@ public class NativeDesktopGui {
     public NativeDesktopGui(ExtractionService extractionService,
                             SessionStatsService sessionStatsService,
                             NetworkMonitorService networkMonitorService,
-                            UserSyncBridgeService userSyncBridgeService,
-                            AdSyncService adSyncService) {
+                            UserSyncBridgeService userSyncBridgeService) {
         this(new ApplicationStartupController(userSyncBridgeService, extractionService, sessionStatsService,
-                networkMonitorService, adSyncService));
+                networkMonitorService));
     }
 
     public NativeDesktopGui() {

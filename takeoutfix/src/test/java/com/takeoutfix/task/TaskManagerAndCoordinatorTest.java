@@ -18,15 +18,14 @@ public class TaskManagerAndCoordinatorTest {
 
     @BeforeAll
     public static void initJavaFx() {
+        if ("true".equalsIgnoreCase(System.getenv("GITHUB_ACTIONS")) && !System.getProperty("os.name").toLowerCase().contains("win")) {
+            return; // Skip JavaFX graphical toolkit startup on headless Linux/macOS runners
+        }
         CountDownLatch latch = new CountDownLatch(1);
         try {
             Platform.startup(latch::countDown);
-        } catch (IllegalStateException e) {
-            return;
-        }
-        try {
-            latch.await(5, TimeUnit.SECONDS);
-        } catch (InterruptedException ignored) {}
+            latch.await(2, TimeUnit.SECONDS);
+        } catch (Throwable ignored) {}
     }
 
     private FileAccessCoordinator coordinator;

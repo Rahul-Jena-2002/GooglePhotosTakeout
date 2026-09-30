@@ -36,13 +36,10 @@ jobs:
         include:
           - os: windows-latest
             primary_artifact: TakeoutFix.exe
-            legacy_artifact: TakeoutFix-Java.exe
           - os: macos-latest
             primary_artifact: TakeoutFix.dmg
-            legacy_artifact: TakeoutFix-Java.dmg
           - os: ubuntu-latest
             primary_artifact: TakeoutFix.AppImage
-            legacy_artifact: TakeoutFix-Java.AppImage
 
     steps:
       - name: Checkout Code
@@ -141,32 +138,8 @@ jobs:
             Write-Host "Self-signing step failed (non-fatal): $_"
           }
 
-          Copy-Item "TakeoutFix.exe" "TakeoutFix-Java.exe" -Force
           Remove-Item $payloadZip -Force
-
-          # 4. Build WiX Setup Installer (alternative for users who prefer an installer)
-          Write-Host "Generating TakeoutFix-Setup.exe installer..."
-          jpackage `
-            --type exe `
-            --app-image "dist-app/TakeoutFix" `
-            --name "TakeoutFix-Setup" `
-            --icon "takeoutfix/icons/icon.ico" `
-            --app-version "$appVer" `
-            --vendor "TakeoutFix" `
-            --copyright "Copyright 2026 TakeoutFix" `
-            --description "Google Takeout Photo Metadata Restorer" `
-            --dest "dist-exe" `
-            --win-per-user-install `
-            --win-dir-chooser `
-            --win-menu `
-            --win-shortcut `
-            --verbose
-
-          $generatedSetup = Get-ChildItem "dist-exe/*.exe" | Select-Object -First 1
-          if ($generatedSetup) {
-            Copy-Item $generatedSetup.FullName "./TakeoutFix-Setup.exe" -Force
-          }
-          Write-Host "Done. Artifacts: Direct Run TakeoutFix.exe, TakeoutFix-Setup.exe"
+          Write-Host "Done. Standalone single-file executable TakeoutFix.exe ready."
 
       # ─── macOS: Standalone DMG with Gatekeeper-compatible signing ───
       - name: Package Java macOS (.dmg)
@@ -217,7 +190,6 @@ jobs:
           codesign --force --sign - "$DMG_FILE" || echo "DMG sign warning (non-fatal)"
 
           cp "$DMG_FILE" ./TakeoutFix.dmg
-          cp "$DMG_FILE" ./TakeoutFix-Java.dmg
           echo "Generated & Signed: TakeoutFix.dmg (Version $APP_VER)"
 
       # ─── Linux: AppImage, DEB Package & Portable Archive ───
@@ -259,7 +231,6 @@ jobs:
             DEB_FILE=$(find dist-deb -name "*.deb" | head -n 1)
             if [ -n "$DEB_FILE" ]; then
               cp "$DEB_FILE" ./TakeoutFix.deb
-              cp "$DEB_FILE" ./TakeoutFix-Java.deb
             fi
           fi
 
@@ -281,7 +252,6 @@ jobs:
             ARCH=x86_64 ./appimagetool --appimage-extract-and-run AppDir ./TakeoutFix.AppImage
           }
           chmod +x ./TakeoutFix.AppImage
-          cp ./TakeoutFix.AppImage ./TakeoutFix-Java.AppImage
 
           # 4. Portable tar.gz archive (runs on any Linux without FUSE or root privileges)
           tar -czf ./TakeoutFix-Linux-Portable.tar.gz -C dist-linux TakeoutFix
@@ -294,8 +264,6 @@ jobs:
           name: java-${{ matrix.os }}
           path: |
             ${{ matrix.primary_artifact }}
-            ${{ matrix.legacy_artifact }}
-            TakeoutFix-Setup.exe
             *.deb
             *.tar.gz
           retention-days: 1
@@ -307,8 +275,6 @@ jobs:
           tag_name: ${{ github.event.inputs.tag_name || github.ref_name || 'latest' }}
           files: |
             ${{ matrix.primary_artifact }}
-            ${{ matrix.legacy_artifact }}
-            TakeoutFix-Setup.exe
             *.deb
             *.tar.gz
 

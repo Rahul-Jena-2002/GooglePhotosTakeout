@@ -2,7 +2,6 @@ package com.takeoutfix.dashboard;
 
 import com.takeoutfix.network.SystemHardwareInfo;
 import com.takeoutfix.auth.UserSyncBridgeService;
-import com.takeoutfix.ads.AdSyncService;
 import com.takeoutfix.auth.FirebaseSyncService;
 import com.takeoutfix.network.NetworkMonitorService;
 
@@ -25,7 +24,6 @@ public class DashboardPanel extends JPanel {
     private final DashboardHeaderBanner headerBanner;
     private final DashboardAccountSection accountSection;
     private final DashboardKpiSection kpiSection;
-    private DashboardDealsSection dealsSection;
     private final DashboardTelemetrySection telemetrySection;
     private final DashboardQuickActionsSection quickActionsSection;
 
@@ -36,11 +34,6 @@ public class DashboardPanel extends JPanel {
     });
 
     public DashboardPanel(UserSyncBridgeService userService, NetworkMonitorService netService, Consumer<String> onNavigate) {
-        this(userService, netService, null, onNavigate);
-    }
-
-    public DashboardPanel(UserSyncBridgeService userService, NetworkMonitorService netService,
-                          AdSyncService adSyncService, Consumer<String> onNavigate) {
         super(new BorderLayout());
         setOpaque(false);
         this.userService = userService;
@@ -51,10 +44,6 @@ public class DashboardPanel extends JPanel {
         this.kpiSection = new DashboardKpiSection(userService);
         this.telemetrySection = new DashboardTelemetrySection();
         this.quickActionsSection = new DashboardQuickActionsSection(onNavigate);
-
-        if (adSyncService != null) {
-            this.dealsSection = new DashboardDealsSection(adSyncService);
-        }
 
         buildLayout();
         wireListeners();
@@ -78,12 +67,7 @@ public class DashboardPanel extends JPanel {
         accountQuotaRow.add(kpiSection);
         scrollContent.add(accountQuotaRow, createRowConstraints(gridY++));
 
-        // 3. Recommended Storage Deals
-        if (dealsSection != null) {
-            scrollContent.add(dealsSection, createRowConstraints(gridY++));
-        }
-
-        // 4. Hardware Host Telemetry
+        // 3. Hardware Host Telemetry
         scrollContent.add(telemetrySection, createRowConstraints(gridY++));
 
         // 5. Quick Action Launchers

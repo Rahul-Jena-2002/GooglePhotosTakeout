@@ -108,7 +108,6 @@ public class RecoveryCenterPanel extends JPanel {
     private final Component parentFrame;
     private final NetworkMonitorService netService;
     private final UserSyncBridgeService userService;
-    private final com.takeoutfix.ads.AdSyncService adSyncService;
 
     // Sub-tool panels
     private final DashboardPanel dashboardPanel;
@@ -129,21 +128,11 @@ public class RecoveryCenterPanel extends JPanel {
         this.onCardChange = listener;
     }
 
-    public com.takeoutfix.ads.AdSyncService getAdSyncService() {
-        return adSyncService;
-    }
-
     public RecoveryCenterPanel(Component parentFrame, NetworkMonitorService netService,
             UserSyncBridgeService userService) {
-        this(parentFrame, netService, userService, null);
-    }
-
-    public RecoveryCenterPanel(Component parentFrame, NetworkMonitorService netService,
-            UserSyncBridgeService userService, com.takeoutfix.ads.AdSyncService adSyncService) {
         this.parentFrame = parentFrame;
         this.netService = netService;
         this.userService = userService;
-        this.adSyncService = adSyncService;
 
         setLayout(new BorderLayout(0, 10));
         setBorder(new EmptyBorder(16, 16, 16, 16));
@@ -205,7 +194,7 @@ public class RecoveryCenterPanel extends JPanel {
         btnOpenFolder.setPreferredSize(new Dimension(170, 36));
 
         // Instantiate sub-tool panels
-        dashboardPanel = new DashboardPanel(userService, netService, adSyncService, this::switchTo);
+        dashboardPanel = new DashboardPanel(userService, netService, this::switchTo);
         exifViewerPanel = new ExifViewerPanel(userService);
         comparisonPanel = new ComparisonPanel(userService);
         duplicateFinderPanel = new DuplicateFinderPanel(userService);

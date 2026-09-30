@@ -1,6 +1,5 @@
 package com.takeoutfix.app;
 
-import com.takeoutfix.ads.AdSyncService;
 import com.takeoutfix.auth.*;
 import com.takeoutfix.network.NetworkMonitorService;
 import com.takeoutfix.restore.SessionStatsService;
@@ -38,8 +37,7 @@ public class ApplicationStartupControllerTest {
                 userSyncBridgeService,
                 new ExtractionService(),
                 new SessionStatsService(),
-                new NetworkMonitorService(),
-                new AdSyncService()
+                new NetworkMonitorService()
         );
 
         controller.showLoadingView();
@@ -58,8 +56,7 @@ public class ApplicationStartupControllerTest {
                 userSyncBridgeService,
                 new ExtractionService(),
                 new SessionStatsService(),
-                new NetworkMonitorService(),
-                new AdSyncService()
+                new NetworkMonitorService()
         );
 
         controller.showLoadingView();
@@ -79,8 +76,7 @@ public class ApplicationStartupControllerTest {
                 userSyncBridgeService,
                 new ExtractionService(),
                 new SessionStatsService(),
-                new NetworkMonitorService(),
-                new AdSyncService()
+                new NetworkMonitorService()
         );
 
         AuthSession mockSession = new AuthSession("test-uid-123", "alice@gmail.com", "Alice Smith",

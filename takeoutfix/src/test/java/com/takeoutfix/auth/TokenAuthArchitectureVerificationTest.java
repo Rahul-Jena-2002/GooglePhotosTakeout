@@ -1,6 +1,5 @@
 package com.takeoutfix.auth;
 
-import com.takeoutfix.ads.AdSyncService;
 import com.takeoutfix.app.ApplicationStartupController;
 import com.takeoutfix.network.NetworkMonitorService;
 import com.takeoutfix.restore.SessionStatsService;
@@ -54,8 +53,7 @@ class TokenAuthArchitectureVerificationTest {
                 userService,
                 new ExtractionService(),
                 new SessionStatsService(),
-                new NetworkMonitorService(),
-                new AdSyncService()
+                new NetworkMonitorService()
         );
 
         controller.startApplication();
@@ -206,8 +204,7 @@ class TokenAuthArchitectureVerificationTest {
                 userService,
                 new ExtractionService(),
                 new SessionStatsService(),
-                new NetworkMonitorService(),
-                new AdSyncService()
+                new NetworkMonitorService()
         );
 
         controller.startApplication();
