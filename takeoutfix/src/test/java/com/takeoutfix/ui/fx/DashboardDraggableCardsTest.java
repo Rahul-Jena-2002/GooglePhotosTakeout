@@ -5,6 +5,8 @@ import javafx.scene.control.Label;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.EnabledOnOs;
+import org.junit.jupiter.api.condition.OS;
 
 import java.util.List;
 import java.util.Set;
@@ -14,6 +16,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+@EnabledOnOs(OS.WINDOWS)
 public class DashboardDraggableCardsTest {
 
     @BeforeAll

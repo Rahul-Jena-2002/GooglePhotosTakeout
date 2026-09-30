@@ -53,6 +53,15 @@ public abstract class BackgroundTask implements Runnable {
     private long endTimeMs = 0L;
     private Throwable failureError = null;
 
+    private volatile TaskState rawState = TaskState.QUEUED;
+    private volatile double rawProgress = 0.0;
+    private volatile String rawStatusMessage = "Queued";
+    private volatile long rawItemsProcessed = 0L;
+    private volatile long rawTotalItems = 0L;
+    private volatile long rawBytesProcessed = 0L;
+    private volatile long rawTotalBytes = 0L;
+    private volatile double rawThroughputMbPerSec = 0.0;
+
     public BackgroundTask(String toolName, String taskTitle, WorkloadType workloadType) {
         this.id = UUID.randomUUID().toString().substring(0, 8);
         this.toolName = toolName;
@@ -68,7 +77,7 @@ public abstract class BackgroundTask implements Runnable {
         }
 
         startTimeMs = System.currentTimeMillis();
-        if (state.get() == TaskState.QUEUED) {
+        if (rawState == TaskState.QUEUED) {
             setState(TaskState.PROCESSING);
         }
         setStatusMessage("Starting " + taskTitle + "...");
@@ -94,8 +103,14 @@ public abstract class BackgroundTask implements Runnable {
             t.printStackTrace();
         } finally {
             endTimeMs = System.currentTimeMillis();
+            onFinished();
         }
     }
+
+    /**
+     * Optional lifecycle callback invoked when task finishes execution (COMPLETED, CANCELLED, or FAILED).
+     */
+    protected void onFinished() {}
 
     /**
      * Subclasses implement their workload execution loop here.
@@ -115,7 +130,7 @@ public abstract class BackgroundTask implements Runnable {
             while (pauseRequested.get() && !cancelRequested.get()) {
                 setState(TaskState.PAUSED);
                 setStatusMessage("Paused");
-                pauseLock.wait();
+                pauseLock.wait(100);
             }
         }
 
@@ -128,7 +143,7 @@ public abstract class BackgroundTask implements Runnable {
     }
 
     public void pause() {
-        TaskState s = state.get();
+        TaskState s = rawState;
         if (s == TaskState.RUNNING || s == TaskState.SCANNING || s == TaskState.PROCESSING) {
             pauseRequested.set(true);
             setState(TaskState.PAUSING);
@@ -142,13 +157,13 @@ public abstract class BackgroundTask implements Runnable {
     protected void onPauseRequested() {}
 
     public void resume() {
-        if (pauseRequested.get() || state.get() == TaskState.PAUSED || state.get() == TaskState.PAUSING) {
+        if (pauseRequested.get() || rawState == TaskState.PAUSED || rawState == TaskState.PAUSING) {
             pauseRequested.set(false);
             onResumeRequested();
             synchronized (pauseLock) {
                 pauseLock.notifyAll();
             }
-            if (state.get() == TaskState.PAUSED || state.get() == TaskState.PAUSING) {
+            if (rawState == TaskState.PAUSED || rawState == TaskState.PAUSING) {
                 setState(TaskState.PROCESSING);
             }
         }
@@ -176,28 +191,19 @@ public abstract class BackgroundTask implements Runnable {
     }
 
     public boolean isPaused() {
-        return pauseRequested.get() || state.get() == TaskState.PAUSED || state.get() == TaskState.PAUSING;
+        return pauseRequested.get() || rawState == TaskState.PAUSED || rawState == TaskState.PAUSING;
     }
 
     public boolean isRunning() {
-        TaskState s = state.get();
+        TaskState s = rawState;
         return s == TaskState.RUNNING || s == TaskState.SCANNING || s == TaskState.PROCESSING
                 || s == TaskState.PAUSING || s == TaskState.CANCELLING;
     }
 
     public boolean isFinished() {
-        TaskState s = state.get();
+        TaskState s = rawState;
         return s == TaskState.COMPLETED || s == TaskState.FAILED || s == TaskState.CANCELLED || s == TaskState.INTERRUPTED;
     }
-
-    private volatile TaskState rawState = TaskState.QUEUED;
-    private volatile double rawProgress = 0.0;
-    private volatile String rawStatusMessage = "Queued";
-    private volatile long rawItemsProcessed = 0L;
-    private volatile long rawTotalItems = 0L;
-    private volatile long rawBytesProcessed = 0L;
-    private volatile long rawTotalBytes = 0L;
-    private volatile double rawThroughputMbPerSec = 0.0;
 
     // --- Getters & Setters ---
 

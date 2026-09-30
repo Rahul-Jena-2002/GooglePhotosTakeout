@@ -1,6 +1,5 @@
 package com.takeoutfix.task;
 
-import javafx.application.Platform;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 
@@ -29,6 +28,8 @@ public class TaskManager {
 
     private final ObservableList<BackgroundTask> activeTasks = FXCollections.observableArrayList();
     private final ObservableList<BackgroundTask> recentTasks = FXCollections.observableArrayList();
+    private final ConcurrentHashMap<String, BackgroundTask> activeTasksMap = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<String, BackgroundTask> allTasksMap = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<String, Future<?>> runningFutures = new ConcurrentHashMap<>();
     private final List<Runnable> taskChangeListeners = new CopyOnWriteArrayList<>();
 
@@ -47,6 +48,9 @@ public class TaskManager {
     public synchronized void submitTask(BackgroundTask task) {
         if (task == null) return;
 
+        activeTasksMap.put(task.getId(), task);
+        allTasksMap.put(task.getId(), task);
+
         runFx(() -> {
             synchronized (activeTasks) {
                 activeTasks.add(task);
@@ -62,6 +66,7 @@ public class TaskManager {
                 task.run();
             } finally {
                 runningFutures.remove(task.getId());
+                activeTasksMap.remove(task.getId());
                 runFx(() -> {
                     synchronized (activeTasks) {
                         activeTasks.remove(task);
@@ -84,57 +89,41 @@ public class TaskManager {
     }
 
     public void pauseTask(String taskId) {
-        List<BackgroundTask> tasks;
-        synchronized (activeTasks) {
-            tasks = new java.util.ArrayList<>(activeTasks);
-        }
-        for (BackgroundTask task : tasks) {
-            if (task.getId().equals(taskId)) {
-                task.pause();
-                notifyListeners();
-                break;
-            }
+        if (taskId == null) return;
+        BackgroundTask task = activeTasksMap.get(taskId);
+        if (task != null) {
+            task.pause();
+            notifyListeners();
         }
     }
 
     public void resumeTask(String taskId) {
-        List<BackgroundTask> tasks;
-        synchronized (activeTasks) {
-            tasks = new java.util.ArrayList<>(activeTasks);
-        }
-        for (BackgroundTask task : tasks) {
-            if (task.getId().equals(taskId)) {
-                task.resume();
-                notifyListeners();
-                break;
-            }
+        if (taskId == null) return;
+        BackgroundTask task = activeTasksMap.get(taskId);
+        if (task != null) {
+            task.resume();
+            notifyListeners();
         }
     }
 
     public void cancelTask(String taskId) {
-        List<BackgroundTask> tasks;
-        synchronized (activeTasks) {
-            tasks = new java.util.ArrayList<>(activeTasks);
+        if (taskId == null) return;
+        BackgroundTask task = activeTasksMap.get(taskId);
+        if (task == null) {
+            task = allTasksMap.get(taskId);
         }
-        for (BackgroundTask task : tasks) {
-            if (task.getId().equals(taskId)) {
-                task.cancel();
-                Future<?> future = runningFutures.get(taskId);
-                if (future != null) {
-                    future.cancel(true);
-                }
-                notifyListeners();
-                break;
+        if (task != null) {
+            task.cancel();
+            Future<?> future = runningFutures.get(taskId);
+            if (future != null) {
+                future.cancel(true);
             }
+            notifyListeners();
         }
     }
 
     public void cancelAll() {
-        List<BackgroundTask> tasks;
-        synchronized (activeTasks) {
-            tasks = new java.util.ArrayList<>(activeTasks);
-        }
-        for (BackgroundTask task : tasks) {
+        for (BackgroundTask task : new java.util.ArrayList<>(activeTasksMap.values())) {
             task.cancel();
         }
         for (Future<?> f : new java.util.ArrayList<>(runningFutures.values())) {
@@ -144,22 +133,14 @@ public class TaskManager {
     }
 
     public void pauseAll() {
-        List<BackgroundTask> tasks;
-        synchronized (activeTasks) {
-            tasks = new java.util.ArrayList<>(activeTasks);
-        }
-        for (BackgroundTask task : tasks) {
+        for (BackgroundTask task : activeTasksMap.values()) {
             task.pause();
         }
         notifyListeners();
     }
 
     public void resumeAll() {
-        List<BackgroundTask> tasks;
-        synchronized (activeTasks) {
-            tasks = new java.util.ArrayList<>(activeTasks);
-        }
-        for (BackgroundTask task : tasks) {
+        for (BackgroundTask task : activeTasksMap.values()) {
             task.resume();
         }
         notifyListeners();
@@ -175,35 +156,17 @@ public class TaskManager {
 
     public BackgroundTask getTask(String taskId) {
         if (taskId == null) return null;
-        List<BackgroundTask> aTasks;
-        synchronized (activeTasks) {
-            aTasks = new java.util.ArrayList<>(activeTasks);
-        }
-        for (BackgroundTask t : aTasks) {
-            if (taskId.equals(t.getId())) return t;
-        }
-        List<BackgroundTask> rTasks;
-        synchronized (recentTasks) {
-            rTasks = new java.util.ArrayList<>(recentTasks);
-        }
-        for (BackgroundTask t : rTasks) {
-            if (taskId.equals(t.getId())) return t;
-        }
-        return null;
+        BackgroundTask t = activeTasksMap.get(taskId);
+        if (t != null) return t;
+        return allTasksMap.get(taskId);
     }
 
     public int getActiveTaskCount() {
-        synchronized (activeTasks) {
-            return activeTasks.size();
-        }
+        return activeTasksMap.size();
     }
 
     public boolean hasRunningTasks() {
-        List<BackgroundTask> tasks;
-        synchronized (activeTasks) {
-            tasks = new java.util.ArrayList<>(activeTasks);
-        }
-        for (BackgroundTask t : tasks) {
+        for (BackgroundTask t : activeTasksMap.values()) {
             if (t.isRunning()) return true;
         }
         return false;

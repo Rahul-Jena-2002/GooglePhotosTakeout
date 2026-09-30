@@ -127,8 +127,11 @@ public class TaskManagerAndCoordinatorTest {
         assertTrue(startedLatch.await(3, TimeUnit.SECONDS), "Task did not start in time");
         assertTrue(completedLatch.await(3, TimeUnit.SECONDS), "Task did not complete in time");
 
-        // Wait brief moment for thread completion callback
-        Thread.sleep(100);
+        long deadline = System.currentTimeMillis() + 2000;
+        while (!testTask.isFinished() && System.currentTimeMillis() < deadline) {
+            Thread.sleep(20);
+        }
+
         assertEquals(BackgroundTask.TaskState.COMPLETED, testTask.getState());
         assertEquals(1.0, testTask.getProgress(), 0.01);
     }
@@ -136,25 +139,37 @@ public class TaskManagerAndCoordinatorTest {
     @Test
     public void testTaskCancellation() throws Exception {
         CountDownLatch startedLatch = new CountDownLatch(1);
+        CountDownLatch finishedLatch = new CountDownLatch(1);
 
         BackgroundTask cancellableTask = new BackgroundTask("CancelTool", "Infinite Loop", BackgroundTask.WorkloadType.BALANCED) {
             @Override
             protected void execute() throws Exception {
                 startedLatch.countDown();
-                while (!isCancelRequested()) {
+                int loops = 0;
+                while (!isCancelRequested() && loops++ < 100) {
                     checkPauseOrCancel();
                     Thread.sleep(20);
                 }
             }
+
+            @Override
+            protected void onFinished() {
+                finishedLatch.countDown();
+            }
         };
 
         taskManager.submitTask(cancellableTask);
-        assertTrue(startedLatch.await(3, TimeUnit.SECONDS));
+        assertTrue(startedLatch.await(3, TimeUnit.SECONDS), "Task should start within 3s");
 
         taskManager.cancelTask(cancellableTask.getId());
-        Thread.sleep(150);
+        assertTrue(finishedLatch.await(3, TimeUnit.SECONDS), "Task should complete cancellation within 3s");
 
-        assertTrue(cancellableTask.isFinished());
+        long deadline = System.currentTimeMillis() + 2000;
+        while (!cancellableTask.isFinished() && System.currentTimeMillis() < deadline) {
+            Thread.sleep(20);
+        }
+
+        assertTrue(cancellableTask.isFinished(), "Task should be marked finished");
         assertEquals(BackgroundTask.TaskState.CANCELLED, cancellableTask.getState());
     }
 
@@ -186,7 +201,11 @@ public class TaskManagerAndCoordinatorTest {
         assertTrue(processLatch.await(3, TimeUnit.SECONDS));
         assertTrue(finishLatch.await(3, TimeUnit.SECONDS));
 
-        Thread.sleep(100);
+        long deadline = System.currentTimeMillis() + 2000;
+        while (!stateTask.isFinished() && System.currentTimeMillis() < deadline) {
+            Thread.sleep(20);
+        }
+
         assertEquals(BackgroundTask.TaskState.COMPLETED, stateTask.getState());
         assertTrue(stateTask.isFinished());
         assertTrue(stateTask.getDurationMs() >= 50);
