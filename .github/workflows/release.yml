@@ -276,30 +276,29 @@ jobs:
           cp takeoutfix/icons/icon.png AppDir/usr/share/icons/hicolor/256x256/apps/takeoutfix.png
           cp takeoutfix/icons/icon.png AppDir/takeoutfix.png
           ln -sf takeoutfix.png AppDir/.DirIcon
-          cat << 'EOF' > AppDir/takeoutfix.desktop
-[Desktop Entry]
-Name=TakeoutFix
-Exec=TakeoutFix
-Icon=takeoutfix
-Type=Application
-Categories=Utility;Graphics;
-Comment=Google Takeout Photo Metadata Restorer
-Terminal=false
-EOF
+
+          printf '%s\n' \
+            '[Desktop Entry]' \
+            'Name=TakeoutFix' \
+            'Exec=TakeoutFix' \
+            'Icon=takeoutfix' \
+            'Type=Application' \
+            'Categories=Utility;Graphics;' \
+            'Comment=Google Takeout Photo Metadata Restorer' \
+            'Terminal=false' > AppDir/takeoutfix.desktop
           cp AppDir/takeoutfix.desktop AppDir/usr/share/applications/takeoutfix.desktop
 
-          cat << 'EOF' > AppDir/AppRun
-#!/bin/bash
-HERE="$(dirname "$(readlink -f "${0}")")"
-if [ -x "${HERE}/usr/bin/TakeoutFix" ]; then
-  exec "${HERE}/usr/bin/TakeoutFix" "$@"
-elif [ -x "${HERE}/usr/bin/takeoutfix" ]; then
-  exec "${HERE}/usr/bin/takeoutfix" "$@"
-else
-  EXEC=$(find "${HERE}/usr" -maxdepth 3 -type f \( -name "TakeoutFix" -o -name "takeoutfix" \) | head -n 1)
-  exec "$EXEC" "$@"
-fi
-EOF
+          printf '%s\n' \
+            '#!/bin/bash' \
+            'HERE="$(dirname "$(readlink -f "${0}")")"' \
+            'if [ -x "${HERE}/usr/bin/TakeoutFix" ]; then' \
+            '  exec "${HERE}/usr/bin/TakeoutFix" "$@"' \
+            'elif [ -x "${HERE}/usr/bin/takeoutfix" ]; then' \
+            '  exec "${HERE}/usr/bin/takeoutfix" "$@"' \
+            'else' \
+            '  EXEC=$(find "${HERE}/usr" -maxdepth 3 -type f \( -name "TakeoutFix" -o -name "takeoutfix" \) | head -n 1)' \
+            '  exec "$EXEC" "$@"' \
+            'fi' > AppDir/AppRun
           chmod +x AppDir/AppRun
           find AppDir -type f \( -name "TakeoutFix" -o -name "takeoutfix" \) -exec chmod +x {} +
 
