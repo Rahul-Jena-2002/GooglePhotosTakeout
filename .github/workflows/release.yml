@@ -270,27 +270,40 @@ jobs:
           fi
 
           # 3. Build standalone AppImage using appimagetool
-          mkdir -p AppDir/usr/bin AppDir/usr/share/icons/hicolor/256x256/apps AppDir/usr/share/applications
-          cp -r dist-linux/TakeoutFix/* AppDir/usr/bin/
+          rm -rf AppDir
+          mkdir -p AppDir/usr AppDir/usr/share/icons/hicolor/256x256/apps AppDir/usr/share/applications
+          cp -r dist-linux/TakeoutFix/* AppDir/usr/
           cp takeoutfix/icons/icon.png AppDir/usr/share/icons/hicolor/256x256/apps/takeoutfix.png
           cp takeoutfix/icons/icon.png AppDir/takeoutfix.png
+          ln -sf takeoutfix.png AppDir/.DirIcon
           cat << 'EOF' > AppDir/takeoutfix.desktop
-          [Desktop Entry]
-          Name=TakeoutFix
-          Exec=TakeoutFix
-          Icon=takeoutfix
-          Type=Application
-          Categories=Utility;Graphics;
-          Comment=Google Takeout Photo Metadata Restorer
-          Terminal=false
-          EOF
-          cat << 'EOF' > AppDir/AppRun
-          #!/bin/bash
-          HERE="$(dirname "$(readlink -f "${0}")")"
-          exec "${HERE}/usr/bin/TakeoutFix" "$@"
-          EOF
-          chmod +x AppDir/AppRun AppDir/usr/bin/TakeoutFix
+[Desktop Entry]
+Name=TakeoutFix
+Exec=TakeoutFix
+Icon=takeoutfix
+Type=Application
+Categories=Utility;Graphics;
+Comment=Google Takeout Photo Metadata Restorer
+Terminal=false
+EOF
+          cp AppDir/takeoutfix.desktop AppDir/usr/share/applications/takeoutfix.desktop
 
+          cat << 'EOF' > AppDir/AppRun
+#!/bin/bash
+HERE="$(dirname "$(readlink -f "${0}")")"
+if [ -x "${HERE}/usr/bin/TakeoutFix" ]; then
+  exec "${HERE}/usr/bin/TakeoutFix" "$@"
+elif [ -x "${HERE}/usr/bin/takeoutfix" ]; then
+  exec "${HERE}/usr/bin/takeoutfix" "$@"
+else
+  EXEC=$(find "${HERE}/usr" -maxdepth 3 -type f \( -name "TakeoutFix" -o -name "takeoutfix" \) | head -n 1)
+  exec "$EXEC" "$@"
+fi
+EOF
+          chmod +x AppDir/AppRun
+          find AppDir -type f \( -name "TakeoutFix" -o -name "takeoutfix" \) -exec chmod +x {} +
+
+          export ARCH=x86_64
           wget -q https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-x86_64.AppImage -O appimagetool
           chmod +x appimagetool
           ./appimagetool --appimage-extract-and-run AppDir ./TakeoutFix.AppImage || {
