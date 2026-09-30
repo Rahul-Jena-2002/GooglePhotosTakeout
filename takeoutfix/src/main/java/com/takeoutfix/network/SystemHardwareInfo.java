@@ -419,10 +419,10 @@ public class SystemHardwareInfo {
                 com.sun.jna.platform.win32.WinNT.HANDLE proc = com.sun.jna.platform.win32.Kernel32.INSTANCE.GetCurrentProcess();
                 WinPsapi.PROCESS_MEMORY_COUNTERS counters = new WinPsapi.PROCESS_MEMORY_COUNTERS();
                 if (WinPsapi.INSTANCE.GetProcessMemoryInfo(proc, counters, counters.size())) {
-                    long privateCommit = counters.PagefileUsage != null ? counters.PagefileUsage.longValue() : 0;
-                    if (privateCommit > 0) return privateCommit;
                     long ws = counters.WorkingSetSize != null ? counters.WorkingSetSize.longValue() : 0;
                     if (ws > 0) return ws;
+                    long privateCommit = counters.PagefileUsage != null ? counters.PagefileUsage.longValue() : 0;
+                    if (privateCommit > 0) return privateCommit;
                 }
             } catch (Throwable ignored) {}
         } else if (IS_LINUX) {

@@ -48,7 +48,38 @@ namespace TakeoutFix {
                             return 1;
                         }
                         using (ZipArchive archive = new ZipArchive(resStream, ZipArchiveMode.Read)) {
-                            archive.ExtractToDirectory(appDir);
+                            foreach (ZipArchiveEntry entry in archive.Entries) {
+                                if (string.IsNullOrEmpty(entry.Name)) {
+                                    string dirPath = Path.Combine(appDir, entry.FullName);
+                                    if (!Directory.Exists(dirPath)) {
+                                        Directory.CreateDirectory(dirPath);
+                                    }
+                                    continue;
+                                }
+
+                                string destPath = Path.Combine(appDir, entry.FullName);
+                                string parentDir = Path.GetDirectoryName(destPath);
+                                if (!string.IsNullOrEmpty(parentDir) && !Directory.Exists(parentDir)) {
+                                    Directory.CreateDirectory(parentDir);
+                                }
+
+                                bool written = false;
+                                for (int attempt = 0; attempt < 25; attempt++) {
+                                    try {
+                                        entry.ExtractToFile(destPath, true);
+                                        written = true;
+                                        break;
+                                    } catch (IOException) {
+                                        System.Threading.Thread.Sleep(200);
+                                    } catch (UnauthorizedAccessException) {
+                                        System.Threading.Thread.Sleep(200);
+                                    }
+                                }
+
+                                if (!written) {
+                                    entry.ExtractToFile(destPath, true);
+                                }
+                            }
                         }
                     }
                     File.WriteAllText(versionFile, payloadHash);

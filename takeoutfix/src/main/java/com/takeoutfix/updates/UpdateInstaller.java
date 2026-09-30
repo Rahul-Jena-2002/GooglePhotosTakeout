@@ -38,11 +38,11 @@ public class UpdateInstaller {
                 // Windows Installer: launch msiexec
                 processBuilder = new ProcessBuilder("msiexec", "/i", packageFile.getAbsolutePath());
             } else if (fileName.endsWith(".exe")) {
-                // Native Windows Executable installer
-                processBuilder = new ProcessBuilder(packageFile.getAbsolutePath());
+                // Native Windows Executable installer: delay launch by 1s to allow current JVM process to fully terminate
+                processBuilder = new ProcessBuilder("cmd.exe", "/c", "timeout /t 1 /nobreak >nul & start \"\" \"" + packageFile.getAbsolutePath() + "\"");
             } else if (fileName.endsWith(".jar")) {
-                // Java Archive runner
-                processBuilder = new ProcessBuilder("javaw", "-jar", packageFile.getAbsolutePath());
+                // Java Archive runner: delay launch by 1s
+                processBuilder = new ProcessBuilder("cmd.exe", "/c", "timeout /t 1 /nobreak >nul & javaw -jar \"" + packageFile.getAbsolutePath() + "\"");
             } else {
                 processBuilder = new ProcessBuilder("explorer.exe", packageFile.getParentFile().getAbsolutePath());
             }

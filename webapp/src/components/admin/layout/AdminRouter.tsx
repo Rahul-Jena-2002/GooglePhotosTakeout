@@ -17,7 +17,11 @@ const AdminTeam           = React.lazy(() => import("../../../react-pages/admin/
 const AdminSettings       = React.lazy(() => import("../../../react-pages/admin/AdminSettings"))
 const AdminStatistics     = React.lazy(() => import("../../../react-pages/admin/AdminStatistics"))
 const AdminAudit          = React.lazy(() => import("../../../react-pages/admin/AdminAudit"))
-const AdminDev           = React.lazy(() => import("../../../react-pages/admin/AdminDev"))
+const AdminDev            = React.lazy(() => import("../../../react-pages/admin/AdminDev"))
+const AdminKeys           = React.lazy(() => import("../../../react-pages/admin/AdminKeys"))
+const AdminPaymentGateway = React.lazy(() => import("../../../react-pages/admin/AdminPaymentGateway"))
+const AdminPlanThresholds = React.lazy(() => import("../../../react-pages/admin/AdminPlanThresholds"))
+const AdminTierFeatures   = React.lazy(() => import("../../../react-pages/admin/AdminTierFeatures"))
 
 // ---------------------------------------------------------------------------
 // Loading skeleton (shown while lazy chunks are fetching)
