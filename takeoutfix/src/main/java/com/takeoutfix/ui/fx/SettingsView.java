@@ -536,7 +536,7 @@ public class SettingsView extends VBox {
         VBox card = createCard();
 
         VBox brandBox = new VBox(6);
-        Label appName = new Label("TakeoutFix Studio v2.2.1");
+        Label appName = new Label("TakeoutFix Studio v2.2.2");
         appName.setStyle("-fx-font-size: 16px; -fx-font-weight: 800; -fx-text-fill: #E6E7ED;");
 
         Label appSub = new Label("Pure JavaFX desktop edition with multi-process native ExifTool engine.");
