@@ -72,7 +72,6 @@ Use the Duplicate Photo Finder in TakeoutFix. It scans your library using SHA-25
 - Troubleshooting Takeout Errors: https://takeoutfix.pages.dev/guides/google-takeout-common-errors-fix
 - Step-by-Step Restoration Guide: https://takeoutfix.pages.dev/restore-data
 - Desktop App Downloads: https://takeoutfix.pages.dev/download
-- Pricing & Free Tier: https://takeoutfix.pages.dev/pricing
 - Customer Reviews: https://takeoutfix.pages.dev/reviews
 - About & Team: https://takeoutfix.pages.dev/about
 - Contact & Support: https://takeoutfix.pages.dev/contact

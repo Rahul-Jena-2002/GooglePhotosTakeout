@@ -22,9 +22,19 @@ namespace TakeoutFix {
                 string versionFile = Path.Combine(appDir, ".app_version");
                 
                 Assembly asm = Assembly.GetExecutingAssembly();
-                string currentVersion = asm.GetName().Version != null ? asm.GetName().Version.ToString() : "2.2.0";
+                string payloadHash = "";
+                using (Stream resStream = asm.GetManifestResourceStream("payload.zip")) {
+                    if (resStream == null) {
+                        MessageBox.Show("Internal application payload missing.", "TakeoutFix", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                        return 1;
+                    }
+                    using (var sha = System.Security.Cryptography.SHA256.Create()) {
+                        byte[] hashBytes = sha.ComputeHash(resStream);
+                        payloadHash = BitConverter.ToString(hashBytes).Replace("-", "").ToLowerInvariant();
+                    }
+                }
 
-                bool needsExtract = !File.Exists(exePath) || !File.Exists(versionFile) || File.ReadAllText(versionFile).Trim() != currentVersion;
+                bool needsExtract = !File.Exists(exePath) || !File.Exists(versionFile) || File.ReadAllText(versionFile).Trim() != payloadHash;
 
                 if (needsExtract) {
                     if (Directory.Exists(appDir)) {
@@ -41,7 +51,7 @@ namespace TakeoutFix {
                             archive.ExtractToDirectory(appDir);
                         }
                     }
-                    File.WriteAllText(versionFile, currentVersion);
+                    File.WriteAllText(versionFile, payloadHash);
                 }
 
                 if (File.Exists(exePath)) {

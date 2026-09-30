@@ -19,7 +19,6 @@
 
 /* Page-Specific & Feature Modules */
 @import './styles/_compare.css';
-@import './styles/_pricing.css';
 @import './styles/_how-it-works.css';
 @import './styles/_admin.css';
 @import './styles/_profile.css';

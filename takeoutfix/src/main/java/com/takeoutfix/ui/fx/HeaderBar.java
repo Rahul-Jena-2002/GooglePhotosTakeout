@@ -43,6 +43,7 @@ public class HeaderBar extends HBox {
     // Theme state (Dark mode by default)
     private boolean isDark = true;
     private final Button themeToggleBtn = new Button();
+    private final Button sponsorBtn = new Button("Sponsor");
 
     // Online Status Pill
     private final HBox onlineBadge = new HBox(5);
@@ -91,8 +92,9 @@ public class HeaderBar extends HBox {
         Region spacer = new Region();
         HBox.setHgrow(spacer, Priority.ALWAYS);
 
-        // 3. Theme Toggle Button
+        // 3. Theme Toggle & Sponsor Buttons
         setupThemeToggle();
+        setupSponsorBtn();
 
         // 4. Online Network Pill
         setupOnlineBadge();
@@ -100,7 +102,7 @@ public class HeaderBar extends HBox {
         // 5. User Profile / Sign-In controls
         setupProfileSection();
 
-        getChildren().addAll(brandBox, navPillsBox, spacer, themeToggleBtn, onlineBadge, profileContainer);
+        getChildren().addAll(brandBox, navPillsBox, spacer, sponsorBtn, themeToggleBtn, onlineBadge, profileContainer);
 
         // Hook listeners
         if (networkService != null) {
@@ -229,6 +231,15 @@ public class HeaderBar extends HBox {
         });
     }
 
+    private void setupSponsorBtn() {
+        sponsorBtn.getStyleClass().add("btn-ghost");
+        sponsorBtn.setGraphic(UiIcons.createSvgIcon(UiIcons.HEART, 13, "#F43F5E"));
+        sponsorBtn.setGraphicTextGap(6);
+        sponsorBtn.setStyle("-fx-font-size: 13px; -fx-font-weight: 600; -fx-padding: 6 12 6 12; -fx-background-radius: 6; -fx-cursor: hand;");
+        sponsorBtn.setTooltip(new Tooltip("Sponsor TakeoutFix on GitHub (Opens in browser)"));
+        sponsorBtn.setOnAction(e -> openUrl("https://github.com/sponsors/Rahul-Jena-2002"));
+    }
+
     private void updateThemeIcon() {
         if (isDark) {
             themeToggleBtn.setGraphic(UiIcons.createSvgIcon(UiIcons.SUN, 15, "#fbbf24"));
@@ -241,25 +252,26 @@ public class HeaderBar extends HBox {
 
     private void setupOnlineBadge() {
         onlineBadge.setAlignment(Pos.CENTER);
-        onlineBadge.setStyle("-fx-background-color: rgba(16, 185, 129, 0.12); -fx-border-color: rgba(16, 185, 129, 0.25); -fx-border-radius: 12; -fx-background-radius: 12; -fx-padding: 3 10 3 10;");
+        onlineBadge.setStyle("-fx-background-color: rgba(16, 185, 129, 0.10); -fx-border-color: rgba(16, 185, 129, 0.20); -fx-border-radius: 12; -fx-background-radius: 12; -fx-padding: 3 10 3 10;");
 
         onlineDot.setFill(javafx.scene.paint.Color.web("#10b981"));
-        onlineLabel.setStyle("-fx-font-size: 10px; -fx-font-weight: 700; -fx-text-fill: #10b981;");
+        onlineLabel.setText("Connected");
+        onlineLabel.setStyle("-fx-font-size: 10px; -fx-font-weight: 600; -fx-text-fill: #10b981;");
 
         onlineBadge.getChildren().addAll(onlineDot, onlineLabel);
     }
 
     private void updateOnlineState(boolean online) {
         if (online) {
-            onlineBadge.setStyle("-fx-background-color: rgba(16, 185, 129, 0.12); -fx-border-color: rgba(16, 185, 129, 0.25); -fx-border-radius: 12; -fx-background-radius: 12; -fx-padding: 3 10 3 10;");
+            onlineBadge.setStyle("-fx-background-color: rgba(16, 185, 129, 0.10); -fx-border-color: rgba(16, 185, 129, 0.20); -fx-border-radius: 12; -fx-background-radius: 12; -fx-padding: 3 10 3 10;");
             onlineDot.setFill(javafx.scene.paint.Color.web("#10b981"));
-            onlineLabel.setText("ONLINE");
-            onlineLabel.setStyle("-fx-font-size: 10px; -fx-font-weight: 700; -fx-text-fill: #10b981;");
+            onlineLabel.setText("Connected");
+            onlineLabel.setStyle("-fx-font-size: 10px; -fx-font-weight: 600; -fx-text-fill: #10b981;");
         } else {
-            onlineBadge.setStyle("-fx-background-color: rgba(239, 68, 68, 0.12); -fx-border-color: rgba(239, 68, 68, 0.25); -fx-border-radius: 12; -fx-background-radius: 12; -fx-padding: 3 10 3 10;");
-            onlineDot.setFill(javafx.scene.paint.Color.web("#ef4444"));
-            onlineLabel.setText("OFFLINE");
-            onlineLabel.setStyle("-fx-font-size: 10px; -fx-font-weight: 700; -fx-text-fill: #ef4444;");
+            onlineBadge.setStyle("-fx-background-color: rgba(113, 113, 122, 0.10); -fx-border-color: rgba(113, 113, 122, 0.20); -fx-border-radius: 12; -fx-background-radius: 12; -fx-padding: 3 10 3 10;");
+            onlineDot.setFill(javafx.scene.paint.Color.web("#71717a"));
+            onlineLabel.setText("Offline");
+            onlineLabel.setStyle("-fx-font-size: 10px; -fx-font-weight: 600; -fx-text-fill: #71717a;");
         }
     }
 
@@ -282,7 +294,7 @@ public class HeaderBar extends HBox {
                 dlg.showAndWait();
             }
         });
-        Tooltip.install(profilePillBox, new Tooltip("Account status & profile controls (Sign in required)"));
+        Tooltip.install(profilePillBox, new Tooltip("Account & profile controls (Sign in optional for cloud sync)"));
 
         authActionBtn.setStyle("-fx-font-size: 11px; -fx-font-weight: 700; -fx-padding: 5 12 5 12; -fx-background-radius: 6;");
 
@@ -311,8 +323,8 @@ public class HeaderBar extends HBox {
 
             userPill.setText("Hi, " + firstName);
             userPill.setStyle("-fx-font-size: 12px; -fx-font-weight: 700; -fx-text-fill: #6366f1;");
-            userPill.setVisible(true);
-            userPill.setManaged(true);
+            profilePillBox.setVisible(true);
+            profilePillBox.setManaged(true);
 
             avatarCircle.setText(initial);
             avatarCircle.setVisible(true);
@@ -325,15 +337,13 @@ public class HeaderBar extends HBox {
             authActionBtn.setGraphicTextGap(6);
             authActionBtn.setOnAction(e -> showProfileDashboard());
         } else {
-            userPill.setText("Sign In Required");
-            userPill.setStyle("-fx-font-size: 11px; -fx-font-weight: 700; -fx-text-fill: #f59e0b;");
-            avatarCircle.setVisible(false);
-            avatarCircle.setManaged(false);
+            profilePillBox.setVisible(false);
+            profilePillBox.setManaged(false);
 
             authActionBtn.setText("Sign In");
             authActionBtn.getStyleClass().clear();
-            authActionBtn.getStyleClass().addAll("button", "btn-primary");
-            authActionBtn.setGraphic(UiIcons.createGoogleIcon(14));
+            authActionBtn.getStyleClass().addAll("button", "btn-ghost");
+            authActionBtn.setGraphic(UiIcons.createGoogleIcon(13));
             authActionBtn.setGraphicTextGap(6);
             authActionBtn.setOnAction(e -> {
                 FxSignInDialog dlg = new FxSignInDialog(parentStage, userService, success -> {

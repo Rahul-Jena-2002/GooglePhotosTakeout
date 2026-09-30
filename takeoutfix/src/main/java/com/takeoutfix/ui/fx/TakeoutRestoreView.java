@@ -3,7 +3,13 @@ package com.takeoutfix.ui.fx;
 import com.takeoutfix.auth.UserSyncBridgeService;
 import com.takeoutfix.restore.PowerManager;
 import com.takeoutfix.restore.SessionStatsService;
+import com.takeoutfix.restore.TakeoutRestoreTask;
+import com.takeoutfix.restore.TakeoutScanTask;
 import com.takeoutfix.restore.infrastructure.ExtractionService;
+import com.takeoutfix.restore.infrastructure.MediaScanner;
+import com.takeoutfix.restore.infrastructure.MetadataMatcher;
+import com.takeoutfix.task.BackgroundTask;
+import com.takeoutfix.task.TaskManager;
 import javafx.application.Platform;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
@@ -23,24 +29,26 @@ import javafx.stage.Stage;
 
 import java.awt.Desktop;
 import java.io.File;
+import java.io.PrintWriter;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import java.util.function.Consumer;
 
 /**
  * Modern JavaFX Recovery Center for TakeoutFix.
- * Reproduces the complete TakeoutFix Operations Center shown in Image 2:
- * - Top header with title, subtitle, and top-right Tool Dropdown
- * - 2-Column workspace (Operations Pipeline on left, Restoration Controls on right)
- * - Source selection (Browse Folder, ZIP File, Drag & Drop, Clear)
- * - Destination selection (Select Destination Folder, Drag & Drop, Clear)
- * - Action buttons (Start, Pause, Cancel, Open Output Folder)
- * - Telemetry (Status, %, Progress bar, Elapsed, Speed, ETA)
- * - Restoration controls (Fallback date picker, 4 option checkboxes)
- * - Traffic light logs & diagnostics console with filter tabs (All, Restored, Errors, Skipped)
+ * Built with a neutral monochromatic foundation, high text contrast, and restrained violet accents.
+ * Features:
+ * - Direct "Scan Archive" and "Start Restoration" action buttons side-by-side
+ * - Unified toolbar utilizing horizontal space with non-destructive status indicators
+ * - Clear section headings for Source archive and Output location with scan telemetry
+ * - Semantic 4-card KPI deck: Files Scanned, Metadata Restored, Needs Review, Failed
+ * - Informative real-time progress area with active file, ratio counter, and high-contrast typography
+ * - Structured Restoration Options (Date & Timestamp handling, Output & Processing)
+ * - Collapsible Activity & Diagnostics panel with friendly idle empty state, search filter, and log exporter
  */
 public class TakeoutRestoreView extends VBox {
 
@@ -50,51 +58,47 @@ public class TakeoutRestoreView extends VBox {
     private final SessionStatsService statsService;
     private final Consumer<WorkspaceType> onToolSwitch;
 
-    // Header & Tool Dropdown
-    public static final String TOOL_RESTORE = "Photo Metadata Restorer";
-    public static final String TOOL_METASYNC = "MetaSync — RAW/JPEG Synchronizer";
-    public static final String TOOL_DASHBOARD = "Operations Dashboard";
-    public static final String TOOL_EXIF = "EXIF Viewer";
-    public static final String TOOL_COMPARE = "Archive Compare";
-    public static final String TOOL_DUPLICATE = "Duplicate Finder";
-
-    // High-Contrast Semantic KPI Metric Cards (shadcn/SaaS styled)
+    // Semantic KPI Metric Cards (Refined wording & subtle tinted surfaces)
     private final Label kpiScanned = new Label("0");
     private final Label kpiRestored = new Label("0");
-    private final Label kpiIssues = new Label("0");
-    private final Label kpiErrors = new Label("0");
+    private final Label kpiNeedsReview = new Label("0");
+    private final Label kpiFailed = new Label("0");
 
-    // Paths
+    // Paths & Source Telemetry
     private File selectedSource = null;
     private File selectedOutput = null;
     private final Label sourcePathLabel = new Label("No folder or ZIP archive selected yet");
+    private final Label sourceMetaLabel = new Label("Awaiting selection");
     private final Label outputPathLabel = new Label("No destination folder selected yet");
+    private final Label outputMetaLabel = new Label("Original Takeout files will remain untouched");
     private final Button btnSourceClear = new Button("✕");
     private final Button btnDestClear = new Button("✕");
 
-    // Action Controls
+    // Action Controls (Start Restoration & Scan Archive side-by-side)
     private final Button btnStart = new Button("Start Restoration");
+    private final Button btnScan = new Button("Scan Archive");
     private final Button btnPause = new Button("Pause");
-    private final Button btnCancel = new Button("Cancel");
+    private final Button btnCancel = new Button("Stop");
     private final Button btnOpenOutput = new Button("Open Output Folder");
 
-    // Telemetry
-    private final Label progressStatusLabel = new Label("Status: Ready - Select source and destination to begin.");
-    private final Label progressPercentLabel = new Label("0%");
+    // Informative Telemetry
+    private final Label operationStateLabel = new Label("Ready to restore your photos");
+    private final Label currentFileLabel = new Label("Select a source archive and output location to begin.");
+    private final Label filesRatioLabel = new Label("0 / 0 files (0%)");
     private final ProgressBar progressBar = new ProgressBar(0.0);
-    private final Label elapsedLabel = new Label("⏱ Elapsed: 00:00");
+    private final Label elapsedLabel = new Label("⏱ Elapsed: 00:00:00");
     private final Label speedLabel = new Label("Speed: 0.0 files/s • 0.0 MB/s");
     private final Label etaLabel = new Label("⏳ ETA: --:--");
 
     // Restoration Options
     private final TextField dateOverrideField = new TextField();
     private final DatePicker datePicker = new DatePicker();
-    private final CheckBox organizeMonthCheck = new CheckBox("Organize into Month subfolders");
+    private final CheckBox organizeMonthCheck = new CheckBox("Organize into Month subfolders (YYYY/MM)");
     private final CheckBox smartInterpolationCheck = new CheckBox("Smart Timestamp Interpolation");
     private final CheckBox keepAwakeCheck = new CheckBox("Keep System Awake while processing");
     private final CheckBox splitVolumesCheck = new CheckBox("Compress output into 2GB ZIP volumes");
 
-    // Logs & Diagnostics
+    // Logs & Diagnostics Model
     private static class LogEntry {
         final String timestamp;
         final String level;
@@ -115,16 +119,23 @@ public class TakeoutRestoreView extends VBox {
     private final List<LogEntry> allLogs = new ArrayList<>();
     private final ObservableList<LogEntry> filteredLogs = FXCollections.observableArrayList();
     private final ListView<LogEntry> logListView = new ListView<>(filteredLogs);
+    private final VBox logEmptyStateBox = new VBox(8);
 
     private String currentLogFilter = "ALL";
+    private final TextField logSearchField = new TextField();
     private final Button tabAll = new Button("All (0)");
     private final Button tabRestored = new Button("Restored (0)");
-    private final Button tabErrors = new Button("Errors (0)");
-    private final Button tabSkipped = new Button("Skipped (0)");
+    private final Button tabNeedsReview = new Button("Needs Review (0)");
+    private final Button tabFailed = new Button("Failed (0)");
+    private final Button btnCollapseLogs = new Button("Collapse Logs");
+    private boolean isLogsCollapsed = false;
 
     private boolean isRunning = false;
     private boolean isPaused = false;
     private long startTimeMs = 0;
+    private final PowerManager powerManager = new PowerManager();
+    private com.takeoutfix.restore.TakeoutRestoreTask activeRestoreTask = null;
+    private com.takeoutfix.restore.TakeoutScanTask activeScanTask = null;
 
     public TakeoutRestoreView(Stage stage,
                               ExtractionService extractionService,
@@ -137,43 +148,40 @@ public class TakeoutRestoreView extends VBox {
         this.statsService = statsService;
         this.onToolSwitch = onToolSwitch;
 
-        setSpacing(14);
-        setPadding(new Insets(16, 20, 16, 20));
+        setSpacing(12);
+        setPadding(new Insets(14, 18, 14, 18));
         VBox.setVgrow(this, Priority.ALWAYS);
 
-        // 1. TakeoutFix — Restore Header Row
+        // 1. Header Row
         getChildren().add(buildHeaderRow());
 
         // 2. High-Contrast 4-Card KPI Metric Deck
         getChildren().add(buildKpiCardsDeck());
 
-        // 3. Main 2-Column Workspace (Operations Pipeline | Restoration Controls)
+        // 3. Main Workspace: Operations Pipeline + Restoration Options
         getChildren().add(buildUnifiedWorkspaceCard());
 
-        // 4. Restore Logs & Diagnostics Console
+        // 4. Activity & Diagnostics Console
         VBox logsCard = buildLogsConsoleCard();
         VBox.setVgrow(logsCard, Priority.ALWAYS);
         getChildren().add(logsCard);
 
-        // Initial log entries
-        appendLog("INFO", "TakeoutFix Engine ready. Ready to scan Takeout archive or folder.");
-        if (userService != null && userService.isSignedIn()) {
-            appendLog("SUCCESS", "Session validated: " + userService.getCurrentEmail() + " • Cloud sync active.");
-        }
-
+        updateLogViewVisibility();
         setupExtractionListeners();
     }
 
     private HBox buildHeaderRow() {
-        HBox header = new HBox(16);
+        HBox header = new HBox(12);
         header.setAlignment(Pos.CENTER_LEFT);
 
-        VBox titleBox = new VBox(2);
-        Label mainTitle = new Label("TakeoutFix — Restore");
-        mainTitle.setStyle("-fx-font-size: 16px; -fx-font-weight: 800;");
+        VBox titleBox = new VBox(4);
+        Label mainTitle = new Label("Restore Metadata");
+        mainTitle.getStyleClass().addAll("page-title", "header-title");
+        mainTitle.setStyle("-fx-font-size: 24px; -fx-font-weight: 700; -fx-text-fill: #FAFAFA;");
 
-        Label subtitle = new Label("Restore metadata, EXIF dates and JSON sidecars from Google Takeout archives");
-        subtitle.setStyle("-fx-font-size: 12px; -fx-text-fill: #71717a;");
+        Label subtitle = new Label("Recover missing photo & video metadata, EXIF timestamps and JSON sidecars from Google Takeout");
+        subtitle.getStyleClass().addAll("page-description", "header-subtitle");
+        subtitle.setStyle("-fx-font-size: 13px; -fx-font-weight: 500; -fx-text-fill: #D4D4D8;");
 
         titleBox.getChildren().addAll(mainTitle, subtitle);
         header.getChildren().add(titleBox);
@@ -184,10 +192,10 @@ public class TakeoutRestoreView extends VBox {
         HBox deck = new HBox(12);
         deck.setAlignment(Pos.CENTER_LEFT);
 
-        VBox card1 = createSemanticKpiCard("Scanned Media", kpiScanned, "kpi-value-blue", "Total photo & video files", "kpi-card-blue");
-        VBox card2 = createSemanticKpiCard("Restored Tags", kpiRestored, "kpi-value-green", "Metadata injected successfully", "kpi-card-green");
-        VBox card3 = createSemanticKpiCard("Issues / Unmatched", kpiIssues, "kpi-value-amber", "Files requiring inspection", "kpi-card-amber");
-        VBox card4 = createSemanticKpiCard("Errors / Failed", kpiErrors, "kpi-value-red", "Corrupted or failed files", "kpi-card-red");
+        VBox card1 = createSemanticKpiCard("Files Scanned", kpiScanned, "kpi-value-blue", "Total media files detected", "kpi-card-blue");
+        VBox card2 = createSemanticKpiCard("Metadata Restored", kpiRestored, "kpi-value-green", "Successfully updated EXIF tags", "kpi-card-green");
+        VBox card3 = createSemanticKpiCard("Needs Review", kpiNeedsReview, "kpi-value-amber", "Unmatched or conflicting sidecars", "kpi-card-amber");
+        VBox card4 = createSemanticKpiCard("Failed", kpiFailed, "kpi-value-red", "Files that could not be processed", "kpi-card-red");
 
         HBox.setHgrow(card1, Priority.ALWAYS);
         HBox.setHgrow(card2, Priority.ALWAYS);
@@ -199,31 +207,35 @@ public class TakeoutRestoreView extends VBox {
     }
 
     private VBox createSemanticKpiCard(String labelText, Label valLabel, String valStyleClass, String subText, String cardStyleClass) {
-        VBox card = new VBox(4);
+        VBox card = new VBox(6);
         card.getStyleClass().addAll("kpi-card", cardStyleClass);
+        card.setPadding(new Insets(14, 16, 14, 16));
 
         Label lbl = new Label(labelText);
-        lbl.getStyleClass().add("kpi-label");
+        lbl.getStyleClass().addAll("kpi-title", "kpi-label");
+        lbl.setStyle("-fx-font-size: 12px; -fx-font-weight: 700; -fx-text-fill: #D4D4D8;");
 
-        valLabel.getStyleClass().add(valStyleClass);
+        valLabel.getStyleClass().addAll("kpi-value", valStyleClass);
+        valLabel.setStyle("-fx-font-size: 28px; -fx-font-weight: 700;");
 
         Label sub = new Label(subText);
-        sub.getStyleClass().add("kpi-sub");
+        sub.getStyleClass().addAll("kpi-description", "kpi-sub");
+        sub.setStyle("-fx-font-size: 11px; -fx-font-weight: 500; -fx-text-fill: #E4E4E7;");
 
         card.getChildren().addAll(lbl, valLabel, sub);
         return card;
     }
 
     private VBox buildUnifiedWorkspaceCard() {
-        VBox card = new VBox(10);
+        VBox card = new VBox(12);
         card.getStyleClass().add("glass-card");
-        card.setPadding(new Insets(12, 14, 12, 14));
+        card.setPadding(new Insets(16, 18, 16, 18));
 
-        HBox split = new HBox(14);
+        HBox split = new HBox(16);
         split.setAlignment(Pos.TOP_LEFT);
 
         // ── Left Column: Operations Pipeline (68% width) ──
-        VBox leftCol = new VBox(8);
+        VBox leftCol = new VBox(12);
         HBox.setHgrow(leftCol, Priority.ALWAYS);
 
         VBox srcBox = buildSourceBox();
@@ -233,10 +245,10 @@ public class TakeoutRestoreView extends VBox {
 
         leftCol.getChildren().addAll(srcBox, dstBox, actBox, progBox);
 
-        // ── Right Column: Restoration Controls (32% width) ──
-        VBox rightCol = new VBox(8);
-        rightCol.setPrefWidth(280);
-        rightCol.setMinWidth(260);
+        // ── Right Column: Restoration Options (32% width) ──
+        VBox rightCol = new VBox(10);
+        rightCol.setPrefWidth(310);
+        rightCol.setMinWidth(290);
         rightCol.getChildren().add(buildRestorationControlsBox());
 
         split.getChildren().addAll(leftCol, rightCol);
@@ -245,12 +257,24 @@ public class TakeoutRestoreView extends VBox {
     }
 
     private VBox buildSourceBox() {
-        VBox box = new VBox(5);
+        VBox box = new VBox(8);
         box.getStyleClass().add("inner-container");
-        box.setPadding(new Insets(8, 10, 8, 10));
+        box.setPadding(new Insets(10, 12, 10, 12));
 
-        Label title = new Label("1. TAKEOUT ARCHIVE SOURCE");
-        title.getStyleClass().add("kpi-label");
+        HBox headerRow = new HBox(8);
+        headerRow.setAlignment(Pos.CENTER_LEFT);
+
+        Label title = new Label("Source archive");
+        title.getStyleClass().addAll("form-label", "kpi-label");
+        title.setStyle("-fx-font-size: 13px; -fx-font-weight: 700; -fx-text-fill: #FAFAFA;");
+
+        Region sp = new Region();
+        HBox.setHgrow(sp, Priority.ALWAYS);
+
+        sourceMetaLabel.getStyleClass().add("kpi-sub");
+        sourceMetaLabel.setStyle("-fx-font-size: 11px; -fx-font-weight: 500; -fx-text-fill: #D4D4D8;");
+
+        headerRow.getChildren().addAll(title, sp, sourceMetaLabel);
 
         HBox row = new HBox(8);
         row.setAlignment(Pos.CENTER_LEFT);
@@ -259,36 +283,36 @@ public class TakeoutRestoreView extends VBox {
         btnFolder.getStyleClass().add("btn-primary");
         btnFolder.setGraphic(UiIcons.createSvgIcon(UiIcons.FOLDER, 14, "currentColor"));
         btnFolder.setGraphicTextGap(6);
-        btnFolder.setStyle("-fx-font-size: 11px; -fx-font-weight: 700; -fx-pref-height: 28px; -fx-pref-width: 130px;");
+        btnFolder.setStyle("-fx-font-size: 13px; -fx-font-weight: 700; -fx-pref-height: 36px; -fx-pref-width: 140px;");
         btnFolder.setOnAction(e -> chooseSourceFolder());
 
         Button btnZip = new Button("ZIP File");
         btnZip.getStyleClass().add("btn-secondary");
         btnZip.setGraphic(UiIcons.createSvgIcon(UiIcons.ZIP, 14, "currentColor"));
         btnZip.setGraphicTextGap(6);
-        btnZip.setStyle("-fx-font-size: 11px; -fx-font-weight: 700; -fx-pref-height: 28px; -fx-pref-width: 90px;");
+        btnZip.setStyle("-fx-font-size: 13px; -fx-font-weight: 700; -fx-pref-height: 36px; -fx-pref-width: 100px;");
         btnZip.setOnAction(e -> chooseSourceZip());
 
         HBox pathDisplay = new HBox(6);
         pathDisplay.setAlignment(Pos.CENTER_LEFT);
         HBox.setHgrow(pathDisplay, Priority.ALWAYS);
         pathDisplay.getStyleClass().add("text-field");
-        pathDisplay.setStyle("-fx-padding: 3 8 3 8; -fx-pref-height: 28px;");
+        pathDisplay.setStyle("-fx-padding: 4 10 4 10; -fx-pref-height: 36px;");
 
         sourcePathLabel.getStyleClass().add("text-secondary");
-        sourcePathLabel.setStyle("-fx-font-size: 11px;");
+        sourcePathLabel.setStyle("-fx-font-size: 13px; -fx-text-fill: #D4D4D8;");
         HBox.setHgrow(sourcePathLabel, Priority.ALWAYS);
 
         btnSourceClear.getStyleClass().add("btn-ghost");
-        btnSourceClear.setStyle("-fx-font-size: 10px; -fx-font-weight: 700; -fx-padding: 2 6 2 6; -fx-cursor: hand;");
+        btnSourceClear.setStyle("-fx-font-size: 11px; -fx-font-weight: 700; -fx-padding: 2 6 2 6; -fx-cursor: hand;");
         btnSourceClear.setVisible(false);
         btnSourceClear.setOnAction(e -> clearSource());
 
         pathDisplay.getChildren().addAll(sourcePathLabel, btnSourceClear);
         row.getChildren().addAll(btnFolder, btnZip, pathDisplay);
-        box.getChildren().addAll(title, row);
+        box.getChildren().addAll(headerRow, row);
 
-        // Drag & Drop
+        // Drag & Drop Handling
         box.setOnDragOver(event -> {
             if (event.getGestureSource() != box && event.getDragboard().hasFiles()) {
                 event.acceptTransferModes(TransferMode.COPY);
@@ -310,12 +334,24 @@ public class TakeoutRestoreView extends VBox {
     }
 
     private VBox buildDestinationBox() {
-        VBox box = new VBox(5);
+        VBox box = new VBox(8);
         box.getStyleClass().add("inner-container");
-        box.setPadding(new Insets(8, 10, 8, 10));
+        box.setPadding(new Insets(10, 12, 10, 12));
 
-        Label title = new Label("2. OUTPUT DESTINATION FOLDER");
-        title.getStyleClass().add("kpi-label");
+        HBox headerRow = new HBox(8);
+        headerRow.setAlignment(Pos.CENTER_LEFT);
+
+        Label title = new Label("Output location");
+        title.getStyleClass().addAll("form-label", "kpi-label");
+        title.setStyle("-fx-font-size: 13px; -fx-font-weight: 700; -fx-text-fill: #FAFAFA;");
+
+        Region sp = new Region();
+        HBox.setHgrow(sp, Priority.ALWAYS);
+
+        outputMetaLabel.getStyleClass().add("kpi-sub");
+        outputMetaLabel.setStyle("-fx-font-size: 11px; -fx-font-weight: 600; -fx-text-fill: #22C55E;");
+
+        headerRow.getChildren().addAll(title, sp, outputMetaLabel);
 
         HBox row = new HBox(8);
         row.setAlignment(Pos.CENTER_LEFT);
@@ -324,29 +360,29 @@ public class TakeoutRestoreView extends VBox {
         btnDest.getStyleClass().add("btn-secondary");
         btnDest.setGraphic(UiIcons.createSvgIcon(UiIcons.OUTPUT_FOLDER, 14, "currentColor"));
         btnDest.setGraphicTextGap(6);
-        btnDest.setStyle("-fx-font-size: 11px; -fx-font-weight: 700; -fx-pref-height: 28px; -fx-pref-width: 190px;");
+        btnDest.setStyle("-fx-font-size: 13px; -fx-font-weight: 700; -fx-pref-height: 36px; -fx-pref-width: 215px;");
         btnDest.setOnAction(e -> chooseDestinationFolder());
 
         HBox pathDisplay = new HBox(6);
         pathDisplay.setAlignment(Pos.CENTER_LEFT);
         HBox.setHgrow(pathDisplay, Priority.ALWAYS);
         pathDisplay.getStyleClass().add("text-field");
-        pathDisplay.setStyle("-fx-padding: 3 8 3 8; -fx-pref-height: 28px;");
+        pathDisplay.setStyle("-fx-padding: 4 10 4 10; -fx-pref-height: 36px;");
 
         outputPathLabel.getStyleClass().add("text-secondary");
-        outputPathLabel.setStyle("-fx-font-size: 11px;");
+        outputPathLabel.setStyle("-fx-font-size: 13px; -fx-text-fill: #D4D4D8;");
         HBox.setHgrow(outputPathLabel, Priority.ALWAYS);
 
         btnDestClear.getStyleClass().add("btn-ghost");
-        btnDestClear.setStyle("-fx-font-size: 10px; -fx-font-weight: 700; -fx-padding: 2 6 2 6; -fx-cursor: hand;");
+        btnDestClear.setStyle("-fx-font-size: 11px; -fx-font-weight: 700; -fx-padding: 2 6 2 6; -fx-cursor: hand;");
         btnDestClear.setVisible(false);
         btnDestClear.setOnAction(e -> clearDestination());
 
         pathDisplay.getChildren().addAll(outputPathLabel, btnDestClear);
         row.getChildren().addAll(btnDest, pathDisplay);
-        box.getChildren().addAll(title, row);
+        box.getChildren().addAll(headerRow, row);
 
-        // Drag & Drop
+        // Drag & Drop Handling
         box.setOnDragOver(event -> {
             if (event.getGestureSource() != box && event.getDragboard().hasFiles()) {
                 event.acceptTransferModes(TransferMode.COPY);
@@ -372,114 +408,156 @@ public class TakeoutRestoreView extends VBox {
         HBox row = new HBox(8);
         row.setAlignment(Pos.CENTER_LEFT);
         row.getStyleClass().add("inner-container");
-        row.setPadding(new Insets(6, 10, 6, 10));
+        row.setPadding(new Insets(8, 12, 8, 12));
 
+        // 1. Primary Action: Start Restoration
         btnStart.getStyleClass().add("btn-primary");
-        btnStart.setGraphic(UiIcons.createSvgIcon(UiIcons.PLAY, 13, "currentColor"));
-        btnStart.setGraphicTextGap(7);
-        btnStart.setStyle("-fx-font-size: 12px; -fx-font-weight: 700; -fx-pref-height: 32px; -fx-pref-width: 160px;");
+        btnStart.setGraphic(UiIcons.createSvgIcon(UiIcons.PLAY, 14, "currentColor"));
+        btnStart.setGraphicTextGap(8);
+        btnStart.setStyle("-fx-font-size: 13px; -fx-font-weight: 700; -fx-pref-height: 36px; -fx-padding: 8 18 8 18;");
         btnStart.setOnAction(e -> handleStart());
 
+        // 2. Scan Archive Button (Direct Scan/Preview Action)
+        btnScan.getStyleClass().add("btn-secondary");
+        btnScan.setGraphic(UiIcons.createSvgIcon(UiIcons.SEARCH, 13, "currentColor"));
+        btnScan.setGraphicTextGap(7);
+        btnScan.setStyle("-fx-font-size: 13px; -fx-font-weight: 600; -fx-pref-height: 36px; -fx-padding: 8 14 8 14;");
+        btnScan.setTooltip(new Tooltip("Scan and match JSON sidecars across archive without writing to disk."));
+        btnScan.setOnAction(e -> handleScan());
+
+        // 3. Pause Button
         btnPause.getStyleClass().add("btn-secondary");
         btnPause.setGraphic(UiIcons.createSvgIcon(UiIcons.PAUSE, 12, "currentColor"));
         btnPause.setGraphicTextGap(6);
-        btnPause.setStyle("-fx-font-size: 11px; -fx-font-weight: 600; -fx-pref-height: 32px; -fx-pref-width: 100px;");
+        btnPause.setStyle("-fx-font-size: 13px; -fx-font-weight: 600; -fx-pref-height: 36px; -fx-pref-width: 95px;");
         btnPause.setDisable(true);
         btnPause.setOnAction(e -> handlePause());
 
+        // 4. Stop Button
         btnCancel.getStyleClass().add("btn-secondary");
         btnCancel.setText("Stop");
         btnCancel.setGraphic(UiIcons.createSvgIcon(UiIcons.STOP, 11, "currentColor"));
         btnCancel.setGraphicTextGap(6);
-        btnCancel.setStyle("-fx-font-size: 11px; -fx-font-weight: 600; -fx-pref-height: 32px; -fx-pref-width: 95px;");
+        btnCancel.setStyle("-fx-font-size: 13px; -fx-font-weight: 600; -fx-pref-height: 36px; -fx-pref-width: 85px;");
         btnCancel.setDisable(true);
         btnCancel.setOnAction(e -> handleCancel());
 
+        // 5. Open Output Folder Button (Grouped alongside actions)
+        btnOpenOutput.getStyleClass().add("btn-secondary");
+        btnOpenOutput.setGraphic(UiIcons.createSvgIcon(UiIcons.OUTPUT_FOLDER, 13, "currentColor"));
+        btnOpenOutput.setGraphicTextGap(7);
+        btnOpenOutput.setStyle("-fx-font-size: 13px; -fx-font-weight: 600; -fx-pref-height: 36px; -fx-padding: 8 14 8 14;");
+        btnOpenOutput.setOnAction(e -> handleOpenOutput());
+
+        // Spacer to balance the layout
         Region spacer = new Region();
         HBox.setHgrow(spacer, Priority.ALWAYS);
 
-        btnOpenOutput.getStyleClass().add("btn-secondary");
-        btnOpenOutput.setGraphic(UiIcons.createSvgIcon(UiIcons.OUTPUT_FOLDER, 13, "currentColor"));
-        btnOpenOutput.setGraphicTextGap(6);
-        btnOpenOutput.setStyle("-fx-font-size: 11px; -fx-font-weight: 600; -fx-pref-height: 32px; -fx-pref-width: 170px;");
-        btnOpenOutput.setOnAction(e -> handleOpenOutput());
+        // Right-aligned status badge utilizing the space effectively
+        HBox safetyPill = new HBox(6);
+        safetyPill.setAlignment(Pos.CENTER_RIGHT);
+        Label safetyBadge = new Label("🔒 Non-Destructive Mode • Source Files Protected");
+        safetyBadge.getStyleClass().add("badge");
+        safetyBadge.setStyle("-fx-background-color: rgba(34, 197, 94, 0.1); -fx-border-color: rgba(34, 197, 94, 0.3); -fx-text-fill: #22C55E; -fx-font-size: 12px; -fx-font-weight: 600; -fx-padding: 6 12 6 12;");
+        safetyPill.getChildren().add(safetyBadge);
 
-        row.getChildren().addAll(btnStart, btnPause, btnCancel, spacer, btnOpenOutput);
+        row.getChildren().addAll(btnStart, btnScan, btnPause, btnCancel, btnOpenOutput, spacer, safetyPill);
         return row;
     }
 
     private VBox buildProgressTelemetryBox() {
-        VBox box = new VBox(4);
+        VBox box = new VBox(5);
         box.getStyleClass().add("inner-container");
-        box.setPadding(new Insets(8, 10, 8, 10));
+        box.setPadding(new Insets(10, 12, 10, 12));
 
+        // Operation state & Files processed ratio
         HBox statusRow = new HBox(8);
         statusRow.setAlignment(Pos.CENTER_LEFT);
 
-        progressStatusLabel.getStyleClass().add("text-primary");
-        progressStatusLabel.setStyle("-fx-font-size: 11px; -fx-font-weight: 700;");
-        HBox.setHgrow(progressStatusLabel, Priority.ALWAYS);
+        operationStateLabel.getStyleClass().add("text-primary");
+        operationStateLabel.setStyle("-fx-font-size: 13px; -fx-font-weight: 700; -fx-text-fill: #FAFAFA;");
 
-        progressPercentLabel.getStyleClass().add("kpi-value-blue");
-        progressPercentLabel.setStyle("-fx-font-size: 12px; -fx-font-weight: 800;");
+        Region spacer = new Region();
+        HBox.setHgrow(spacer, Priority.ALWAYS);
 
-        statusRow.getChildren().addAll(progressStatusLabel, progressPercentLabel);
+        filesRatioLabel.getStyleClass().add("kpi-value-blue");
+        filesRatioLabel.setStyle("-fx-font-size: 13px; -fx-font-weight: 800; -fx-text-fill: #A78BFA;");
 
+        statusRow.getChildren().addAll(operationStateLabel, spacer, filesRatioLabel);
+
+        // Current file being processed
+        currentFileLabel.getStyleClass().add("text-secondary");
+        currentFileLabel.setStyle("-fx-font-size: 12px; -fx-font-weight: 500; -fx-text-fill: #D4D4D8;");
+
+        // Thin Violet Progress Bar
         progressBar.setMaxWidth(Double.MAX_VALUE);
-        progressBar.setPrefHeight(6);
+        progressBar.setPrefHeight(8);
 
-        HBox telemetryRow = new HBox(12);
+        // Elapsed, Speed, ETA
+        HBox telemetryRow = new HBox(16);
         telemetryRow.setAlignment(Pos.CENTER_LEFT);
 
         elapsedLabel.getStyleClass().add("text-muted");
-        elapsedLabel.setStyle("-fx-font-size: 10px;");
+        elapsedLabel.setStyle("-fx-font-size: 11px; -fx-font-weight: 600; -fx-text-fill: #D4D4D8;");
 
         speedLabel.getStyleClass().add("text-secondary");
-        speedLabel.setStyle("-fx-font-size: 10px;");
+        speedLabel.setStyle("-fx-font-size: 11px; -fx-font-weight: 600; -fx-text-fill: #FAFAFA;");
         HBox.setHgrow(speedLabel, Priority.ALWAYS);
         speedLabel.setAlignment(Pos.CENTER);
 
         etaLabel.getStyleClass().add("kpi-value-blue");
-        etaLabel.setStyle("-fx-font-size: 10px; -fx-font-weight: 700;");
+        etaLabel.setStyle("-fx-font-size: 11px; -fx-font-weight: 700; -fx-text-fill: #A78BFA;");
 
         telemetryRow.getChildren().addAll(elapsedLabel, speedLabel, etaLabel);
 
-        box.getChildren().addAll(statusRow, progressBar, telemetryRow);
+        box.getChildren().addAll(statusRow, currentFileLabel, progressBar, telemetryRow);
         return box;
     }
 
     private VBox buildRestorationControlsBox() {
-        VBox box = new VBox(6);
+        VBox box = new VBox(8);
         box.getStyleClass().add("inner-container");
-        box.setPadding(new Insets(8, 10, 8, 10));
+        box.setPadding(new Insets(10, 12, 10, 12));
         VBox.setVgrow(box, Priority.ALWAYS);
 
         HBox titleRow = new HBox(8);
         titleRow.setAlignment(Pos.CENTER_LEFT);
-        Label title = new Label("RESTORATION CONTROLS");
-        title.getStyleClass().add("kpi-label");
+        Label title = new Label("RESTORATION OPTIONS");
+        title.getStyleClass().addAll("section-title", "kpi-label");
+        title.setStyle("-fx-font-size: 13px; -fx-font-weight: 700; -fx-text-fill: #FAFAFA;");
+
         Region sp = new Region();
         HBox.setHgrow(sp, Priority.ALWAYS);
 
-        Label optBadge = new Label("OPTIONS");
+        Label optBadge = new Label("CONFIG");
         optBadge.getStyleClass().add("badge");
-        optBadge.setStyle("-fx-font-size: 9px; -fx-font-weight: 700;");
+        optBadge.setStyle("-fx-font-size: 10px; -fx-font-weight: 700;");
 
         titleRow.getChildren().addAll(title, sp, optBadge);
 
-        // Date input block
-        VBox dateBlock = new VBox(3);
-        Label dateLbl = new Label("Fallback Date (missing timestamps)");
-        dateLbl.getStyleClass().add("text-muted");
-        dateLbl.setStyle("-fx-font-size: 10px;");
+        // Safety Notice
+        HBox safetyNotice = new HBox(6);
+        safetyNotice.setAlignment(Pos.CENTER_LEFT);
+        safetyNotice.setStyle("-fx-background-color: rgba(34, 197, 94, 0.08); -fx-border-color: rgba(34, 197, 94, 0.25); -fx-border-radius: 4; -fx-background-radius: 4; -fx-padding: 5 10 5 10;");
+        Label safetyText = new Label("Preserves Originals (Source files untouched)");
+        safetyText.setStyle("-fx-font-size: 12px; -fx-font-weight: 600; -fx-text-fill: #22C55E;");
+        safetyNotice.getChildren().add(safetyText);
 
-        HBox dateRow = new HBox(4);
+        // Group 1: Date & Timestamp Handling
+        Label dateGroupLabel = new Label("Date & Timestamp Handling");
+        dateGroupLabel.setStyle("-fx-padding: 6 0 2 0; -fx-font-size: 11px; -fx-font-weight: 700; -fx-text-fill: #A78BFA; -fx-text-transform: uppercase;");
+
+        VBox dateBlock = new VBox(4);
+        Label dateLbl = new Label("Fallback Date (for missing timestamps)");
+        dateLbl.setStyle("-fx-font-size: 12px; -fx-font-weight: 500; -fx-text-fill: #D4D4D8;");
+
+        HBox dateRow = new HBox(6);
         dateRow.setAlignment(Pos.CENTER_LEFT);
         dateOverrideField.setPromptText("YYYY-MM-DD");
         dateOverrideField.getStyleClass().add("text-field");
-        dateOverrideField.setStyle("-fx-font-size: 11px; -fx-pref-height: 26px; -fx-pref-width: 120px;");
+        dateOverrideField.setStyle("-fx-font-size: 13px; -fx-pref-height: 32px; -fx-pref-width: 145px;");
 
-        datePicker.setStyle("-fx-pref-width: 28px; -fx-pref-height: 26px;");
+        datePicker.setStyle("-fx-pref-width: 32px; -fx-pref-height: 32px;");
         datePicker.setOnAction(e -> {
             LocalDate d = datePicker.getValue();
             if (d != null) dateOverrideField.setText(d.toString());
@@ -488,15 +566,35 @@ public class TakeoutRestoreView extends VBox {
         dateRow.getChildren().addAll(dateOverrideField, datePicker);
         dateBlock.getChildren().addAll(dateLbl, dateRow);
 
-        // 4 Checkboxes
-        organizeMonthCheck.setStyle("-fx-font-size: 11px;");
-        smartInterpolationCheck.setStyle("-fx-font-size: 11px;");
+        smartInterpolationCheck.setStyle("-fx-font-size: 13px; -fx-font-weight: 500; -fx-text-fill: #FAFAFA;");
         smartInterpolationCheck.setSelected(true);
-        keepAwakeCheck.setStyle("-fx-font-size: 11px;");
-        keepAwakeCheck.setSelected(true);
-        splitVolumesCheck.setStyle("-fx-font-size: 11px;");
+        smartInterpolationCheck.setTooltip(new Tooltip("Interpolates missing timestamps from JSON sidecars, folder names, and file dates."));
 
-        box.getChildren().addAll(titleRow, dateBlock, organizeMonthCheck, smartInterpolationCheck, keepAwakeCheck, splitVolumesCheck);
+        // Group 2: Output & Processing
+        Label outputGroupLabel = new Label("Output & Processing");
+        outputGroupLabel.setStyle("-fx-padding: 8 0 2 0; -fx-font-size: 11px; -fx-font-weight: 700; -fx-text-fill: #A78BFA; -fx-text-transform: uppercase;");
+
+        organizeMonthCheck.setStyle("-fx-font-size: 13px; -fx-font-weight: 500; -fx-text-fill: #FAFAFA;");
+        organizeMonthCheck.setTooltip(new Tooltip("Organizes photos and videos into Year/Month subfolders (e.g., 2023/08)."));
+
+        splitVolumesCheck.setStyle("-fx-font-size: 13px; -fx-font-weight: 500; -fx-text-fill: #FAFAFA;");
+        splitVolumesCheck.setTooltip(new Tooltip("Compresses output files into 2GB multi-volume ZIP archives for easy cloud backup."));
+
+        keepAwakeCheck.setStyle("-fx-font-size: 13px; -fx-font-weight: 500; -fx-text-fill: #FAFAFA;");
+        keepAwakeCheck.setSelected(true);
+        keepAwakeCheck.setTooltip(new Tooltip("Prevents your computer from sleeping or hibernating during long restoration batches."));
+
+        box.getChildren().addAll(
+                titleRow,
+                safetyNotice,
+                dateGroupLabel,
+                dateBlock,
+                smartInterpolationCheck,
+                outputGroupLabel,
+                organizeMonthCheck,
+                splitVolumesCheck,
+                keepAwakeCheck
+        );
         return box;
     }
 
@@ -505,52 +603,79 @@ public class TakeoutRestoreView extends VBox {
         card.getStyleClass().add("glass-card");
         card.setPadding(new Insets(10, 12, 10, 12));
 
-        // Top bar with Traffic light dots, Title, Filter Tabs, and Action buttons
+        // Top bar with traffic lights, title, filter tabs, search field, and action buttons
         HBox topRow = new HBox(8);
         topRow.setAlignment(Pos.CENTER_LEFT);
 
-        // 🔴 🟡 🟢 Traffic light dots
+        // Traffic light dots
         HBox trafficLights = new HBox(5);
         trafficLights.setAlignment(Pos.CENTER_LEFT);
-        Circle dotRed = new Circle(4, Color.web("#ef4444"));
-        Circle dotYellow = new Circle(4, Color.web("#f59e0b"));
-        Circle dotGreen = new Circle(4, Color.web("#10b981"));
+        Circle dotRed = new Circle(4, Color.web("#EF4444"));
+        Circle dotYellow = new Circle(4, Color.web("#F59E0B"));
+        Circle dotGreen = new Circle(4, Color.web("#22C55E"));
         trafficLights.getChildren().addAll(dotRed, dotYellow, dotGreen);
 
-        Label logsTitle = new Label("RESTORE LOGS & DIAGNOSTICS");
+        Label logsTitle = new Label("ACTIVITY & DIAGNOSTICS");
         logsTitle.getStyleClass().add("kpi-label");
+        logsTitle.setStyle("-fx-font-size: 12px; -fx-font-weight: 700; -fx-text-fill: #FAFAFA;");
 
         // Filter tabs
         HBox filterTabs = new HBox(4);
         filterTabs.setAlignment(Pos.CENTER_LEFT);
         styleTabButton(tabAll, "ALL", true);
         styleTabButton(tabRestored, "RESTORED", false);
-        styleTabButton(tabErrors, "ERRORS", false);
-        styleTabButton(tabSkipped, "SKIPPED", false);
+        styleTabButton(tabNeedsReview, "NEEDS REVIEW", false);
+        styleTabButton(tabFailed, "FAILED", false);
 
         tabAll.setOnAction(e -> setLogFilter("ALL"));
         tabRestored.setOnAction(e -> setLogFilter("RESTORED"));
-        tabErrors.setOnAction(e -> setLogFilter("ERRORS"));
-        tabSkipped.setOnAction(e -> setLogFilter("SKIPPED"));
+        tabNeedsReview.setOnAction(e -> setLogFilter("NEEDS_REVIEW"));
+        tabFailed.setOnAction(e -> setLogFilter("FAILED"));
 
-        filterTabs.getChildren().addAll(tabAll, tabRestored, tabErrors, tabSkipped);
+        filterTabs.getChildren().addAll(tabAll, tabRestored, tabNeedsReview, tabFailed);
+
+        // Real-time search filter
+        logSearchField.setPromptText("Filter logs...");
+        logSearchField.getStyleClass().add("text-field");
+        logSearchField.setStyle("-fx-font-size: 11px; -fx-pref-height: 28px; -fx-pref-width: 140px;");
+        logSearchField.textProperty().addListener((obs, oldV, newV) -> applyLogFilter());
 
         Region spacer = new Region();
         HBox.setHgrow(spacer, Priority.ALWAYS);
 
-        Button btnCopy = new Button("Copy Logs");
+        Button btnExport = new Button("Export Logs");
+        btnExport.getStyleClass().add("btn-ghost");
+        btnExport.setGraphic(UiIcons.createSvgIcon(UiIcons.DOWNLOAD, 12, "currentColor"));
+        btnExport.setStyle("-fx-font-size: 11px; -fx-font-weight: 600; -fx-padding: 4 8 4 8;");
+        btnExport.setOnAction(e -> exportLogsToFile());
+
+        Button btnCopy = new Button("Copy");
         btnCopy.getStyleClass().add("btn-ghost");
         btnCopy.setGraphic(UiIcons.createSvgIcon(UiIcons.COPY, 12, "currentColor"));
-        btnCopy.setStyle("-fx-font-size: 10px; -fx-font-weight: 600; -fx-padding: 3 8 3 8;");
+        btnCopy.setStyle("-fx-font-size: 11px; -fx-font-weight: 600; -fx-padding: 4 8 4 8;");
         btnCopy.setOnAction(e -> copyLogsToClipboard());
 
-        Button btnClear = new Button("Clear Logs");
+        Button btnClear = new Button("Clear");
         btnClear.getStyleClass().add("btn-ghost");
         btnClear.setGraphic(UiIcons.createSvgIcon(UiIcons.TRASH, 12, "currentColor"));
-        btnClear.setStyle("-fx-font-size: 10px; -fx-font-weight: 600; -fx-padding: 3 8 3 8;");
+        btnClear.setStyle("-fx-font-size: 11px; -fx-font-weight: 600; -fx-padding: 4 8 4 8;");
         btnClear.setOnAction(e -> clearLogs());
 
-        topRow.getChildren().addAll(trafficLights, logsTitle, filterTabs, spacer, btnCopy, btnClear);
+        btnCollapseLogs.getStyleClass().add("btn-ghost");
+        btnCollapseLogs.setStyle("-fx-font-size: 11px; -fx-font-weight: 600; -fx-padding: 4 8 4 8;");
+        btnCollapseLogs.setOnAction(e -> toggleCollapseLogs());
+
+        topRow.getChildren().addAll(trafficLights, logsTitle, filterTabs, logSearchField, spacer, btnExport, btnCopy, btnClear, btnCollapseLogs);
+
+        // Build Friendly Empty State Box
+        logEmptyStateBox.getStyleClass().add("empty-state-box");
+        Label emptyTitle = new Label("No restoration activity yet");
+        emptyTitle.getStyleClass().add("empty-state-title");
+        emptyTitle.setStyle("-fx-font-size: 14px; -fx-font-weight: 700; -fx-text-fill: #FAFAFA;");
+        Label emptySub = new Label("Select a Google Takeout archive or folder and an output location to begin.\nReal-time telemetry, JSON sidecar matching, and diagnostics will appear here as tasks run.");
+        emptySub.getStyleClass().add("empty-state-sub");
+        emptySub.setStyle("-fx-font-size: 12px; -fx-font-weight: 500; -fx-text-fill: #D4D4D8;");
+        logEmptyStateBox.getChildren().addAll(emptyTitle, emptySub);
 
         // Terminal ListView with clean theme support
         logListView.getStyleClass().add("list-view");
@@ -567,7 +692,7 @@ public class TakeoutRestoreView extends VBox {
 
                     Label timeLabel = new Label(item.timestamp);
                     timeLabel.getStyleClass().add("text-muted");
-                    timeLabel.setStyle("-fx-font-family: 'Consolas', 'Courier New', monospace; -fx-font-size: 11px;");
+                    timeLabel.setStyle("-fx-font-family: 'Consolas', 'Courier New', monospace; -fx-font-size: 11px; -fx-text-fill: #D4D4D8;");
 
                     Label badge = new Label(item.level.toUpperCase());
                     badge.getStyleClass().add("log-badge");
@@ -583,7 +708,7 @@ public class TakeoutRestoreView extends VBox {
 
                     Label msgLabel = new Label(item.message);
                     msgLabel.getStyleClass().add("text-primary");
-                    msgLabel.setStyle("-fx-font-size: 11px;");
+                    msgLabel.setStyle("-fx-font-size: 12px; -fx-font-weight: 500; -fx-text-fill: #FAFAFA;");
                     msgLabel.setWrapText(true);
                     HBox.setHgrow(msgLabel, Priority.ALWAYS);
 
@@ -595,8 +720,33 @@ public class TakeoutRestoreView extends VBox {
         });
 
         VBox.setVgrow(logListView, Priority.ALWAYS);
-        card.getChildren().addAll(topRow, logListView);
+        VBox.setVgrow(logEmptyStateBox, Priority.ALWAYS);
+
+        StackPane contentStack = new StackPane(logEmptyStateBox, logListView);
+        VBox.setVgrow(contentStack, Priority.ALWAYS);
+
+        card.getChildren().addAll(topRow, contentStack);
         return card;
+    }
+
+    private void toggleCollapseLogs() {
+        isLogsCollapsed = !isLogsCollapsed;
+        btnCollapseLogs.setText(isLogsCollapsed ? "Expand Logs" : "Collapse Logs");
+        if (isLogsCollapsed) {
+            logListView.setMaxHeight(90);
+            logEmptyStateBox.setMaxHeight(90);
+        } else {
+            logListView.setMaxHeight(Double.MAX_VALUE);
+            logEmptyStateBox.setMaxHeight(Double.MAX_VALUE);
+        }
+    }
+
+    private void updateLogViewVisibility() {
+        boolean hasLogs = !allLogs.isEmpty();
+        logEmptyStateBox.setVisible(!hasLogs);
+        logEmptyStateBox.setManaged(!hasLogs);
+        logListView.setVisible(hasLogs);
+        logListView.setManaged(hasLogs);
     }
 
     private void styleTabButton(Button btn, String filterKey, boolean active) {
@@ -611,21 +761,28 @@ public class TakeoutRestoreView extends VBox {
         this.currentLogFilter = filterKey;
         styleTabButton(tabAll, "ALL", "ALL".equals(filterKey));
         styleTabButton(tabRestored, "RESTORED", "RESTORED".equals(filterKey));
-        styleTabButton(tabErrors, "ERRORS", "ERRORS".equals(filterKey));
-        styleTabButton(tabSkipped, "SKIPPED", "SKIPPED".equals(filterKey));
+        styleTabButton(tabNeedsReview, "NEEDS_REVIEW", "NEEDS_REVIEW".equals(filterKey));
+        styleTabButton(tabFailed, "FAILED", "FAILED".equals(filterKey));
+        applyLogFilter();
+    }
 
+    private void applyLogFilter() {
+        String query = logSearchField.getText() != null ? logSearchField.getText().trim().toLowerCase() : "";
         filteredLogs.clear();
         for (LogEntry e : allLogs) {
-            if ("ALL".equals(filterKey)) {
-                filteredLogs.add(e);
-            } else if ("RESTORED".equals(filterKey) && "SUCCESS".equalsIgnoreCase(e.level)) {
-                filteredLogs.add(e);
-            } else if ("ERRORS".equals(filterKey) && "ERROR".equalsIgnoreCase(e.level)) {
-                filteredLogs.add(e);
-            } else if ("SKIPPED".equals(filterKey) && "WARN".equalsIgnoreCase(e.level)) {
+            boolean matchesCategory = switch (currentLogFilter) {
+                case "RESTORED" -> "SUCCESS".equalsIgnoreCase(e.level);
+                case "NEEDS_REVIEW" -> "WARN".equalsIgnoreCase(e.level);
+                case "FAILED" -> "ERROR".equalsIgnoreCase(e.level);
+                default -> true;
+            };
+
+            boolean matchesSearch = query.isEmpty() || e.message.toLowerCase().contains(query);
+            if (matchesCategory && matchesSearch) {
                 filteredLogs.add(e);
             }
         }
+        updateLogViewVisibility();
     }
 
     public void appendLog(String level, String message) {
@@ -633,26 +790,21 @@ public class TakeoutRestoreView extends VBox {
             LogEntry entry = new LogEntry(level, message);
             allLogs.add(entry);
 
-            boolean matches = "ALL".equals(currentLogFilter) ||
-                    ("RESTORED".equals(currentLogFilter) && "SUCCESS".equalsIgnoreCase(level)) ||
-                    ("ERRORS".equals(currentLogFilter) && "ERROR".equalsIgnoreCase(level)) ||
-                    ("SKIPPED".equals(currentLogFilter) && "WARN".equalsIgnoreCase(level));
-
-            if (matches) {
-                filteredLogs.add(entry);
+            applyLogFilter();
+            if (!filteredLogs.isEmpty()) {
                 logListView.scrollTo(filteredLogs.size() - 1);
             }
 
             // Update badge counts
             int allCount = allLogs.size();
             long succCount = allLogs.stream().filter(l -> "SUCCESS".equalsIgnoreCase(l.level)).count();
+            long warnCount = allLogs.stream().filter(l -> "WARN".equalsIgnoreCase(l.level)).count();
             long errCount = allLogs.stream().filter(l -> "ERROR".equalsIgnoreCase(l.level)).count();
-            long skipCount = allLogs.stream().filter(l -> "WARN".equalsIgnoreCase(l.level)).count();
 
             tabAll.setText("All (" + allCount + ")");
             tabRestored.setText("Restored (" + succCount + ")");
-            tabErrors.setText("Errors (" + errCount + ")");
-            tabSkipped.setText("Skipped (" + skipCount + ")");
+            tabNeedsReview.setText("Needs Review (" + warnCount + ")");
+            tabFailed.setText("Failed (" + errCount + ")");
         });
     }
 
@@ -668,17 +820,36 @@ public class TakeoutRestoreView extends VBox {
         appendLog("INFO", "Copied " + allLogs.size() + " logs to clipboard.");
     }
 
+    private void exportLogsToFile() {
+        FileChooser chooser = new FileChooser();
+        chooser.setTitle("Export Diagnostic Logs");
+        chooser.setInitialFileName("takeoutfix-restore-log.txt");
+        chooser.getExtensionFilters().add(new FileChooser.ExtensionFilter("Text Log (*.txt)", "*.txt"));
+        File file = chooser.showSaveDialog(stage);
+        if (file != null) {
+            try (PrintWriter writer = new PrintWriter(file)) {
+                for (LogEntry e : allLogs) {
+                    writer.println(e.toString());
+                }
+                appendLog("SUCCESS", "Diagnostic logs successfully exported to " + file.getName());
+            } catch (Exception ex) {
+                showAlert("Export Failed", "Could not export logs: " + ex.getMessage());
+            }
+        }
+    }
+
     private void clearLogs() {
         allLogs.clear();
         filteredLogs.clear();
         tabAll.setText("All (0)");
         tabRestored.setText("Restored (0)");
-        tabErrors.setText("Errors (0)");
-        tabSkipped.setText("Skipped (0)");
+        tabNeedsReview.setText("Needs Review (0)");
+        tabFailed.setText("Failed (0)");
         kpiScanned.setText("0");
         kpiRestored.setText("0");
-        kpiIssues.setText("0");
-        kpiErrors.setText("0");
+        kpiNeedsReview.setText("0");
+        kpiFailed.setText("0");
+        updateLogViewVisibility();
     }
 
     private void chooseSourceFolder() {
@@ -703,20 +874,37 @@ public class TakeoutRestoreView extends VBox {
     private void setSourceFile(File file) {
         this.selectedSource = file;
         sourcePathLabel.setText(file.getAbsolutePath());
-        sourcePathLabel.setStyle("-fx-font-size: 11px; -fx-font-weight: 600;");
+        sourcePathLabel.setStyle("-fx-font-size: 12px; -fx-font-weight: 700; -fx-text-fill: #FAFAFA;");
         btnSourceClear.setVisible(true);
 
-        // Auto-suggest destination folder if empty
-        if (selectedOutput == null) {
-            File suggested = new File(file.getParentFile(), "Takeout_Restored");
-            setDestinationFile(suggested);
-        }
+        sourceMetaLabel.setText("Scanning archive...");
+        new Thread(() -> {
+            try {
+                if (file.isFile() && file.getName().toLowerCase().endsWith(".zip")) {
+                    long sizeMb = file.length() / (1024 * 1024);
+                    Platform.runLater(() -> sourceMetaLabel.setText(String.format("ZIP Archive • %,d MB", sizeMb)));
+                } else if (file.isDirectory()) {
+                    List<File> media = new MediaScanner().listMediaFiles(file);
+                    long totalBytes = 0;
+                    for (File m : media) totalBytes += m.length();
+                    long sizeMb = totalBytes / (1024 * 1024);
+                    int count = media.size();
+                    Platform.runLater(() -> {
+                        sourceMetaLabel.setText(String.format("%,d media files • %,d MB", count, sizeMb));
+                        kpiScanned.setText(String.valueOf(count));
+                    });
+                }
+            } catch (Exception ignored) {
+                Platform.runLater(() -> sourceMetaLabel.setText("Ready to process"));
+            }
+        }, "source-scan-thread").start();
     }
 
     private void clearSource() {
         selectedSource = null;
         sourcePathLabel.setText("No folder or ZIP archive selected yet");
-        sourcePathLabel.setStyle("-fx-font-size: 11px; -fx-text-fill: #71717a;");
+        sourcePathLabel.setStyle("-fx-font-size: 12px; -fx-text-fill: #A1A1AA;");
+        sourceMetaLabel.setText("Awaiting selection");
         btnSourceClear.setVisible(false);
     }
 
@@ -732,50 +920,135 @@ public class TakeoutRestoreView extends VBox {
     private void setDestinationFile(File file) {
         this.selectedOutput = file;
         outputPathLabel.setText(file.getAbsolutePath());
-        outputPathLabel.setStyle("-fx-font-size: 11px; -fx-font-weight: 600;");
+        outputPathLabel.setStyle("-fx-font-size: 12px; -fx-font-weight: 700; -fx-text-fill: #FAFAFA;");
+        outputMetaLabel.setText("Output folder designated");
         btnDestClear.setVisible(true);
     }
 
     private void clearDestination() {
         selectedOutput = null;
         outputPathLabel.setText("No destination folder selected yet");
-        outputPathLabel.setStyle("-fx-font-size: 11px; -fx-text-fill: #71717a;");
+        outputPathLabel.setStyle("-fx-font-size: 12px; -fx-text-fill: #A1A1AA;");
+        outputMetaLabel.setText("Original Takeout files will remain untouched");
         btnDestClear.setVisible(false);
     }
 
-    private final PowerManager powerManager = new PowerManager();
-
-    private java.util.Optional<java.time.Instant> parseDateOverride() {
+    private Optional<java.time.Instant> parseDateOverride() {
         String text = dateOverrideField.getText();
         if (text == null || text.trim().isEmpty() || text.startsWith("YYYY-MM-DD")) {
-            return java.util.Optional.empty();
+            return Optional.empty();
         }
         try {
             LocalDate d = LocalDate.parse(text.trim());
-            return java.util.Optional.of(d.atStartOfDay(java.time.ZoneId.systemDefault()).toInstant());
+            return Optional.of(d.atStartOfDay(java.time.ZoneId.systemDefault()).toInstant());
         } catch (Exception e) {
-            return java.util.Optional.empty();
+            return Optional.empty();
         }
     }
 
-    private void handleStart() {
-
+    private void handleScan() {
+        if (isRunning) {
+            showAlert("Process Running", "A scan or restoration process is already actively running.");
+            return;
+        }
         if (selectedSource == null) {
-            showAlert("Source Required", "Please select a Google Takeout folder or ZIP archive first.");
+            showAlert("Source Archive Required", "Please select a Google Takeout folder or ZIP archive to scan.");
+            return;
+        }
+        executeScanArchive();
+    }
+
+    private void handleStart() {
+        if (isRunning) {
+            showAlert("Process Running", "A scan or restoration process is already actively running.");
+            return;
+        }
+        if (selectedSource == null) {
+            showAlert("Source Archive Required", "Please select a Google Takeout folder or ZIP archive to begin.");
             return;
         }
         if (selectedOutput == null) {
-            showAlert("Destination Required", "Please select an output destination folder first.");
+            showAlert("Output Location Required", "Please designate an output destination folder.");
             return;
         }
 
         if (selectedSource.equals(selectedOutput) ||
-            selectedOutput.getAbsolutePath().equalsIgnoreCase(selectedSource.getAbsolutePath()) ||
-            selectedOutput.getAbsolutePath().startsWith(selectedSource.getAbsolutePath() + File.separator)) {
-            showAlert("Destination Conflict", "To preserve original files intact, the destination folder must be a separate directory outside the source archive.");
+                selectedOutput.getAbsolutePath().equalsIgnoreCase(selectedSource.getAbsolutePath()) ||
+                selectedOutput.getAbsolutePath().startsWith(selectedSource.getAbsolutePath() + File.separator)) {
+            showAlert("Destination Conflict", "To preserve original files intact, the output folder must be a separate directory outside the source archive.");
             return;
         }
 
+        // Show friendly trust & optional sign-in dialog if not signed in and not suppressed
+        boolean signedIn = userService != null && userService.isSignedIn();
+        java.util.prefs.Preferences prefs = java.util.prefs.Preferences.userNodeForPackage(TakeoutRestoreView.class);
+        boolean suppress = prefs.getBoolean("suppress_trust_popup", false);
+        if (!signedIn && !suppress) {
+            FxTrustSignInDialog trustDialog = new FxTrustSignInDialog(stage, userService, () -> {
+                executeLiveRestoration();
+            });
+            trustDialog.showAndWait();
+            return;
+        }
+
+        executeLiveRestoration();
+    }
+
+    private void executeScanArchive() {
+        isRunning = true;
+        isPaused = false;
+        startTimeMs = System.currentTimeMillis();
+        updateButtonStates();
+
+        appendLog("INFO", "Starting SCAN for " + selectedSource.getName());
+        operationStateLabel.setText("Scanning archive & matching metadata...");
+        currentFileLabel.setText("Inspecting files and JSON sidecars without writing to disk");
+
+        TakeoutScanTask scanTask = new TakeoutScanTask(selectedSource, new TakeoutScanTask.ScanListener() {
+            @Override
+            public void onProgress(int current, int total, int matched, int unmatched, File currentFile) {
+                Platform.runLater(() -> {
+                    int pct = (int) (((double) current / total) * 100);
+                    progressBar.setProgress(pct / 100.0);
+                    filesRatioLabel.setText(String.format("%,d / %,d files (%d%%)", current, total, pct));
+                    currentFileLabel.setText("Scanning: " + currentFile.getName());
+                    kpiRestored.setText(String.valueOf(matched));
+                    kpiNeedsReview.setText(String.valueOf(unmatched));
+                });
+            }
+
+            @Override
+            public void onComplete(int total, int matched, int unmatched) {
+                Platform.runLater(() -> {
+                    operationStateLabel.setText("Scan Complete — analysis finished");
+                    currentFileLabel.setText(String.format("Scanned %,d files: %,d matched, %,d require review.", total, matched, unmatched));
+                    appendLog("SUCCESS", String.format("Scan finished: %,d files evaluated, %,d sidecars matched.", total, matched));
+                    showAlert("Scan Completed", String.format("Scan finished!\n\n• Files Scanned: %,d\n• Metadata Matchable: %,d\n• Needs Review: %,d\n\nNo files were modified or written to disk.", total, matched, unmatched));
+                    isRunning = false;
+                    isPaused = false;
+                    activeScanTask = null;
+                    updateButtonStates();
+                });
+            }
+
+            @Override
+            public void onError(Throwable t) {
+                Platform.runLater(() -> {
+                    appendLog("ERROR", "Scan failed: " + t.getMessage());
+                    operationStateLabel.setText("Scan encountered an error.");
+                    isRunning = false;
+                    isPaused = false;
+                    activeScanTask = null;
+                    updateButtonStates();
+                });
+            }
+        });
+
+        this.activeScanTask = scanTask;
+        com.takeoutfix.task.TaskManager.getInstance().submitTask(scanTask);
+    }
+
+    private void executeLiveRestoration() {
         isRunning = true;
         isPaused = false;
         startTimeMs = System.currentTimeMillis();
@@ -785,24 +1058,39 @@ public class TakeoutRestoreView extends VBox {
             powerManager.startKeepAwake();
         }
 
-        appendLog("INFO", "Starting restoration from " + selectedSource.getName() + " to " + selectedOutput.getName());
-        progressStatusLabel.setText("Processing restoration...");
+        appendLog("INFO", "Starting live restoration from " + selectedSource.getName() + " to " + selectedOutput.getName());
+        operationStateLabel.setText("Initializing restoration engine...");
+        currentFileLabel.setText("Extracting archive & parsing sidecars...");
 
-        new Thread(() -> {
-            try {
-                extractionService.startExtraction(
-                        selectedSource.getAbsolutePath(),
-                        selectedOutput.getAbsolutePath(),
-                        PowerManager.PostAction.KEEP_AWAKE_ONLY,
-                        parseDateOverride(),
-                        false,
-                        splitVolumesCheck.isSelected(),
-                        -1,
-                        0,
-                        smartInterpolationCheck.isSelected(),
-                        organizeMonthCheck.isSelected()
-                );
-                Platform.runLater(this::showRestoreCompletionPopup);
+        TakeoutRestoreTask restoreTask = new TakeoutRestoreTask(
+                extractionService,
+                selectedSource.getAbsolutePath(),
+                selectedOutput.getAbsolutePath(),
+                PowerManager.PostAction.KEEP_AWAKE_ONLY,
+                parseDateOverride(),
+                false,
+                splitVolumesCheck.isSelected(),
+                -1,
+                0,
+                smartInterpolationCheck.isSelected(),
+                organizeMonthCheck.isSelected()
+        );
+
+        this.activeRestoreTask = restoreTask;
+
+        // Synchronize with background task state transitions
+        restoreTask.stateProperty().addListener((obs, oldState, newState) -> {
+            if (newState == BackgroundTask.TaskState.COMPLETED) {
+                Platform.runLater(() -> {
+                    operationStateLabel.setText("Restoration Complete");
+                    currentFileLabel.setText("Restoration completed successfully.");
+                    showRestoreCompletionPopup();
+                    isRunning = false;
+                    isPaused = false;
+                    activeRestoreTask = null;
+                    updateButtonStates();
+                    powerManager.stopKeepAwake();
+                });
                 try {
                     int restored = 0;
                     try { restored = Integer.parseInt(kpiRestored.getText().trim()); } catch (Exception ignored) {}
@@ -816,48 +1104,91 @@ public class TakeoutRestoreView extends VBox {
                             "Google Photos Takeout restoration completed with verified metadata."
                     );
                 } catch (Exception ignored) {}
-            } catch (Exception ex) {
+            } else if (newState == BackgroundTask.TaskState.FAILED) {
                 Platform.runLater(() -> {
-                    appendLog("ERROR", "Restoration failed: " + (ex.getMessage() != null ? ex.getMessage() : ex.getClass().getSimpleName()));
-                    progressStatusLabel.setText("Error — restoration did not complete.");
-                    showErrorAlert("Restoration Failed", ex.getMessage() != null ? ex.getMessage() : ex.toString());
-                });
-            } finally {
-                // Always reset button states when the restore thread exits — whether completed, failed, or cancelled
-                Platform.runLater(() -> {
+                    Throwable ex = restoreTask.getFailureError();
+                    String msg = ex != null ? (ex.getMessage() != null ? ex.getMessage() : ex.getClass().getSimpleName()) : "Unknown error";
+                    appendLog("ERROR", "Restoration failed: " + msg);
+                    operationStateLabel.setText("Restoration did not complete.");
+                    showErrorAlert("Restoration Failed", msg);
                     isRunning = false;
                     isPaused = false;
+                    activeRestoreTask = null;
                     updateButtonStates();
                     powerManager.stopKeepAwake();
                 });
+            } else if (newState == BackgroundTask.TaskState.CANCELLED) {
+                Platform.runLater(() -> {
+                    isRunning = false;
+                    isPaused = false;
+                    activeRestoreTask = null;
+                    updateButtonStates();
+                    powerManager.stopKeepAwake();
+                    appendLog("WARN", "Restoration cancelled by user.");
+                    operationStateLabel.setText("Restoration cancelled.");
+                    currentFileLabel.setText("Operation stopped.");
+                });
+            } else if (newState == BackgroundTask.TaskState.PAUSED) {
+                Platform.runLater(() -> {
+                    isPaused = true;
+                    updateButtonStates();
+                    operationStateLabel.setText("Restoration paused.");
+                    appendLog("WARN", "Restoration paused.");
+                });
+            } else if (newState == BackgroundTask.TaskState.PROCESSING && isPaused) {
+                Platform.runLater(() -> {
+                    isPaused = false;
+                    updateButtonStates();
+                    operationStateLabel.setText("Restoring metadata...");
+                    appendLog("INFO", "Restoration resumed.");
+                });
             }
-        }, "fx-restore-runner").start();
+        });
+
+        com.takeoutfix.task.TaskManager.getInstance().submitTask(restoreTask);
     }
 
     private void handlePause() {
-        isPaused = !isPaused;
-        if (isPaused) {
-            btnPause.setText("Resume");
-            progressStatusLabel.setText("Restoration paused.");
-            appendLog("WARN", "Restoration paused by user.");
-            extractionService.pause();
+        if (!isRunning) return;
+        if (activeRestoreTask != null) {
+            if (activeRestoreTask.isPaused()) {
+                activeRestoreTask.resume();
+            } else {
+                activeRestoreTask.pause();
+            }
+        } else if (activeScanTask != null) {
+            if (activeScanTask.isPaused()) {
+                activeScanTask.resume();
+            } else {
+                activeScanTask.pause();
+            }
         } else {
-            btnPause.setText("Pause");
-            progressStatusLabel.setText("Restoration resumed.");
-            appendLog("INFO", "Restoration resumed.");
-            extractionService.resume();
+            isPaused = !isPaused;
+            updateButtonStates();
+            if (isPaused) {
+                extractionService.pause();
+            } else {
+                extractionService.resume();
+            }
         }
     }
 
     private void handleCancel() {
         if (!isRunning) return;
-        extractionService.cancel();
+        if (activeRestoreTask != null) {
+            activeRestoreTask.cancel();
+        } else if (activeScanTask != null) {
+            activeScanTask.cancel();
+        } else {
+            extractionService.cancel();
+        }
         isRunning = false;
         isPaused = false;
         updateButtonStates();
         powerManager.stopKeepAwake();
-        appendLog("WARN", "Restoration cancelled by user.");
-        progressStatusLabel.setText("Restoration cancelled.");
+        appendLog("WARN", "Operation cancelled by user.");
+        operationStateLabel.setText("Operation cancelled.");
+        currentFileLabel.setText("Operation stopped.");
     }
 
     private void handleOpenOutput() {
@@ -874,6 +1205,7 @@ public class TakeoutRestoreView extends VBox {
 
     private void updateButtonStates() {
         btnStart.setDisable(isRunning);
+        btnScan.setDisable(isRunning);
         btnPause.setDisable(!isRunning);
         btnCancel.setDisable(!isRunning);
         btnPause.setText(isPaused ? "Resume" : "Pause");
@@ -893,19 +1225,30 @@ public class TakeoutRestoreView extends VBox {
                 Platform.runLater(() -> {
                     int pct = total > 0 ? (int) (((double) processed / total) * 100) : 0;
                     progressBar.setProgress(pct / 100.0);
-                    progressPercentLabel.setText(pct + "%");
-                    progressStatusLabel.setText("Status: " + currentAction);
+                    filesRatioLabel.setText(String.format("%,d / %,d files (%d%%)", processed, total, pct));
+                    if (currentAction != null && currentAction.contains("Processing:")) {
+                        currentFileLabel.setText(currentAction);
+                        operationStateLabel.setText("Injecting EXIF metadata...");
+                    } else if (currentAction != null) {
+                        operationStateLabel.setText(currentAction);
+                    }
                 });
             }
 
             @Override
             public void onProgressTelemetry(int processed, int total, long processedBytes, String currentAction,
-                                           long elapsedSec, long etaSec, double filesPerSec, double mbPerSec) {
+                                            long elapsedSec, long etaSec, double filesPerSec, double mbPerSec) {
                 Platform.runLater(() -> {
                     int pct = total > 0 ? (int) (((double) processed / total) * 100) : 0;
                     progressBar.setProgress(pct / 100.0);
-                    progressPercentLabel.setText(pct + "%");
-                    progressStatusLabel.setText("Status: " + currentAction);
+                    filesRatioLabel.setText(String.format("%,d / %,d files (%d%%)", processed, total, pct));
+
+                    if (currentAction != null && currentAction.contains("Processing:")) {
+                        currentFileLabel.setText(currentAction);
+                        operationStateLabel.setText("Writing metadata & sidecars...");
+                    } else if (currentAction != null) {
+                        operationStateLabel.setText(currentAction);
+                    }
 
                     long hours = elapsedSec / 3600;
                     long mins = (elapsedSec % 3600) / 60;
@@ -919,10 +1262,8 @@ public class TakeoutRestoreView extends VBox {
                     etaLabel.setText(String.format("⏳ ETA: %02d:%02d", etaMins, etaRem));
 
                     if (processed >= total && total > 0) {
-                        isRunning = false;
-                        isPaused = false;
-                        updateButtonStates();
-                        powerManager.stopKeepAwake();
+                        operationStateLabel.setText("Finalizing restoration...");
+                        currentFileLabel.setText(String.format("Processed %,d of %,d media files.", processed, total));
                     }
                 });
             }
@@ -932,8 +1273,8 @@ public class TakeoutRestoreView extends VBox {
                 Platform.runLater(() -> {
                     kpiScanned.setText(String.valueOf(scanned > 0 ? scanned : total));
                     kpiRestored.setText(String.valueOf(restored));
-                    kpiIssues.setText(String.valueOf(unmatched));
-                    kpiErrors.setText(String.valueOf(errors));
+                    kpiNeedsReview.setText(String.valueOf(unmatched));
+                    kpiFailed.setText(String.valueOf(errors));
                 });
             }
         });
@@ -946,15 +1287,15 @@ public class TakeoutRestoreView extends VBox {
         alert.setHeaderText("Google Takeout Restoration Complete");
         alert.setContentText(String.format(
                 "Restoration process completed successfully!\n\n"
-                + "• Files Processed: %s\n"
-                + "• Successfully Restored: %s\n"
-                + "• Unmatched / Issues: %s\n"
-                + "• Errors / Failed: %s\n\n"
-                + "Destination:\n%s",
+                        + "• Files Scanned: %s\n"
+                        + "• Metadata Restored: %s\n"
+                        + "• Needs Review: %s\n"
+                        + "• Failed: %s\n\n"
+                        + "Destination:\n%s",
                 kpiScanned.getText(),
                 kpiRestored.getText(),
-                kpiIssues.getText(),
-                kpiErrors.getText(),
+                kpiNeedsReview.getText(),
+                kpiFailed.getText(),
                 selectedOutput != null ? selectedOutput.getAbsolutePath() : ""
         ));
 
@@ -962,7 +1303,7 @@ public class TakeoutRestoreView extends VBox {
         ButtonType closeBtn = new ButtonType("OK", ButtonBar.ButtonData.CANCEL_CLOSE);
         alert.getButtonTypes().setAll(openFolderBtn, closeBtn);
 
-        java.util.Optional<ButtonType> result = alert.showAndWait();
+        Optional<ButtonType> result = alert.showAndWait();
         if (result.isPresent() && result.get() == openFolderBtn) {
             handleOpenOutput();
         }

@@ -112,18 +112,15 @@ public final class GuestQuotaStore {
     }
 
     public static synchronized boolean isExhausted() {
-        loadIfNeeded();
-        return cachedFiles >= MAX_GUEST_FILES || cachedBytes >= MAX_GUEST_BYTES;
+        return false;
     }
 
     public static synchronized int getRemainingFiles() {
-        loadIfNeeded();
-        return Math.max(0, MAX_GUEST_FILES - cachedFiles);
+        return Integer.MAX_VALUE;
     }
 
     public static synchronized long getRemainingBytes() {
-        loadIfNeeded();
-        return Math.max(0, MAX_GUEST_BYTES - cachedBytes);
+        return Long.MAX_VALUE;
     }
 
     public static synchronized void resetForTesting() {

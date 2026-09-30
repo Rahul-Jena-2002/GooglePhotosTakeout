@@ -53,6 +53,9 @@ public final class UiIcons {
     public static final String LAYERS = "M3 3h8v8H3zm10 0h8v8h-8zM3 13h8v8H3zm10 0h8v8h-8z";
     public static final String SLIDERS = "M3 6h4a2 2 0 0 0 4 0h10a1 1 0 1 0 0-2H11a2 2 0 0 0-4 0H3a1 1 0 1 0 0 2zm18 5h-4a2 2 0 0 0-4 0H3a1 1 0 1 0 0 2h10a2 2 0 0 0 4 0h4a1 1 0 1 0 0-2zm-8 6H3a1 1 0 1 0 0 2h8a2 2 0 0 0 4 0h6a1 1 0 1 0 0-2h-6a2 2 0 0 0-4 0z";
     public static final String DOWNLOAD = "M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z";
+    public static final String HEART = "M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z";
+    public static final String SEARCH = "M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z";
+    public static final String UPLOAD = "M9 16h6v-6h4l-7-7-7 7h4zm-4 2h14v2H5z";
 
     /**
      * Creates a vector SVG node strictly scaled to the target dimension using JavaFX Region shape.

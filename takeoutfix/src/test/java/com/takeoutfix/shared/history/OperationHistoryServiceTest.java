@@ -2,7 +2,10 @@ package com.takeoutfix.shared.history;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
+import java.io.File;
+import java.nio.file.Path;
 import java.time.Instant;
 import java.util.List;
 
@@ -12,8 +15,9 @@ import static org.junit.jupiter.api.Assertions.*;
 class OperationHistoryServiceTest {
 
     @Test
-    void testRecordAndRetrieveOperation() {
-        OperationHistoryService service = new OperationHistoryService();
+    void testRecordAndRetrieveOperation(@TempDir Path tempDir) {
+        File testHistoryFile = tempDir.resolve("operations_history.json").toFile();
+        OperationHistoryService service = new OperationHistoryService(testHistoryFile);
         Instant now = Instant.now();
 
         service.recordOperation(

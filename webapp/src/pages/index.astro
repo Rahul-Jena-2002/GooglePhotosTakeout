@@ -2,12 +2,7 @@
 export const prerender = true;
 import Layout from "../layouts/Layout.astro";
 import AdUnit from "../components/monetization/AdUnit";
-import { PLAN_PRICES } from "../lib/planPrices";
 import Compare from "../components/ui/Compare";
-
-// Fallback pricing tier region default
-const region = "us";
-const prices = PLAN_PRICES[region] || PLAN_PRICES.us;
 ---
 
 <Layout 

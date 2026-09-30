@@ -8,11 +8,7 @@ const testCases = [
   { input: '/index', expected: 'https://takeoutfix.pages.dev/' },
   { input: '/restore-data', expected: 'https://takeoutfix.pages.dev/restore-data' },
   { input: '/restore-data.html', expected: 'https://takeoutfix.pages.dev/restore-data' },
-  { input: '/restore-data/', expected: 'https://takeoutfix.pages.dev/restore-data' },
-  { input: '/pricing', expected: 'https://takeoutfix.pages.dev/pricing' },
-  { input: '/pricing.html', expected: 'https://takeoutfix.pages.dev/pricing' },
-  { input: '/refund', expected: 'https://takeoutfix.pages.dev/refund' },
-  { input: '/refund.html', expected: 'https://takeoutfix.pages.dev/refund' }
+  { input: '/restore-data/', expected: 'https://takeoutfix.pages.dev/restore-data' }
 ];
 
 let allPassed = true;

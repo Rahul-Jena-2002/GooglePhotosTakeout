@@ -171,6 +171,17 @@ public class FxSignInDialog extends Stage {
         btnGoogleSignIn.setOnAction(e -> handleGoogleSignIn());
         root.getChildren().add(btnGoogleSignIn);
 
+        // Continue as Guest Option
+        Button btnContinueGuest = new Button("Continue as Guest (No Account Required)");
+        btnContinueGuest.setMaxWidth(Double.MAX_VALUE);
+        btnContinueGuest.setPrefHeight(32);
+        btnContinueGuest.setStyle("-fx-font-size: 11px; -fx-font-weight: 600; -fx-background-color: transparent; -fx-text-fill: #94a3b8; -fx-border-color: rgba(255, 255, 255, 0.1); -fx-border-radius: 6; -fx-background-radius: 6; -fx-cursor: hand;");
+        btnContinueGuest.setOnAction(e -> {
+            close();
+            if (onAuthComplete != null) onAuthComplete.accept(false);
+        });
+        root.getChildren().addAll(createSpacer(6), btnContinueGuest);
+
         // Spacer
         root.getChildren().add(createSpacer(10));
 

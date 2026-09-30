@@ -74,15 +74,12 @@ export default defineConfig({
   redirects: {
     // Legacy subfolder routes smoothly redirected to clean canonical URLs
     '/marketing/download': '/download',
-    '/marketing/pricing': '/pricing',
     '/marketing/reviews': '/reviews',
     '/marketing/restore-data': '/restore-data',
     '/legal/privacy': '/privacy',
     '/legal/terms': '/terms',
-    '/legal/refund': '/refund',
     '/user/dashboard': '/dashboard',
     '/user/profile': '/profile',
-    '/user/checkout': '/checkout',
     '/auth/login': '/login',
     '/auth/signup': '/signup',
     '/auth': '/login',

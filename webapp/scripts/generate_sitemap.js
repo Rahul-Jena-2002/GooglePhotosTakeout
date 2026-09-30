@@ -16,13 +16,11 @@ const indexablePages = [
   { loc: "/guides/google-takeout-common-errors-fix",               changefreq: "monthly", priority: "0.9" },
   { loc: "/restore-data",                                          changefreq: "weekly",  priority: "0.9" },
   { loc: "/tool",                                                  changefreq: "monthly", priority: "0.9" },
-  { loc: "/pricing",                                               changefreq: "monthly", priority: "0.8" },
   { loc: "/download",                                              changefreq: "monthly", priority: "0.8" },
   { loc: "/reviews",                                               changefreq: "weekly",  priority: "0.8" },
   { loc: "/support",                                               changefreq: "monthly", priority: "0.7" },
   { loc: "/privacy",                                               changefreq: "monthly", priority: "0.4" },
   { loc: "/terms",                                                 changefreq: "monthly", priority: "0.4" },
-  { loc: "/refund",                                                changefreq: "monthly", priority: "0.4" },
   // Distinct Technical Problem-Solving Pillar Guides
   { loc: "/fix-google-takeout-dates",                              changefreq: "monthly", priority: "0.8" },
   { loc: "/restore-gps-google-takeout",                            changefreq: "monthly", priority: "0.8" },

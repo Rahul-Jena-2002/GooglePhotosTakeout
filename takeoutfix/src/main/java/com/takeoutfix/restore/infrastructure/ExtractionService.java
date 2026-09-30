@@ -67,6 +67,7 @@ public class ExtractionService {
     private volatile boolean interpolateMissing = false;
     private volatile boolean organizeYearMonth = false;
     private java.io.PrintWriter logWriter = null;
+    private final List<java.util.concurrent.CompletableFuture<?>> activeFutures = new java.util.concurrent.CopyOnWriteArrayList<>();
     private volatile ExecutorService activeWorkersPool = null;
     
     private final Map<String, List<File>> dirSortedMediaCache = new java.util.concurrent.ConcurrentHashMap<>();
@@ -81,6 +82,8 @@ public class ExtractionService {
             onProgress(processed, total, processedBytes, currentAction);
         }
         void onStats(int scanned, int total, int restored, int unmatched, int errors);
+        default void onComplete() {}
+        default void onError(Throwable t) {}
     }
 
     private final List<RestorationListener> restorationListeners = new java.util.concurrent.CopyOnWriteArrayList<>();
@@ -101,19 +104,11 @@ public class ExtractionService {
     private final ExecutorService masterExecutor = Executors.newSingleThreadExecutor();
     private static final long MAX_ZIP_SIZE = 2L * 1024 * 1024 * 1024; // 2GB
 
-    public synchronized void startExtraction(String inputPath, String outputPath, PowerManager.PostAction postAction, Optional<Instant> takeoutDate, boolean cleanupInput, boolean outputZip, int limitFiles, int offsetFiles, boolean interpolateMissing) {
-        startExtraction(inputPath, outputPath, postAction, takeoutDate, cleanupInput, outputZip, limitFiles, offsetFiles, interpolateMissing, true);
+    public synchronized java.util.concurrent.Future<?> startExtraction(String inputPath, String outputPath, PowerManager.PostAction postAction, Optional<Instant> takeoutDate, boolean cleanupInput, boolean outputZip, int limitFiles, int offsetFiles, boolean interpolateMissing) {
+        return startExtraction(inputPath, outputPath, postAction, takeoutDate, cleanupInput, outputZip, limitFiles, offsetFiles, interpolateMissing, true);
     }
 
-    public synchronized void startExtraction(String inputPath, String outputPath, PowerManager.PostAction postAction, Optional<Instant> takeoutDate, boolean cleanupInput, boolean outputZip, int limitFiles, int offsetFiles, boolean interpolateMissing, boolean organizeYearMonth) {
-        Map<String, Object> prof = com.takeoutfix.auth.UserController.getCurrentUserProfile();
-        String email = prof != null ? (String) prof.getOrDefault("email", "") : "";
-        boolean signedIn = (email != null && !email.trim().isEmpty())
-                || (userService != null && userService.isAuthenticated());
-        if (!signedIn && com.takeoutfix.auth.GuestQuotaStore.isExhausted()) {
-            throw new SecurityException("Authentication Required: You have reached the Guest limit of "
-                    + com.takeoutfix.auth.GuestQuotaStore.MAX_GUEST_FILES + " files / 1 GB. Please sign in to continue.");
-        }
+    public synchronized java.util.concurrent.Future<?> startExtraction(String inputPath, String outputPath, PowerManager.PostAction postAction, Optional<Instant> takeoutDate, boolean cleanupInput, boolean outputZip, int limitFiles, int offsetFiles, boolean interpolateMissing, boolean organizeYearMonth) {
         if (this.isRunning) {
             throw new IllegalStateException("An extraction process is already running. Please wait or cancel the current one.");
         }
@@ -133,11 +128,18 @@ public class ExtractionService {
         File output = new File(outputPath);
 
         // Run the extraction in a separate thread managed by masterExecutor
-        masterExecutor.submit(() -> {
+        return masterExecutor.submit(() -> {
             try {
                 runExtraction(input, output, postAction, takeoutDate, cleanupInput, outputZip);
+                for (RestorationListener l : restorationListeners) {
+                    try { l.onComplete(); } catch (Exception ignored) {}
+                }
             } catch (Exception e) {
                 sendLog("ERROR", "Fatal error: " + e.getMessage());
+                for (RestorationListener l : restorationListeners) {
+                    try { l.onError(e); } catch (Exception ignored) {}
+                }
+                throw e;
             } finally {
                 this.isRunning = false;
             }
@@ -175,17 +177,6 @@ public class ExtractionService {
 
             albumDetailsCache.clear();
             List<File> mediaFiles = scanner.listMediaFiles(input);
-            Map<String, Object> prof = com.takeoutfix.auth.UserController.getCurrentUserProfile();
-            String email = prof != null ? (String) prof.getOrDefault("email", "") : "";
-            boolean signedIn = (email != null && !email.trim().isEmpty())
-                    || (userService != null && userService.isAuthenticated());
-            if (!signedIn) {
-                int maxAllowed = com.takeoutfix.auth.GuestQuotaStore.getRemainingFiles();
-                if (mediaFiles.size() > maxAllowed) {
-                    sendLog("WARN", "[GUEST MODE] Limiting processing to first " + maxAllowed + " files (100 files / 1 GB free trial limit).");
-                    mediaFiles = new java.util.ArrayList<>(mediaFiles.subList(0, maxAllowed));
-                }
-            }
             totalFiles = mediaFiles.size();
             sendLog("INFO", "Found " + totalFiles + " media files in source archive.");
             notifyStats(totalFiles, totalFiles, 0, 0, 0);
@@ -256,9 +247,10 @@ public class ExtractionService {
     }
 
     private void processAsLooseFiles(List<File> mediaFiles, File input, File effectiveOutput, File baseOutput, Optional<Instant> takeoutDate, Map<String, File[]> dirCache, ExecutorService workers, java.util.concurrent.atomic.AtomicInteger matched, java.util.concurrent.atomic.AtomicInteger unmatched, java.util.concurrent.atomic.AtomicInteger errors) {
+        activeFutures.clear();
         List<java.util.concurrent.CompletableFuture<Void>> futures = new ArrayList<>();
         for (File media : mediaFiles) {
-            futures.add(java.util.concurrent.CompletableFuture.runAsync(() -> {
+            java.util.concurrent.CompletableFuture<Void> cf = java.util.concurrent.CompletableFuture.runAsync(() -> {
                 if (cancelled) return;
                 while (paused && !cancelled) {
                     try { Thread.sleep(150); } catch (InterruptedException e) {
@@ -374,9 +366,16 @@ public class ExtractionService {
                 } finally {
                     checkLimitsAndIncrement(media.getName());
                 }
-            }, workers));
+            }, workers);
+            futures.add(cf);
+            activeFutures.add(cf);
         }
-        java.util.concurrent.CompletableFuture.allOf(futures.toArray(new java.util.concurrent.CompletableFuture[0])).join();
+        try {
+            java.util.concurrent.CompletableFuture.allOf(futures.toArray(new java.util.concurrent.CompletableFuture[0])).join();
+        } catch (Exception ignored) {
+        } finally {
+            activeFutures.clear();
+        }
     }
 
     /**
@@ -445,9 +444,10 @@ public class ExtractionService {
 
         // === WORKER THREADS (parallel ExifTool processing — no locks, full CPU) ===
         try {
+            activeFutures.clear();
             List<java.util.concurrent.CompletableFuture<Void>> futures = new ArrayList<>();
             for (File media : mediaFiles) {
-                futures.add(java.util.concurrent.CompletableFuture.runAsync(() -> {
+                java.util.concurrent.CompletableFuture<Void> cf = java.util.concurrent.CompletableFuture.runAsync(() -> {
                     if (cancelled) return;
                     while (paused && !cancelled) {
                         try { Thread.sleep(150); } catch (InterruptedException e) {
@@ -559,9 +559,16 @@ public class ExtractionService {
                     } finally {
                         checkLimitsAndIncrement(media.getName());
                     }
-                }, workers));
+                }, workers);
+                futures.add(cf);
+                activeFutures.add(cf);
             }
-            java.util.concurrent.CompletableFuture.allOf(futures.toArray(new java.util.concurrent.CompletableFuture[0])).join();
+            try {
+                java.util.concurrent.CompletableFuture.allOf(futures.toArray(new java.util.concurrent.CompletableFuture[0])).join();
+            } catch (Exception ignored) {
+            } finally {
+                activeFutures.clear();
+            }
         } finally {
             // Signal zip writer to finish
             try { zipQueue.put(POISON); } catch (InterruptedException ignored) {}
@@ -581,9 +588,16 @@ public class ExtractionService {
         if (p != null) {
             p.shutdownNow();
         }
+        for (java.util.concurrent.CompletableFuture<?> f : activeFutures) {
+            if (!f.isDone()) {
+                f.cancel(true);
+            }
+        }
+        activeFutures.clear();
         sendLog("INFO", "Processing cancelled.");
     }
 
+    public boolean isCancelled() { return cancelled; }
     public boolean isPaused() { return paused; }
     public boolean isRunning() { return isRunning; }
 

@@ -163,7 +163,7 @@ public class DashboardAccountSection extends JPanel {
         }
         btnUpgrade.setPreferredSize(new Dimension(125, 32));
         btnUpgrade.setToolTipText("Review Pro and Super plan features on web");
-        btnUpgrade.addActionListener(e -> BrowserUtil.openBrowser("https://takeoutfix.pages.dev/pricing"));
+        btnUpgrade.addActionListener(e -> BrowserUtil.openBrowser("https://takeoutfix.pages.dev"));
 
         btnAccountAction = UiFactory.createSecondaryButton("Sign In");
         btnAccountAction.setFont(new Font("Segoe UI", Font.PLAIN, 11));

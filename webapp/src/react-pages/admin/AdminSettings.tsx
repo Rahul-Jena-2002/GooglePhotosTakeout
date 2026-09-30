@@ -4,7 +4,7 @@ import { db } from "../../firebase"
 import { doc, setDoc, onSnapshot, collection, addDoc } from "firebase/firestore"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../../components/ui/card"
 import { Button } from "../../components/ui/button"
-import { Shield, Settings, MessageSquare, ChevronUp, ChevronDown, Plus, Trash2, CreditCard } from "lucide-react"
+import { Shield, Settings, MessageSquare, ChevronUp, ChevronDown, Plus, Trash2 } from "lucide-react"
 import { useToastStore } from "../../store/useToastStore"
 import { useSettingsStore } from "../../store/useSettingsStore"
 
@@ -15,11 +15,11 @@ export default function AdminSettings() {
 
   // ─── FAQ ──────────────────────────────────────────────────────────────────
   interface FaqItem { id: string; question: string; answer: string; tag: string; }
-  const FAQ_TAGS = ["Guide","Metadata","Privacy","Pricing","Billing","Formats","About","Problem","Limits","Feature","Technical","General"] as const;
+  const FAQ_TAGS = ["Guide","Metadata","Privacy","Formats","About","Problem","Limits","Feature","Technical","General"] as const;
   const DEFAULT_FAQS: FaqItem[] = [
     { id: "download-takeout", tag: "Guide",    question: "How do I download my Google Takeout?",                                                        answer: "Go to takeout.google.com, select Google Photos, and create an export. Once finished, download and unzip the folder." },
     { id: "photos-safe",      tag: "Privacy",  question: "Are my photos safe? / Do you see my photos?",                                                   answer: "Yes, they are 100% safe. TakeoutFix runs entirely on your own computer. We never see, upload, or store your photos." },
-    { id: "free-limit",      tag: "Pricing",  question: "Is there a limit on the free plan?",                                                            answer: "Yes, the free plan processes up to 500 MB or 250 files to let you test the tool. Upgrading removes this limit." },
+    { id: "free-limit",      tag: "General",  question: "Is TakeoutFix completely free to use?",                                                         answer: "Yes, TakeoutFix is 100% free with unlimited local processing. There are no paywalls, subscriptions, or file limits." },
     { id: "offline-work",    tag: "Privacy",  question: "Does this work completely offline?",                                                            answer: "Once the web app has loaded in your browser, you can disconnect from the internet and it will still process all your files locally." },
     { id: "out-of-order",    tag: "Metadata", question: "Why are my photos showing today's date or out of order after exporting from Google Takeout?",   answer: "When you export your photos, Google Photos separates the EXIF metadata into separate JSON sidecar files. Without this metadata, your phone or computer defaults to showing today's date (the file modification date), causing your gallery to be completely out of order. TakeoutFix fixes this by merging the JSON sidecars back into your images." },
     { id: "metadata-types",  tag: "Metadata", question: "What metadata can be recovered?",                                                               answer: "We recover original creation dates (timestamps), GPS coordinates (latitude, longitude, altitude), and camera device information if it exists in the Google JSON sidecars." },
@@ -133,27 +133,6 @@ export default function AdminSettings() {
     }, 0);
   };
 
-  const handleTogglePricing = async (newVal: boolean) => {
-    setEnablePricingAndPayments(newVal);
-    try {
-      await setDoc(doc(db, "settings", "global"), { enablePricingAndPayments: newVal }, { merge: true });
-      await addDoc(collection(db, "admin_activity"), {
-        actorUid: adminData?.uid || "system",
-        actorName: adminData?.displayName || "Admin",
-        actorRole: role,
-        action: "MONETIZATION_MODE_CHANGE",
-        description: newVal ? "Enabled public pricing & checkout integration." : "Switched to 100% Free Community Trust Mode (pricing hidden).",
-        timestamp: Date.now()
-      });
-      useToastStore.getState().addToast(
-        newVal ? "Pricing & payments enabled site-wide." : "Operating in 100% Free Community Trust Mode.",
-        "success"
-      );
-    } catch (err: any) {
-      useToastStore.getState().addToast("Failed to update pricing mode: " + err.message, "error");
-    }
-  };
-
   const handleSaveGlobalSettings = async () => {
     setSavingGlobal(true);
     try {
@@ -195,79 +174,6 @@ export default function AdminSettings() {
       </div>
 
       <div className="grid md:grid-cols-2 gap-6">
-
-        {/* Public Pricing & Monetization Control */}
-        <Card className="bg-zinc-900 border-zinc-800 shadow-none md:col-span-2">
-          <CardHeader>
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-              <div>
-                <CardTitle className="text-sm font-bold flex items-center gap-2 text-zinc-100">
-                  <CreditCard className="w-4 h-4 text-indigo-400" /> Public Pricing &amp; Payments Control
-                </CardTitle>
-                <CardDescription className="text-zinc-400 text-xs mt-1">
-                  Master switch for public pricing page, navigation links, and dynamic plan upgrades.
-                </CardDescription>
-              </div>
-              <div className={`text-[10px] font-mono font-bold uppercase tracking-wider px-3 py-1 rounded-full border self-start sm:self-auto ${
-                enablePricingAndPayments 
-                  ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400' 
-                  : 'bg-zinc-800 border-zinc-700 text-zinc-400'
-              }`}>
-                {enablePricingAndPayments ? '● Live Pricing Active' : '○ 100% Free Trust Mode'}
-              </div>
-            </div>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 bg-zinc-950/60 border border-zinc-800 rounded-xl">
-              <div>
-                <div className="text-xs font-bold text-white flex items-center gap-2">
-                  Enable Public Pricing &amp; Payments
-                </div>
-                <p className="text-xs text-zinc-400 mt-1 max-w-xl leading-relaxed">
-                  {enablePricingAndPayments
-                    ? "Pricing pages and checkout buttons are visible. Users can view plans and purchase licenses."
-                    : "Currently in 100% Free Trust Mode. The public pricing page and upgrade buttons are hidden. All users get unlimited free restoration to build adoption and trust. Flip this on anytime when you are ready to monetize."}
-                </p>
-              </div>
-              <button 
-                type="button"
-                onClick={() => handleTogglePricing(!enablePricingAndPayments)}
-                className={`relative inline-flex h-7 w-12 shrink-0 cursor-pointer rounded-full transition-colors duration-200 focus:outline-none border ${
-                  enablePricingAndPayments ? 'bg-emerald-600 border-emerald-500' : 'bg-zinc-800 border-zinc-700'
-                }`}
-              >
-                <span className={`pointer-events-none absolute top-1 h-5 w-5 rounded-full bg-white shadow transition-all duration-200 ${
-                  enablePricingAndPayments ? 'left-6' : 'left-1'
-                }`} />
-              </button>
-            </div>
-
-            {/* Quick links to configure dynamic pricing & features without coding */}
-            <div className="grid sm:grid-cols-2 gap-3 pt-1">
-              <a href="/admin/features" className="p-3 bg-zinc-950/40 border border-zinc-800 hover:border-indigo-500/30 rounded-xl flex items-center justify-between group transition-all">
-                <div>
-                  <div className="text-xs font-bold text-zinc-200 group-hover:text-indigo-400 transition-colors">
-                    Dynamic Tier Features &amp; Texts &rarr;
-                  </div>
-                  <div className="text-[10px] text-zinc-500 mt-0.5">
-                    Add or edit bullet features, plan headings, and comparison tables with zero code.
-                  </div>
-                </div>
-              </a>
-              <a href="/admin/gateway" className="p-3 bg-zinc-950/40 border border-zinc-800 hover:border-indigo-500/30 rounded-xl flex items-center justify-between group transition-all">
-                <div>
-                  <div className="text-xs font-bold text-zinc-200 group-hover:text-indigo-400 transition-colors">
-                    Payment Gateway &amp; Regional Prices &rarr;
-                  </div>
-                  <div className="text-[10px] text-zinc-500 mt-0.5">
-                    Configure currencies (INR, USD, EUR, etc.), Dodo/Stripe IDs &amp; discount coupons.
-                  </div>
-                </div>
-              </a>
-            </div>
-          </CardContent>
-        </Card>
-        
         {/* Maintenance & Rules */}
         <Card className="bg-zinc-900 border-zinc-800 shadow-none">
           <CardHeader>

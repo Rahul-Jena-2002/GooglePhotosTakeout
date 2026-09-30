@@ -17,7 +17,7 @@ import java.util.List;
 
 /**
  * Modern JavaFX workspace for MetaSync.
- * Enables photographers to compare, copy, and synchronize metadata across RAW, JPEG and XMP sidecars.
+ * Enables photographers to compare, inspect, and synchronize metadata across RAW, JPEG and XMP sidecars.
  */
 public class MetaSyncView extends VBox {
 
@@ -32,10 +32,11 @@ public class MetaSyncView extends VBox {
     private final Label kpiPairs = new Label("0");
     private final Label kpiDiffs = new Label("0");
     private final Label kpiSelected = new Label("0");
-    private final Label kpiSafety = new Label("Safe Copy");
+    private final Label kpiStatus = new Label("Ready");
 
-    // Options
+    // Options & Action controls
     private final CheckBox inPlaceBackupCheck = new CheckBox("Edit JPEGs in-place (creates .original backup)");
+    private final Label safetyModeLabel = new Label("Non-destructive: Export metadata to a separate destination, leaving source files unchanged.");
     private final Button syncCurrentBtn = new Button("Sync Selected Tags");
     private final Button syncAllBtn = new Button("Batch Sync All Pairs");
     private final ProgressBar progressBar = new ProgressBar(0.0);
@@ -49,31 +50,65 @@ public class MetaSyncView extends VBox {
 
         setSpacing(14);
         setPadding(new Insets(16, 20, 16, 20));
+        VBox.setVgrow(this, Priority.ALWAYS);
 
         explorerCard = new PairExplorerCard(stage, syncService.getPairingService());
 
-        // 1. KPI Cards Row
+        // 1. Header
+        getChildren().add(buildHeaderRow());
+
+        // 2. KPI Cards Row
         getChildren().add(buildKpiRow());
 
-        // 2. Main Two-Column Workflow
-        HBox mainGrid = new HBox(16);
-        VBox.setVgrow(mainGrid, Priority.ALWAYS);
+        // 3. Resizable Split: Left Pair Explorer | Right Tag Diff & Sync Panel
+        SplitPane splitPane = new SplitPane();
+        splitPane.setStyle("-fx-box-border: transparent; -fx-background-color: transparent;");
+        VBox.setVgrow(splitPane, Priority.ALWAYS);
 
         VBox rightColumn = buildRightDiffColumn();
-        HBox.setHgrow(rightColumn, Priority.ALWAYS);
 
-        mainGrid.getChildren().addAll(explorerCard, rightColumn);
-        getChildren().add(mainGrid);
+        splitPane.getItems().addAll(explorerCard, rightColumn);
+        splitPane.setDividerPositions(0.35);
+
+        getChildren().add(splitPane);
 
         explorerCard.setOnPairSelected(this::inspectPair);
     }
 
+    private HBox buildHeaderRow() {
+        HBox header = new HBox(14);
+        header.setAlignment(Pos.CENTER_LEFT);
+
+        VBox titleBox = new VBox(3);
+        HBox titleRow = new HBox(10);
+        titleRow.setAlignment(Pos.CENTER_LEFT);
+
+        Label title = new Label("Metadata Sync");
+        title.setStyle("-fx-font-size: 22px; -fx-font-weight: 700; -fx-text-fill: #E6E7ED;");
+
+        Label badge = new Label("Safe copy enabled");
+        badge.setStyle("-fx-font-size: 11px; -fx-font-weight: 600; -fx-text-fill: #10B981; -fx-background-color: rgba(16, 185, 129, 0.12); -fx-padding: 3 8 3 8; -fx-background-radius: 6;");
+
+        titleRow.getChildren().addAll(title, badge);
+
+        Label subtitle = new Label("Transfer selected metadata from RAW originals to JPEG or XMP exports.");
+        subtitle.setStyle("-fx-font-size: 13px; -fx-text-fill: #989BA8;");
+        titleBox.getChildren().addAll(titleRow, subtitle);
+
+        Region spacer = new Region();
+        HBox.setHgrow(spacer, Priority.ALWAYS);
+
+        header.getChildren().addAll(titleBox, spacer);
+        return header;
+    }
+
     private HBox buildKpiRow() {
         HBox row = new HBox(12);
-        VBox card1 = createSemanticKpiCard("Matched Pairs", kpiPairs, "RAW + JPEG / XMP groups", "#2563eb", "rgba(37, 99, 235, 0.08)");
-        VBox card2 = createSemanticKpiCard("Tag Differences", kpiDiffs, "Detected tag discrepancies", "#d97706", "rgba(217, 119, 6, 0.08)");
-        VBox card3 = createSemanticKpiCard("Selected to Sync", kpiSelected, "Tags queued for transfer", "#7c3aed", "rgba(124, 58, 237, 0.08)");
-        VBox card4 = createSemanticKpiCard("Write Safety", kpiSafety, "Safe copy vs in-place", "#059669", "rgba(5, 150, 105, 0.08)");
+
+        VBox card1 = createNeutralKpiCard("MATCHED PAIRS", kpiPairs, "RAW + JPEG / XMP pairs", "#3B82F6");
+        VBox card2 = createNeutralKpiCard("DIFFERENCES", kpiDiffs, "Detected tag differences", "#F59E0B");
+        VBox card3 = createNeutralKpiCard("SELECTED TAGS", kpiSelected, "Queued for synchronization", "#9B78F5");
+        VBox card4 = createNeutralKpiCard("SYNC STATUS", kpiStatus, "Current engine state", "#10B981");
 
         HBox.setHgrow(card1, Priority.ALWAYS);
         HBox.setHgrow(card2, Priority.ALWAYS);
@@ -84,49 +119,54 @@ public class MetaSyncView extends VBox {
         return row;
     }
 
-    private VBox createSemanticKpiCard(String labelText, Label valLabel, String subText, String accentColor, String bgTint) {
+    private VBox createNeutralKpiCard(String title, Label valLabel, String sub, String accentColor) {
         VBox card = new VBox(4);
-        card.getStyleClass().add("kpi-card");
-        card.setStyle(String.format(
-                "-fx-background-color: %s; -fx-border-color: %s; -fx-border-width: 1px; -fx-background-radius: 8; -fx-border-radius: 8; -fx-padding: 12 16 12 16;",
-                bgTint, accentColor
-        ));
+        card.getStyleClass().add("glass-card");
+        card.setStyle("-fx-background-color: #191A22; -fx-border-color: #30313B; -fx-border-radius: 8; -fx-background-radius: 8; -fx-padding: 12 16 12 16;");
 
-        Label lbl = new Label(labelText);
-        lbl.setStyle("-fx-font-size: 11px; -fx-font-weight: 700; -fx-text-fill: #64748b;");
+        Label t = new Label(title);
+        t.setStyle("-fx-font-size: 11px; -fx-font-weight: 700; -fx-text-fill: #989BA8; -fx-letter-spacing: 0.5px;");
 
-        valLabel.setStyle(String.format(
-                "-fx-font-size: 22px; -fx-font-weight: 800; -fx-text-fill: %s;",
-                accentColor
-        ));
+        valLabel.setStyle(String.format("-fx-font-size: 26px; -fx-font-weight: 800; -fx-text-fill: %s;", accentColor));
 
-        Label sub = new Label(subText);
-        sub.setStyle("-fx-font-size: 11px; -fx-text-fill: #94a3b8;");
+        Label s = new Label(sub);
+        s.setStyle("-fx-font-size: 12px; -fx-text-fill: #989BA8;");
 
-        card.getChildren().addAll(lbl, valLabel, sub);
+        card.getChildren().addAll(t, valLabel, s);
         return card;
     }
 
     private VBox buildRightDiffColumn() {
         VBox col = new VBox(12);
+        col.setPadding(new Insets(0, 0, 0, 10));
+        VBox.setVgrow(col, Priority.ALWAYS);
 
         // Diff Table Card
         VBox diffCard = new VBox(10);
         diffCard.getStyleClass().add("glass-card");
+        diffCard.setStyle("-fx-background-color: #191A22; -fx-border-color: #30313B; -fx-border-radius: 8; -fx-background-radius: 8; -fx-padding: 14;");
         VBox.setVgrow(diffCard, Priority.ALWAYS);
 
-        // Table toolbar
-        HBox toolbar = new HBox(10);
+        // Table toolbar & filter pills
+        HBox toolbar = new HBox(8);
         toolbar.setAlignment(Pos.CENTER_LEFT);
 
-        Label tableTitle = new Label("Metadata Tag Comparison");
-        tableTitle.getStyleClass().add("card-title");
+        Label tableTitle = new Label("Metadata comparison");
+        tableTitle.setStyle("-fx-font-size: 15px; -fx-font-weight: 700; -fx-text-fill: #E6E7ED;");
 
         Region spacer = new Region();
         HBox.setHgrow(spacer, Priority.ALWAYS);
 
-        Button selectAllBtn = new Button("Select All Diffs");
+        // Filter pills: All, Differences, Missing
+        ToggleGroup filterGroup = new ToggleGroup();
+        ToggleButton pillAll = createFilterPill("All", "ALL", filterGroup, true);
+        ToggleButton pillDiff = createFilterPill("Differences", "DIFFERENCES", filterGroup, false);
+        ToggleButton pillMiss = createFilterPill("Missing", "MISSING", filterGroup, false);
+        ToggleButton pillMatch = createFilterPill("Matching", "MATCHING", filterGroup, false);
+
+        Button selectAllBtn = new Button("Select Diffs");
         selectAllBtn.getStyleClass().add("btn-ghost");
+        selectAllBtn.setStyle("-fx-font-size: 12px;");
         selectAllBtn.setOnAction(e -> {
             diffTable.selectAll(true);
             updateSelectedCount();
@@ -134,42 +174,86 @@ public class MetaSyncView extends VBox {
 
         Button clearBtn = new Button("Deselect All");
         clearBtn.getStyleClass().add("btn-ghost");
+        clearBtn.setStyle("-fx-font-size: 12px;");
         clearBtn.setOnAction(e -> {
             diffTable.selectAll(false);
             updateSelectedCount();
         });
 
-        toolbar.getChildren().addAll(tableTitle, spacer, selectAllBtn, clearBtn);
+        toolbar.getChildren().addAll(tableTitle, pillAll, pillDiff, pillMiss, pillMatch, spacer, selectAllBtn, clearBtn);
 
         VBox.setVgrow(diffTable, Priority.ALWAYS);
 
         diffCard.getChildren().addAll(toolbar, diffTable);
 
-        // Action & Sync Card
+        // Synchronization Action Card
         VBox actionCard = new VBox(10);
         actionCard.getStyleClass().add("glass-card");
+        actionCard.setStyle("-fx-background-color: #191A22; -fx-border-color: #30313B; -fx-border-radius: 8; -fx-background-radius: 8; -fx-padding: 14;");
 
+        HBox safetyHeader = new HBox(8);
+        safetyHeader.setAlignment(Pos.CENTER_LEFT);
+        Label syncTitle = new Label("Synchronization");
+        syncTitle.setStyle("-fx-font-size: 14px; -fx-font-weight: 700; -fx-text-fill: #E6E7ED;");
+        Label modeBadge = new Label("Non-destructive");
+        modeBadge.setStyle("-fx-font-size: 11px; -fx-font-weight: 600; -fx-text-fill: #10B981; -fx-background-color: rgba(16, 185, 129, 0.12); -fx-padding: 2 6 2 6; -fx-background-radius: 4;");
+        safetyHeader.getChildren().addAll(syncTitle, modeBadge);
+
+        safetyModeLabel.setStyle("-fx-font-size: 12px; -fx-text-fill: #989BA8;");
+
+        inPlaceBackupCheck.setStyle("-fx-font-size: 12px; -fx-text-fill: #E6E7ED;");
         inPlaceBackupCheck.setOnAction(e -> {
-            kpiSafety.setText(inPlaceBackupCheck.isSelected() ? "In-Place Backup" : "Safe Copy");
+            if (inPlaceBackupCheck.isSelected()) {
+                modeBadge.setText("In-Place Editing (.original backup)");
+                modeBadge.setStyle("-fx-font-size: 11px; -fx-font-weight: 600; -fx-text-fill: #F59E0B; -fx-background-color: rgba(245, 158, 11, 0.12); -fx-padding: 2 6 2 6; -fx-background-radius: 4;");
+                safetyModeLabel.setText("Caution: Modifies target files directly. A safe '.original' backup is created before write.");
+            } else {
+                modeBadge.setText("Non-destructive");
+                modeBadge.setStyle("-fx-font-size: 11px; -fx-font-weight: 600; -fx-text-fill: #10B981; -fx-background-color: rgba(16, 185, 129, 0.12); -fx-padding: 2 6 2 6; -fx-background-radius: 4;");
+                safetyModeLabel.setText("Non-destructive: Export metadata to a separate destination, leaving source files unchanged.");
+            }
         });
 
+        HBox btnRow = new HBox(10);
+        btnRow.setAlignment(Pos.CENTER_LEFT);
+
         syncCurrentBtn.getStyleClass().add("btn-primary");
-        syncCurrentBtn.setGraphic(UiIcons.createSvgIcon(UiIcons.PLAY, 14, "currentColor"));
+        syncCurrentBtn.setStyle("-fx-font-size: 13px; -fx-padding: 7 16 7 16;");
+        syncCurrentBtn.setGraphic(UiIcons.createSvgIcon(UiIcons.PLAY, 13, "currentColor"));
         syncCurrentBtn.setDisable(true);
         syncCurrentBtn.setOnAction(e -> executeSyncCurrent());
 
         syncAllBtn.getStyleClass().add("btn-secondary");
-        syncAllBtn.setGraphic(UiIcons.createSvgIcon(UiIcons.SYNC, 14, "currentColor"));
+        syncAllBtn.setStyle("-fx-font-size: 13px; -fx-padding: 7 14 7 14;");
+        syncAllBtn.setGraphic(UiIcons.createSvgIcon(UiIcons.SYNC, 13, "currentColor"));
         syncAllBtn.setOnAction(e -> executeSyncBatch());
 
-        HBox btnRow = new HBox(10, syncCurrentBtn, syncAllBtn);
+        statusLabel.setStyle("-fx-font-size: 12px; -fx-text-fill: #989BA8;");
+
+        btnRow.getChildren().addAll(syncCurrentBtn, syncAllBtn, statusLabel);
 
         progressBar.setMaxWidth(Double.MAX_VALUE);
+        progressBar.setStyle("-fx-pref-height: 4px;");
 
-        actionCard.getChildren().addAll(inPlaceBackupCheck, btnRow, statusLabel, progressBar);
+        actionCard.getChildren().addAll(safetyHeader, safetyModeLabel, inPlaceBackupCheck, btnRow, progressBar);
 
         col.getChildren().addAll(diffCard, actionCard);
         return col;
+    }
+
+    private ToggleButton createFilterPill(String text, String tag, ToggleGroup group, boolean selected) {
+        ToggleButton btn = new ToggleButton(text);
+        btn.setToggleGroup(group);
+        btn.setSelected(selected);
+        btn.setStyle("-fx-font-size: 11px; -fx-padding: 3 8 3 8; -fx-background-radius: 12;");
+        btn.setOnAction(e -> {
+            if (btn.isSelected()) {
+                diffTable.applyFilter(tag);
+            } else {
+                btn.setSelected(true);
+            }
+        });
+        return btn;
     }
 
     private void inspectPair(PhotoPair pair) {
@@ -177,6 +261,7 @@ public class MetaSyncView extends VBox {
         if (pair == null) return;
 
         statusLabel.setText("Inspecting tags for " + pair.getBaseName() + "...");
+        kpiStatus.setText("Inspecting");
         progressBar.setProgress(ProgressIndicator.INDETERMINATE_PROGRESS);
 
         Task<Void> task = new Task<>() {
@@ -189,8 +274,9 @@ public class MetaSyncView extends VBox {
 
         task.setOnSucceeded(e -> {
             progressBar.setProgress(0.0);
-            diffTable.getItems().setAll(pair.getDifferences());
+            diffTable.setTagDifferences(pair.getDifferences());
             statusLabel.setText("Comparison complete for " + pair.getBaseName());
+            kpiStatus.setText("Ready");
             kpiDiffs.setText(String.valueOf(pair.getDifferencesCount()));
             kpiPairs.setText(String.valueOf(explorerCard.getAllPairs().size()));
 
@@ -204,6 +290,7 @@ public class MetaSyncView extends VBox {
 
         task.setOnFailed(e -> {
             progressBar.setProgress(0.0);
+            kpiStatus.setText("Error");
             statusLabel.setText("Error reading metadata: " + task.getException().getMessage());
         });
 
@@ -213,8 +300,8 @@ public class MetaSyncView extends VBox {
     }
 
     private void updateSelectedCount() {
-        if (diffTable.getItems() != null) {
-            long count = diffTable.getItems().stream().filter(TagDifference::isSelected).count();
+        if (diffTable.getAllItems() != null) {
+            long count = diffTable.getAllItems().stream().filter(TagDifference::isSelected).count();
             kpiSelected.setText(String.valueOf(count));
         }
     }
@@ -226,6 +313,7 @@ public class MetaSyncView extends VBox {
         File safeOut = new File(activePair.getDestFile().getParentFile(), "MetaSync_Repaired");
 
         statusLabel.setText("Writing synchronized metadata to " + activePair.getBaseName() + "...");
+        kpiStatus.setText("Syncing");
         progressBar.setProgress(ProgressIndicator.INDETERMINATE_PROGRESS);
 
         Task<Void> task = new Task<>() {
@@ -238,14 +326,15 @@ public class MetaSyncView extends VBox {
 
         task.setOnSucceeded(e -> {
             progressBar.setProgress(1.0);
+            kpiStatus.setText("Completed");
             statusLabel.setText("Successfully synchronized " + activePair.getBaseName() + "!");
-            // Re-inspect to confirm match
             inspectPair(activePair);
             showAlert("Sync Complete", "Successfully synchronized metadata tags for " + activePair.getBaseName() + "!");
         });
 
         task.setOnFailed(e -> {
             progressBar.setProgress(0.0);
+            kpiStatus.setText("Failed");
             statusLabel.setText("Synchronization failed: " + task.getException().getMessage());
         });
 
@@ -266,6 +355,7 @@ public class MetaSyncView extends VBox {
                 new File(pairs.get(0).getDestFile().getParentFile(), "MetaSync_Repaired") : null;
 
         statusLabel.setText("Starting batch synchronization for " + pairs.size() + " pairs...");
+        kpiStatus.setText("Batch Syncing");
         progressBar.setProgress(0.0);
 
         Task<Void> task = new Task<>() {
@@ -289,6 +379,7 @@ public class MetaSyncView extends VBox {
 
         task.setOnSucceeded(e -> {
             progressBar.setProgress(1.0);
+            kpiStatus.setText("Completed");
             statusLabel.setText("Batch synchronization completed successfully!");
             if (activePair != null) inspectPair(activePair);
             showAlert("Batch Sync Complete", String.format("Batch metadata synchronization completed successfully for %d photo pairs!", pairs.size()));
@@ -296,6 +387,7 @@ public class MetaSyncView extends VBox {
 
         task.setOnFailed(e -> {
             progressBar.setProgress(0.0);
+            kpiStatus.setText("Failed");
             statusLabel.setText("Batch synchronization error: " + task.getException().getMessage());
         });
 
@@ -306,8 +398,9 @@ public class MetaSyncView extends VBox {
 
     private void showAlert(String title, String content) {
         Alert alert = new Alert(Alert.AlertType.INFORMATION, content, ButtonType.OK);
+        alert.initOwner(stage);
         alert.setTitle(title);
         alert.setHeaderText(null);
-        alert.showAndWait();
+        alert.show();
     }
 }

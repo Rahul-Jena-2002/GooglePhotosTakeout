@@ -16,13 +16,17 @@ public class SystemHardwareInfoTest {
         double totalRam = SystemHardwareInfo.getTotalMemoryGB();
         double usedRam = SystemHardwareInfo.getUsedMemoryGB();
 
+        long processWsMb = SystemHardwareInfo.getProcessWorkingSetMB();
+
         System.out.println("SystemHardwareInfo: Cores=" + cores
                 + ", Threads=" + threads
                 + ", CPU=" + SystemHardwareInfo.getCpuName()
-                + ", RAM=" + String.format("%.2f GB / %.2f GB", usedRam, totalRam));
+                + ", Process Working Set=" + processWsMb + " MB"
+                + ", System RAM=" + String.format("%.2f GB / %.2f GB", usedRam, totalRam));
 
         assertTrue(cores > 0, "Physical cores must be > 0");
         assertTrue(threads >= cores, "Logical processors must be >= physical cores");
         assertTrue(totalRam > 0, "Total RAM must be > 0");
+        assertTrue(processWsMb > 0, "Process Working Set must be > 0 MB");
     }
 }

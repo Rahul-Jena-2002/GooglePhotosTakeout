@@ -5,8 +5,6 @@ import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
-import javafx.scene.image.Image;
-import javafx.scene.image.ImageView;
 import javafx.scene.layout.*;
 
 import java.util.HashMap;
@@ -37,76 +35,50 @@ public class SidebarNav extends VBox {
         setMinWidth(220);
         setMaxWidth(260);
         setSpacing(16);
-        setPadding(new Insets(18, 14, 18, 14));
+        setPadding(new Insets(12, 14, 18, 14));
 
-        // 1. Studio Brand Header
-        buildHeader();
-
-        // 2. Workspaces Navigation Section (TakeoutFix, MetaSync, PhotoVault)
+        // 1. Workspaces Navigation Section (TakeoutFix, MetaSync, PhotoVault)
         buildWorkspacesSection();
 
-        // 3. System Navigation Section (History, Settings)
+        // 2. System Navigation Section (History, Settings)
         buildSystemSection();
 
-        // 4. Spacer pushing trust badge to bottom
+        // 3. Spacer pushing trust badge to bottom
         Region spacer = new Region();
         VBox.setVgrow(spacer, Priority.ALWAYS);
         getChildren().add(spacer);
 
-        // 5. Privacy Trust Badge
+        // 4. Privacy Trust Badge
         buildPrivacyFooter();
     }
 
-    private void buildHeader() {
-        HBox header = new HBox(10);
-        header.setAlignment(Pos.CENTER_LEFT);
-        header.setPadding(new Insets(2, 4, 8, 4));
-
-        ImageView logoView = null;
-        try {
-            var stream = getClass().getResourceAsStream("/icons/icon.png");
-            if (stream != null) {
-                logoView = new ImageView(new Image(stream, 28, 28, true, true));
-            }
-        } catch (Exception ignored) {}
-
-        VBox titleBox = new VBox(2);
-        Label title = new Label("TakeoutFix Studio");
-        title.setStyle("-fx-font-size: 15px; -fx-font-weight: 800;");
-
-        Label subtitle = new Label("Photography Toolkit");
-        subtitle.setStyle("-fx-font-size: 11px; -fx-font-weight: 500; -fx-text-fill: #71717a;");
-
-        titleBox.getChildren().addAll(title, subtitle);
-
-        if (logoView != null) {
-            header.getChildren().addAll(logoView, titleBox);
-        } else {
-            var fallback = UiIcons.createSvgIcon(UiIcons.RESTORE, 22, "#8b5cf6");
-            header.getChildren().addAll(fallback, titleBox);
-        }
-
-        getChildren().add(header);
-    }
-
     private void buildWorkspacesSection() {
-        VBox section = new VBox(4);
-
-        Label label = new Label("LIBRARY");
-        label.setStyle("-fx-font-size: 11px; -fx-font-weight: 700; -fx-text-fill: #71717a; -fx-padding: 6 8 4 8;");
-        section.getChildren().add(label);
+        // 1. Workspace Section
+        VBox wsSection = new VBox(4);
+        Label wsLabel = new Label("WORKSPACE");
+        wsLabel.setStyle("-fx-font-size: 10px; -fx-font-weight: 700; -fx-text-fill: #71717a; -fx-padding: 4 8 4 8;");
+        wsSection.getChildren().add(wsLabel);
 
         Button btnOverview = createNavButton(WorkspaceType.DASHBOARD, UiIcons.LAYERS, "Overview");
-        Button btnFixPhotos = createNavButton(WorkspaceType.TAKEOUT_RESTORE, UiIcons.RESTORE, "Fix Google Photos");
-        Button btnEditDetails = createNavButton(WorkspaceType.PHOTO_STUDIO, UiIcons.SLIDERS, "Edit Photo Details");
-        Button btnViewDetails = createNavButton(WorkspaceType.EXIF_VIEWER, UiIcons.CAMERA, "View Photo Details");
+        wsSection.getChildren().add(btnOverview);
+        getChildren().add(wsSection);
+
+        // 2. Photo Tools Section
+        VBox toolsSection = new VBox(4);
+        Label toolsLabel = new Label("PHOTO TOOLS");
+        toolsLabel.setStyle("-fx-font-size: 10px; -fx-font-weight: 700; -fx-text-fill: #71717a; -fx-padding: 8 8 4 8;");
+        toolsSection.getChildren().add(toolsLabel);
+
+        Button btnFixPhotos = createNavButton(WorkspaceType.TAKEOUT_RESTORE, UiIcons.RESTORE, "Restore Metadata");
+        Button btnEditDetails = createNavButton(WorkspaceType.PHOTO_STUDIO, UiIcons.SLIDERS, "Edit Metadata");
+        Button btnViewDetails = createNavButton(WorkspaceType.EXIF_VIEWER, UiIcons.CAMERA, "EXIF Viewer");
         Button btnCompare = createNavButton(WorkspaceType.ARCHIVE_COMPARE, UiIcons.DIFF, "Compare Archives");
-        Button btnDuplicates = createNavButton(WorkspaceType.DUPLICATE_FINDER, UiIcons.COPY, "Find Duplicates");
-        Button btnSyncDetails = createNavButton(WorkspaceType.METASYNC, UiIcons.SYNC, "Sync Photo Details");
+        Button btnDuplicates = createNavButton(WorkspaceType.DUPLICATE_FINDER, UiIcons.COPY, "Duplicate Finder");
+        Button btnSyncDetails = createNavButton(WorkspaceType.METASYNC, UiIcons.SYNC, "Metadata Sync");
         Button btnPhotoVault = createNavButton(WorkspaceType.PHOTOVAULT, UiIcons.SHIELD_CHECK, "Private Photo Vault");
 
-        section.getChildren().addAll(btnOverview, btnFixPhotos, btnEditDetails, btnViewDetails, btnCompare, btnDuplicates, btnSyncDetails, btnPhotoVault);
-        getChildren().add(section);
+        toolsSection.getChildren().addAll(btnFixPhotos, btnEditDetails, btnViewDetails, btnCompare, btnDuplicates, btnSyncDetails, btnPhotoVault);
+        getChildren().add(toolsSection);
 
         select(WorkspaceType.DASHBOARD, false);
     }
@@ -115,7 +87,7 @@ public class SidebarNav extends VBox {
         VBox section = new VBox(4);
 
         Label label = new Label("SYSTEM");
-        label.setStyle("-fx-font-size: 11px; -fx-font-weight: 700; -fx-text-fill: #71717a; -fx-padding: 8 8 4 8;");
+        label.setStyle("-fx-font-size: 10px; -fx-font-weight: 700; -fx-text-fill: #71717a; -fx-padding: 8 8 4 8;");
         section.getChildren().add(label);
 
         Button btnHistory = createNavButton(WorkspaceType.HISTORY, UiIcons.HISTORY, "Activity History");
@@ -166,11 +138,11 @@ public class SidebarNav extends VBox {
         HBox trustRow = new HBox(6);
         trustRow.setAlignment(Pos.CENTER_LEFT);
         var lockIcon = UiIcons.createSvgIcon(UiIcons.LOCK, 12, "#10b981");
-        Label trustTitle = new Label("100% Local Processing");
+        Label trustTitle = new Label("Processed Locally");
         trustTitle.setStyle("-fx-font-size: 11px; -fx-font-weight: 700; -fx-text-fill: #10b981;");
         trustRow.getChildren().addAll(lockIcon, trustTitle);
 
-        Label trustSubtitle = new Label("Your photos & metadata never leave this computer.");
+        Label trustSubtitle = new Label("Your files remain on your device during local processing.");
         trustSubtitle.setStyle("-fx-font-size: 10px; -fx-text-fill: #71717a;");
         trustSubtitle.setWrapText(true);
 

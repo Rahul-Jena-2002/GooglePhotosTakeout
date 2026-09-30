@@ -45,10 +45,13 @@ public class TakeoutFxApplication extends Application {
     private ExtractionService extractionService;
     private MetadataSyncService metadataSyncService;
     private com.takeoutfix.updates.UpdateCheckerService updateCheckerService;
+    private com.takeoutfix.task.TaskManager taskManager;
+    private com.takeoutfix.task.PersistentTaskFooter persistentTaskFooter;
 
     @Override
     public void init() {
         FxHardwareManager.initialize();
+        this.taskManager = com.takeoutfix.task.TaskManager.getInstance();
         this.userSyncBridgeService = new UserSyncBridgeService();
         this.networkMonitorService = new NetworkMonitorService();
         this.sessionStatsService = new SessionStatsService();
@@ -112,7 +115,7 @@ public class TakeoutFxApplication extends Application {
     public void start(Stage primaryStage) {
         try {
             this.stage = primaryStage;
-            primaryStage.setTitle("TakeoutFix Operations Center");
+            primaryStage.setTitle("TakeoutFix — Photography Toolkit");
             primaryStage.setMinWidth(1120);
             primaryStage.setMinHeight(760);
 
@@ -133,6 +136,10 @@ public class TakeoutFxApplication extends Application {
             workspaceContainer = new StackPane();
             initWorkspaces();
             root.setCenter(workspaceContainer);
+
+            // 4. Persistent Task Footer (Privacy, Active Tasks, Adaptive Resource Telemetry)
+            this.persistentTaskFooter = new com.takeoutfix.task.PersistentTaskFooter(taskManager, this::switchWorkspace);
+            root.setBottom(persistentTaskFooter);
 
             scene = new Scene(root, 1220, 840);
             applyTheme();
@@ -204,6 +211,9 @@ public class TakeoutFxApplication extends Application {
 
     @Override
     public void stop() {
+        if (taskManager != null) {
+            taskManager.shutdown();
+        }
         if (exifToolEngine != null) {
             exifToolEngine.cleanup();
         }

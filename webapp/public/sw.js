@@ -19,7 +19,6 @@ const FONT_CACHE   = 'takeoutfix-fonts-v6';
 
 const APP_SHELL = [
   '/',
-  '/pricing',
   '/favicon.ico',
   '/favicon.svg',
   '/favicon-192x192.png',

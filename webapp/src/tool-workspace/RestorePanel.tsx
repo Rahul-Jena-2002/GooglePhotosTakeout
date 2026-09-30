@@ -545,10 +545,7 @@ export function RestorePanel({
                       className="w-3.5 h-3.5 rounded border-zinc-300 dark:border-white/10 bg-white dark:bg-zinc-900 text-zinc-900 dark:text-white focus:ring-0 focus:ring-offset-0 cursor-pointer accent-zinc-800 mt-0.5 flex-shrink-0"
                     />
                     <label htmlFor="agree-checkbox" className="cursor-pointer select-none leading-relaxed">
-                      I agree to the <a href="/terms" target="_blank" rel="noopener noreferrer" className="text-zinc-900 dark:text-white underline hover:text-zinc-600 dark:hover:text-zinc-350 transition-colors">Terms of Service</a>
-                      {enablePricingAndPayments ? (
-                        <> and <a href="/refund" target="_blank" rel="noopener noreferrer" className="text-zinc-900 dark:text-white underline hover:text-zinc-600 dark:hover:text-zinc-350 transition-colors">Refund Policy</a></>
-                      ) : null}.
+                      I agree to the <a href="/terms" target="_blank" rel="noopener noreferrer" className="text-zinc-900 dark:text-white underline hover:text-zinc-600 dark:hover:text-zinc-350 transition-colors">Terms of Service</a>.
                     </label>
                   </div>
                 )}

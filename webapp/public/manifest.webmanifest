@@ -55,19 +55,6 @@
           "type": "image/png"
         }
       ]
-    },
-    {
-      "name": "Pricing & Plans",
-      "short_name": "Pricing",
-      "description": "View TakeoutFix plans and features",
-      "url": "/pricing",
-      "icons": [
-        {
-          "src": "/favicon-192x192.png",
-          "sizes": "192x192",
-          "type": "image/png"
-        }
-      ]
     }
   ]
 }

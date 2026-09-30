@@ -6,7 +6,7 @@ package com.takeoutfix.ui.fx;
  */
 public enum WorkspaceType {
     TAKEOUT_RESTORE("Fix Google Photos", "Restore metadata, dates, and JSON sidecars from Google Takeout exports"),
-    PHOTO_STUDIO("Edit Photo Details", "Batch correct photo timestamps, shift timezones, manage locations, and edit details"),
+    PHOTO_STUDIO("Edit Metadata", "Batch-adjust photo dates, correct time zones, update GPS information and manage metadata across multiple files"),
     METASYNC("Sync Photo Details", "Synchronize and transfer metadata across RAW, JPEG and sidecar files"),
     PHOTOVAULT("Private Photo Vault", "Secure local private vault to safeguard and verify your private photos"),
     DASHBOARD("Overview", "Overview of operations, quotas, hardware telemetry, and quick actions"),

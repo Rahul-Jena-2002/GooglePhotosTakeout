@@ -8,6 +8,7 @@ import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
+import javafx.scene.Node;
 import javafx.scene.control.*;
 import javafx.scene.input.Dragboard;
 import javafx.scene.input.TransferMode;
@@ -39,13 +40,14 @@ public class PhotoStudioFxView extends VBox {
     // File Queue & Table
     private final ObservableList<StudioFileItem> queueItems = FXCollections.observableArrayList();
     private final TableView<StudioFileItem> tableView = new TableView<>();
-    private final Label queueSummaryLabel = new Label("0 files queued");
+    private final Label queueSummaryLabel = new Label("0 photos queued");
+    private final CheckBox selectAllCheck = new CheckBox();
 
     // Date Controls
     private final ToggleGroup dateModeGroup = new ToggleGroup();
-    private final RadioButton rbTimeShift = new RadioButton("Time Shift (± Offset)");
-    private final RadioButton rbFixedIncrement = new RadioButton("Fixed Date + Auto-Increment");
-    private final RadioButton rbKeepOriginal = new RadioButton("Keep Original Dates");
+    private final RadioButton rbTimeShift = new RadioButton("Shift Dates");
+    private final RadioButton rbFixedIncrement = new RadioButton("Set Start Date & Increment");
+    private final RadioButton rbKeepOriginal = new RadioButton("Keep Dates Unchanged");
 
     private final ComboBox<String> cbShiftDirection = new ComboBox<>();
     private final Spinner<Integer> spDays = new Spinner<>(0, 365, 0);
@@ -61,6 +63,8 @@ public class PhotoStudioFxView extends VBox {
 
     private final VBox shiftControlBox = new VBox(8);
     private final VBox fixedControlBox = new VBox(8);
+    private final VBox keepOriginalNoticeBox = new VBox(6);
+    private final Label lblOperationSummary = new Label("Summary: Move dates forward by 0 days, 0 hours");
 
     // Location Controls
     private final CheckBox chkEnableLocation = new CheckBox("Enable Geotagging");
@@ -75,15 +79,15 @@ public class PhotoStudioFxView extends VBox {
     private final TextField txtDescription = new TextField();
 
     // Output & Execution
-    private final CheckBox chkSafeExport = new CheckBox("Export to separate folder (Safe Non-Destructive)");
-    private final CheckBox chkSyncOsTime = new CheckBox("Synchronize OS File Creation & Modified Times");
+    private final CheckBox chkSafeExport = new CheckBox("Save Edited Copies");
+    private final CheckBox chkSyncOsTime = new CheckBox("Also Update File Timestamps");
     private File customOutputDir;
     private final Label lblOutputDir = new Label("TakeoutFix_Studio_Export");
 
     private final ProgressBar progressBar = new ProgressBar(0);
-    private final Label progressLabel = new Label("Ready to edit.");
-    private final Button btnExecute = new Button("Execute Batch Edit");
-    private final Button btnDryRun = new Button("Dry Run Preview");
+    private final Label progressLabel = new Label("Add photos to get started.");
+    private final Button btnExecute = new Button("Apply Changes");
+    private final Button btnDryRun = new Button("Preview Changes");
     private final Button btnCancel = new Button("Cancel");
     private final AtomicBoolean cancelToken = new AtomicBoolean(false);
     private final com.takeoutfix.auth.UserSyncBridgeService userService;
@@ -118,25 +122,52 @@ public class PhotoStudioFxView extends VBox {
 
         // Setup listeners to refresh previews in real time
         setupLivePreviewListeners();
+        updateQueueCount();
     }
 
     private void buildHeader() {
         HBox header = new HBox(12);
         header.setAlignment(Pos.CENTER_LEFT);
 
-        var icon = UiIcons.createSvgIcon(UiIcons.SLIDERS, 24, "#8b5cf6");
+        var icon = UiIcons.createSvgIcon(UiIcons.SLIDERS, 24, "#A78BFA");
 
         VBox titleBox = new VBox(2);
-        Label title = new Label("Edit Photo Details");
-        title.setStyle("-fx-font-size: 18px; -fx-font-weight: 700;");
+        Label title = new Label("Edit Metadata");
+        title.getStyleClass().addAll("page-title", "header-title");
+        title.setStyle("-fx-font-size: 24px; -fx-font-weight: 700; -fx-text-fill: #FAFAFA;");
 
-        Label subtitle = new Label("Batch correct photo timestamps, shift timezones, update locations, and edit photo metadata.");
-        subtitle.setStyle("-fx-font-size: 12px; -fx-text-fill: #71717a;");
+        Label subtitle = new Label("Batch-adjust photo dates, correct time zones, update GPS information and manage metadata across multiple files.");
+        subtitle.getStyleClass().addAll("page-description", "header-subtitle");
+        subtitle.setStyle("-fx-font-size: 13px; -fx-text-fill: #D4D4D8;");
 
         titleBox.getChildren().addAll(title, subtitle);
         header.getChildren().addAll(icon, titleBox);
 
         getChildren().add(header);
+    }
+
+    private VBox buildEmptyState() {
+        VBox box = new VBox(12);
+        box.setAlignment(Pos.CENTER);
+        box.setPadding(new Insets(36, 20, 36, 20));
+
+        Node uploadIcon = UiIcons.createSvgIcon(UiIcons.UPLOAD, 44, "#A78BFA");
+
+        Label title = new Label("Drop photos here");
+        title.setStyle("-fx-font-size: 16px; -fx-font-weight: 700; -fx-text-fill: #FAFAFA;");
+
+        Label subtitle = new Label("Drag and drop photos or folders here to begin batch editing.");
+        subtitle.setStyle("-fx-font-size: 13px; -fx-text-fill: #D4D4D8;");
+
+        Button btnBrowse = new Button("Browse Photos");
+        btnBrowse.getStyleClass().add("btn-secondary");
+        btnBrowse.setGraphic(UiIcons.createSvgIcon(UiIcons.FOLDER, 14, "currentColor"));
+        btnBrowse.setGraphicTextGap(7);
+        btnBrowse.setStyle("-fx-font-size: 13px; -fx-font-weight: 600; -fx-pref-height: 36px; -fx-padding: 8 16 8 16; -fx-cursor: hand;");
+        btnBrowse.setOnAction(e -> handleAddFiles());
+
+        box.getChildren().addAll(uploadIcon, title, subtitle, btnBrowse);
+        return box;
     }
 
     private VBox buildQueuePanel() {
@@ -150,16 +181,22 @@ public class PhotoStudioFxView extends VBox {
         Button btnAddFiles = new Button("Add Photos");
         btnAddFiles.getStyleClass().add("btn-secondary");
         btnAddFiles.setGraphic(UiIcons.createSvgIcon(UiIcons.FOLDER, 14, "currentColor"));
+        btnAddFiles.setGraphicTextGap(6);
+        btnAddFiles.setStyle("-fx-font-size: 13px; -fx-pref-height: 34px;");
         btnAddFiles.setOnAction(e -> handleAddFiles());
 
         Button btnAddFolder = new Button("Add Folder");
         btnAddFolder.getStyleClass().add("btn-secondary");
         btnAddFolder.setGraphic(UiIcons.createSvgIcon(UiIcons.OUTPUT_FOLDER, 14, "currentColor"));
+        btnAddFolder.setGraphicTextGap(6);
+        btnAddFolder.setStyle("-fx-font-size: 13px; -fx-pref-height: 34px;");
         btnAddFolder.setOnAction(e -> handleAddFolder());
 
         Button btnClear = new Button("Clear");
         btnClear.getStyleClass().add("btn-ghost");
         btnClear.setGraphic(UiIcons.createSvgIcon(UiIcons.TRASH, 14, "currentColor"));
+        btnClear.setGraphicTextGap(6);
+        btnClear.setStyle("-fx-font-size: 13px; -fx-pref-height: 34px;");
         btnClear.setOnAction(e -> {
             queueItems.clear();
             updateQueueCount();
@@ -168,7 +205,7 @@ public class PhotoStudioFxView extends VBox {
         Region spacer = new Region();
         HBox.setHgrow(spacer, Priority.ALWAYS);
 
-        queueSummaryLabel.setStyle("-fx-font-size: 12px; -fx-font-weight: 600; -fx-text-fill: #8b5cf6;");
+        queueSummaryLabel.setStyle("-fx-font-size: 12px; -fx-font-weight: 700; -fx-text-fill: #A78BFA;");
 
         toolbar.getChildren().addAll(btnAddFiles, btnAddFolder, btnClear, spacer, queueSummaryLabel);
 
@@ -182,26 +219,137 @@ public class PhotoStudioFxView extends VBox {
 
     private void setupTable() {
         tableView.setItems(queueItems);
-        tableView.setPlaceholder(new Label("Drag and drop photos or folders here to begin batch editing."));
+        tableView.setPlaceholder(buildEmptyState());
+        tableView.getSelectionModel().setSelectionMode(SelectionMode.MULTIPLE);
 
+        // 1. Select All Checkbox Column
+        selectAllCheck.setSelected(true);
+        selectAllCheck.setOnAction(e -> {
+            boolean sel = selectAllCheck.isSelected();
+            for (StudioFileItem item : queueItems) {
+                item.setSelected(sel);
+            }
+            tableView.refresh();
+            updateQueueCount();
+        });
+
+        TableColumn<StudioFileItem, Boolean> colSelect = new TableColumn<>();
+        colSelect.setGraphic(selectAllCheck);
+        colSelect.setPrefWidth(40);
+        colSelect.setSortable(false);
+        colSelect.setCellFactory(col -> new TableCell<>() {
+            private final CheckBox check = new CheckBox();
+            {
+                check.setOnAction(e -> {
+                    StudioFileItem item = getTableRow() != null ? getTableRow().getItem() : null;
+                    if (item != null) {
+                        item.setSelected(check.isSelected());
+                        updateQueueCount();
+                    }
+                });
+            }
+            @Override
+            protected void updateItem(Boolean item, boolean empty) {
+                super.updateItem(item, empty);
+                if (empty || getTableRow() == null || getTableRow().getItem() == null) {
+                    setGraphic(null);
+                } else {
+                    StudioFileItem fileItem = getTableRow().getItem();
+                    check.setSelected(fileItem.isSelected());
+                    setGraphic(check);
+                }
+            }
+        });
+
+        // 2. File Column with Vector Icon
         TableColumn<StudioFileItem, String> colName = new TableColumn<>("File");
         colName.setCellValueFactory(d -> new SimpleStringProperty(d.getValue().getFileName()));
-        colName.setPrefWidth(220);
+        colName.setPrefWidth(200);
+        colName.setCellFactory(col -> new TableCell<>() {
+            @Override
+            protected void updateItem(String item, boolean empty) {
+                super.updateItem(item, empty);
+                if (empty || item == null) {
+                    setText(null);
+                    setGraphic(null);
+                } else {
+                    setText(item);
+                    setGraphic(UiIcons.createSvgIcon(UiIcons.CAMERA, 13, "#A78BFA"));
+                    setGraphicTextGap(7);
+                    setStyle("-fx-font-weight: 600; -fx-text-fill: #FAFAFA; -fx-font-size: 13px;");
+                }
+            }
+        });
 
-        TableColumn<StudioFileItem, String> colSize = new TableColumn<>("Size");
-        colSize.setCellValueFactory(d -> new SimpleStringProperty(d.getValue().getFormattedSize()));
-        colSize.setPrefWidth(80);
+        // 3. Size Column (Numeric Sorting)
+        TableColumn<StudioFileItem, Number> colSize = new TableColumn<>("Size");
+        colSize.setCellValueFactory(d -> new javafx.beans.property.SimpleLongProperty(d.getValue().getFileSize()));
+        colSize.setPrefWidth(85);
+        colSize.setCellFactory(col -> new TableCell<>() {
+            @Override
+            protected void updateItem(Number item, boolean empty) {
+                super.updateItem(item, empty);
+                if (empty || getTableRow() == null || getTableRow().getItem() == null) {
+                    setText(null);
+                } else {
+                    setText(getTableRow().getItem().getFormattedSize());
+                    setStyle("-fx-text-fill: #D4D4D8; -fx-font-size: 12px;");
+                }
+            }
+        });
 
-        TableColumn<StudioFileItem, String> colOrig = new TableColumn<>("Original Date");
-        colOrig.setCellValueFactory(d -> new SimpleStringProperty(
-                DateShiftCalculator.toDisplayString(d.getValue().getOriginalDate())));
-        colOrig.setPrefWidth(160);
+        // 4. Original Date Column (Chronological Sorting)
+        TableColumn<StudioFileItem, LocalDateTime> colOrig = new TableColumn<>("Original Date");
+        colOrig.setCellValueFactory(d -> new javafx.beans.property.SimpleObjectProperty<>(d.getValue().getOriginalDate()));
+        colOrig.setPrefWidth(165);
+        colOrig.setCellFactory(col -> new TableCell<>() {
+            @Override
+            protected void updateItem(LocalDateTime item, boolean empty) {
+                super.updateItem(item, empty);
+                if (empty || item == null) {
+                    setText(empty ? null : "No timestamp");
+                    setStyle("-fx-text-fill: #A1A1AA; -fx-font-style: italic; -fx-font-size: 12px;");
+                } else {
+                    setText(DateShiftCalculator.toDisplayString(item));
+                    setStyle("-fx-text-fill: #D4D4D8; -fx-font-size: 12px;");
+                }
+            }
+        });
 
-        TableColumn<StudioFileItem, String> colNew = new TableColumn<>("➔ New Date Preview");
-        colNew.setCellValueFactory(d -> new SimpleStringProperty(
-                DateShiftCalculator.toDisplayString(d.getValue().getNewDate())));
-        colNew.setPrefWidth(170);
+        // 5. Proposed New Date Column
+        TableColumn<StudioFileItem, LocalDateTime> colNew = new TableColumn<>("➔ Proposed New Date");
+        colNew.setCellValueFactory(d -> new javafx.beans.property.SimpleObjectProperty<>(d.getValue().getNewDate()));
+        colNew.setPrefWidth(180);
         colNew.setCellFactory(col -> new TableCell<>() {
+            @Override
+            protected void updateItem(LocalDateTime item, boolean empty) {
+                super.updateItem(item, empty);
+                if (empty) {
+                    setText(null);
+                    setStyle("");
+                } else {
+                    StudioFileItem rowItem = getTableRow() != null ? getTableRow().getItem() : null;
+                    if (item == null) {
+                        setText("—");
+                        setStyle("-fx-text-fill: #A1A1AA; -fx-font-size: 12px;");
+                    } else {
+                        setText(DateShiftCalculator.toDisplayString(item));
+                        if (rowItem != null && rowItem.getOriginalDate() != null &&
+                                !rowItem.getOriginalDate().equals(item)) {
+                            setStyle("-fx-font-weight: 700; -fx-text-fill: #22C55E; -fx-font-size: 12px;");
+                        } else {
+                            setStyle("-fx-text-fill: #D4D4D8; -fx-font-size: 12px;");
+                        }
+                    }
+                }
+            }
+        });
+
+        // 6. Status Column
+        TableColumn<StudioFileItem, String> colStatus = new TableColumn<>("Status");
+        colStatus.setCellValueFactory(d -> new SimpleStringProperty(d.getValue().getStatus()));
+        colStatus.setPrefWidth(95);
+        colStatus.setCellFactory(col -> new TableCell<>() {
             @Override
             protected void updateItem(String item, boolean empty) {
                 super.updateItem(item, empty);
@@ -210,22 +358,20 @@ public class PhotoStudioFxView extends VBox {
                     setStyle("");
                 } else {
                     setText(item);
-                    StudioFileItem rowItem = getTableRow() != null ? getTableRow().getItem() : null;
-                    if (rowItem != null && rowItem.getOriginalDate() != null && rowItem.getNewDate() != null &&
-                            !rowItem.getOriginalDate().equals(rowItem.getNewDate())) {
-                        setStyle("-fx-font-weight: 700; -fx-text-fill: #8b5cf6;");
+                    if ("Success".equalsIgnoreCase(item) || "Updated".equalsIgnoreCase(item)) {
+                        setStyle("-fx-text-fill: #22C55E; -fx-font-weight: 700; -fx-font-size: 12px;");
+                    } else if ("Failed".equalsIgnoreCase(item)) {
+                        setStyle("-fx-text-fill: #EF4444; -fx-font-weight: 700; -fx-font-size: 12px;");
+                    } else if ("Previewed".equalsIgnoreCase(item)) {
+                        setStyle("-fx-text-fill: #A78BFA; -fx-font-weight: 700; -fx-font-size: 12px;");
                     } else {
-                        setStyle("");
+                        setStyle("-fx-text-fill: #D4D4D8; -fx-font-size: 12px;");
                     }
                 }
             }
         });
 
-        TableColumn<StudioFileItem, String> colStatus = new TableColumn<>("Status");
-        colStatus.setCellValueFactory(d -> new SimpleStringProperty(d.getValue().getStatus()));
-        colStatus.setPrefWidth(100);
-
-        tableView.getColumns().addAll(colName, colSize, colOrig, colNew, colStatus);
+        tableView.getColumns().addAll(colSelect, colName, colSize, colOrig, colNew, colStatus);
 
         // Drag & Drop
         tableView.setOnDragOver(event -> {
@@ -259,8 +405,8 @@ public class PhotoStudioFxView extends VBox {
         tabSwitcher.setStyle("-fx-padding: 4; -fx-background-radius: 8;");
 
         Button tabDate = createTabButton("Dates", true);
-        Button tabCreator = createTabButton("Creator & Presets", false);
-        Button tabLocation = createTabButton("Location", false);
+        Button tabCreator = createTabButton("Creator & Copyright", false);
+        Button tabLocation = createTabButton("GPS & Location", false);
 
         tabSwitcher.getChildren().addAll(tabDate, tabCreator, tabLocation);
 
@@ -309,7 +455,7 @@ public class PhotoStudioFxView extends VBox {
         btn.setMaxWidth(Double.MAX_VALUE);
         HBox.setHgrow(btn, Priority.ALWAYS);
         btn.getStyleClass().add(active ? "btn-secondary" : "btn-ghost");
-        btn.setStyle("-fx-font-size: 11px; -fx-font-weight: 700; -fx-padding: 6 10; -fx-background-radius: 6;");
+        btn.setStyle("-fx-font-size: 12px; -fx-font-weight: 700; -fx-padding: 7 12; -fx-background-radius: 6;");
         return btn;
     }
 
@@ -323,44 +469,78 @@ public class PhotoStudioFxView extends VBox {
     }
 
     private VBox buildDateRemediationCard() {
-        VBox card = new VBox(10);
+        VBox card = new VBox(12);
         card.getStyleClass().add("glass-card");
+        card.setPadding(new Insets(14, 16, 14, 16));
 
         HBox titleBox = new HBox(8);
         titleBox.setAlignment(Pos.CENTER_LEFT);
-        var icon = UiIcons.createSvgIcon(UiIcons.CALENDAR, 16, "#8b5cf6");
-        Label lblTitle = new Label("Batch Date Remediation");
-        lblTitle.getStyleClass().add("card-title");
+        var icon = UiIcons.createSvgIcon(UiIcons.CALENDAR, 16, "#A78BFA");
+        Label lblTitle = new Label("Adjust Photo Dates");
+        lblTitle.getStyleClass().addAll("card-title", "section-title");
+        lblTitle.setStyle("-fx-font-size: 15px; -fx-font-weight: 700; -fx-text-fill: #FAFAFA;");
         titleBox.getChildren().addAll(icon, lblTitle);
 
-        Label lblSub = new Label("Shift relative time, fix timezones, or auto-increment scanned photos.");
+        Label lblSub = new Label("Choose how you want to update the dates of your photos.");
         lblSub.getStyleClass().add("card-subtitle");
+        lblSub.setStyle("-fx-font-size: 12px; -fx-text-fill: #D4D4D8;");
 
-        // Radio selectors
+        // Radio selectors with descriptive sub-labels
         rbTimeShift.setToggleGroup(dateModeGroup);
         rbFixedIncrement.setToggleGroup(dateModeGroup);
         rbKeepOriginal.setToggleGroup(dateModeGroup);
         rbTimeShift.setSelected(true);
 
-        VBox modeSelectBox = new VBox(6, rbTimeShift, rbFixedIncrement, rbKeepOriginal);
+        VBox modeSelectBox = new VBox(8);
+
+        VBox item1 = new VBox(2);
+        rbTimeShift.setStyle("-fx-font-size: 13px; -fx-font-weight: 700; -fx-text-fill: #FAFAFA;");
+        Label sub1 = new Label("Move all selected photo dates forward or backward.");
+        sub1.setStyle("-fx-font-size: 11px; -fx-text-fill: #A1A1AA; -fx-padding: 0 0 0 22;");
+        item1.getChildren().addAll(rbTimeShift, sub1);
+
+        VBox item2 = new VBox(2);
+        rbFixedIncrement.setStyle("-fx-font-size: 13px; -fx-font-weight: 700; -fx-text-fill: #FAFAFA;");
+        Label sub2 = new Label("Assign a starting date and increment timestamps for each photo.");
+        sub2.setStyle("-fx-font-size: 11px; -fx-text-fill: #A1A1AA; -fx-padding: 0 0 0 22;");
+        item2.getChildren().addAll(rbFixedIncrement, sub2);
+
+        VBox item3 = new VBox(2);
+        rbKeepOriginal.setStyle("-fx-font-size: 13px; -fx-font-weight: 700; -fx-text-fill: #FAFAFA;");
+        Label sub3 = new Label("Preserve existing date metadata.");
+        sub3.setStyle("-fx-font-size: 11px; -fx-text-fill: #A1A1AA; -fx-padding: 0 0 0 22;");
+        item3.getChildren().addAll(rbKeepOriginal, sub3);
+
+        modeSelectBox.getChildren().addAll(item1, item2, item3);
 
         // 1. Time Shift Box
-        cbShiftDirection.getItems().addAll("+ Advance Time (Add)", "- Delay Time (Subtract)");
+        cbShiftDirection.getItems().setAll("+ Advance Time (Add)", "- Delay Time (Subtract)");
         cbShiftDirection.setValue("+ Advance Time (Add)");
         cbShiftDirection.setMaxWidth(Double.MAX_VALUE);
+        cbShiftDirection.setStyle("-fx-font-size: 13px; -fx-pref-height: 34px;");
 
         GridPane gridSpinners = new GridPane();
         gridSpinners.setHgap(8);
         gridSpinners.setVgap(6);
 
-        gridSpinners.add(new Label("Days:"), 0, 0);
+        Label lblD = new Label("Days:"); lblD.setStyle("-fx-font-size: 12px; -fx-text-fill: #D4D4D8;");
+        Label lblH = new Label("Hours:"); lblH.setStyle("-fx-font-size: 12px; -fx-text-fill: #D4D4D8;");
+        Label lblM = new Label("Mins:"); lblM.setStyle("-fx-font-size: 12px; -fx-text-fill: #D4D4D8;");
+        Label lblS = new Label("Secs:"); lblS.setStyle("-fx-font-size: 12px; -fx-text-fill: #D4D4D8;");
+
+        spDays.setStyle("-fx-pref-height: 32px;");
+        spHours.setStyle("-fx-pref-height: 32px;");
+        spMinutes.setStyle("-fx-pref-height: 32px;");
+        spSeconds.setStyle("-fx-pref-height: 32px;");
+
+        gridSpinners.add(lblD, 0, 0);
         gridSpinners.add(spDays, 1, 0);
-        gridSpinners.add(new Label("Hours:"), 2, 0);
+        gridSpinners.add(lblH, 2, 0);
         gridSpinners.add(spHours, 3, 0);
 
-        gridSpinners.add(new Label("Mins:"), 0, 1);
+        gridSpinners.add(lblM, 0, 1);
         gridSpinners.add(spMinutes, 1, 1);
-        gridSpinners.add(new Label("Secs:"), 2, 1);
+        gridSpinners.add(lblS, 2, 1);
         gridSpinners.add(spSeconds, 3, 1);
 
         HBox presetsBox = new HBox(6);
@@ -376,39 +556,81 @@ public class PhotoStudioFxView extends VBox {
         });
         presetsBox.getChildren().addAll(btnDstPlus, btnDstMinus, btnIst, btnReset);
 
-        shiftControlBox.getChildren().addAll(new Label("Direction & Offsets:"), cbShiftDirection, gridSpinners, presetsBox);
+        Label shiftHeader = new Label("Time Adjustment:");
+        shiftHeader.setStyle("-fx-font-size: 12px; -fx-font-weight: 700; -fx-text-fill: #A78BFA; -fx-text-transform: uppercase;");
+        shiftControlBox.getChildren().setAll(shiftHeader, cbShiftDirection, gridSpinners, presetsBox);
 
         // 2. Fixed Increment Box
-        cbIncrementInterval.getItems().addAll("+10 seconds", "+30 seconds", "+1 minute (Scanned Albums)", "+2 minutes", "+5 minutes");
+        cbIncrementInterval.getItems().setAll("+10 seconds", "+30 seconds", "+1 minute (Scanned Albums)", "+2 minutes", "+5 minutes");
         cbIncrementInterval.setValue("+1 minute (Scanned Albums)");
         cbIncrementInterval.setMaxWidth(Double.MAX_VALUE);
+        cbIncrementInterval.setStyle("-fx-font-size: 13px; -fx-pref-height: 34px;");
+
+        dpBaseDate.setMaxWidth(Double.MAX_VALUE);
+        dpBaseDate.setStyle("-fx-pref-height: 34px;");
 
         HBox timeSpinners = new HBox(6, spBaseHour, new Label(":"), spBaseMinute, new Label(":"), spBaseSecond);
         timeSpinners.setAlignment(Pos.CENTER_LEFT);
 
-        fixedControlBox.getChildren().addAll(
-                new Label("Base Starting Date:"),
+        Label fixedHeader = new Label("Base Starting Date & Interval:");
+        fixedHeader.setStyle("-fx-font-size: 12px; -fx-font-weight: 700; -fx-text-fill: #A78BFA; -fx-text-transform: uppercase;");
+
+        Label lblBaseD = new Label("Base Starting Date:"); lblBaseD.setStyle("-fx-font-size: 12px; -fx-text-fill: #D4D4D8;");
+        Label lblBaseT = new Label("Base Starting Time:"); lblBaseT.setStyle("-fx-font-size: 12px; -fx-text-fill: #D4D4D8;");
+        Label lblInc = new Label("Auto-Increment Interval:"); lblInc.setStyle("-fx-font-size: 12px; -fx-text-fill: #D4D4D8;");
+
+        fixedControlBox.getChildren().setAll(
+                fixedHeader,
+                lblBaseD,
                 dpBaseDate,
-                new Label("Base Starting Time:"),
+                lblBaseT,
                 timeSpinners,
-                new Label("Auto-Increment Interval:"),
+                lblInc,
                 cbIncrementInterval
         );
         fixedControlBox.setVisible(false);
         fixedControlBox.setManaged(false);
 
+        // 3. Keep Original Notice Box
+        keepOriginalNoticeBox.setStyle("-fx-background-color: rgba(167, 139, 250, 0.08); -fx-border-color: rgba(167, 139, 250, 0.25); -fx-border-radius: 6; -fx-background-radius: 6; -fx-padding: 10;");
+        Label noticeTitle = new Label("Existing Dates Preserved");
+        noticeTitle.setStyle("-fx-font-size: 12px; -fx-font-weight: 700; -fx-text-fill: #A78BFA;");
+        Label noticeText = new Label("Existing photo dates will be preserved. Other selected metadata fields (Creator, Copyright, GPS) can still be edited.");
+        noticeText.setWrapText(true);
+        noticeText.setStyle("-fx-font-size: 12px; -fx-text-fill: #D4D4D8;");
+        keepOriginalNoticeBox.getChildren().setAll(noticeTitle, noticeText);
+        keepOriginalNoticeBox.setVisible(false);
+        keepOriginalNoticeBox.setManaged(false);
+
+        // 4. Live Operation Summary
+        HBox summaryBox = new HBox(8);
+        summaryBox.setAlignment(Pos.CENTER_LEFT);
+        summaryBox.setStyle("-fx-background-color: rgba(167, 139, 250, 0.1); -fx-border-color: rgba(167, 139, 250, 0.25); -fx-border-radius: 6; -fx-background-radius: 6; -fx-padding: 8 10 8 10;");
+        lblOperationSummary.setWrapText(true);
+        lblOperationSummary.setStyle("-fx-font-size: 12px; -fx-font-weight: 600; -fx-text-fill: #A78BFA;");
+        summaryBox.getChildren().addAll(UiIcons.createSvgIcon(UiIcons.HISTORY, 13, "#A78BFA"), lblOperationSummary);
+
         // Mode switch listener
         dateModeGroup.selectedToggleProperty().addListener((obs, oldVal, newVal) -> {
             boolean isShift = rbTimeShift.isSelected();
             boolean isFixed = rbFixedIncrement.isSelected();
+            boolean isKeep = rbKeepOriginal.isSelected();
+
             shiftControlBox.setVisible(isShift);
             shiftControlBox.setManaged(isShift);
+
             fixedControlBox.setVisible(isFixed);
             fixedControlBox.setManaged(isFixed);
+
+            keepOriginalNoticeBox.setVisible(isKeep);
+            keepOriginalNoticeBox.setManaged(isKeep);
+
+            updateOperationSummary();
             recalculatePreviews();
         });
 
-        card.getChildren().addAll(titleBox, lblSub, modeSelectBox, new Separator(), shiftControlBox, fixedControlBox);
+        card.getChildren().addAll(titleBox, lblSub, modeSelectBox, new Separator(), shiftControlBox, fixedControlBox, keepOriginalNoticeBox, summaryBox);
+        updateOperationSummary();
         return card;
     }
 
@@ -419,7 +641,7 @@ public class PhotoStudioFxView extends VBox {
         HBox titleBox = new HBox(8);
         titleBox.setAlignment(Pos.CENTER_LEFT);
         var icon = UiIcons.createSvgIcon(UiIcons.USER, 18, "#3b82f6");
-        Label lblTitle = new Label("Creator & Copyright Presets");
+        Label lblTitle = new Label("Creator & Copyright");
         lblTitle.getStyleClass().add("card-title");
         titleBox.getChildren().addAll(icon, lblTitle);
 
@@ -519,7 +741,7 @@ public class PhotoStudioFxView extends VBox {
         HBox titleBox = new HBox(8);
         titleBox.setAlignment(Pos.CENTER_LEFT);
         var icon = UiIcons.createSvgIcon(UiIcons.GLOBE, 18, "#10b981");
-        Label lblTitle = new Label("Location & Geotagging");
+        Label lblTitle = new Label("GPS & Location");
         lblTitle.getStyleClass().add("card-title");
         titleBox.getChildren().addAll(icon, lblTitle);
 
@@ -571,15 +793,46 @@ public class PhotoStudioFxView extends VBox {
     private VBox buildExecutionFooter() {
         VBox footer = new VBox(10);
         footer.getStyleClass().add("glass-card");
+        footer.setPadding(new Insets(12, 16, 12, 16));
 
-        // Settings row
+        // Output section header and safety options
+        Label lblOutputHeader = new Label("OUTPUT & SAFE EXPORT");
+        lblOutputHeader.setStyle("-fx-font-size: 11px; -fx-font-weight: 700; -fx-text-fill: #A78BFA; -fx-letter-spacing: 0.5px;");
+
         chkSafeExport.setSelected(true);
-        chkSyncOsTime.setSelected(true);
+        chkSafeExport.setStyle("-fx-font-size: 13px; -fx-font-weight: 600; -fx-text-fill: #FAFAFA;");
+        chkSafeExport.setOnAction(e -> {
+            if (!chkSafeExport.isSelected()) {
+                Alert confirm = new Alert(Alert.AlertType.CONFIRMATION);
+                confirm.setTitle("Confirm In-Place Overwrite");
+                confirm.setHeaderText("Warning: Destructive In-Place Edit");
+                confirm.setContentText("You have deselected 'Save Edited Copies'. This will overwrite original files in place. Are you sure you want to proceed?");
+                var res = confirm.showAndWait();
+                if (res.isEmpty() || res.get() != ButtonType.OK) {
+                    chkSafeExport.setSelected(true);
+                }
+            }
+        });
 
-        HBox outDirRow = new HBox(8);
+        chkSyncOsTime.setSelected(true);
+        chkSyncOsTime.setStyle("-fx-font-size: 13px; -fx-text-fill: #D4D4D8;");
+
+        HBox outputOptionsRow = new HBox(20, lblOutputHeader, chkSafeExport, chkSyncOsTime);
+        outputOptionsRow.setAlignment(Pos.CENTER_LEFT);
+
+        // Compact Destination Row
+        HBox outDirRow = new HBox(10);
         outDirRow.setAlignment(Pos.CENTER_LEFT);
-        Button btnChooseDir = new Button("Browse Destination");
+
+        Label lblDest = new Label("Destination Folder:");
+        lblDest.setStyle("-fx-font-size: 12px; -fx-font-weight: 600; -fx-text-fill: #A1A1AA;");
+
+        lblOutputDir.setStyle("-fx-font-size: 12px; -fx-text-fill: #FAFAFA; -fx-background-color: rgba(255,255,255,0.05); -fx-padding: 4 8; -fx-background-radius: 4;");
+        HBox.setHgrow(lblOutputDir, Priority.ALWAYS);
+
+        Button btnChooseDir = new Button("Browse");
         btnChooseDir.getStyleClass().add("btn-secondary");
+        btnChooseDir.setStyle("-fx-font-size: 12px; -fx-padding: 4 12;");
         btnChooseDir.setOnAction(e -> {
             DirectoryChooser dc = new DirectoryChooser();
             dc.setTitle("Select Studio Export Destination Folder");
@@ -589,24 +842,29 @@ public class PhotoStudioFxView extends VBox {
                 lblOutputDir.setText(sel.getAbsolutePath());
             }
         });
-        lblOutputDir.setStyle("-fx-font-size: 11px; -fx-text-fill: #71717a;");
-        outDirRow.getChildren().addAll(btnChooseDir, lblOutputDir);
 
-        HBox settingsRow = new HBox(16, chkSafeExport, chkSyncOsTime);
-        settingsRow.setAlignment(Pos.CENTER_LEFT);
+        outDirRow.getChildren().addAll(lblDest, lblOutputDir, btnChooseDir);
 
-        // Progress bar and actions
+        // Progress bar
         progressBar.setMaxWidth(Double.MAX_VALUE);
         progressBar.setVisible(false);
 
+        // Action row
         HBox actionRow = new HBox(10);
         actionRow.setAlignment(Pos.CENTER_RIGHT);
 
+        progressLabel.setStyle("-fx-font-size: 12px; -fx-text-fill: #A1A1AA;");
+
         btnDryRun.getStyleClass().add("btn-secondary");
+        btnDryRun.setGraphic(UiIcons.createSvgIcon(UiIcons.EYE, 14, "currentColor"));
+        btnDryRun.setGraphicTextGap(7);
+        btnDryRun.setStyle("-fx-font-size: 13px; -fx-font-weight: 600; -fx-pref-height: 36px; -fx-padding: 6 16;");
         btnDryRun.setOnAction(e -> handleDryRun());
 
         btnExecute.getStyleClass().add("btn-primary");
         btnExecute.setGraphic(UiIcons.createSvgIcon(UiIcons.PLAY, 14, "currentColor"));
+        btnExecute.setGraphicTextGap(7);
+        btnExecute.setStyle("-fx-font-size: 13px; -fx-font-weight: 700; -fx-pref-height: 36px; -fx-padding: 6 20;");
         btnExecute.setOnAction(e -> handleExecute());
 
         btnCancel.getStyleClass().add("btn-ghost");
@@ -616,7 +874,7 @@ public class PhotoStudioFxView extends VBox {
         actionRow.getChildren().addAll(progressLabel, new Region(), btnDryRun, btnExecute, btnCancel);
         HBox.setHgrow(actionRow.getChildren().get(1), Priority.ALWAYS);
 
-        footer.getChildren().addAll(settingsRow, outDirRow, progressBar, actionRow);
+        footer.getChildren().addAll(outputOptionsRow, outDirRow, progressBar, actionRow);
         return footer;
     }
 
@@ -626,23 +884,50 @@ public class PhotoStudioFxView extends VBox {
         btn.setStyle("-fx-font-size: 10px; -fx-padding: 3 8 3 8; -fx-background-radius: 4; -fx-border-color: #27272a; -fx-border-radius: 4;");
         btn.setOnAction(e -> {
             if (action != null) action.run();
+            updateOperationSummary();
             recalculatePreviews();
         });
         return btn;
     }
 
     private void setupLivePreviewListeners() {
-        spDays.valueProperty().addListener((o, oldV, newV) -> recalculatePreviews());
-        spHours.valueProperty().addListener((o, oldV, newV) -> recalculatePreviews());
-        spMinutes.valueProperty().addListener((o, oldV, newV) -> recalculatePreviews());
-        spSeconds.valueProperty().addListener((o, oldV, newV) -> recalculatePreviews());
-        cbShiftDirection.valueProperty().addListener((o, oldV, newV) -> recalculatePreviews());
+        spDays.valueProperty().addListener((o, oldV, newV) -> { updateOperationSummary(); recalculatePreviews(); });
+        spHours.valueProperty().addListener((o, oldV, newV) -> { updateOperationSummary(); recalculatePreviews(); });
+        spMinutes.valueProperty().addListener((o, oldV, newV) -> { updateOperationSummary(); recalculatePreviews(); });
+        spSeconds.valueProperty().addListener((o, oldV, newV) -> { updateOperationSummary(); recalculatePreviews(); });
+        cbShiftDirection.valueProperty().addListener((o, oldV, newV) -> { updateOperationSummary(); recalculatePreviews(); });
 
-        dpBaseDate.valueProperty().addListener((o, oldV, newV) -> recalculatePreviews());
-        spBaseHour.valueProperty().addListener((o, oldV, newV) -> recalculatePreviews());
-        spBaseMinute.valueProperty().addListener((o, oldV, newV) -> recalculatePreviews());
-        spBaseSecond.valueProperty().addListener((o, oldV, newV) -> recalculatePreviews());
-        cbIncrementInterval.valueProperty().addListener((o, oldV, newV) -> recalculatePreviews());
+        dpBaseDate.valueProperty().addListener((o, oldV, newV) -> { updateOperationSummary(); recalculatePreviews(); });
+        spBaseHour.valueProperty().addListener((o, oldV, newV) -> { updateOperationSummary(); recalculatePreviews(); });
+        spBaseMinute.valueProperty().addListener((o, oldV, newV) -> { updateOperationSummary(); recalculatePreviews(); });
+        spBaseSecond.valueProperty().addListener((o, oldV, newV) -> { updateOperationSummary(); recalculatePreviews(); });
+        cbIncrementInterval.valueProperty().addListener((o, oldV, newV) -> { updateOperationSummary(); recalculatePreviews(); });
+    }
+
+    private void updateOperationSummary() {
+        if (rbKeepOriginal.isSelected()) {
+            lblOperationSummary.setText("Summary: Dates will remain unchanged. Other metadata edits will still be applied.");
+        } else if (rbTimeShift.isSelected()) {
+            boolean isAdd = cbShiftDirection.getValue() != null && !cbShiftDirection.getValue().startsWith("-");
+            int d = spDays.getValue() != null ? spDays.getValue() : 0;
+            int h = spHours.getValue() != null ? spHours.getValue() : 0;
+            int m = spMinutes.getValue() != null ? spMinutes.getValue() : 0;
+            int s = spSeconds.getValue() != null ? spSeconds.getValue() : 0;
+            List<String> parts = new ArrayList<>();
+            if (d > 0) parts.add(d + (d == 1 ? " day" : " days"));
+            if (h > 0) parts.add(h + (h == 1 ? " hour" : " hours"));
+            if (m > 0) parts.add(m + (m == 1 ? " min" : " mins"));
+            if (s > 0) parts.add(s + (s == 1 ? " sec" : " secs"));
+            String span = parts.isEmpty() ? "0 hours" : String.join(", ", parts);
+            lblOperationSummary.setText(String.format("Summary: Shift all photo dates %s by %s.", isAdd ? "forward" : "backward", span));
+        } else if (rbFixedIncrement.isSelected()) {
+            LocalDate d = dpBaseDate.getValue() != null ? dpBaseDate.getValue() : LocalDate.now();
+            int h = spBaseHour.getValue() != null ? spBaseHour.getValue() : 12;
+            int m = spBaseMinute.getValue() != null ? spBaseMinute.getValue() : 0;
+            int s = spBaseSecond.getValue() != null ? spBaseSecond.getValue() : 0;
+            String interval = cbIncrementInterval.getValue() != null ? cbIncrementInterval.getValue() : "+1 minute";
+            lblOperationSummary.setText(String.format("Summary: Start at %s %02d:%02d:%02d and auto-increment by %s per photo.", d, h, m, s, interval));
+        }
     }
 
     private StudioEditRequest buildCurrentRequest() {
@@ -709,19 +994,22 @@ public class PhotoStudioFxView extends VBox {
     }
 
     private void handleDryRun() {
-
         recalculatePreviews();
+        int previewCount = 0;
         for (StudioFileItem item : queueItems) {
-            item.setStatus("Previewed");
+            if (item.isSelected()) {
+                item.setStatus("Previewed");
+                previewCount++;
+            }
         }
         tableView.refresh();
-        progressLabel.setText("Dry run preview refreshed for " + queueItems.size() + " files.");
+        progressLabel.setText(String.format("Preview refreshed for %d selected photos.", previewCount));
     }
 
     private void handleExecute() {
-
-        if (queueItems.isEmpty()) {
-            showAlert("No Files Queued", "Please add photos or folders before executing batch edit.");
+        List<StudioFileItem> selectedFiles = queueItems.stream().filter(StudioFileItem::isSelected).toList();
+        if (selectedFiles.isEmpty()) {
+            showAlert("No Photos Selected", "Please select at least one photo in the queue to apply changes.");
             return;
         }
 
@@ -733,7 +1021,7 @@ public class PhotoStudioFxView extends VBox {
         progressBar.setProgress(0);
         cancelToken.set(false);
 
-        List<StudioFileItem> snapshot = new ArrayList<>(queueItems);
+        List<StudioFileItem> snapshot = new ArrayList<>(selectedFiles);
 
         studioService.executeBatchAsync(snapshot, req, (current, total, item) -> {
             Platform.runLater(() -> {
@@ -751,7 +1039,7 @@ public class PhotoStudioFxView extends VBox {
                         result.getSuccessful(), result.getFailed()));
                 try {
                     new com.takeoutfix.shared.history.OperationHistoryService().recordOperation(
-                            "Edit Photo Details",
+                            "Edit Metadata",
                             result.getFailed() == 0 ? "SUCCESS" : "WARNING",
                             null,
                             java.time.Instant.now(),
@@ -762,7 +1050,7 @@ public class PhotoStudioFxView extends VBox {
                 } catch (Exception ignored) {}
 
                 Alert alert = new Alert(Alert.AlertType.INFORMATION);
-                alert.setTitle("Photo Studio — Batch Edit Complete");
+                alert.setTitle("TakeoutFix — Edit Metadata Complete");
                 alert.setHeaderText("Batch Execution Finished");
                 alert.setContentText(String.format("Successfully updated %d photos.\nFailed: %d\nDestination: %s",
                         result.getSuccessful(), result.getFailed(),
@@ -829,7 +1117,19 @@ public class PhotoStudioFxView extends VBox {
     }
 
     private void updateQueueCount() {
-        queueSummaryLabel.setText(queueItems.size() + " files queued");
+        long selectedCount = queueItems.stream().filter(StudioFileItem::isSelected).count();
+        int totalCount = queueItems.size();
+        if (totalCount == 0) {
+            queueSummaryLabel.setText("0 photos queued");
+            btnExecute.setText("Apply Changes");
+            btnExecute.setDisable(true);
+            btnDryRun.setDisable(true);
+        } else {
+            queueSummaryLabel.setText(String.format("%d of %d photos selected", selectedCount, totalCount));
+            btnExecute.setText(selectedCount > 0 ? String.format("Apply Changes (%d)", selectedCount) : "Apply Changes");
+            btnExecute.setDisable(selectedCount == 0);
+            btnDryRun.setDisable(false);
+        }
     }
 
     private void showAlert(String title, String message) {

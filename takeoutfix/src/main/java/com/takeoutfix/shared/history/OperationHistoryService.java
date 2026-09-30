@@ -18,9 +18,11 @@ import java.util.UUID;
  */
 public class OperationHistoryService {
 
-    private static final File LOGS_DIR = new File(
+    private static final File DEFAULT_LOGS_DIR = new File(
             System.getProperty("user.home"), ".takeoutfix" + File.separator + "logs");
-    private static final File HISTORY_FILE = new File(LOGS_DIR, "operations_history.json");
+    private static final File DEFAULT_HISTORY_FILE = new File(DEFAULT_LOGS_DIR, "operations_history.json");
+
+    private final File historyFile;
 
     public record OperationRecord(
             String id,
@@ -34,12 +36,18 @@ public class OperationHistoryService {
     ) {}
 
     public OperationHistoryService() {
+        this(DEFAULT_HISTORY_FILE);
+    }
+
+    public OperationHistoryService(File historyFile) {
+        this.historyFile = historyFile != null ? historyFile : DEFAULT_HISTORY_FILE;
         ensureLogDir();
     }
 
     private void ensureLogDir() {
-        if (!LOGS_DIR.exists()) {
-            LOGS_DIR.mkdirs();
+        File parent = historyFile.getParentFile();
+        if (parent != null && !parent.exists()) {
+            parent.mkdirs();
         }
     }
 
@@ -81,10 +89,10 @@ public class OperationHistoryService {
      */
     public synchronized List<OperationRecord> loadRecords() {
         List<OperationRecord> list = new ArrayList<>();
-        if (!HISTORY_FILE.exists()) return list;
+        if (!historyFile.exists()) return list;
 
         try {
-            String content = Files.readString(HISTORY_FILE.toPath(), StandardCharsets.UTF_8);
+            String content = Files.readString(historyFile.toPath(), StandardCharsets.UTF_8);
             if (content.isBlank()) return list;
 
             JSONArray arr = new JSONArray(content);
@@ -122,11 +130,11 @@ public class OperationHistoryService {
                 obj.put("summary", r.summary());
                 arr.put(obj);
             }
-            Files.writeString(HISTORY_FILE.toPath(), arr.toString(2), StandardCharsets.UTF_8);
+            Files.writeString(historyFile.toPath(), arr.toString(2), StandardCharsets.UTF_8);
         } catch (Exception ignored) {}
     }
 
     public File getHistoryFile() {
-        return HISTORY_FILE;
+        return historyFile;
     }
 }

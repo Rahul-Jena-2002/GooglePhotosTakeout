@@ -3,41 +3,62 @@ package com.takeoutfix.ui.fx;
 import com.takeoutfix.auth.UserSyncBridgeService;
 import com.takeoutfix.network.SystemHardwareInfo;
 import com.takeoutfix.restore.SessionStatsService;
+import com.takeoutfix.shared.history.OperationHistoryService;
+import com.takeoutfix.shared.history.OperationHistoryService.OperationRecord;
 import javafx.application.Platform;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
+import javafx.scene.Node;
 import javafx.scene.control.*;
 import javafx.scene.layout.*;
+import javafx.scene.paint.Color;
+import javafx.scene.shape.Circle;
 
-import java.awt.Desktop;
-import java.net.URI;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
+import java.util.List;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 
 /**
- * Pure JavaFX Operations Dashboard View.
- * Provides high-level telemetry, account status, KPI metrics, hardware stats, and quick launchers.
+ * Modern Photography Workspace Dashboard for TakeoutFix.
+ * Designed with a refined, shadcn-inspired desktop aesthetic:
+ * - Photography-first identity: Workspace Overview, Data Recovered, Metadata
+ * Restored
+ * - Compact secondary telemetry strip: ExifTool engine state, local processing
+ * badge, host resources
+ * - Balanced 4+3 tool workflows with harmonized violet accents and full-card
+ * clickability
+ * - Real recent activity integration with empty state and quick start actions
  */
 public class DashboardFxView extends ScrollPane {
+
+    private static final DateTimeFormatter TIME_FMT = DateTimeFormatter.ofPattern("MMM dd, yyyy • hh:mm a")
+            .withZone(ZoneId.systemDefault());
 
     private final UserSyncBridgeService userService;
     private final SessionStatsService statsService;
     private final Consumer<WorkspaceType> onNavigate;
+    private final OperationHistoryService historyService;
 
-    // Account & Quota
-    private final Label userAvatarLabel = new Label("G");
-    private final Label userNameLabel = new Label("Guest Mode");
-    private final Label userEmailLabel = new Label("Local-only session");
-    private final Label userTierBadge = new Label("GUEST TIER");
+    // Account & Status
+    private final Label userAvatarLabel = new Label("L");
+    private final Label userNameLabel = new Label("Local Session");
+    private final Label userEmailLabel = new Label("Photos remain on this device");
+    private final Label userTierBadge = new Label("FREE PLAN");
 
     // Telemetry & Hardware
     private final Label cpuLabel = new Label("CPU: 0%");
     private final ProgressBar cpuBar = new ProgressBar(0.0);
-    private final Label ramLabel = new Label("RAM: -- / -- GB");
+    private final Label appRamLabel = new Label("App RAM: 0 MB");
+    private final ProgressBar appRamBar = new ProgressBar(0.0);
+    private final Label ramLabel = new Label("Sys RAM: -- / -- GB");
     private final ProgressBar ramBar = new ProgressBar(0.0);
-    private final Label coresLabel = new Label("Cores: " + Runtime.getRuntime().availableProcessors());
+    private final Label hostSpecsLabel = new Label("OS: -- • Cores: " + Runtime.getRuntime().availableProcessors());
+    private final Label cpuModelBadge = new Label();
+    private final Label gpuBadge = new Label();
 
     // KPIs
     private final Label kpiStorageRestored = new Label("0.0 MB");
@@ -46,6 +67,12 @@ public class DashboardFxView extends ScrollPane {
     private final Label kpiSuccessRate = new Label("—");
     private final Label kpiSuccessRateSub = new Label("No tasks run yet");
 
+    // Task Manager Status
+    private final Label taskStatusBadge = new Label("Idle · 0 active jobs");
+
+    // Recent Activity Container
+    private final VBox recentActivityContent = new VBox(8);
+
     private final ScheduledExecutorService telemetryScheduler = Executors.newSingleThreadScheduledExecutor(r -> {
         Thread t = new Thread(r, "fx-dash-telemetry");
         t.setDaemon(true);
@@ -53,213 +80,234 @@ public class DashboardFxView extends ScrollPane {
     });
 
     public DashboardFxView(UserSyncBridgeService userService,
-                           SessionStatsService statsService,
-                           Consumer<WorkspaceType> onNavigate) {
+            SessionStatsService statsService,
+            Consumer<WorkspaceType> onNavigate) {
         this.userService = userService;
         this.statsService = statsService;
         this.onNavigate = onNavigate;
+        this.historyService = new OperationHistoryService();
 
         setFitToWidth(true);
         setStyle("-fx-background: transparent; -fx-background-color: transparent;");
 
-        VBox content = new VBox(14);
-        content.setPadding(new Insets(16, 20, 20, 20));
+        VBox content = new VBox(18);
+        content.setPadding(new Insets(20, 24, 24, 24));
 
-        // 1. Welcome Header Banner
-        content.getChildren().add(buildWelcomeBanner());
+        // 1. Photography Workspace Header
+        content.getChildren().add(buildPageHeader());
 
-        // 2. Account & Quota + Hardware Telemetry Row (2 Columns)
-        HBox topRow = new HBox(14);
-        VBox accountCard = buildAccountCard();
-        VBox hardwareCard = buildHardwareCard();
-        HBox.setHgrow(accountCard, Priority.ALWAYS);
-        HBox.setHgrow(hardwareCard, Priority.ALWAYS);
-        topRow.getChildren().addAll(accountCard, hardwareCard);
-        content.getChildren().add(topRow);
+        // 2. Compact Processing Status & System Resources (Secondary, Non-dominant)
+        content.getChildren().add(buildStatusAndTelemetryRow());
 
-        // 3. Operational KPI Grid
+        // 3. Photography KPI Metrics (4 Balanced Cards)
         content.getChildren().add(buildKpiGrid());
 
-        // 4. Quick Actions Tool Launchers
-        content.getChildren().add(buildQuickActionsSection());
+        // 4. Balanced Photo Workflows & Tools (4 Core + 3 Archive & Vault)
+        content.getChildren().add(buildToolWorkflowsSection());
+
+        // 5. Recent Activity Section
+        content.getChildren().add(buildRecentActivitySection());
 
         setContent(content);
 
-        // Update initial user info
+        // Update initial user info and stats
         updateUserInfo();
         if (userService != null) {
             userService.addListener(profile -> Platform.runLater(this::updateUserInfo));
         }
 
-        // Start hardware sampler
+        com.takeoutfix.task.TaskManager.getInstance()
+                .addChangeListener(() -> Platform.runLater(this::updateTaskStatus));
+        updateTaskStatus();
+
+        // Start hardware sampler loop
         startTelemetryLoop();
     }
 
-    private VBox buildWelcomeBanner() {
-        VBox banner = new VBox(6);
-        banner.getStyleClass().add("glass-card");
-        banner.setPadding(new Insets(16, 18, 16, 18));
-        banner.setStyle(banner.getStyle() + "; -fx-background-color: linear-gradient(to right, rgba(139, 92, 246, 0.12), rgba(59, 130, 246, 0.08));");
+    private HBox buildPageHeader() {
+        HBox header = new HBox(12);
+        header.setAlignment(Pos.CENTER_LEFT);
+        header.setPadding(new Insets(0, 0, 2, 0));
 
-        HBox top = new HBox(12);
-        top.setAlignment(Pos.CENTER_LEFT);
+        VBox textCol = new VBox(3);
+        Label title = new Label("Workspace Overview");
+        title.getStyleClass().addAll("page-title", "text-primary");
+        title.setStyle("-fx-font-size: 22px; -fx-font-weight: 800;");
 
-        VBox textCol = new VBox(2);
-        Label title = new Label("OPERATIONS OVERVIEW");
-        title.getStyleClass().add("card-title");
-        title.setStyle("-fx-font-size: 16px; -fx-font-weight: 800;");
-
-        Label subtitle = new Label("Manage Google Takeout exports, inspect and edit photo details, sync photo collections, and monitor system performance.");
-        subtitle.getStyleClass().add("card-subtitle");
-        subtitle.setStyle("-fx-font-size: 11px;");
+        Label subtitle = new Label("Your photos, metadata, and archives in one local workspace.");
+        subtitle.getStyleClass().addAll("text-secondary");
+        subtitle.setStyle("-fx-font-size: 12px;");
         textCol.getChildren().addAll(title, subtitle);
 
         Region spacer = new Region();
         HBox.setHgrow(spacer, Priority.ALWAYS);
 
-        Button btnStartRestore = new Button("Fix Google Photos");
+        Button btnExifViewer = new Button("EXIF Viewer");
+        btnExifViewer.getStyleClass().add("btn-secondary");
+        btnExifViewer.setGraphic(UiIcons.createSvgIcon(UiIcons.CAMERA, 13, "currentColor"));
+        btnExifViewer.setGraphicTextGap(6);
+        btnExifViewer.setOnAction(e -> navigateTo(WorkspaceType.EXIF_VIEWER));
+
+        Button btnStartRestore = new Button("Restore Metadata");
         btnStartRestore.getStyleClass().add("btn-primary");
         btnStartRestore.setGraphic(UiIcons.createSvgIcon(UiIcons.RESTORE, 13, "currentColor"));
-        btnStartRestore.setOnAction(e -> {
-            if (onNavigate != null) onNavigate.accept(WorkspaceType.TAKEOUT_RESTORE);
-        });
+        btnStartRestore.setGraphicTextGap(6);
+        btnStartRestore.setOnAction(e -> navigateTo(WorkspaceType.TAKEOUT_RESTORE));
 
-        Button btnOpenMetaSync = new Button("Sync Photo Details");
-        btnOpenMetaSync.getStyleClass().add("btn-secondary");
-        btnOpenMetaSync.setGraphic(UiIcons.createSvgIcon(UiIcons.SYNC, 13, "currentColor"));
-        btnOpenMetaSync.setOnAction(e -> {
-            if (onNavigate != null) onNavigate.accept(WorkspaceType.METASYNC);
-        });
-
-        top.getChildren().addAll(textCol, spacer, btnOpenMetaSync, btnStartRestore);
-        banner.getChildren().add(top);
-        return banner;
+        header.getChildren().addAll(textCol, spacer, btnExifViewer, btnStartRestore);
+        return header;
     }
 
-    private VBox buildAccountCard() {
-        VBox card = new VBox(10);
-        card.getStyleClass().add("glass-card");
-        card.setPadding(new Insets(14, 16, 14, 16));
+    private HBox buildStatusAndTelemetryRow() {
+        HBox row = new HBox(12);
 
-        Label sectionTitle = new Label("ACCOUNT & SYNC STATUS");
-        sectionTitle.getStyleClass().add("kpi-label");
-        sectionTitle.setStyle("-fx-font-size: 10px; -fx-font-weight: 800; -fx-letter-spacing: 0.5px;");
+        // ── Card 1: Processing & Engine Status ──
+        VBox statusCard = new VBox(8);
+        statusCard.getStyleClass().add("glass-card");
+        statusCard.setPadding(new Insets(10, 14, 10, 14));
 
-        HBox userRow = new HBox(12);
-        userRow.setAlignment(Pos.CENTER_LEFT);
+        HBox topStatus = new HBox(10);
+        topStatus.setAlignment(Pos.CENTER_LEFT);
+
+        Label statusHeader = new Label("PROCESSING STATUS");
+        statusHeader.getStyleClass().add("kpi-label");
+        statusHeader.setStyle("-fx-font-size: 9px; -fx-font-weight: 800;");
+
+        Region spTop = new Region();
+        HBox.setHgrow(spTop, Priority.ALWAYS);
+
+        updateTaskStatus();
+
+        Label privacyPill = new Label("Local Processing · 100% On-Device");
+        privacyPill.setStyle(
+                "-fx-font-size: 10px; -fx-font-weight: 600; -fx-text-fill: #10b981; -fx-background-color: rgba(16, 185, 129, 0.10); -fx-padding: 2 6 2 6; -fx-background-radius: 4;");
+        topStatus.getChildren().addAll(statusHeader, spTop, taskStatusBadge, privacyPill);
+
+        // Session & Engine info row
+        HBox infoRow = new HBox(10);
+        infoRow.setAlignment(Pos.CENTER_LEFT);
+
+        Circle readyDot = new Circle(4, Color.web("#10b981"));
+        Label engineLabel = new Label("Native ExifTool v13.x");
+        engineLabel.getStyleClass().add("text-primary");
+        engineLabel.setStyle("-fx-font-size: 11px; -fx-font-weight: 700;");
+
+        Label engineState = new Label("Ready");
+        engineState.setStyle("-fx-font-size: 10px; -fx-text-fill: #10b981; -fx-font-weight: 600;");
+
+        Region sep = new Region();
+        sep.setPrefWidth(6);
 
         userAvatarLabel.setAlignment(Pos.CENTER);
-        userAvatarLabel.setPrefSize(40, 40);
-        userAvatarLabel.setMinSize(40, 40);
-        userAvatarLabel.setStyle("-fx-background-color: #3b82f6; -fx-text-fill: white; -fx-font-size: 14px; -fx-font-weight: 800; -fx-background-radius: 20;");
+        userAvatarLabel.setPrefSize(22, 22);
+        userAvatarLabel.setMinSize(22, 22);
+        userAvatarLabel.setStyle(
+                "-fx-background-color: #8b5cf6; -fx-text-fill: white; -fx-font-size: 10px; -fx-font-weight: 800; -fx-background-radius: 11;");
 
-        VBox userDetails = new VBox(2);
+        VBox userDetails = new VBox(0);
         userNameLabel.getStyleClass().add("text-primary");
-        userNameLabel.setStyle("-fx-font-size: 13px; -fx-font-weight: 700;");
+        userNameLabel.setStyle("-fx-font-size: 11px; -fx-font-weight: 600;");
         userEmailLabel.getStyleClass().add("text-muted");
-        userEmailLabel.setStyle("-fx-font-size: 11px;");
+        userEmailLabel.setStyle("-fx-font-size: 10px;");
         userDetails.getChildren().addAll(userNameLabel, userEmailLabel);
 
         Region spacer = new Region();
         HBox.setHgrow(spacer, Priority.ALWAYS);
 
-        userTierBadge.setStyle("-fx-font-size: 10px; -fx-font-weight: 700; -fx-text-fill: #10b981; -fx-background-color: rgba(16, 185, 129, 0.12); -fx-padding: 3 8 3 8; -fx-background-radius: 4;");
+        userTierBadge.getStyleClass().add("dash-tag");
+        userTierBadge.setStyle(
+                "-fx-font-size: 9px; -fx-font-weight: 700; -fx-text-fill: #8b5cf6; -fx-background-color: rgba(139, 92, 246, 0.12); -fx-padding: 2 6 2 6; -fx-background-radius: 4;");
 
-        userRow.getChildren().addAll(userAvatarLabel, userDetails, spacer, userTierBadge);
+        infoRow.getChildren().addAll(readyDot, engineLabel, engineState, sep, userAvatarLabel, userDetails, spacer,
+                userTierBadge);
+        statusCard.getChildren().addAll(topStatus, infoRow);
 
-        // Quota & Engine details
-        HBox infoRow = new HBox(20);
-        VBox col1 = new VBox(2);
-        Label l1 = new Label("RESTORATION ENGINE");
-        l1.getStyleClass().add("kpi-label");
-        l1.setStyle("-fx-font-size: 9px; -fx-font-weight: 700;");
-        Label v1 = new Label("Native ExifTool v13.x");
-        v1.getStyleClass().add("text-primary");
-        v1.setStyle("-fx-font-size: 11px; -fx-font-weight: 600;");
-        col1.getChildren().addAll(l1, v1);
+        // ── Card 2: System Resources (Fully Utilized Layout) ──
+        VBox telemetryCard = new VBox(8);
+        telemetryCard.getStyleClass().add("glass-card");
+        telemetryCard.setPadding(new Insets(10, 14, 10, 14));
 
-        VBox col2 = new VBox(2);
-        Label l2 = new Label("PROCESSING LIMIT");
-        l2.getStyleClass().add("kpi-label");
-        l2.setStyle("-fx-font-size: 9px; -fx-font-weight: 700;");
-        Label v2 = new Label("Unlimited Local Files");
-        v2.setStyle("-fx-font-size: 11px; -fx-font-weight: 600; -fx-text-fill: #10b981;");
-        col2.getChildren().addAll(l2, v2);
+        HBox teleHeaderRow = new HBox(8);
+        teleHeaderRow.setAlignment(Pos.CENTER_LEFT);
 
-        VBox col3 = new VBox(2);
-        Label l3 = new Label("LOCAL PRIVACY");
-        l3.getStyleClass().add("kpi-label");
-        l3.setStyle("-fx-font-size: 9px; -fx-font-weight: 700;");
-        Label v3 = new Label("Zero Cloud Uploads");
-        v3.setStyle("-fx-font-size: 11px; -fx-font-weight: 600; -fx-text-fill: #3b82f6;");
-        col3.getChildren().addAll(l3, v3);
+        Label teleHeader = new Label("SYSTEM RESOURCES");
+        teleHeader.getStyleClass().add("kpi-label");
+        teleHeader.setStyle("-fx-font-size: 9px; -fx-font-weight: 800;");
 
-        infoRow.getChildren().addAll(col1, col2, col3);
+        cpuModelBadge.setStyle(
+                "-fx-font-size: 10px; -fx-font-weight: 600; -fx-text-fill: #8b5cf6; -fx-background-color: rgba(139, 92, 246, 0.12); -fx-padding: 2 6 2 6; -fx-background-radius: 4;");
+        cpuModelBadge.setVisible(false);
+        cpuModelBadge.setManaged(false);
 
-        card.getChildren().addAll(sectionTitle, userRow, new Separator(), infoRow);
-        return card;
-    }
+        Region spTele = new Region();
+        HBox.setHgrow(spTele, Priority.ALWAYS);
 
-    private VBox buildHardwareCard() {
-        VBox card = new VBox(10);
-        card.getStyleClass().add("glass-card");
-        card.setPadding(new Insets(14, 16, 14, 16));
+        hostSpecsLabel.getStyleClass().add("text-muted");
+        hostSpecsLabel.setStyle("-fx-font-size: 10px; -fx-font-weight: 500;");
 
-        Label sectionTitle = new Label("HOST SYSTEM TELEMETRY");
-        sectionTitle.getStyleClass().add("kpi-label");
-        sectionTitle.setStyle("-fx-font-size: 10px; -fx-font-weight: 800; -fx-letter-spacing: 0.5px;");
+        String os = System.getProperty("os.name", "").toLowerCase();
+        String gpuText = os.contains("win") ? "Direct3D 11 · GPU"
+                : (os.contains("mac") ? "Metal · GPU" : "OpenGL · GPU");
+        gpuBadge.setText(gpuText);
+        gpuBadge.setStyle(
+                "-fx-font-size: 10px; -fx-font-weight: 600; -fx-text-fill: #10b981; -fx-background-color: rgba(16, 185, 129, 0.10); -fx-padding: 2 6 2 6; -fx-background-radius: 4;");
 
-        // CPU Row
-        VBox cpuBox = new VBox(3);
-        HBox cpuHeader = new HBox();
-        Label cpuTitle = new Label("CPU Utilization");
-        cpuTitle.getStyleClass().add("text-primary");
-        cpuTitle.setStyle("-fx-font-size: 11px; -fx-font-weight: 600;");
-        Region sp1 = new Region();
-        HBox.setHgrow(sp1, Priority.ALWAYS);
+        teleHeaderRow.getChildren().addAll(teleHeader, cpuModelBadge, spTele, hostSpecsLabel, gpuBadge);
+
+        HBox metersRow = new HBox(16);
+        metersRow.setAlignment(Pos.CENTER_LEFT);
+
+        // System CPU
+        HBox cpuBox = new HBox(6);
+        cpuBox.setAlignment(Pos.CENTER_LEFT);
         cpuLabel.getStyleClass().add("text-primary");
-        cpuLabel.setStyle("-fx-font-size: 11px; -fx-font-weight: 700;");
-        cpuHeader.getChildren().addAll(cpuTitle, sp1, cpuLabel);
-        cpuBar.setMaxWidth(Double.MAX_VALUE);
+        cpuLabel.setStyle("-fx-font-size: 11px; -fx-font-weight: 600; -fx-min-width: 62;");
         cpuBar.setPrefHeight(6);
-        cpuBox.getChildren().addAll(cpuHeader, cpuBar);
+        cpuBar.setMaxWidth(Double.MAX_VALUE);
+        HBox.setHgrow(cpuBar, Priority.ALWAYS);
+        HBox.setHgrow(cpuBox, Priority.ALWAYS);
+        cpuBox.getChildren().addAll(cpuLabel, cpuBar);
 
-        // RAM Row
-        VBox ramBox = new VBox(3);
-        HBox ramHeader = new HBox();
-        Label ramTitle = new Label("Physical Memory (RAM)");
-        ramTitle.getStyleClass().add("text-primary");
-        ramTitle.setStyle("-fx-font-size: 11px; -fx-font-weight: 600;");
-        Region sp2 = new Region();
-        HBox.setHgrow(sp2, Priority.ALWAYS);
+        // App RAM (JVM heap)
+        HBox appRamBox = new HBox(6);
+        appRamBox.setAlignment(Pos.CENTER_LEFT);
+        appRamLabel.getStyleClass().add("text-primary");
+        appRamLabel.setStyle("-fx-font-size: 11px; -fx-font-weight: 600; -fx-min-width: 76;");
+        appRamBar.setPrefHeight(6);
+        appRamBar.setMaxWidth(Double.MAX_VALUE);
+        HBox.setHgrow(appRamBar, Priority.ALWAYS);
+        HBox.setHgrow(appRamBox, Priority.ALWAYS);
+        appRamBox.getChildren().addAll(appRamLabel, appRamBar);
+
+        // System RAM (Physical OS)
+        HBox ramBox = new HBox(6);
+        ramBox.setAlignment(Pos.CENTER_LEFT);
         ramLabel.getStyleClass().add("text-primary");
-        ramLabel.setStyle("-fx-font-size: 11px; -fx-font-weight: 700;");
-        ramHeader.getChildren().addAll(ramTitle, sp2, ramLabel);
-        ramBar.setMaxWidth(Double.MAX_VALUE);
+        ramLabel.setStyle("-fx-font-size: 11px; -fx-font-weight: 600; -fx-min-width: 108;");
         ramBar.setPrefHeight(6);
-        ramBox.getChildren().addAll(ramHeader, ramBar);
+        ramBar.setMaxWidth(Double.MAX_VALUE);
+        HBox.setHgrow(ramBar, Priority.ALWAYS);
+        HBox.setHgrow(ramBox, Priority.ALWAYS);
+        ramBox.getChildren().addAll(ramLabel, ramBar);
 
-        // Footer details
-        HBox foot = new HBox(16);
-        coresLabel.getStyleClass().add("text-muted");
-        coresLabel.setStyle("-fx-font-size: 10px; -fx-font-weight: 600;");
-        Label archLabel = new Label("OS: " + System.getProperty("os.name") + " (" + System.getProperty("os.arch") + ")");
-        archLabel.getStyleClass().add("text-muted");
-        archLabel.setStyle("-fx-font-size: 10px; -fx-font-weight: 600;");
-        foot.getChildren().addAll(coresLabel, archLabel);
+        metersRow.getChildren().addAll(cpuBox, appRamBox, ramBox);
+        telemetryCard.getChildren().addAll(teleHeaderRow, metersRow);
 
-        card.getChildren().addAll(sectionTitle, cpuBox, ramBox, foot);
-        return card;
+        HBox.setHgrow(statusCard, Priority.ALWAYS);
+        HBox.setHgrow(telemetryCard, Priority.ALWAYS);
+        row.getChildren().addAll(statusCard, telemetryCard);
+        return row;
     }
 
     private HBox buildKpiGrid() {
         HBox grid = new HBox(12);
         grid.setAlignment(Pos.CENTER);
 
-        VBox card1 = createKpiCard("TOTAL RESTORED", kpiStorageRestored, "Cumulative data processed", "#3b82f6");
-        VBox card2 = createKpiCard("FILES RESTORED", kpiFilesProcessed, "Tagged photos & videos", "#10b981");
-        VBox card3 = createKpiCard("MEDIA SCANNED", kpiScanned, "Google Takeout items", "#8b5cf6");
-        VBox card4 = createKpiCard("SUCCESS RATE", kpiSuccessRate, kpiSuccessRateSub, "#f59e0b");
+        VBox card1 = createKpiCard("DATA RECOVERED", kpiStorageRestored, "Cumulative data processed", UiIcons.FOLDER);
+        VBox card2 = createKpiCard("METADATA RESTORED", kpiFilesProcessed, "Photos & videos repaired",
+                UiIcons.CHECK_CIRCLE);
+        VBox card3 = createKpiCard("FILES SCANNED", kpiScanned, "Takeout archives examined", UiIcons.CAMERA);
+        VBox card4 = createKpiCard("FILE INTEGRITY", kpiSuccessRate, kpiSuccessRateSub, UiIcons.SHIELD_CHECK);
 
         HBox.setHgrow(card1, Priority.ALWAYS);
         HBox.setHgrow(card2, Priority.ALWAYS);
@@ -270,183 +318,367 @@ public class DashboardFxView extends ScrollPane {
         return grid;
     }
 
-    private VBox createKpiCard(String title, Label valueLabel, Label subLabel, String accentColor) {
-        VBox card = new VBox(3);
-        card.getStyleClass().add("glass-card");
+    private VBox createKpiCard(String title, Label valueLabel, String subtitle, String iconPath) {
+        return createKpiCard(title, valueLabel, new Label(subtitle), iconPath);
+    }
+
+    private VBox createKpiCard(String title, Label valueLabel, Label subLabel, String iconPath) {
+        VBox card = new VBox(4);
+        card.getStyleClass().addAll("glass-card", "kpi-card");
         card.setPadding(new Insets(12, 14, 12, 14));
-        card.setStyle(card.getStyle() + "; -fx-border-left-color: " + accentColor + "; -fx-border-left-width: 3px;");
+
+        HBox topRow = new HBox();
+        topRow.setAlignment(Pos.CENTER_LEFT);
 
         Label t = new Label(title);
         t.getStyleClass().add("kpi-label");
-        t.setStyle("-fx-font-size: 9px; -fx-font-weight: 800; -fx-letter-spacing: 0.5px;");
+        t.setStyle("-fx-font-size: 9px; -fx-font-weight: 800;");
+
+        Region spacer = new Region();
+        HBox.setHgrow(spacer, Priority.ALWAYS);
+
+        Node iconNode = UiIcons.createSvgIcon(iconPath, 13, "currentColor");
+        iconNode.setOpacity(0.5);
+
+        topRow.getChildren().addAll(t, spacer, iconNode);
 
         valueLabel.getStyleClass().add("kpi-value");
         valueLabel.setStyle("-fx-font-size: 20px; -fx-font-weight: 800;");
 
-        subLabel.getStyleClass().add("kpi-sub");
+        subLabel.getStyleClass().add("text-muted");
         subLabel.setStyle("-fx-font-size: 10px;");
 
-        card.getChildren().addAll(t, valueLabel, subLabel);
+        card.getChildren().addAll(topRow, valueLabel, subLabel);
         return card;
     }
 
-    private VBox createKpiCard(String title, Label valueLabel, String subtitle, String accentColor) {
-        return createKpiCard(title, valueLabel, new Label(subtitle), accentColor);
-    }
+    private VBox buildToolWorkflowsSection() {
+        VBox container = new VBox(14);
 
-    private VBox buildQuickActionsSection() {
-        VBox section = new VBox(8);
+        // ── Primary Workflows (4 balanced cards across) ──
+        VBox coreSection = new VBox(8);
+        HBox coreHeader = new HBox(8);
+        coreHeader.setAlignment(Pos.CENTER_LEFT);
 
-        Label heading = new Label("OPERATIONS TOOLS");
-        heading.setStyle("-fx-font-size: 11px; -fx-font-weight: 800; -fx-text-fill: #71717a; -fx-letter-spacing: 0.5px;");
+        Label coreHeading = new Label("CORE PHOTO WORKFLOWS");
+        coreHeading.getStyleClass().add("kpi-label");
+        coreHeading.setStyle("-fx-font-size: 10px; -fx-font-weight: 800;");
 
-        HBox row = new HBox(12);
+        Label coreBadge = new Label("4 TOOLS");
+        coreBadge.setStyle(
+                "-fx-font-size: 9px; -fx-font-weight: 700; -fx-padding: 1 5 1 5; -fx-background-radius: 4; -fx-text-fill: #8b5cf6; -fx-background-color: rgba(139, 92, 246, 0.1);");
 
-        VBox tool1 = createToolLauncherCard(
-                "Fix Google Photos",
-                "Extract Google Takeout ZIP archives and inject JSON sidecars into photo headers.",
+        coreHeader.getChildren().addAll(coreHeading, coreBadge);
+
+        GridPane coreGrid = new GridPane();
+        coreGrid.setHgap(12);
+        coreGrid.setVgap(12);
+
+        for (int i = 0; i < 4; i++) {
+            ColumnConstraints col = new ColumnConstraints();
+            col.setPercentWidth(25.0);
+            col.setHgrow(Priority.ALWAYS);
+            coreGrid.getColumnConstraints().add(col);
+        }
+
+        VBox tool1 = createToolCard(
+                "Restore Google Takeout",
+                "Recover missing photo metadata from Google Takeout archives and restore it to your photos, while preserving original files.",
                 UiIcons.RESTORE,
-                "#3b82f6",
-                () -> { if (onNavigate != null) onNavigate.accept(WorkspaceType.TAKEOUT_RESTORE); }
-        );
+                "#8b5cf6",
+                "CORE",
+                () -> navigateTo(WorkspaceType.TAKEOUT_RESTORE));
 
-        VBox tool2 = createToolLauncherCard(
-                "Sync Photo Details",
-                "Compare and transfer metadata across RAW originals, edited JPEGs, and sidecars.",
+        VBox tool2 = createToolCard(
+                "Edit Photo Metadata",
+                "Batch-edit timestamps, adjust time zones and apply copyright, author and metadata presets to your photos.",
+                UiIcons.SLIDERS,
+                "#71717a",
+                "METADATA",
+                () -> navigateTo(WorkspaceType.PHOTO_STUDIO));
+
+        VBox tool3 = createToolCard(
+                "EXIF Viewer",
+                "Explore camera settings, lens information, exposure, GPS coordinates and embedded metadata.",
+                UiIcons.CAMERA,
+                "#71717a",
+                "EXIF",
+                () -> navigateTo(WorkspaceType.EXIF_VIEWER));
+
+        VBox tool4 = createToolCard(
+                "Duplicate Finder",
+                "Find identical and potentially similar photos, review duplicate groups and safely quarantine unwanted copies.",
+                UiIcons.COPY,
+                "#71717a",
+                "STORAGE",
+                () -> navigateTo(WorkspaceType.DUPLICATE_FINDER));
+
+        coreGrid.add(tool1, 0, 0);
+        coreGrid.add(tool2, 1, 0);
+        coreGrid.add(tool3, 2, 0);
+        coreGrid.add(tool4, 3, 0);
+
+        coreSection.getChildren().addAll(coreHeader, coreGrid);
+
+        // ── Archive & Security (3 balanced cards across) ──
+        VBox archiveSection = new VBox(8);
+        HBox archiveHeader = new HBox(8);
+        archiveHeader.setAlignment(Pos.CENTER_LEFT);
+
+        Label archiveHeading = new Label("ARCHIVE & SYNCHRONIZATION");
+        archiveHeading.getStyleClass().add("kpi-label");
+        archiveHeading.setStyle("-fx-font-size: 10px; -fx-font-weight: 800;");
+
+        Label archiveBadge = new Label("3 TOOLS");
+        archiveBadge.setStyle(
+                "-fx-font-size: 9px; -fx-font-weight: 700; -fx-padding: 1 5 1 5; -fx-background-radius: 4; -fx-text-fill: #71717a; -fx-background-color: rgba(113, 113, 122, 0.1);");
+
+        archiveHeader.getChildren().addAll(archiveHeading, archiveBadge);
+
+        GridPane archiveGrid = new GridPane();
+        archiveGrid.setHgap(12);
+        archiveGrid.setVgap(12);
+
+        for (int i = 0; i < 3; i++) {
+            ColumnConstraints col = new ColumnConstraints();
+            col.setPercentWidth(33.333);
+            col.setHgrow(Priority.ALWAYS);
+            archiveGrid.getColumnConstraints().add(col);
+        }
+
+        VBox tool5 = createToolCard(
+                "Metadata Sync",
+                "Compare and synchronize metadata between RAW originals, edited JPEGs and other related photo files.",
                 UiIcons.SYNC,
                 "#8b5cf6",
-                () -> { if (onNavigate != null) onNavigate.accept(WorkspaceType.METASYNC); }
-        );
+                "SYNC",
+                () -> navigateTo(WorkspaceType.METASYNC));
 
-        VBox tool3 = createToolLauncherCard(
-                "View Photo Details",
-                "Inspect camera specs, shutter, lens model, and GPS map locations in real-time.",
-                UiIcons.EYE,
-                "#10b981",
-                () -> { if (onNavigate != null) onNavigate.accept(WorkspaceType.EXIF_VIEWER); }
-        );
-
-        VBox tool4 = createToolLauncherCard(
+        VBox tool6 = createToolCard(
                 "Compare Archives",
-                "Side-by-side comparison between photo files and Google Takeout JSON sidecars.",
+                "Compare original photos with Google Takeout metadata to identify missing, changed or conflicting information.",
                 UiIcons.DIFF,
                 "#f59e0b",
-                () -> { if (onNavigate != null) onNavigate.accept(WorkspaceType.ARCHIVE_COMPARE); }
-        );
+                "COMPARE",
+                () -> navigateTo(WorkspaceType.ARCHIVE_COMPARE));
 
-        VBox tool5 = createToolLauncherCard(
-                "Find Duplicates",
-                "Scan directories to find identical photo/video copies and reclaim drive space.",
-                UiIcons.COPY,
-                "#ec4899",
-                () -> { if (onNavigate != null) onNavigate.accept(WorkspaceType.DUPLICATE_FINDER); }
-        );
+        VBox tool7 = createToolCard(
+                "Private Photo Vault",
+                "Store private photos in an encrypted local vault with controlled access and secure file handling.",
+                UiIcons.LOCK,
+                "#10b981",
+                "VAULT",
+                () -> navigateTo(WorkspaceType.PHOTOVAULT));
 
-        HBox.setHgrow(tool1, Priority.ALWAYS);
-        HBox.setHgrow(tool2, Priority.ALWAYS);
-        HBox.setHgrow(tool3, Priority.ALWAYS);
-        HBox.setHgrow(tool4, Priority.ALWAYS);
-        HBox.setHgrow(tool5, Priority.ALWAYS);
+        archiveGrid.add(tool5, 0, 0);
+        archiveGrid.add(tool6, 1, 0);
+        archiveGrid.add(tool7, 2, 0);
 
-        row.getChildren().addAll(tool1, tool2, tool3, tool4, tool5);
-        section.getChildren().addAll(heading, row);
-        return section;
+        archiveSection.getChildren().addAll(archiveHeader, archiveGrid);
+
+        container.getChildren().addAll(coreSection, archiveSection);
+        return container;
     }
 
-    private VBox createToolLauncherCard(String title, String desc, String iconPath, String color, Runnable action) {
+    private VBox createToolCard(String title, String desc, String iconPath, String accentColor, String tag,
+            Runnable action) {
         VBox card = new VBox(8);
-        card.getStyleClass().add("glass-card");
-        card.setPadding(new Insets(12, 14, 12, 14));
-        card.setStyle("-fx-cursor: hand;");
+        card.getStyleClass().add("dash-tool-card");
 
+        // Top Row: Icon Container + Title + Tag
         HBox top = new HBox(8);
         top.setAlignment(Pos.CENTER_LEFT);
-        var icon = UiIcons.createSvgIcon(iconPath, 16, color);
+
+        StackPane iconBox = new StackPane(UiIcons.createSvgIcon(iconPath, 15, accentColor));
+        iconBox.getStyleClass().add("dash-icon-box");
+
         Label titleLbl = new Label(title);
         titleLbl.getStyleClass().addAll("card-title", "text-primary");
-        titleLbl.setStyle("-fx-font-size: 12px; -fx-font-weight: 700;");
-        top.getChildren().addAll(icon, titleLbl);
+        titleLbl.setStyle("-fx-font-size: 13px; -fx-font-weight: 700;");
 
+        Region spacer = new Region();
+        HBox.setHgrow(spacer, Priority.ALWAYS);
+
+        Label tagLbl = new Label(tag);
+        tagLbl.getStyleClass().add("dash-tag");
+
+        boolean isRunning = false;
+        for (var t : com.takeoutfix.task.TaskManager.getInstance().getActiveTasks()) {
+            if (t.getToolName().equalsIgnoreCase(title)
+                    || title.toLowerCase().contains(t.getToolName().toLowerCase())) {
+                isRunning = true;
+                break;
+            }
+        }
+        if (isRunning) {
+            tagLbl.setText("⚡ RUNNING");
+            tagLbl.setStyle(
+                    "-fx-text-fill: #10b981; -fx-background-color: rgba(16, 185, 129, 0.15); -fx-font-weight: 800;");
+        } else {
+            tagLbl.setStyle(
+                    "-fx-text-fill: " + accentColor + "; -fx-background-color: " + toRgba(accentColor, 0.1) + ";");
+        }
+
+        top.getChildren().addAll(iconBox, titleLbl, spacer, tagLbl);
+
+        // Description
         Label descLbl = new Label(desc);
         descLbl.setWrapText(true);
+        descLbl.setMinHeight(36);
         descLbl.getStyleClass().addAll("card-subtitle", "text-secondary");
-        descLbl.setStyle("-fx-font-size: 10px;");
+        descLbl.setStyle("-fx-font-size: 11px; -fx-line-spacing: 2;");
 
-        Button launchBtn = new Button("Launch Tool");
-        launchBtn.getStyleClass().add("btn-secondary");
-        launchBtn.setStyle("-fx-font-size: 10px; -fx-padding: 3 8 3 8;");
-        launchBtn.setOnAction(e -> action.run());
+        // Footer Action Hint
+        HBox foot = new HBox();
+        Label hint = new Label("Open Tool →");
+        hint.getStyleClass().add("text-muted");
+        hint.setStyle("-fx-font-size: 10px; -fx-font-weight: 600;");
+        foot.getChildren().add(hint);
 
-        card.getChildren().addAll(top, descLbl, launchBtn);
+        card.getChildren().addAll(top, descLbl, foot);
+
+        // Entire card is interactive
         card.setOnMouseClicked(e -> action.run());
+
         return card;
     }
 
-    private VBox buildDealsSection() {
+    private VBox buildRecentActivitySection() {
         VBox section = new VBox(8);
 
-        Label heading = new Label("RECOMMENDED STORAGE & HARDWARE DEALS");
-        heading.setStyle("-fx-font-size: 11px; -fx-font-weight: 800; -fx-text-fill: #71717a; -fx-letter-spacing: 0.5px;");
+        HBox headerRow = new HBox(8);
+        headerRow.setAlignment(Pos.CENTER_LEFT);
 
-        HBox row = new HBox(12);
+        Label heading = new Label("RECENT ACTIVITY");
+        heading.getStyleClass().add("kpi-label");
+        heading.setStyle("-fx-font-size: 10px; -fx-font-weight: 800;");
 
-        VBox deal1 = createDealCard(
-                "SanDisk Extreme 2TB Portable SSD",
-                "Up to 1050MB/s NVMe read/write speeds, IP55 water & dust resistance. Perfect for high-speed Takeout library restoration.",
-                "Amazon Special Deal",
-                "https://amzn.to/3B4uKjS"
-        );
+        Region spacer = new Region();
+        HBox.setHgrow(spacer, Priority.ALWAYS);
 
-        VBox deal2 = createDealCard(
-                "Samsung T7 Shield 4TB Rugged SSD",
-                "Heavy-duty photo storage with drop resistance and USB 3.2 Gen 2 transfer rates. Massive archive headroom.",
-                "Verified Partner Deal",
-                "https://amzn.to/4gYF1oO"
-        );
+        Button btnViewAll = new Button("View All History →");
+        btnViewAll.getStyleClass().add("btn-ghost");
+        btnViewAll.setStyle("-fx-font-size: 11px; -fx-font-weight: 600; -fx-padding: 2 6 2 6;");
+        btnViewAll.setOnAction(e -> navigateTo(WorkspaceType.HISTORY));
 
-        VBox deal3 = createDealCard(
-                "Google One Cloud Storage (2TB)",
-                "Official cloud backup, shared family storage and seamless Google Photos integration.",
-                "Google Official",
-                "https://one.google.com"
-        );
+        headerRow.getChildren().addAll(heading, spacer, btnViewAll);
 
-        HBox.setHgrow(deal1, Priority.ALWAYS);
-        HBox.setHgrow(deal2, Priority.ALWAYS);
-        HBox.setHgrow(deal3, Priority.ALWAYS);
+        refreshRecentActivity();
 
-        row.getChildren().addAll(deal1, deal2, deal3);
-        section.getChildren().addAll(heading, row);
+        section.getChildren().addAll(headerRow, recentActivityContent);
         return section;
     }
 
-    private VBox createDealCard(String title, String desc, String tag, String url) {
-        VBox card = new VBox(6);
-        card.getStyleClass().add("glass-card");
-        card.setPadding(new Insets(12, 14, 12, 14));
+    private void refreshRecentActivity() {
+        recentActivityContent.getChildren().clear();
 
-        HBox top = new HBox(8);
-        top.setAlignment(Pos.CENTER_LEFT);
-        Label tagLbl = new Label(tag);
-        tagLbl.setStyle("-fx-font-size: 9px; -fx-font-weight: 700; -fx-text-fill: #f59e0b; -fx-background-color: rgba(245, 158, 11, 0.12); -fx-padding: 2 6 2 6; -fx-background-radius: 4;");
-        Region sp = new Region();
-        HBox.setHgrow(sp, Priority.ALWAYS);
-        Button openBtn = new Button("View Deal");
-        openBtn.getStyleClass().add("btn-ghost");
-        openBtn.setStyle("-fx-font-size: 10px; -fx-padding: 2 6 2 6;");
-        openBtn.setGraphic(UiIcons.createSvgIcon(UiIcons.EXTERNAL_LINK, 10, "currentColor"));
-        openBtn.setOnAction(e -> openUrl(url));
-        top.getChildren().addAll(tagLbl, sp, openBtn);
+        List<OperationRecord> records = (historyService != null) ? historyService.loadRecords() : List.of();
 
-        Label titleLbl = new Label(title);
-        titleLbl.setStyle("-fx-font-size: 12px; -fx-font-weight: 700;");
+        if (records.isEmpty()) {
+            // Minimalist Photography Empty State
+            HBox emptyBox = new HBox(12);
+            emptyBox.getStyleClass().add("activity-row");
+            emptyBox.setAlignment(Pos.CENTER_LEFT);
+            emptyBox.setPadding(new Insets(12, 16, 12, 16));
 
-        Label descLbl = new Label(desc);
-        descLbl.setWrapText(true);
-        descLbl.setStyle("-fx-font-size: 10px; -fx-text-fill: #71717a;");
+            Node histIcon = UiIcons.createSvgIcon(UiIcons.HISTORY, 16, "#71717a");
 
-        card.getChildren().addAll(top, titleLbl, descLbl);
-        return card;
+            VBox textCol = new VBox(2);
+            Label emptyTitle = new Label("No recent activity");
+            emptyTitle.getStyleClass().add("text-primary");
+            emptyTitle.setStyle("-fx-font-size: 12px; -fx-font-weight: 700;");
+
+            Label emptySub = new Label("Your completed tasks will appear here. Choose a tool above to get started.");
+            emptySub.getStyleClass().add("text-muted");
+            emptySub.setStyle("-fx-font-size: 11px;");
+
+            textCol.getChildren().addAll(emptyTitle, emptySub);
+
+            Region sp = new Region();
+            HBox.setHgrow(sp, Priority.ALWAYS);
+
+            Button btnGetStarted = new Button("Get Started →");
+            btnGetStarted.getStyleClass().add("btn-secondary");
+            btnGetStarted.setStyle("-fx-font-size: 11px; -fx-font-weight: 600; -fx-padding: 4 10 4 10;");
+            btnGetStarted.setOnAction(e -> navigateTo(WorkspaceType.TAKEOUT_RESTORE));
+
+            emptyBox.getChildren().addAll(histIcon, textCol, sp, btnGetStarted);
+            recentActivityContent.getChildren().add(emptyBox);
+        } else {
+            // Display top 3 most recent tasks
+            int count = Math.min(3, records.size());
+            for (int i = 0; i < count; i++) {
+                OperationRecord r = records.get(i);
+                HBox row = new HBox(12);
+                row.getStyleClass().add("activity-row");
+                row.setAlignment(Pos.CENTER_LEFT);
+                row.setPadding(new Insets(8, 14, 8, 14));
+
+                String iconSvg = r.operationType().toLowerCase().contains("sync") ? UiIcons.SYNC : UiIcons.RESTORE;
+                Node iconNode = UiIcons.createSvgIcon(iconSvg, 14, "#8b5cf6");
+
+                VBox details = new VBox(1);
+                Label title = new Label(friendlyOperationName(r.operationType()));
+                title.getStyleClass().add("text-primary");
+                title.setStyle("-fx-font-size: 12px; -fx-font-weight: 700;");
+
+                String summaryText = r.summary();
+                if (summaryText.isBlank()) {
+                    summaryText = r.itemsProcessed() + " items processed";
+                }
+                Label sub = new Label(summaryText);
+                sub.getStyleClass().add("text-muted");
+                sub.setStyle("-fx-font-size: 10px;");
+                details.getChildren().addAll(title, sub);
+
+                Region sp = new Region();
+                HBox.setHgrow(sp, Priority.ALWAYS);
+
+                String dateStr = (r.completedAt() != null) ? TIME_FMT.format(r.completedAt()) : "Recently";
+                Label dateLbl = new Label(dateStr);
+                dateLbl.getStyleClass().add("text-muted");
+                dateLbl.setStyle("-fx-font-size: 10px;");
+
+                Label statusBadge = new Label(r.status());
+                statusBadge.setStyle(
+                        "-fx-font-size: 9px; -fx-font-weight: 700; -fx-text-fill: #10b981; -fx-background-color: rgba(16, 185, 129, 0.12); -fx-padding: 2 6 2 6; -fx-background-radius: 4;");
+
+                row.getChildren().addAll(iconNode, details, sp, dateLbl, statusBadge);
+                row.setOnMouseClicked(e -> navigateTo(WorkspaceType.HISTORY));
+                recentActivityContent.getChildren().add(row);
+            }
+        }
+    }
+
+    private String friendlyOperationName(String type) {
+        if (type == null)
+            return "Photo Task";
+        return switch (type.toUpperCase()) {
+            case "TAKEOUT_RESTORE", "RESTORE" -> "Takeout Metadata Restoration";
+            case "PHOTO_STUDIO", "METADATA_EDIT" -> "Batch Metadata Edit";
+            case "METASYNC", "SYNC" -> "Metadata Synchronization";
+            case "EXIF_VIEWER", "INSPECT" -> "EXIF Inspection";
+            case "ARCHIVE_COMPARE", "DIFF" -> "Archive Comparison";
+            case "DUPLICATE_FINDER", "DUPLICATES" -> "Duplicate Photo Scan";
+            case "PHOTOVAULT", "VAULT" -> "Vault Storage Access";
+            default -> type;
+        };
+    }
+
+    private void navigateTo(WorkspaceType type) {
+        if (onNavigate != null) {
+            onNavigate.accept(type);
+        }
+    }
+
+    private String toRgba(String hex, double alpha) {
+        if (hex.startsWith("#") && hex.length() == 7) {
+            int r = Integer.parseInt(hex.substring(1, 3), 16);
+            int g = Integer.parseInt(hex.substring(3, 5), 16);
+            int b = Integer.parseInt(hex.substring(5, 7), 16);
+            return String.format("rgba(%d, %d, %d, %.2f)", r, g, b, alpha);
+        }
+        return "rgba(139, 92, 246, 0.1)";
     }
 
     private void updateUserInfo() {
@@ -456,14 +688,16 @@ public class DashboardFxView extends ScrollPane {
             userNameLabel.setText(name);
             userEmailLabel.setText(email);
             userAvatarLabel.setText(name.isEmpty() ? "U" : name.substring(0, 1).toUpperCase());
-            userTierBadge.setText("PRO TIER");
-            userTierBadge.setStyle("-fx-font-size: 10px; -fx-font-weight: 700; -fx-text-fill: #8b5cf6; -fx-background-color: rgba(139, 92, 246, 0.12); -fx-padding: 3 8 3 8; -fx-background-radius: 4;");
+            userTierBadge.setText("PRO PLAN");
+            userTierBadge.setStyle(
+                    "-fx-font-size: 9px; -fx-font-weight: 700; -fx-text-fill: #8b5cf6; -fx-background-color: rgba(139, 92, 246, 0.12); -fx-padding: 2 6 2 6; -fx-background-radius: 4;");
         } else {
-            userNameLabel.setText("Guest Mode");
-            userEmailLabel.setText("Local-only session");
-            userAvatarLabel.setText("G");
-            userTierBadge.setText("GUEST TIER");
-            userTierBadge.setStyle("-fx-font-size: 10px; -fx-font-weight: 700; -fx-text-fill: #10b981; -fx-background-color: rgba(16, 185, 129, 0.12); -fx-padding: 3 8 3 8; -fx-background-radius: 4;");
+            userNameLabel.setText("Local Session");
+            userEmailLabel.setText("Photos remain on this device");
+            userAvatarLabel.setText("L");
+            userTierBadge.setText("FREE PLAN");
+            userTierBadge.setStyle(
+                    "-fx-font-size: 9px; -fx-font-weight: 700; -fx-text-fill: #10b981; -fx-background-color: rgba(16, 185, 129, 0.12); -fx-padding: 2 6 2 6; -fx-background-radius: 4;");
         }
 
         updateStatsDisplay();
@@ -486,8 +720,21 @@ public class DashboardFxView extends ScrollPane {
                 kpiSuccessRateSub.setText("No tasks run yet");
             } else {
                 kpiSuccessRate.setText("100%");
-                kpiSuccessRateSub.setText("Zero corruption rate");
+                kpiSuccessRateSub.setText("Zero corruption detected");
             }
+        }
+    }
+
+    private void updateTaskStatus() {
+        int count = com.takeoutfix.task.TaskManager.getInstance().getActiveTaskCount();
+        if (count == 0) {
+            taskStatusBadge.setText("Idle · No active jobs");
+            taskStatusBadge.setStyle(
+                    "-fx-font-size: 10px; -fx-font-weight: 600; -fx-text-fill: #71717a; -fx-background-color: rgba(113, 113, 122, 0.1); -fx-padding: 2 6 2 6; -fx-background-radius: 4;");
+        } else {
+            taskStatusBadge.setText("Processing · " + count + (count == 1 ? " active job" : " active jobs"));
+            taskStatusBadge.setStyle(
+                    "-fx-font-size: 10px; -fx-font-weight: 700; -fx-text-fill: #10b981; -fx-background-color: rgba(16, 185, 129, 0.15); -fx-padding: 2 6 2 6; -fx-background-radius: 4;");
         }
     }
 
@@ -501,27 +748,56 @@ public class DashboardFxView extends ScrollPane {
                 double usedGb = usedRam / (1024.0 * 1024.0 * 1024.0);
                 double totalGb = totalRam / (1024.0 * 1024.0 * 1024.0);
                 double ramFraction = (totalRam > 0) ? (double) usedRam / totalRam : 0.0;
+                double cpuFraction = Math.max(0.0, Math.min(1.0, cpu / 100.0));
+
+                Runtime rt = Runtime.getRuntime();
+                long appUsedMb = (rt.totalMemory() - rt.freeMemory()) / (1024 * 1024);
+                long appMaxMb = rt.maxMemory() / (1024 * 1024);
+                double appRamFraction = (appMaxMb > 0) ? Math.min(1.0, (double) appUsedMb / appMaxMb) : 0.0;
+
+                int pCores = SystemHardwareInfo.getPhysicalCores();
+                int lThreads = SystemHardwareInfo.getLogicalProcessors();
+                String coresText = (pCores > 0 && pCores != lThreads)
+                        ? (pCores + "C / " + lThreads + "T")
+                        : (lThreads + " Cores");
+                String cpuName = SystemHardwareInfo.getCpuName();
 
                 Platform.runLater(() -> {
-                    cpuLabel.setText(String.format("CPU: %.1f%%", cpu));
-                    cpuBar.setProgress(Math.max(0.0, Math.min(1.0, cpu / 100.0)));
+                    cpuLabel.setText(String.format(java.util.Locale.US, "CPU: %.1f%%", cpu));
+                    cpuBar.setProgress(cpuFraction);
+                    updateBarColor(cpuBar, cpuFraction);
 
-                    ramLabel.setText(String.format("%.1f / %.1f GB", usedGb, totalGb));
-                    ramBar.setProgress(Math.max(0.0, Math.min(1.0, ramFraction)));
+                    appRamLabel.setText(String.format(java.util.Locale.US, "App: %d MB", appUsedMb));
+                    appRamBar.setProgress(appRamFraction);
+                    updateBarColor(appRamBar, appRamFraction);
+
+                    ramLabel.setText(String.format(java.util.Locale.US, "Sys: %.1f / %.1f GB", usedGb, totalGb));
+                    ramBar.setProgress(ramFraction);
+                    updateBarColor(ramBar, ramFraction);
+
+                    hostSpecsLabel.setText(System.getProperty("os.name") + " • " + coresText);
+                    if (cpuName != null && !cpuName.isEmpty() && !cpuName.startsWith("Host")) {
+                        String shortCpu = cpuName.replace("Intel(R) Core(TM) ", "").replace("AMD Ryzen(TM) ", "");
+                        cpuModelBadge.setText(shortCpu);
+                        cpuModelBadge.setVisible(true);
+                        cpuModelBadge.setManaged(true);
+                    }
 
                     updateStatsDisplay();
                 });
-            } catch (Exception ignored) {}
-        }, 1, 3, TimeUnit.SECONDS);
+            } catch (Exception ignored) {
+            }
+        }, 0, 2, TimeUnit.SECONDS);
     }
 
-    private void openUrl(String url) {
-        try {
-            if (Desktop.isDesktopSupported() && Desktop.getDesktop().isSupported(Desktop.Action.BROWSE)) {
-                Desktop.getDesktop().browse(new URI(url));
-            } else {
-                new ProcessBuilder("rundll32", "url.dll,FileProtocolHandler", url).start();
-            }
-        } catch (Exception ignored) {}
+    private void updateBarColor(ProgressBar bar, double fraction) {
+        bar.getStyleClass().removeAll("telemetry-bar-green", "telemetry-bar-amber", "telemetry-bar-red");
+        if (fraction < 0.60) {
+            bar.getStyleClass().add("telemetry-bar-green");
+        } else if (fraction < 0.85) {
+            bar.getStyleClass().add("telemetry-bar-amber");
+        } else {
+            bar.getStyleClass().add("telemetry-bar-red");
+        }
     }
 }

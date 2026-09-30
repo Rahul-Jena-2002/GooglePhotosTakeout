@@ -7,9 +7,12 @@ import com.takeoutfix.dedup.QuarantineManager;
 import javafx.application.Platform;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
+import javafx.collections.transformation.FilteredList;
+import javafx.collections.transformation.SortedList;
 import javafx.concurrent.Task;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
+import javafx.scene.Node;
 import javafx.scene.control.*;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
@@ -29,12 +32,13 @@ import java.util.function.Consumer;
 
 /**
  * Pure JavaFX Duplicate Photos & Videos Finder with Reversible Quarantine Architecture.
- * Delegates scanning to DuplicateScanService and quarantine safety to QuarantineManager.
+ * Provides interactive side-by-side inspection, search, filter pills, zoomable previews,
+ * and safe quarantine/restore workflows.
  */
 public class DuplicateFinderFxView extends VBox {
 
     public enum QuarantineStatus {
-        PENDING_REVIEW("Pending Review"),
+        PENDING_REVIEW("Needs Review"),
         QUARANTINED("Quarantined"),
         RESTORED("Restored"),
         PURGED("Purged");
@@ -85,37 +89,54 @@ public class DuplicateFinderFxView extends VBox {
     private final DuplicateScanService scanService = new DuplicateScanService();
     private final QuarantineManager quarantineManager = new QuarantineManager();
 
-    private final Label folderPathLabel = new Label("No folder selected for duplicate scanning");
+    private final Label folderPathLabel = new Label("No folder selected");
+    private final Label folderDetailsLabel = new Label("0 files · 0 MB");
     private final Label scannedCountLabel = new Label("0");
     private final Label duplicateCountLabel = new Label("0");
-    private final Label spaceSavedLabel = new Label("0.0 MB");
+    private final Label spaceSavedLabel = new Label("0 MB");
 
-    private final Button btnStartScan = new Button("Start Duplicate Scan");
+    private final Button btnStartScan = new Button("Start Scan");
     private final ProgressBar progressBar = new ProgressBar(0.0);
-    private final Label progressLabel = new Label("Select a photo folder to scan");
+    private final Label progressLabel = new Label("Select photo folder to begin");
 
     private final ComboBox<DuplicateScanService.MatchStrategy> matchModeCombo = new ComboBox<>();
     private final ComboBox<String> sensitivityCombo = new ComboBox<>();
 
     private File selectedFolder = null;
-    private final ObservableList<DuplicateGroupItem> groupsList = FXCollections.observableArrayList();
-    private final TableView<DuplicateGroupItem> tableView = new TableView<>(groupsList);
+    private final ObservableList<DuplicateGroupItem> masterList = FXCollections.observableArrayList();
+    private final FilteredList<DuplicateGroupItem> filteredList = new FilteredList<>(masterList, p -> true);
+    private final TableView<DuplicateGroupItem> tableView = new TableView<>();
+
+    // Filter bar components
+    private final TextField searchField = new TextField();
+    private String activeFilter = "ALL";
+    private final Label countBadge = new Label("0 groups");
 
     // Side-by-side Review Panel components
-    private final Label reviewGroupTitle = new Label("SELECT A GROUP TO REVIEW");
-    private final Label similarityBadge = new Label("SIMILARITY: —");
+    private final StackPane reviewContainer = new StackPane();
+    private final VBox reviewEmptyState = new VBox(12);
+    private final VBox reviewContent = new VBox(10);
+
+    private final Label reviewGroupTitle = new Label("GROUP REVIEW");
+    private final Label similarityBadge = new Label("—");
+    private final Slider zoomSlider = new Slider(1.0, 3.0, 1.0);
+    private final Label zoomValueLabel = new Label("100%");
+
     private final ImageView origImgView = new ImageView();
     private final Label origNameLabel = new Label("—");
     private final Label origMetaLabel = new Label("—");
-    private final RadioButton rbKeepOrig = new RadioButton("Keep this file (Recommended)");
+    private final Label origResLabel = new Label("—");
+    private final RadioButton rbKeepOrig = new RadioButton("Keep this photo");
 
     private final ImageView dupImgView = new ImageView();
     private final Label dupNameLabel = new Label("—");
     private final Label dupMetaLabel = new Label("—");
-    private final RadioButton rbQuarantineDup = new RadioButton("Quarantine this duplicate");
+    private final Label dupResLabel = new Label("—");
+    private final RadioButton rbQuarantineDup = new RadioButton("Quarantine duplicate");
     private final RadioButton rbKeepBoth = new RadioButton("Leave untouched");
 
-    private final Button btnQuarantineAction = new Button("Quarantine Selected");
+    private final Label selectionSummaryLabel = new Label("1 duplicate selected · 0 MB");
+    private final Button btnQuarantineAction = new Button("Quarantine");
     private final Button btnRestoreAction = new Button("Restore Quarantined");
     private final Button btnPurgeAction = new Button("Delete Permanently");
 
@@ -125,56 +146,63 @@ public class DuplicateFinderFxView extends VBox {
         this.stage = stage;
         this.onNavigate = onNavigate;
 
-        setSpacing(12);
-        setPadding(new Insets(14, 18, 14, 18));
+        setSpacing(14);
+        setPadding(new Insets(16, 20, 16, 20));
         VBox.setVgrow(this, Priority.ALWAYS);
 
         // 1. Header
         getChildren().add(buildHeaderRow());
 
-        // 2. Folder Selector Card
-        getChildren().add(buildFolderSelectorCard());
+        // 2. Scan Controls & Folder Selector
+        getChildren().add(buildScanControlsCard());
 
-        // 3. Metric KPI Deck
+        // 3. Metric KPI Deck (Neutral surfaces, bold numbers)
         getChildren().add(buildMetricGrid());
 
-        // 4. Main Split: Duplicate Groups Table | Side-by-side Review & Quarantine
-        HBox mainSplit = new HBox(14);
+        // 4. Main Split: Duplicate Results Table | Side-by-side Visual Comparison
+        HBox mainSplit = new HBox(16);
         VBox.setVgrow(mainSplit, Priority.ALWAYS);
 
         VBox tablePane = buildTablePane();
         HBox.setHgrow(tablePane, Priority.ALWAYS);
-        tablePane.setPrefWidth(480);
+        tablePane.setPrefWidth(540);
 
         VBox reviewPane = buildReviewPane();
         HBox.setHgrow(reviewPane, Priority.ALWAYS);
-        reviewPane.setPrefWidth(540);
+        reviewPane.setPrefWidth(600);
 
         mainSplit.getChildren().addAll(tablePane, reviewPane);
         getChildren().add(mainSplit);
 
-        // Initialize with clean empty state (no fake data)
-        progressLabel.setText("Select a photo folder to start scanning");
+        setupTableData();
     }
 
     private HBox buildHeaderRow() {
-        HBox header = new HBox(12);
+        HBox header = new HBox(14);
         header.setAlignment(Pos.CENTER_LEFT);
 
-        VBox titleBox = new VBox(2);
-        Label title = new Label("FIND DUPLICATES");
-        title.setStyle("-fx-font-size: 15px; -fx-font-weight: 800;");
+        VBox titleBox = new VBox(3);
+        HBox titleRow = new HBox(10);
+        titleRow.setAlignment(Pos.CENTER_LEFT);
 
-        Label subtitle = new Label("Scan photo libraries for exact or filename duplicates, review side-by-side, and quarantine reversibly.");
-        subtitle.setStyle("-fx-font-size: 11px; -fx-text-fill: #71717a;");
-        titleBox.getChildren().addAll(title, subtitle);
+        Label title = new Label("Find Duplicates");
+        title.setStyle("-fx-font-size: 22px; -fx-font-weight: 700;");
+
+        Label badge = new Label("Local processing");
+        badge.setStyle("-fx-font-size: 11px; -fx-font-weight: 600; -fx-text-fill: #10B981; -fx-background-color: rgba(16, 185, 129, 0.12); -fx-padding: 3 8 3 8; -fx-background-radius: 6;");
+
+        titleRow.getChildren().addAll(title, badge);
+
+        Label subtitle = new Label("Find, review and safely quarantine duplicate photos.");
+        subtitle.setStyle("-fx-font-size: 13px; -fx-text-fill: #989BA8;");
+        titleBox.getChildren().addAll(titleRow, subtitle);
 
         Region spacer = new Region();
         HBox.setHgrow(spacer, Priority.ALWAYS);
 
-        Button btnBack = new Button("Back to Fix Google Photos");
+        Button btnBack = new Button("Back to Fix Photos");
         btnBack.getStyleClass().add("btn-secondary");
-        btnBack.setGraphic(UiIcons.createSvgIcon(UiIcons.RESTORE, 12, "currentColor"));
+        btnBack.setGraphic(UiIcons.createSvgIcon(UiIcons.RESTORE, 13, "currentColor"));
         btnBack.setOnAction(e -> {
             if (onNavigate != null) onNavigate.accept(WorkspaceType.TAKEOUT_RESTORE);
         });
@@ -183,34 +211,52 @@ public class DuplicateFinderFxView extends VBox {
         return header;
     }
 
-    private VBox buildFolderSelectorCard() {
-        VBox card = new VBox(8);
+    private VBox buildScanControlsCard() {
+        VBox card = new VBox(10);
         card.getStyleClass().add("glass-card");
-        card.setPadding(new Insets(10, 14, 10, 14));
+        card.setStyle("-fx-background-color: #191A22; -fx-border-color: #30313B; -fx-border-radius: 8; -fx-background-radius: 8; -fx-padding: 12 16 12 16;");
 
-        HBox row = new HBox(10);
+        HBox row = new HBox(12);
         row.setAlignment(Pos.CENTER_LEFT);
+
+        // Folder selection block
+        VBox folderBlock = new VBox(2);
+        Label folderTitle = new Label("Folder");
+        folderTitle.setStyle("-fx-font-size: 11px; -fx-font-weight: 600; -fx-text-fill: #989BA8;");
+
+        HBox folderPickerRow = new HBox(8);
+        folderPickerRow.setAlignment(Pos.CENTER_LEFT);
 
         Button btnBrowse = new Button("Select Folder");
         btnBrowse.getStyleClass().add("btn-secondary");
-        btnBrowse.setGraphic(UiIcons.createSvgIcon(UiIcons.FOLDER, 13, "currentColor"));
+        btnBrowse.setGraphic(UiIcons.createSvgIcon(UiIcons.FOLDER, 14, "currentColor"));
         btnBrowse.setOnAction(e -> chooseFolder());
 
-        folderPathLabel.setStyle("-fx-font-size: 11px; -fx-font-weight: 600; -fx-text-fill: #71717a;");
-        HBox.setHgrow(folderPathLabel, Priority.ALWAYS);
+        VBox pathBox = new VBox(1);
+        folderPathLabel.setStyle("-fx-font-size: 13px; -fx-font-weight: 600; -fx-text-fill: #E6E7ED;");
+        folderDetailsLabel.setStyle("-fx-font-size: 11px; -fx-text-fill: #989BA8;");
+        pathBox.getChildren().addAll(folderPathLabel, folderDetailsLabel);
 
-        // Matching Strategy Selector
+        folderPickerRow.getChildren().addAll(btnBrowse, pathBox);
+        folderBlock.getChildren().addAll(folderTitle, folderPickerRow);
+        HBox.setHgrow(folderBlock, Priority.ALWAYS);
+
+        // Match method selector
+        VBox methodBlock = new VBox(2);
+        Label methodTitle = new Label("Match method");
+        methodTitle.setStyle("-fx-font-size: 11px; -fx-font-weight: 600; -fx-text-fill: #989BA8;");
+
         matchModeCombo.getItems().setAll(DuplicateScanService.MatchStrategy.values());
-        matchModeCombo.setValue(DuplicateScanService.MatchStrategy.FILENAME);
+        matchModeCombo.setValue(DuplicateScanService.MatchStrategy.EXACT_HASH);
         matchModeCombo.setConverter(new javafx.util.StringConverter<>() {
             @Override
             public String toString(DuplicateScanService.MatchStrategy object) {
                 if (object == null) return "";
                 switch (object) {
-                    case FILENAME: return "Match: Filename";
-                    case EXACT_HASH: return "Match: SHA-256 Exact";
-                    case PERCEPTUAL_HASH: return "Match: Visual Similarity (pHash)";
-                    case FEATURE_MATCH: return "Match: Feature Matching (ORB)";
+                    case EXACT_HASH: return "Exact content (SHA-256)";
+                    case PERCEPTUAL_HASH: return "Visual similarity (pHash)";
+                    case FEATURE_MATCH: return "Feature match (ORB)";
+                    case FILENAME: return "Filename & Size";
                     default: return object.getLabel();
                 }
             }
@@ -219,43 +265,57 @@ public class DuplicateFinderFxView extends VBox {
                 return null;
             }
         });
-        matchModeCombo.setStyle("-fx-font-size: 11px; -fx-pref-height: 28px;");
+        matchModeCombo.setStyle("-fx-font-size: 13px; -fx-pref-height: 32px;");
+        methodBlock.getChildren().addAll(methodTitle, matchModeCombo);
 
-        // Similarity Sensitivity Selector (visible for perceptual/feature match)
+        // Sensitivity selector
+        VBox sensBlock = new VBox(2);
+        Label sensTitle = new Label("Sensitivity");
+        sensTitle.setStyle("-fx-font-size: 11px; -fx-font-weight: 600; -fx-text-fill: #989BA8;");
         sensitivityCombo.getItems().setAll("95% (Strict)", "90% (Recommended)", "85% (Balanced)", "80% (Loose)");
         sensitivityCombo.setValue("90% (Recommended)");
-        sensitivityCombo.setStyle("-fx-font-size: 11px; -fx-pref-height: 28px;");
-        sensitivityCombo.setVisible(false);
-        sensitivityCombo.setManaged(false);
+        sensitivityCombo.setStyle("-fx-font-size: 13px; -fx-pref-height: 32px;");
+        sensBlock.getChildren().addAll(sensTitle, sensitivityCombo);
+        sensBlock.setVisible(false);
+        sensBlock.setManaged(false);
 
         matchModeCombo.valueProperty().addListener((obs, oldVal, newVal) -> {
             boolean isVisual = (newVal == DuplicateScanService.MatchStrategy.PERCEPTUAL_HASH
                     || newVal == DuplicateScanService.MatchStrategy.FEATURE_MATCH);
-            sensitivityCombo.setVisible(isVisual);
-            sensitivityCombo.setManaged(isVisual);
+            sensBlock.setVisible(isVisual);
+            sensBlock.setManaged(isVisual);
         });
 
+        // Scan button & progress
+        VBox actionBlock = new VBox(2);
+        actionBlock.setAlignment(Pos.CENTER_RIGHT);
+
         btnStartScan.getStyleClass().add("btn-primary");
-        btnStartScan.setGraphic(UiIcons.createSvgIcon(UiIcons.PLAY, 12, "currentColor"));
+        btnStartScan.setGraphic(UiIcons.createSvgIcon(UiIcons.PLAY, 13, "currentColor"));
+        btnStartScan.setStyle("-fx-font-size: 13px; -fx-padding: 7 16 7 16;");
         btnStartScan.setOnAction(e -> startScan());
 
-        progressBar.setPrefWidth(120);
+        progressBar.setPrefWidth(140);
         progressBar.setVisible(false);
+        progressLabel.setStyle("-fx-font-size: 11px; -fx-text-fill: #989BA8;");
 
-        progressLabel.setStyle("-fx-font-size: 10px; -fx-text-fill: #71717a;");
+        actionBlock.getChildren().addAll(btnStartScan, progressLabel);
 
-        row.getChildren().addAll(btnBrowse, folderPathLabel, matchModeCombo, sensitivityCombo, progressBar, progressLabel, btnStartScan);
-        card.getChildren().add(row);
+        row.getChildren().addAll(folderBlock, methodBlock, sensBlock, actionBlock);
+        card.getChildren().addAll(row, progressBar);
         return card;
     }
 
     private HBox buildMetricGrid() {
-        HBox grid = new HBox(10);
+        HBox grid = new HBox(12);
         grid.setAlignment(Pos.CENTER);
 
-        VBox cScanned = createMetricCard("FILES SCANNED", scannedCountLabel, "Photos & videos indexed", "#2563eb", "rgba(37, 99, 235, 0.08)");
-        VBox cGroups = createMetricCard("DUPLICATE GROUPS", duplicateCountLabel, "Identical content found", "#d97706", "rgba(217, 119, 6, 0.08)");
-        VBox cSaved = createMetricCard("POTENTIAL SAVINGS", spaceSavedLabel, "Reclaimable storage space", "#059669", "rgba(5, 150, 105, 0.08)");
+        VBox cScanned = createMetricCard("FILES SCANNED", scannedCountLabel, "Total indexed files", "#3B82F6");
+        VBox cGroups = createMetricCard("DUPLICATE GROUPS", duplicateCountLabel, "Groups identified", "#F59E0B");
+        VBox cSaved = createMetricCard("POTENTIAL SAVINGS", spaceSavedLabel, "Estimated reclaimable disk space", "#10B981");
+
+        Tooltip savedTip = new Tooltip("Calculated by summing the size of all duplicate copies, excluding the primary keeper file in each group.");
+        Tooltip.install(cSaved, savedTip);
 
         HBox.setHgrow(cScanned, Priority.ALWAYS);
         HBox.setHgrow(cGroups, Priority.ALWAYS);
@@ -265,47 +325,132 @@ public class DuplicateFinderFxView extends VBox {
         return grid;
     }
 
-    private VBox createMetricCard(String title, Label valLabel, String sub, String accentColor, String bgTint) {
-        VBox card = new VBox(2);
+    private VBox createMetricCard(String title, Label valLabel, String sub, String accentColor) {
+        VBox card = new VBox(4);
         card.getStyleClass().add("glass-card");
-        card.setStyle(String.format("-fx-background-color: %s; -fx-border-left-color: %s; -fx-border-left-width: 4px; -fx-border-radius: 6; -fx-background-radius: 6; -fx-padding: 10 14 10 14;", bgTint, accentColor));
+        card.setStyle("-fx-background-color: #191A22; -fx-border-color: #30313B; -fx-border-radius: 8; -fx-background-radius: 8; -fx-padding: 12 16 12 16;");
 
         Label t = new Label(title);
-        t.setStyle(String.format("-fx-font-size: 10px; -fx-font-weight: 800; -fx-text-fill: %s; -fx-letter-spacing: 0.5px;", accentColor));
+        t.setStyle("-fx-font-size: 11px; -fx-font-weight: 700; -fx-text-fill: #989BA8; -fx-letter-spacing: 0.5px;");
 
-        valLabel.setStyle(String.format("-fx-font-size: 22px; -fx-font-weight: 800; -fx-text-fill: %s;", accentColor));
+        valLabel.setStyle(String.format("-fx-font-size: 26px; -fx-font-weight: 800; -fx-text-fill: %s;", accentColor));
 
         Label s = new Label(sub);
-        s.setStyle("-fx-font-size: 10px; -fx-text-fill: #71717a;");
+        s.setStyle("-fx-font-size: 12px; -fx-text-fill: #989BA8;");
 
         card.getChildren().addAll(t, valLabel, s);
         return card;
     }
 
     private VBox buildTablePane() {
-        VBox card = new VBox(8);
+        VBox card = new VBox(10);
         card.getStyleClass().add("glass-card");
-        card.setPadding(new Insets(10, 12, 10, 12));
+        card.setStyle("-fx-background-color: #191A22; -fx-border-color: #30313B; -fx-border-radius: 8; -fx-background-radius: 8; -fx-padding: 14;");
         VBox.setVgrow(card, Priority.ALWAYS);
 
-        Label title = new Label("DUPLICATE GROUPS");
-        title.setStyle("-fx-font-size: 10px; -fx-font-weight: 800; -fx-text-fill: #71717a; -fx-letter-spacing: 0.5px;");
+        // Header with count badge
+        HBox titleRow = new HBox(8);
+        titleRow.setAlignment(Pos.CENTER_LEFT);
+        Label title = new Label("Duplicate groups");
+        title.setStyle("-fx-font-size: 15px; -fx-font-weight: 700; -fx-text-fill: #E6E7ED;");
 
-        TableColumn<DuplicateGroupItem, String> groupCol = new TableColumn<>("Group");
-        groupCol.setCellValueFactory(d -> new javafx.beans.property.SimpleStringProperty(d.getValue().getGroupId()));
-        groupCol.setPrefWidth(70);
+        countBadge.setStyle("-fx-font-size: 11px; -fx-font-weight: 600; -fx-text-fill: #989BA8; -fx-background-color: #20212B; -fx-padding: 2 8 2 8; -fx-background-radius: 10;");
 
-        TableColumn<DuplicateGroupItem, String> fileCol = new TableColumn<>("Original File");
-        fileCol.setCellValueFactory(d -> new javafx.beans.property.SimpleStringProperty(d.getValue().getOriginalFile() != null ? d.getValue().getOriginalFile().getName() : "—"));
-        fileCol.setPrefWidth(160);
+        Region spacer = new Region();
+        HBox.setHgrow(spacer, Priority.ALWAYS);
 
-        TableColumn<DuplicateGroupItem, String> dupCol = new TableColumn<>("Duplicate File");
-        dupCol.setCellValueFactory(d -> new javafx.beans.property.SimpleStringProperty(d.getValue().getDuplicateFile() != null ? d.getValue().getDuplicateFile().getName() : "—"));
-        dupCol.setPrefWidth(160);
+        searchField.setPromptText("Search files or paths...");
+        searchField.setStyle("-fx-font-size: 12px; -fx-pref-width: 170px; -fx-background-color: #101116; -fx-text-fill: #E6E7ED; -fx-border-color: #30313B; -fx-border-radius: 6; -fx-background-radius: 6;");
+
+        titleRow.getChildren().addAll(title, countBadge, spacer, searchField);
+
+        // Filter Pills: All, Exact matches, Similar photos, Reviewed, Unreviewed
+        HBox filterBar = new HBox(6);
+        filterBar.setAlignment(Pos.CENTER_LEFT);
+        ToggleGroup filterGroup = new ToggleGroup();
+
+        filterBar.getChildren().addAll(
+                createFilterPill("All", "ALL", filterGroup, true),
+                createFilterPill("Exact matches", "EXACT", filterGroup, false),
+                createFilterPill("Similar photos", "SIMILAR", filterGroup, false),
+                createFilterPill("Reviewed", "REVIEWED", filterGroup, false),
+                createFilterPill("Unreviewed", "UNREVIEWED", filterGroup, false)
+        );
+
+        // Table definition
+        setupTableColumns();
+
+        card.getChildren().addAll(titleRow, filterBar, tableView);
+        return card;
+    }
+
+    private ToggleButton createFilterPill(String text, String tag, ToggleGroup group, boolean selected) {
+        ToggleButton btn = new ToggleButton(text);
+        btn.setToggleGroup(group);
+        btn.setSelected(selected);
+        btn.setUserData(tag);
+        btn.setStyle("-fx-font-size: 12px; -fx-padding: 3 10 3 10; -fx-background-radius: 12;");
+        btn.setOnAction(e -> {
+            if (btn.isSelected()) {
+                activeFilter = tag;
+                applyFilters();
+            } else {
+                btn.setSelected(true);
+            }
+        });
+        return btn;
+    }
+
+    private void setupTableColumns() {
+        TableColumn<DuplicateGroupItem, DuplicateGroupItem> fileCol = new TableColumn<>("Filename · Match · Status");
+        fileCol.setCellValueFactory(d -> new javafx.beans.property.SimpleObjectProperty<>(d.getValue()));
+        fileCol.setPrefWidth(320);
+        fileCol.setCellFactory(col -> new TableCell<>() {
+            private final HBox container = new HBox(10);
+            private final ImageView thumbView = new ImageView();
+            private final VBox textContainer = new VBox(2);
+            private final Label nameLabel = new Label();
+            private final Label metaLabel = new Label();
+
+            {
+                container.setAlignment(Pos.CENTER_LEFT);
+                thumbView.setFitWidth(36);
+                thumbView.setFitHeight(36);
+                thumbView.setPreserveRatio(true);
+                thumbView.setSmooth(true);
+                thumbView.setStyle("-fx-background-radius: 4; -fx-clip-to-bounds: true;");
+
+                nameLabel.setStyle("-fx-font-size: 13px; -fx-font-weight: 600; -fx-text-fill: #E6E7ED;");
+                metaLabel.setStyle("-fx-font-size: 11px; -fx-text-fill: #989BA8;");
+
+                textContainer.getChildren().addAll(nameLabel, metaLabel);
+                container.getChildren().addAll(thumbView, textContainer);
+            }
+
+            @Override
+            protected void updateItem(DuplicateGroupItem item, boolean empty) {
+                super.updateItem(item, empty);
+                if (empty || item == null) {
+                    setText(null);
+                    setGraphic(null);
+                } else {
+                    File orig = item.getOriginalFile();
+                    nameLabel.setText(orig != null ? orig.getName() : "Unknown");
+
+                    double mb = item.getFileSize() / (1024.0 * 1024.0);
+                    String matchText = item.getSimilarityPercentage() >= 99.9 ? "Exact match" : String.format("%.0f%% similar", item.getSimilarityPercentage());
+                    metaLabel.setText(String.format("Group %s · %.1f MB · %s", item.getGroupId(), mb, matchText));
+
+                    loadThumb(orig, thumbView, 36, 36);
+                    setGraphic(container);
+                    setText(null);
+                }
+            }
+        });
 
         TableColumn<DuplicateGroupItem, Double> simCol = new TableColumn<>("Similarity");
         simCol.setCellValueFactory(d -> new javafx.beans.property.SimpleObjectProperty<>(d.getValue().getSimilarityPercentage()));
-        simCol.setPrefWidth(90);
+        simCol.setPrefWidth(85);
         simCol.setCellFactory(col -> new TableCell<>() {
             @Override
             protected void updateItem(Double sim, boolean empty) {
@@ -314,17 +459,14 @@ public class DuplicateFinderFxView extends VBox {
                     setText(null);
                     setGraphic(null);
                 } else {
-                    Label badge = new Label(String.format("%.0f%%", sim));
-                    badge.setStyle("-fx-font-size: 9px; -fx-font-weight: 700; -fx-padding: 2 6 2 6; -fx-background-radius: 4;");
+                    Label badge = new Label(sim >= 99.9 ? "100%" : String.format("%.0f%%", sim));
+                    badge.setStyle("-fx-font-size: 11px; -fx-font-weight: 700; -fx-padding: 2 6 2 6; -fx-background-radius: 4;");
                     if (sim >= 99.9) {
-                        badge.setText("100% Exact");
-                        badge.setStyle(badge.getStyle() + "; -fx-text-fill: #2563eb; -fx-background-color: rgba(37, 99, 235, 0.12);");
+                        badge.setStyle(badge.getStyle() + "; -fx-text-fill: #10B981; -fx-background-color: rgba(16, 185, 129, 0.12);");
                     } else if (sim >= 90.0) {
-                        badge.setText(String.format("%.0f%% Visual", sim));
-                        badge.setStyle(badge.getStyle() + "; -fx-text-fill: #10b981; -fx-background-color: rgba(16, 185, 129, 0.12);");
+                        badge.setStyle(badge.getStyle() + "; -fx-text-fill: #3B82F6; -fx-background-color: rgba(59, 130, 246, 0.12);");
                     } else {
-                        badge.setText(String.format("%.0f%% Edit", sim));
-                        badge.setStyle(badge.getStyle() + "; -fx-text-fill: #d97706; -fx-background-color: rgba(217, 119, 6, 0.12);");
+                        badge.setStyle(badge.getStyle() + "; -fx-text-fill: #F59E0B; -fx-background-color: rgba(245, 158, 11, 0.12);");
                     }
                     setGraphic(badge);
                     setText(null);
@@ -344,12 +486,12 @@ public class DuplicateFinderFxView extends VBox {
                     setGraphic(null);
                 } else {
                     Label badge = new Label(item.getLabel());
-                    badge.setStyle("-fx-font-size: 9px; -fx-font-weight: 700; -fx-padding: 2 6 2 6; -fx-background-radius: 4;");
+                    badge.setStyle("-fx-font-size: 11px; -fx-font-weight: 600; -fx-padding: 2 6 2 6; -fx-background-radius: 4;");
                     switch (item) {
-                        case QUARANTINED -> badge.setStyle(badge.getStyle() + "; -fx-text-fill: #d97706; -fx-background-color: rgba(217, 119, 6, 0.12);");
-                        case RESTORED -> badge.setStyle(badge.getStyle() + "; -fx-text-fill: #10b981; -fx-background-color: rgba(16, 185, 129, 0.12);");
-                        case PURGED -> badge.setStyle(badge.getStyle() + "; -fx-text-fill: #ef4444; -fx-background-color: rgba(239, 68, 68, 0.12);");
-                        default -> badge.setStyle(badge.getStyle() + "; -fx-text-fill: #2563eb; -fx-background-color: rgba(37, 99, 235, 0.12);");
+                        case QUARANTINED -> badge.setStyle(badge.getStyle() + "; -fx-text-fill: #F59E0B; -fx-background-color: rgba(245, 158, 11, 0.12);");
+                        case RESTORED -> badge.setStyle(badge.getStyle() + "; -fx-text-fill: #10B981; -fx-background-color: rgba(16, 185, 129, 0.12);");
+                        case PURGED -> badge.setStyle(badge.getStyle() + "; -fx-text-fill: #F43F5E; -fx-background-color: rgba(244, 63, 94, 0.12);");
+                        default -> badge.setStyle(badge.getStyle() + "; -fx-text-fill: #989BA8; -fx-background-color: rgba(152, 155, 168, 0.12);");
                     }
                     setGraphic(badge);
                     setText(null);
@@ -358,111 +500,211 @@ public class DuplicateFinderFxView extends VBox {
         });
 
         tableView.getColumns().clear();
-        tableView.getColumns().add(groupCol);
-        tableView.getColumns().add(fileCol);
-        tableView.getColumns().add(dupCol);
-        tableView.getColumns().add(simCol);
-        tableView.getColumns().add(statusCol);
+        tableView.getColumns().addAll(fileCol, simCol, statusCol);
         tableView.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
+        tableView.setFixedCellSize(44);
         VBox.setVgrow(tableView, Priority.ALWAYS);
+
+        // Contextual table empty state
+        VBox tableEmpty = new VBox(10);
+        tableEmpty.setAlignment(Pos.CENTER);
+        tableEmpty.setPadding(new Insets(30));
+        Node emptyIcon = UiIcons.createSvgIcon(UiIcons.FOLDER, 36, "#989BA8");
+        Label emptyTitle = new Label("No duplicate groups found");
+        emptyTitle.setStyle("-fx-font-size: 14px; -fx-font-weight: 600; -fx-text-fill: #E6E7ED;");
+        Label emptyDesc = new Label("Select a photo folder and start scan to discover duplicates.");
+        emptyDesc.setStyle("-fx-font-size: 12px; -fx-text-fill: #989BA8;");
+        tableEmpty.getChildren().addAll(emptyIcon, emptyTitle, emptyDesc);
+        tableView.setPlaceholder(tableEmpty);
 
         tableView.getSelectionModel().selectedItemProperty().addListener((obs, oldVal, newVal) -> {
             if (newVal != null) {
                 loadGroupIntoReview(newVal);
             }
         });
+    }
 
-        card.getChildren().addAll(title, tableView);
-        return card;
+    private void setupTableData() {
+        SortedList<DuplicateGroupItem> sortedData = new SortedList<>(filteredList);
+        sortedData.comparatorProperty().bind(tableView.comparatorProperty());
+        tableView.setItems(sortedData);
+
+        searchField.textProperty().addListener((obs, oldVal, newVal) -> applyFilters());
+    }
+
+    private void applyFilters() {
+        String query = searchField.getText() == null ? "" : searchField.getText().trim().toLowerCase();
+
+        filteredList.setPredicate(item -> {
+            // 1. Text Search
+            boolean matchesSearch = query.isEmpty()
+                    || (item.getOriginalFile() != null && item.getOriginalFile().getName().toLowerCase().contains(query))
+                    || (item.getDuplicateFile() != null && item.getDuplicateFile().getName().toLowerCase().contains(query))
+                    || item.getGroupId().toLowerCase().contains(query);
+
+            if (!matchesSearch) return false;
+
+            // 2. Filter Pill
+            switch (activeFilter) {
+                case "EXACT":
+                    return item.getSimilarityPercentage() >= 99.9;
+                case "SIMILAR":
+                    return item.getSimilarityPercentage() < 99.9;
+                case "REVIEWED":
+                    return item.getStatus() != QuarantineStatus.PENDING_REVIEW;
+                case "UNREVIEWED":
+                    return item.getStatus() == QuarantineStatus.PENDING_REVIEW;
+                case "ALL":
+                default:
+                    return true;
+            }
+        });
+
+        countBadge.setText(filteredList.size() + " groups");
     }
 
     private VBox buildReviewPane() {
         VBox card = new VBox(10);
         card.getStyleClass().add("glass-card");
-        card.setPadding(new Insets(12, 14, 12, 14));
+        card.setStyle("-fx-background-color: #191A22; -fx-border-color: #30313B; -fx-border-radius: 8; -fx-background-radius: 8; -fx-padding: 14;");
         VBox.setVgrow(card, Priority.ALWAYS);
 
-        HBox reviewTitleBar = new HBox(10);
-        reviewTitleBar.setAlignment(Pos.CENTER_LEFT);
-        reviewGroupTitle.setStyle("-fx-font-size: 11px; -fx-font-weight: 800; -fx-text-fill: #71717a; -fx-letter-spacing: 0.5px;");
+        // Header
+        HBox reviewHeader = new HBox(10);
+        reviewHeader.setAlignment(Pos.CENTER_LEFT);
+
+        VBox titleBox = new VBox(2);
+        Label mainLabel = new Label("SIDE-BY-SIDE COMPARISON");
+        mainLabel.setStyle("-fx-font-size: 11px; -fx-font-weight: 800; -fx-text-fill: #989BA8; -fx-letter-spacing: 0.5px;");
+        reviewGroupTitle.setStyle("-fx-font-size: 14px; -fx-font-weight: 700; -fx-text-fill: #E6E7ED;");
+        titleBox.getChildren().addAll(mainLabel, reviewGroupTitle);
+
         Region spacer = new Region();
         HBox.setHgrow(spacer, Priority.ALWAYS);
-        similarityBadge.setStyle("-fx-font-size: 10px; -fx-font-weight: 800; -fx-padding: 3 8 3 8; -fx-background-radius: 4; -fx-text-fill: #2563eb; -fx-background-color: rgba(37, 99, 235, 0.12);");
-        reviewTitleBar.getChildren().addAll(reviewGroupTitle, spacer, similarityBadge);
+
+        // Zoom controls
+        HBox zoomBox = new HBox(6);
+        zoomBox.setAlignment(Pos.CENTER_RIGHT);
+        Label zoomLabel = new Label("Zoom:");
+        zoomLabel.setStyle("-fx-font-size: 11px; -fx-text-fill: #989BA8;");
+        zoomSlider.setPrefWidth(90);
+        zoomValueLabel.setStyle("-fx-font-size: 11px; -fx-text-fill: #E6E7ED; -fx-font-weight: 600;");
+        zoomSlider.valueProperty().addListener((obs, oldVal, newVal) -> {
+            double scale = newVal.doubleValue();
+            zoomValueLabel.setText(String.format("%.0f%%", scale * 100));
+            origImgView.setScaleX(scale);
+            origImgView.setScaleY(scale);
+            dupImgView.setScaleX(scale);
+            dupImgView.setScaleY(scale);
+        });
+        zoomBox.getChildren().addAll(zoomLabel, zoomSlider, zoomValueLabel);
+
+        similarityBadge.setStyle("-fx-font-size: 11px; -fx-font-weight: 700; -fx-padding: 3 8 3 8; -fx-background-radius: 4; -fx-text-fill: #3B82F6; -fx-background-color: rgba(59, 130, 246, 0.12);");
+
+        reviewHeader.getChildren().addAll(titleBox, spacer, zoomBox, similarityBadge);
+
+        // Empty state for comparison
+        reviewEmptyState.setAlignment(Pos.CENTER);
+        reviewEmptyState.setPadding(new Insets(40));
+        VBox.setVgrow(reviewEmptyState, Priority.ALWAYS);
+        Node compIcon = UiIcons.createSvgIcon(UiIcons.EYE, 44, "#989BA8");
+        Label noSelTitle = new Label("Select a duplicate group to compare");
+        noSelTitle.setStyle("-fx-font-size: 15px; -fx-font-weight: 600; -fx-text-fill: #E6E7ED;");
+        Label noSelDesc = new Label("Choose a duplicate row on the left to inspect side-by-side previews, resolution and metadata.");
+        noSelDesc.setStyle("-fx-font-size: 12px; -fx-text-fill: #989BA8; -fx-text-alignment: center;");
+        noSelDesc.setWrapText(true);
+        reviewEmptyState.getChildren().addAll(compIcon, noSelTitle, noSelDesc);
+
+        // Content layout
+        reviewContent.setSpacing(10);
+        VBox.setVgrow(reviewContent, Priority.ALWAYS);
 
         // Side-by-side preview container
         HBox sideSplit = new HBox(12);
         sideSplit.setAlignment(Pos.CENTER);
         VBox.setVgrow(sideSplit, Priority.ALWAYS);
 
-        // Box 1 Original
-        VBox box1 = new VBox(8);
-        box1.setStyle("-fx-background-color: rgba(0,0,0,0.04); -fx-background-radius: 8; -fx-padding: 10;");
+        // Box 1: Original photo
+        VBox box1 = createPreviewCard("ORIGINAL PHOTO", "#10B981", origImgView, origNameLabel, origResLabel, origMetaLabel, rbKeepOrig);
         HBox.setHgrow(box1, Priority.ALWAYS);
 
-        Label l1 = new Label("ORIGINAL PHOTO");
-        l1.setStyle("-fx-font-size: 9px; -fx-font-weight: 800; -fx-text-fill: #10b981;");
-
-        origImgView.setFitWidth(200);
-        origImgView.setFitHeight(150);
-        origImgView.setPreserveRatio(true);
-        origImgView.setSmooth(true);
-
-        origNameLabel.setStyle("-fx-font-size: 11px; -fx-font-weight: 700;");
-        origMetaLabel.setStyle("-fx-font-size: 10px; -fx-text-fill: #71717a;");
-
-        rbKeepOrig.setSelected(true);
-        rbKeepOrig.setDisable(true); // Always keep original recommended
-
-        box1.getChildren().addAll(l1, origImgView, origNameLabel, origMetaLabel, rbKeepOrig);
-
-        // Box 2 Duplicate Candidate
-        VBox box2 = new VBox(8);
-        box2.setStyle("-fx-background-color: rgba(0,0,0,0.04); -fx-background-radius: 8; -fx-padding: 10;");
+        // Box 2: Duplicate copy
+        VBox box2 = createPreviewCard("DUPLICATE COPY", "#F59E0B", dupImgView, dupNameLabel, dupResLabel, dupMetaLabel, rbQuarantineDup);
+        box2.getChildren().add(rbKeepBoth);
         HBox.setHgrow(box2, Priority.ALWAYS);
 
-        Label l2 = new Label("DUPLICATE COPY");
-        l2.setStyle("-fx-font-size: 9px; -fx-font-weight: 800; -fx-text-fill: #d97706;");
-
-        dupImgView.setFitWidth(200);
-        dupImgView.setFitHeight(150);
-        dupImgView.setPreserveRatio(true);
-        dupImgView.setSmooth(true);
-
-        dupNameLabel.setStyle("-fx-font-size: 11px; -fx-font-weight: 700;");
-        dupMetaLabel.setStyle("-fx-font-size: 10px; -fx-text-fill: #71717a;");
-
-        ToggleGroup tg = new ToggleGroup();
-        rbQuarantineDup.setToggleGroup(tg);
-        rbKeepBoth.setToggleGroup(tg);
+        ToggleGroup keeperGroup = new ToggleGroup();
+        rbQuarantineDup.setToggleGroup(keeperGroup);
+        rbKeepBoth.setToggleGroup(keeperGroup);
         rbQuarantineDup.setSelected(true);
 
-        box2.getChildren().addAll(l2, dupImgView, dupNameLabel, dupMetaLabel, rbQuarantineDup, rbKeepBoth);
+        rbKeepOrig.setSelected(true);
+        rbKeepOrig.setDisable(true); // Original keeper default
 
         sideSplit.getChildren().addAll(box1, box2);
 
-        // Actions Bar
-        HBox actBar = new HBox(8);
-        actBar.setAlignment(Pos.CENTER_RIGHT);
+        // Bottom Action Bar
+        HBox bottomBar = new HBox(10);
+        bottomBar.setAlignment(Pos.CENTER_LEFT);
+        bottomBar.setStyle("-fx-padding: 8 0 0 0;");
+
+        selectionSummaryLabel.setStyle("-fx-font-size: 12px; -fx-font-weight: 600; -fx-text-fill: #989BA8;");
+
+        Region actSpacer = new Region();
+        HBox.setHgrow(actSpacer, Priority.ALWAYS);
 
         btnQuarantineAction.getStyleClass().add("btn-primary");
-        btnQuarantineAction.setStyle("-fx-font-size: 11px; -fx-padding: 5 12 5 12;");
+        btnQuarantineAction.setStyle("-fx-font-size: 13px; -fx-padding: 6 16 6 16;");
         btnQuarantineAction.setOnAction(e -> executeQuarantine());
 
         btnRestoreAction.getStyleClass().add("btn-secondary");
-        btnRestoreAction.setStyle("-fx-font-size: 11px; -fx-padding: 5 12 5 12;");
+        btnRestoreAction.setStyle("-fx-font-size: 13px; -fx-padding: 6 14 6 14;");
         btnRestoreAction.setDisable(true);
         btnRestoreAction.setOnAction(e -> executeRestore());
 
         btnPurgeAction.getStyleClass().add("btn-danger");
-        btnPurgeAction.setStyle("-fx-font-size: 11px; -fx-padding: 5 12 5 12;");
+        btnPurgeAction.setStyle("-fx-font-size: 13px; -fx-padding: 6 14 6 14;");
         btnPurgeAction.setDisable(true);
         btnPurgeAction.setOnAction(e -> executePurge());
 
-        actBar.getChildren().addAll(btnRestoreAction, btnPurgeAction, btnQuarantineAction);
+        bottomBar.getChildren().addAll(selectionSummaryLabel, actSpacer, btnRestoreAction, btnPurgeAction, btnQuarantineAction);
 
-        card.getChildren().addAll(reviewTitleBar, sideSplit, new Separator(), actBar);
+        reviewContent.getChildren().addAll(sideSplit, new Separator(), bottomBar);
+
+        reviewContainer.getChildren().addAll(reviewEmptyState, reviewContent);
+        reviewContent.setVisible(false);
+        reviewEmptyState.setVisible(true);
+
+        card.getChildren().addAll(reviewHeader, reviewContainer);
         return card;
+    }
+
+    private VBox createPreviewCard(String tag, String accentColor, ImageView iv, Label nameLbl, Label resLbl, Label metaLbl, RadioButton radio) {
+        VBox box = new VBox(6);
+        box.setStyle("-fx-background-color: #20212B; -fx-background-radius: 8; -fx-padding: 12; -fx-border-color: #30313B; -fx-border-radius: 8;");
+
+        Label tagLbl = new Label(tag);
+        tagLbl.setStyle(String.format("-fx-font-size: 10px; -fx-font-weight: 800; -fx-text-fill: %s; -fx-letter-spacing: 0.5px;", accentColor));
+
+        StackPane imgFrame = new StackPane();
+        imgFrame.setStyle("-fx-background-color: #101116; -fx-background-radius: 6; -fx-padding: 6;");
+        imgFrame.setPrefHeight(200);
+        VBox.setVgrow(imgFrame, Priority.ALWAYS);
+
+        iv.setFitWidth(230);
+        iv.setFitHeight(180);
+        iv.setPreserveRatio(true);
+        iv.setSmooth(true);
+        imgFrame.getChildren().add(iv);
+
+        nameLbl.setStyle("-fx-font-size: 13px; -fx-font-weight: 700; -fx-text-fill: #E6E7ED;");
+        resLbl.setStyle("-fx-font-size: 11px; -fx-font-weight: 600; -fx-text-fill: #989BA8;");
+        metaLbl.setStyle("-fx-font-size: 11px; -fx-text-fill: #989BA8;");
+
+        radio.setStyle("-fx-font-size: 12px; -fx-text-fill: #E6E7ED;");
+
+        box.getChildren().addAll(tagLbl, imgFrame, nameLbl, resLbl, metaLbl, radio);
+        return box;
     }
 
     private void chooseFolder() {
@@ -471,13 +713,21 @@ public class DuplicateFinderFxView extends VBox {
         File dir = dc.showDialog(stage);
         if (dir != null) {
             this.selectedFolder = dir;
-            folderPathLabel.setText(dir.getName() + " (" + dir.getAbsolutePath() + ")");
+            folderPathLabel.setText(dir.getName());
+            Tooltip.install(folderPathLabel, new Tooltip(dir.getAbsolutePath()));
+
+            // Count files shallow
+            File[] files = dir.listFiles();
+            int cnt = files != null ? files.length : 0;
+            folderDetailsLabel.setText(String.format("%d items in root folder", cnt));
+            progressLabel.setText("Ready to scan");
         }
     }
 
     private void startScan() {
         if (selectedFolder == null) {
             Alert alert = new Alert(Alert.AlertType.WARNING, "Please select a photo directory first.", ButtonType.OK);
+            alert.initOwner(stage);
             alert.show();
             return;
         }
@@ -486,11 +736,11 @@ public class DuplicateFinderFxView extends VBox {
         progressBar.setVisible(true);
         progressBar.setProgress(ProgressIndicator.INDETERMINATE_PROGRESS);
         progressLabel.setText("Scanning directory and calculating hashes...");
-        groupsList.clear();
+        masterList.clear();
 
         DuplicateScanService.MatchStrategy strategy = matchModeCombo.getValue() != null
                 ? matchModeCombo.getValue()
-                : DuplicateScanService.MatchStrategy.FILENAME;
+                : DuplicateScanService.MatchStrategy.EXACT_HASH;
 
         double threshold = 90.0;
         if (sensitivityCombo.getValue() != null) {
@@ -520,40 +770,24 @@ public class DuplicateFinderFxView extends VBox {
                 }
             }
 
-            groupsList.addAll(items);
-            duplicateCountLabel.setText(String.valueOf(items.size()));
+            masterList.addAll(items);
+            duplicateCountLabel.setText(String.valueOf(res.getClusters().size()));
 
             double mb = res.getTotalReclaimableBytes() / (1024.0 * 1024.0);
-            spaceSavedLabel.setText(String.format("%.1f MB", mb));
+            spaceSavedLabel.setText(mb >= 1024.0 ? String.format("%.1f GB", mb / 1024.0) : String.format("%.1f MB", mb));
 
             btnStartScan.setDisable(false);
             progressBar.setVisible(false);
-            progressLabel.setText(String.format("Scan finished: %d duplicates found", items.size()));
+            progressLabel.setText(String.format("Scan complete: %d duplicates in %d groups", items.size(), res.getClusters().size()));
+
+            applyFilters();
 
             if (!items.isEmpty()) {
                 tableView.getSelectionModel().select(0);
+            } else {
+                reviewContent.setVisible(false);
+                reviewEmptyState.setVisible(true);
             }
-
-            Alert alert = new Alert(Alert.AlertType.INFORMATION);
-            alert.initOwner(stage);
-            alert.setTitle("Duplicate Scan Finished");
-            alert.setHeaderText("Scan Complete");
-            alert.setContentText(String.format(
-                    "Duplicate scan completed successfully!\n\n"
-                    + "• Strategy: %s\n"
-                    + "• Directory: %s\n"
-                    + "• Total Files Scanned: %d\n"
-                    + "• Duplicate Copies: %d\n"
-                    + "• Duplicate Groups: %d\n"
-                    + "• Potential Storage Reclaim: %.1f MB",
-                    strategy.getLabel(),
-                    selectedFolder != null ? selectedFolder.getName() : "",
-                    res.getTotalFilesScanned(),
-                    items.size(),
-                    res.getClusters().size(),
-                    mb
-            ));
-            alert.show();
         });
 
         task.setOnFailed(e -> {
@@ -569,19 +803,25 @@ public class DuplicateFinderFxView extends VBox {
 
     private void loadGroupIntoReview(DuplicateGroupItem item) {
         this.currentSelectedItem = item;
-        reviewGroupTitle.setText(String.format("GROUP %s REVIEW — MATCH TYPE: %s", item.getGroupId(), item.getMatchType()));
+        reviewEmptyState.setVisible(false);
+        reviewContent.setVisible(true);
+
+        reviewGroupTitle.setText(String.format("Group %s · %s", item.getGroupId(), item.getMatchType()));
 
         double sim = item.getSimilarityPercentage();
         if (sim >= 99.9) {
-            similarityBadge.setText("100% EXACT MATCH");
-            similarityBadge.setStyle("-fx-font-size: 10px; -fx-font-weight: 800; -fx-padding: 3 8 3 8; -fx-background-radius: 4; -fx-text-fill: #2563eb; -fx-background-color: rgba(37, 99, 235, 0.12);");
+            similarityBadge.setText("100% Identical content");
+            similarityBadge.setStyle("-fx-font-size: 11px; -fx-font-weight: 700; -fx-padding: 3 8 3 8; -fx-background-radius: 4; -fx-text-fill: #10B981; -fx-background-color: rgba(16, 185, 129, 0.12);");
         } else if (sim >= 90.0) {
-            similarityBadge.setText(String.format("%.0f%% VISUAL MATCH", sim));
-            similarityBadge.setStyle("-fx-font-size: 10px; -fx-font-weight: 800; -fx-padding: 3 8 3 8; -fx-background-radius: 4; -fx-text-fill: #10b981; -fx-background-color: rgba(16, 185, 129, 0.12);");
+            similarityBadge.setText(String.format("%.0f%% Visual match", sim));
+            similarityBadge.setStyle("-fx-font-size: 11px; -fx-font-weight: 700; -fx-padding: 3 8 3 8; -fx-background-radius: 4; -fx-text-fill: #3B82F6; -fx-background-color: rgba(59, 130, 246, 0.12);");
         } else {
-            similarityBadge.setText(String.format("%.0f%% EDIT / CROP", sim));
-            similarityBadge.setStyle("-fx-font-size: 10px; -fx-font-weight: 800; -fx-padding: 3 8 3 8; -fx-background-radius: 4; -fx-text-fill: #d97706; -fx-background-color: rgba(217, 119, 6, 0.12);");
+            similarityBadge.setText(String.format("%.0f%% Edit / Crop", sim));
+            similarityBadge.setStyle("-fx-font-size: 11px; -fx-font-weight: 700; -fx-padding: 3 8 3 8; -fx-background-radius: 4; -fx-text-fill: #F59E0B; -fx-background-color: rgba(245, 158, 11, 0.12);");
         }
+
+        // Reset zoom
+        zoomSlider.setValue(1.0);
 
         // Load Original
         File fOrig = item.getOriginalFile();
@@ -590,9 +830,10 @@ public class DuplicateFinderFxView extends VBox {
             origMetaLabel.setText(String.format("%.2f MB · Modified: %s",
                     fOrig.length() / (1024.0 * 1024.0),
                     formatDate(fOrig.lastModified())));
-            loadThumb(fOrig, origImgView);
+            loadFullImageAndResolution(fOrig, origImgView, origResLabel);
         } else {
             origNameLabel.setText("—");
+            origResLabel.setText("—");
             origMetaLabel.setText("File unavailable");
             origImgView.setImage(null);
         }
@@ -607,18 +848,23 @@ public class DuplicateFinderFxView extends VBox {
             dupMetaLabel.setText(String.format("%.2f MB · Modified: %s",
                     fDup.length() / (1024.0 * 1024.0),
                     formatDate(fDup.lastModified())));
-            loadThumb(fDup, dupImgView);
+            loadFullImageAndResolution(fDup, dupImgView, dupResLabel);
         } else {
             dupNameLabel.setText("—");
+            dupResLabel.setText("—");
             dupMetaLabel.setText("File unavailable");
             dupImgView.setImage(null);
         }
+
+        double mb = item.getFileSize() / (1024.0 * 1024.0);
+        selectionSummaryLabel.setText(String.format("1 duplicate selected · %.1f MB reclaimable", mb));
 
         // Update button states depending on item status
         if (item.getStatus() == QuarantineStatus.QUARANTINED) {
             btnQuarantineAction.setDisable(true);
             btnRestoreAction.setDisable(false);
             btnPurgeAction.setDisable(false);
+            rbQuarantineDup.setSelected(true);
         } else if (item.getStatus() == QuarantineStatus.RESTORED || item.getStatus() == QuarantineStatus.PURGED) {
             btnQuarantineAction.setDisable(true);
             btnRestoreAction.setDisable(true);
@@ -627,7 +873,30 @@ public class DuplicateFinderFxView extends VBox {
             btnQuarantineAction.setDisable(false);
             btnRestoreAction.setDisable(true);
             btnPurgeAction.setDisable(true);
+            rbQuarantineDup.setSelected(true);
         }
+    }
+
+    private void loadFullImageAndResolution(File f, ImageView iv, Label resLbl) {
+        String name = f.getName().toLowerCase();
+        if (name.endsWith(".jpg") || name.endsWith(".jpeg") || name.endsWith(".png") || name.endsWith(".bmp") || name.endsWith(".gif")) {
+            try {
+                Image img = new Image(f.toURI().toString(), 600, 450, true, true, true);
+                img.progressProperty().addListener((obs, oldVal, newVal) -> {
+                    if (newVal.doubleValue() >= 1.0) {
+                        Platform.runLater(() -> {
+                            if (img.getWidth() > 0 && img.getHeight() > 0) {
+                                resLbl.setText(String.format("%d × %d px", (int) img.getWidth(), (int) img.getHeight()));
+                            }
+                        });
+                    }
+                });
+                iv.setImage(img);
+                return;
+            } catch (Exception ignored) {}
+        }
+        iv.setImage(null);
+        resLbl.setText("Non-image file");
     }
 
     private void executeQuarantine() {
@@ -648,9 +917,11 @@ public class DuplicateFinderFxView extends VBox {
             Alert alert = new Alert(Alert.AlertType.INFORMATION,
                     String.format("File safely moved to Quarantine preserving relative folder hierarchy:\n%s\n\nOriginal location can be restored at any time.", target),
                     ButtonType.OK);
+            alert.initOwner(stage);
             alert.show();
         } catch (Exception ex) {
             Alert alert = new Alert(Alert.AlertType.ERROR, "Failed to quarantine file: " + ex.getMessage(), ButtonType.OK);
+            alert.initOwner(stage);
             alert.show();
         }
     }
@@ -667,9 +938,11 @@ public class DuplicateFinderFxView extends VBox {
             loadGroupIntoReview(currentSelectedItem);
 
             Alert alert = new Alert(Alert.AlertType.INFORMATION, "File successfully restored to original path:\n" + origDest.getAbsolutePath(), ButtonType.OK);
+            alert.initOwner(stage);
             alert.show();
         } catch (Exception ex) {
             Alert alert = new Alert(Alert.AlertType.ERROR, "Failed to restore file: " + ex.getMessage(), ButtonType.OK);
+            alert.initOwner(stage);
             alert.show();
         }
     }
@@ -679,6 +952,7 @@ public class DuplicateFinderFxView extends VBox {
         File qFile = currentSelectedItem.getQuarantinedFileRef();
 
         Alert confirm = new Alert(Alert.AlertType.CONFIRMATION);
+        confirm.initOwner(stage);
         confirm.setTitle("Permanent Deletion Confirmation");
         confirm.setHeaderText("Permanently delete quarantined file?");
         confirm.setContentText("This action CANNOT be undone by TakeoutFix.\nFile: " + qFile.getAbsolutePath());
@@ -692,19 +966,25 @@ public class DuplicateFinderFxView extends VBox {
                 loadGroupIntoReview(currentSelectedItem);
 
                 Alert alert = new Alert(Alert.AlertType.INFORMATION, "File permanently deleted from quarantine.", ButtonType.OK);
+                alert.initOwner(stage);
                 alert.show();
             } catch (Exception ex) {
                 Alert alert = new Alert(Alert.AlertType.ERROR, "Failed to purge file: " + ex.getMessage(), ButtonType.OK);
+                alert.initOwner(stage);
                 alert.show();
             }
         }
     }
 
-    private void loadThumb(File f, ImageView iv) {
+    private void loadThumb(File f, ImageView iv, double w, double h) {
+        if (f == null) {
+            iv.setImage(null);
+            return;
+        }
         String name = f.getName().toLowerCase();
         if (name.endsWith(".jpg") || name.endsWith(".jpeg") || name.endsWith(".png") || name.endsWith(".bmp") || name.endsWith(".gif")) {
             try {
-                Image img = new Image(f.toURI().toString(), 200, 150, true, true, true);
+                Image img = new Image(f.toURI().toString(), w, h, true, true, true);
                 iv.setImage(img);
                 return;
             } catch (Exception ignored) {}

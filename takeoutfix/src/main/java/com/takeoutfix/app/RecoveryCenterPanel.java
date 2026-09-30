@@ -919,7 +919,7 @@ public class RecoveryCenterPanel extends JPanel {
         }
         btnUpgradeWeb.setPreferredSize(new Dimension(180, 38));
         btnUpgradeWeb.addActionListener(
-                e -> com.takeoutfix.shared.util.BrowserUtil.openBrowser("https://takeoutfix.pages.dev/pricing"));
+                e -> com.takeoutfix.shared.util.BrowserUtil.openBrowser("https://takeoutfix.pages.dev"));
         btnRow.add(btnUpgradeWeb);
         card.add(btnRow, gbc);
 
@@ -1268,7 +1268,7 @@ public class RecoveryCenterPanel extends JPanel {
                         new Object[] { "Upgrade on Web", "Later" },
                         "Upgrade on Web");
                 if (opt == JOptionPane.YES_OPTION) {
-                    com.takeoutfix.shared.util.BrowserUtil.openBrowser("https://takeoutfix.pages.dev/pricing");
+                    com.takeoutfix.shared.util.BrowserUtil.openBrowser("https://takeoutfix.pages.dev");
                 }
             }
         });

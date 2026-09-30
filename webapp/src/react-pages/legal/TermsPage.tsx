@@ -32,9 +32,9 @@ export default function TermsPage() {
         </section>
 
         <section>
-          <h2 className="text-2xl font-bold text-white mb-4">4. Payment & Refunds</h2>
+          <h2 className="text-2xl font-bold text-white mb-4">4. 100% Free Software Utility</h2>
           <p>
-            Paid plans (Recovery Pass, Pro, Super) unlock higher limits and premium features. All plans utilize the identical recovery engine. For our detailed refund policy, please refer to the refund section on our <Link to="/support?tab=faq" className="text-indigo-400 hover:text-indigo-300 font-bold">Help & Support FAQ Page</Link>.
+            TakeoutFix is provided as a 100% free, client-side utility with unlimited local processing. There are no subscriptions, paywalls, or fees required to process your photos and metadata.
           </p>
         </section>
 

@@ -34,8 +34,15 @@ public class UpdateCheckerService {
             String htmlUrl,
             String releaseNotes,
             String downloadUrl,
-            boolean isUpdateAvailable
-    ) {}
+            boolean isUpdateAvailable,
+            String sha256,
+            long sizeBytes,
+            UpdateManifest manifest
+    ) {
+        public UpdateInfo(String versionTag, String releaseName, String htmlUrl, String releaseNotes, String downloadUrl, boolean isUpdateAvailable) {
+            this(versionTag, releaseName, htmlUrl, releaseNotes, downloadUrl, isUpdateAvailable, "", 0L, null);
+        }
+    }
 
     private final ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor(r -> {
         Thread t = new Thread(r, "TakeoutFix-UpdateChecker");
@@ -90,22 +97,68 @@ public class UpdateCheckerService {
                 String body = json.optString("body", "");
 
                 String downloadUrl = "";
+                long assetSize = 0L;
+                String sha256 = "";
+                UpdateManifest manifest = null;
+
                 if (json.has("assets")) {
                     org.json.JSONArray assets = json.optJSONArray("assets");
                     if (assets != null) {
+                        // First check if an update.json manifest asset exists
                         for (int i = 0; i < assets.length(); i++) {
                             JSONObject asset = assets.getJSONObject(i);
-                            String assetName = asset.optString("name", "").toLowerCase();
-                            if (assetName.endsWith(".jar") || assetName.endsWith(".exe") || assetName.endsWith(".zip")) {
-                                downloadUrl = asset.optString("browser_download_url", "");
+                            String assetName = asset.optString("name", "");
+                            if ("update.json".equalsIgnoreCase(assetName)) {
+                                String manifestUrl = asset.optString("browser_download_url", "");
+                                try {
+                                    HttpRequest mReq = HttpRequest.newBuilder().uri(URI.create(manifestUrl)).GET().build();
+                                    HttpResponse<String> mResp = client.send(mReq, HttpResponse.BodyHandlers.ofString());
+                                    if (mResp.statusCode() == 200) {
+                                        manifest = UpdateManifest.fromJson(mResp.body());
+                                        UpdateManifest.PlatformAsset pa = manifest.resolveCurrentPlatformAsset();
+                                        if (pa != null) {
+                                            downloadUrl = pa.getDownloadUrl();
+                                            sha256 = pa.getSha256();
+                                            assetSize = pa.getSizeBytes();
+                                        }
+                                    }
+                                } catch (Exception ignored) {}
                                 break;
+                            }
+                        }
+
+                        // Fallback: pick the best native binary from release assets
+                        if (downloadUrl.isEmpty()) {
+                            String osName = System.getProperty("os.name", "").toLowerCase();
+                            String preferredExt = osName.contains("win") ? ".msi" : (osName.contains("mac") ? ".dmg" : ".deb");
+
+                            for (int i = 0; i < assets.length(); i++) {
+                                JSONObject asset = assets.getJSONObject(i);
+                                String assetName = asset.optString("name", "").toLowerCase();
+                                if (assetName.endsWith(preferredExt)) {
+                                    downloadUrl = asset.optString("browser_download_url", "");
+                                    assetSize = asset.optLong("size", 0L);
+                                    break;
+                                }
+                            }
+
+                            if (downloadUrl.isEmpty()) {
+                                for (int i = 0; i < assets.length(); i++) {
+                                    JSONObject asset = assets.getJSONObject(i);
+                                    String assetName = asset.optString("name", "").toLowerCase();
+                                    if (assetName.endsWith(".exe") || assetName.endsWith(".jar") || assetName.endsWith(".zip")) {
+                                        downloadUrl = asset.optString("browser_download_url", "");
+                                        assetSize = asset.optLong("size", 0L);
+                                        break;
+                                    }
+                                }
                             }
                         }
                     }
                 }
 
                 boolean isNewer = AppVersion.isNewerThanCurrent(tagName);
-                UpdateInfo info = new UpdateInfo(tagName, releaseName, htmlUrl, body, downloadUrl, isNewer);
+                UpdateInfo info = new UpdateInfo(tagName, releaseName, htmlUrl, body, downloadUrl, isNewer, sha256, assetSize, manifest);
                 this.latestUpdate = info;
 
                 if (isNewer) {

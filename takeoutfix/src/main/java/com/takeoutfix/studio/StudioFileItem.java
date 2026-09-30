@@ -12,6 +12,7 @@ public class StudioFileItem {
     private final File file;
     private final String fileName;
     private final long fileSize;
+    private boolean selected = true;
     private LocalDateTime originalDate;
     private LocalDateTime newDate;
     private String status = "Ready";
@@ -28,6 +29,8 @@ public class StudioFileItem {
     public File getFile() { return file; }
     public String getFileName() { return fileName; }
     public long getFileSize() { return fileSize; }
+    public boolean isSelected() { return selected; }
+    public void setSelected(boolean selected) { this.selected = selected; }
 
     public LocalDateTime getOriginalDate() { return originalDate; }
     public void setOriginalDate(LocalDateTime originalDate) { this.originalDate = originalDate; }

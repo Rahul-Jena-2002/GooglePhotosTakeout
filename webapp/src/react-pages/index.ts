@@ -40,11 +40,9 @@ export { default as ToolWorkspace, ToolWorkspaceContent } from "./tool/ToolWorks
 // ── 4. User Account Modules ──────────────────────────────────────────────────
 export { default as DashboardPage } from "./user/DashboardPage";
 export { default as ProfilePage } from "./user/ProfilePage";
-export { default as CheckoutPage } from "./user/CheckoutPage";
 
 // ── 5. Marketing & Public Modules ────────────────────────────────────────────
 export { default as LandingPage } from "./marketing/LandingPage";
-export { default as PricingPage } from "./marketing/PricingPage";
 export { default as DownloadPage } from "./marketing/DownloadPage";
 export { default as HowItWorksPage } from "./marketing/HowItWorksPage";
 export { default as ReviewsPage } from "./marketing/ReviewsPage";

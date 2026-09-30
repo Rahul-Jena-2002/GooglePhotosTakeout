@@ -810,7 +810,6 @@ function SupportPageContent() {
                               <option value="general" className="bg-zinc-950 text-white">General Feedback</option>
                               <option value="feature" className="bg-zinc-950 text-white">Feature Request</option>
                               <option value="bug" className="bg-zinc-950 text-white">Bug Report</option>
-                              <option value="pricing" className="bg-zinc-950 text-white">Pricing / Billing</option>
                               <option value="praise" className="bg-zinc-950 text-white">Praise</option>
                             </select>
                           </div>

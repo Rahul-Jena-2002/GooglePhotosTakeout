@@ -3,8 +3,14 @@ package com.takeoutfix.metasync.ui;
 import com.takeoutfix.metasync.core.FilePairingService;
 import com.takeoutfix.metasync.model.PhotoPair;
 import com.takeoutfix.ui.fx.UiIcons;
+import javafx.collections.FXCollections;
+import javafx.collections.ObservableList;
+import javafx.collections.transformation.FilteredList;
+import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.control.*;
+import javafx.scene.image.Image;
+import javafx.scene.image.ImageView;
 import javafx.scene.layout.*;
 import javafx.stage.DirectoryChooser;
 import javafx.stage.Stage;
@@ -14,7 +20,8 @@ import java.util.List;
 import java.util.function.Consumer;
 
 /**
- * Folder selection and matched photo pairs explorer card for MetaSync.
+ * Enhanced folder selection and matched photo pairs explorer card for MetaSync.
+ * Supports thumbnail previews, real-time pair search, and match indicators.
  */
 public class PairExplorerCard extends VBox {
 
@@ -24,17 +31,23 @@ public class PairExplorerCard extends VBox {
 
     private final TextField rawFolderField = new TextField();
     private final TextField exportFolderField = new TextField();
-    private final ListView<PhotoPair> pairListView = new ListView<>();
-    private final Label pairCountLabel = new Label("0 pairs found");
+    private final TextField searchField = new TextField();
+
+    private final ObservableList<PhotoPair> masterPairs = FXCollections.observableArrayList();
+    private final FilteredList<PhotoPair> filteredPairs = new FilteredList<>(masterPairs, p -> true);
+    private final ListView<PhotoPair> pairListView = new ListView<>(filteredPairs);
+    private final Label pairCountLabel = new Label("0 pairs");
 
     public PairExplorerCard(Stage stage, FilePairingService pairingService) {
         this.stage = stage;
         this.pairingService = pairingService;
 
         getStyleClass().add("glass-card");
+        setStyle("-fx-background-color: #191A22; -fx-border-color: #30313B; -fx-border-radius: 8; -fx-background-radius: 8; -fx-padding: 14;");
         setSpacing(10);
         setPrefWidth(380);
         setMinWidth(340);
+        VBox.setVgrow(this, Priority.ALWAYS);
 
         buildHeader();
         buildFolderPickers();
@@ -46,62 +59,111 @@ public class PairExplorerCard extends VBox {
         header.setAlignment(Pos.CENTER_LEFT);
 
         Label title = new Label("Photo Libraries & Pairs");
-        title.getStyleClass().add("card-title");
+        title.setStyle("-fx-font-size: 15px; -fx-font-weight: 700; -fx-text-fill: #E6E7ED;");
 
         Region spacer = new Region();
         HBox.setHgrow(spacer, Priority.ALWAYS);
 
-        pairCountLabel.getStyleClass().add("text-secondary");
+        pairCountLabel.setStyle("-fx-font-size: 11px; -fx-font-weight: 600; -fx-text-fill: #989BA8; -fx-background-color: #20212B; -fx-padding: 2 8 2 8; -fx-background-radius: 10;");
         header.getChildren().addAll(title, spacer, pairCountLabel);
         getChildren().add(header);
     }
 
     private void buildFolderPickers() {
-        VBox pickers = new VBox(6);
+        VBox pickers = new VBox(8);
 
         // RAW Folder
-        Label rawLbl = new Label("RAW Originals Folder");
-        rawLbl.getStyleClass().add("text-secondary");
-        rawFolderField.setPromptText("Folder containing RAW files (.CR3, .NEF, .ARW)...");
+        VBox rawBox = new VBox(2);
+        Label rawLbl = new Label("RAW Originals Library");
+        rawLbl.setStyle("-fx-font-size: 11px; -fx-font-weight: 600; -fx-text-fill: #989BA8;");
+
+        rawFolderField.setPromptText("Folder with RAW originals (.CR3, .NEF, .ARW)...");
+        rawFolderField.setStyle("-fx-font-size: 12px; -fx-background-color: #101116; -fx-text-fill: #E6E7ED; -fx-border-color: #30313B; -fx-border-radius: 6; -fx-background-radius: 6;");
+
         Button browseRawBtn = new Button("Browse");
         browseRawBtn.getStyleClass().add("btn-secondary");
+        browseRawBtn.setStyle("-fx-font-size: 12px;");
         browseRawBtn.setGraphic(UiIcons.createSvgIcon(UiIcons.FOLDER, 13, "currentColor"));
         browseRawBtn.setOnAction(e -> chooseFolder(rawFolderField, true));
 
-        HBox rawRow = new HBox(8, rawFolderField, browseRawBtn);
+        HBox rawRow = new HBox(6, rawFolderField, browseRawBtn);
         HBox.setHgrow(rawFolderField, Priority.ALWAYS);
+        rawBox.getChildren().addAll(rawLbl, rawRow);
 
         // Export Folder
-        Label expLbl = new Label("JPEG Exports Folder (or same folder)");
-        expLbl.getStyleClass().add("text-secondary");
-        exportFolderField.setPromptText("Folder containing exported JPEGs/XMPs...");
+        VBox expBox = new VBox(2);
+        Label expLbl = new Label("Destination / Export Library");
+        expLbl.setStyle("-fx-font-size: 11px; -fx-font-weight: 600; -fx-text-fill: #989BA8;");
+
+        exportFolderField.setPromptText("Folder with JPEGs or XMPs...");
+        exportFolderField.setStyle("-fx-font-size: 12px; -fx-background-color: #101116; -fx-text-fill: #E6E7ED; -fx-border-color: #30313B; -fx-border-radius: 6; -fx-background-radius: 6;");
+
         Button browseExpBtn = new Button("Browse");
         browseExpBtn.getStyleClass().add("btn-secondary");
+        browseExpBtn.setStyle("-fx-font-size: 12px;");
         browseExpBtn.setGraphic(UiIcons.createSvgIcon(UiIcons.OUTPUT_FOLDER, 13, "currentColor"));
         browseExpBtn.setOnAction(e -> chooseFolder(exportFolderField, false));
 
-        HBox expRow = new HBox(8, exportFolderField, browseExpBtn);
+        HBox expRow = new HBox(6, exportFolderField, browseExpBtn);
         HBox.setHgrow(exportFolderField, Priority.ALWAYS);
+        expBox.getChildren().addAll(expLbl, expRow);
 
         // Scan button
         Button scanBtn = new Button("Scan & Match Pairs");
         scanBtn.getStyleClass().add("btn-primary");
         scanBtn.setMaxWidth(Double.MAX_VALUE);
+        scanBtn.setStyle("-fx-font-size: 13px; -fx-padding: 7 14 7 14;");
         scanBtn.setGraphic(UiIcons.createSvgIcon(UiIcons.SYNC, 14, "currentColor"));
         scanBtn.setOnAction(e -> scanPairs());
 
-        pickers.getChildren().addAll(rawLbl, rawRow, expLbl, expRow, scanBtn);
+        pickers.getChildren().addAll(rawBox, expBox, scanBtn);
         getChildren().add(pickers);
     }
 
     private void buildPairList() {
-        Label listTitle = new Label("Matched Photo Pairs");
-        listTitle.getStyleClass().add("card-title");
+        VBox listContainer = new VBox(8);
+        VBox.setVgrow(listContainer, Priority.ALWAYS);
 
-        pairListView.getStyleClass().add("inner-container");
+        // Search bar
+        searchField.setPromptText("Search pairs...");
+        searchField.setStyle("-fx-font-size: 12px; -fx-background-color: #101116; -fx-text-fill: #E6E7ED; -fx-border-color: #30313B; -fx-border-radius: 6; -fx-background-radius: 6;");
+        searchField.textProperty().addListener((obs, oldVal, newVal) -> {
+            String q = newVal == null ? "" : newVal.trim().toLowerCase();
+            filteredPairs.setPredicate(pair -> q.isEmpty() || pair.getBaseName().toLowerCase().contains(q));
+            pairCountLabel.setText(filteredPairs.size() + " pairs");
+        });
+
+        pairListView.setStyle("-fx-background-color: #101116; -fx-border-color: #30313B; -fx-border-radius: 6; -fx-background-radius: 6;");
         VBox.setVgrow(pairListView, Priority.ALWAYS);
 
         pairListView.setCellFactory(lv -> new ListCell<>() {
+            private final HBox row = new HBox(8);
+            private final ImageView thumbView = new ImageView();
+            private final VBox textCol = new VBox(2);
+            private final Label nameLbl = new Label();
+            private final Label typeLbl = new Label();
+            private final Region spacer = new Region();
+            private final Label badge = new Label();
+
+            {
+                row.setAlignment(Pos.CENTER_LEFT);
+                row.setPadding(new Insets(4, 6, 4, 6));
+
+                thumbView.setFitWidth(32);
+                thumbView.setFitHeight(32);
+                thumbView.setPreserveRatio(true);
+                thumbView.setSmooth(true);
+
+                nameLbl.setStyle("-fx-font-size: 13px; -fx-font-weight: 600; -fx-text-fill: #E6E7ED;");
+                typeLbl.setStyle("-fx-font-size: 11px; -fx-text-fill: #989BA8;");
+
+                textCol.getChildren().addAll(nameLbl, typeLbl);
+                HBox.setHgrow(spacer, Priority.ALWAYS);
+
+                badge.setStyle("-fx-font-size: 10px; -fx-font-weight: 700; -fx-padding: 2 6 2 6; -fx-background-radius: 4;");
+                row.getChildren().addAll(thumbView, textCol, spacer, badge);
+            }
+
             @Override
             protected void updateItem(PhotoPair pair, boolean empty) {
                 super.updateItem(pair, empty);
@@ -109,30 +171,37 @@ public class PairExplorerCard extends VBox {
                     setText(null);
                     setGraphic(null);
                 } else {
-                    HBox box = new HBox(8);
-                    box.setAlignment(Pos.CENTER_LEFT);
+                    nameLbl.setText(pair.getBaseName());
 
-                    Label nameLbl = new Label(pair.getBaseName());
-                    nameLbl.setStyle("-fx-font-weight: 600; -fx-font-size: 13px;");
+                    // Determine type and thumb
+                    File thumbSource = pair.getDestFile() != null ? pair.getDestFile() : pair.getSourceFile();
+                    loadThumb(thumbSource, thumbView);
 
-                    Region spacer = new Region();
-                    HBox.setHgrow(spacer, Priority.ALWAYS);
-
-                    Label badge = new Label();
-                    badge.getStyleClass().add("badge");
                     if (pair.isPaired()) {
-                        badge.setText("PAIRED");
-                        badge.getStyleClass().add("badge-match");
+                        String destExt = pair.getDestFile() != null ? getExt(pair.getDestFile()).toUpperCase() : "EXPORT";
+                        String srcExt = pair.getSourceFile() != null ? getExt(pair.getSourceFile()).toUpperCase() : "RAW";
+                        typeLbl.setText(srcExt + " + " + destExt);
+
+                        long diffs = pair.getDifferencesCount();
+                        if (diffs > 0) {
+                            badge.setText(diffs + " diffs");
+                            badge.setStyle("-fx-font-size: 10px; -fx-font-weight: 700; -fx-padding: 2 6 2 6; -fx-background-radius: 4; -fx-text-fill: #F59E0B; -fx-background-color: rgba(245, 158, 11, 0.12);");
+                        } else {
+                            badge.setText("Matched");
+                            badge.setStyle("-fx-font-size: 10px; -fx-font-weight: 700; -fx-padding: 2 6 2 6; -fx-background-radius: 4; -fx-text-fill: #10B981; -fx-background-color: rgba(16, 185, 129, 0.12);");
+                        }
                     } else if (pair.getSourceFile() != null) {
-                        badge.setText("RAW ONLY");
-                        badge.getStyleClass().add("badge-diff");
+                        typeLbl.setText(getExt(pair.getSourceFile()).toUpperCase() + " Only");
+                        badge.setText("RAW Only");
+                        badge.setStyle("-fx-font-size: 10px; -fx-font-weight: 700; -fx-padding: 2 6 2 6; -fx-background-radius: 4; -fx-text-fill: #3B82F6; -fx-background-color: rgba(59, 130, 246, 0.12);");
                     } else {
-                        badge.setText("JPEG ONLY");
-                        badge.getStyleClass().add("badge-neutral");
+                        typeLbl.setText("JPEG/XMP Only");
+                        badge.setText("Export Only");
+                        badge.setStyle("-fx-font-size: 10px; -fx-font-weight: 700; -fx-padding: 2 6 2 6; -fx-background-radius: 4; -fx-text-fill: #989BA8; -fx-background-color: rgba(152, 155, 168, 0.12);");
                     }
 
-                    box.getChildren().addAll(nameLbl, spacer, badge);
-                    setGraphic(box);
+                    setGraphic(row);
+                    setText(null);
                 }
             }
         });
@@ -143,7 +212,8 @@ public class PairExplorerCard extends VBox {
             }
         });
 
-        getChildren().addAll(listTitle, pairListView);
+        listContainer.getChildren().addAll(searchField, pairListView);
+        getChildren().add(listContainer);
     }
 
     private void chooseFolder(TextField target, boolean isRaw) {
@@ -170,8 +240,8 @@ public class PairExplorerCard extends VBox {
         File expFolder = expPath.isEmpty() ? rawFolder : new File(expPath);
 
         List<PhotoPair> pairs = pairingService.pairFolders(rawFolder, expFolder);
-        pairListView.getItems().setAll(pairs);
-        pairCountLabel.setText(pairs.size() + " pairs found");
+        masterPairs.setAll(pairs);
+        pairCountLabel.setText(pairs.size() + " pairs");
 
         if (!pairs.isEmpty()) {
             pairListView.getSelectionModel().select(0);
@@ -185,11 +255,33 @@ public class PairExplorerCard extends VBox {
         alert.show();
     }
 
+    private void loadThumb(File f, ImageView iv) {
+        if (f == null) {
+            iv.setImage(null);
+            return;
+        }
+        String name = f.getName().toLowerCase();
+        if (name.endsWith(".jpg") || name.endsWith(".jpeg") || name.endsWith(".png") || name.endsWith(".bmp")) {
+            try {
+                Image img = new Image(f.toURI().toString(), 32, 32, true, true, true);
+                iv.setImage(img);
+                return;
+            } catch (Exception ignored) {}
+        }
+        iv.setImage(null);
+    }
+
+    private String getExt(File f) {
+        String name = f.getName();
+        int idx = name.lastIndexOf('.');
+        return idx > 0 ? name.substring(idx + 1) : "";
+    }
+
     public void setOnPairSelected(Consumer<PhotoPair> onPairSelected) {
         this.onPairSelected = onPairSelected;
     }
 
     public List<PhotoPair> getAllPairs() {
-        return pairListView.getItems();
+        return masterPairs;
     }
 }

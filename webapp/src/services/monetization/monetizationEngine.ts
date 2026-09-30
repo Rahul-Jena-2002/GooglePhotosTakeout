@@ -114,7 +114,6 @@ export const isInternalSitePromotion = (url?: string, title?: string, providerNa
   const lowerTitle = (title || "").toLowerCase();
   const lowerProv = (providerName || "").toLowerCase();
   return (
-    lowerUrl.startsWith("/pricing") ||
     lowerUrl.startsWith("/download") ||
     lowerUrl.startsWith("/tool") ||
     lowerTitle.includes("upgrade to takeoutfix") ||

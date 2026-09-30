@@ -19,7 +19,6 @@ if (!INDEXNOW_KEY) {
 const urls = [
   `${baseUrl}/`,
   `${baseUrl}/restore-data`,
-  `${baseUrl}/pricing`,
   `${baseUrl}/reviews`,
   `${baseUrl}/support`,
   // Keyword landing pages

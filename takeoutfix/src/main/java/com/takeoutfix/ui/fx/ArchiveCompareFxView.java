@@ -10,7 +10,9 @@ import javafx.collections.ObservableList;
 import javafx.collections.transformation.FilteredList;
 import javafx.concurrent.Task;
 import javafx.geometry.Insets;
+import javafx.geometry.Orientation;
 import javafx.geometry.Pos;
+import javafx.scene.Node;
 import javafx.scene.control.*;
 import javafx.scene.layout.*;
 import javafx.stage.DirectoryChooser;
@@ -22,6 +24,7 @@ import java.io.PrintWriter;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Optional;
@@ -29,8 +32,13 @@ import java.util.function.Consumer;
 import java.util.stream.Stream;
 
 /**
- * Pure JavaFX Archive & Collection Comparison Tool.
- * Delegates comparison and safe-copy operations to ArchiveCompareService.
+ * Modern Compare Collections (Archive Comparison) Workspace.
+ * Features:
+ * 1. Prominent Dual Collection Pickers (Original vs Backup) with folder counts and full path tooltips.
+ * 2. High-visibility neutral metric cards with semantic color accents (Identical, Missing, Additional, Modified).
+ * 3. Searchable and category-filtered differences table with 42px row height and status badges.
+ * 4. Contextual empty states (Pre-scan instructions vs Post-scan 'Collections are identical' green confirmation).
+ * 5. Safe non-destructive file restoration and CSV/JSON export.
  */
 public class ArchiveCompareFxView extends VBox {
 
@@ -38,142 +46,182 @@ public class ArchiveCompareFxView extends VBox {
     private final Consumer<WorkspaceType> onNavigate;
     private final ArchiveCompareService compareService = new ArchiveCompareService();
 
-    private final Label sourceAPathLabel = new Label("No Source A folder selected");
-    private final Label sourceBPathLabel = new Label("No Source B folder selected");
-    private final Label sourceAStatsLabel = new Label("0 files · 0.0 MB");
-    private final Label sourceBStatsLabel = new Label("0 files · 0.0 MB");
+    // Source Selection Controls
+    private final Label sourceANameLabel = new Label("No folder selected");
+    private final Label sourceBNameLabel = new Label("No folder selected");
+    private final Label sourceAStatsLabel = new Label("0 files · 0 MB");
+    private final Label sourceBStatsLabel = new Label("0 files · 0 MB");
 
     private File folderA = null;
     private File folderB = null;
 
-    // KPI Summary Labels
+    // Metric Summary Labels
     private final Label countExact = new Label("0");
     private final Label countMissing = new Label("0");
     private final Label countAdditional = new Label("0");
     private final Label countModified = new Label("0");
 
-    private final Button btnCompare = new Button("Compare Collections");
+    private final Button btnCompare = new Button("Compare Files");
     private final ProgressBar progressBar = new ProgressBar(0.0);
-    private final Label statusProgressLabel = new Label("Ready to compare");
-    private final Button btnSafeCopy = new Button("Copy Missing to Source B");
+    private final Label statusProgressLabel = new Label("Select two folders to begin");
+    private final Button btnSafeCopy = new Button("Restore Missing Files to Backup");
+    private final Button btnExportCsv = new Button("Export CSV");
+    private final Button btnExportJson = new Button("Export JSON");
 
+    // Table & Filter
+    private final TextField searchField = new TextField();
+    private final Label tableCountLabel = new Label("0 files");
     private final ObservableList<CompareRecord> masterItems = FXCollections.observableArrayList();
     private final FilteredList<CompareRecord> filteredItems = new FilteredList<>(masterItems, p -> true);
     private final TableView<CompareRecord> tableView = new TableView<>(filteredItems);
 
     private DiffType activeFilter = null; // null represents ALL
+    private boolean hasCompared = false;
 
     public ArchiveCompareFxView(Stage stage, Consumer<WorkspaceType> onNavigate) {
         this.stage = stage;
         this.onNavigate = onNavigate;
 
-        setSpacing(12);
-        setPadding(new Insets(14, 18, 14, 18));
+        getStyleClass().add("workspace-view");
+        setSpacing(14);
+        setPadding(new Insets(16, 20, 16, 20));
         VBox.setVgrow(this, Priority.ALWAYS);
 
         // 1. Header
         getChildren().add(buildHeaderRow());
 
-        // 2. Dual Sources Picker Card
+        // 2. Dual Sources Selection Card
         getChildren().add(buildDualPickerCard());
 
-        // 3. KPI Summary Deck
+        // 3. Metric KPI Deck
         getChildren().add(buildKpiDeck());
 
-        // 4. Comparison Table Card with Filter Bar & Actions
+        // 4. Comparison Results Table Card
         VBox tableCard = buildTableCard();
         VBox.setVgrow(tableCard, Priority.ALWAYS);
         getChildren().add(tableCard);
+
+        updateEmptyState();
     }
 
     private HBox buildHeaderRow() {
         HBox header = new HBox(12);
         header.setAlignment(Pos.CENTER_LEFT);
 
-        VBox titleBox = new VBox(2);
-        Label title = new Label("COMPARE ARCHIVES");
-        title.setStyle("-fx-font-size: 15px; -fx-font-weight: 800;");
+        Node icon = UiIcons.createSvgIcon(UiIcons.DIFF, 22, "#A78BFA");
 
-        Label subtitle = new Label("Compare photo collections (Original vs Backup) to detect missing, added, modified, or exact matches.");
-        subtitle.setStyle("-fx-font-size: 11px; -fx-text-fill: #71717a;");
+        VBox titleBox = new VBox(2);
+        Label title = new Label("Compare Collections");
+        title.getStyleClass().addAll("page-title", "header-title");
+        title.setStyle("-fx-font-size: 24px; -fx-font-weight: 700; -fx-text-fill: #FAFAFA;");
+
+        Label subtitle = new Label("Find missing, additional, and modified photos between two collections.");
+        subtitle.getStyleClass().addAll("page-description", "header-subtitle");
+        subtitle.setStyle("-fx-font-size: 13px; -fx-text-fill: #D4D4D8;");
         titleBox.getChildren().addAll(title, subtitle);
 
         Region spacer = new Region();
         HBox.setHgrow(spacer, Priority.ALWAYS);
 
-        Button btnBack = new Button("Back to Fix Google Photos");
+        Button btnBack = new Button("Back to Restore");
         btnBack.getStyleClass().add("btn-secondary");
-        btnBack.setGraphic(UiIcons.createSvgIcon(UiIcons.RESTORE, 12, "currentColor"));
+        btnBack.setGraphic(UiIcons.createSvgIcon(UiIcons.RESTORE, 13, "currentColor"));
+        btnBack.setGraphicTextGap(6);
+        btnBack.setStyle("-fx-font-size: 12px; -fx-font-weight: 600; -fx-padding: 6 14;");
         btnBack.setOnAction(e -> {
             if (onNavigate != null) onNavigate.accept(WorkspaceType.TAKEOUT_RESTORE);
         });
 
-        header.getChildren().addAll(titleBox, spacer, btnBack);
+        header.getChildren().addAll(icon, titleBox, spacer, btnBack);
         return header;
     }
 
     private VBox buildDualPickerCard() {
-        VBox card = new VBox(10);
+        VBox card = new VBox(12);
         card.getStyleClass().add("glass-card");
-        card.setPadding(new Insets(12, 14, 12, 14));
+        card.setPadding(new Insets(14, 16, 14, 16));
 
-        HBox split = new HBox(16);
+        HBox split = new HBox(20);
+        split.setAlignment(Pos.CENTER_LEFT);
 
-        // Left Source A
+        // Left: Original Collection
         VBox left = new VBox(6);
         HBox.setHgrow(left, Priority.ALWAYS);
-        Label aTitle = new Label("SOURCE A: ORIGINAL PHOTO COLLECTION");
-        aTitle.setStyle("-fx-font-size: 10px; -fx-font-weight: 800; -fx-text-fill: #71717a;");
 
-        HBox aRow = new HBox(8);
+        Label aTitle = new Label("ORIGINAL COLLECTION");
+        aTitle.setStyle("-fx-font-size: 11px; -fx-font-weight: 700; -fx-text-fill: #A78BFA; -fx-letter-spacing: 0.5px;");
+
+        HBox aRow = new HBox(10);
         aRow.setAlignment(Pos.CENTER_LEFT);
-        Button btnBrowseA = new Button("Browse Source A");
+        Button btnBrowseA = new Button("Choose Original");
         btnBrowseA.getStyleClass().add("btn-primary");
-        btnBrowseA.setGraphic(UiIcons.createSvgIcon(UiIcons.FOLDER, 12, "currentColor"));
+        btnBrowseA.setGraphic(UiIcons.createSvgIcon(UiIcons.FOLDER, 13, "currentColor"));
+        btnBrowseA.setGraphicTextGap(6);
+        btnBrowseA.setStyle("-fx-font-size: 12px; -fx-font-weight: 600; -fx-pref-height: 34px; -fx-padding: 6 14;");
         btnBrowseA.setOnAction(e -> chooseFolderA());
 
-        sourceAPathLabel.setStyle("-fx-font-size: 11px; -fx-font-weight: 600; -fx-text-fill: #71717a;");
-        HBox.setHgrow(sourceAPathLabel, Priority.ALWAYS);
-        aRow.getChildren().addAll(btnBrowseA, sourceAPathLabel);
+        sourceANameLabel.setStyle("-fx-font-size: 14px; -fx-font-weight: 700; -fx-text-fill: #FAFAFA;");
+        sourceANameLabel.setMaxWidth(Double.MAX_VALUE);
+        HBox.setHgrow(sourceANameLabel, Priority.ALWAYS);
+        aRow.getChildren().addAll(btnBrowseA, sourceANameLabel);
 
-        sourceAStatsLabel.setStyle("-fx-font-size: 10px; -fx-text-fill: #71717a;");
-        left.getChildren().addAll(aTitle, aRow, sourceAStatsLabel);
+        HBox aStatsRow = new HBox(6);
+        aStatsRow.setAlignment(Pos.CENTER_LEFT);
+        sourceAStatsLabel.setStyle("-fx-font-size: 12px; -fx-text-fill: #A1A1AA;");
+        aStatsRow.getChildren().addAll(UiIcons.createSvgIcon(UiIcons.CAMERA, 12, "#71717A"), sourceAStatsLabel);
 
-        // Right Source B
+        left.getChildren().addAll(aTitle, aRow, aStatsRow);
+
+        // Subtle Vertical Divider
+        Separator vSep = new Separator(Orientation.VERTICAL);
+
+        // Right: Backup Collection
         VBox right = new VBox(6);
         HBox.setHgrow(right, Priority.ALWAYS);
-        Label bTitle = new Label("SOURCE B: BACKUP / EXPORT ARCHIVE");
-        bTitle.setStyle("-fx-font-size: 10px; -fx-font-weight: 800; -fx-text-fill: #71717a;");
 
-        HBox bRow = new HBox(8);
+        Label bTitle = new Label("BACKUP COLLECTION");
+        bTitle.setStyle("-fx-font-size: 11px; -fx-font-weight: 700; -fx-text-fill: #A78BFA; -fx-letter-spacing: 0.5px;");
+
+        HBox bRow = new HBox(10);
         bRow.setAlignment(Pos.CENTER_LEFT);
-        Button btnBrowseB = new Button("Browse Source B");
+        Button btnBrowseB = new Button("Choose Backup");
         btnBrowseB.getStyleClass().add("btn-secondary");
-        btnBrowseB.setGraphic(UiIcons.createSvgIcon(UiIcons.OUTPUT_FOLDER, 12, "currentColor"));
+        btnBrowseB.setGraphic(UiIcons.createSvgIcon(UiIcons.OUTPUT_FOLDER, 13, "currentColor"));
+        btnBrowseB.setGraphicTextGap(6);
+        btnBrowseB.setStyle("-fx-font-size: 12px; -fx-font-weight: 600; -fx-pref-height: 34px; -fx-padding: 6 14;");
         btnBrowseB.setOnAction(e -> chooseFolderB());
 
-        sourceBPathLabel.setStyle("-fx-font-size: 11px; -fx-font-weight: 600; -fx-text-fill: #71717a;");
-        HBox.setHgrow(sourceBPathLabel, Priority.ALWAYS);
-        bRow.getChildren().addAll(btnBrowseB, sourceBPathLabel);
+        sourceBNameLabel.setStyle("-fx-font-size: 14px; -fx-font-weight: 700; -fx-text-fill: #FAFAFA;");
+        sourceBNameLabel.setMaxWidth(Double.MAX_VALUE);
+        HBox.setHgrow(sourceBNameLabel, Priority.ALWAYS);
+        bRow.getChildren().addAll(btnBrowseB, sourceBNameLabel);
 
-        sourceBStatsLabel.setStyle("-fx-font-size: 10px; -fx-text-fill: #71717a;");
-        right.getChildren().addAll(bTitle, bRow, sourceBStatsLabel);
+        HBox bStatsRow = new HBox(6);
+        bStatsRow.setAlignment(Pos.CENTER_LEFT);
+        sourceBStatsLabel.setStyle("-fx-font-size: 12px; -fx-text-fill: #A1A1AA;");
+        bStatsRow.getChildren().addAll(UiIcons.createSvgIcon(UiIcons.CAMERA, 12, "#71717A"), sourceBStatsLabel);
 
-        split.getChildren().addAll(left, new Separator(javafx.geometry.Orientation.VERTICAL), right);
+        right.getChildren().addAll(bTitle, bRow, bStatsRow);
 
-        // Compare Action Row
+        split.getChildren().addAll(left, vSep, right);
+
+        // Action Toolbar
         HBox actRow = new HBox(12);
         actRow.setAlignment(Pos.CENTER_LEFT);
+        actRow.setPadding(new Insets(4, 0, 0, 0));
 
         btnCompare.getStyleClass().add("btn-primary");
-        btnCompare.setGraphic(UiIcons.createSvgIcon(UiIcons.DIFF, 13, "currentColor"));
+        btnCompare.setGraphic(UiIcons.createSvgIcon(UiIcons.DIFF, 14, "currentColor"));
+        btnCompare.setGraphicTextGap(7);
+        btnCompare.setStyle("-fx-font-size: 13px; -fx-font-weight: 700; -fx-pref-height: 36px; -fx-padding: 6 18;");
+        btnCompare.setDisable(true);
         btnCompare.setOnAction(e -> runComparison());
 
         progressBar.setProgress(0.0);
-        progressBar.setPrefWidth(180);
+        progressBar.setPrefWidth(200);
         progressBar.setVisible(false);
 
-        statusProgressLabel.setStyle("-fx-font-size: 11px; -fx-text-fill: #71717a;");
+        statusProgressLabel.setStyle("-fx-font-size: 12px; -fx-text-fill: #A1A1AA;");
 
         actRow.getChildren().addAll(btnCompare, progressBar, statusProgressLabel);
         card.getChildren().addAll(split, new Separator(), actRow);
@@ -181,13 +229,13 @@ public class ArchiveCompareFxView extends VBox {
     }
 
     private HBox buildKpiDeck() {
-        HBox deck = new HBox(10);
+        HBox deck = new HBox(12);
         deck.setAlignment(Pos.CENTER);
 
-        VBox cExact = createKpiCard("EXACT MATCHES", countExact, "Identical content & hash", "#059669", "rgba(5, 150, 105, 0.08)");
-        VBox cMissing = createKpiCard("MISSING IN B", countMissing, "Only present in Source A", "#d97706", "rgba(217, 119, 6, 0.08)");
-        VBox cAdd = createKpiCard("ADDITIONAL IN B", countAdditional, "Only present in Source B", "#2563eb", "rgba(37, 99, 235, 0.08)");
-        VBox cMod = createKpiCard("MODIFIED / DIFF", countModified, "Same path, different bytes", "#e11d48", "rgba(225, 29, 72, 0.08)");
+        VBox cExact = createMetricCard("IDENTICAL", countExact, "Identical content & hash", "#10B981");
+        VBox cMissing = createMetricCard("MISSING", countMissing, "Missing from backup", "#F59E0B");
+        VBox cAdd = createMetricCard("ADDITIONAL", countAdditional, "Only in backup", "#3B82F6");
+        VBox cMod = createMetricCard("MODIFIED", countModified, "Content differences", "#F43F5E");
 
         HBox.setHgrow(cExact, Priority.ALWAYS);
         HBox.setHgrow(cMissing, Priority.ALWAYS);
@@ -198,18 +246,18 @@ public class ArchiveCompareFxView extends VBox {
         return deck;
     }
 
-    private VBox createKpiCard(String title, Label valLabel, String sub, String accentColor, String bgTint) {
+    private VBox createMetricCard(String title, Label valLabel, String sub, String accentColor) {
         VBox card = new VBox(3);
         card.getStyleClass().add("glass-card");
-        card.setStyle(String.format("-fx-background-color: %s; -fx-border-color: %s; -fx-border-width: 1px; -fx-border-radius: 8; -fx-background-radius: 8; -fx-padding: 12 16 12 16;", bgTint, accentColor));
+        card.setPadding(new Insets(12, 16, 12, 16));
 
         Label t = new Label(title);
-        t.setStyle(String.format("-fx-font-size: 10px; -fx-font-weight: 800; -fx-text-fill: %s; -fx-letter-spacing: 0.5px;", accentColor));
+        t.setStyle(String.format("-fx-font-size: 11px; -fx-font-weight: 700; -fx-text-fill: %s; -fx-letter-spacing: 0.5px;", accentColor));
 
-        valLabel.setStyle(String.format("-fx-font-size: 22px; -fx-font-weight: 800; -fx-text-fill: %s;", accentColor));
+        valLabel.setStyle(String.format("-fx-font-size: 26px; -fx-font-weight: 800; -fx-text-fill: %s;", accentColor));
 
         Label s = new Label(sub);
-        s.setStyle("-fx-font-size: 10px; -fx-text-fill: #71717a;");
+        s.setStyle("-fx-font-size: 12px; -fx-text-fill: #71717A;");
 
         card.getChildren().addAll(t, valLabel, s);
         return card;
@@ -218,58 +266,124 @@ public class ArchiveCompareFxView extends VBox {
     private VBox buildTableCard() {
         VBox card = new VBox(10);
         card.getStyleClass().add("glass-card");
-        card.setPadding(new Insets(10, 12, 10, 12));
+        card.setPadding(new Insets(14, 14, 14, 14));
         VBox.setVgrow(card, Priority.ALWAYS);
 
-        // Filter Bar & Action buttons
-        HBox topRow = new HBox(10);
+        // Filter Pills & Search Row
+        HBox topRow = new HBox(12);
         topRow.setAlignment(Pos.CENTER_LEFT);
 
         HBox filterGroup = new HBox(6);
         filterGroup.setAlignment(Pos.CENTER_LEFT);
 
-        Button fAll = createFilterBtn("All", null);
-        Button fExact = createFilterBtn("Exact Matches", DiffType.EXACT);
-        Button fMissing = createFilterBtn("Missing in B", DiffType.MISSING_IN_B);
-        Button fAdd = createFilterBtn("Additional in B", DiffType.ADDITIONAL_IN_B);
-        Button fMod = createFilterBtn("Modified", DiffType.MODIFIED);
-
+        List<Button> filterButtons = new ArrayList<>();
+        Button fAll = createFilterBtn("All", null, filterButtons, true);
+        Button fExact = createFilterBtn("Identical", DiffType.EXACT, filterButtons, false);
+        Button fMissing = createFilterBtn("Missing", DiffType.MISSING_IN_B, filterButtons, false);
+        Button fAdd = createFilterBtn("Additional", DiffType.ADDITIONAL_IN_B, filterButtons, false);
+        Button fMod = createFilterBtn("Modified", DiffType.MODIFIED, filterButtons, false);
         filterGroup.getChildren().addAll(fAll, fExact, fMissing, fAdd, fMod);
 
-        Region spacer = new Region();
-        HBox.setHgrow(spacer, Priority.ALWAYS);
+        searchField.setPromptText("Search files (filename or relative path)...");
+        searchField.setStyle("-fx-font-size: 12px; -fx-pref-height: 32px; -fx-padding: 0 10;");
+        searchField.textProperty().addListener((obs, oldVal, newVal) -> updateTableFilter());
+        HBox.setHgrow(searchField, Priority.ALWAYS);
 
-        // Safe Copy & Export
-        btnSafeCopy.getStyleClass().add("btn-secondary");
-        btnSafeCopy.setStyle("-fx-font-size: 11px; -fx-padding: 4 10 4 10;");
+        tableCountLabel.setStyle("-fx-font-size: 12px; -fx-font-weight: 700; -fx-text-fill: #A78BFA; -fx-min-width: 50px;");
+
+        topRow.getChildren().addAll(filterGroup, searchField, tableCountLabel);
+
+        // Setup Table
+        setupTableView();
+
+        // Footer Strip (Safe Restore & Export)
+        HBox footerStrip = new HBox(10);
+        footerStrip.setAlignment(Pos.CENTER_RIGHT);
+        footerStrip.setPadding(new Insets(4, 0, 0, 0));
+
+        btnSafeCopy.getStyleClass().add("btn-primary");
+        btnSafeCopy.setGraphic(UiIcons.createSvgIcon(UiIcons.SYNC, 13, "currentColor"));
+        btnSafeCopy.setGraphicTextGap(6);
+        btnSafeCopy.setStyle("-fx-font-size: 12px; -fx-font-weight: 700; -fx-padding: 6 16;");
+        btnSafeCopy.setDisable(true);
         btnSafeCopy.setOnAction(e -> handleSafeCopy());
 
-        Button btnExportCsv = new Button("Export CSV");
-        btnExportCsv.getStyleClass().add("btn-ghost");
-        btnExportCsv.setStyle("-fx-font-size: 11px; -fx-padding: 4 8 4 8;");
+        btnExportCsv.getStyleClass().add("btn-secondary");
+        btnExportCsv.setGraphic(UiIcons.createSvgIcon(UiIcons.DOWNLOAD, 12, "currentColor"));
+        btnExportCsv.setGraphicTextGap(6);
+        btnExportCsv.setStyle("-fx-font-size: 12px; -fx-font-weight: 600; -fx-padding: 6 14;");
+        btnExportCsv.setDisable(true);
         btnExportCsv.setOnAction(e -> exportToCsv());
 
-        Button btnExportJson = new Button("Export JSON");
-        btnExportJson.getStyleClass().add("btn-ghost");
-        btnExportJson.setStyle("-fx-font-size: 11px; -fx-padding: 4 8 4 8;");
+        btnExportJson.getStyleClass().add("btn-secondary");
+        btnExportJson.setGraphic(UiIcons.createSvgIcon(UiIcons.DOWNLOAD, 12, "currentColor"));
+        btnExportJson.setGraphicTextGap(6);
+        btnExportJson.setStyle("-fx-font-size: 12px; -fx-font-weight: 600; -fx-padding: 6 14;");
+        btnExportJson.setDisable(true);
         btnExportJson.setOnAction(e -> exportToJson());
 
-        topRow.getChildren().addAll(filterGroup, spacer, btnSafeCopy, btnExportCsv, btnExportJson);
+        Region fSpacer = new Region();
+        HBox.setHgrow(fSpacer, Priority.ALWAYS);
 
-        // TableView setup
+        footerStrip.getChildren().addAll(fSpacer, btnExportCsv, btnExportJson, btnSafeCopy);
+
+        card.getChildren().addAll(topRow, tableView, footerStrip);
+        return card;
+    }
+
+    private void setupTableView() {
         TableColumn<CompareRecord, String> pathCol = new TableColumn<>("File Name / Relative Path");
         pathCol.setCellValueFactory(d -> new javafx.beans.property.SimpleStringProperty(d.getValue().getRelativePath()));
-        pathCol.setPrefWidth(300);
+        pathCol.setPrefWidth(320);
+        pathCol.setCellFactory(col -> new TableCell<>() {
+            @Override
+            protected void updateItem(String item, boolean empty) {
+                super.updateItem(item, empty);
+                if (empty || item == null) {
+                    setText(null);
+                    setGraphic(null);
+                } else {
+                    setText(item);
+                    setGraphic(UiIcons.createSvgIcon(UiIcons.CAMERA, 13, "#A78BFA"));
+                    setGraphicTextGap(8);
+                    setStyle("-fx-font-size: 13px; -fx-font-weight: 600; -fx-text-fill: #FAFAFA;");
+                }
+            }
+        });
 
-        TableColumn<CompareRecord, String> aCol = new TableColumn<>("Source A (Original)");
+        TableColumn<CompareRecord, String> aCol = new TableColumn<>("Original (Source A)");
         aCol.setCellValueFactory(d -> new javafx.beans.property.SimpleStringProperty(d.getValue().getSourceAInfo()));
-        aCol.setPrefWidth(180);
+        aCol.setPrefWidth(200);
+        aCol.setCellFactory(col -> new TableCell<>() {
+            @Override
+            protected void updateItem(String item, boolean empty) {
+                super.updateItem(item, empty);
+                if (empty || item == null) {
+                    setText(null);
+                } else {
+                    setText(item);
+                    setStyle("-fx-font-size: 12px; -fx-text-fill: #D4D4D8;");
+                }
+            }
+        });
 
-        TableColumn<CompareRecord, String> bCol = new TableColumn<>("Source B (Backup)");
+        TableColumn<CompareRecord, String> bCol = new TableColumn<>("Backup (Source B)");
         bCol.setCellValueFactory(d -> new javafx.beans.property.SimpleStringProperty(d.getValue().getSourceBInfo()));
-        bCol.setPrefWidth(180);
+        bCol.setPrefWidth(200);
+        bCol.setCellFactory(col -> new TableCell<>() {
+            @Override
+            protected void updateItem(String item, boolean empty) {
+                super.updateItem(item, empty);
+                if (empty || item == null) {
+                    setText(null);
+                } else {
+                    setText(item);
+                    setStyle("-fx-font-size: 12px; -fx-text-fill: #D4D4D8;");
+                }
+            }
+        });
 
-        TableColumn<CompareRecord, DiffType> statusCol = new TableColumn<>("Comparison Status");
+        TableColumn<CompareRecord, DiffType> statusCol = new TableColumn<>("Status");
         statusCol.setCellValueFactory(d -> new javafx.beans.property.SimpleObjectProperty<>(d.getValue().getDiffType()));
         statusCol.setPrefWidth(160);
         statusCol.setCellFactory(col -> new TableCell<>() {
@@ -280,14 +394,25 @@ public class ArchiveCompareFxView extends VBox {
                     setText(null);
                     setGraphic(null);
                 } else {
-                    Label badge = new Label(item.getLabel());
-                    badge.setStyle("-fx-font-size: 10px; -fx-font-weight: 700; -fx-padding: 2 6 2 6; -fx-background-radius: 4;");
+                    Label badge = new Label();
+                    badge.setStyle("-fx-font-size: 11px; -fx-font-weight: 700; -fx-padding: 3 8; -fx-background-radius: 4;");
                     switch (item) {
-                        case EXACT -> badge.setStyle(badge.getStyle() + "; -fx-text-fill: #10b981; -fx-background-color: rgba(16, 185, 129, 0.12);");
-                        case MISSING_IN_B -> badge.setStyle(badge.getStyle() + "; -fx-text-fill: #d97706; -fx-background-color: rgba(217, 119, 6, 0.12);");
-                        case ADDITIONAL_IN_B -> badge.setStyle(badge.getStyle() + "; -fx-text-fill: #2563eb; -fx-background-color: rgba(37, 99, 235, 0.12);");
-                        case MODIFIED -> badge.setStyle(badge.getStyle() + "; -fx-text-fill: #e11d48; -fx-background-color: rgba(225, 29, 72, 0.12);");
-                        default -> badge.setStyle(badge.getStyle() + "; -fx-text-fill: #71717a; -fx-background-color: rgba(113, 113, 122, 0.12);");
+                        case EXACT -> {
+                            badge.setText("Identical");
+                            badge.setStyle(badge.getStyle() + "; -fx-text-fill: #10B981; -fx-background-color: rgba(16, 185, 129, 0.15);");
+                        }
+                        case MISSING_IN_B -> {
+                            badge.setText("Missing from Backup");
+                            badge.setStyle(badge.getStyle() + "; -fx-text-fill: #F59E0B; -fx-background-color: rgba(245, 158, 11, 0.15);");
+                        }
+                        case ADDITIONAL_IN_B -> {
+                            badge.setText("Only in Backup");
+                            badge.setStyle(badge.getStyle() + "; -fx-text-fill: #3B82F6; -fx-background-color: rgba(59, 130, 246, 0.15);");
+                        }
+                        case MODIFIED -> {
+                            badge.setText("Content Differences");
+                            badge.setStyle(badge.getStyle() + "; -fx-text-fill: #F43F5E; -fx-background-color: rgba(244, 63, 94, 0.15);");
+                        }
                     }
                     setGraphic(badge);
                     setText(null);
@@ -296,52 +421,136 @@ public class ArchiveCompareFxView extends VBox {
         });
 
         tableView.getColumns().clear();
-        tableView.getColumns().add(pathCol);
-        tableView.getColumns().add(aCol);
-        tableView.getColumns().add(bCol);
-        tableView.getColumns().add(statusCol);
+        tableView.getColumns().addAll(pathCol, aCol, bCol, statusCol);
         tableView.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
+        tableView.setStyle("-fx-cell-size: 42px;");
         VBox.setVgrow(tableView, Priority.ALWAYS);
 
-        card.getChildren().addAll(topRow, tableView);
-        return card;
+        // Double-click row inspector for modified or detailed view
+        tableView.setRowFactory(tv -> {
+            TableRow<CompareRecord> row = new TableRow<>();
+            row.setOnMouseClicked(event -> {
+                if (event.getClickCount() == 2 && (!row.isEmpty())) {
+                    showItemDetails(row.getItem());
+                }
+            });
+            return row;
+        });
     }
 
-    private Button createFilterBtn(String text, DiffType type) {
+    private void showItemDetails(CompareRecord rec) {
+        if (rec == null) return;
+        Alert detail = new Alert(Alert.AlertType.INFORMATION);
+        detail.setTitle("File Comparison Details");
+        detail.setHeaderText(rec.getRelativePath());
+        detail.setContentText(String.format(
+                "Status: %s\n\nOriginal (Source A):\n• %s\n• Path: %s\n\nBackup (Source B):\n• %s\n• Path: %s",
+                rec.getDiffType().getLabel(),
+                rec.getSourceAInfo(),
+                rec.getFileA() != null ? rec.getFileA().getAbsolutePath() : "Not present",
+                rec.getSourceBInfo(),
+                rec.getFileB() != null ? rec.getFileB().getAbsolutePath() : "Not present"
+        ));
+        detail.showAndWait();
+    }
+
+    private Button createFilterBtn(String text, DiffType type, List<Button> group, boolean active) {
         Button btn = new Button(text);
-        btn.getStyleClass().add("btn-secondary");
-        btn.setStyle("-fx-font-size: 10px; -fx-padding: 3 8 3 8;");
-        btn.setOnAction(e -> applyFilter(type));
+        btn.getStyleClass().add(active ? "btn-secondary" : "btn-ghost");
+        btn.setStyle("-fx-font-size: 12px; -fx-font-weight: 600; -fx-padding: 4 10; -fx-background-radius: 6;");
+        btn.setOnAction(e -> {
+            activeFilter = type;
+            for (Button b : group) {
+                b.getStyleClass().removeAll("btn-ghost", "btn-secondary");
+                b.getStyleClass().add(b == btn ? "btn-secondary" : "btn-ghost");
+            }
+            updateTableFilter();
+        });
+        group.add(btn);
         return btn;
     }
 
-    private void applyFilter(DiffType type) {
-        this.activeFilter = type;
+    private void updateTableFilter() {
+        String q = searchField.getText() != null ? searchField.getText().toLowerCase().trim() : "";
         filteredItems.setPredicate(item -> {
-            if (type == null) return true;
-            return item.getDiffType() == type;
+            if (activeFilter != null && item.getDiffType() != activeFilter) {
+                return false;
+            }
+            if (q.isEmpty()) return true;
+            return (item.getRelativePath() != null && item.getRelativePath().toLowerCase().contains(q)) ||
+                   (item.getSourceAInfo() != null && item.getSourceAInfo().toLowerCase().contains(q)) ||
+                   (item.getSourceBInfo() != null && item.getSourceBInfo().toLowerCase().contains(q));
         });
+
+        int size = filteredItems.size();
+        tableCountLabel.setText(size + (size == 1 ? " file" : " files"));
+        updateEmptyState();
+    }
+
+    private void updateEmptyState() {
+        VBox emptyBox = new VBox(10);
+        emptyBox.setAlignment(Pos.CENTER);
+        emptyBox.setPadding(new Insets(36, 20, 36, 20));
+
+        if (!hasCompared) {
+            Node icon = UiIcons.createSvgIcon(UiIcons.DIFF, 36, "#A78BFA");
+            Label title = new Label("No comparison results yet");
+            title.setStyle("-fx-font-size: 15px; -fx-font-weight: 700; -fx-text-fill: #FAFAFA;");
+            Label sub = new Label("Choose two collections and compare their files to see differences here.");
+            sub.setStyle("-fx-font-size: 12px; -fx-text-fill: #71717A;");
+            emptyBox.getChildren().addAll(icon, title, sub);
+        } else if (masterItems.isEmpty() || (filteredItems.isEmpty() && activeFilter == null)) {
+            Node icon = UiIcons.createSvgIcon(UiIcons.CHECK_CIRCLE, 36, "#10B981");
+            Label title = new Label("Collections are identical");
+            title.setStyle("-fx-font-size: 15px; -fx-font-weight: 700; -fx-text-fill: #10B981;");
+            Label sub = new Label("All scanned files have matching content and checksums.");
+            sub.setStyle("-fx-font-size: 12px; -fx-text-fill: #71717A;");
+            emptyBox.getChildren().addAll(icon, title, sub);
+        } else {
+            Node icon = UiIcons.createSvgIcon(UiIcons.SEARCH, 32, "#71717A");
+            Label title = new Label("No matching files found");
+            title.setStyle("-fx-font-size: 14px; -fx-font-weight: 700; -fx-text-fill: #FAFAFA;");
+            Label sub = new Label("Try changing your filter or clearing the search box.");
+            sub.setStyle("-fx-font-size: 12px; -fx-text-fill: #71717A;");
+            emptyBox.getChildren().addAll(icon, title, sub);
+        }
+
+        tableView.setPlaceholder(emptyBox);
     }
 
     private void chooseFolderA() {
         DirectoryChooser dc = new DirectoryChooser();
-        dc.setTitle("Select Source A: Original Photo Collection");
+        dc.setTitle("Select Original Photo Collection (Source A)");
         File dir = dc.showDialog(stage);
         if (dir != null) {
             folderA = dir;
-            sourceAPathLabel.setText(dir.getName() + " (" + dir.getAbsolutePath() + ")");
+            sourceANameLabel.setText(dir.getName());
+            Tooltip.install(sourceANameLabel, new Tooltip(dir.getAbsolutePath()));
             scanCollectionQuickStats(dir, sourceAStatsLabel);
+            checkReadyState();
         }
     }
 
     private void chooseFolderB() {
         DirectoryChooser dc = new DirectoryChooser();
-        dc.setTitle("Select Source B: Backup / Export Archive");
+        dc.setTitle("Select Backup Collection (Source B)");
         File dir = dc.showDialog(stage);
         if (dir != null) {
             folderB = dir;
-            sourceBPathLabel.setText(dir.getName() + " (" + dir.getAbsolutePath() + ")");
+            sourceBNameLabel.setText(dir.getName());
+            Tooltip.install(sourceBNameLabel, new Tooltip(dir.getAbsolutePath()));
             scanCollectionQuickStats(dir, sourceBStatsLabel);
+            checkReadyState();
+        }
+    }
+
+    private void checkReadyState() {
+        boolean ready = (folderA != null && folderB != null);
+        btnCompare.setDisable(!ready);
+        if (ready) {
+            statusProgressLabel.setText("Ready to compare. Click 'Compare Files' to begin.");
+        } else {
+            statusProgressLabel.setText("Select two folders to begin.");
         }
     }
 
@@ -363,9 +572,9 @@ public class ArchiveCompareFxView extends VBox {
                 } catch (Exception ignored) {}
                 double gb = totalBytes / (1024.0 * 1024.0 * 1024.0);
                 if (gb >= 1.0) {
-                    return String.format("%d media files · %.2f GB", count, gb);
+                    return String.format("%d files · %.2f GB", count, gb);
                 } else {
-                    return String.format("%d media files · %.1f MB", count, totalBytes / (1024.0 * 1024.0));
+                    return String.format("%d files · %.1f MB", count, totalBytes / (1024.0 * 1024.0));
                 }
             }
         };
@@ -376,17 +585,14 @@ public class ArchiveCompareFxView extends VBox {
     }
 
     private void runComparison() {
-        if (folderA == null || folderB == null) {
-            Alert alert = new Alert(Alert.AlertType.WARNING, "Please select both Source A and Source B collections to run comparison.", ButtonType.OK);
-            alert.show();
-            return;
-        }
+        if (folderA == null || folderB == null) return;
 
         btnCompare.setDisable(true);
         progressBar.setVisible(true);
         progressBar.setProgress(ProgressIndicator.INDETERMINATE_PROGRESS);
         statusProgressLabel.setText("Scanning and indexing collections...");
         masterItems.clear();
+        hasCompared = false;
 
         Task<ComparisonResult> task = new Task<>() {
             @Override
@@ -398,6 +604,7 @@ public class ArchiveCompareFxView extends VBox {
         task.setOnSucceeded(e -> {
             ComparisonResult res = task.getValue();
             masterItems.addAll(res.getRecords());
+            hasCompared = true;
 
             countExact.setText(String.valueOf(res.getExactCount()));
             countMissing.setText(String.valueOf(res.getMissingCount()));
@@ -406,25 +613,12 @@ public class ArchiveCompareFxView extends VBox {
 
             btnCompare.setDisable(false);
             progressBar.setVisible(false);
-            statusProgressLabel.setText(String.format("Comparison complete (%d total files compared)", res.getRecords().size()));
+            btnExportCsv.setDisable(masterItems.isEmpty());
+            btnExportJson.setDisable(masterItems.isEmpty());
+            btnSafeCopy.setDisable(res.getMissingCount() == 0);
 
-            Alert alert = new Alert(Alert.AlertType.INFORMATION);
-            alert.initOwner(stage);
-            alert.setTitle("Comparison Finished");
-            alert.setHeaderText("Archive Comparison Complete");
-            alert.setContentText(String.format(
-                    "Comparison completed for %d total media items.\n\n"
-                    + "• Exact Matches: %d\n"
-                    + "• Missing in Backup: %d\n"
-                    + "• Additional in Backup: %d\n"
-                    + "• Modified Content: %d",
-                    res.getRecords().size(),
-                    res.getExactCount(),
-                    res.getMissingCount(),
-                    res.getAdditionalCount(),
-                    res.getModifiedCount()
-            ));
-            alert.show();
+            statusProgressLabel.setText(String.format("Comparison complete: %d total files analyzed.", res.getRecords().size()));
+            updateTableFilter();
         });
 
         task.setOnFailed(e -> {
@@ -445,32 +639,32 @@ public class ArchiveCompareFxView extends VBox {
                 .toList();
 
         if (missingItems.isEmpty()) {
-            Alert alert = new Alert(Alert.AlertType.INFORMATION, "No missing files found to copy into Source B.", ButtonType.OK);
+            Alert alert = new Alert(Alert.AlertType.INFORMATION, "No missing files found to copy into Backup Collection.", ButtonType.OK);
             alert.show();
             return;
         }
 
         Alert confirm = new Alert(Alert.AlertType.CONFIRMATION);
-        confirm.setTitle("Safe Copy Verification");
-        confirm.setHeaderText(String.format("Copy %d missing files to Source B?", missingItems.size()));
-        confirm.setContentText("This will copy missing files from Source A directly into their matching subdirectories in Source B.\nExisting files in Source B will NEVER be overwritten.");
+        confirm.setTitle("Safe File Restoration");
+        confirm.setHeaderText(String.format("Restore %d missing files to Backup Collection?", missingItems.size()));
+        confirm.setContentText("This will copy missing files from Original into their corresponding folder paths in Backup.\nExisting files in Backup will NEVER be overwritten.");
 
         Optional<ButtonType> opt = confirm.showAndWait();
         if (opt.isPresent() && opt.get() == ButtonType.OK) {
             try {
                 int copied = compareService.safeCopyMissing(missingItems, folderB.toPath());
-                Alert info = new Alert(Alert.AlertType.INFORMATION, String.format("Successfully copied %d files into Source B.", copied), ButtonType.OK);
+                Alert info = new Alert(Alert.AlertType.INFORMATION, String.format("Successfully restored %d files into Backup.", copied), ButtonType.OK);
                 info.show();
                 runComparison();
             } catch (Exception ex) {
-                Alert error = new Alert(Alert.AlertType.ERROR, "Safe copy error: " + ex.getMessage(), ButtonType.OK);
+                Alert error = new Alert(Alert.AlertType.ERROR, "Safe restoration error: " + ex.getMessage(), ButtonType.OK);
                 error.show();
             }
         }
     }
 
     private void exportToCsv() {
-        if (masterItems.isEmpty()) return;
+        if (filteredItems.isEmpty()) return;
         FileChooser chooser = new FileChooser();
         chooser.setTitle("Save Comparison Report CSV");
         chooser.getExtensionFilters().add(new FileChooser.ExtensionFilter("CSV File (*.csv)", "*.csv"));
@@ -478,13 +672,13 @@ public class ArchiveCompareFxView extends VBox {
         File dest = chooser.showSaveDialog(stage);
         if (dest != null) {
             try (PrintWriter pw = new PrintWriter(dest, StandardCharsets.UTF_8)) {
-                pw.write(compareService.exportCsv(masterItems));
+                pw.write(compareService.exportCsv(filteredItems));
             } catch (Exception ignored) {}
         }
     }
 
     private void exportToJson() {
-        if (masterItems.isEmpty()) return;
+        if (filteredItems.isEmpty()) return;
         FileChooser chooser = new FileChooser();
         chooser.setTitle("Save Comparison Report JSON");
         chooser.getExtensionFilters().add(new FileChooser.ExtensionFilter("JSON File (*.json)", "*.json"));
@@ -492,7 +686,7 @@ public class ArchiveCompareFxView extends VBox {
         File dest = chooser.showSaveDialog(stage);
         if (dest != null) {
             try (PrintWriter pw = new PrintWriter(dest, StandardCharsets.UTF_8)) {
-                pw.write(compareService.exportJson(masterItems));
+                pw.write(compareService.exportJson(filteredItems));
             } catch (Exception ignored) {}
         }
     }

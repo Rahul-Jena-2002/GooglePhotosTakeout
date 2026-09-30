@@ -408,4 +408,76 @@ public class SystemHardwareInfo {
         } catch (Throwable ignored) {}
         return 0.0;
     }
+
+    /**
+     * Genuine operating system physical working set RAM consumed by this process in bytes.
+     * Matches Windows Task Manager ("Memory"), Linux top/ps RSS, and macOS Activity Monitor.
+     */
+    public static long getProcessWorkingSetBytes() {
+        if (IS_WIN) {
+            try {
+                com.sun.jna.platform.win32.WinNT.HANDLE proc = com.sun.jna.platform.win32.Kernel32.INSTANCE.GetCurrentProcess();
+                WinPsapi.PROCESS_MEMORY_COUNTERS counters = new WinPsapi.PROCESS_MEMORY_COUNTERS();
+                if (WinPsapi.INSTANCE.GetProcessMemoryInfo(proc, counters, counters.size())) {
+                    long ws = counters.WorkingSetSize.longValue();
+                    if (ws > 0) return ws;
+                }
+            } catch (Throwable ignored) {}
+        } else if (IS_LINUX) {
+            try {
+                File status = new File("/proc/self/status");
+                if (status.exists()) {
+                    try (BufferedReader reader = new BufferedReader(new InputStreamReader(new FileInputStream(status), StandardCharsets.US_ASCII), 1024)) {
+                        String line;
+                        while ((line = reader.readLine()) != null) {
+                            if (line.startsWith("VmRSS:")) {
+                                return parseMeminfoKb(line);
+                            }
+                        }
+                    }
+                }
+            } catch (Throwable ignored) {}
+        }
+
+        // Fallback: Total committed memory (Heap + Non-Heap Metaspace/CodeCache)
+        try {
+            var mem = ManagementFactory.getMemoryMXBean();
+            long totalCommitted = mem.getHeapMemoryUsage().getCommitted() + mem.getNonHeapMemoryUsage().getCommitted();
+            if (totalCommitted > 0) return totalCommitted;
+        } catch (Throwable ignored) {}
+
+        Runtime rt = Runtime.getRuntime();
+        return rt.totalMemory();
+    }
+
+    public static long getProcessWorkingSetMB() {
+        return getProcessWorkingSetBytes() / (1024 * 1024);
+    }
+
+    private interface WinPsapi extends com.sun.jna.win32.StdCallLibrary {
+        WinPsapi INSTANCE = com.sun.jna.Native.load("psapi", WinPsapi.class);
+
+        class PROCESS_MEMORY_COUNTERS extends com.sun.jna.Structure {
+            public int cb;
+            public int PageFaultCount;
+            public com.sun.jna.platform.win32.BaseTSD.SIZE_T PeakWorkingSetSize;
+            public com.sun.jna.platform.win32.BaseTSD.SIZE_T WorkingSetSize;
+            public com.sun.jna.platform.win32.BaseTSD.SIZE_T QuotaPeakPagedPoolUsage;
+            public com.sun.jna.platform.win32.BaseTSD.SIZE_T QuotaPagedPoolUsage;
+            public com.sun.jna.platform.win32.BaseTSD.SIZE_T QuotaPeakNonPagedPoolUsage;
+            public com.sun.jna.platform.win32.BaseTSD.SIZE_T QuotaNonPagedPoolUsage;
+            public com.sun.jna.platform.win32.BaseTSD.SIZE_T PagefileUsage;
+            public com.sun.jna.platform.win32.BaseTSD.SIZE_T PeakPagefileUsage;
+
+            @Override
+            protected java.util.List<String> getFieldOrder() {
+                return java.util.List.of("cb", "PageFaultCount", "PeakWorkingSetSize", "WorkingSetSize",
+                        "QuotaPeakPagedPoolUsage", "QuotaPagedPoolUsage", "QuotaPeakNonPagedPoolUsage",
+                        "QuotaNonPagedPoolUsage", "PagefileUsage", "PeakPagefileUsage");
+            }
+        }
+
+        boolean GetProcessMemoryInfo(com.sun.jna.platform.win32.WinNT.HANDLE hProcess, PROCESS_MEMORY_COUNTERS counters, int cb);
+    }
 }
+
