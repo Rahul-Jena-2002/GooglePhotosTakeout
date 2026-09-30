@@ -482,27 +482,27 @@ export function PhotoVaultPanel() {
       : null
 
   return (
-    <div className="flex-grow flex flex-col p-4 sm:p-6 bg-black text-zinc-200 overflow-y-auto max-w-6xl mx-auto w-full">
+    <div className="flex-grow flex flex-col p-4 sm:p-6 bg-white dark:bg-[#0D0E12] text-zinc-900 dark:text-zinc-100 overflow-y-auto max-w-6xl mx-auto w-full transition-colors">
       {/* Header Banner */}
-      <div className="mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-zinc-800 pb-5">
+      <div className="mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-zinc-200 dark:border-zinc-800 pb-5">
         <div>
           <div className="flex items-center gap-2 mb-1">
-            <ShieldCheck className="w-5 h-5 text-emerald-400" />
-            <h2 className="text-lg font-bold text-white tracking-wide uppercase">
+            <ShieldCheck className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
+            <h2 className="text-lg font-bold text-zinc-900 dark:text-white tracking-wide uppercase">
               PhotoVault Backup Verifier
             </h2>
-            <span className="text-[10px] uppercase font-mono px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-bold">
+            <span className="text-[10px] uppercase font-mono px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 font-bold">
               100% Offline
             </span>
           </div>
-          <p className="text-xs text-zinc-400">
+          <p className="text-xs text-zinc-500 dark:text-zinc-400">
             Compare photo folders and verify bit-for-bit SHA-256 stream digests. 100% read-only access.
           </p>
         </div>
 
         <a
           href="/download"
-          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-xs font-semibold text-zinc-300 hover:text-white transition-all w-fit shadow-xs"
+          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-900 dark:hover:bg-zinc-800 border border-zinc-200 dark:border-zinc-800 text-xs font-semibold text-zinc-800 dark:text-zinc-300 hover:text-zinc-900 dark:hover:text-white transition-all w-fit shadow-xs"
         >
           <ExternalLink className="w-3.5 h-3.5" />
           <span>Need Terabyte Desktop App?</span>
@@ -583,18 +583,18 @@ export function PhotoVaultPanel() {
       {/* Folder Selection Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
         {/* 1. Original Folder */}
-        <Card className="bg-zinc-950/60 border-zinc-800">
-          <CardHeader className="py-3 px-4 border-b border-zinc-800/80 bg-zinc-900/40">
-            <CardTitle className="text-xs font-bold uppercase tracking-wider text-zinc-300 flex items-center justify-between">
+        <Card className="bg-zinc-50/50 dark:bg-zinc-900/40 border-zinc-200 dark:border-zinc-800">
+          <CardHeader className="py-3 px-4 border-b border-zinc-200 dark:border-zinc-800/80 bg-zinc-100/60 dark:bg-zinc-900/40">
+            <CardTitle className="text-xs font-bold uppercase tracking-wider text-zinc-700 dark:text-zinc-300 flex items-center justify-between">
               <span className="flex items-center gap-2">
-                <HardDrive className="w-4 h-4 text-indigo-400" />
+                <HardDrive className="w-4 h-4 text-zinc-700 dark:text-zinc-300" />
                 1. Original Folder (Source)
               </span>
               {origFolder && (
                 <button
                   onClick={handlePickOriginal}
                   disabled={verState === 'scanning' || verState === 'hashing'}
-                  className="text-[10px] text-zinc-400 hover:text-white font-bold transition-all px-2 py-0.5 rounded border border-zinc-800 hover:border-zinc-700 bg-zinc-900"
+                  className="text-[10px] text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white font-bold transition-all px-2 py-0.5 rounded border border-zinc-300 dark:border-zinc-800 hover:border-zinc-400 dark:hover:border-zinc-700 bg-white dark:bg-zinc-900"
                 >
                   Change
                 </button>
@@ -603,14 +603,14 @@ export function PhotoVaultPanel() {
           </CardHeader>
           <CardContent className="p-4 flex flex-col justify-between min-h-[110px]">
             {origFolder ? (
-              <div className="flex items-center justify-between p-2.5 rounded-lg bg-zinc-900 border border-zinc-800 text-xs">
-                <span className="font-mono text-white truncate mr-2">{origFolder.name}</span>
-                <CheckCircle2 className="w-4 h-4 text-emerald-400 flex-shrink-0" />
+              <div className="flex items-center justify-between p-2.5 rounded-lg bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-xs">
+                <span className="font-mono text-zinc-900 dark:text-white truncate mr-2">{origFolder.name}</span>
+                <CheckCircle2 className="w-4 h-4 text-emerald-500 dark:text-emerald-400 flex-shrink-0" />
               </div>
             ) : (
               <Button
                 onClick={handlePickOriginal}
-                className="btn-monochrome-primary w-full py-4 text-xs font-bold flex items-center justify-center gap-2"
+                className="w-full py-4 text-xs font-bold flex items-center justify-center gap-2 bg-zinc-900 hover:bg-zinc-800 dark:bg-zinc-100 dark:hover:bg-white text-white dark:text-zinc-900 shadow-xs cursor-pointer"
               >
                 <HardDrive className="w-4 h-4" /> Select Original Folder
               </Button>
@@ -622,18 +622,18 @@ export function PhotoVaultPanel() {
         </Card>
 
         {/* 2. Backup Folder */}
-        <Card className="bg-zinc-950/60 border-zinc-800">
-          <CardHeader className="py-3 px-4 border-b border-zinc-800/80 bg-zinc-900/40">
-            <CardTitle className="text-xs font-bold uppercase tracking-wider text-zinc-300 flex items-center justify-between">
+        <Card className="bg-zinc-50/50 dark:bg-zinc-900/40 border-zinc-200 dark:border-zinc-800">
+          <CardHeader className="py-3 px-4 border-b border-zinc-200 dark:border-zinc-800/80 bg-zinc-100/60 dark:bg-zinc-900/40">
+            <CardTitle className="text-xs font-bold uppercase tracking-wider text-zinc-700 dark:text-zinc-300 flex items-center justify-between">
               <span className="flex items-center gap-2">
-                <FolderSync className="w-4 h-4 text-emerald-400" />
+                <FolderSync className="w-4 h-4 text-zinc-700 dark:text-zinc-300" />
                 2. Backup Folder (Destination)
               </span>
               {backupFolder && (
                 <button
                   onClick={handlePickBackup}
                   disabled={verState === 'scanning' || verState === 'hashing'}
-                  className="text-[10px] text-zinc-400 hover:text-white font-bold transition-all px-2 py-0.5 rounded border border-zinc-800 hover:border-zinc-700 bg-zinc-900"
+                  className="text-[10px] text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white font-bold transition-all px-2 py-0.5 rounded border border-zinc-300 dark:border-zinc-800 hover:border-zinc-400 dark:hover:border-zinc-700 bg-white dark:bg-zinc-900"
                 >
                   Change
                 </button>
@@ -642,14 +642,14 @@ export function PhotoVaultPanel() {
           </CardHeader>
           <CardContent className="p-4 flex flex-col justify-between min-h-[110px]">
             {backupFolder ? (
-              <div className="flex items-center justify-between p-2.5 rounded-lg bg-zinc-900 border border-zinc-800 text-xs">
-                <span className="font-mono text-white truncate mr-2">{backupFolder.name}</span>
-                <CheckCircle2 className="w-4 h-4 text-emerald-400 flex-shrink-0" />
+              <div className="flex items-center justify-between p-2.5 rounded-lg bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-xs">
+                <span className="font-mono text-zinc-900 dark:text-white truncate mr-2">{backupFolder.name}</span>
+                <CheckCircle2 className="w-4 h-4 text-emerald-500 dark:text-emerald-400 flex-shrink-0" />
               </div>
             ) : (
               <Button
                 onClick={handlePickBackup}
-                className="btn-monochrome-primary w-full py-4 text-xs font-bold flex items-center justify-center gap-2"
+                className="w-full py-4 text-xs font-bold flex items-center justify-center gap-2 bg-zinc-900 hover:bg-zinc-800 dark:bg-zinc-100 dark:hover:bg-white text-white dark:text-zinc-900 shadow-xs cursor-pointer"
               >
                 <FolderSync className="w-4 h-4" /> Select Backup Folder
               </Button>
@@ -662,21 +662,21 @@ export function PhotoVaultPanel() {
       </div>
 
       {/* Action / Progress Strip */}
-      <div className="p-4 rounded-xl bg-zinc-950 border border-zinc-800 mb-6 flex flex-col gap-3">
+      <div className="p-4 rounded-xl bg-zinc-50 dark:bg-zinc-900/60 border border-zinc-200 dark:border-zinc-800 mb-6 flex flex-col gap-3">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div className="flex items-center gap-3">
             {verState === 'idle' || verState === 'completed' || verState === 'cancelled' || verState === 'error' ? (
               <Button
                 onClick={startVerification}
                 disabled={!origFolder || !backupFolder}
-                className="btn-monochrome-primary px-5 py-2 text-xs font-bold flex items-center gap-2 disabled:opacity-40"
+                className="px-5 py-2 text-xs font-bold flex items-center gap-2 bg-zinc-900 hover:bg-zinc-800 dark:bg-zinc-100 dark:hover:bg-white text-white dark:text-zinc-900 shadow-xs disabled:opacity-40 cursor-pointer"
               >
                 <Play className="w-4 h-4 fill-current" /> Start Bit-for-Bit Verification
               </Button>
             ) : (
               <Button
                 onClick={cancelVerification}
-                className="btn-monochrome-primary px-5 py-2 text-xs font-bold flex items-center gap-2 bg-rose-600 hover:bg-rose-500 text-white"
+                className="px-5 py-2 text-xs font-bold flex items-center gap-2 bg-rose-600 hover:bg-rose-500 text-white cursor-pointer"
               >
                 <Square className="w-4 h-4 fill-current" /> Cancel Verification
               </Button>
@@ -695,52 +695,51 @@ export function PhotoVaultPanel() {
           </div>
 
           <div className="text-right text-xs font-mono">
-            <span className="text-zinc-400">{statusMessage}</span>
+            <span className="text-zinc-500 dark:text-zinc-400">{statusMessage}</span>
             {throughputMbps > 0 && verState === 'hashing' && (
-              <span className="text-emerald-400 font-bold ml-3">⚡ {throughputMbps} MB/s</span>
+              <span className="text-emerald-600 dark:text-emerald-400 font-bold ml-3">⚡ {throughputMbps} MB/s</span>
             )}
           </div>
         </div>
 
         {(verState === 'scanning' || verState === 'hashing') && (
           <div>
-            <div className="flex justify-between text-[11px] font-mono text-zinc-400 mb-1">
+            <div className="flex justify-between text-[11px] font-mono text-zinc-500 dark:text-zinc-400 mb-1">
               <span>{verState === 'scanning' ? 'DISCOVERY PHASE' : 'STREAM DIGEST HASHING'}</span>
               <span>{progressPercent}%</span>
             </div>
-            <Progress value={progressPercent} className="h-2 bg-zinc-900 rounded-full" />
+            <Progress value={progressPercent} className="h-2 bg-zinc-200 dark:bg-zinc-900 rounded-full" />
           </div>
         )}
       </div>
 
       {/* Telemetry Metrics Grid */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
-        <div className="p-3 rounded-xl bg-zinc-950/70 border border-zinc-800 text-center">
-          <div className="text-[10px] font-mono uppercase text-zinc-500">Verified Matched</div>
-          <div className="text-lg font-black text-emerald-400 font-mono mt-0.5">{stats.matchedCount}</div>
+        <div className="p-3 rounded-xl bg-zinc-50 dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 text-center">
+          <div className="text-[10px] font-mono uppercase text-zinc-500 dark:text-zinc-400">Verified Matched</div>
+          <div className="text-lg font-black text-emerald-600 dark:text-emerald-400 font-mono mt-0.5">{stats.matchedCount}</div>
         </div>
-        <div className="p-3 rounded-xl bg-zinc-950/70 border border-zinc-800 text-center">
-          <div className="text-[10px] font-mono uppercase text-zinc-500">Missing in Backup</div>
-          <div className={`text-lg font-black font-mono mt-0.5 ${stats.missingCount > 0 ? 'text-rose-400' : 'text-zinc-400'}`}>
+        <div className="p-3 rounded-xl bg-zinc-50 dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 text-center">
+          <div className="text-[10px] font-mono uppercase text-zinc-500 dark:text-zinc-400">Missing in Backup</div>
+          <div className={`text-lg font-black font-mono mt-0.5 ${stats.missingCount > 0 ? 'text-rose-500 dark:text-rose-400' : 'text-zinc-500 dark:text-zinc-400'}`}>
             {stats.missingCount}
           </div>
         </div>
-        <div className="p-3 rounded-xl bg-zinc-950/70 border border-zinc-800 text-center">
-          <div className="text-[10px] font-mono uppercase text-zinc-500">Size / Hash Mismatch</div>
-          <div className={`text-lg font-black font-mono mt-0.5 ${stats.sizeMismatchCount + stats.hashMismatchCount > 0 ? 'text-amber-400' : 'text-zinc-400'}`}>
+        <div className="p-3 rounded-xl bg-zinc-50 dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 text-center">
+          <div className="text-[10px] font-mono uppercase text-zinc-500 dark:text-zinc-400">Size / Hash Mismatch</div>
+          <div className={`text-lg font-black font-mono mt-0.5 ${stats.sizeMismatchCount + stats.hashMismatchCount > 0 ? 'text-amber-500 dark:text-amber-400' : 'text-zinc-500 dark:text-zinc-400'}`}>
             {stats.sizeMismatchCount + stats.hashMismatchCount}
           </div>
         </div>
-        <div className="p-3 rounded-xl bg-zinc-950/70 border border-zinc-800 text-center">
-          <div className="text-[10px] font-mono uppercase text-zinc-500">OS Noise Excluded</div>
-          <div className="text-lg font-black text-zinc-400 font-mono mt-0.5">{stats.excludedCount}</div>
+        <div className="p-3 rounded-xl bg-zinc-50 dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 text-center">
+          <div className="text-[10px] font-mono uppercase text-zinc-500 dark:text-zinc-400">OS Noise Excluded</div>
         </div>
       </div>
 
       {/* Discrepancies Table */}
       {discrepancies.length > 0 && (
-        <div className="p-4 rounded-xl bg-zinc-950 border border-zinc-800">
-          <h3 className="text-xs font-bold text-white uppercase tracking-wider mb-3">
+        <div className="p-4 rounded-xl bg-zinc-50 dark:bg-zinc-900/60 border border-zinc-200 dark:border-zinc-800">
+          <h3 className="text-xs font-bold text-zinc-900 dark:text-white uppercase tracking-wider mb-3">
             Discrepancies Manifest ({discrepancies.length})
           </h3>
           <div className="max-h-72 overflow-y-auto font-mono text-xs">

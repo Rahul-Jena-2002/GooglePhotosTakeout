@@ -160,30 +160,32 @@ export function ToolWorkspaceContent() {
           zipMode={pipeline.zipMode}
         />
 
-        {/* Left sidebar: command center */}
-        <CommandSidebar
-          plan={pipeline.plan}
-          tierThresholds={pipeline.tierThresholds}
-          isFreePromoActive={pipeline.isFreePromoActive}
-          limitFiles={pipeline.limitFiles}
-          limitBytes={pipeline.limitBytes}
-          currentUsedFiles={pipeline.currentUsedFiles}
-          currentUsedBytes={pipeline.currentUsedBytes}
-          sessionFiles={pipeline.sessionFiles}
-          sessionBytes={pipeline.sessionBytes}
-          formatByteSize={pipeline.formatByteSize}
-          stats={pipeline.stats}
-          isProcessing={pipeline.isProcessing}
-          isPaused={pipeline.isPaused}
-          useDeepExif={pipeline.useDeepExif}
-          maxWorkers={pipeline.maxWorkers}
-          telemetryCpu={pipeline.telemetryCpu}
-          telemetryMem={pipeline.telemetryMem}
-          telemetryTabHeap={pipeline.telemetryTabHeap}
-          telemetryWorkers={pipeline.telemetryWorkers}
-          userData={pipeline.userData}
-          resetUserQuota={pipeline.resetUserQuota}
-        />
+        {/* Left sidebar: command center - ONLY visible on Restore tab */}
+        {pipeline.activeToolTab === 'restore' && (
+          <CommandSidebar
+            plan={pipeline.plan}
+            tierThresholds={pipeline.tierThresholds}
+            isFreePromoActive={pipeline.isFreePromoActive}
+            limitFiles={pipeline.limitFiles}
+            limitBytes={pipeline.limitBytes}
+            currentUsedFiles={pipeline.currentUsedFiles}
+            currentUsedBytes={pipeline.currentUsedBytes}
+            sessionFiles={pipeline.sessionFiles}
+            sessionBytes={pipeline.sessionBytes}
+            formatByteSize={pipeline.formatByteSize}
+            stats={pipeline.stats}
+            isProcessing={pipeline.isProcessing}
+            isPaused={pipeline.isPaused}
+            useDeepExif={pipeline.useDeepExif}
+            maxWorkers={pipeline.maxWorkers}
+            telemetryCpu={pipeline.telemetryCpu}
+            telemetryMem={pipeline.telemetryMem}
+            telemetryTabHeap={pipeline.telemetryTabHeap}
+            telemetryWorkers={pipeline.telemetryWorkers}
+            userData={pipeline.userData}
+            resetUserQuota={pipeline.resetUserQuota}
+          />
+        )}
 
       </div>
 

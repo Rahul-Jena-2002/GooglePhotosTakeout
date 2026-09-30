@@ -390,20 +390,20 @@ export function PhotoStudioPanel() {
   }
 
   return (
-    <div className="flex-1 flex flex-col p-4 md:p-6 bg-zinc-950 text-zinc-100 min-h-screen">
+    <div className="flex-1 flex flex-col p-4 md:p-6 bg-white dark:bg-[#0D0E12] text-zinc-900 dark:text-zinc-100 min-h-screen transition-colors">
       {/* Top Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between pb-6 border-b border-zinc-800/80 gap-4">
+      <div className="flex flex-col md:flex-row md:items-center justify-between pb-6 border-b border-zinc-200 dark:border-zinc-800/80 gap-4">
         <div>
           <div className="flex items-center gap-2 mb-1">
-            <div className="p-2 rounded-lg bg-purple-500/10 border border-purple-500/20 text-purple-400">
+            <div className="p-2 rounded-lg bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 text-zinc-700 dark:text-zinc-300">
               <Sliders className="w-5 h-5" />
             </div>
-            <h1 className="text-xl md:text-2xl font-bold tracking-tight">Photo Studio Suite</h1>
-            <span className="text-xs px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-300 font-semibold border border-purple-500/30">
+            <h1 className="text-xl md:text-2xl font-bold tracking-tight text-zinc-900 dark:text-white">Photo Studio Suite</h1>
+            <span className="text-xs px-2 py-0.5 rounded-full bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 font-semibold border border-zinc-200 dark:border-zinc-700">
               Batch EXIF
             </span>
           </div>
-          <p className="text-sm text-zinc-400">
+          <p className="text-sm text-zinc-500 dark:text-zinc-400">
             Shift photo capture dates, customize photographer copyright stamps, and manage GPS metadata in bulk.
           </p>
         </div>
@@ -422,18 +422,18 @@ export function PhotoStudioPanel() {
             variant="outline" 
             size="sm" 
             onClick={() => fileInputRef.current?.click()}
-            className="border-zinc-800 hover:bg-zinc-900 text-xs font-semibold gap-1.5"
+            className="border-zinc-300 dark:border-zinc-800 hover:bg-zinc-100 dark:hover:bg-zinc-900 text-xs font-semibold gap-1.5 text-zinc-800 dark:text-zinc-200 shadow-xs cursor-pointer"
           >
-            <Upload className="w-3.5 h-3.5 text-zinc-400" />
+            <Upload className="w-3.5 h-3.5 text-zinc-500 dark:text-zinc-400" />
             Select Files
           </Button>
           <Button 
             variant="outline" 
             size="sm" 
             onClick={handlePickFolder}
-            className="border-zinc-800 hover:bg-zinc-900 text-xs font-semibold gap-1.5"
+            className="border-zinc-300 dark:border-zinc-800 hover:bg-zinc-100 dark:hover:bg-zinc-900 text-xs font-semibold gap-1.5 text-zinc-800 dark:text-zinc-200 shadow-xs cursor-pointer"
           >
-            <FolderUp className="w-3.5 h-3.5 text-zinc-400" />
+            <FolderUp className="w-3.5 h-3.5 text-zinc-500 dark:text-zinc-400" />
             Select Folder
           </Button>
           {photos.length > 0 && (
@@ -441,7 +441,7 @@ export function PhotoStudioPanel() {
               variant="ghost"
               size="sm"
               onClick={() => { setPhotos([]); setProcessedBlobs([]) }}
-              className="text-zinc-500 hover:text-rose-400 text-xs"
+              className="text-zinc-500 hover:text-rose-500 dark:hover:text-rose-400 text-xs cursor-pointer"
             >
               <Trash2 className="w-3.5 h-3.5" />
             </Button>
@@ -456,13 +456,13 @@ export function PhotoStudioPanel() {
         <div className="lg:col-span-7 space-y-4">
           
           {/* Segmented Mode Navigation */}
-          <div className="flex rounded-xl bg-zinc-900/80 p-1 border border-zinc-800/80">
+          <div className="flex rounded-xl bg-zinc-100 dark:bg-zinc-900/80 p-1 border border-zinc-200 dark:border-zinc-800/80">
             <button
               onClick={() => setActiveTab('date')}
-              className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-xs font-bold transition-all ${
+              className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer ${
                 activeTab === 'date'
-                  ? 'bg-purple-600 text-white shadow-sm'
-                  : 'text-zinc-400 hover:text-zinc-200'
+                  ? 'bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white shadow-xs border border-zinc-200/80 dark:border-zinc-700/60'
+                  : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200'
               }`}
             >
               <Calendar className="w-3.5 h-3.5" />
@@ -470,10 +470,10 @@ export function PhotoStudioPanel() {
             </button>
             <button
               onClick={() => setActiveTab('creator')}
-              className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-xs font-bold transition-all ${
+              className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer ${
                 activeTab === 'creator'
-                  ? 'bg-purple-600 text-white shadow-sm'
-                  : 'text-zinc-400 hover:text-zinc-200'
+                  ? 'bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white shadow-xs border border-zinc-200/80 dark:border-zinc-700/60'
+                  : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200'
               }`}
             >
               <User className="w-3.5 h-3.5" />
@@ -481,10 +481,10 @@ export function PhotoStudioPanel() {
             </button>
             <button
               onClick={() => setActiveTab('location')}
-              className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-xs font-bold transition-all ${
+              className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer ${
                 activeTab === 'location'
-                  ? 'bg-purple-600 text-white shadow-sm'
-                  : 'text-zinc-400 hover:text-zinc-200'
+                  ? 'bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white shadow-xs border border-zinc-200/80 dark:border-zinc-700/60'
+                  : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200'
               }`}
             >
               <MapPin className="w-3.5 h-3.5" />
@@ -494,90 +494,90 @@ export function PhotoStudioPanel() {
 
           {/* TAB 1: DATE SHIFTING */}
           {activeTab === 'date' && (
-            <Card className="bg-zinc-900/40 border-zinc-800/80">
-              <CardHeader className="pb-3">
-                <CardTitle className="text-base font-semibold flex items-center gap-2">
-                  <Clock className="w-4 h-4 text-purple-400" />
+            <Card className="bg-zinc-50/50 dark:bg-zinc-900/40 border-zinc-200 dark:border-zinc-800/80">
+              <CardHeader className="pb-3 border-b border-zinc-200/70 dark:border-zinc-800/60">
+                <CardTitle className="text-base font-semibold flex items-center gap-2 text-zinc-900 dark:text-white">
+                  <Clock className="w-4 h-4 text-zinc-700 dark:text-zinc-300" />
                   Date Adjustment Strategy
                 </CardTitle>
-                <CardDescription className="text-xs text-zinc-400">
+                <CardDescription className="text-xs text-zinc-500 dark:text-zinc-400">
                   Update EXIF DateTimeOriginal, DateTimeDigitized, and DateTime tags across all queued photos.
                 </CardDescription>
               </CardHeader>
-              <CardContent className="space-y-4">
+              <CardContent className="space-y-4 pt-4">
                 {/* Mode Selector */}
-                <div className="grid grid-cols-3 gap-2">
+                <div className="grid grid-cols-3 gap-2.5">
                   <button
                     onClick={() => setDateMode('shift')}
-                    className={`p-3 rounded-lg border text-left transition-all ${
+                    className={`p-3 rounded-lg border text-left transition-all cursor-pointer ${
                       dateMode === 'shift'
-                        ? 'border-purple-500 bg-purple-950/20 text-purple-200'
-                        : 'border-zinc-800 bg-zinc-950/40 text-zinc-400 hover:border-zinc-700'
+                        ? 'border-zinc-900 bg-white dark:border-zinc-500 dark:bg-zinc-800 text-zinc-900 dark:text-white shadow-xs font-semibold'
+                        : 'border-zinc-200 dark:border-zinc-800 bg-white/60 dark:bg-zinc-950/40 text-zinc-600 dark:text-zinc-400 hover:border-zinc-300 dark:hover:border-zinc-700'
                     }`}
                   >
                     <div className="text-xs font-bold">Relative Shift</div>
-                    <div className="text-[10px] text-zinc-500 mt-0.5">±Hours, minutes, days</div>
+                    <div className="text-[10px] text-zinc-500 dark:text-zinc-400 mt-0.5">±Hours, minutes, days</div>
                   </button>
                   <button
                     onClick={() => setDateMode('fixed')}
-                    className={`p-3 rounded-lg border text-left transition-all ${
+                    className={`p-3 rounded-lg border text-left transition-all cursor-pointer ${
                       dateMode === 'fixed'
-                        ? 'border-purple-500 bg-purple-950/20 text-purple-200'
-                        : 'border-zinc-800 bg-zinc-950/40 text-zinc-400 hover:border-zinc-700'
+                        ? 'border-zinc-900 bg-white dark:border-zinc-500 dark:bg-zinc-800 text-zinc-900 dark:text-white shadow-xs font-semibold'
+                        : 'border-zinc-200 dark:border-zinc-800 bg-white/60 dark:bg-zinc-950/40 text-zinc-600 dark:text-zinc-400 hover:border-zinc-300 dark:hover:border-zinc-700'
                     }`}
                   >
                     <div className="text-xs font-bold">Set Fixed Date</div>
-                    <div className="text-[10px] text-zinc-500 mt-0.5">Apply exact timestamp</div>
+                    <div className="text-[10px] text-zinc-500 dark:text-zinc-400 mt-0.5">Apply exact timestamp</div>
                   </button>
                   <button
                     onClick={() => setDateMode('sequence')}
-                    className={`p-3 rounded-lg border text-left transition-all ${
+                    className={`p-3 rounded-lg border text-left transition-all cursor-pointer ${
                       dateMode === 'sequence'
-                        ? 'border-purple-500 bg-purple-950/20 text-purple-200'
-                        : 'border-zinc-800 bg-zinc-950/40 text-zinc-400 hover:border-zinc-700'
+                        ? 'border-zinc-900 bg-white dark:border-zinc-500 dark:bg-zinc-800 text-zinc-900 dark:text-white shadow-xs font-semibold'
+                        : 'border-zinc-200 dark:border-zinc-800 bg-white/60 dark:bg-zinc-950/40 text-zinc-600 dark:text-zinc-400 hover:border-zinc-300 dark:hover:border-zinc-700'
                     }`}
                   >
                     <div className="text-xs font-bold">Sequential Order</div>
-                    <div className="text-[10px] text-zinc-500 mt-0.5">+N seconds per photo</div>
+                    <div className="text-[10px] text-zinc-500 dark:text-zinc-400 mt-0.5">+N seconds per photo</div>
                   </button>
                 </div>
 
                 {/* Shift Inputs */}
                 {dateMode === 'shift' && (
-                  <div className="grid grid-cols-3 gap-3 p-3 rounded-lg bg-zinc-950/60 border border-zinc-800/80">
+                  <div className="grid grid-cols-3 gap-3 p-3 rounded-lg bg-zinc-100/70 dark:bg-zinc-950/60 border border-zinc-200 dark:border-zinc-800/80">
                     <div>
-                      <label className="text-[11px] font-semibold text-zinc-400 uppercase tracking-wider block mb-1">
+                      <label className="text-[11px] font-semibold text-zinc-600 dark:text-zinc-400 uppercase tracking-wider block mb-1">
                         Days
                       </label>
                       <input
                         type="number"
                         value={shiftDays}
                         onChange={(e) => setShiftDays(parseInt(e.target.value, 10) || 0)}
-                        className="w-full px-2.5 py-1.5 bg-zinc-900 border border-zinc-700/80 rounded-md text-sm text-white focus:outline-none focus:border-purple-500"
+                        className="w-full px-2.5 py-1.5 bg-white dark:bg-zinc-900 border border-zinc-300 dark:border-zinc-700/80 rounded-md text-sm text-zinc-900 dark:text-white focus:outline-none focus:border-zinc-500"
                         placeholder="0"
                       />
                     </div>
                     <div>
-                      <label className="text-[11px] font-semibold text-zinc-400 uppercase tracking-wider block mb-1">
+                      <label className="text-[11px] font-semibold text-zinc-600 dark:text-zinc-400 uppercase tracking-wider block mb-1">
                         Hours (Timezone)
                       </label>
                       <input
                         type="number"
                         value={shiftHours}
                         onChange={(e) => setShiftHours(parseInt(e.target.value, 10) || 0)}
-                        className="w-full px-2.5 py-1.5 bg-zinc-900 border border-zinc-700/80 rounded-md text-sm text-white focus:outline-none focus:border-purple-500"
+                        className="w-full px-2.5 py-1.5 bg-white dark:bg-zinc-900 border border-zinc-300 dark:border-zinc-700/80 rounded-md text-sm text-zinc-900 dark:text-white focus:outline-none focus:border-zinc-500"
                         placeholder="0"
                       />
                     </div>
                     <div>
-                      <label className="text-[11px] font-semibold text-zinc-400 uppercase tracking-wider block mb-1">
+                      <label className="text-[11px] font-semibold text-zinc-600 dark:text-zinc-400 uppercase tracking-wider block mb-1">
                         Minutes
                       </label>
                       <input
                         type="number"
                         value={shiftMinutes}
                         onChange={(e) => setShiftMinutes(parseInt(e.target.value, 10) || 0)}
-                        className="w-full px-2.5 py-1.5 bg-zinc-900 border border-zinc-700/80 rounded-md text-sm text-white focus:outline-none focus:border-purple-500"
+                        className="w-full px-2.5 py-1.5 bg-white dark:bg-zinc-900 border border-zinc-300 dark:border-zinc-700/80 rounded-md text-sm text-zinc-900 dark:text-white focus:outline-none focus:border-zinc-500"
                         placeholder="0"
                       />
                     </div>
@@ -586,24 +586,24 @@ export function PhotoStudioPanel() {
 
                 {/* Fixed Date Input */}
                 {dateMode === 'fixed' && (
-                  <div className="p-3 rounded-lg bg-zinc-950/60 border border-zinc-800/80">
-                    <label className="text-[11px] font-semibold text-zinc-400 uppercase tracking-wider block mb-1">
+                  <div className="p-3 rounded-lg bg-zinc-100/70 dark:bg-zinc-950/60 border border-zinc-200 dark:border-zinc-800/80">
+                    <label className="text-[11px] font-semibold text-zinc-600 dark:text-zinc-400 uppercase tracking-wider block mb-1">
                       Target Date & Time
                     </label>
                     <input
                       type="datetime-local"
                       value={fixedDateTime}
                       onChange={(e) => setFixedDateTime(e.target.value)}
-                      className="w-full px-3 py-2 bg-zinc-900 border border-zinc-700/80 rounded-md text-sm text-white focus:outline-none focus:border-purple-500"
+                      className="w-full px-3 py-2 bg-white dark:bg-zinc-900 border border-zinc-300 dark:border-zinc-700/80 rounded-md text-sm text-zinc-900 dark:text-white focus:outline-none focus:border-zinc-500"
                     />
                   </div>
                 )}
 
                 {/* Sequential Increments */}
                 {dateMode === 'sequence' && (
-                  <div className="space-y-3 p-3 rounded-lg bg-zinc-950/60 border border-zinc-800/80">
+                  <div className="space-y-3 p-3 rounded-lg bg-zinc-100/70 dark:bg-zinc-950/60 border border-zinc-200 dark:border-zinc-800/80">
                     <div>
-                      <label className="text-[11px] font-semibold text-zinc-400 uppercase tracking-wider block mb-1">
+                      <label className="text-[11px] font-semibold text-zinc-600 dark:text-zinc-400 uppercase tracking-wider block mb-1">
                         Starting Date & Time (Optional)
                       </label>
                       <input
@@ -611,11 +611,11 @@ export function PhotoStudioPanel() {
                         value={fixedDateTime}
                         onChange={(e) => setFixedDateTime(e.target.value)}
                         placeholder="Keep first photo's date"
-                        className="w-full px-3 py-2 bg-zinc-900 border border-zinc-700/80 rounded-md text-sm text-white focus:outline-none focus:border-purple-500"
+                        className="w-full px-3 py-2 bg-white dark:bg-zinc-900 border border-zinc-300 dark:border-zinc-700/80 rounded-md text-sm text-zinc-900 dark:text-white focus:outline-none focus:border-zinc-500"
                       />
                     </div>
                     <div>
-                      <label className="text-[11px] font-semibold text-zinc-400 uppercase tracking-wider block mb-1">
+                      <label className="text-[11px] font-semibold text-zinc-600 dark:text-zinc-400 uppercase tracking-wider block mb-1">
                         Increment Interval (Seconds per photo)
                       </label>
                       <input
@@ -624,7 +624,7 @@ export function PhotoStudioPanel() {
                         max="3600"
                         value={seqIntervalSec}
                         onChange={(e) => setSeqIntervalSec(parseInt(e.target.value, 10) || 1)}
-                        className="w-full px-3 py-2 bg-zinc-900 border border-zinc-700/80 rounded-md text-sm text-white focus:outline-none focus:border-purple-500"
+                        className="w-full px-3 py-2 bg-white dark:bg-zinc-900 border border-zinc-300 dark:border-zinc-700/80 rounded-md text-sm text-zinc-900 dark:text-white focus:outline-none focus:border-zinc-500"
                       />
                     </div>
                   </div>
@@ -635,22 +635,22 @@ export function PhotoStudioPanel() {
 
           {/* TAB 2: CREATOR & PRESETS */}
           {activeTab === 'creator' && (
-            <Card className="bg-zinc-900/40 border-zinc-800/80">
-              <CardHeader className="pb-3">
-                <CardTitle className="text-base font-semibold flex items-center justify-between">
+            <Card className="bg-zinc-50/50 dark:bg-zinc-900/40 border-zinc-200 dark:border-zinc-800/80">
+              <CardHeader className="pb-3 border-b border-zinc-200/70 dark:border-zinc-800/60">
+                <CardTitle className="text-base font-semibold flex items-center justify-between text-zinc-900 dark:text-white">
                   <div className="flex items-center gap-2">
-                    <User className="w-4 h-4 text-purple-400" />
+                    <User className="w-4 h-4 text-zinc-700 dark:text-zinc-300" />
                     Photographer & Copyright Presets
                   </div>
-                  <span className="text-[10px] text-emerald-400 font-mono">Auto-saved</span>
+                  <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-mono">Auto-saved</span>
                 </CardTitle>
-                <CardDescription className="text-xs text-zinc-400">
+                <CardDescription className="text-xs text-zinc-500 dark:text-zinc-400">
                   Embed your copyright notice, photographer credit, and caption directly into EXIF Artist and Copyright fields.
                 </CardDescription>
               </CardHeader>
-              <CardContent className="space-y-4">
+              <CardContent className="space-y-4 pt-4">
                 <div>
-                  <label className="text-[11px] font-semibold text-zinc-400 uppercase tracking-wider block mb-1">
+                  <label className="text-[11px] font-semibold text-zinc-600 dark:text-zinc-400 uppercase tracking-wider block mb-1">
                     Photographer / Artist Name
                   </label>
                   <input
@@ -658,32 +658,32 @@ export function PhotoStudioPanel() {
                     value={creator.artist}
                     onChange={(e) => updateCreatorField('artist', e.target.value)}
                     placeholder="e.g. Rahul Jena"
-                    className="w-full px-3 py-2 bg-zinc-950 border border-zinc-700/80 rounded-md text-sm text-white focus:outline-none focus:border-purple-500"
+                    className="w-full px-3 py-2 bg-white dark:bg-zinc-950 border border-zinc-300 dark:border-zinc-700/80 rounded-md text-sm text-zinc-900 dark:text-white focus:outline-none focus:border-zinc-500"
                   />
                 </div>
 
                 <div>
                   <div className="flex items-center justify-between mb-1">
-                    <label className="text-[11px] font-semibold text-zinc-400 uppercase tracking-wider">
+                    <label className="text-[11px] font-semibold text-zinc-600 dark:text-zinc-400 uppercase tracking-wider">
                       Copyright Notice
                     </label>
                     {/* Quick Stamp Templates */}
                     <div className="flex items-center gap-1.5">
                       <button
                         onClick={() => stampCopyright('default')}
-                        className="text-[10px] px-2 py-0.5 rounded bg-purple-500/20 text-purple-300 hover:bg-purple-500/30 transition-all font-semibold"
+                        className="text-[10px] px-2 py-0.5 rounded bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-zinc-800 dark:text-zinc-200 border border-zinc-200 dark:border-zinc-700 transition-all font-semibold cursor-pointer"
                       >
                         Stamp © {new Date().getFullYear()}
                       </button>
                       <button
                         onClick={() => stampCopyright('ccby')}
-                        className="text-[10px] px-2 py-0.5 rounded bg-zinc-800 text-zinc-300 hover:bg-zinc-700 transition-all font-semibold"
+                        className="text-[10px] px-2 py-0.5 rounded bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-zinc-800 dark:text-zinc-200 border border-zinc-200 dark:border-zinc-700 transition-all font-semibold cursor-pointer"
                       >
                         CC BY 4.0
                       </button>
                       <button
                         onClick={() => stampCopyright('clear')}
-                        className="text-[10px] px-2 py-0.5 rounded bg-zinc-800 text-zinc-400 hover:bg-zinc-700 transition-all font-semibold"
+                        className="text-[10px] px-2 py-0.5 rounded bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-zinc-500 dark:text-zinc-400 border border-zinc-200 dark:border-zinc-700 transition-all font-semibold cursor-pointer"
                       >
                         Clear
                       </button>
@@ -694,12 +694,12 @@ export function PhotoStudioPanel() {
                     value={creator.copyright}
                     onChange={(e) => updateCreatorField('copyright', e.target.value)}
                     placeholder={`e.g. © ${new Date().getFullYear()} ${creator.artist || 'Creator'}. All rights reserved.`}
-                    className="w-full px-3 py-2 bg-zinc-950 border border-zinc-700/80 rounded-md text-sm text-white focus:outline-none focus:border-purple-500"
+                    className="w-full px-3 py-2 bg-white dark:bg-zinc-950 border border-zinc-300 dark:border-zinc-700/80 rounded-md text-sm text-zinc-900 dark:text-white focus:outline-none focus:border-zinc-500"
                   />
                 </div>
 
                 <div>
-                  <label className="text-[11px] font-semibold text-zinc-400 uppercase tracking-wider block mb-1">
+                  <label className="text-[11px] font-semibold text-zinc-600 dark:text-zinc-400 uppercase tracking-wider block mb-1">
                     Description / Caption / Headline
                   </label>
                   <textarea
@@ -707,7 +707,7 @@ export function PhotoStudioPanel() {
                     value={creator.description}
                     onChange={(e) => updateCreatorField('description', e.target.value)}
                     placeholder="e.g. Archival family collection from Google Takeout export."
-                    className="w-full px-3 py-2 bg-zinc-950 border border-zinc-700/80 rounded-md text-sm text-white focus:outline-none focus:border-purple-500 resize-none"
+                    className="w-full px-3 py-2 bg-white dark:bg-zinc-950 border border-zinc-300 dark:border-zinc-700/80 rounded-md text-sm text-zinc-900 dark:text-white focus:outline-none focus:border-zinc-500 resize-none"
                   />
                 </div>
               </CardContent>
@@ -716,57 +716,57 @@ export function PhotoStudioPanel() {
 
           {/* TAB 3: LOCATION & PRIVACY */}
           {activeTab === 'location' && (
-            <Card className="bg-zinc-900/40 border-zinc-800/80">
-              <CardHeader className="pb-3">
-                <CardTitle className="text-base font-semibold flex items-center gap-2">
-                  <MapPin className="w-4 h-4 text-purple-400" />
+            <Card className="bg-zinc-50/50 dark:bg-zinc-900/40 border-zinc-200 dark:border-zinc-800/80">
+              <CardHeader className="pb-3 border-b border-zinc-200/70 dark:border-zinc-800/60">
+                <CardTitle className="text-base font-semibold flex items-center gap-2 text-zinc-900 dark:text-white">
+                  <MapPin className="w-4 h-4 text-zinc-700 dark:text-zinc-300" />
                   GPS Geolocation & Privacy
                 </CardTitle>
-                <CardDescription className="text-xs text-zinc-400">
+                <CardDescription className="text-xs text-zinc-500 dark:text-zinc-400">
                   Strip coordinates to protect home privacy, or inject custom coordinates into un-geotagged shots.
                 </CardDescription>
               </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="grid grid-cols-3 gap-2">
+              <CardContent className="space-y-4 pt-4">
+                <div className="grid grid-cols-3 gap-2.5">
                   <button
                     onClick={() => setLocationMode('keep')}
-                    className={`p-3 rounded-lg border text-left transition-all ${
+                    className={`p-3 rounded-lg border text-left transition-all cursor-pointer ${
                       locationMode === 'keep'
-                        ? 'border-purple-500 bg-purple-950/20 text-purple-200'
-                        : 'border-zinc-800 bg-zinc-950/40 text-zinc-400 hover:border-zinc-700'
+                        ? 'border-zinc-900 bg-white dark:border-zinc-500 dark:bg-zinc-800 text-zinc-900 dark:text-white shadow-xs font-semibold'
+                        : 'border-zinc-200 dark:border-zinc-800 bg-white/60 dark:bg-zinc-950/40 text-zinc-600 dark:text-zinc-400 hover:border-zinc-300 dark:hover:border-zinc-700'
                     }`}
                   >
                     <div className="text-xs font-bold">Keep As-Is</div>
-                    <div className="text-[10px] text-zinc-500 mt-0.5">Don't modify GPS</div>
+                    <div className="text-[10px] text-zinc-500 dark:text-zinc-400 mt-0.5">Don't modify GPS</div>
                   </button>
                   <button
                     onClick={() => setLocationMode('strip')}
-                    className={`p-3 rounded-lg border text-left transition-all ${
+                    className={`p-3 rounded-lg border text-left transition-all cursor-pointer ${
                       locationMode === 'strip'
-                        ? 'border-rose-500 bg-rose-950/20 text-rose-200'
-                        : 'border-zinc-800 bg-zinc-950/40 text-zinc-400 hover:border-zinc-700'
+                        ? 'border-rose-500 bg-rose-50 dark:bg-rose-950/20 text-rose-700 dark:text-rose-300 shadow-xs font-semibold'
+                        : 'border-zinc-200 dark:border-zinc-800 bg-white/60 dark:bg-zinc-950/40 text-zinc-600 dark:text-zinc-400 hover:border-zinc-300 dark:hover:border-zinc-700'
                     }`}
                   >
-                    <div className="text-xs font-bold text-rose-400">Strip GPS (Privacy)</div>
-                    <div className="text-[10px] text-zinc-500 mt-0.5">Remove all coords</div>
+                    <div className="text-xs font-bold text-rose-600 dark:text-rose-400">Strip GPS (Privacy)</div>
+                    <div className="text-[10px] text-zinc-500 dark:text-zinc-400 mt-0.5">Remove all coords</div>
                   </button>
                   <button
                     onClick={() => setLocationMode('set')}
-                    className={`p-3 rounded-lg border text-left transition-all ${
+                    className={`p-3 rounded-lg border text-left transition-all cursor-pointer ${
                       locationMode === 'set'
-                        ? 'border-purple-500 bg-purple-950/20 text-purple-200'
-                        : 'border-zinc-800 bg-zinc-950/40 text-zinc-400 hover:border-zinc-700'
+                        ? 'border-zinc-900 bg-white dark:border-zinc-500 dark:bg-zinc-800 text-zinc-900 dark:text-white shadow-xs font-semibold'
+                        : 'border-zinc-200 dark:border-zinc-800 bg-white/60 dark:bg-zinc-950/40 text-zinc-600 dark:text-zinc-400 hover:border-zinc-300 dark:hover:border-zinc-700'
                     }`}
                   >
                     <div className="text-xs font-bold">Set Coordinates</div>
-                    <div className="text-[10px] text-zinc-500 mt-0.5">Inject Lat / Lng</div>
+                    <div className="text-[10px] text-zinc-500 dark:text-zinc-400 mt-0.5">Inject Lat / Lng</div>
                   </button>
                 </div>
 
                 {locationMode === 'set' && (
-                  <div className="grid grid-cols-2 gap-3 p-3 rounded-lg bg-zinc-950/60 border border-zinc-800/80">
+                  <div className="grid grid-cols-2 gap-3 p-3 rounded-lg bg-zinc-100/70 dark:bg-zinc-950/60 border border-zinc-200 dark:border-zinc-800/80">
                     <div>
-                      <label className="text-[11px] font-semibold text-zinc-400 uppercase tracking-wider block mb-1">
+                      <label className="text-[11px] font-semibold text-zinc-600 dark:text-zinc-400 uppercase tracking-wider block mb-1">
                         Latitude
                       </label>
                       <input
@@ -774,11 +774,11 @@ export function PhotoStudioPanel() {
                         value={latitude}
                         onChange={(e) => setLatitude(e.target.value)}
                         placeholder="e.g. 28.6139"
-                        className="w-full px-2.5 py-1.5 bg-zinc-900 border border-zinc-700/80 rounded-md text-sm text-white focus:outline-none focus:border-purple-500"
+                        className="w-full px-2.5 py-1.5 bg-white dark:bg-zinc-900 border border-zinc-300 dark:border-zinc-700/80 rounded-md text-sm text-zinc-900 dark:text-white focus:outline-none focus:border-zinc-500"
                       />
                     </div>
                     <div>
-                      <label className="text-[11px] font-semibold text-zinc-400 uppercase tracking-wider block mb-1">
+                      <label className="text-[11px] font-semibold text-zinc-600 dark:text-zinc-400 uppercase tracking-wider block mb-1">
                         Longitude
                       </label>
                       <input
@@ -786,7 +786,7 @@ export function PhotoStudioPanel() {
                         value={longitude}
                         onChange={(e) => setLongitude(e.target.value)}
                         placeholder="e.g. 77.2090"
-                        className="w-full px-2.5 py-1.5 bg-zinc-900 border border-zinc-700/80 rounded-md text-sm text-white focus:outline-none focus:border-purple-500"
+                        className="w-full px-2.5 py-1.5 bg-white dark:bg-zinc-900 border border-zinc-300 dark:border-zinc-700/80 rounded-md text-sm text-zinc-900 dark:text-white focus:outline-none focus:border-zinc-500"
                       />
                     </div>
                   </div>
@@ -796,11 +796,11 @@ export function PhotoStudioPanel() {
           )}
 
           {/* Destination directory & Execution trigger */}
-          <div className="p-4 rounded-xl bg-zinc-900/60 border border-zinc-800/80 space-y-3">
+          <div className="p-4 rounded-xl bg-zinc-50 dark:bg-zinc-900/60 border border-zinc-200 dark:border-zinc-800/80 space-y-3">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
               <div>
-                <span className="text-xs font-bold text-zinc-300 block">Output Destination</span>
-                <span className="text-[11px] text-zinc-500">
+                <span className="text-xs font-bold text-zinc-900 dark:text-zinc-200 block">Output Destination</span>
+                <span className="text-[11px] text-zinc-500 dark:text-zinc-400">
                   {destDir ? `Saving directly into: ${(destDir as any).name}` : "Downloads automatically if no folder selected."}
                 </span>
               </div>
@@ -808,7 +808,7 @@ export function PhotoStudioPanel() {
                 variant="outline"
                 size="sm"
                 onClick={handlePickDestFolder}
-                className="border-zinc-800 hover:bg-zinc-800 text-xs font-semibold"
+                className="border-zinc-300 dark:border-zinc-800 hover:bg-zinc-100 dark:hover:bg-zinc-800 text-xs font-semibold text-zinc-800 dark:text-zinc-200 shadow-xs cursor-pointer"
               >
                 {destDir ? "Change Output Folder" : "Select Output Folder"}
               </Button>
@@ -819,7 +819,7 @@ export function PhotoStudioPanel() {
               <Button
                 onClick={handleRunBatch}
                 disabled={isProcessing || photos.length === 0}
-                className="flex-1 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-bold h-11 rounded-lg text-sm gap-2 shadow-lg shadow-purple-900/20"
+                className="flex-1 bg-zinc-900 hover:bg-zinc-800 dark:bg-zinc-100 dark:hover:bg-white text-white dark:text-zinc-900 font-bold h-11 rounded-lg text-sm gap-2 shadow-xs transition-all disabled:opacity-50 cursor-pointer"
               >
                 <Play className="w-4 h-4 fill-current" />
                 {isProcessing ? "Processing Batch..." : `Apply to ${photos.length} Photo${photos.length === 1 ? '' : 's'}`}
@@ -830,7 +830,7 @@ export function PhotoStudioPanel() {
                   variant="destructive"
                   size="sm"
                   onClick={() => { abortRef.current = true }}
-                  className="h-11 px-4"
+                  className="h-11 px-4 cursor-pointer"
                 >
                   <Square className="w-4 h-4 fill-current" />
                 </Button>
@@ -840,11 +840,11 @@ export function PhotoStudioPanel() {
             {/* Progress Bar */}
             {isProcessing && (
               <div className="space-y-1.5 pt-2">
-                <div className="flex justify-between text-xs text-zinc-400">
+                <div className="flex justify-between text-xs text-zinc-500 dark:text-zinc-400">
                   <span>{statusMsg}</span>
-                  <span className="font-mono text-purple-400 font-bold">{progress}%</span>
+                  <span className="font-mono text-zinc-900 dark:text-white font-bold">{progress}%</span>
                 </div>
-                <Progress value={progress} className="h-1.5 bg-zinc-800" />
+                <Progress value={progress} className="h-1.5 bg-zinc-200 dark:bg-zinc-800" />
               </div>
             )}
 
@@ -853,7 +853,7 @@ export function PhotoStudioPanel() {
               <div className="pt-2">
                 <Button
                   onClick={handleDownloadAll}
-                  className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs h-9 gap-1.5"
+                  className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs h-9 gap-1.5 cursor-pointer shadow-xs"
                 >
                   <Download className="w-3.5 h-3.5" />
                   Download {processedBlobs.length} Processed Photos
@@ -865,23 +865,23 @@ export function PhotoStudioPanel() {
 
         {/* Right Preview Panel: Queued Photos & Computed Diff (5 cols) */}
         <div className="lg:col-span-5 space-y-4">
-          <Card className="bg-zinc-900/40 border-zinc-800/80 h-full flex flex-col">
-            <CardHeader className="pb-3 border-b border-zinc-800/80">
+          <Card className="bg-zinc-50/50 dark:bg-zinc-900/40 border-zinc-200 dark:border-zinc-800/80 h-full flex flex-col">
+            <CardHeader className="pb-3 border-b border-zinc-200/70 dark:border-zinc-800/80">
               <div className="flex items-center justify-between">
-                <CardTitle className="text-base font-semibold flex items-center gap-2">
-                  <FileImage className="w-4 h-4 text-purple-400" />
+                <CardTitle className="text-base font-semibold flex items-center gap-2 text-zinc-900 dark:text-white">
+                  <FileImage className="w-4 h-4 text-zinc-700 dark:text-zinc-300" />
                   Queued Photos ({photos.length})
                 </CardTitle>
-                <span className="text-[11px] text-zinc-500">Live Preview</span>
+                <span className="text-[11px] text-zinc-500 dark:text-zinc-400">Live Preview</span>
               </div>
             </CardHeader>
             <CardContent className="p-3 flex-1 flex flex-col">
               {photos.length === 0 ? (
-                <div className="flex-1 flex flex-col items-center justify-center p-8 text-center border-2 border-dashed border-zinc-800 rounded-xl my-4">
-                  <div className="p-3 rounded-full bg-zinc-900 text-zinc-600 mb-3">
+                <div className="flex-1 flex flex-col items-center justify-center p-8 text-center border-2 border-dashed border-zinc-200 dark:border-zinc-800 rounded-xl my-4">
+                  <div className="p-3 rounded-full bg-zinc-100 dark:bg-zinc-900 text-zinc-400 mb-3">
                     <Upload className="w-6 h-6" />
                   </div>
-                  <p className="text-sm font-semibold text-zinc-400">No photos loaded yet</p>
+                  <p className="text-sm font-semibold text-zinc-800 dark:text-zinc-300">No photos loaded yet</p>
                   <p className="text-xs text-zinc-500 mt-1 max-w-[200px]">
                     Click "Select Files" or "Select Folder" above to queue photos for batch processing.
                   </p>
@@ -896,10 +896,10 @@ export function PhotoStudioPanel() {
                     return (
                       <div
                         key={idx}
-                        className="p-2.5 rounded-lg bg-zinc-950/70 border border-zinc-800/80 flex flex-col gap-1.5 text-xs"
+                        className="p-2.5 rounded-lg bg-white dark:bg-zinc-950/70 border border-zinc-200 dark:border-zinc-800/80 flex flex-col gap-1.5 text-xs shadow-2xs"
                       >
                         <div className="flex items-center justify-between">
-                          <span className="font-mono text-zinc-200 truncate max-w-[180px] font-medium">
+                          <span className="font-mono text-zinc-800 dark:text-zinc-200 truncate max-w-[180px] font-medium">
                             {item.file.name}
                           </span>
                           <span className="text-[10px] text-zinc-500 font-mono">
@@ -912,15 +912,15 @@ export function PhotoStudioPanel() {
                           <span className="text-zinc-500">
                             Orig: {origDate.toLocaleDateString()} {origDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                           </span>
-                          <span className={`font-mono ${hasShift ? 'text-purple-400 font-bold' : 'text-zinc-400'}`}>
+                          <span className={`font-mono ${hasShift ? 'text-zinc-900 dark:text-white font-bold' : 'text-zinc-500 dark:text-zinc-400'}`}>
                             ➜ {newDate.toLocaleDateString()} {newDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                           </span>
                         </div>
 
                         {/* Creator tag if set */}
                         {(creator.artist || creator.copyright) && (
-                          <div className="text-[10px] text-zinc-400 truncate border-t border-zinc-900 pt-1">
-                            {creator.artist && <span className="text-zinc-300 mr-2">👤 {creator.artist}</span>}
+                          <div className="text-[10px] text-zinc-500 dark:text-zinc-400 truncate border-t border-zinc-100 dark:border-zinc-900 pt-1">
+                            {creator.artist && <span className="text-zinc-700 dark:text-zinc-300 mr-2">👤 {creator.artist}</span>}
                             {creator.copyright && <span className="text-zinc-500 truncate">© {creator.copyright}</span>}
                           </div>
                         )}

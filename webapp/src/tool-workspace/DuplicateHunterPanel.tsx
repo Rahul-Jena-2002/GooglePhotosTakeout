@@ -35,36 +35,36 @@ export function DuplicateHunterPanel({
   }
 
   return (
-    <div className="flex-grow flex flex-col p-4 sm:p-6 bg-black text-zinc-200 overflow-y-auto max-w-6xl mx-auto w-full">
+    <div className="flex-grow flex flex-col p-4 sm:p-6 bg-white dark:bg-[#0D0E12] text-zinc-900 dark:text-zinc-100 overflow-y-auto max-w-6xl mx-auto w-full transition-colors">
       {/* Header */}
-      <div className="mb-6 border-b border-zinc-800 pb-5">
+      <div className="mb-6 border-b border-zinc-200 dark:border-zinc-800 pb-5">
         <div className="flex items-center gap-2 mb-1">
-          <Copy className="w-5 h-5 text-rose-400" />
-          <h2 className="text-lg font-bold text-white tracking-wide uppercase">
+          <Copy className="w-5 h-5 text-zinc-700 dark:text-zinc-300" />
+          <h2 className="text-lg font-bold text-zinc-900 dark:text-white tracking-wide uppercase">
             Duplicate Media Hunter
           </h2>
-          <span className="text-[10px] uppercase font-mono px-2 py-0.5 rounded bg-rose-500/10 text-rose-400 border border-rose-500/20 font-bold">
+          <span className="text-[10px] uppercase font-mono px-2 py-0.5 rounded bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 border border-zinc-200 dark:border-zinc-700 font-bold">
             Disk Space Reclaimer
           </span>
         </div>
-        <p className="text-xs text-zinc-400">
+        <p className="text-xs text-zinc-500 dark:text-zinc-400">
           Find identical photo and video copies across your library and reclaim gigabytes of wasted storage space.
         </p>
       </div>
 
       {/* Action / Selection Strip */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-        <Card className="md:col-span-2 bg-zinc-950/60 border-zinc-800">
-          <CardHeader className="py-3 px-4 border-b border-zinc-800 bg-zinc-900/40">
-            <CardTitle className="text-xs font-bold uppercase tracking-wider text-zinc-300 flex items-center justify-between">
+        <Card className="md:col-span-2 bg-zinc-50/50 dark:bg-zinc-900/40 border-zinc-200 dark:border-zinc-800">
+          <CardHeader className="py-3 px-4 border-b border-zinc-200 dark:border-zinc-800 bg-zinc-100/60 dark:bg-zinc-900/40">
+            <CardTitle className="text-xs font-bold uppercase tracking-wider text-zinc-700 dark:text-zinc-300 flex items-center justify-between">
               <span className="flex items-center gap-2">
-                <FolderUp className="w-4 h-4 text-rose-400" /> Target Photo Folder
+                <FolderUp className="w-4 h-4 text-zinc-700 dark:text-zinc-300" /> Target Photo Folder
               </span>
               {dupFolder && (
                 <button
                   onClick={handleSelectDupFolder}
                   disabled={dupIsScanning}
-                  className="text-[10px] text-zinc-400 hover:text-white font-bold px-2 py-0.5 rounded border border-zinc-800 bg-zinc-900"
+                  className="text-[10px] text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white font-bold px-2 py-0.5 rounded border border-zinc-300 dark:border-zinc-800 bg-white dark:bg-zinc-900"
                 >
                   Change
                 </button>
@@ -73,9 +73,9 @@ export function DuplicateHunterPanel({
           </CardHeader>
           <CardContent className="p-4 flex items-center justify-between">
             {dupFolder ? (
-              <span className="font-mono text-white text-xs truncate mr-2">{dupFolder.name}</span>
+              <span className="font-mono text-zinc-900 dark:text-white text-xs truncate mr-2">{dupFolder.name}</span>
             ) : (
-              <Button onClick={handleSelectDupFolder} className="btn-monochrome-primary text-xs font-bold py-2 px-4">
+              <Button onClick={handleSelectDupFolder} className="bg-zinc-900 hover:bg-zinc-800 dark:bg-zinc-100 dark:hover:bg-white text-white dark:text-zinc-900 text-xs font-bold py-2 px-4 shadow-xs cursor-pointer">
                 Select Photo Folder to Scan
               </Button>
             )}
@@ -84,7 +84,7 @@ export function DuplicateHunterPanel({
               <Button
                 onClick={startDuplicateScan}
                 disabled={dupIsScanning}
-                className="btn-monochrome-primary text-xs font-bold py-2 px-4 flex items-center gap-1.5"
+                className="bg-zinc-900 hover:bg-zinc-800 dark:bg-zinc-100 dark:hover:bg-white text-white dark:text-zinc-900 text-xs font-bold py-2 px-4 flex items-center gap-1.5 shadow-xs cursor-pointer"
               >
                 <Play className="w-3.5 h-3.5 fill-current" />
                 {dupIsScanning ? "Scanning..." : "Start Duplicate Scan"}
@@ -94,21 +94,21 @@ export function DuplicateHunterPanel({
         </Card>
 
         {/* Recoverable Storage Meter */}
-        <div className="p-4 rounded-xl bg-zinc-950 border border-zinc-800 flex flex-col justify-between">
-          <div className="text-[10px] font-mono uppercase text-zinc-500">Reclaimable Storage</div>
-          <div className="text-2xl font-black text-rose-400 font-mono">
+        <div className="p-4 rounded-xl bg-zinc-50 dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 flex flex-col justify-between">
+          <div className="text-[10px] font-mono uppercase text-zinc-500 dark:text-zinc-400">Reclaimable Storage</div>
+          <div className="text-2xl font-black text-zinc-900 dark:text-white font-mono">
             {formatBytes(dupStats.savedBytes)}
           </div>
-          <div className="text-xs text-zinc-400 mt-1">
+          <div className="text-xs text-zinc-500 dark:text-zinc-400 mt-1">
             {dupStats.duplicates} redundant files in {dupStats.scanned} scanned
           </div>
         </div>
       </div>
 
       {/* Status Bar */}
-      <div className="p-3 rounded-lg bg-zinc-950 border border-zinc-800 text-xs font-mono text-zinc-400 mb-6 flex justify-between items-center">
+      <div className="p-3 rounded-lg bg-zinc-50 dark:bg-zinc-900/60 border border-zinc-200 dark:border-zinc-800 text-xs font-mono text-zinc-600 dark:text-zinc-400 mb-6 flex justify-between items-center">
         <span>Status: {dupScanStatus}</span>
-        {dupIsScanning && <span className="text-rose-400 animate-pulse font-bold">● Active Scanner</span>}
+        {dupIsScanning && <span className="text-zinc-900 dark:text-white animate-pulse font-bold">● Active Scanner</span>}
       </div>
 
       {/* Duplicates Groups List */}

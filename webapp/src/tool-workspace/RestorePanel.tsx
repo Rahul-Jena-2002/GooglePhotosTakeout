@@ -216,19 +216,19 @@ export function RestorePanel({
   }, [])
 
   const TOOLS_LIST: { id: ToolTab; name: string; tag: string; icon: any; desc: string; badge?: string }[] = [
-    { id: 'restore', name: 'TakeoutFix', tag: 'Metadata Restorer', icon: <Layers className="w-4 h-4 text-indigo-400" />, desc: 'Google Photos JSON metadata injector & sidecar merger', badge: 'Core' },
-    { id: 'studio', name: 'Photo Studio', tag: 'Batch EXIF Suite', icon: <Sliders className="w-4 h-4 text-purple-400" />, desc: 'Batch shift dates, timezones, and stamp creator presets', badge: 'New' },
-    { id: 'photovault', name: 'PhotoVault', tag: 'Backup Verifier', icon: <ShieldCheck className="w-4 h-4 text-emerald-400" />, desc: 'Bit-for-bit SHA-256 backup audit & certificate generator', badge: 'New' },
-    { id: 'folderflow', name: 'FolderFlow', tag: 'Media Organizer', icon: <FolderTree className="w-4 h-4 text-violet-400" />, desc: 'Chronologically sort photos into Year/Month folder trees' },
-    { id: 'viewer', name: 'EXIF Inspector', tag: 'Metadata Viewer', icon: <Eye className="w-4 h-4 text-sky-400" />, desc: 'Deep camera IFD, exposure tags, and GPS coordinates' },
-    { id: 'comparison', name: 'Comparator', tag: 'Sidecar Diff', icon: <Scale className="w-4 h-4 text-amber-400" />, desc: 'Compare Google Takeout JSON sidecar vs image EXIF' },
-    { id: 'duplicates', name: 'Duplicate Hunter', tag: 'Space Reclaimer', icon: <Copy className="w-4 h-4 text-rose-400" />, desc: 'Find duplicate photos & reclaim gigabytes of storage' },
+    { id: 'restore', name: 'TakeoutFix', tag: 'Metadata Restorer', icon: <Layers className="w-4 h-4 text-zinc-700 dark:text-zinc-300" />, desc: 'Google Photos JSON metadata injector & sidecar merger', badge: 'Core' },
+    { id: 'studio', name: 'Photo Studio', tag: 'Batch EXIF Suite', icon: <Sliders className="w-4 h-4 text-zinc-700 dark:text-zinc-300" />, desc: 'Batch shift dates, timezones, and stamp creator presets' },
+    { id: 'photovault', name: 'PhotoVault', tag: 'Backup Verifier', icon: <ShieldCheck className="w-4 h-4 text-zinc-700 dark:text-zinc-300" />, desc: 'Bit-for-bit SHA-256 backup audit & certificate generator' },
+    { id: 'viewer', name: 'EXIF Inspector', tag: 'Metadata Viewer', icon: <Eye className="w-4 h-4 text-zinc-700 dark:text-zinc-300" />, desc: 'Deep camera IFD, exposure tags, and GPS coordinates' },
+    { id: 'comparison', name: 'Comparator', tag: 'Sidecar Diff', icon: <Scale className="w-4 h-4 text-zinc-700 dark:text-zinc-300" />, desc: 'Compare Google Takeout JSON sidecar vs image EXIF' },
+    { id: 'duplicates', name: 'Duplicate Hunter', tag: 'Space Reclaimer', icon: <Copy className="w-4 h-4 text-zinc-700 dark:text-zinc-300" />, desc: 'Find duplicate photos & reclaim gigabytes of storage' },
   ]
 
   const currentTool = TOOLS_LIST.find(t => t.id === activeToolTab) || TOOLS_LIST[0]
+  const isRestoreTab = activeToolTab === 'restore'
 
   return (
-    <div className="flex-grow w-full lg:w-[72%] bg-white dark:bg-black text-zinc-900 dark:text-white flex flex-col h-auto order-1 lg:order-2 transition-colors">
+    <div className={`flex-grow w-full ${isRestoreTab ? 'lg:w-[72%]' : 'max-w-7xl mx-auto'} bg-white dark:bg-[#0D0E12] text-zinc-900 dark:text-zinc-100 flex flex-col h-auto order-1 lg:order-2 transition-colors`}>
 
       {/* ── Persistent Handle Re-grant Banner (VS Code model) ──────────── */}
       {needsReGrant && !takeoutFolder && (
@@ -251,11 +251,11 @@ export function RestorePanel({
         </div>
       )}
 
-      {/* ── Studio Header with Multi-Tool Dropdown Switcher ────────────────── */}
-      <div className="p-3 sm:p-4 border-b border-zinc-200 dark:border-white/5 bg-zinc-50/50 dark:bg-white/[0.01] flex flex-wrap items-center justify-between gap-3">
+      {/* ── Studio Header with Clean Segmented Tabs ────────────────── */}
+      <div className="p-3 sm:p-4 border-b border-zinc-200 dark:border-zinc-800/80 bg-zinc-50/50 dark:bg-zinc-900/30 flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-3">
-          {/* Interactive Tool Switcher Dropdown */}
-          <div className="relative" ref={toolMenuRef}>
+          {/* Mobile Tool Switcher Dropdown (< md) */}
+          <div className="relative md:hidden" ref={toolMenuRef}>
             <button
               onClick={() => setToolMenuOpen(!toolMenuOpen)}
               className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-white dark:bg-zinc-900 border border-zinc-300 dark:border-zinc-800 hover:border-zinc-400 dark:hover:border-zinc-700 hover:bg-zinc-50 dark:hover:bg-zinc-800/80 text-zinc-900 dark:text-white font-semibold text-xs transition-all shadow-xs cursor-pointer"
@@ -310,19 +310,20 @@ export function RestorePanel({
             )}
           </div>
 
-          {/* Quick desktop switcher pills */}
-          <div className="hidden xl:flex items-center gap-1 bg-zinc-100 dark:bg-zinc-950 p-1 rounded-xl border border-zinc-200 dark:border-zinc-800/80 text-xs">
+          {/* Desktop Clean Segmented Tabs (>= md) */}
+          <div className="hidden md:flex items-center gap-1 bg-zinc-100 dark:bg-zinc-900/80 p-1 rounded-xl border border-zinc-200 dark:border-zinc-800 text-xs">
             {TOOLS_LIST.map((t) => (
               <button
                 key={t.id}
                 onClick={() => setActiveToolTab(t.id)}
-                className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold transition-all cursor-pointer ${
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
                   activeToolTab === t.id
-                    ? 'bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white shadow-xs font-bold'
-                    : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white hover:bg-zinc-200/60 dark:hover:bg-zinc-900/50'
+                    ? 'bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white shadow-xs font-bold border border-zinc-200/80 dark:border-zinc-700/60'
+                    : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white hover:bg-zinc-200/50 dark:hover:bg-zinc-800/40'
                 }`}
               >
-                {t.name}
+                {t.icon}
+                <span>{t.name}</span>
               </button>
             ))}
           </div>
