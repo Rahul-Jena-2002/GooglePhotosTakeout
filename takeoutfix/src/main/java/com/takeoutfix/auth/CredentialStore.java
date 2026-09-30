@@ -273,26 +273,19 @@ public class CredentialStore {
         payload.put("savedAt", System.currentTimeMillis());
 
         String serialized = payload.toString();
-        boolean keyringSuccess = false;
 
         // 1. Attempt writing to OS Native Keyring (Windows Credential Manager / macOS Keychain / Linux Secret Service)
         if (isKeyringUsable()) {
             try (Keyring keyring = Keyring.create()) {
                 keyring.setPassword(SERVICE_NAME, account, serialized);
-                keyringSuccess = true;
-                // Clean up any stale fallback file so tokens don't linger on disk
-                if (ENCRYPTED_CREDENTIALS_FILE.exists()) {
-                    Files.deleteIfExists(ENCRYPTED_CREDENTIALS_FILE.toPath());
-                }
             } catch (Exception t) {
                 markKeyringUnavailable(t);
             }
         }
 
-        // 2. Only write encrypted fallback if OS Keyring failed
-        if (!keyringSuccess) {
-            saveEncryptedBackup(serialized);
-        }
+        // 2. Always persist machine-bound AES-256-GCM encrypted backup so headless environments,
+        // locked keyrings, or OS keyring silent read drops never drop local session
+        saveEncryptedBackup(serialized);
     }
 
     private JSONObject loadTokensFromSecureStore(String account) {
