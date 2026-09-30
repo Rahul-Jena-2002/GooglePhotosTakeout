@@ -47,7 +47,11 @@ public class TaskManager {
     public synchronized void submitTask(BackgroundTask task) {
         if (task == null) return;
 
-        runFx(() -> activeTasks.add(task));
+        runFx(() -> {
+            synchronized (activeTasks) {
+                activeTasks.add(task);
+            }
+        });
 
         var executor = (task.getWorkloadType() == BackgroundTask.WorkloadType.IO_BOUND)
                 ? resourceManager.getIoExecutor()
@@ -59,11 +63,15 @@ public class TaskManager {
             } finally {
                 runningFutures.remove(task.getId());
                 runFx(() -> {
-                    activeTasks.remove(task);
-                    if (!recentTasks.contains(task)) {
-                        recentTasks.add(0, task);
-                        if (recentTasks.size() > 50) {
-                            recentTasks.remove(recentTasks.size() - 1);
+                    synchronized (activeTasks) {
+                        activeTasks.remove(task);
+                    }
+                    synchronized (recentTasks) {
+                        if (!recentTasks.contains(task)) {
+                            recentTasks.add(0, task);
+                            if (recentTasks.size() > 50) {
+                                recentTasks.remove(recentTasks.size() - 1);
+                            }
                         }
                     }
                     notifyListeners();
@@ -76,7 +84,11 @@ public class TaskManager {
     }
 
     public void pauseTask(String taskId) {
-        for (BackgroundTask task : new java.util.ArrayList<>(activeTasks)) {
+        List<BackgroundTask> tasks;
+        synchronized (activeTasks) {
+            tasks = new java.util.ArrayList<>(activeTasks);
+        }
+        for (BackgroundTask task : tasks) {
             if (task.getId().equals(taskId)) {
                 task.pause();
                 notifyListeners();
@@ -86,7 +98,11 @@ public class TaskManager {
     }
 
     public void resumeTask(String taskId) {
-        for (BackgroundTask task : new java.util.ArrayList<>(activeTasks)) {
+        List<BackgroundTask> tasks;
+        synchronized (activeTasks) {
+            tasks = new java.util.ArrayList<>(activeTasks);
+        }
+        for (BackgroundTask task : tasks) {
             if (task.getId().equals(taskId)) {
                 task.resume();
                 notifyListeners();
@@ -96,7 +112,11 @@ public class TaskManager {
     }
 
     public void cancelTask(String taskId) {
-        for (BackgroundTask task : new java.util.ArrayList<>(activeTasks)) {
+        List<BackgroundTask> tasks;
+        synchronized (activeTasks) {
+            tasks = new java.util.ArrayList<>(activeTasks);
+        }
+        for (BackgroundTask task : tasks) {
             if (task.getId().equals(taskId)) {
                 task.cancel();
                 Future<?> future = runningFutures.get(taskId);
@@ -110,24 +130,36 @@ public class TaskManager {
     }
 
     public void cancelAll() {
-        for (BackgroundTask task : new java.util.ArrayList<>(activeTasks)) {
+        List<BackgroundTask> tasks;
+        synchronized (activeTasks) {
+            tasks = new java.util.ArrayList<>(activeTasks);
+        }
+        for (BackgroundTask task : tasks) {
             task.cancel();
         }
-        for (Future<?> f : runningFutures.values()) {
+        for (Future<?> f : new java.util.ArrayList<>(runningFutures.values())) {
             f.cancel(true);
         }
         notifyListeners();
     }
 
     public void pauseAll() {
-        for (BackgroundTask task : new java.util.ArrayList<>(activeTasks)) {
+        List<BackgroundTask> tasks;
+        synchronized (activeTasks) {
+            tasks = new java.util.ArrayList<>(activeTasks);
+        }
+        for (BackgroundTask task : tasks) {
             task.pause();
         }
         notifyListeners();
     }
 
     public void resumeAll() {
-        for (BackgroundTask task : new java.util.ArrayList<>(activeTasks)) {
+        List<BackgroundTask> tasks;
+        synchronized (activeTasks) {
+            tasks = new java.util.ArrayList<>(activeTasks);
+        }
+        for (BackgroundTask task : tasks) {
             task.resume();
         }
         notifyListeners();
@@ -143,21 +175,35 @@ public class TaskManager {
 
     public BackgroundTask getTask(String taskId) {
         if (taskId == null) return null;
-        for (BackgroundTask t : new java.util.ArrayList<>(activeTasks)) {
+        List<BackgroundTask> aTasks;
+        synchronized (activeTasks) {
+            aTasks = new java.util.ArrayList<>(activeTasks);
+        }
+        for (BackgroundTask t : aTasks) {
             if (taskId.equals(t.getId())) return t;
         }
-        for (BackgroundTask t : new java.util.ArrayList<>(recentTasks)) {
+        List<BackgroundTask> rTasks;
+        synchronized (recentTasks) {
+            rTasks = new java.util.ArrayList<>(recentTasks);
+        }
+        for (BackgroundTask t : rTasks) {
             if (taskId.equals(t.getId())) return t;
         }
         return null;
     }
 
     public int getActiveTaskCount() {
-        return activeTasks.size();
+        synchronized (activeTasks) {
+            return activeTasks.size();
+        }
     }
 
     public boolean hasRunningTasks() {
-        for (BackgroundTask t : new java.util.ArrayList<>(activeTasks)) {
+        List<BackgroundTask> tasks;
+        synchronized (activeTasks) {
+            tasks = new java.util.ArrayList<>(activeTasks);
+        }
+        for (BackgroundTask t : tasks) {
             if (t.isRunning()) return true;
         }
         return false;
