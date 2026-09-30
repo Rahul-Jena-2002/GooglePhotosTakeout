@@ -39,9 +39,6 @@
 /restore-data
   Cache-Control: public, max-age=0, must-revalidate
 
-/pricing
-  Cache-Control: public, max-age=0, must-revalidate
-
 /reviews
   Cache-Control: public, max-age=0, must-revalidate
 
