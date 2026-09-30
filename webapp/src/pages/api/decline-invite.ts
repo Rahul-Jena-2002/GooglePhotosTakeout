@@ -107,7 +107,7 @@ export const POST: APIRoute = async ({ request, locals }) => {
       return json(400, { error: 'inviteId is required.' });
     }
 
-    const runtimeEnv = (locals as any)?.runtime?.env;
+    const runtimeEnv = env as any;
     const serviceAccountStr =
       (env as any)?.FIREBASE_SERVICE_ACCOUNT ||
       runtimeEnv?.FIREBASE_SERVICE_ACCOUNT ||

@@ -390,7 +390,7 @@ export function PhotoStudioPanel() {
   }
 
   return (
-    <div className="flex-1 flex flex-col p-4 md:p-6 bg-white dark:bg-[#0D0E12] text-zinc-900 dark:text-zinc-100 min-h-screen transition-colors">
+    <div className="flex-1 flex flex-col p-3 sm:p-5 md:p-6 bg-white dark:bg-[#0D0E12] text-zinc-900 dark:text-zinc-100 min-h-screen pb-36 sm:pb-24 transition-colors">
       {/* Top Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between pb-6 border-b border-zinc-200 dark:border-zinc-800/80 gap-4">
         <div>
@@ -409,7 +409,7 @@ export function PhotoStudioPanel() {
         </div>
 
         {/* Input file triggers */}
-        <div className="flex items-center gap-2.5">
+        <div className="grid grid-cols-2 sm:flex sm:items-center gap-2 w-full sm:w-auto">
           <input 
             type="file" 
             ref={fileInputRef} 
@@ -422,18 +422,18 @@ export function PhotoStudioPanel() {
             variant="outline" 
             size="sm" 
             onClick={() => fileInputRef.current?.click()}
-            className="border-zinc-300 dark:border-zinc-800 hover:bg-zinc-100 dark:hover:bg-zinc-900 text-xs font-semibold gap-1.5 text-zinc-800 dark:text-zinc-200 shadow-xs cursor-pointer"
+            className="border-zinc-300 dark:border-zinc-700/80 hover:bg-zinc-100 dark:hover:bg-zinc-800 text-xs font-semibold gap-1.5 text-zinc-800 dark:text-zinc-200 shadow-xs cursor-pointer h-9 justify-center"
           >
-            <Upload className="w-3.5 h-3.5 text-zinc-500 dark:text-zinc-400" />
+            <Upload className="w-3.5 h-3.5 text-indigo-500 dark:text-indigo-400" />
             Select Files
           </Button>
           <Button 
             variant="outline" 
             size="sm" 
             onClick={handlePickFolder}
-            className="border-zinc-300 dark:border-zinc-800 hover:bg-zinc-100 dark:hover:bg-zinc-900 text-xs font-semibold gap-1.5 text-zinc-800 dark:text-zinc-200 shadow-xs cursor-pointer"
+            className="border-zinc-300 dark:border-zinc-700/80 hover:bg-zinc-100 dark:hover:bg-zinc-800 text-xs font-semibold gap-1.5 text-zinc-800 dark:text-zinc-200 shadow-xs cursor-pointer h-9 justify-center"
           >
-            <FolderUp className="w-3.5 h-3.5 text-zinc-500 dark:text-zinc-400" />
+            <FolderUp className="w-3.5 h-3.5 text-indigo-500 dark:text-indigo-400" />
             Select Folder
           </Button>
           {photos.length > 0 && (
@@ -441,9 +441,10 @@ export function PhotoStudioPanel() {
               variant="ghost"
               size="sm"
               onClick={() => { setPhotos([]); setProcessedBlobs([]) }}
-              className="text-zinc-500 hover:text-rose-500 dark:hover:text-rose-400 text-xs cursor-pointer"
+              className="col-span-2 sm:col-span-1 text-zinc-500 hover:text-rose-500 dark:hover:text-rose-400 text-xs cursor-pointer h-9 justify-center"
             >
-              <Trash2 className="w-3.5 h-3.5" />
+              <Trash2 className="w-3.5 h-3.5 mr-1 sm:mr-0" />
+              <span className="sm:hidden">Clear Queue</span>
             </Button>
           )}
         </div>
@@ -456,39 +457,36 @@ export function PhotoStudioPanel() {
         <div className="lg:col-span-7 space-y-4">
           
           {/* Segmented Mode Navigation */}
-          <div className="flex rounded-xl bg-zinc-100 dark:bg-zinc-900/80 p-1 border border-zinc-200 dark:border-zinc-800/80">
+          <div className="tool-tab-track flex items-center p-1 gap-1 text-xs">
             <button
+              type="button"
               onClick={() => setActiveTab('date')}
-              className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                activeTab === 'date'
-                  ? 'bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white shadow-xs border border-zinc-200/80 dark:border-zinc-700/60'
-                  : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200'
+              className={`tool-tab-btn flex-1 flex items-center justify-center gap-1.5 py-2 px-2 rounded-lg text-xs font-semibold cursor-pointer min-h-[40px] ${
+                activeTab === 'date' ? 'active' : ''
               }`}
             >
-              <Calendar className="w-3.5 h-3.5" />
-              Dates & Timezones
+              <Calendar className="w-4 h-4 flex-shrink-0" />
+              <span>Dates<span className="hidden sm:inline"> & Timezones</span></span>
             </button>
             <button
+              type="button"
               onClick={() => setActiveTab('creator')}
-              className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                activeTab === 'creator'
-                  ? 'bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white shadow-xs border border-zinc-200/80 dark:border-zinc-700/60'
-                  : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200'
+              className={`tool-tab-btn flex-1 flex items-center justify-center gap-1.5 py-2 px-2 rounded-lg text-xs font-semibold cursor-pointer min-h-[40px] ${
+                activeTab === 'creator' ? 'active' : ''
               }`}
             >
-              <User className="w-3.5 h-3.5" />
-              Creator & Presets
+              <User className="w-4 h-4 flex-shrink-0" />
+              <span>Creator<span className="hidden sm:inline"> & Presets</span></span>
             </button>
             <button
+              type="button"
               onClick={() => setActiveTab('location')}
-              className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                activeTab === 'location'
-                  ? 'bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white shadow-xs border border-zinc-200/80 dark:border-zinc-700/60'
-                  : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200'
+              className={`tool-tab-btn flex-1 flex items-center justify-center gap-1.5 py-2 px-2 rounded-lg text-xs font-semibold cursor-pointer min-h-[40px] ${
+                activeTab === 'location' ? 'active' : ''
               }`}
             >
-              <MapPin className="w-3.5 h-3.5" />
-              Location & Privacy
+              <MapPin className="w-4 h-4 flex-shrink-0" />
+              <span>Location<span className="hidden sm:inline"> & Privacy</span></span>
             </button>
           </div>
 
@@ -505,81 +503,141 @@ export function PhotoStudioPanel() {
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4 pt-4">
-                {/* Mode Selector */}
-                <div className="grid grid-cols-3 gap-2.5">
-                  <button
-                    onClick={() => setDateMode('shift')}
-                    className={`p-3 rounded-lg border text-left transition-all cursor-pointer ${
-                      dateMode === 'shift'
-                        ? 'border-zinc-900 bg-white dark:border-zinc-500 dark:bg-zinc-800 text-zinc-900 dark:text-white shadow-xs font-semibold'
-                        : 'border-zinc-200 dark:border-zinc-800 bg-white/60 dark:bg-zinc-950/40 text-zinc-600 dark:text-zinc-400 hover:border-zinc-300 dark:hover:border-zinc-700'
-                    }`}
-                  >
-                    <div className="text-xs font-bold">Relative Shift</div>
-                    <div className="text-[10px] text-zinc-500 dark:text-zinc-400 mt-0.5">±Hours, minutes, days</div>
-                  </button>
-                  <button
-                    onClick={() => setDateMode('fixed')}
-                    className={`p-3 rounded-lg border text-left transition-all cursor-pointer ${
-                      dateMode === 'fixed'
-                        ? 'border-zinc-900 bg-white dark:border-zinc-500 dark:bg-zinc-800 text-zinc-900 dark:text-white shadow-xs font-semibold'
-                        : 'border-zinc-200 dark:border-zinc-800 bg-white/60 dark:bg-zinc-950/40 text-zinc-600 dark:text-zinc-400 hover:border-zinc-300 dark:hover:border-zinc-700'
-                    }`}
-                  >
-                    <div className="text-xs font-bold">Set Fixed Date</div>
-                    <div className="text-[10px] text-zinc-500 dark:text-zinc-400 mt-0.5">Apply exact timestamp</div>
-                  </button>
-                  <button
-                    onClick={() => setDateMode('sequence')}
-                    className={`p-3 rounded-lg border text-left transition-all cursor-pointer ${
-                      dateMode === 'sequence'
-                        ? 'border-zinc-900 bg-white dark:border-zinc-500 dark:bg-zinc-800 text-zinc-900 dark:text-white shadow-xs font-semibold'
-                        : 'border-zinc-200 dark:border-zinc-800 bg-white/60 dark:bg-zinc-950/40 text-zinc-600 dark:text-zinc-400 hover:border-zinc-300 dark:hover:border-zinc-700'
-                    }`}
-                  >
-                    <div className="text-xs font-bold">Sequential Order</div>
-                    <div className="text-[10px] text-zinc-500 dark:text-zinc-400 mt-0.5">+N seconds per photo</div>
-                  </button>
+                {/* Sleek Segmented Mode Selector */}
+                <div className="space-y-2">
+                  <div className="grid grid-cols-3 gap-1.5 p-1 rounded-xl bg-zinc-100 dark:bg-zinc-900 border border-zinc-200/90 dark:border-zinc-800">
+                    <button
+                      type="button"
+                      onClick={() => setDateMode('shift')}
+                      className={`flex items-center justify-center gap-1.5 py-2 px-1 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+                        dateMode === 'shift'
+                          ? 'bg-white dark:bg-zinc-800 text-indigo-600 dark:text-indigo-400 font-bold shadow-xs border border-zinc-200/90 dark:border-zinc-700/80'
+                          : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white'
+                      }`}
+                    >
+                      <Clock className="w-3.5 h-3.5 flex-shrink-0" />
+                      <span className="truncate">Shift Dates</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setDateMode('fixed')}
+                      className={`flex items-center justify-center gap-1.5 py-2 px-1 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+                        dateMode === 'fixed'
+                          ? 'bg-white dark:bg-zinc-800 text-indigo-600 dark:text-indigo-400 font-bold shadow-xs border border-zinc-200/90 dark:border-zinc-700/80'
+                          : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white'
+                      }`}
+                    >
+                      <Calendar className="w-3.5 h-3.5 flex-shrink-0" />
+                      <span className="truncate">Fixed Date</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setDateMode('sequence')}
+                      className={`flex items-center justify-center gap-1.5 py-2 px-1 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+                        dateMode === 'sequence'
+                          ? 'bg-white dark:bg-zinc-800 text-indigo-600 dark:text-indigo-400 font-bold shadow-xs border border-zinc-200/90 dark:border-zinc-700/80'
+                          : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white'
+                      }`}
+                    >
+                      <Sliders className="w-3.5 h-3.5 flex-shrink-0" />
+                      <span className="truncate">Sequence</span>
+                    </button>
+                  </div>
+
+                  {/* Mode Helper Subtitle & Live Summary */}
+                  <div className="flex items-center justify-between text-xs px-1 text-zinc-500 dark:text-zinc-400">
+                    <span>
+                      {dateMode === 'shift' && "Move dates forward or backward relative to original."}
+                      {dateMode === 'fixed' && "Apply one exact fixed timestamp to all photos."}
+                      {dateMode === 'sequence' && "Increment timestamp sequentially (+N seconds)."}
+                    </span>
+                    {dateMode === 'shift' && (
+                      <span className="font-semibold text-indigo-600 dark:text-indigo-400">
+                        {shiftDays === 0 && shiftHours === 0 && shiftMinutes === 0
+                          ? 'No shift (0s)'
+                          : `${shiftDays >= 0 ? '+' : ''}${shiftDays}d ${shiftHours >= 0 ? '+' : ''}${shiftHours}h ${shiftMinutes >= 0 ? '+' : ''}${shiftMinutes}m`}
+                      </span>
+                    )}
+                  </div>
                 </div>
 
                 {/* Shift Inputs */}
                 {dateMode === 'shift' && (
-                  <div className="grid grid-cols-3 gap-3 p-3 rounded-lg bg-zinc-100/70 dark:bg-zinc-950/60 border border-zinc-200 dark:border-zinc-800/80">
-                    <div>
-                      <label className="text-[11px] font-semibold text-zinc-600 dark:text-zinc-400 uppercase tracking-wider block mb-1">
-                        Days
-                      </label>
-                      <input
-                        type="number"
-                        value={shiftDays}
-                        onChange={(e) => setShiftDays(parseInt(e.target.value, 10) || 0)}
-                        className="w-full px-2.5 py-1.5 bg-white dark:bg-zinc-900 border border-zinc-300 dark:border-zinc-700/80 rounded-md text-sm text-zinc-900 dark:text-white focus:outline-none focus:border-zinc-500"
-                        placeholder="0"
-                      />
+                  <div className="space-y-3 p-3.5 rounded-xl bg-zinc-50 dark:bg-zinc-950/60 border border-zinc-200 dark:border-zinc-800/80">
+                    <div className="flex items-center justify-between flex-wrap gap-2">
+                      <span className="text-[10px] font-bold text-zinc-600 dark:text-zinc-400 uppercase tracking-wider">
+                        Timezone & Offset Presets
+                      </span>
+                      {/* Quick helper chips */}
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <button
+                          type="button"
+                          onClick={() => setShiftHours(h => h - 1)}
+                          className="quick-chip-btn text-[10px] px-2 py-0.5 rounded-md font-semibold cursor-pointer"
+                        >
+                          -1h
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setShiftHours(h => h + 1)}
+                          className="quick-chip-btn text-[10px] px-2 py-0.5 rounded-md font-semibold cursor-pointer"
+                        >
+                          +1h
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setShiftDays(d => d + 1)}
+                          className="quick-chip-btn text-[10px] px-2 py-0.5 rounded-md font-semibold cursor-pointer"
+                        >
+                          +1d
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => { setShiftDays(0); setShiftHours(0); setShiftMinutes(0); }}
+                          className="quick-chip-btn text-[10px] px-2 py-0.5 rounded-md font-semibold cursor-pointer text-zinc-500"
+                        >
+                          Reset
+                        </button>
+                      </div>
                     </div>
-                    <div>
-                      <label className="text-[11px] font-semibold text-zinc-600 dark:text-zinc-400 uppercase tracking-wider block mb-1">
-                        Hours (Timezone)
-                      </label>
-                      <input
-                        type="number"
-                        value={shiftHours}
-                        onChange={(e) => setShiftHours(parseInt(e.target.value, 10) || 0)}
-                        className="w-full px-2.5 py-1.5 bg-white dark:bg-zinc-900 border border-zinc-300 dark:border-zinc-700/80 rounded-md text-sm text-zinc-900 dark:text-white focus:outline-none focus:border-zinc-500"
-                        placeholder="0"
-                      />
-                    </div>
-                    <div>
-                      <label className="text-[11px] font-semibold text-zinc-600 dark:text-zinc-400 uppercase tracking-wider block mb-1">
-                        Minutes
-                      </label>
-                      <input
-                        type="number"
-                        value={shiftMinutes}
-                        onChange={(e) => setShiftMinutes(parseInt(e.target.value, 10) || 0)}
-                        className="w-full px-2.5 py-1.5 bg-white dark:bg-zinc-900 border border-zinc-300 dark:border-zinc-700/80 rounded-md text-sm text-zinc-900 dark:text-white focus:outline-none focus:border-zinc-500"
-                        placeholder="0"
-                      />
+
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-1">
+                      <div>
+                        <label className="text-[10px] font-bold text-zinc-600 dark:text-zinc-400 uppercase tracking-wider block mb-1">
+                          Days (±)
+                        </label>
+                        <input
+                          type="number"
+                          value={shiftDays}
+                          onChange={(e) => setShiftDays(parseInt(e.target.value, 10) || 0)}
+                          className="w-full px-3 py-2 bg-white dark:bg-zinc-900 border border-zinc-300 dark:border-zinc-700 rounded-lg text-sm text-zinc-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                          placeholder="0"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-[10px] font-bold text-zinc-600 dark:text-zinc-400 uppercase tracking-wider block mb-1">
+                          Hours (Timezone ±)
+                        </label>
+                        <input
+                          type="number"
+                          value={shiftHours}
+                          onChange={(e) => setShiftHours(parseInt(e.target.value, 10) || 0)}
+                          className="w-full px-3 py-2 bg-white dark:bg-zinc-900 border border-zinc-300 dark:border-zinc-700 rounded-lg text-sm text-zinc-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                          placeholder="0"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-[10px] font-bold text-zinc-600 dark:text-zinc-400 uppercase tracking-wider block mb-1">
+                          Minutes (±)
+                        </label>
+                        <input
+                          type="number"
+                          value={shiftMinutes}
+                          onChange={(e) => setShiftMinutes(parseInt(e.target.value, 10) || 0)}
+                          className="w-full px-3 py-2 bg-white dark:bg-zinc-900 border border-zinc-300 dark:border-zinc-700 rounded-lg text-sm text-zinc-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                          placeholder="0"
+                        />
+                      </div>
                     </div>
                   </div>
                 )}
@@ -668,22 +726,25 @@ export function PhotoStudioPanel() {
                       Copyright Notice
                     </label>
                     {/* Quick Stamp Templates */}
-                    <div className="flex items-center gap-1.5">
+                    <div className="flex items-center gap-1.5 flex-wrap">
                       <button
+                        type="button"
                         onClick={() => stampCopyright('default')}
-                        className="text-[10px] px-2 py-0.5 rounded bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-zinc-800 dark:text-zinc-200 border border-zinc-200 dark:border-zinc-700 transition-all font-semibold cursor-pointer"
+                        className="quick-chip-btn text-[10px] px-2 py-0.5 rounded-md font-semibold cursor-pointer"
                       >
                         Stamp © {new Date().getFullYear()}
                       </button>
                       <button
+                        type="button"
                         onClick={() => stampCopyright('ccby')}
-                        className="text-[10px] px-2 py-0.5 rounded bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-zinc-800 dark:text-zinc-200 border border-zinc-200 dark:border-zinc-700 transition-all font-semibold cursor-pointer"
+                        className="quick-chip-btn text-[10px] px-2 py-0.5 rounded-md font-semibold cursor-pointer"
                       >
                         CC BY 4.0
                       </button>
                       <button
+                        type="button"
                         onClick={() => stampCopyright('clear')}
-                        className="text-[10px] px-2 py-0.5 rounded bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-zinc-500 dark:text-zinc-400 border border-zinc-200 dark:border-zinc-700 transition-all font-semibold cursor-pointer"
+                        className="quick-chip-btn text-[10px] px-2 py-0.5 rounded-md font-semibold cursor-pointer text-zinc-500"
                       >
                         Clear
                       </button>
@@ -727,40 +788,53 @@ export function PhotoStudioPanel() {
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4 pt-4">
-                <div className="grid grid-cols-3 gap-2.5">
-                  <button
-                    onClick={() => setLocationMode('keep')}
-                    className={`p-3 rounded-lg border text-left transition-all cursor-pointer ${
-                      locationMode === 'keep'
-                        ? 'border-zinc-900 bg-white dark:border-zinc-500 dark:bg-zinc-800 text-zinc-900 dark:text-white shadow-xs font-semibold'
-                        : 'border-zinc-200 dark:border-zinc-800 bg-white/60 dark:bg-zinc-950/40 text-zinc-600 dark:text-zinc-400 hover:border-zinc-300 dark:hover:border-zinc-700'
-                    }`}
-                  >
-                    <div className="text-xs font-bold">Keep As-Is</div>
-                    <div className="text-[10px] text-zinc-500 dark:text-zinc-400 mt-0.5">Don't modify GPS</div>
-                  </button>
-                  <button
-                    onClick={() => setLocationMode('strip')}
-                    className={`p-3 rounded-lg border text-left transition-all cursor-pointer ${
-                      locationMode === 'strip'
-                        ? 'border-rose-500 bg-rose-50 dark:bg-rose-950/20 text-rose-700 dark:text-rose-300 shadow-xs font-semibold'
-                        : 'border-zinc-200 dark:border-zinc-800 bg-white/60 dark:bg-zinc-950/40 text-zinc-600 dark:text-zinc-400 hover:border-zinc-300 dark:hover:border-zinc-700'
-                    }`}
-                  >
-                    <div className="text-xs font-bold text-rose-600 dark:text-rose-400">Strip GPS (Privacy)</div>
-                    <div className="text-[10px] text-zinc-500 dark:text-zinc-400 mt-0.5">Remove all coords</div>
-                  </button>
-                  <button
-                    onClick={() => setLocationMode('set')}
-                    className={`p-3 rounded-lg border text-left transition-all cursor-pointer ${
-                      locationMode === 'set'
-                        ? 'border-zinc-900 bg-white dark:border-zinc-500 dark:bg-zinc-800 text-zinc-900 dark:text-white shadow-xs font-semibold'
-                        : 'border-zinc-200 dark:border-zinc-800 bg-white/60 dark:bg-zinc-950/40 text-zinc-600 dark:text-zinc-400 hover:border-zinc-300 dark:hover:border-zinc-700'
-                    }`}
-                  >
-                    <div className="text-xs font-bold">Set Coordinates</div>
-                    <div className="text-[10px] text-zinc-500 dark:text-zinc-400 mt-0.5">Inject Lat / Lng</div>
-                  </button>
+                {/* Sleek Segmented Location Selector */}
+                <div className="space-y-2">
+                  <div className="grid grid-cols-3 gap-1.5 p-1 rounded-xl bg-zinc-100 dark:bg-zinc-900 border border-zinc-200/90 dark:border-zinc-800">
+                    <button
+                      type="button"
+                      onClick={() => setLocationMode('keep')}
+                      className={`flex items-center justify-center gap-1.5 py-2 px-1 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+                        locationMode === 'keep'
+                          ? 'bg-white dark:bg-zinc-800 text-indigo-600 dark:text-indigo-400 font-bold shadow-xs border border-zinc-200/90 dark:border-zinc-700/80'
+                          : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white'
+                      }`}
+                    >
+                      <MapPin className="w-3.5 h-3.5 flex-shrink-0" />
+                      <span className="truncate">Keep GPS</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setLocationMode('strip')}
+                      className={`flex items-center justify-center gap-1.5 py-2 px-1 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+                        locationMode === 'strip'
+                          ? 'bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400 font-bold shadow-xs border border-rose-200 dark:border-rose-800/80'
+                          : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white'
+                      }`}
+                    >
+                      <ShieldCheck className="w-3.5 h-3.5 flex-shrink-0 text-rose-500" />
+                      <span className="truncate">Strip GPS</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setLocationMode('set')}
+                      className={`flex items-center justify-center gap-1.5 py-2 px-1 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+                        locationMode === 'set'
+                          ? 'bg-white dark:bg-zinc-800 text-indigo-600 dark:text-indigo-400 font-bold shadow-xs border border-zinc-200/90 dark:border-zinc-700/80'
+                          : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white'
+                      }`}
+                    >
+                      <Sliders className="w-3.5 h-3.5 flex-shrink-0" />
+                      <span className="truncate">Set GPS</span>
+                    </button>
+                  </div>
+
+                  {/* Mode Description */}
+                  <div className="text-xs px-1 text-zinc-500 dark:text-zinc-400">
+                    {locationMode === 'keep' && "Leave original GPS coordinates and geotags unchanged."}
+                    {locationMode === 'strip' && "Privacy Shield: completely wipe all GPS coordinates and altitudes."}
+                    {locationMode === 'set' && "Inject custom latitude and longitude coordinates into photos."}
+                  </div>
                 </div>
 
                 {locationMode === 'set' && (
@@ -797,7 +871,7 @@ export function PhotoStudioPanel() {
 
           {/* Destination directory & Execution trigger */}
           <div className="p-4 rounded-xl bg-zinc-50 dark:bg-zinc-900/60 border border-zinc-200 dark:border-zinc-800/80 space-y-3">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div>
                 <span className="text-xs font-bold text-zinc-900 dark:text-zinc-200 block">Output Destination</span>
                 <span className="text-[11px] text-zinc-500 dark:text-zinc-400">
@@ -808,7 +882,7 @@ export function PhotoStudioPanel() {
                 variant="outline"
                 size="sm"
                 onClick={handlePickDestFolder}
-                className="border-zinc-300 dark:border-zinc-800 hover:bg-zinc-100 dark:hover:bg-zinc-800 text-xs font-semibold text-zinc-800 dark:text-zinc-200 shadow-xs cursor-pointer"
+                className="border-zinc-300 dark:border-zinc-700/80 hover:bg-zinc-100 dark:hover:bg-zinc-800 text-xs font-semibold text-zinc-800 dark:text-zinc-200 shadow-xs cursor-pointer h-9 w-full sm:w-auto"
               >
                 {destDir ? "Change Output Folder" : "Select Output Folder"}
               </Button>
@@ -819,7 +893,7 @@ export function PhotoStudioPanel() {
               <Button
                 onClick={handleRunBatch}
                 disabled={isProcessing || photos.length === 0}
-                className="flex-1 bg-zinc-900 hover:bg-zinc-800 dark:bg-zinc-100 dark:hover:bg-white text-white dark:text-zinc-900 font-bold h-11 rounded-lg text-sm gap-2 shadow-xs transition-all disabled:opacity-50 cursor-pointer"
+                className="flex-1 bg-indigo-600 hover:bg-indigo-500 text-white font-bold h-11 rounded-xl text-sm gap-2 shadow-sm transition-all disabled:opacity-40 cursor-pointer min-h-[44px]"
               >
                 <Play className="w-4 h-4 fill-current" />
                 {isProcessing ? "Processing Batch..." : `Apply to ${photos.length} Photo${photos.length === 1 ? '' : 's'}`}
@@ -830,7 +904,7 @@ export function PhotoStudioPanel() {
                   variant="destructive"
                   size="sm"
                   onClick={() => { abortRef.current = true }}
-                  className="h-11 px-4 cursor-pointer"
+                  className="h-11 px-4 rounded-xl cursor-pointer min-h-[44px]"
                 >
                   <Square className="w-4 h-4 fill-current" />
                 </Button>

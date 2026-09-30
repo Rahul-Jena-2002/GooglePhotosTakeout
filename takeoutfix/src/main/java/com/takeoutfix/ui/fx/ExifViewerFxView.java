@@ -1,5 +1,8 @@
 package com.takeoutfix.ui.fx;
 
+import javafx.geometry.Orientation;
+import javafx.scene.control.SplitPane;
+
 import com.takeoutfix.restore.infrastructure.NativeExifToolEngine;
 import javafx.application.Platform;
 import javafx.collections.FXCollections;
@@ -118,20 +121,21 @@ public class ExifViewerFxView extends VBox {
         // 1. Header
         getChildren().add(buildHeaderRow());
 
-        // 2. Main Workspace Split: Left (Image & File Details) | Right (Key Info & Metadata Table)
-        HBox mainSplit = new HBox(16);
+        // 2. Resizable Main Workspace Split: Left (Image & File Details) | Right (Key Info & Metadata Table)
+        SplitPane mainSplit = new SplitPane();
+        mainSplit.setOrientation(Orientation.HORIZONTAL);
         VBox.setVgrow(mainSplit, Priority.ALWAYS);
 
         VBox previewPane = buildPreviewCard();
         previewPane.setPrefWidth(350);
-        previewPane.setMinWidth(320);
-        previewPane.setMaxWidth(380);
+        previewPane.setMinWidth(300);
 
         VBox rightPane = new VBox(12);
-        HBox.setHgrow(rightPane, Priority.ALWAYS);
+        VBox.setVgrow(rightPane, Priority.ALWAYS);
         rightPane.getChildren().addAll(buildQuickStatsGrid(), buildTableCard());
 
-        mainSplit.getChildren().addAll(previewPane, rightPane);
+        mainSplit.getItems().addAll(previewPane, rightPane);
+        mainSplit.setDividerPositions(0.32);
         getChildren().add(mainSplit);
 
         // Drag & drop on whole pane
@@ -147,11 +151,11 @@ public class ExifViewerFxView extends VBox {
         VBox titleBox = new VBox(2);
         Label title = new Label("Photo Details");
         title.getStyleClass().addAll("page-title", "header-title");
-        title.setStyle("-fx-font-size: 24px; -fx-font-weight: 700; -fx-text-fill: #FAFAFA;");
+        title.setStyle("-fx-font-size: 24px; -fx-font-weight: 700;");
 
         Label subtitle = new Label("Inspect image properties, camera settings and metadata.");
         subtitle.getStyleClass().addAll("page-description", "header-subtitle");
-        subtitle.setStyle("-fx-font-size: 13px; -fx-text-fill: #D4D4D8;");
+        subtitle.setStyle("-fx-font-size: 13px;");
         titleBox.getChildren().addAll(title, subtitle);
 
         Region spacer = new Region();
@@ -210,7 +214,7 @@ public class ExifViewerFxView extends VBox {
 
         // Image Information Below Preview
         VBox fileInfoBox = new VBox(4);
-        previewNameLabel.setStyle("-fx-font-size: 14px; -fx-font-weight: 700; -fx-text-fill: #FAFAFA;");
+        previewNameLabel.setStyle("-fx-font-size: 14px; -fx-font-weight: 700;"); previewNameLabel.getStyleClass().add("text-primary");
         previewNameLabel.setWrapText(true);
 
         previewMetaLabel.setStyle("-fx-font-size: 12px; -fx-text-fill: #A1A1AA;");
@@ -238,7 +242,7 @@ public class ExifViewerFxView extends VBox {
         Node uploadIcon = UiIcons.createSvgIcon(UiIcons.UPLOAD, 38, "#A78BFA");
 
         Label title = new Label("No image selected");
-        title.setStyle("-fx-font-size: 15px; -fx-font-weight: 700; -fx-text-fill: #FAFAFA;");
+        title.setStyle("-fx-font-size: 15px; -fx-font-weight: 700;"); title.getStyleClass().add("card-title");
 
         Label subtitle = new Label("Select a photo to inspect its details.");
         subtitle.setStyle("-fx-font-size: 12px; -fx-text-fill: #71717A;");
@@ -320,7 +324,7 @@ public class ExifViewerFxView extends VBox {
         tGps.setStyle("-fx-font-size: 11px; -fx-font-weight: 700; -fx-text-fill: #71717A;");
         topGps.getChildren().addAll(UiIcons.createSvgIcon(UiIcons.GLOBE, 13, "#A78BFA"), tGps);
 
-        gpsVal.setStyle("-fx-font-size: 16px; -fx-font-weight: 700; -fx-text-fill: #FAFAFA;");
+        gpsVal.setStyle("-fx-font-size: 16px; -fx-font-weight: 700;"); gpsVal.getStyleClass().add("text-primary");
         gpsVal.setWrapText(true);
 
         btnOpenMaps.getStyleClass().add("btn-secondary");
@@ -356,7 +360,7 @@ public class ExifViewerFxView extends VBox {
         t.setStyle("-fx-font-size: 11px; -fx-font-weight: 700; -fx-text-fill: #71717A;");
         top.getChildren().addAll(UiIcons.createSvgIcon(iconPath, 13, "#A78BFA"), t);
 
-        valLabel.setStyle("-fx-font-size: 16px; -fx-font-weight: 700; -fx-text-fill: #FAFAFA;");
+        valLabel.setStyle("-fx-font-size: 16px; -fx-font-weight: 700;"); valLabel.getStyleClass().add("text-primary");
         valLabel.setWrapText(true);
 
         Label s = new Label(sub);
@@ -459,7 +463,7 @@ public class ExifViewerFxView extends VBox {
                     setText(null);
                 } else {
                     setText(item);
-                    setStyle("-fx-font-weight: 600; -fx-text-fill: #FAFAFA; -fx-font-size: 13px;");
+                    setStyle("-fx-font-weight: 600; -fx-font-size: 13px;"); getStyleClass().add("text-primary");
                 }
             }
         });
@@ -475,7 +479,7 @@ public class ExifViewerFxView extends VBox {
                     setText(null);
                 } else {
                     setText(item);
-                    setStyle("-fx-text-fill: #D4D4D8; -fx-font-size: 13px;");
+                    setStyle("-fx-font-size: 13px;"); getStyleClass().add("text-secondary");
                 }
             }
         });
@@ -528,7 +532,7 @@ public class ExifViewerFxView extends VBox {
         Node searchIcon = UiIcons.createSvgIcon(UiIcons.SEARCH, 34, "#A78BFA");
 
         Label title = new Label("No metadata to display");
-        title.setStyle("-fx-font-size: 15px; -fx-font-weight: 700; -fx-text-fill: #FAFAFA;");
+        title.setStyle("-fx-font-size: 15px; -fx-font-weight: 700;"); title.getStyleClass().add("card-title");
 
         Label sub = new Label("Choose a photo to explore its metadata.");
         sub.setStyle("-fx-font-size: 12px; -fx-text-fill: #71717A;");

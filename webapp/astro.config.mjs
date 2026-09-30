@@ -30,11 +30,11 @@ function restorationObfuscatorPlugin() {
         const result = JavaScriptObfuscator.obfuscate(code, {
           target: 'browser',
 
-          // ── Domain Lock (Layer 1a) ──────────────────────────────────────
+          // ── Domain Lock (Layer 1a) ────────────────────────────────────────
           domainLock: ['.pages.dev', '.takeoutfix.pages.dev', 'takeoutfix.pages.dev', '.takeoutfix.com', 'takeoutfix.com', 'www.takeoutfix.com', 'localhost', '127.0.0.1'],
           domainLockRedirectUrl: 'about:blank',
 
-          // ── Base64 String Encryption (Layer 1b) ─────────────────────────
+          // ── Base64 String Encryption (Layer 1b) ───────────────────────────
           // Base64 encoding avoids UTF-8 URI malformed issues under Vite minification
           stringArray: true,
           stringArrayRotate: true,
@@ -44,11 +44,11 @@ function restorationObfuscatorPlugin() {
           stringArrayWrappersCount: 2,
           stringArrayWrappersType: 'function',
 
-          // ── Identifier Obfuscation ──────────────────────────────────────
+          // ── Identifier Obfuscation ────────────────────────────────────────
           identifierNamesGenerator: 'hexadecimal',
           renameGlobals: false,      // Keep global names safe (don't break window/document)
 
-          // ── Output ─────────────────────────────────────────────────────
+          // ── Output ────────────────────────────────────────────────────────
           compact: true,
           sourceMap: false,          // Never emit source maps for protected code
 
@@ -122,6 +122,7 @@ export default defineConfig({
     },
     optimizeDeps: {
       exclude: [
+        'html-escaper',
         'astro:transitions',
         'astro/virtual-modules/transitions',
         'astro/virtual-modules/transitions.js',

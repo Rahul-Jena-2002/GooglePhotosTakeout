@@ -28,7 +28,7 @@ export function ToolWorkspaceContent() {
   // ── Pipeline hook (all state + handlers) ──────────────────────────────────
   const pipeline = useToolPipeline()
 
-  // ── Restore complete modal state ───────────────────────────────────────────
+  // ── Restore complete modal state ──────────────────────────────────────────
   const [showRestoreComplete, setShowRestoreComplete] = useState(false)
   const [frozenStats, setFrozenStats] = useState({ scanned: 0, matched: 0, unmatched: 0, errors: 0 })
   // Track previous isProcessing to detect the exact true→false transition
@@ -57,15 +57,15 @@ export function ToolWorkspaceContent() {
   // ── Auth / system guards (all hooks are above — React rules of hooks) ──────
   if (loading) {
     return (
-      <div className="min-h-[calc(100vh-64px)] bg-zinc-50 dark:bg-[#0A0A0A] flex items-center justify-center">
-        <div className="w-8 h-8 border-4 border-t-indigo-600 dark:border-t-zinc-200 border-zinc-300 dark:border-zinc-800 rounded-full animate-spin"></div>
+      <div className="min-h-[calc(100vh-64px)] bg-[#F6F6F8] dark:bg-[#101114] flex items-center justify-center">
+        <div className="w-8 h-8 border-4 border-t-indigo-600 dark:border-t-indigo-400 border-zinc-300 dark:border-zinc-800 rounded-full animate-spin"></div>
       </div>
     )
   }
 
   if (pipeline.maintenance) {
     return (
-      <div className="min-h-[calc(100vh-64px)] bg-zinc-50 dark:bg-black flex flex-col items-center justify-center p-6 text-center text-zinc-900 dark:text-white">
+      <div className="min-h-[calc(100vh-64px)] bg-[#F6F6F8] dark:bg-[#101114] flex flex-col items-center justify-center p-6 text-center text-zinc-900 dark:text-white">
         <div className="w-16 h-16 bg-amber-500/10 border border-amber-500/20 text-amber-500 dark:text-amber-400 rounded-full flex items-center justify-center mb-6">
           <AlertCircle className="w-8 h-8 animate-pulse" />
         </div>
@@ -82,7 +82,7 @@ export function ToolWorkspaceContent() {
 
   if (user && userData?.suspended) {
     return (
-      <div className="min-h-screen bg-zinc-50 dark:bg-black flex flex-col items-center justify-center p-6 text-center text-zinc-900 dark:text-white">
+      <div className="min-h-screen bg-[#F6F6F8] dark:bg-[#101114] flex flex-col items-center justify-center p-6 text-center text-zinc-900 dark:text-white">
         <div className="w-16 h-16 bg-red-500/10 border border-red-500/20 text-red-500 rounded-full flex items-center justify-center mb-6">
           <AlertCircle className="w-8 h-8" />
         </div>
@@ -100,10 +100,10 @@ export function ToolWorkspaceContent() {
   }
 
 
-  // ── Main workspace layout ─────────────────────────────────────────────────
+  // ── Main workspace layout ──────────────────────────────────────────────────
   return (
     <AdBlockGate>
-      <div className="w-full min-h-[calc(100vh-64px)] h-auto flex flex-col lg:flex-row bg-white dark:bg-[#0A0A0A] text-zinc-900 dark:text-white transition-colors duration-150">
+      <div className="tool-workspace-root w-full min-h-[calc(100vh-64px)] h-auto flex flex-col lg:flex-row bg-[#F6F6F8] dark:bg-[#101114] text-zinc-900 dark:text-zinc-100 transition-colors duration-150">
 
         {/* Main content: 4 tool tabs */}
         <RestorePanel

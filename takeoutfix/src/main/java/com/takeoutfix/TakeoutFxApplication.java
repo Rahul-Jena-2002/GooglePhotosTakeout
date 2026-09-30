@@ -170,11 +170,14 @@ public class TakeoutFxApplication extends Application {
         }
     }
 
-
-
     private void applyTheme() {
         if (scene == null) return;
         boolean dark = (headerBar != null && headerBar.isDark());
+        com.takeoutfix.shared.theme.ThemeColors.setDark(dark);
+
+        if (persistentTaskFooter != null) {
+            persistentTaskFooter.setTheme(dark);
+        }
 
         try {
             javafx.application.Application.setUserAgentStylesheet(

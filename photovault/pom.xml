@@ -13,8 +13,9 @@
     <description>PhotoVault - Local Photo Backup Verifier</description>
 
     <properties>
-        <maven.compiler.source>26</maven.compiler.source>
-        <maven.compiler.target>26</maven.compiler.target>
+        <maven.compiler.source>21</maven.compiler.source>
+        <maven.compiler.target>21</maven.compiler.target>
+        <maven.compiler.release>21</maven.compiler.release>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     </properties>
 
@@ -65,7 +66,7 @@
                 <artifactId>maven-compiler-plugin</artifactId>
                 <version>3.14.0</version>
                 <configuration>
-                    <release>26</release>
+                    <release>21</release>
                 </configuration>
             </plugin>
             <plugin>
@@ -124,7 +125,7 @@
                 <artifactId>javafx-maven-plugin</artifactId>
                 <version>0.0.8</version>
                 <configuration>
-                    <mainClass>com.photovault.PhotoVaultFxApp</mainClass>
+                    <mainClass>com.photovault.PhotoVaultApp</mainClass>
                 </configuration>
             </plugin>
         </plugins>

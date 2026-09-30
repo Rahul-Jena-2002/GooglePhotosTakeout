@@ -90,16 +90,18 @@ public class ArchiveCompareFxView extends VBox {
         // 1. Header
         getChildren().add(buildHeaderRow());
 
-        // 2. Dual Sources Selection Card
-        getChildren().add(buildDualPickerCard());
+        // 2. Resizable Vertical SplitPane: Top (Dual Pickers & KPIs) | Bottom (Comparison Results Table)
+        SplitPane splitPane = new SplitPane();
+        splitPane.setOrientation(Orientation.VERTICAL);
+        VBox.setVgrow(splitPane, Priority.ALWAYS);
 
-        // 3. Metric KPI Deck
-        getChildren().add(buildKpiDeck());
-
-        // 4. Comparison Results Table Card
+        VBox topSection = new VBox(12, buildDualPickerCard(), buildKpiDeck());
         VBox tableCard = buildTableCard();
         VBox.setVgrow(tableCard, Priority.ALWAYS);
-        getChildren().add(tableCard);
+
+        splitPane.getItems().addAll(topSection, tableCard);
+        splitPane.setDividerPositions(0.38);
+        getChildren().add(splitPane);
 
         updateEmptyState();
     }
@@ -113,11 +115,11 @@ public class ArchiveCompareFxView extends VBox {
         VBox titleBox = new VBox(2);
         Label title = new Label("Compare Collections");
         title.getStyleClass().addAll("page-title", "header-title");
-        title.setStyle("-fx-font-size: 24px; -fx-font-weight: 700; -fx-text-fill: #FAFAFA;");
+        title.setStyle("-fx-font-size: 24px; -fx-font-weight: 700;");
 
         Label subtitle = new Label("Find missing, additional, and modified photos between two collections.");
         subtitle.getStyleClass().addAll("page-description", "header-subtitle");
-        subtitle.setStyle("-fx-font-size: 13px; -fx-text-fill: #D4D4D8;");
+        subtitle.setStyle("-fx-font-size: 13px;");
         titleBox.getChildren().addAll(title, subtitle);
 
         Region spacer = new Region();
@@ -160,7 +162,7 @@ public class ArchiveCompareFxView extends VBox {
         btnBrowseA.setStyle("-fx-font-size: 12px; -fx-font-weight: 600; -fx-pref-height: 34px; -fx-padding: 6 14;");
         btnBrowseA.setOnAction(e -> chooseFolderA());
 
-        sourceANameLabel.setStyle("-fx-font-size: 14px; -fx-font-weight: 700; -fx-text-fill: #FAFAFA;");
+        sourceANameLabel.setStyle("-fx-font-size: 14px; -fx-font-weight: 700;"); sourceANameLabel.getStyleClass().add("text-primary");
         sourceANameLabel.setMaxWidth(Double.MAX_VALUE);
         HBox.setHgrow(sourceANameLabel, Priority.ALWAYS);
         aRow.getChildren().addAll(btnBrowseA, sourceANameLabel);
@@ -191,7 +193,7 @@ public class ArchiveCompareFxView extends VBox {
         btnBrowseB.setStyle("-fx-font-size: 12px; -fx-font-weight: 600; -fx-pref-height: 34px; -fx-padding: 6 14;");
         btnBrowseB.setOnAction(e -> chooseFolderB());
 
-        sourceBNameLabel.setStyle("-fx-font-size: 14px; -fx-font-weight: 700; -fx-text-fill: #FAFAFA;");
+        sourceBNameLabel.setStyle("-fx-font-size: 14px; -fx-font-weight: 700;"); sourceBNameLabel.getStyleClass().add("text-primary");
         sourceBNameLabel.setMaxWidth(Double.MAX_VALUE);
         HBox.setHgrow(sourceBNameLabel, Priority.ALWAYS);
         bRow.getChildren().addAll(btnBrowseB, sourceBNameLabel);
@@ -346,7 +348,7 @@ public class ArchiveCompareFxView extends VBox {
                     setText(item);
                     setGraphic(UiIcons.createSvgIcon(UiIcons.CAMERA, 13, "#A78BFA"));
                     setGraphicTextGap(8);
-                    setStyle("-fx-font-size: 13px; -fx-font-weight: 600; -fx-text-fill: #FAFAFA;");
+                    setStyle("-fx-font-size: 13px; -fx-font-weight: 600;"); getStyleClass().add("text-primary");
                 }
             }
         });
@@ -362,7 +364,7 @@ public class ArchiveCompareFxView extends VBox {
                     setText(null);
                 } else {
                     setText(item);
-                    setStyle("-fx-font-size: 12px; -fx-text-fill: #D4D4D8;");
+                    setStyle("-fx-font-size: 12px;"); getStyleClass().add("text-secondary");
                 }
             }
         });
@@ -378,7 +380,7 @@ public class ArchiveCompareFxView extends VBox {
                     setText(null);
                 } else {
                     setText(item);
-                    setStyle("-fx-font-size: 12px; -fx-text-fill: #D4D4D8;");
+                    setStyle("-fx-font-size: 12px;"); getStyleClass().add("text-secondary");
                 }
             }
         });
@@ -495,7 +497,7 @@ public class ArchiveCompareFxView extends VBox {
         if (!hasCompared) {
             Node icon = UiIcons.createSvgIcon(UiIcons.DIFF, 36, "#A78BFA");
             Label title = new Label("No comparison results yet");
-            title.setStyle("-fx-font-size: 15px; -fx-font-weight: 700; -fx-text-fill: #FAFAFA;");
+            title.setStyle("-fx-font-size: 15px; -fx-font-weight: 700;"); title.getStyleClass().add("empty-state-title");
             Label sub = new Label("Choose two collections and compare their files to see differences here.");
             sub.setStyle("-fx-font-size: 12px; -fx-text-fill: #71717A;");
             emptyBox.getChildren().addAll(icon, title, sub);
@@ -509,7 +511,7 @@ public class ArchiveCompareFxView extends VBox {
         } else {
             Node icon = UiIcons.createSvgIcon(UiIcons.SEARCH, 32, "#71717A");
             Label title = new Label("No matching files found");
-            title.setStyle("-fx-font-size: 14px; -fx-font-weight: 700; -fx-text-fill: #FAFAFA;");
+            title.setStyle("-fx-font-size: 14px; -fx-font-weight: 700;"); title.getStyleClass().add("empty-state-title");
             Label sub = new Label("Try changing your filter or clearing the search box.");
             sub.setStyle("-fx-font-size: 12px; -fx-text-fill: #71717A;");
             emptyBox.getChildren().addAll(icon, title, sub);

@@ -1,5 +1,8 @@
 package com.takeoutfix.metasync.ui;
 
+import javafx.geometry.Orientation;
+import javafx.scene.control.SplitPane;
+
 import com.takeoutfix.metasync.core.MetadataSyncService;
 import com.takeoutfix.metasync.model.PhotoPair;
 import com.takeoutfix.metasync.model.TagDifference;
@@ -62,7 +65,7 @@ public class MetaSyncView extends VBox {
 
         // 3. Resizable Split: Left Pair Explorer | Right Tag Diff & Sync Panel
         SplitPane splitPane = new SplitPane();
-        splitPane.setStyle("-fx-box-border: transparent; -fx-background-color: transparent;");
+        
         VBox.setVgrow(splitPane, Priority.ALWAYS);
 
         VBox rightColumn = buildRightDiffColumn();
@@ -84,7 +87,7 @@ public class MetaSyncView extends VBox {
         titleRow.setAlignment(Pos.CENTER_LEFT);
 
         Label title = new Label("Metadata Sync");
-        title.setStyle("-fx-font-size: 22px; -fx-font-weight: 700; -fx-text-fill: #E6E7ED;");
+        title.setStyle("-fx-font-size: 22px; -fx-font-weight: 700;");
 
         Label badge = new Label("Safe copy enabled");
         badge.setStyle("-fx-font-size: 11px; -fx-font-weight: 600; -fx-text-fill: #10B981; -fx-background-color: rgba(16, 185, 129, 0.12); -fx-padding: 3 8 3 8; -fx-background-radius: 6;");
@@ -92,7 +95,7 @@ public class MetaSyncView extends VBox {
         titleRow.getChildren().addAll(title, badge);
 
         Label subtitle = new Label("Transfer selected metadata from RAW originals to JPEG or XMP exports.");
-        subtitle.setStyle("-fx-font-size: 13px; -fx-text-fill: #989BA8;");
+        subtitle.setStyle("-fx-font-size: 13px;");
         titleBox.getChildren().addAll(titleRow, subtitle);
 
         Region spacer = new Region();
@@ -122,15 +125,15 @@ public class MetaSyncView extends VBox {
     private VBox createNeutralKpiCard(String title, Label valLabel, String sub, String accentColor) {
         VBox card = new VBox(4);
         card.getStyleClass().add("glass-card");
-        card.setStyle("-fx-background-color: #191A22; -fx-border-color: #30313B; -fx-border-radius: 8; -fx-background-radius: 8; -fx-padding: 12 16 12 16;");
+        card.setStyle("-fx-border-radius: 8; -fx-background-radius: 8; -fx-padding: 12 16 12 16;");
 
         Label t = new Label(title);
-        t.setStyle("-fx-font-size: 11px; -fx-font-weight: 700; -fx-text-fill: #989BA8; -fx-letter-spacing: 0.5px;");
+        t.setStyle("-fx-font-size: 11px; -fx-font-weight: 700;  -fx-letter-spacing: 0.5px;");
 
         valLabel.setStyle(String.format("-fx-font-size: 26px; -fx-font-weight: 800; -fx-text-fill: %s;", accentColor));
 
         Label s = new Label(sub);
-        s.setStyle("-fx-font-size: 12px; -fx-text-fill: #989BA8;");
+        s.setStyle("-fx-font-size: 12px; ");
 
         card.getChildren().addAll(t, valLabel, s);
         return card;
@@ -144,7 +147,7 @@ public class MetaSyncView extends VBox {
         // Diff Table Card
         VBox diffCard = new VBox(10);
         diffCard.getStyleClass().add("glass-card");
-        diffCard.setStyle("-fx-background-color: #191A22; -fx-border-color: #30313B; -fx-border-radius: 8; -fx-background-radius: 8; -fx-padding: 14;");
+        diffCard.setStyle("-fx-border-radius: 8; -fx-background-radius: 8; -fx-padding: 14;");
         VBox.setVgrow(diffCard, Priority.ALWAYS);
 
         // Table toolbar & filter pills
@@ -152,7 +155,7 @@ public class MetaSyncView extends VBox {
         toolbar.setAlignment(Pos.CENTER_LEFT);
 
         Label tableTitle = new Label("Metadata comparison");
-        tableTitle.setStyle("-fx-font-size: 15px; -fx-font-weight: 700; -fx-text-fill: #E6E7ED;");
+        tableTitle.setStyle("-fx-font-size: 15px; -fx-font-weight: 700;"); tableTitle.getStyleClass().add("card-title");
 
         Region spacer = new Region();
         HBox.setHgrow(spacer, Priority.ALWAYS);
@@ -189,19 +192,19 @@ public class MetaSyncView extends VBox {
         // Synchronization Action Card
         VBox actionCard = new VBox(10);
         actionCard.getStyleClass().add("glass-card");
-        actionCard.setStyle("-fx-background-color: #191A22; -fx-border-color: #30313B; -fx-border-radius: 8; -fx-background-radius: 8; -fx-padding: 14;");
+        actionCard.setStyle("-fx-border-radius: 8; -fx-background-radius: 8; -fx-padding: 14;");
 
         HBox safetyHeader = new HBox(8);
         safetyHeader.setAlignment(Pos.CENTER_LEFT);
         Label syncTitle = new Label("Synchronization");
-        syncTitle.setStyle("-fx-font-size: 14px; -fx-font-weight: 700; -fx-text-fill: #E6E7ED;");
+        syncTitle.setStyle("-fx-font-size: 14px; -fx-font-weight: 700;"); syncTitle.getStyleClass().add("card-title");
         Label modeBadge = new Label("Non-destructive");
         modeBadge.setStyle("-fx-font-size: 11px; -fx-font-weight: 600; -fx-text-fill: #10B981; -fx-background-color: rgba(16, 185, 129, 0.12); -fx-padding: 2 6 2 6; -fx-background-radius: 4;");
         safetyHeader.getChildren().addAll(syncTitle, modeBadge);
 
-        safetyModeLabel.setStyle("-fx-font-size: 12px; -fx-text-fill: #989BA8;");
+        safetyModeLabel.setStyle("-fx-font-size: 12px; ");
 
-        inPlaceBackupCheck.setStyle("-fx-font-size: 12px; -fx-text-fill: #E6E7ED;");
+        inPlaceBackupCheck.setStyle("-fx-font-size: 12px;"); inPlaceBackupCheck.getStyleClass().add("text-primary");
         inPlaceBackupCheck.setOnAction(e -> {
             if (inPlaceBackupCheck.isSelected()) {
                 modeBadge.setText("In-Place Editing (.original backup)");
@@ -228,7 +231,7 @@ public class MetaSyncView extends VBox {
         syncAllBtn.setGraphic(UiIcons.createSvgIcon(UiIcons.SYNC, 13, "currentColor"));
         syncAllBtn.setOnAction(e -> executeSyncBatch());
 
-        statusLabel.setStyle("-fx-font-size: 12px; -fx-text-fill: #989BA8;");
+        statusLabel.setStyle("-fx-font-size: 12px; ");
 
         btnRow.getChildren().addAll(syncCurrentBtn, syncAllBtn, statusLabel);
 
@@ -237,7 +240,13 @@ public class MetaSyncView extends VBox {
 
         actionCard.getChildren().addAll(safetyHeader, safetyModeLabel, inPlaceBackupCheck, btnRow, progressBar);
 
-        col.getChildren().addAll(diffCard, actionCard);
+        SplitPane vertSplit = new SplitPane();
+        vertSplit.setOrientation(Orientation.VERTICAL);
+        VBox.setVgrow(vertSplit, Priority.ALWAYS);
+        vertSplit.getItems().addAll(diffCard, actionCard);
+        vertSplit.setDividerPositions(0.68);
+
+        col.getChildren().add(vertSplit);
         return col;
     }
 

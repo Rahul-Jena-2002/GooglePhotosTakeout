@@ -43,7 +43,7 @@ public class PairExplorerCard extends VBox {
         this.pairingService = pairingService;
 
         getStyleClass().add("glass-card");
-        setStyle("-fx-background-color: #191A22; -fx-border-color: #30313B; -fx-border-radius: 8; -fx-background-radius: 8; -fx-padding: 14;");
+        setStyle("-fx-border-radius: 8; -fx-background-radius: 8; -fx-padding: 14;");
         setSpacing(10);
         setPrefWidth(380);
         setMinWidth(340);
@@ -59,12 +59,12 @@ public class PairExplorerCard extends VBox {
         header.setAlignment(Pos.CENTER_LEFT);
 
         Label title = new Label("Photo Libraries & Pairs");
-        title.setStyle("-fx-font-size: 15px; -fx-font-weight: 700; -fx-text-fill: #E6E7ED;");
+        title.setStyle("-fx-font-size: 15px; -fx-font-weight: 700; ");
 
         Region spacer = new Region();
         HBox.setHgrow(spacer, Priority.ALWAYS);
 
-        pairCountLabel.setStyle("-fx-font-size: 11px; -fx-font-weight: 600; -fx-text-fill: #989BA8; -fx-background-color: #20212B; -fx-padding: 2 8 2 8; -fx-background-radius: 10;");
+        pairCountLabel.setStyle("-fx-font-size: 11px; -fx-font-weight: 600;  -fx-background-color: #20212B; -fx-padding: 2 8 2 8; -fx-background-radius: 10;");
         header.getChildren().addAll(title, spacer, pairCountLabel);
         getChildren().add(header);
     }
@@ -75,10 +75,10 @@ public class PairExplorerCard extends VBox {
         // RAW Folder
         VBox rawBox = new VBox(2);
         Label rawLbl = new Label("RAW Originals Library");
-        rawLbl.setStyle("-fx-font-size: 11px; -fx-font-weight: 600; -fx-text-fill: #989BA8;");
+        rawLbl.setStyle("-fx-font-size: 11px; -fx-font-weight: 600; ");
 
         rawFolderField.setPromptText("Folder with RAW originals (.CR3, .NEF, .ARW)...");
-        rawFolderField.setStyle("-fx-font-size: 12px; -fx-background-color: #101116; -fx-text-fill: #E6E7ED; -fx-border-color: #30313B; -fx-border-radius: 6; -fx-background-radius: 6;");
+        rawFolderField.setStyle("-fx-font-size: 12px;    -fx-border-radius: 6; -fx-background-radius: 6;");
 
         Button browseRawBtn = new Button("Browse");
         browseRawBtn.getStyleClass().add("btn-secondary");
@@ -93,10 +93,10 @@ public class PairExplorerCard extends VBox {
         // Export Folder
         VBox expBox = new VBox(2);
         Label expLbl = new Label("Destination / Export Library");
-        expLbl.setStyle("-fx-font-size: 11px; -fx-font-weight: 600; -fx-text-fill: #989BA8;");
+        expLbl.setStyle("-fx-font-size: 11px; -fx-font-weight: 600; ");
 
         exportFolderField.setPromptText("Folder with JPEGs or XMPs...");
-        exportFolderField.setStyle("-fx-font-size: 12px; -fx-background-color: #101116; -fx-text-fill: #E6E7ED; -fx-border-color: #30313B; -fx-border-radius: 6; -fx-background-radius: 6;");
+        exportFolderField.setStyle("-fx-font-size: 12px;    -fx-border-radius: 6; -fx-background-radius: 6;");
 
         Button browseExpBtn = new Button("Browse");
         browseExpBtn.getStyleClass().add("btn-secondary");
@@ -126,14 +126,14 @@ public class PairExplorerCard extends VBox {
 
         // Search bar
         searchField.setPromptText("Search pairs...");
-        searchField.setStyle("-fx-font-size: 12px; -fx-background-color: #101116; -fx-text-fill: #E6E7ED; -fx-border-color: #30313B; -fx-border-radius: 6; -fx-background-radius: 6;");
+        searchField.setStyle("-fx-font-size: 12px;    -fx-border-radius: 6; -fx-background-radius: 6;");
         searchField.textProperty().addListener((obs, oldVal, newVal) -> {
             String q = newVal == null ? "" : newVal.trim().toLowerCase();
             filteredPairs.setPredicate(pair -> q.isEmpty() || pair.getBaseName().toLowerCase().contains(q));
             pairCountLabel.setText(filteredPairs.size() + " pairs");
         });
 
-        pairListView.setStyle("-fx-background-color: #101116; -fx-border-color: #30313B; -fx-border-radius: 6; -fx-background-radius: 6;");
+        pairListView.setStyle("  -fx-border-radius: 6; -fx-background-radius: 6;");
         VBox.setVgrow(pairListView, Priority.ALWAYS);
 
         pairListView.setCellFactory(lv -> new ListCell<>() {
@@ -154,8 +154,8 @@ public class PairExplorerCard extends VBox {
                 thumbView.setPreserveRatio(true);
                 thumbView.setSmooth(true);
 
-                nameLbl.setStyle("-fx-font-size: 13px; -fx-font-weight: 600; -fx-text-fill: #E6E7ED;");
-                typeLbl.setStyle("-fx-font-size: 11px; -fx-text-fill: #989BA8;");
+                nameLbl.setStyle("-fx-font-size: 13px; -fx-font-weight: 600; ");
+                typeLbl.setStyle("-fx-font-size: 11px; ");
 
                 textCol.getChildren().addAll(nameLbl, typeLbl);
                 HBox.setHgrow(spacer, Priority.ALWAYS);
@@ -197,7 +197,7 @@ public class PairExplorerCard extends VBox {
                     } else {
                         typeLbl.setText("JPEG/XMP Only");
                         badge.setText("Export Only");
-                        badge.setStyle("-fx-font-size: 10px; -fx-font-weight: 700; -fx-padding: 2 6 2 6; -fx-background-radius: 4; -fx-text-fill: #989BA8; -fx-background-color: rgba(152, 155, 168, 0.12);");
+                        badge.setStyle("-fx-font-size: 10px; -fx-font-weight: 700; -fx-padding: 2 6 2 6; -fx-background-radius: 4;  -fx-background-color: rgba(152, 155, 168, 0.12);");
                     }
 
                     setGraphic(row);

@@ -18,18 +18,18 @@ html.light body::before {
 }
 
 /* Light mode container backgrounds */
-html.light .bg-black:not(button):not(.btn):not(.primary-saas),
-html.light .bg-zinc-950:not(button):not(.btn),
-html.light .bg-\[\#0A0A0A\],
-html.light .bg-zinc-900:not(button):not(.btn),
-html.light .bg-zinc-950\/50,
-html.light .bg-zinc-950\/45,
-html.light .bg-zinc-950\/60,
-html.light .bg-zinc-950\/40,
-html.light .bg-zinc-950\/20,
-html.light .bg-zinc-950\/10,
-html.light .bg-zinc-900\/60,
-html.light .bg-black\/40 {
+html.light .bg-black:not(button):not(.btn):not(.primary-saas):not(.tool-workspace-root *),
+html.light .bg-zinc-950:not(button):not(.btn):not(.tool-workspace-root *),
+html.light .bg-\[\#0A0A0A\]:not(.tool-workspace-root *),
+html.light .bg-zinc-900:not(button):not(.btn):not(.tool-workspace-root *),
+html.light .bg-zinc-950\/50:not(.tool-workspace-root *),
+html.light .bg-zinc-950\/45:not(.tool-workspace-root *),
+html.light .bg-zinc-950\/60:not(.tool-workspace-root *),
+html.light .bg-zinc-950\/40:not(.tool-workspace-root *),
+html.light .bg-zinc-950\/20:not(.tool-workspace-root *),
+html.light .bg-zinc-950\/10:not(.tool-workspace-root *),
+html.light .bg-zinc-900\/60:not(.tool-workspace-root *),
+html.light .bg-black\/40:not(.tool-workspace-root *) {
   background-color: #FFFFFF !important;
 }
 
@@ -38,11 +38,11 @@ html.light .bg-zinc-950\/95 {
 }
 
 /* Light mode text colors for standard non-colored elements */
-html.light .text-white:not(.text-keep-light):not([class*="bg-emerald"]):not([class*="bg-indigo"]):not([class*="bg-red"]):not([class*="bg-blue"]):not([class*="bg-purple"]),
-html.light .text-white\/80:not(.text-keep-light),
-html.light .text-zinc-100:not(.text-keep-light),
-html.light .text-zinc-200:not(.text-keep-light),
-html.light .text-zinc-300:not(.text-keep-light) {
+html.light .text-white:not(.text-keep-light):not([class*="bg-emerald"]):not([class*="bg-indigo"]):not([class*="bg-red"]):not([class*="bg-blue"]):not([class*="bg-purple"]):not(.tool-workspace-root *),
+html.light .text-white\/80:not(.text-keep-light):not(.tool-workspace-root *),
+html.light .text-zinc-100:not(.text-keep-light):not(.tool-workspace-root *),
+html.light .text-zinc-200:not(.text-keep-light):not(.tool-workspace-root *),
+html.light .text-zinc-300:not(.text-keep-light):not(.tool-workspace-root *) {
   color: #1d1d1f !important;
 }
 
@@ -68,50 +68,50 @@ html.light .border-zinc-900 {
   border-color: #D2D2D7 !important; /* Apple divider */
 }
 
-/* Form controls */
-html.light input,
-html.light textarea,
-html.light select {
+/* Form controls (outside tool workspace) */
+html.light input:not(.tool-workspace-root *),
+html.light textarea:not(.tool-workspace-root *),
+html.light select:not(.tool-workspace-root *) {
   background-color: #FFFFFF !important;
   color: #1d1d1f !important;
   border-color: #D2D2D7 !important;
 }
 
-/* Secondary dark buttons in light mode: render as clean, readable Apple-style light buttons */
-html.light button.bg-zinc-800,
-html.light button.bg-zinc-900,
-html.light a.bg-zinc-800,
-html.light a.bg-zinc-900 {
+/* Secondary dark buttons in light mode: render as clean, readable Apple-style light buttons (outside tool workspace) */
+html.light button.bg-zinc-800:not(.tool-workspace-root *),
+html.light button.bg-zinc-900:not(.tool-workspace-root *),
+html.light a.bg-zinc-800:not(.tool-workspace-root *),
+html.light a.bg-zinc-900:not(.tool-workspace-root *) {
   background-color: #ffffff !important;
   color: #18181b !important;
   border: 1px solid #d4d4d8 !important;
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05) !important;
 }
-html.light button.bg-zinc-800:hover,
-html.light button.bg-zinc-900:hover,
-html.light a.bg-zinc-800:hover,
-html.light a.bg-zinc-900:hover {
+html.light button.bg-zinc-800:not(.tool-workspace-root *):hover,
+html.light button.bg-zinc-900:not(.tool-workspace-root *):hover,
+html.light a.bg-zinc-800:not(.tool-workspace-root *):hover,
+html.light a.bg-zinc-900:not(.tool-workspace-root *):hover {
   background-color: #f4f4f5 !important;
   color: #09090b !important;
   border-color: #a1a1aa !important;
 }
-html.light button.bg-zinc-800 *,
-html.light button.bg-zinc-900 *,
-html.light a.bg-zinc-800 *,
-html.light a.bg-zinc-900 * {
+html.light button.bg-zinc-800:not(.tool-workspace-root *) *,
+html.light button.bg-zinc-900:not(.tool-workspace-root *) *,
+html.light a.bg-zinc-800:not(.tool-workspace-root *) *,
+html.light a.bg-zinc-900:not(.tool-workspace-root *) * {
   color: #18181b !important;
 }
-html.light button.bg-zinc-800:hover *,
-html.light button.bg-zinc-900:hover * {
+html.light button.bg-zinc-800:not(.tool-workspace-root *):hover *,
+html.light button.bg-zinc-900:not(.tool-workspace-root *):hover * {
   color: #09090b !important;
 }
 
-/* Primary white buttons */
-html.light button.bg-white {
+/* Primary white buttons (outside tool workspace) */
+html.light button.bg-white:not(.tool-workspace-root *):not(.tool-tab-btn):not(.tool-dropdown-trigger):not(.choice-card) {
   background-color: #1d1d1f !important;
   color: #FFFFFF !important;
 }
-html.light button.bg-white:hover {
+html.light button.bg-white:not(.tool-workspace-root *):not(.tool-tab-btn):not(.tool-dropdown-trigger):not(.choice-card):hover {
   background-color: #000000 !important;
 }
 

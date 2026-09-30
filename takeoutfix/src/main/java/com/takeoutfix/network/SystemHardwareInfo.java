@@ -6,22 +6,14 @@ import java.io.FileInputStream;
 import java.io.InputStreamReader;
 import java.lang.management.ManagementFactory;
 import java.nio.charset.StandardCharsets;
-import java.util.HashSet;
-import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
- * High-performance, cross-platform hardware telemetry engine.
- * Fully optimized for Linux, macOS, and Windows.
- *
- * Guarantees:
- * - Accurate physical CPU cores vs logical hardware threads (e.g. 16 cores / 22 threads on Intel hybrid architectures)
- * - Accurate CPU model name across all 3 OSes
- * - Genuine physical RAM in use (matching OS System Monitor / Mission Center / Task Manager)
- * - Cached static values (Total RAM, Cores, CPU Model) for zero unnecessary CPU/IO overhead
- * - Microsecond-level non-blocking memory and CPU load polling
+ * High-performance, zero-overhead hardware and system resource detector.
+ * Resolves genuine physical cores, hyperthreaded logical processors, CPU model brand string,
+ * host memory, and process-specific memory / CPU telemetry across Windows, macOS, and Linux.
  */
-public class SystemHardwareInfo {
+public final class SystemHardwareInfo {
 
     private static volatile int physicalCores = -1;
     private static volatile int logicalProcessors = -1;
@@ -53,68 +45,70 @@ public class SystemHardwareInfo {
         detectHardwareAsync();
     }
 
+    private SystemHardwareInfo() {}
+
+    /**
+     * Initializes hardware detection in a background thread if not already detected.
+     */
     public static void detectHardwareAsync() {
         if (detecting.compareAndSet(false, true)) {
             Thread t = new Thread(() -> {
                 try {
-                    detectHardware();
-                } catch (Throwable ignored) {
+                    if (IS_WIN) {
+                        detectWindows();
+                    } else if (IS_MAC) {
+                        detectMac();
+                    } else if (IS_LINUX) {
+                        detectLinux();
+                    }
+                } finally {
+                    detecting.set(false);
                 }
-            }, "System-Hardware-Detector");
+            }, "Hardware-Detector");
             t.setDaemon(true);
+            t.setPriority(Thread.MIN_PRIORITY);
             t.start();
         }
     }
 
-    private static void detectHardware() {
-        if (IS_WIN) {
-            detectWindows();
-        } else if (IS_MAC) {
-            detectMac();
-        } else if (IS_LINUX) {
-            detectLinux();
-        }
+    public static void initializeAsync() {
+        detectHardwareAsync();
     }
 
-    // ─── Linux Hardware Detection ─────────────────────────────────────────────
+    // ─── Linux Hardware Detection ──────────────────────────────────────────
 
     private static void detectLinux() {
         File cpuinfo = new File("/proc/cpuinfo");
         if (!cpuinfo.exists()) return;
 
-        try (BufferedReader reader = new BufferedReader(new InputStreamReader(new FileInputStream(cpuinfo), StandardCharsets.UTF_8))) {
-            Set<String> coreIds = new HashSet<>();
-            String model = "";
-            int countProcessors = 0;
-            String currentPhysical = "0";
-
+        try (BufferedReader reader = new BufferedReader(new InputStreamReader(new FileInputStream(cpuinfo), StandardCharsets.UTF_8), 2048)) {
             String line;
+            int coreCount = 0;
+            String modelName = "";
+
             while ((line = reader.readLine()) != null) {
-                line = line.trim();
-                if (line.startsWith("model name") && model.isEmpty()) {
-                    String[] parts = line.split(":", 2);
-                    if (parts.length > 1) model = parts[1].trim();
-                } else if (line.startsWith("physical id")) {
-                    String[] parts = line.split(":", 2);
-                    if (parts.length > 1) currentPhysical = parts[1].trim();
-                } else if (line.startsWith("core id")) {
-                    String[] parts = line.split(":", 2);
-                    if (parts.length > 1) coreIds.add(currentPhysical + "_" + parts[1].trim());
-                } else if (line.startsWith("processor")) {
-                    countProcessors++;
+                if (line.startsWith("model name") && modelName.isEmpty()) {
+                    int colon = line.indexOf(':');
+                    if (colon > 0) modelName = line.substring(colon + 1).trim();
+                } else if (line.startsWith("cpu cores")) {
+                    int colon = line.indexOf(':');
+                    if (colon > 0) {
+                        try {
+                            coreCount = Integer.parseInt(line.substring(colon + 1).trim());
+                        } catch (NumberFormatException ignored) {}
+                    }
                 }
             }
 
-            if (!coreIds.isEmpty()) physicalCores = coreIds.size();
-            if (countProcessors > 0) logicalProcessors = countProcessors;
-            if (!model.isEmpty()) cpuName = model;
+            if (!modelName.isEmpty()) cpuName = modelName;
+            if (coreCount > 0) physicalCores = coreCount;
         } catch (Throwable ignored) {}
     }
 
-    // ─── Windows Hardware Detection ───────────────────────────────────────────
+    // ─── Windows Hardware Detection ────────────────────────────────────────
 
     private static void detectWindows() {
-        // Fast path 1: Windows Registry query for CPU Name (~10ms vs 1500ms for PowerShell)
+        // Fast path 1: Windows Registry query for CPU Brand (zero WMI overhead, returns in ~15ms)
         try {
             Process p = new ProcessBuilder("reg", "query", "HKLM\\HARDWARE\\DESCRIPTION\\System\\CentralProcessor\\0", "/v", "ProcessorNameString").start();
             try (BufferedReader r = new BufferedReader(new InputStreamReader(p.getInputStream(), StandardCharsets.UTF_8))) {
@@ -196,7 +190,7 @@ public class SystemHardwareInfo {
         } catch (Throwable ignored) {}
     }
 
-    // ─── macOS Hardware Detection ─────────────────────────────────────────────
+    // ─── macOS Hardware Detection ──────────────────────────────────────────
 
     private static void detectMac() {
         try {
@@ -231,7 +225,7 @@ public class SystemHardwareInfo {
         return "";
     }
 
-    // ─── Public Getters (Optimized & Non-Blocking) ───────────────────────────
+    // ─── Public Getters (Optimized & Non-Blocking) ─────────────────────────
 
     public static int getPhysicalCores() {
         if (physicalCores <= 0) {
@@ -247,60 +241,74 @@ public class SystemHardwareInfo {
         return logicalProcessors;
     }
 
+    public static String getCpuBrand() {
+        if (cpuName == null || cpuName.isEmpty()) {
+            return System.getProperty("os.arch", "x86_64") + " CPU";
+        }
+        return cpuName;
+    }
+
     public static String getCpuName() {
-        return (cpuName != null && !cpuName.isEmpty()) ? cpuName : "Host Multi-Core CPU";
+        return getCpuBrand();
     }
 
     /**
-     * Total physical installed memory in bytes.
-     * Cached once at runtime since physical hardware does not change.
+     * Total physical RAM of the host machine in bytes.
      */
     public static long getTotalPhysicalMemoryBytes() {
         if (cachedTotalMemoryBytes > 0) {
             return cachedTotalMemoryBytes;
         }
 
-        long total = -1;
+        try {
+            var osBean = ManagementFactory.getOperatingSystemMXBean();
+            if (osBean instanceof com.sun.management.OperatingSystemMXBean sunBean) {
+                long total = sunBean.getTotalMemorySize();
+                if (total > 0) {
+                    cachedTotalMemoryBytes = total;
+                    return total;
+                }
+            }
+        } catch (Throwable ignored) {}
 
         if (IS_LINUX) {
-            total = getLinuxMemTotal();
+            long total = parseLinuxMeminfoTotal();
+            if (total > 0) {
+                cachedTotalMemoryBytes = total;
+                return total;
+            }
         }
 
-        if (total <= 0) {
+        if (IS_MAC) {
             try {
-                java.lang.management.OperatingSystemMXBean base = ManagementFactory.getOperatingSystemMXBean();
-                if (base instanceof com.sun.management.OperatingSystemMXBean sun) {
-                    total = sun.getTotalMemorySize();
+                long total = Long.parseLong(runCommandForString("sysctl", "-n", "hw.memsize"));
+                if (total > 0) {
+                    cachedTotalMemoryBytes = total;
+                    return total;
                 }
             } catch (Throwable ignored) {}
         }
 
-        if (total <= 0) {
-            total = Runtime.getRuntime().totalMemory();
-        }
-
-        cachedTotalMemoryBytes = total;
-        return total;
+        long fallback = Runtime.getRuntime().maxMemory() * 2;
+        return fallback > 0 ? fallback : (8L * 1024 * 1024 * 1024);
     }
 
     /**
-     * Free / Available memory in bytes.
-     * On Linux: uses MemAvailable from /proc/meminfo (accounting for cache and buffers).
-     * On Windows / Mac: uses OperatingSystemMXBean.getFreeMemorySize().
+     * Free physical RAM of the host machine in bytes.
      */
     public static long getFreePhysicalMemoryBytes() {
-        if (IS_LINUX) {
-            long linuxAvail = getLinuxMemAvailable();
-            if (linuxAvail > 0) return linuxAvail;
-        }
-
         try {
-            java.lang.management.OperatingSystemMXBean base = ManagementFactory.getOperatingSystemMXBean();
-            if (base instanceof com.sun.management.OperatingSystemMXBean sun) {
-                long free = sun.getFreeMemorySize();
+            var osBean = ManagementFactory.getOperatingSystemMXBean();
+            if (osBean instanceof com.sun.management.OperatingSystemMXBean sunBean) {
+                long free = sunBean.getFreeMemorySize();
                 if (free > 0) return free;
             }
         } catch (Throwable ignored) {}
+
+        if (IS_LINUX) {
+            long free = parseLinuxMeminfoAvailable();
+            if (free > 0) return free;
+        }
 
         return Runtime.getRuntime().freeMemory();
     }
@@ -314,23 +322,10 @@ public class SystemHardwareInfo {
         return Math.max(0, total - free);
     }
 
-    public static double getTotalMemoryGB() {
-        return getTotalPhysicalMemoryBytes() / (1024.0 * 1024.0 * 1024.0);
-    }
-
-    public static double getUsedMemoryGB() {
-        return getUsedPhysicalMemoryBytes() / (1024.0 * 1024.0 * 1024.0);
-    }
-
-    /**
-     * Highly optimized Linux /proc/meminfo parser.
-     * Reads line-by-line with a small buffer and early exits as soon as MemAvailable is retrieved.
-     */
-    private static long getLinuxMemTotal() {
-        File f = new File("/proc/meminfo");
-        if (!f.exists()) return -1;
-
-        try (BufferedReader reader = new BufferedReader(new InputStreamReader(new FileInputStream(f), StandardCharsets.US_ASCII), 1024)) {
+    private static long parseLinuxMeminfoTotal() {
+        File meminfo = new File("/proc/meminfo");
+        if (!meminfo.exists()) return -1;
+        try (BufferedReader reader = new BufferedReader(new InputStreamReader(new FileInputStream(meminfo), StandardCharsets.US_ASCII), 1024)) {
             String line;
             while ((line = reader.readLine()) != null) {
                 if (line.startsWith("MemTotal:")) {
@@ -341,22 +336,15 @@ public class SystemHardwareInfo {
         return -1;
     }
 
-    /**
-     * Reads MemAvailable in < 5 microseconds without allocating lists or arrays.
-     */
-    private static long getLinuxMemAvailable() {
-        File f = new File("/proc/meminfo");
-        if (!f.exists()) return -1;
-
-        try (BufferedReader reader = new BufferedReader(new InputStreamReader(new FileInputStream(f), StandardCharsets.US_ASCII), 1024)) {
+    private static long parseLinuxMeminfoAvailable() {
+        File meminfo = new File("/proc/meminfo");
+        if (!meminfo.exists()) return -1;
+        try (BufferedReader reader = new BufferedReader(new InputStreamReader(new FileInputStream(meminfo), StandardCharsets.US_ASCII), 1024)) {
             String line;
-            long free = 0;
-            long buffers = 0;
-            long cached = 0;
-            int count = 0;
-
-            while ((line = reader.readLine()) != null && count < 8) {
-                count++;
+            long free = -1;
+            long buffers = -1;
+            long cached = -1;
+            while ((line = reader.readLine()) != null) {
                 if (line.startsWith("MemAvailable:")) {
                     return parseMeminfoKb(line); // Immediate early return on line ~3
                 } else if (line.startsWith("MemFree:")) {
@@ -367,9 +355,8 @@ public class SystemHardwareInfo {
                     cached = parseMeminfoKb(line);
                 }
             }
-
-            if (free > 0 && (buffers > 0 || cached > 0)) {
-                return free + buffers + cached;
+            if (free > 0) {
+                return free + Math.max(0, buffers) + Math.max(0, cached);
             }
         } catch (Throwable ignored) {}
         return -1;
@@ -399,10 +386,9 @@ public class SystemHardwareInfo {
      */
     public static double getCpuLoadPercent() {
         try {
-            java.lang.management.OperatingSystemMXBean base = ManagementFactory.getOperatingSystemMXBean();
-            if (base instanceof com.sun.management.OperatingSystemMXBean sun) {
-                double load = sun.getCpuLoad();
-                if (load < 0) load = sun.getProcessCpuLoad();
+            var osBean = ManagementFactory.getOperatingSystemMXBean();
+            if (osBean instanceof com.sun.management.OperatingSystemMXBean sunBean) {
+                double load = sunBean.getCpuLoad();
                 if (load >= 0) return load * 100.0;
             }
         } catch (Throwable ignored) {}
@@ -410,19 +396,25 @@ public class SystemHardwareInfo {
     }
 
     /**
-     * Genuine operating system physical working set RAM consumed by this process in bytes.
-     * Matches Windows Task Manager ("Memory"), Linux top/ps RSS, and macOS Activity Monitor.
+     * Process-specific native Working Set (Physical RAM) in bytes.
+     * On Windows, prioritizes Private Working Set from PSAPI PROCESS_MEMORY_COUNTERS_EX to match Task Manager.
+     * On Linux, reads genuine resident set size from /proc/self/status.
+     * On macOS, queries POSIX/BSD ps rss for the current process.
+     * Universal safe fallback computes total JVM committed heap + non-heap memory.
      */
     public static long getProcessWorkingSetBytes() {
         if (IS_WIN) {
             try {
                 com.sun.jna.platform.win32.WinNT.HANDLE proc = com.sun.jna.platform.win32.Kernel32.INSTANCE.GetCurrentProcess();
-                WinPsapi.PROCESS_MEMORY_COUNTERS counters = new WinPsapi.PROCESS_MEMORY_COUNTERS();
-                if (WinPsapi.INSTANCE.GetProcessMemoryInfo(proc, counters, counters.size())) {
-                    long ws = counters.WorkingSetSize != null ? counters.WorkingSetSize.longValue() : 0;
-                    if (ws > 0) return ws;
+                WinPsapi.PROCESS_MEMORY_COUNTERS_EX counters = new WinPsapi.PROCESS_MEMORY_COUNTERS_EX();
+                counters.cb = counters.size();
+                if (WinPsapi.INSTANCE.GetProcessMemoryInfo(proc, counters, counters.cb)) {
+                    long priv = counters.PrivateUsage != null ? counters.PrivateUsage.longValue() : 0;
+                    if (priv > 0) return priv;
                     long privateCommit = counters.PagefileUsage != null ? counters.PagefileUsage.longValue() : 0;
                     if (privateCommit > 0) return privateCommit;
+                    long ws = counters.WorkingSetSize != null ? counters.WorkingSetSize.longValue() : 0;
+                    if (ws > 0) return ws;
                 }
             } catch (Throwable ignored) {}
         } else if (IS_LINUX) {
@@ -438,6 +430,14 @@ public class SystemHardwareInfo {
                             }
                         }
                     }
+                }
+            } catch (Throwable ignored) {}
+        } else if (IS_MAC) {
+            try {
+                long pid = ProcessHandle.current().pid();
+                int rssKb = runCommandForInt("ps", "-o", "rss=", "-p", String.valueOf(pid));
+                if (rssKb > 0) {
+                    return rssKb * 1024L;
                 }
             } catch (Throwable ignored) {}
         }
@@ -463,7 +463,7 @@ public class SystemHardwareInfo {
     private interface WinPsapi extends com.sun.jna.win32.StdCallLibrary {
         WinPsapi INSTANCE = com.sun.jna.Native.load("psapi", WinPsapi.class);
 
-        class PROCESS_MEMORY_COUNTERS extends com.sun.jna.Structure {
+        class PROCESS_MEMORY_COUNTERS_EX extends com.sun.jna.Structure {
             public int cb;
             public int PageFaultCount;
             public com.sun.jna.platform.win32.BaseTSD.SIZE_T PeakWorkingSetSize;
@@ -474,16 +474,30 @@ public class SystemHardwareInfo {
             public com.sun.jna.platform.win32.BaseTSD.SIZE_T QuotaNonPagedPoolUsage;
             public com.sun.jna.platform.win32.BaseTSD.SIZE_T PagefileUsage;
             public com.sun.jna.platform.win32.BaseTSD.SIZE_T PeakPagefileUsage;
+            public com.sun.jna.platform.win32.BaseTSD.SIZE_T PrivateUsage;
 
             @Override
             protected java.util.List<String> getFieldOrder() {
-                return java.util.List.of("cb", "PageFaultCount", "PeakWorkingSetSize", "WorkingSetSize",
-                        "QuotaPeakPagedPoolUsage", "QuotaPagedPoolUsage", "QuotaPeakNonPagedPoolUsage",
-                        "QuotaNonPagedPoolUsage", "PagefileUsage", "PeakPagefileUsage");
+                return java.util.Arrays.asList(
+                        "cb", "PageFaultCount",
+                        "PeakWorkingSetSize", "WorkingSetSize",
+                        "QuotaPeakPagedPoolUsage", "QuotaPagedPoolUsage",
+                        "QuotaPeakNonPagedPoolUsage", "QuotaNonPagedPoolUsage",
+                        "PagefileUsage", "PeakPagefileUsage", "PrivateUsage"
+                );
             }
         }
 
-        boolean GetProcessMemoryInfo(com.sun.jna.platform.win32.WinNT.HANDLE hProcess, PROCESS_MEMORY_COUNTERS counters, int cb);
+        boolean GetProcessMemoryInfo(com.sun.jna.platform.win32.WinNT.HANDLE Process, PROCESS_MEMORY_COUNTERS_EX ppsmemCounters, int cb);
+    }
+
+    public static double getTotalMemoryGB() {
+        return getTotalPhysicalMemoryBytes() / (1024.0 * 1024.0 * 1024.0);
+    }
+
+    public static double getUsedMemoryGB() {
+        long total = getTotalPhysicalMemoryBytes();
+        long free = getFreePhysicalMemoryBytes();
+        return Math.max(0, total - free) / (1024.0 * 1024.0 * 1024.0);
     }
 }
-

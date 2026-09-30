@@ -20,12 +20,32 @@ import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 
 /**
- * Background service that periodically checks GitHub Releases for new updates
- * and notifies the user via native OS desktop notifications (SystemTray) and in-app UI badges.
+ * Background service that periodically checks GitHub Releases and the Cloudflare OTA Worker
+ * for new updates and notifies the user via native OS desktop notifications and in-app UI badges.
+ *
+ * ============================================================================
+ * OTA UPDATE CHANGELOG & ARCHITECTURE NOTES (v2.2.4)
+ * ============================================================================
+ * 1. Windows SmartScreen & Executable Launch Hardening:
+ *    - In v2.2.3, downloads were redirected to raw GitHub Releases (302 redirect),
+ *      causing Windows SmartScreen to flag and block the executable.
+ *    - In v2.2.4, direct binary streaming is restored with clean application/octet-stream
+ *      and nosniff headers. Binaries are signed with Authenticode and DigiCert timestamping.
+ *
+ * 2. Single-File Bootstrapper Extraction:
+ *    - In v2.2.3, extraction failed on systems with pre-existing v2.2.2 files.
+ *    - In v2.2.4, SingleFileLauncher retries locked file writes and overwrites cleanly.
+ *
+ * 3. High-Contrast Enterprise Workbench:
+ *    - IntelliJ-grade resizable split panes, high contrast text in Light and Dark modes.
+ *    - Deep EXIF restoration enabled by default for complete metadata reconstruction.
+ *    - Clean removal of generic AI labels and safety badges.
+ * ============================================================================
  */
 public class UpdateCheckerService {
 
     private static final String REPO_RELEASES_API = "https://api.github.com/repos/Rahul-Jena-2002/GooglePhotosTakeout/releases/latest";
+    private static final String WORKER_OTA_API = "https://takeoutfix-download.takeoutfix.workers.dev/update.json";
     private static final String RELEASES_PAGE = "https://github.com/Rahul-Jena-2002/GooglePhotosTakeout/releases/latest";
 
     public record UpdateInfo(
@@ -192,7 +212,7 @@ public class UpdateCheckerService {
         if (info == null) return;
         Frame owner = (parent instanceof Frame) ? (Frame) parent : (parent != null ? (Frame) SwingUtilities.getWindowAncestor(parent) : null);
         JDialog dialog = new JDialog(owner, "TakeoutFix Update — What's New", true);
-        dialog.setSize(520, 520);
+        dialog.setSize(540, 540);
         dialog.setLocationRelativeTo(parent);
         dialog.setLayout(new BorderLayout());
 
@@ -304,15 +324,17 @@ public class UpdateCheckerService {
         sb.append("<html><body style='font-family:Segoe UI, sans-serif; font-size:12px; color:").append(textColor).append("; margin:0; padding:4px;'>");
 
         if (body == null || body.trim().isEmpty()) {
-            sb.append("<div style='margin-bottom:8px; font-weight:bold; color:").append(accentColor).append(";'>Highlights in ").append(info != null ? info.versionTag() : "this update").append(":</div>");
+            sb.append("<div style='margin-bottom:8px; font-weight:bold; color:").append(accentColor).append(";'>Highlights in ").append(info != null ? info.versionTag() : "v2.2.4").append(":</div>");
             sb.append("<ul style='margin:0 0 0 16px; padding:0; line-height:1.6;'>");
-            sb.append("<li>Core restoration engine speed, accuracy, and memory optimizations</li>");
-            sb.append("<li>Real-time cloud restoration synchronization on pause and close</li>");
-            sb.append("<li>Automated multi-threaded EXIF metadata and timestamp matching</li>");
-            sb.append("<li>Free Community Mode enhancements and bug fixes</li>");
+            sb.append("<li><b>SmartScreen & Launch Fix:</b> Restored direct proxy streaming and Authenticode code-signing with DigiCert timestamping to eliminate Windows SmartScreen execution blocks</li>");
+            sb.append("<li><b>Launcher Stability:</b> Resolved file extraction collision in SingleFileLauncher when updating over pre-existing installations</li>");
+            sb.append("<li><b>Enterprise UI Overhaul:</b> High-contrast, clean visual design across Light and Dark themes with IntelliJ-grade layout</li>");
+            sb.append("<li><b>Default Deep EXIF:</b> Deep EXIF metadata reconstruction is now enabled by default for maximum camera and GPS fidelity</li>");
+            sb.append("<li><b>De-cluttered Interface:</b> Clean removal of generic AI labels and safety badges</li>");
+            sb.append("<li><b>Resizable Panes:</b> Workbenches equipped with draggable horizontal and vertical split planes</li>");
             sb.append("</ul>");
         } else {
-            String[] lines = body.split("\r?\n");
+            String[] lines = body.split("\\r?\\n");
             boolean inList = false;
             for (String rawLine : lines) {
                 String line = rawLine.trim();
@@ -500,68 +522,33 @@ public class UpdateCheckerService {
             return;
         }
 
-        SwingUtilities.invokeLater(() -> {
-            try {
-                SystemTray tray = SystemTray.getSystemTray();
-                if (activeTrayIcon == null) {
-                    Image trayImg = loadAppIcon();
-                    if (trayImg == null) {
-                        // Fallback 16x16 icon
-                        java.awt.image.BufferedImage img = new java.awt.image.BufferedImage(16, 16, java.awt.image.BufferedImage.TYPE_INT_ARGB);
-                        Graphics2D g2 = img.createGraphics();
-                        g2.setColor(new Color(16, 185, 129));
-                        g2.fillOval(0, 0, 16, 16);
-                        g2.dispose();
-                        trayImg = img;
-                    }
-
-                    activeTrayIcon = new TrayIcon(trayImg, "TakeoutFix Desktop");
-                    activeTrayIcon.setImageAutoSize(true);
-                    activeTrayIcon.addActionListener(e -> performOtaUpdate(null, info));
-
-                    tray.add(activeTrayIcon);
-                }
-
-                activeTrayIcon.displayMessage(
-                        "TakeoutFix Update Available!",
-                        "Version " + info.versionTag() + " is ready.\nClick here to install OTA update.",
-                        TrayIcon.MessageType.INFO
+        try {
+            SystemTray tray = SystemTray.getSystemTray();
+            if (activeTrayIcon == null) {
+                Image image = Toolkit.getDefaultToolkit().createImage(
+                        UpdateCheckerService.class.getResource("/icons/icon.png")
                 );
-
-                // Auto-cleanup tray icon after 30 seconds if not clicked so it doesn't clutter tray
-                Timer removeTimer = new Timer(30000, evt -> {
-                    try {
-                        if (activeTrayIcon != null) {
-                            tray.remove(activeTrayIcon);
-                            activeTrayIcon = null;
-                        }
-                    } catch (Exception ignored) {}
-                });
-                removeTimer.setRepeats(false);
-                removeTimer.start();
-
-            } catch (Exception ex) {
-                System.err.println("[UpdateChecker] Could not display native tray notification: " + ex.getMessage());
+                activeTrayIcon = new TrayIcon(image, "TakeoutFix Update");
+                activeTrayIcon.setImageAutoSize(true);
+                tray.add(activeTrayIcon);
             }
-        });
+
+            activeTrayIcon.displayMessage(
+                    "TakeoutFix Update Available",
+                    "Version " + info.versionTag() + " is ready. Click to update.",
+                    TrayIcon.MessageType.INFO
+            );
+
+        } catch (Exception ignored) {
+            // Notification dispatch is non-fatal
+        }
     }
 
-    private Image loadAppIcon() {
-        try (InputStream is = getClass().getResourceAsStream("/icons/icon.png")) {
-            if (is != null) {
-                byte[] bytes = is.readAllBytes();
-                return Toolkit.getDefaultToolkit().createImage(bytes);
+    private static void openDownloadPage(String url) {
+        try {
+            if (Desktop.isDesktopSupported() && Desktop.getDesktop().isSupported(Desktop.Action.BROWSE)) {
+                Desktop.getDesktop().browse(URI.create(url));
             }
         } catch (Exception ignored) {}
-        return null;
-    }
-
-    public static void openDownloadPage(String targetUrl) {
-        try {
-            String url = (targetUrl != null && !targetUrl.isBlank()) ? targetUrl : RELEASES_PAGE;
-            Desktop.getDesktop().browse(new URI(url));
-        } catch (Exception e) {
-            System.err.println("[UpdateChecker] Failed to browse release page: " + e.getMessage());
-        }
     }
 }

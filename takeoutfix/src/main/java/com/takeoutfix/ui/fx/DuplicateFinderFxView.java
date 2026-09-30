@@ -1,5 +1,8 @@
 package com.takeoutfix.ui.fx;
 
+import javafx.geometry.Orientation;
+import javafx.scene.control.SplitPane;
+
 import com.takeoutfix.dedup.DuplicateScanService;
 import com.takeoutfix.dedup.DuplicateScanService.DuplicateCluster;
 import com.takeoutfix.dedup.DuplicateScanService.ScanResult;
@@ -133,7 +136,7 @@ public class DuplicateFinderFxView extends VBox {
     private final Label dupMetaLabel = new Label("—");
     private final Label dupResLabel = new Label("—");
     private final RadioButton rbQuarantineDup = new RadioButton("Quarantine duplicate");
-    private final RadioButton rbKeepBoth = new RadioButton("Leave untouched");
+    private final RadioButton rbKeepBoth = new RadioButton("Keep both files");
 
     private final Label selectionSummaryLabel = new Label("1 duplicate selected · 0 MB");
     private final Button btnQuarantineAction = new Button("Quarantine");
@@ -159,19 +162,21 @@ public class DuplicateFinderFxView extends VBox {
         // 3. Metric KPI Deck (Neutral surfaces, bold numbers)
         getChildren().add(buildMetricGrid());
 
-        // 4. Main Split: Duplicate Results Table | Side-by-side Visual Comparison
-        HBox mainSplit = new HBox(16);
+        // 4. Resizable Main Split: Duplicate Results Table | Side-by-side Visual Comparison
+        SplitPane mainSplit = new SplitPane();
+        mainSplit.setOrientation(Orientation.HORIZONTAL);
         VBox.setVgrow(mainSplit, Priority.ALWAYS);
 
         VBox tablePane = buildTablePane();
-        HBox.setHgrow(tablePane, Priority.ALWAYS);
         tablePane.setPrefWidth(540);
+        tablePane.setMinWidth(360);
 
         VBox reviewPane = buildReviewPane();
-        HBox.setHgrow(reviewPane, Priority.ALWAYS);
         reviewPane.setPrefWidth(600);
+        reviewPane.setMinWidth(380);
 
-        mainSplit.getChildren().addAll(tablePane, reviewPane);
+        mainSplit.getItems().addAll(tablePane, reviewPane);
+        mainSplit.setDividerPositions(0.48);
         getChildren().add(mainSplit);
 
         setupTableData();
@@ -194,7 +199,7 @@ public class DuplicateFinderFxView extends VBox {
         titleRow.getChildren().addAll(title, badge);
 
         Label subtitle = new Label("Find, review and safely quarantine duplicate photos.");
-        subtitle.setStyle("-fx-font-size: 13px; -fx-text-fill: #989BA8;");
+        subtitle.setStyle("-fx-font-size: 13px;");
         titleBox.getChildren().addAll(titleRow, subtitle);
 
         Region spacer = new Region();
@@ -214,7 +219,7 @@ public class DuplicateFinderFxView extends VBox {
     private VBox buildScanControlsCard() {
         VBox card = new VBox(10);
         card.getStyleClass().add("glass-card");
-        card.setStyle("-fx-background-color: #191A22; -fx-border-color: #30313B; -fx-border-radius: 8; -fx-background-radius: 8; -fx-padding: 12 16 12 16;");
+        card.setStyle("-fx-border-radius: 8; -fx-background-radius: 8; -fx-padding: 12 16 12 16;");
 
         HBox row = new HBox(12);
         row.setAlignment(Pos.CENTER_LEFT);
@@ -222,7 +227,7 @@ public class DuplicateFinderFxView extends VBox {
         // Folder selection block
         VBox folderBlock = new VBox(2);
         Label folderTitle = new Label("Folder");
-        folderTitle.setStyle("-fx-font-size: 11px; -fx-font-weight: 600; -fx-text-fill: #989BA8;");
+        folderTitle.setStyle("-fx-font-size: 11px; -fx-font-weight: 600; ");
 
         HBox folderPickerRow = new HBox(8);
         folderPickerRow.setAlignment(Pos.CENTER_LEFT);
@@ -233,8 +238,8 @@ public class DuplicateFinderFxView extends VBox {
         btnBrowse.setOnAction(e -> chooseFolder());
 
         VBox pathBox = new VBox(1);
-        folderPathLabel.setStyle("-fx-font-size: 13px; -fx-font-weight: 600; -fx-text-fill: #E6E7ED;");
-        folderDetailsLabel.setStyle("-fx-font-size: 11px; -fx-text-fill: #989BA8;");
+        folderPathLabel.setStyle("-fx-font-size: 13px; -fx-font-weight: 600;"); folderPathLabel.getStyleClass().add("text-primary");
+        folderDetailsLabel.setStyle("-fx-font-size: 11px;"); folderDetailsLabel.getStyleClass().add("text-muted");
         pathBox.getChildren().addAll(folderPathLabel, folderDetailsLabel);
 
         folderPickerRow.getChildren().addAll(btnBrowse, pathBox);
@@ -244,7 +249,7 @@ public class DuplicateFinderFxView extends VBox {
         // Match method selector
         VBox methodBlock = new VBox(2);
         Label methodTitle = new Label("Match method");
-        methodTitle.setStyle("-fx-font-size: 11px; -fx-font-weight: 600; -fx-text-fill: #989BA8;");
+        methodTitle.setStyle("-fx-font-size: 11px; -fx-font-weight: 600; ");
 
         matchModeCombo.getItems().setAll(DuplicateScanService.MatchStrategy.values());
         matchModeCombo.setValue(DuplicateScanService.MatchStrategy.EXACT_HASH);
@@ -271,7 +276,7 @@ public class DuplicateFinderFxView extends VBox {
         // Sensitivity selector
         VBox sensBlock = new VBox(2);
         Label sensTitle = new Label("Sensitivity");
-        sensTitle.setStyle("-fx-font-size: 11px; -fx-font-weight: 600; -fx-text-fill: #989BA8;");
+        sensTitle.setStyle("-fx-font-size: 11px; -fx-font-weight: 600; ");
         sensitivityCombo.getItems().setAll("95% (Strict)", "90% (Recommended)", "85% (Balanced)", "80% (Loose)");
         sensitivityCombo.setValue("90% (Recommended)");
         sensitivityCombo.setStyle("-fx-font-size: 13px; -fx-pref-height: 32px;");
@@ -297,7 +302,7 @@ public class DuplicateFinderFxView extends VBox {
 
         progressBar.setPrefWidth(140);
         progressBar.setVisible(false);
-        progressLabel.setStyle("-fx-font-size: 11px; -fx-text-fill: #989BA8;");
+        progressLabel.setStyle("-fx-font-size: 11px; ");
 
         actionBlock.getChildren().addAll(btnStartScan, progressLabel);
 
@@ -328,15 +333,15 @@ public class DuplicateFinderFxView extends VBox {
     private VBox createMetricCard(String title, Label valLabel, String sub, String accentColor) {
         VBox card = new VBox(4);
         card.getStyleClass().add("glass-card");
-        card.setStyle("-fx-background-color: #191A22; -fx-border-color: #30313B; -fx-border-radius: 8; -fx-background-radius: 8; -fx-padding: 12 16 12 16;");
+        card.setStyle("-fx-border-radius: 8; -fx-background-radius: 8; -fx-padding: 12 16 12 16;");
 
         Label t = new Label(title);
-        t.setStyle("-fx-font-size: 11px; -fx-font-weight: 700; -fx-text-fill: #989BA8; -fx-letter-spacing: 0.5px;");
+        t.setStyle("-fx-font-size: 11px; -fx-font-weight: 700;  -fx-letter-spacing: 0.5px;");
 
         valLabel.setStyle(String.format("-fx-font-size: 26px; -fx-font-weight: 800; -fx-text-fill: %s;", accentColor));
 
         Label s = new Label(sub);
-        s.setStyle("-fx-font-size: 12px; -fx-text-fill: #989BA8;");
+        s.setStyle("-fx-font-size: 12px; ");
 
         card.getChildren().addAll(t, valLabel, s);
         return card;
@@ -345,22 +350,22 @@ public class DuplicateFinderFxView extends VBox {
     private VBox buildTablePane() {
         VBox card = new VBox(10);
         card.getStyleClass().add("glass-card");
-        card.setStyle("-fx-background-color: #191A22; -fx-border-color: #30313B; -fx-border-radius: 8; -fx-background-radius: 8; -fx-padding: 14;");
+        card.setStyle("-fx-border-radius: 8; -fx-background-radius: 8; -fx-padding: 14;");
         VBox.setVgrow(card, Priority.ALWAYS);
 
         // Header with count badge
         HBox titleRow = new HBox(8);
         titleRow.setAlignment(Pos.CENTER_LEFT);
         Label title = new Label("Duplicate groups");
-        title.setStyle("-fx-font-size: 15px; -fx-font-weight: 700; -fx-text-fill: #E6E7ED;");
+        title.setStyle("-fx-font-size: 15px; -fx-font-weight: 700;"); title.getStyleClass().add("card-title");
 
-        countBadge.setStyle("-fx-font-size: 11px; -fx-font-weight: 600; -fx-text-fill: #989BA8; -fx-background-color: #20212B; -fx-padding: 2 8 2 8; -fx-background-radius: 10;");
+        countBadge.setStyle("-fx-font-size: 11px; -fx-font-weight: 600; -fx-padding: 2 8 2 8; -fx-background-radius: 10;"); countBadge.getStyleClass().add("badge-counter");
 
         Region spacer = new Region();
         HBox.setHgrow(spacer, Priority.ALWAYS);
 
         searchField.setPromptText("Search files or paths...");
-        searchField.setStyle("-fx-font-size: 12px; -fx-pref-width: 170px; -fx-background-color: #101116; -fx-text-fill: #E6E7ED; -fx-border-color: #30313B; -fx-border-radius: 6; -fx-background-radius: 6;");
+        searchField.setStyle("-fx-font-size: 12px; -fx-pref-width: 170px;");
 
         titleRow.getChildren().addAll(title, countBadge, spacer, searchField);
 
@@ -420,8 +425,8 @@ public class DuplicateFinderFxView extends VBox {
                 thumbView.setSmooth(true);
                 thumbView.setStyle("-fx-background-radius: 4; -fx-clip-to-bounds: true;");
 
-                nameLabel.setStyle("-fx-font-size: 13px; -fx-font-weight: 600; -fx-text-fill: #E6E7ED;");
-                metaLabel.setStyle("-fx-font-size: 11px; -fx-text-fill: #989BA8;");
+                nameLabel.setStyle("-fx-font-size: 13px; -fx-font-weight: 600; ");
+                metaLabel.setStyle("-fx-font-size: 11px; ");
 
                 textContainer.getChildren().addAll(nameLabel, metaLabel);
                 container.getChildren().addAll(thumbView, textContainer);
@@ -491,7 +496,7 @@ public class DuplicateFinderFxView extends VBox {
                         case QUARANTINED -> badge.setStyle(badge.getStyle() + "; -fx-text-fill: #F59E0B; -fx-background-color: rgba(245, 158, 11, 0.12);");
                         case RESTORED -> badge.setStyle(badge.getStyle() + "; -fx-text-fill: #10B981; -fx-background-color: rgba(16, 185, 129, 0.12);");
                         case PURGED -> badge.setStyle(badge.getStyle() + "; -fx-text-fill: #F43F5E; -fx-background-color: rgba(244, 63, 94, 0.12);");
-                        default -> badge.setStyle(badge.getStyle() + "; -fx-text-fill: #989BA8; -fx-background-color: rgba(152, 155, 168, 0.12);");
+                        default -> badge.setStyle(badge.getStyle() + ";  -fx-background-color: rgba(152, 155, 168, 0.12);");
                     }
                     setGraphic(badge);
                     setText(null);
@@ -511,9 +516,9 @@ public class DuplicateFinderFxView extends VBox {
         tableEmpty.setPadding(new Insets(30));
         Node emptyIcon = UiIcons.createSvgIcon(UiIcons.FOLDER, 36, "#989BA8");
         Label emptyTitle = new Label("No duplicate groups found");
-        emptyTitle.setStyle("-fx-font-size: 14px; -fx-font-weight: 600; -fx-text-fill: #E6E7ED;");
+        emptyTitle.setStyle("-fx-font-size: 14px; -fx-font-weight: 600; ");
         Label emptyDesc = new Label("Select a photo folder and start scan to discover duplicates.");
-        emptyDesc.setStyle("-fx-font-size: 12px; -fx-text-fill: #989BA8;");
+        emptyDesc.setStyle("-fx-font-size: 12px; ");
         tableEmpty.getChildren().addAll(emptyIcon, emptyTitle, emptyDesc);
         tableView.setPlaceholder(tableEmpty);
 
@@ -566,7 +571,7 @@ public class DuplicateFinderFxView extends VBox {
     private VBox buildReviewPane() {
         VBox card = new VBox(10);
         card.getStyleClass().add("glass-card");
-        card.setStyle("-fx-background-color: #191A22; -fx-border-color: #30313B; -fx-border-radius: 8; -fx-background-radius: 8; -fx-padding: 14;");
+        card.setStyle("-fx-border-radius: 8; -fx-background-radius: 8; -fx-padding: 14;");
         VBox.setVgrow(card, Priority.ALWAYS);
 
         // Header
@@ -575,8 +580,8 @@ public class DuplicateFinderFxView extends VBox {
 
         VBox titleBox = new VBox(2);
         Label mainLabel = new Label("SIDE-BY-SIDE COMPARISON");
-        mainLabel.setStyle("-fx-font-size: 11px; -fx-font-weight: 800; -fx-text-fill: #989BA8; -fx-letter-spacing: 0.5px;");
-        reviewGroupTitle.setStyle("-fx-font-size: 14px; -fx-font-weight: 700; -fx-text-fill: #E6E7ED;");
+        mainLabel.setStyle("-fx-font-size: 11px; -fx-font-weight: 800;  -fx-letter-spacing: 0.5px;");
+        reviewGroupTitle.setStyle("-fx-font-size: 14px; -fx-font-weight: 700; ");
         titleBox.getChildren().addAll(mainLabel, reviewGroupTitle);
 
         Region spacer = new Region();
@@ -586,9 +591,9 @@ public class DuplicateFinderFxView extends VBox {
         HBox zoomBox = new HBox(6);
         zoomBox.setAlignment(Pos.CENTER_RIGHT);
         Label zoomLabel = new Label("Zoom:");
-        zoomLabel.setStyle("-fx-font-size: 11px; -fx-text-fill: #989BA8;");
+        zoomLabel.setStyle("-fx-font-size: 11px; ");
         zoomSlider.setPrefWidth(90);
-        zoomValueLabel.setStyle("-fx-font-size: 11px; -fx-text-fill: #E6E7ED; -fx-font-weight: 600;");
+        zoomValueLabel.setStyle("-fx-font-size: 11px;  -fx-font-weight: 600;");
         zoomSlider.valueProperty().addListener((obs, oldVal, newVal) -> {
             double scale = newVal.doubleValue();
             zoomValueLabel.setText(String.format("%.0f%%", scale * 100));
@@ -609,9 +614,9 @@ public class DuplicateFinderFxView extends VBox {
         VBox.setVgrow(reviewEmptyState, Priority.ALWAYS);
         Node compIcon = UiIcons.createSvgIcon(UiIcons.EYE, 44, "#989BA8");
         Label noSelTitle = new Label("Select a duplicate group to compare");
-        noSelTitle.setStyle("-fx-font-size: 15px; -fx-font-weight: 600; -fx-text-fill: #E6E7ED;");
+        noSelTitle.setStyle("-fx-font-size: 15px; -fx-font-weight: 600; ");
         Label noSelDesc = new Label("Choose a duplicate row on the left to inspect side-by-side previews, resolution and metadata.");
-        noSelDesc.setStyle("-fx-font-size: 12px; -fx-text-fill: #989BA8; -fx-text-alignment: center;");
+        noSelDesc.setStyle("-fx-font-size: 12px;  -fx-text-alignment: center;");
         noSelDesc.setWrapText(true);
         reviewEmptyState.getChildren().addAll(compIcon, noSelTitle, noSelDesc);
 
@@ -648,7 +653,7 @@ public class DuplicateFinderFxView extends VBox {
         bottomBar.setAlignment(Pos.CENTER_LEFT);
         bottomBar.setStyle("-fx-padding: 8 0 0 0;");
 
-        selectionSummaryLabel.setStyle("-fx-font-size: 12px; -fx-font-weight: 600; -fx-text-fill: #989BA8;");
+        selectionSummaryLabel.setStyle("-fx-font-size: 12px; -fx-font-weight: 600; ");
 
         Region actSpacer = new Region();
         HBox.setHgrow(actSpacer, Priority.ALWAYS);
@@ -681,13 +686,14 @@ public class DuplicateFinderFxView extends VBox {
 
     private VBox createPreviewCard(String tag, String accentColor, ImageView iv, Label nameLbl, Label resLbl, Label metaLbl, RadioButton radio) {
         VBox box = new VBox(6);
-        box.setStyle("-fx-background-color: #20212B; -fx-background-radius: 8; -fx-padding: 12; -fx-border-color: #30313B; -fx-border-radius: 8;");
+        box.getStyleClass().add("inner-container");
+        box.setStyle("-fx-background-radius: 8; -fx-padding: 12; -fx-border-radius: 8;");
 
         Label tagLbl = new Label(tag);
         tagLbl.setStyle(String.format("-fx-font-size: 10px; -fx-font-weight: 800; -fx-text-fill: %s; -fx-letter-spacing: 0.5px;", accentColor));
 
         StackPane imgFrame = new StackPane();
-        imgFrame.setStyle("-fx-background-color: #101116; -fx-background-radius: 6; -fx-padding: 6;");
+        imgFrame.setStyle(" -fx-background-radius: 6; -fx-padding: 6;");
         imgFrame.setPrefHeight(200);
         VBox.setVgrow(imgFrame, Priority.ALWAYS);
 
@@ -697,11 +703,11 @@ public class DuplicateFinderFxView extends VBox {
         iv.setSmooth(true);
         imgFrame.getChildren().add(iv);
 
-        nameLbl.setStyle("-fx-font-size: 13px; -fx-font-weight: 700; -fx-text-fill: #E6E7ED;");
-        resLbl.setStyle("-fx-font-size: 11px; -fx-font-weight: 600; -fx-text-fill: #989BA8;");
-        metaLbl.setStyle("-fx-font-size: 11px; -fx-text-fill: #989BA8;");
+        nameLbl.setStyle("-fx-font-size: 13px; -fx-font-weight: 700; ");
+        resLbl.setStyle("-fx-font-size: 11px; -fx-font-weight: 600; ");
+        metaLbl.setStyle("-fx-font-size: 11px;"); metaLbl.getStyleClass().add("text-muted");
 
-        radio.setStyle("-fx-font-size: 12px; -fx-text-fill: #E6E7ED;");
+        radio.setStyle("-fx-font-size: 12px; ");
 
         box.getChildren().addAll(tagLbl, imgFrame, nameLbl, resLbl, metaLbl, radio);
         return box;

@@ -9,7 +9,7 @@
  * When migrating to JavaFX, these tokens map 1:1 to -fx- CSS properties.
  */
 
-/* ── Color Palette ─────────────────────────────────────────────────────────── */
+/* ── Color Palette ──────────────────────────────────────────────────────── */
 
 /* Brand / Primary */
 --color-accent:          #6366f1;   /* Indigo 500 — ThemeColors.accent() */
@@ -32,7 +32,7 @@
 --color-danger-light:    #fef2f2;   /* Rose 50  (light) */
 --color-danger-dark:     #371212;   /* Rose 950 (dark)  */
 
-/* ── Surface (Light Theme) ──────────────────────────────────────────────────── */
+/* ── Surface (Light Theme) ─────────────────────────────────────────────── */
 
 --surface-canvas:        #f8fafc;   /* Background canvas */
 --surface-card:          #ffffff;   /* Card face */
@@ -42,7 +42,7 @@
 --surface-pill:          #f1f5f9;   /* Pill / chip background */
 --surface-console:       #0f172a;   /* Terminal console */
 
-/* ── Surface (Dark Theme) ───────────────────────────────────────────────────── */
+/* ── Surface (Dark Theme) ──────────────────────────────────────────────── */
 
 --dark-canvas:           #0d0d12;
 --dark-card:             #16161e;
@@ -51,17 +51,17 @@
 --dark-input-border:     #373746;
 --dark-pill:             #20202c;
 
-/* ── Typography ─────────────────────────────────────────────────────────────── */
+/* ── Typography ────────────────────────────────────────────────────────── */
 
 --text-primary-light:    #0f172a;   /* Slate 900 */
---text-secondary-light:  #64748b;   /* Slate 500 */
---text-muted-light:      #94a3b8;   /* Slate 400 */
+--text-secondary-light:  #334155;   /* Slate 700 */
+--text-muted-light:      #475569;   /* Slate 600 */
 
---text-primary-dark:     #f4f4f5;   /* Zinc 100 */
---text-secondary-dark:   #a1a1aa;   /* Zinc 400 */
---text-muted-dark:       #71717a;   /* Zinc 500 */
+--text-primary-dark:     #fafafa;   /* Zinc 50 */
+--text-secondary-dark:   #e4e4e7;   /* Zinc 200 */
+--text-muted-dark:       #cbd5e1;   /* Slate 300 */
 
-/* ── Spacing Scale ───────────────────────────────────────────────────────────── */
+/* ── Spacing Scale ─────────────────────────────────────────────────────── */
 
 --space-xs:   4px;
 --space-sm:   8px;
@@ -70,26 +70,26 @@
 --space-xl:   24px;
 --space-2xl:  32px;
 
-/* ── Radius Scale ────────────────────────────────────────────────────────────── */
+/* ── Radius Scale ──────────────────────────────────────────────────────── */
 
 --radius-sm:   6px;
 --radius-md:   10px;   /* Cards */
 --radius-lg:   14px;   /* Panels */
 --radius-full: 9999px; /* Pills / badges */
 
-/* ── Typography Scale ────────────────────────────────────────────────────────── */
+/* ── Typography Scale ──────────────────────────────────────────────────── */
 
---font-family:      "Segoe UI", -apple-system, BlinkMacSystemFont, sans-serif;
---font-size-xs:     9px;
---font-size-sm:     10px;
---font-size-base:   11px;
---font-size-md:     12px;
---font-size-lg:     13px;
---font-size-xl:     16px;
+--font-family:      "Inter", "Segoe UI", -apple-system, BlinkMacSystemFont, sans-serif;
+--font-size-xs:     11px;
+--font-size-sm:     12px;
+--font-size-base:   13px;
+--font-size-md:     14px;
+--font-size-lg:     16px;
+--font-size-xl:     18px;
 --font-size-2xl:    24px;
 --font-weight-bold: 700;
 
-/* ── Glass Effect (future JavaFX migration) ──────────────────────────────────── */
+/* ── Glass Effect (future JavaFX migration) ────────────────────────────── */
 
 --glass-opacity:    0.12;
 --glass-blur:       20px;

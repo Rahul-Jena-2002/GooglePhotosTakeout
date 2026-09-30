@@ -1,45 +1,45 @@
 /* Guarantee that dark buttons are solid black with white text in light mode */
-html.light button.bg-black,
-html.light a.bg-black,
-html.light button.bg-zinc-900,
-html.light a.bg-zinc-900,
-html.light button.btn-solid-dark,
-html.light a.btn-solid-dark,
-html.light button.primary-saas,
-html.light a.primary-saas {
+html.light button.bg-black:not(.tool-workspace-root *),
+html.light a.bg-black:not(.tool-workspace-root *),
+html.light button.bg-zinc-900:not(.tool-workspace-root *),
+html.light a.bg-zinc-900:not(.tool-workspace-root *),
+html.light button.btn-solid-dark:not(.tool-workspace-root *),
+html.light a.btn-solid-dark:not(.tool-workspace-root *),
+html.light button.primary-saas:not(.tool-workspace-root *),
+html.light a.primary-saas:not(.tool-workspace-root *) {
   background-color: #000000 !important;
   color: #FFFFFF !important;
   border-color: #000000 !important;
 }
 
-html.light button.bg-black *,
-html.light a.bg-black *,
-html.light button.bg-zinc-900 *,
-html.light a.bg-zinc-900 *,
-html.light button.btn-solid-dark *,
-html.light a.btn-solid-dark *,
-html.light button.primary-saas *,
-html.light a.primary-saas * {
+html.light button.bg-black:not(.tool-workspace-root *) *,
+html.light a.bg-black:not(.tool-workspace-root *) *,
+html.light button.bg-zinc-900:not(.tool-workspace-root *) *,
+html.light a.bg-zinc-900:not(.tool-workspace-root *) *,
+html.light button.btn-solid-dark:not(.tool-workspace-root *) *,
+html.light a.btn-solid-dark:not(.tool-workspace-root *) *,
+html.light button.primary-saas:not(.tool-workspace-root *) *,
+html.light a.primary-saas:not(.tool-workspace-root *) * {
   color: #FFFFFF !important;
 }
 
-html.light button.bg-black:hover,
-html.light a.bg-black:hover,
-html.light button.bg-zinc-900:hover,
-html.light a.bg-zinc-900:hover,
-html.light button.btn-solid-dark:hover,
-html.light a.btn-solid-dark:hover {
+html.light button.bg-black:not(.tool-workspace-root *):hover,
+html.light a.bg-black:not(.tool-workspace-root *):hover,
+html.light button.bg-zinc-900:not(.tool-workspace-root *):hover,
+html.light a.bg-zinc-900:not(.tool-workspace-root *):hover,
+html.light button.btn-solid-dark:not(.tool-workspace-root *):hover,
+html.light a.btn-solid-dark:not(.tool-workspace-root *):hover {
   background-color: #ffffff !important;
   color: #000000 !important;
   border-color: #000000 !important;
 }
 
-html.light button.bg-black:hover *,
-html.light a.bg-black:hover *,
-html.light button.bg-zinc-900:hover *,
-html.light a.bg-zinc-900:hover *,
-html.light button.btn-solid-dark:hover *,
-html.light a.btn-solid-dark:hover * {
+html.light button.bg-black:not(.tool-workspace-root *):hover *,
+html.light a.bg-black:not(.tool-workspace-root *):hover *,
+html.light button.bg-zinc-900:not(.tool-workspace-root *):hover *,
+html.light a.bg-zinc-900:not(.tool-workspace-root *):hover *,
+html.light button.btn-solid-dark:not(.tool-workspace-root *):hover *,
+html.light a.btn-solid-dark:not(.tool-workspace-root *):hover * {
   color: #000000 !important;
 }
 
@@ -121,37 +121,37 @@ html:not(.light) .custom-faq-scroll::-webkit-scrollbar-thumb {
 }
 
 /* Dark mode button contrast guarantees */
-html:not(.light) button.bg-zinc-900:not(.btn-theme-toggle-navbar):not(.btn-notification-navbar):not(.btn-profile-trigger),
-html:not(.light) button.bg-black:not(.btn-theme-toggle-navbar):not(.btn-notification-navbar):not(.btn-profile-trigger),
-html:not(.light) button.btn-solid-dark:not(.btn-theme-toggle-navbar):not(.btn-notification-navbar):not(.btn-profile-trigger),
-html:not(.light) button:not(.bg-white):not(.tool-tab-btn):not(.btn-monochrome-primary):not(.btn-monochrome-secondary):not(.btn-pricing-pro):not(.btn-pro-blue):not(.btn-super-orange):not(.btn-recovery-cyan):not(.btn-theme-toggle-navbar):not(.btn-notification-navbar):not(.btn-profile-trigger):not(.btn-purple-pricing):not(.btn-cyan-pricing) {
+html:not(.light) button.bg-zinc-900:not(.btn-theme-toggle-navbar):not(.btn-notification-navbar):not(.btn-profile-trigger):not(.tool-workspace-root *),
+html:not(.light) button.bg-black:not(.btn-theme-toggle-navbar):not(.btn-notification-navbar):not(.btn-profile-trigger):not(.tool-workspace-root *),
+html:not(.light) button.btn-solid-dark:not(.btn-theme-toggle-navbar):not(.btn-notification-navbar):not(.btn-profile-trigger):not(.tool-workspace-root *),
+html:not(.light) button:not(.bg-white):not(.tool-tab-btn):not(.tool-dropdown-trigger):not(.choice-card):not(.tool-workspace-root *):not(.btn-monochrome-primary):not(.btn-monochrome-secondary):not(.btn-pricing-pro):not(.btn-pro-blue):not(.btn-super-orange):not(.btn-recovery-cyan):not(.btn-theme-toggle-navbar):not(.btn-notification-navbar):not(.btn-profile-trigger):not(.btn-purple-pricing):not(.btn-cyan-pricing) {
   background-color: #18181b !important;
   color: #f4f4f5 !important;
 }
-html:not(.light) button:not(.bg-zinc-900):not(.bg-black):not(.btn-solid-dark):not(.bg-white):not(.btn-monochrome-primary):not(.btn-monochrome-secondary):not(.btn-pricing-pro):not(.btn-pro-blue):not(.btn-super-orange):not(.btn-recovery-cyan):not(.btn-theme-toggle-navbar):not(.btn-notification-navbar):not(.btn-profile-trigger):not(.btn-purple-pricing):not(.btn-cyan-pricing) *,
-html:not(.light) button:not(.bg-white):not(.tool-tab-btn):not(.btn-monochrome-primary):not(.btn-monochrome-secondary):not(.btn-pricing-pro):not(.btn-pro-blue):not(.btn-super-orange):not(.btn-recovery-cyan):not(.btn-theme-toggle-navbar):not(.btn-notification-navbar):not(.btn-profile-trigger):not(.btn-purple-pricing):not(.btn-cyan-pricing) * {
+html:not(.light) button:not(.bg-zinc-900):not(.bg-black):not(.btn-solid-dark):not(.bg-white):not(.tool-workspace-root *):not(.tool-tab-btn):not(.tool-dropdown-trigger):not(.choice-card):not(.btn-monochrome-primary):not(.btn-monochrome-secondary):not(.btn-pricing-pro):not(.btn-pro-blue):not(.btn-super-orange):not(.btn-recovery-cyan):not(.btn-theme-toggle-navbar):not(.btn-notification-navbar):not(.btn-profile-trigger):not(.btn-purple-pricing):not(.btn-cyan-pricing) *,
+html:not(.light) button:not(.bg-white):not(.tool-tab-btn):not(.tool-dropdown-trigger):not(.choice-card):not(.tool-workspace-root *):not(.btn-monochrome-primary):not(.btn-monochrome-secondary):not(.btn-pricing-pro):not(.btn-pro-blue):not(.btn-super-orange):not(.btn-recovery-cyan):not(.btn-theme-toggle-navbar):not(.btn-notification-navbar):not(.btn-profile-trigger):not(.btn-purple-pricing):not(.btn-cyan-pricing) * {
   color: #FFFFFF !important;
 }
 
-html:not(.light) button.bg-white {
+html:not(.light) button.bg-white:not(.tool-workspace-root *):not(.tool-tab-btn):not(.tool-dropdown-trigger):not(.choice-card) {
   background-color: #FFFFFF !important;
   color: #000000 !important;
 }
-html:not(.light) button.bg-white * {
+html:not(.light) button.bg-white:not(.tool-workspace-root *):not(.tool-tab-btn):not(.tool-dropdown-trigger):not(.choice-card) * {
   color: #000000 !important;
 }
 
 
 /* Global light mode card shadow removal for a flat, modern, high-contrast monochrome aesthetic */
-html.light .rounded-lg.border.bg-card,
-html.light .shadow-sm,
-html.light .shadow,
-html.light .shadow-md,
-html.light .shadow-lg,
+html.light .rounded-lg.border.bg-card:not(.tool-workspace-root *),
+html.light .shadow-sm:not(.tool-workspace-root *),
+html.light .shadow:not(.tool-workspace-root *),
+html.light .shadow-md:not(.tool-workspace-root *),
+html.light .shadow-lg:not(.tool-workspace-root *),
 html.light .glass-card,
 html.light .compare-card,
 html.light .pricing-most-popular-card,
-html.light div[class*="shadow-"],
+html.light div[class*="shadow-"]:not(.tool-workspace-root *),
 html.light .admin-card,
 html.light .dashboard-card {
   box-shadow: none !important;
@@ -188,8 +188,8 @@ html.light .aceternity-grid::before {
 /* --- Global Capsule & Circle Overrides --- */
 /* Override all circles and capsules (rounded-full) to have standard button curves */
 /* Exclude spinners/loaders and radio elements from the overrides to preserve browser standards */
-[class*="rounded-full"]:not(.animate-spin):not([class*="spinner"]):not(.loading-spinner):not([type="radio"]),
-.rounded-full:not(.animate-spin):not([class*="spinner"]):not(.loading-spinner):not([type="radio"]),
+[class*="rounded-full"]:not(.animate-spin):not([class*="spinner"]):not(.loading-spinner):not([type="radio"]):not(.tool-workspace-root *),
+.rounded-full:not(.animate-spin):not([class*="spinner"]):not(.loading-spinner):not([type="radio"]):not(.tool-workspace-root *),
 .compare-handle-circle,
 .avatar {
   border-radius: var(--radius) !important;

@@ -6,8 +6,8 @@ import javafx.collections.ObservableList;
 import javafx.collections.transformation.FilteredList;
 import javafx.collections.transformation.SortedList;
 import javafx.geometry.Insets;
+import javafx.geometry.Orientation;
 import javafx.geometry.Pos;
-import javafx.scene.Node;
 import javafx.scene.control.*;
 import javafx.scene.input.Clipboard;
 import javafx.scene.input.ClipboardContent;
@@ -115,18 +115,19 @@ public class HistoryView extends VBox {
         // 2. KPI Metrics Deck
         getChildren().add(buildKpiCardsDeck());
 
-        // 3. Main Split Pane: Operation Records List | Operation Detail Panel
-        HBox mainSplit = new HBox(16);
+        // 3. Resizable Horizontal SplitPane: Operation Records List | Operation Detail Panel
+        SplitPane mainSplit = new SplitPane();
+        mainSplit.setOrientation(Orientation.HORIZONTAL);
         VBox.setVgrow(mainSplit, Priority.ALWAYS);
 
         VBox listColumn = buildListColumn();
-        HBox.setHgrow(listColumn, Priority.NEVER);
         listColumn.setPrefWidth(380);
+        listColumn.setMinWidth(300);
 
         VBox detailColumn = buildDetailColumn();
-        HBox.setHgrow(detailColumn, Priority.ALWAYS);
 
-        mainSplit.getChildren().addAll(listColumn, detailColumn);
+        mainSplit.getItems().addAll(listColumn, detailColumn);
+        mainSplit.setDividerPositions(0.36);
         getChildren().add(mainSplit);
 
         loadActivityHistory();
@@ -141,7 +142,7 @@ public class HistoryView extends VBox {
         titleRow.setAlignment(Pos.CENTER_LEFT);
 
         Label title = new Label("Activity History");
-        title.setStyle("-fx-font-size: 22px; -fx-font-weight: 700; -fx-text-fill: #E6E7ED;");
+        title.setStyle("-fx-font-size: 22px; -fx-font-weight: 700;");
 
         Label badge = new Label("Local audit trail");
         badge.setStyle("-fx-font-size: 11px; -fx-font-weight: 600; -fx-text-fill: #10B981; -fx-background-color: rgba(16, 185, 129, 0.12); -fx-padding: 3 8 3 8; -fx-background-radius: 6;");
@@ -149,7 +150,7 @@ public class HistoryView extends VBox {
         titleRow.getChildren().addAll(title, badge);
 
         Label subtitle = new Label("Review and manage your recent operations.");
-        subtitle.setStyle("-fx-font-size: 13px; -fx-text-fill: #989BA8;");
+        subtitle.setStyle("-fx-font-size: 13px;");
         titleBox.getChildren().addAll(titleRow, subtitle);
 
         Region spacer = new Region();
@@ -173,7 +174,7 @@ public class HistoryView extends VBox {
         HBox deck = new HBox(12);
         deck.setAlignment(Pos.CENTER_LEFT);
 
-        VBox card1 = createNeutralKpiCard("TOTAL OPERATIONS", kpiTotal, "Recorded sessions", "#E6E7ED");
+        VBox card1 = createNeutralKpiCard("TOTAL OPERATIONS", kpiTotal, "Recorded sessions", "#A78BFA");
         VBox card2 = createNeutralKpiCard("SUCCESSFUL", kpiSuccess, "Completed without errors", "#10B981");
         VBox card3 = createNeutralKpiCard("NEEDS REVIEW", kpiReview, "Warnings or skipped items", "#F59E0B");
 
@@ -188,15 +189,15 @@ public class HistoryView extends VBox {
     private VBox createNeutralKpiCard(String labelText, Label valLabel, String subText, String accentColor) {
         VBox card = new VBox(4);
         card.getStyleClass().add("glass-card");
-        card.setStyle("-fx-background-color: #191A22; -fx-border-color: #30313B; -fx-border-radius: 8; -fx-background-radius: 8; -fx-padding: 12 16 12 16;");
+        card.setStyle("-fx-border-radius: 8; -fx-background-radius: 8; -fx-padding: 12 16 12 16;");
 
         Label lbl = new Label(labelText);
-        lbl.setStyle("-fx-font-size: 11px; -fx-font-weight: 700; -fx-text-fill: #989BA8; -fx-letter-spacing: 0.5px;");
+        lbl.setStyle("-fx-font-size: 11px; -fx-font-weight: 700; -fx-letter-spacing: 0.5px;");
 
         valLabel.setStyle(String.format("-fx-font-size: 26px; -fx-font-weight: 800; -fx-text-fill: %s;", accentColor));
 
         Label sub = new Label(subText);
-        sub.setStyle("-fx-font-size: 12px; -fx-text-fill: #989BA8;");
+        sub.setStyle("-fx-font-size: 12px;");
 
         card.getChildren().addAll(lbl, valLabel, sub);
         return card;
@@ -205,7 +206,7 @@ public class HistoryView extends VBox {
     private VBox buildListColumn() {
         VBox col = new VBox(10);
         col.getStyleClass().add("glass-card");
-        col.setStyle("-fx-background-color: #191A22; -fx-border-color: #30313B; -fx-border-radius: 8; -fx-background-radius: 8; -fx-padding: 14;");
+        col.setStyle("-fx-border-radius: 8; -fx-background-radius: 8; -fx-padding: 14;");
         VBox.setVgrow(col, Priority.ALWAYS);
 
         // Header with count badge & search
@@ -213,15 +214,17 @@ public class HistoryView extends VBox {
         topRow.setAlignment(Pos.CENTER_LEFT);
 
         Label title = new Label("Operations");
-        title.setStyle("-fx-font-size: 15px; -fx-font-weight: 700; -fx-text-fill: #E6E7ED;");
+        title.setStyle("-fx-font-size: 15px; -fx-font-weight: 700;");
+        title.getStyleClass().add("card-title");
 
-        recordsBadge.setStyle("-fx-font-size: 11px; -fx-font-weight: 600; -fx-text-fill: #989BA8; -fx-background-color: #20212B; -fx-padding: 2 8 2 8; -fx-background-radius: 10;");
+        recordsBadge.setStyle("-fx-font-size: 11px; -fx-font-weight: 600; -fx-padding: 2 8 2 8; -fx-background-radius: 10;");
+        recordsBadge.getStyleClass().add("badge-counter");
 
         Region spacer = new Region();
         HBox.setHgrow(spacer, Priority.ALWAYS);
 
         searchField.setPromptText("Search operations...");
-        searchField.setStyle("-fx-font-size: 12px; -fx-pref-width: 140px; -fx-background-color: #101116; -fx-text-fill: #E6E7ED; -fx-border-color: #30313B; -fx-border-radius: 6; -fx-background-radius: 6;");
+        searchField.setStyle("-fx-font-size: 12px; -fx-pref-width: 140px;");
         searchField.textProperty().addListener((obs, oldVal, newVal) -> applyFilter());
 
         topRow.getChildren().addAll(title, recordsBadge, spacer, searchField);
@@ -239,14 +242,14 @@ public class HistoryView extends VBox {
         );
 
         // Record List
-        recordListView.setStyle("-fx-background-color: #101116; -fx-border-color: #30313B; -fx-border-radius: 6; -fx-background-radius: 6;");
+        recordListView.setStyle("-fx-border-radius: 6; -fx-background-radius: 6;");
         VBox.setVgrow(recordListView, Priority.ALWAYS);
 
         VBox emptyListPlaceholder = new VBox(6);
         emptyListPlaceholder.setAlignment(Pos.CENTER);
         emptyListPlaceholder.setPadding(new Insets(20));
         Label placeholderTitle = new Label("No operations recorded");
-        placeholderTitle.setStyle("-fx-font-size: 13px; -fx-font-weight: 600; -fx-text-fill: #989BA8;");
+        placeholderTitle.setStyle("-fx-font-size: 13px; -fx-font-weight: 600;");
         Label placeholderSub = new Label("Completed tasks will be recorded here.");
         placeholderSub.setStyle("-fx-font-size: 11px; -fx-text-fill: #6B7280;");
         emptyListPlaceholder.getChildren().addAll(placeholderTitle, placeholderSub);
@@ -266,12 +269,14 @@ public class HistoryView extends VBox {
                 headerRow.setAlignment(Pos.CENTER_LEFT);
                 HBox.setHgrow(spacer, Priority.ALWAYS);
 
-                titleLbl.setStyle("-fx-font-size: 13px; -fx-font-weight: 700; -fx-text-fill: #E6E7ED;");
+                titleLbl.setStyle("-fx-font-size: 13px; -fx-font-weight: 700;");
+                titleLbl.getStyleClass().add("text-primary");
                 statusBadge.setStyle("-fx-font-size: 10px; -fx-font-weight: 700; -fx-padding: 2 6 2 6; -fx-background-radius: 4;");
                 headerRow.getChildren().addAll(titleLbl, spacer, statusBadge);
 
-                summaryLbl.setStyle("-fx-font-size: 12px; -fx-text-fill: #D4D4D8;");
-                metaLbl.setStyle("-fx-font-size: 11px; -fx-text-fill: #989BA8;");
+                summaryLbl.setStyle("-fx-font-size: 12px;");
+                summaryLbl.getStyleClass().add("text-secondary");
+                metaLbl.setStyle("-fx-font-size: 11px;");
 
                 card.getChildren().addAll(headerRow, summaryLbl, metaLbl);
             }
@@ -344,7 +349,7 @@ public class HistoryView extends VBox {
     private VBox buildDetailColumn() {
         VBox col = new VBox(12);
         col.getStyleClass().add("glass-card");
-        col.setStyle("-fx-background-color: #191A22; -fx-border-color: #30313B; -fx-border-radius: 8; -fx-background-radius: 8; -fx-padding: 16;");
+        col.setStyle("-fx-border-radius: 8; -fx-background-radius: 8; -fx-padding: 16;");
         VBox.setVgrow(col, Priority.ALWAYS);
 
         // Header
@@ -354,11 +359,13 @@ public class HistoryView extends VBox {
         VBox titleBox = new VBox(2);
         HBox titleSub = new HBox(8);
         titleSub.setAlignment(Pos.CENTER_LEFT);
-        detailTitle.setStyle("-fx-font-size: 16px; -fx-font-weight: 700; -fx-text-fill: #E6E7ED;");
+        detailTitle.setStyle("-fx-font-size: 16px; -fx-font-weight: 700;");
+        detailTitle.getStyleClass().add("card-title");
         detailBadge.setStyle("-fx-font-size: 11px; -fx-font-weight: 700; -fx-padding: 2 8 2 8; -fx-background-radius: 4; -fx-text-fill: #10B981; -fx-background-color: rgba(16, 185, 129, 0.12);");
         titleSub.getChildren().addAll(detailTitle, detailBadge);
 
-        detailMeta.setStyle("-fx-font-size: 12px; -fx-text-fill: #989BA8;");
+        detailMeta.setStyle("-fx-font-size: 12px;");
+        detailMeta.getStyleClass().add("text-muted");
         titleBox.getChildren().addAll(titleSub, detailMeta);
 
         Region spacer = new Region();
@@ -391,7 +398,7 @@ public class HistoryView extends VBox {
         structuredSummaryPane.setSpacing(12);
         VBox.setVgrow(structuredSummaryPane, Priority.ALWAYS);
 
-        // Pane 2: Raw Log Viewer (theme-adaptive styling without hardcoded pale colors)
+        // Pane 2: Raw Log Viewer
         rawLogArea.setEditable(false);
         rawLogArea.setWrapText(true);
         rawLogArea.setStyle(
@@ -441,12 +448,15 @@ public class HistoryView extends VBox {
 
         // Summary Card
         VBox sumCard = new VBox(8);
-        sumCard.setStyle("-fx-background-color: #20212B; -fx-background-radius: 8; -fx-padding: 14; -fx-border-color: #30313B; -fx-border-radius: 8;");
+        sumCard.setStyle("-fx-background-radius: 8; -fx-padding: 14; -fx-border-radius: 8;");
+        sumCard.getStyleClass().add("inner-container");
         Label sumTitle = new Label("Operation Outcome & Overview");
-        sumTitle.setStyle("-fx-font-size: 13px; -fx-font-weight: 700; -fx-text-fill: #E6E7ED;");
+        sumTitle.setStyle("-fx-font-size: 13px; -fx-font-weight: 700;");
+        sumTitle.getStyleClass().add("card-title");
 
         Label sumDesc = new Label(rec.getSummary());
-        sumDesc.setStyle("-fx-font-size: 13px; -fx-text-fill: #E6E7ED;");
+        sumDesc.setStyle("-fx-font-size: 13px;");
+        sumDesc.getStyleClass().add("text-primary");
 
         HBox tagRow = new HBox(8);
         tagRow.getChildren().addAll(
@@ -467,11 +477,13 @@ public class HistoryView extends VBox {
 
         for (Map.Entry<String, String> entry : rec.getMetrics().entrySet()) {
             VBox mBox = new VBox(2);
-            mBox.setStyle("-fx-background-color: #20212B; -fx-background-radius: 6; -fx-padding: 10 14 10 14; -fx-border-color: #30313B; -fx-border-radius: 6;");
+            mBox.setStyle("-fx-background-radius: 6; -fx-padding: 10 14 10 14; -fx-border-radius: 6;");
+            mBox.getStyleClass().add("inner-container");
             Label k = new Label(entry.getKey().toUpperCase());
-            k.setStyle("-fx-font-size: 10px; -fx-font-weight: 700; -fx-text-fill: #989BA8;");
+            k.setStyle("-fx-font-size: 10px; -fx-font-weight: 700;");
             Label v = new Label(entry.getValue());
-            v.setStyle("-fx-font-size: 16px; -fx-font-weight: 800; -fx-text-fill: #E6E7ED;");
+            v.setStyle("-fx-font-size: 16px; -fx-font-weight: 800;");
+            v.getStyleClass().add("text-primary");
             mBox.getChildren().addAll(k, v);
 
             grid.add(mBox, colIdx, rowIdx);
@@ -486,11 +498,13 @@ public class HistoryView extends VBox {
 
         // File Location Card
         VBox fileCard = new VBox(4);
-        fileCard.setStyle("-fx-background-color: #20212B; -fx-background-radius: 6; -fx-padding: 10 12 10 12; -fx-border-color: #30313B; -fx-border-radius: 6;");
+        fileCard.setStyle("-fx-background-radius: 6; -fx-padding: 10 12 10 12; -fx-border-radius: 6;");
+        fileCard.getStyleClass().add("inner-container");
         Label fileTitle = new Label("Audit Log Location");
-        fileTitle.setStyle("-fx-font-size: 11px; -fx-font-weight: 600; -fx-text-fill: #989BA8;");
+        fileTitle.setStyle("-fx-font-size: 11px; -fx-font-weight: 600;");
         Label filePath = new Label(rec.getFile().getAbsolutePath());
-        filePath.setStyle("-fx-font-size: 12px; -fx-text-fill: #E6E7ED;");
+        filePath.setStyle("-fx-font-size: 12px;");
+        filePath.getStyleClass().add("text-primary");
         fileCard.getChildren().addAll(fileTitle, filePath);
 
         structuredSummaryPane.getChildren().addAll(sumCard, grid, fileCard);
@@ -570,19 +584,21 @@ public class HistoryView extends VBox {
         this.currentSelectedRecord = null;
         detailTitle.setText("No operation selected");
         detailBadge.setText("—");
-        detailBadge.setStyle("-fx-font-size: 11px; -fx-font-weight: 700; -fx-padding: 2 8 2 8; -fx-background-radius: 4; -fx-text-fill: #989BA8; -fx-background-color: rgba(152, 155, 168, 0.12);");
+        detailBadge.setStyle("-fx-font-size: 11px; -fx-font-weight: 700; -fx-padding: 2 8 2 8; -fx-background-radius: 4; -fx-background-color: rgba(152, 155, 168, 0.12);");
         detailMeta.setText("Select an activity on the left or run a tool to inspect structured metrics and logs.");
         structuredSummaryPane.getChildren().clear();
         rawLogArea.clear();
 
         VBox emptyCard = new VBox(8);
         emptyCard.setAlignment(Pos.CENTER);
-        emptyCard.setStyle("-fx-background-color: #20212B; -fx-background-radius: 8; -fx-padding: 30; -fx-border-color: #30313B; -fx-border-radius: 8;");
+        emptyCard.getStyleClass().add("inner-container");
+        emptyCard.setStyle("-fx-background-radius: 8; -fx-padding: 30; -fx-border-radius: 8;");
         Label emptyTitle = new Label("No Operations Recorded Yet");
-        emptyTitle.setStyle("-fx-font-size: 14px; -fx-font-weight: 700; -fx-text-fill: #E6E7ED;");
+        emptyTitle.setStyle("-fx-font-size: 14px; -fx-font-weight: 700;");
+        emptyTitle.getStyleClass().add("empty-state-title");
         Label emptyDesc = new Label("When you run operations such as Restore Metadata, Duplicate Cleanup, or Metadata Sync, your local-first audit records and logs will appear here.");
         emptyDesc.setWrapText(true);
-        emptyDesc.setStyle("-fx-font-size: 12px; -fx-text-fill: #989BA8; -fx-text-alignment: center;");
+        emptyDesc.setStyle("-fx-font-size: 12px; -fx-text-alignment: center;");
         emptyCard.getChildren().addAll(emptyTitle, emptyDesc);
         structuredSummaryPane.getChildren().add(emptyCard);
     }

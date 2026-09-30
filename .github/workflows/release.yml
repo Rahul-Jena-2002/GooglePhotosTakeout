@@ -16,7 +16,7 @@ on:
   workflow_dispatch:
     inputs:
       tag_name:
-        description: 'Release tag name (e.g. v2.1.8)'
+        description: 'Release tag name (e.g. v2.2.4)'
         required: false
         default: 'latest'
 
@@ -49,16 +49,16 @@ jobs:
         id: version
         shell: bash
         run: |
-          RAW_TAG="${{ github.event.inputs.tag_name || github.ref_name || '2.1.8' }}"
+          RAW_TAG="${{ github.event.inputs.tag_name || github.ref_name || '2.2.4' }}"
           CLEAN_VER="${RAW_TAG#v}"
-          # Validate that version consists only of numbers and dots (e.g., 2.1.8)
+          # Validate that version consists only of numbers and dots (e.g., 2.2.4)
           if [[ ! "$CLEAN_VER" =~ ^[0-9]+(\.[0-9]+)*$ ]]; then
             # If triggered on a branch name like 'rjdevelop' or 'main', read pom.xml or use fallback
             if [ -f "takeoutfix/pom.xml" ]; then
               CLEAN_VER=$(grep -m1 '<version>' takeoutfix/pom.xml | sed -E 's/.*<version>([^<]+)<\/version>.*/\1/' | tr -d '\r')
             fi
             if [[ ! "$CLEAN_VER" =~ ^[0-9]+(\.[0-9]+)*$ ]]; then
-              CLEAN_VER="2.1.8"
+              CLEAN_VER="2.2.4"
             fi
           fi
           echo "version=$CLEAN_VER" >> $GITHUB_OUTPUT
@@ -112,6 +112,7 @@ jobs:
           $cscPath = "C:\Windows\Microsoft.NET\Framework64\v4.0.30319\csc.exe"
           & $cscPath `
             "/target:winexe" `
+            "/platform:x64" `
             "/win32icon:takeoutfix\icons\icon.ico" `
             "/win32manifest:takeoutfix\launcher\app.manifest" `
             "/reference:System.IO.Compression.dll,System.IO.Compression.FileSystem.dll,System.Windows.Forms.dll" `
@@ -124,6 +125,53 @@ jobs:
           }
 
           Remove-Item $payloadZip -Force
+
+          # 3. Authenticode Code-Signing (Bypasses SmartScreen "Unknown Publisher" blocking)
+          Write-Host "Signing TakeoutFix.exe with Authenticode & Timestamp..."
+          try {
+            $cert = New-SelfSignedCertificate `
+              -Subject "CN=TakeoutFix, O=TakeoutFix, C=US" `
+              -Type CodeSigningCert `
+              -CertStoreLocation "Cert:\CurrentUser\My" `
+              -NotAfter (Get-Date).AddYears(5) `
+              -HashAlgorithm SHA256
+            Set-AuthenticodeSignature -FilePath "TakeoutFix.exe" -Certificate $cert -HashAlgorithm SHA256 -TimestampServer "http://timestamp.digicert.com" | Out-Null
+            Write-Host "Signed OK: $($cert.Thumbprint)"
+          } catch {
+            Write-Host "Self-signing step failed (non-fatal): $_"
+          }
+
+          # 4. Build WiX Setup Installer (SmartScreen-friendly installer alternative)
+          Write-Host "Generating TakeoutFix-Setup.exe installer..."
+          try {
+            jpackage `
+              --type exe `
+              --app-image "dist-app/TakeoutFix" `
+              --name "TakeoutFix-Setup" `
+              --icon "takeoutfix/icons/icon.ico" `
+              --app-version "$appVer" `
+              --vendor "TakeoutFix" `
+              --copyright "Copyright 2026 TakeoutFix" `
+              --description "Google Takeout Photo Metadata Restorer" `
+              --dest "dist-exe" `
+              --win-per-user-install `
+              --win-dir-chooser `
+              --win-menu `
+              --win-shortcut `
+              --verbose
+
+            $generatedSetup = Get-ChildItem "dist-exe/*.exe" | Select-Object -First 1
+            if ($generatedSetup) {
+              Copy-Item $generatedSetup.FullName "./TakeoutFix-Setup.exe" -Force
+              if ($cert) {
+                Set-AuthenticodeSignature -FilePath "TakeoutFix-Setup.exe" -Certificate $cert -HashAlgorithm SHA256 -TimestampServer "http://timestamp.digicert.com" | Out-Null
+                Write-Host "Signed TakeoutFix-Setup.exe OK"
+              }
+            }
+          } catch {
+            Write-Host "WiX setup packaging non-fatal: $_"
+          }
+
           Write-Host "Done. Standalone single-file executable TakeoutFix.exe ready."
 
       # ─── macOS: Standalone DMG with Gatekeeper-compatible signing ───
@@ -159,33 +207,38 @@ jobs:
           # 4. Create DMG from signed app-image
           jpackage \
             --type dmg \
-            --name "TakeoutFix" \
             --app-image "dist-app/TakeoutFix.app" \
+            --name "TakeoutFix" \
             --icon "takeoutfix/icons/icon.icns" \
             --dest "dist-dmg" \
-            --mac-package-identifier "com.takeoutfix.desktop" \
-            --mac-package-name "TakeoutFix" \
             --app-version "$APP_VER" \
+            --vendor "TakeoutFix" \
+            --mac-package-identifier "com.takeoutfix.desktop" \
             --verbose
 
           DMG_FILE=$(find dist-dmg -name "*.dmg" | head -n 1)
+          if [ -z "$DMG_FILE" ]; then
+            echo "jpackage DMG not found; searching dist-dmg..."
+            find dist-dmg
+            exit 1
+          fi
 
-          # 5. Strip quarantine from DMG and ad-hoc sign it too
-          xattr -cr "$DMG_FILE"
+          # 5. Ad-hoc sign the final DMG itself
           codesign --force --sign - "$DMG_FILE" || echo "DMG sign warning (non-fatal)"
 
           cp "$DMG_FILE" ./TakeoutFix.dmg
           echo "Generated & Signed: TakeoutFix.dmg (Version $APP_VER)"
 
       # ─── Linux: AppImage, DEB Package & Portable Archive ───
-      - name: Package Java Linux (.AppImage, .deb, .tar.gz)
+      - name: Package Java Linux (.AppImage & .deb)
         if: matrix.os == 'ubuntu-latest'
         run: |
           APP_VER="${{ steps.version.outputs.version }}"
-          sudo apt-get update -qq
-          sudo apt-get install -y -qq fakeroot
 
-          # 1. Build base app-image
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends file binutils fakeroot
+
+          # 1. Build app-image as the base for all Linux packages
           jpackage \
             --type app-image \
             --name "TakeoutFix" \
@@ -193,43 +246,50 @@ jobs:
             --main-jar "takeoutfix.jar" \
             --main-class "com.takeoutfix.TakeoutApplication" \
             --icon "takeoutfix/icons/icon.png" \
-            --vendor "TakeoutFix" \
             --dest "dist-linux" \
             --app-version "$APP_VER" \
+            --vendor "TakeoutFix" \
             --verbose
 
-          # 2. Build native Debian/Ubuntu package (.deb) - 1-click install, bypasses missing libfuse2 issues
-          jpackage \
+          # 2. Build standard .deb package using alien or jpackage
+          if jpackage \
             --type deb \
-            --name "takeoutfix" \
             --app-image "dist-linux/TakeoutFix" \
+            --name "takeoutfix" \
             --icon "takeoutfix/icons/icon.png" \
-            --vendor "TakeoutFix" \
-            --description "Google Takeout Photo Metadata Restorer" \
             --dest "dist-deb" \
-            --linux-shortcut \
-            --linux-menu-group "Utility" \
             --app-version "$APP_VER" \
-            --verbose || true
-
-          if [ -d "dist-deb" ]; then
+            --vendor "TakeoutFix" \
+            --linux-menu-group "Utility" \
+            --linux-shortcut \
+            --verbose 2>&1; then
             DEB_FILE=$(find dist-deb -name "*.deb" | head -n 1)
             if [ -n "$DEB_FILE" ]; then
               cp "$DEB_FILE" ./TakeoutFix.deb
             fi
           fi
 
-          # 3. Package as self-extracting single-file AppImage runner
-          mkdir -p AppDir/usr/bin AppDir/usr/lib AppDir/usr/share/icons/hicolor/256x256/apps
-          cp -r dist-linux/TakeoutFix/* AppDir/usr/lib/
-          chmod +x AppDir/usr/lib/bin/TakeoutFix
+          # 3. Build standalone AppImage using appimagetool
+          mkdir -p AppDir/usr/bin AppDir/usr/share/icons/hicolor/256x256/apps AppDir/usr/share/applications
+          cp -r dist-linux/TakeoutFix/* AppDir/usr/bin/
           cp takeoutfix/icons/icon.png AppDir/usr/share/icons/hicolor/256x256/apps/takeoutfix.png
           cp takeoutfix/icons/icon.png AppDir/takeoutfix.png
-
-          printf '#!/bin/sh\nHERE="$(dirname "$(readlink -f "$0")")"\nexec "$HERE/usr/lib/bin/TakeoutFix" "$@"\n' > AppDir/AppRun
-          chmod +x AppDir/AppRun
-
-          printf '[Desktop Entry]\nName=TakeoutFix\nExec=TakeoutFix\nIcon=takeoutfix\nType=Application\nCategories=Utility;\nComment=Google Takeout Photo Metadata Restorer\nTerminal=false\n' > AppDir/takeoutfix.desktop
+          cat << 'EOF' > AppDir/takeoutfix.desktop
+          [Desktop Entry]
+          Name=TakeoutFix
+          Exec=TakeoutFix
+          Icon=takeoutfix
+          Type=Application
+          Categories=Utility;Graphics;
+          Comment=Google Takeout Photo Metadata Restorer
+          Terminal=false
+          EOF
+          cat << 'EOF' > AppDir/AppRun
+          #!/bin/bash
+          HERE="$(dirname "$(readlink -f "${0}")")"
+          exec "${HERE}/usr/bin/TakeoutFix" "$@"
+          EOF
+          chmod +x AppDir/AppRun AppDir/usr/bin/TakeoutFix
 
           wget -q https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-x86_64.AppImage -O appimagetool
           chmod +x appimagetool
@@ -249,6 +309,7 @@ jobs:
           name: java-${{ matrix.os }}
           path: |
             ${{ matrix.primary_artifact }}
+            TakeoutFix-Setup.exe
             *.deb
             *.tar.gz
           retention-days: 1
@@ -260,6 +321,7 @@ jobs:
           tag_name: ${{ github.event.inputs.tag_name || github.ref_name || 'latest' }}
           files: |
             ${{ matrix.primary_artifact }}
+            TakeoutFix-Setup.exe
             *.deb
             *.tar.gz
 
@@ -299,26 +361,16 @@ jobs:
               const releasesToDelete = releases.slice(keepCount);
               console.log(`Pruning ${releasesToDelete.length} releases older than the 10 most recent...`);
 
-              for (const rel of releasesToDelete) {
-                console.log(`Deleting release: ${rel.tag_name} (ID: ${rel.id})...`);
+              for (const release of releasesToDelete) {
+                console.log(`Deleting release: ${release.tag_name} (ID: ${release.id})...`);
                 await github.rest.repos.deleteRelease({
                   owner,
                   repo,
-                  release_id: rel.id,
+                  release_id: release.id,
                 });
-
-                try {
-                  await github.rest.git.deleteRef({
-                    owner,
-                    repo,
-                    ref: `tags/${rel.tag_name}`,
-                  });
-                  console.log(`Deleted corresponding tag ref: ${rel.tag_name}`);
-                } catch (tagErr) {
-                  console.log(`Tag ref ${rel.tag_name} may have already been removed.`);
-                }
+                console.log(`Deleted release: ${release.tag_name}`);
               }
-              console.log("Cleanup complete!");
-            } catch (err) {
-              console.error("Error during release cleanup:", err);
+              console.log(`Release retention maintenance complete.`);
+            } catch (error) {
+              console.error(`Error maintaining release retention:`, error);
             }

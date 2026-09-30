@@ -1,5 +1,8 @@
 package com.takeoutfix.ui.fx;
 
+import javafx.geometry.Orientation;
+import javafx.scene.control.SplitPane;
+
 import javafx.application.Platform;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
@@ -116,17 +119,19 @@ public class PhotoVaultView extends VBox {
         // 2. High-Contrast KPI Cards Deck
         getChildren().add(buildKpiCardsDeck());
 
-        // 3. Operations Workspace (Folders + Compact Toolbar + Progress)
-        getChildren().add(buildOperationsCard());
+        // 3. Resizable Vertical SplitPane: Top (Operations & Outcome Banner) | Bottom (Audit Log Table)
+        SplitPane splitPane = new SplitPane();
+        splitPane.setOrientation(Orientation.VERTICAL);
+        VBox.setVgrow(splitPane, Priority.ALWAYS);
 
-        // 4. Verification Outcome Banner
         buildOutcomeBanner();
-        getChildren().add(outcomeBanner);
-
-        // 5. Audit Log Table with Filters & Search
+        VBox topControls = new VBox(10, buildOperationsCard(), outcomeBanner);
         VBox tableCard = buildAuditTableCard();
         VBox.setVgrow(tableCard, Priority.ALWAYS);
-        getChildren().add(tableCard);
+
+        splitPane.getItems().addAll(topControls, tableCard);
+        splitPane.setDividerPositions(0.46);
+        getChildren().add(splitPane);
     }
 
     private HBox buildHeaderRow() {
@@ -139,7 +144,7 @@ public class PhotoVaultView extends VBox {
 
         Node vaultIcon = UiIcons.createSvgIcon(UiIcons.LOCK, 18, "#9B78F5");
         Label mainTitle = new Label("Private Photo Vault");
-        mainTitle.setStyle("-fx-font-size: 22px; -fx-font-weight: 700; -fx-text-fill: #E6E7ED;");
+        mainTitle.setStyle("-fx-font-size: 22px; -fx-font-weight: 700;");
 
         Label badge = new Label("Local processing");
         badge.setStyle("-fx-font-size: 11px; -fx-font-weight: 600; -fx-text-fill: #10B981; -fx-background-color: rgba(16, 185, 129, 0.12); -fx-padding: 3 8 3 8; -fx-background-radius: 6;");
@@ -147,7 +152,7 @@ public class PhotoVaultView extends VBox {
         titleRow.getChildren().addAll(vaultIcon, mainTitle, badge);
 
         Label subtitle = new Label("Verify backup integrity and protect private photo collections.");
-        subtitle.setStyle("-fx-font-size: 13px; -fx-text-fill: #989BA8;");
+        subtitle.setStyle("-fx-font-size: 13px;");
 
         titleBox.getChildren().addAll(titleRow, subtitle);
 
@@ -188,15 +193,15 @@ public class PhotoVaultView extends VBox {
     private VBox createNeutralKpiCard(String labelText, Label valLabel, String subText, String accentColor) {
         VBox card = new VBox(4);
         card.getStyleClass().add("glass-card");
-        card.setStyle("-fx-background-color: #191A22; -fx-border-color: #30313B; -fx-border-radius: 8; -fx-background-radius: 8; -fx-padding: 12 16 12 16;");
+        card.setStyle("-fx-border-radius: 8; -fx-background-radius: 8; -fx-padding: 12 16 12 16;");
 
         Label lbl = new Label(labelText);
-        lbl.setStyle("-fx-font-size: 11px; -fx-font-weight: 700; -fx-text-fill: #989BA8; -fx-letter-spacing: 0.5px;");
+        lbl.setStyle("-fx-font-size: 11px; -fx-font-weight: 700;  -fx-letter-spacing: 0.5px;");
 
         valLabel.setStyle(String.format("-fx-font-size: 26px; -fx-font-weight: 800; -fx-text-fill: %s;", accentColor));
 
         Label sub = new Label(subText);
-        sub.setStyle("-fx-font-size: 12px; -fx-text-fill: #989BA8;");
+        sub.setStyle("-fx-font-size: 12px; ");
 
         card.getChildren().addAll(lbl, valLabel, sub);
         return card;
@@ -205,21 +210,21 @@ public class PhotoVaultView extends VBox {
     private VBox buildOperationsCard() {
         VBox card = new VBox(12);
         card.getStyleClass().add("glass-card");
-        card.setStyle("-fx-background-color: #191A22; -fx-border-color: #30313B; -fx-border-radius: 8; -fx-background-radius: 8; -fx-padding: 14 16 14 16;");
+        card.setStyle("-fx-border-radius: 8; -fx-background-radius: 8; -fx-padding: 14 16 14 16;");
 
         Label sectionTitle = new Label("Verify Backup Integrity");
-        sectionTitle.setStyle("-fx-font-size: 14px; -fx-font-weight: 700; -fx-text-fill: #E6E7ED;");
+        sectionTitle.setStyle("-fx-font-size: 14px; -fx-font-weight: 700;"); sectionTitle.getStyleClass().add("card-title");
 
         // Dual Folders: Source vs Destination
         HBox foldersRow = new HBox(14);
 
         // Source Box
         VBox origBox = new VBox(6);
-        origBox.setStyle("-fx-background-color: #20212B; -fx-border-color: #30313B; -fx-border-radius: 6; -fx-background-radius: 6; -fx-padding: 10 12 10 12;");
+        origBox.setStyle("-fx-border-radius: 6; -fx-background-radius: 6; -fx-padding: 10 12 10 12;"); origBox.getStyleClass().add("inner-container");
         Label origTitle = new Label("SOURCE · ORIGINAL LIBRARY");
-        origTitle.setStyle("-fx-font-size: 10px; -fx-font-weight: 800; -fx-text-fill: #989BA8; -fx-letter-spacing: 0.5px;");
+        origTitle.setStyle("-fx-font-size: 10px; -fx-font-weight: 800;  -fx-letter-spacing: 0.5px;");
         Label origHelp = new Label("Select the folder containing your original photos.");
-        origHelp.setStyle("-fx-font-size: 11px; -fx-text-fill: #989BA8;");
+        origHelp.setStyle("-fx-font-size: 11px; ");
 
         HBox origPickRow = new HBox(8);
         origPickRow.setAlignment(Pos.CENTER_LEFT);
@@ -230,8 +235,8 @@ public class PhotoVaultView extends VBox {
         btnPickOrig.setOnAction(e -> pickOriginalFolder());
 
         VBox origText = new VBox(1);
-        origPathLabel.setStyle("-fx-font-size: 12px; -fx-font-weight: 600; -fx-text-fill: #E6E7ED;");
-        origDetailsLabel.setStyle("-fx-font-size: 11px; -fx-text-fill: #989BA8;");
+        origPathLabel.setStyle("-fx-font-size: 12px; -fx-font-weight: 600;"); origPathLabel.getStyleClass().add("text-primary");
+        origDetailsLabel.setStyle("-fx-font-size: 11px; ");
         origText.getChildren().addAll(origPathLabel, origDetailsLabel);
 
         origPickRow.getChildren().addAll(btnPickOrig, origText);
@@ -240,11 +245,11 @@ public class PhotoVaultView extends VBox {
 
         // Backup Box
         VBox backupBox = new VBox(6);
-        backupBox.setStyle("-fx-background-color: #20212B; -fx-border-color: #30313B; -fx-border-radius: 6; -fx-background-radius: 6; -fx-padding: 10 12 10 12;");
+        backupBox.setStyle("-fx-border-radius: 6; -fx-background-radius: 6; -fx-padding: 10 12 10 12;"); backupBox.getStyleClass().add("inner-container");
         Label backupTitle = new Label("BACKUP · DESTINATION");
-        backupTitle.setStyle("-fx-font-size: 10px; -fx-font-weight: 800; -fx-text-fill: #989BA8; -fx-letter-spacing: 0.5px;");
+        backupTitle.setStyle("-fx-font-size: 10px; -fx-font-weight: 800;  -fx-letter-spacing: 0.5px;");
         Label backupHelp = new Label("Select the backup to compare against.");
-        backupHelp.setStyle("-fx-font-size: 11px; -fx-text-fill: #989BA8;");
+        backupHelp.setStyle("-fx-font-size: 11px; ");
 
         HBox backupPickRow = new HBox(8);
         backupPickRow.setAlignment(Pos.CENTER_LEFT);
@@ -255,8 +260,8 @@ public class PhotoVaultView extends VBox {
         btnPickBackup.setOnAction(e -> pickBackupFolder());
 
         VBox backupText = new VBox(1);
-        backupPathLabel.setStyle("-fx-font-size: 12px; -fx-font-weight: 600; -fx-text-fill: #E6E7ED;");
-        backupDetailsLabel.setStyle("-fx-font-size: 11px; -fx-text-fill: #989BA8;");
+        backupPathLabel.setStyle("-fx-font-size: 12px; -fx-font-weight: 600;"); backupPathLabel.getStyleClass().add("text-primary");
+        backupDetailsLabel.setStyle("-fx-font-size: 11px; ");
         backupText.getChildren().addAll(backupPathLabel, backupDetailsLabel);
 
         backupPickRow.getChildren().addAll(btnPickBackup, backupText);
@@ -306,16 +311,16 @@ public class PhotoVaultView extends VBox {
         // Progress Deck: percentage, ETA, status text, bar
         VBox progBox = new VBox(6);
         HBox progHeader = new HBox();
-        progressStatusLabel.setStyle("-fx-font-size: 12px; -fx-text-fill: #989BA8;");
+        progressStatusLabel.setStyle("-fx-font-size: 12px; ");
 
         Region pSp = new Region();
         HBox.setHgrow(pSp, Priority.ALWAYS);
 
         HBox metaProg = new HBox(6);
-        progressPercentLabel.setStyle("-fx-font-size: 12px; -fx-font-weight: 700; -fx-text-fill: #E6E7ED;");
+        progressPercentLabel.setStyle("-fx-font-size: 12px; -fx-font-weight: 700;"); progressPercentLabel.getStyleClass().add("text-primary");
         Label sep = new Label("·");
-        sep.setStyle("-fx-text-fill: #989BA8;");
-        etaLabel.setStyle("-fx-font-size: 12px; -fx-text-fill: #989BA8;");
+        sep.setStyle("");
+        etaLabel.setStyle("-fx-font-size: 12px; ");
         metaProg.getChildren().addAll(progressPercentLabel, sep, etaLabel);
 
         progHeader.getChildren().addAll(progressStatusLabel, pSp, metaProg);
@@ -375,22 +380,22 @@ public class PhotoVaultView extends VBox {
     private VBox buildAuditTableCard() {
         VBox card = new VBox(10);
         card.getStyleClass().add("glass-card");
-        card.setStyle("-fx-background-color: #191A22; -fx-border-color: #30313B; -fx-border-radius: 8; -fx-background-radius: 8; -fx-padding: 14;");
+        card.setStyle("-fx-border-radius: 8; -fx-background-radius: 8; -fx-padding: 14;");
 
         // Header with count badge and search
         HBox headerRow = new HBox(8);
         headerRow.setAlignment(Pos.CENTER_LEFT);
 
         Label title = new Label("Audit & Discrepancy Log");
-        title.setStyle("-fx-font-size: 15px; -fx-font-weight: 700; -fx-text-fill: #E6E7ED;");
+        title.setStyle("-fx-font-size: 15px; -fx-font-weight: 700;"); title.getStyleClass().add("card-title");
 
-        entriesCountLabel.setStyle("-fx-font-size: 11px; -fx-font-weight: 600; -fx-text-fill: #989BA8; -fx-background-color: #20212B; -fx-padding: 2 8 2 8; -fx-background-radius: 10;");
+        entriesCountLabel.setStyle("-fx-font-size: 11px; -fx-font-weight: 600; -fx-padding: 2 8 2 8; -fx-background-radius: 10;"); entriesCountLabel.getStyleClass().add("badge-counter");
 
         Region spacer = new Region();
         HBox.setHgrow(spacer, Priority.ALWAYS);
 
         searchField.setPromptText("Search files or paths...");
-        searchField.setStyle("-fx-font-size: 12px; -fx-pref-width: 180px; -fx-background-color: #101116; -fx-text-fill: #E6E7ED; -fx-border-color: #30313B; -fx-border-radius: 6; -fx-background-radius: 6;");
+        searchField.setStyle("-fx-font-size: 12px; -fx-pref-width: 180px;");
         searchField.textProperty().addListener((obs, oldVal, newVal) -> applyFilter());
 
         headerRow.getChildren().addAll(title, entriesCountLabel, spacer, searchField);
@@ -484,9 +489,9 @@ public class PhotoVaultView extends VBox {
         emptyState.setPadding(new Insets(30));
         Node emptyIcon = UiIcons.createSvgIcon(UiIcons.SHIELD_CHECK, 40, "#989BA8");
         Label emptyTitle = new Label("No verification results yet");
-        emptyTitle.setStyle("-fx-font-size: 15px; -fx-font-weight: 600; -fx-text-fill: #E6E7ED;");
+        emptyTitle.setStyle("-fx-font-size: 15px; -fx-font-weight: 600;"); emptyTitle.getStyleClass().add("empty-state-title");
         Label emptyDesc = new Label("Select your folders and start verification to view file-level results here.");
-        emptyDesc.setStyle("-fx-font-size: 12px; -fx-text-fill: #989BA8;");
+        emptyDesc.setStyle("-fx-font-size: 12px; ");
         emptyState.getChildren().addAll(emptyIcon, emptyTitle, emptyDesc);
         auditTable.setPlaceholder(emptyState);
     }

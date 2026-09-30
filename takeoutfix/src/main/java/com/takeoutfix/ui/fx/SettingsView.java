@@ -1,5 +1,8 @@
 package com.takeoutfix.ui.fx;
 
+import javafx.geometry.Orientation;
+import javafx.scene.control.SplitPane;
+
 import com.takeoutfix.restore.infrastructure.NativeExifToolEngine;
 import javafx.application.Platform;
 import javafx.geometry.Insets;
@@ -52,19 +55,21 @@ public class SettingsView extends VBox {
         getChildren().add(buildHeaderRow());
 
         // 2. Preferences Body: Category Navigation Sidebar + Detail Content Pane
-        HBox body = new HBox(16);
+        SplitPane body = new SplitPane();
+        body.setOrientation(Orientation.HORIZONTAL);
         VBox.setVgrow(body, Priority.ALWAYS);
 
         VBox navSidebar = buildNavSidebar();
-        navSidebar.setPrefWidth(200);
+        navSidebar.setPrefWidth(220);
         navSidebar.setMinWidth(180);
 
         ScrollPane scrollContent = new ScrollPane(contentPane);
         scrollContent.setFitToWidth(true);
         scrollContent.setStyle("-fx-background-color: transparent; -fx-background: transparent; -fx-border-color: transparent;");
-        HBox.setHgrow(scrollContent, Priority.ALWAYS);
+        VBox.setVgrow(scrollContent, Priority.ALWAYS);
 
-        body.getChildren().addAll(navSidebar, scrollContent);
+        body.getItems().addAll(navSidebar, scrollContent);
+        body.setDividerPositions(0.22);
         getChildren().add(body);
 
         // Initialize Panes
@@ -87,10 +92,10 @@ public class SettingsView extends VBox {
 
         VBox titleBox = new VBox(3);
         Label title = new Label("Settings");
-        title.setStyle("-fx-font-size: 22px; -fx-font-weight: 700; -fx-text-fill: #E6E7ED;");
+        title.setStyle("-fx-font-size: 22px; -fx-font-weight: 700;");
 
         Label subtitle = new Label("Configure your workspace, processing engine, privacy and file safety.");
-        subtitle.setStyle("-fx-font-size: 13px; -fx-text-fill: #989BA8;");
+        subtitle.setStyle("-fx-font-size: 13px;");
         titleBox.getChildren().addAll(title, subtitle);
 
         Region spacer = new Region();
@@ -103,7 +108,7 @@ public class SettingsView extends VBox {
     private VBox buildNavSidebar() {
         VBox box = new VBox(8);
         box.getStyleClass().add("glass-card");
-        box.setStyle("-fx-background-color: #191A22; -fx-border-color: #30313B; -fx-border-radius: 8; -fx-background-radius: 8; -fx-padding: 10;");
+        box.setStyle("-fx-border-radius: 8; -fx-background-radius: 8; -fx-padding: 10;");
         VBox.setVgrow(box, Priority.ALWAYS);
 
         categoryList.getItems().addAll("General", "Processing", "Updates", "File Safety", "Storage", "Privacy", "Advanced", "Support", "About");
@@ -137,7 +142,7 @@ public class SettingsView extends VBox {
 
                     Node icon = UiIcons.createSvgIcon(iconSvg, 14, "#989BA8");
                     Label lbl = new Label(item);
-                    lbl.setStyle("-fx-font-size: 13px; -fx-font-weight: 600; -fx-text-fill: #E6E7ED;");
+                    lbl.setStyle("-fx-font-size: 13px; -fx-font-weight: 600;"); lbl.getStyleClass().add("text-primary");
 
                     row.getChildren().addAll(icon, lbl);
                     setGraphic(row);
@@ -175,9 +180,9 @@ public class SettingsView extends VBox {
         // Theme selection
         VBox themeBox = new VBox(6);
         Label themeLbl = new Label("Interface Theme");
-        themeLbl.setStyle("-fx-font-size: 13px; -fx-font-weight: 600; -fx-text-fill: #E6E7ED;");
+        themeLbl.setStyle("-fx-font-size: 13px; -fx-font-weight: 600; ");
         Label themeDesc = new Label("Choose between dark or light monochromatic themes.");
-        themeDesc.setStyle("-fx-font-size: 12px; -fx-text-fill: #989BA8;");
+        themeDesc.setStyle("-fx-font-size: 12px; ");
 
         HBox themeChoices = new HBox(8);
         ToggleGroup tgTheme = new ToggleGroup();
@@ -195,9 +200,9 @@ public class SettingsView extends VBox {
         // Accent Color
         VBox accentBox = new VBox(6);
         Label accLbl = new Label("Primary Accent Color");
-        accLbl.setStyle("-fx-font-size: 13px; -fx-font-weight: 600; -fx-text-fill: #E6E7ED;");
+        accLbl.setStyle("-fx-font-size: 13px; -fx-font-weight: 600; ");
         Label accDesc = new Label("Tailor the primary button and highlight tone.");
-        accDesc.setStyle("-fx-font-size: 12px; -fx-text-fill: #989BA8;");
+        accDesc.setStyle("-fx-font-size: 12px; ");
 
         ComboBox<String> accentCombo = new ComboBox<>();
         accentCombo.getItems().addAll("Violet / Purple (Default)", "Emerald Green", "Royal Blue", "Rose");
@@ -218,7 +223,7 @@ public class SettingsView extends VBox {
         // ExifTool Status
         VBox binBox = new VBox(6);
         Label binTitle = new Label("ExifTool Engine");
-        binTitle.setStyle("-fx-font-size: 13px; -fx-font-weight: 600; -fx-text-fill: #E6E7ED;");
+        binTitle.setStyle("-fx-font-size: 13px; -fx-font-weight: 600; ");
 
         File bin = engine != null ? engine.getExifToolBinary() : null;
         String statusText = (bin != null && bin.exists())
@@ -229,34 +234,34 @@ public class SettingsView extends VBox {
         binStatus.setStyle("-fx-font-size: 12px; -fx-text-fill: #10B981; -fx-font-weight: 600;");
 
         Label binDesc = new Label("All EXIF, XMP, IPTC and QuickTime tags are processed via local native daemon instances.");
-        binDesc.setStyle("-fx-font-size: 12px; -fx-text-fill: #989BA8;");
+        binDesc.setStyle("-fx-font-size: 12px; ");
         binBox.getChildren().addAll(binTitle, binStatus, binDesc);
 
         // Adaptive Resource Policy
         VBox policyBox = new VBox(8);
         Label pTitle = new Label("Adaptive Resource Policy (Processing Mode)");
-        pTitle.setStyle("-fx-font-size: 13px; -fx-font-weight: 600; -fx-text-fill: #E6E7ED;");
+        pTitle.setStyle("-fx-font-size: 13px; -fx-font-weight: 600; ");
 
         Label pDesc = new Label("Dynamic CPU and memory allocation adapts automatically based on system load.");
-        pDesc.setStyle("-fx-font-size: 12px; -fx-text-fill: #989BA8;");
+        pDesc.setStyle("-fx-font-size: 12px; ");
 
         ToggleGroup tgMode = new ToggleGroup();
         RadioButton rbBalanced = new RadioButton("Balanced (Default) — Adapt resource usage dynamically based on system load");
         rbBalanced.setToggleGroup(tgMode);
         rbBalanced.setSelected(true);
-        rbBalanced.setStyle("-fx-text-fill: #E6E7ED; -fx-font-size: 12px;");
+        rbBalanced.setStyle(" -fx-font-size: 12px;");
 
         RadioButton rbPerformance = new RadioButton("Performance — Use more available resources to complete supported tasks faster");
         rbPerformance.setToggleGroup(tgMode);
-        rbPerformance.setStyle("-fx-text-fill: #E6E7ED; -fx-font-size: 12px;");
+        rbPerformance.setStyle(" -fx-font-size: 12px;");
 
         RadioButton rbBackground = new RadioButton("Background — Limit resource usage to keep the computer responsive");
         rbBackground.setToggleGroup(tgMode);
-        rbBackground.setStyle("-fx-text-fill: #E6E7ED; -fx-font-size: 12px;");
+        rbBackground.setStyle(" -fx-font-size: 12px;");
 
         RadioButton rbCustom = new RadioButton("Custom — Set a preferred maximum worker count");
         rbCustom.setToggleGroup(tgMode);
-        rbCustom.setStyle("-fx-text-fill: #E6E7ED; -fx-font-size: 12px;");
+        rbCustom.setStyle(" -fx-font-size: 12px;");
 
         tgMode.selectedToggleProperty().addListener((obs, oldVal, newVal) -> {
             var rm = com.takeoutfix.task.TaskManager.getInstance().getResourceManager();
@@ -290,13 +295,13 @@ public class SettingsView extends VBox {
         // 1. Current Version row
         VBox verBox = new VBox(6);
         Label vTitle = new Label("Current Version");
-        vTitle.setStyle("-fx-font-size: 13px; -fx-font-weight: 600; -fx-text-fill: #E6E7ED;");
+        vTitle.setStyle("-fx-font-size: 13px; -fx-font-weight: 600; ");
 
         HBox verRow = new HBox(10);
         verRow.setAlignment(Pos.CENTER_LEFT);
 
         Label appVer = new Label("TakeoutFix v" + com.takeoutfix.shared.util.AppVersion.getVersion() + " (Stable)");
-        appVer.setStyle("-fx-font-size: 14px; -fx-font-weight: 800; -fx-text-fill: #E6E7ED;");
+        appVer.setStyle("-fx-font-size: 14px; -fx-font-weight: 800; ");
 
         Label upToDateBadge = new Label("✓ Up to date");
         upToDateBadge.setStyle("-fx-font-size: 10px; -fx-font-weight: 700; -fx-text-fill: #10B981; -fx-background-color: rgba(16, 185, 129, 0.12); -fx-padding: 2 6 2 6; -fx-background-radius: 4;");
@@ -308,27 +313,27 @@ public class SettingsView extends VBox {
         VBox autoBox = new VBox(8);
         CheckBox chkAutoCheck = new CheckBox("Automatically check for updates");
         chkAutoCheck.setSelected(true);
-        chkAutoCheck.setStyle("-fx-font-size: 13px; -fx-font-weight: 600; -fx-text-fill: #E6E7ED;");
+        chkAutoCheck.setStyle("-fx-font-size: 13px; -fx-font-weight: 600; ");
 
         Label autoCheckDesc = new Label("Check for new releases when TakeoutFix starts.");
-        autoCheckDesc.setStyle("-fx-font-size: 12px; -fx-text-fill: #989BA8;");
+        autoCheckDesc.setStyle("-fx-font-size: 12px; ");
 
         CheckBox chkAutoDownload = new CheckBox("Automatically download updates");
         chkAutoDownload.setSelected(false);
-        chkAutoDownload.setStyle("-fx-font-size: 13px; -fx-font-weight: 600; -fx-text-fill: #E6E7ED;");
+        chkAutoDownload.setStyle("-fx-font-size: 13px; -fx-font-weight: 600; ");
 
         Label autoDownDesc = new Label("Download verified updates in the background.");
-        autoDownDesc.setStyle("-fx-font-size: 12px; -fx-text-fill: #989BA8;");
+        autoDownDesc.setStyle("-fx-font-size: 12px; ");
 
         autoBox.getChildren().addAll(chkAutoCheck, autoCheckDesc, chkAutoDownload, autoDownDesc);
 
         // 3. Release Channel
         VBox chanBox = new VBox(6);
         Label chanTitle = new Label("Release Channel");
-        chanTitle.setStyle("-fx-font-size: 13px; -fx-font-weight: 600; -fx-text-fill: #E6E7ED;");
+        chanTitle.setStyle("-fx-font-size: 13px; -fx-font-weight: 600; ");
 
         Label chanDesc = new Label("Choose which versions to receive.");
-        chanDesc.setStyle("-fx-font-size: 12px; -fx-text-fill: #989BA8;");
+        chanDesc.setStyle("-fx-font-size: 12px; ");
 
         ComboBox<String> chanCombo = new ComboBox<>();
         chanCombo.getItems().addAll("Stable", "Beta");
@@ -380,7 +385,7 @@ public class SettingsView extends VBox {
         Label sNoticeTitle = new Label("Pristine User Library Guarantee");
         sNoticeTitle.setStyle("-fx-font-size: 11px; -fx-font-weight: 700; -fx-text-fill: #10B981;");
         Label sNoticeDesc = new Label("OTA updates strictly replace application executables. Your photo libraries, duplicates quarantine vault, and history records remain untouched in your user profile.");
-        sNoticeDesc.setStyle("-fx-font-size: 11px; -fx-text-fill: #989BA8;");
+        sNoticeDesc.setStyle("-fx-font-size: 11px; ");
         safetyNotice.getChildren().addAll(sNoticeTitle, sNoticeDesc);
 
         card.getChildren().addAll(verBox, new Separator(), autoBox, new Separator(), chanBox, new Separator(), actionRow, safetyNotice);
@@ -398,31 +403,31 @@ public class SettingsView extends VBox {
         HBox rawHeader = new HBox(8);
         rawHeader.setAlignment(Pos.CENTER_LEFT);
         Label rawTitle = new Label("Protect Camera RAW Source Files");
-        rawTitle.setStyle("-fx-font-size: 13px; -fx-font-weight: 600; -fx-text-fill: #E6E7ED;");
+        rawTitle.setStyle("-fx-font-size: 13px; -fx-font-weight: 600; ");
         Label rawBadge = new Label("Enforced");
         rawBadge.setStyle("-fx-font-size: 10px; -fx-font-weight: 700; -fx-text-fill: #10B981; -fx-background-color: rgba(16, 185, 129, 0.12); -fx-padding: 2 6 2 6; -fx-background-radius: 4;");
         rawHeader.getChildren().addAll(rawTitle, rawBadge);
 
         Label rawDesc = new Label("Original camera RAW files (.CR3, .NEF, .ARW, .DNG) are strictly read-only and never modified in place.");
-        rawDesc.setStyle("-fx-font-size: 12px; -fx-text-fill: #989BA8;");
+        rawDesc.setStyle("-fx-font-size: 12px; ");
         rawBox.getChildren().addAll(rawHeader, rawDesc);
 
         // Rule 2: Automatic backups before write
         VBox backupBox = new VBox(4);
         CheckBox chkBackup = new CheckBox("Create backups before in-place editing (.original)");
         chkBackup.setSelected(true);
-        chkBackup.setStyle("-fx-font-size: 13px; -fx-font-weight: 600; -fx-text-fill: #E6E7ED;");
+        chkBackup.setStyle("-fx-font-size: 13px; -fx-font-weight: 600; ");
         Label backupDesc = new Label("Keeps a pristine copy of destination photos before writing synchronized metadata.");
-        backupDesc.setStyle("-fx-font-size: 12px; -fx-text-fill: #989BA8;");
+        backupDesc.setStyle("-fx-font-size: 12px; ");
         backupBox.getChildren().addAll(chkBackup, backupDesc);
 
         // Rule 3: Deletion confirmation
         VBox delBox = new VBox(4);
         CheckBox chkDel = new CheckBox("Require explicit confirmation for permanent deletion");
         chkDel.setSelected(true);
-        chkDel.setStyle("-fx-font-size: 13px; -fx-font-weight: 600; -fx-text-fill: #E6E7ED;");
+        chkDel.setStyle("-fx-font-size: 13px; -fx-font-weight: 600; ");
         Label delDesc = new Label("Protects against accidental removal of duplicate files by requiring a 2-step confirmation dialog.");
-        delDesc.setStyle("-fx-font-size: 12px; -fx-text-fill: #989BA8;");
+        delDesc.setStyle("-fx-font-size: 12px; ");
         delBox.getChildren().addAll(chkDel, delDesc);
 
         card.getChildren().addAll(rawBox, new Separator(), backupBox, new Separator(), delBox);
@@ -438,11 +443,11 @@ public class SettingsView extends VBox {
         // Log Directory
         VBox logBox = new VBox(6);
         Label logTitle = new Label("Audit & Session Logs Location");
-        logTitle.setStyle("-fx-font-size: 13px; -fx-font-weight: 600; -fx-text-fill: #E6E7ED;");
+        logTitle.setStyle("-fx-font-size: 13px; -fx-font-weight: 600; ");
 
         Path logPath = Paths.get(System.getProperty("user.home"), ".takeoutfix", "logs");
         Label logLabel = new Label(logPath.toString());
-        logLabel.setStyle("-fx-font-size: 12px; -fx-text-fill: #E6E7ED; -fx-background-color: #101116; -fx-padding: 6 10 6 10; -fx-background-radius: 4; -fx-border-color: #30313B; -fx-border-radius: 4;");
+        logLabel.setStyle("-fx-font-size: 12px;   -fx-padding: 6 10 6 10; -fx-background-radius: 4; -fx-border-color: #30313B; -fx-border-radius: 4;");
 
         Button btnOpenLog = new Button("Open Log Folder");
         btnOpenLog.getStyleClass().add("btn-secondary");
@@ -460,11 +465,11 @@ public class SettingsView extends VBox {
         // Quarantine Directory
         VBox qBox = new VBox(6);
         Label qTitle = new Label("Duplicate Quarantine Location");
-        qTitle.setStyle("-fx-font-size: 13px; -fx-font-weight: 600; -fx-text-fill: #E6E7ED;");
+        qTitle.setStyle("-fx-font-size: 13px; -fx-font-weight: 600; ");
 
         Path qPath = Paths.get(System.getProperty("user.home"), "TakeoutFix", "quarantine");
         Label qLabel = new Label(qPath.toString());
-        qLabel.setStyle("-fx-font-size: 12px; -fx-text-fill: #E6E7ED; -fx-background-color: #101116; -fx-padding: 6 10 6 10; -fx-background-radius: 4; -fx-border-color: #30313B; -fx-border-radius: 4;");
+        qLabel.setStyle("-fx-font-size: 12px;   -fx-padding: 6 10 6 10; -fx-background-radius: 4; -fx-border-color: #30313B; -fx-border-radius: 4;");
 
         Button btnOpenQ = new Button("Open Quarantine Folder");
         btnOpenQ.getStyleClass().add("btn-secondary");
@@ -494,11 +499,11 @@ public class SettingsView extends VBox {
         pStatus.setStyle("-fx-font-size: 14px; -fx-font-weight: 700; -fx-text-fill: #10B981;");
 
         Label pDesc = new Label("TakeoutFix operates with absolute zero telemetry, zero analytics tracking, and zero cloud uploads.\nAll image hashing, EXIF modifications, sidecar matching and SHA-256 verifications execute entirely locally on your processor.");
-        pDesc.setStyle("-fx-font-size: 12px; -fx-text-fill: #E6E7ED; -fx-line-spacing: 3px;");
+        pDesc.setStyle("-fx-font-size: 12px;  -fx-line-spacing: 3px;");
         pDesc.setWrapText(true);
 
         Label pSec = new Label("Network sockets are exclusively restricted to local update checks (optional) and local subprocess communication.");
-        pSec.setStyle("-fx-font-size: 11px; -fx-text-fill: #989BA8;");
+        pSec.setStyle("-fx-font-size: 11px; ");
 
         pBox.getChildren().addAll(pStatus, pDesc, pSec);
         card.getChildren().add(pBox);
@@ -513,15 +518,15 @@ public class SettingsView extends VBox {
 
         VBox formatBox = new VBox(6);
         Label fTitle = new Label("Supported Media Formats");
-        fTitle.setStyle("-fx-font-size: 13px; -fx-font-weight: 600; -fx-text-fill: #E6E7ED;");
+        fTitle.setStyle("-fx-font-size: 13px; -fx-font-weight: 600; ");
 
         Label fList = new Label("Images: JPEG, PNG, TIFF, GIF, BMP, WEBP, HEIC, HEIF, AVIF\nRAW: CR2, CR3, NEF, ARW, DNG, ORF, RW2, PEF, RAF\nVideo & Live Photos: MP4, MOV, M4V, AVI, 3GP, MKV\nSidecars: JSON (Takeout), XMP (Adobe), XML");
-        fList.setStyle("-fx-font-size: 12px; -fx-text-fill: #E6E7ED; -fx-background-color: #101116; -fx-padding: 8 12 8 12; -fx-background-radius: 6; -fx-border-color: #30313B; -fx-border-radius: 6;");
+        fList.setStyle("-fx-font-size: 12px;   -fx-padding: 8 12 8 12; -fx-background-radius: 6; -fx-border-color: #30313B; -fx-border-radius: 6;");
         formatBox.getChildren().addAll(fTitle, fList);
 
         VBox logLvlBox = new VBox(6);
         Label lTitle = new Label("Diagnostic Logging Level");
-        lTitle.setStyle("-fx-font-size: 13px; -fx-font-weight: 600; -fx-text-fill: #E6E7ED;");
+        lTitle.setStyle("-fx-font-size: 13px; -fx-font-weight: 600; ");
 
         ComboBox<String> logCombo = new ComboBox<>();
         logCombo.getItems().addAll("Standard (Info & Errors)", "Verbose (Detailed tag traces)", "Debug (Subprocess stdout/stderr)");
@@ -541,11 +546,11 @@ public class SettingsView extends VBox {
 
         VBox infoBox = new VBox(10);
         Label title = new Label("Need Help or Encountered an Issue?");
-        title.setStyle("-fx-font-size: 15px; -fx-font-weight: 700; -fx-text-fill: #E6E7ED;");
+        title.setStyle("-fx-font-size: 15px; -fx-font-weight: 700; ");
 
         Label desc = new Label("Our documentation covers step-by-step restoration for Google Takeout archives, metadata pairing edge-cases, and troubleshooting for corrupted files.");
         desc.setWrapText(true);
-        desc.setStyle("-fx-font-size: 13px; -fx-text-fill: #989BA8;");
+        desc.setStyle("-fx-font-size: 13px; ");
 
         HBox actions = new HBox(10);
         actions.setAlignment(Pos.CENTER_LEFT);
@@ -577,10 +582,10 @@ public class SettingsView extends VBox {
 
         VBox brandBox = new VBox(6);
         Label appName = new Label("TakeoutFix Studio v" + com.takeoutfix.shared.util.AppVersion.getVersion());
-        appName.setStyle("-fx-font-size: 16px; -fx-font-weight: 800; -fx-text-fill: #E6E7ED;");
+        appName.setStyle("-fx-font-size: 16px; -fx-font-weight: 800; ");
 
         Label appSub = new Label("Pure JavaFX desktop edition with multi-process native ExifTool engine.");
-        appSub.setStyle("-fx-font-size: 12px; -fx-text-fill: #989BA8;");
+        appSub.setStyle("-fx-font-size: 12px; ");
 
         HBox btnRow = new HBox(10);
         btnRow.setAlignment(Pos.CENTER_LEFT);
@@ -613,9 +618,9 @@ public class SettingsView extends VBox {
     private VBox createSectionHeader(String titleText, String subtitleText) {
         VBox box = new VBox(2);
         Label title = new Label(titleText);
-        title.setStyle("-fx-font-size: 16px; -fx-font-weight: 700; -fx-text-fill: #E6E7ED;");
+        title.setStyle("-fx-font-size: 16px; -fx-font-weight: 700; ");
         Label sub = new Label(subtitleText);
-        sub.setStyle("-fx-font-size: 12px; -fx-text-fill: #989BA8;");
+        sub.setStyle("-fx-font-size: 12px; ");
         box.getChildren().addAll(title, sub);
         return box;
     }
@@ -623,7 +628,7 @@ public class SettingsView extends VBox {
     private VBox createCard() {
         VBox card = new VBox(12);
         card.getStyleClass().add("glass-card");
-        card.setStyle("-fx-background-color: #191A22; -fx-border-color: #30313B; -fx-border-radius: 8; -fx-background-radius: 8; -fx-padding: 16;");
+        card.setStyle("-fx-border-radius: 8; -fx-background-radius: 8; -fx-padding: 16;");
         return card;
     }
 

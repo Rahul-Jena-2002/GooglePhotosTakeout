@@ -257,75 +257,101 @@ export function RestorePanel({
           {/* Mobile Tool Switcher Dropdown (< md) */}
           <div className="relative md:hidden" ref={toolMenuRef}>
             <button
+              type="button"
               onClick={() => setToolMenuOpen(!toolMenuOpen)}
-              className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-white dark:bg-zinc-900 border border-zinc-300 dark:border-zinc-800 hover:border-zinc-400 dark:hover:border-zinc-700 hover:bg-zinc-50 dark:hover:bg-zinc-800/80 text-zinc-900 dark:text-white font-semibold text-xs transition-all shadow-xs cursor-pointer"
+              className="tool-dropdown-trigger flex items-center gap-2.5 px-3 py-2 rounded-xl text-left cursor-pointer transition-all min-h-[44px]"
+              aria-expanded={toolMenuOpen}
               title="Click to switch tool"
             >
-              <span className="flex items-center gap-2">
+              <div className="w-7 h-7 rounded-lg bg-indigo-50 dark:bg-indigo-950/60 border border-indigo-200/80 dark:border-indigo-500/30 flex items-center justify-center text-indigo-600 dark:text-indigo-400 flex-shrink-0">
                 {currentTool.icon}
-                <span className="font-bold text-sm text-zinc-900 dark:text-white">{currentTool.name}</span>
-                <span className="text-[10px] text-zinc-500 dark:text-zinc-400 font-normal hidden sm:inline">• {currentTool.tag}</span>
-              </span>
-              <ChevronDown className={`w-3.5 h-3.5 text-zinc-500 dark:text-zinc-400 transition-transform ${toolMenuOpen ? 'rotate-180' : ''}`} />
+              </div>
+              <div className="flex flex-col min-w-0 pr-1">
+                <div className="flex items-center gap-1.5">
+                  <span className="font-bold text-xs sm:text-sm text-zinc-900 dark:text-white truncate">{currentTool.name}</span>
+                  {currentTool.badge && (
+                    <span className="text-[9px] font-bold uppercase px-1.5 py-0.2 rounded bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20">
+                      {currentTool.badge}
+                    </span>
+                  )}
+                </div>
+                <span className="text-[10px] text-zinc-500 dark:text-zinc-400 truncate">{currentTool.tag}</span>
+              </div>
+              <ChevronDown className={`w-3.5 h-3.5 text-zinc-500 dark:text-zinc-400 transition-transform duration-200 ml-auto ${toolMenuOpen ? 'rotate-180' : ''}`} />
             </button>
 
             {toolMenuOpen && (
-              <div className="absolute left-0 top-full mt-2 w-80 bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-2 shadow-xl dark:shadow-2xl z-50 animate-in fade-in slide-in-from-top-1 duration-150">
-                <div className="px-3 py-1.5 text-[10px] font-bold font-mono uppercase tracking-wider text-zinc-500 border-b border-zinc-100 dark:border-zinc-800 mb-1 flex items-center justify-between">
+              <div className="tool-dropdown-menu absolute left-0 top-full mt-2 w-[320px] max-w-[calc(100vw-32px)] rounded-2xl p-2 z-50 animate-in fade-in slide-in-from-top-1 duration-150">
+                <div className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-400 border-b border-zinc-100 dark:border-zinc-800/80 mb-1 flex items-center justify-between">
                   <span>Available Tools</span>
-                  <span className="text-emerald-600 dark:text-emerald-400">100% Offline</span>
+                  <span className="text-emerald-600 dark:text-emerald-400 font-semibold">100% Offline</span>
                 </div>
                 <div className="space-y-1">
-                  {TOOLS_LIST.map((tool) => (
-                    <button
-                      key={tool.id}
-                      onClick={() => {
-                        setActiveToolTab(tool.id)
-                        setToolMenuOpen(false)
-                      }}
-                      className={`w-full flex items-start gap-2.5 p-2 rounded-xl text-left transition-colors cursor-pointer ${
-                        activeToolTab === tool.id
-                          ? 'bg-zinc-100 dark:bg-zinc-900 text-zinc-900 dark:text-white border border-zinc-300 dark:border-zinc-800 font-bold'
-                          : 'text-zinc-600 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-900/60 hover:text-zinc-900 dark:hover:text-white'
-                      }`}
-                    >
-                      <div className="p-1.5 rounded-lg bg-zinc-100 dark:bg-black border border-zinc-200 dark:border-zinc-800 flex-shrink-0 mt-0.5">
-                        {tool.icon}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center justify-between">
-                          <span className="text-xs font-bold text-zinc-900 dark:text-white">{tool.name}</span>
-                          {tool.badge && (
-                            <span className="text-[9px] font-mono uppercase px-1.5 py-0.2 rounded bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20 font-bold">
-                              {tool.badge}
-                            </span>
-                          )}
+                  {TOOLS_LIST.map((tool) => {
+                    const isActive = activeToolTab === tool.id
+                    return (
+                      <button
+                        key={tool.id}
+                        type="button"
+                        onClick={() => {
+                          setActiveToolTab(tool.id)
+                          setToolMenuOpen(false)
+                        }}
+                        className={`tool-dropdown-item w-full flex items-start gap-2.5 p-2 rounded-xl text-left cursor-pointer min-h-[44px] ${
+                          isActive ? 'active' : ''
+                        }`}
+                      >
+                        <div className={`p-1.5 rounded-lg border flex-shrink-0 mt-0.5 ${
+                          isActive
+                            ? 'bg-indigo-100 dark:bg-indigo-950/80 border-indigo-300 dark:border-indigo-700/60 text-indigo-600 dark:text-indigo-400'
+                            : 'bg-zinc-100 dark:bg-zinc-800/80 border-zinc-200 dark:border-zinc-700/60 text-zinc-600 dark:text-zinc-400'
+                        }`}>
+                          {tool.icon}
                         </div>
-                        <p className="text-[11px] text-zinc-500 dark:text-zinc-400 truncate mt-0.5">{tool.desc}</p>
-                      </div>
-                    </button>
-                  ))}
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center justify-between">
+                            <span className={`text-xs font-bold ${isActive ? 'text-indigo-700 dark:text-indigo-300' : 'text-zinc-900 dark:text-white'}`}>
+                              {tool.name}
+                            </span>
+                            {tool.badge && (
+                              <span className="text-[9px] font-bold uppercase px-1.5 py-0.2 rounded bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20">
+                                {tool.badge}
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-[11px] text-zinc-500 dark:text-zinc-400 truncate mt-0.5">{tool.desc}</p>
+                        </div>
+                        {isActive && (
+                          <CheckCircle2 className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400 flex-shrink-0 mt-1" />
+                        )}
+                      </button>
+                    )
+                  })}
                 </div>
               </div>
             )}
           </div>
 
           {/* Desktop Clean Segmented Tabs (>= md) */}
-          <div className="hidden md:flex items-center gap-1 bg-zinc-100 dark:bg-zinc-900/80 p-1 rounded-xl border border-zinc-200 dark:border-zinc-800 text-xs">
-            {TOOLS_LIST.map((t) => (
-              <button
-                key={t.id}
-                onClick={() => setActiveToolTab(t.id)}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
-                  activeToolTab === t.id
-                    ? 'bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white shadow-xs font-bold border border-zinc-200/80 dark:border-zinc-700/60'
-                    : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white hover:bg-zinc-200/50 dark:hover:bg-zinc-800/40'
-                }`}
-              >
-                {t.icon}
-                <span>{t.name}</span>
-              </button>
-            ))}
+          <div className="tool-tab-track hidden md:flex items-center gap-1 text-xs">
+            {TOOLS_LIST.map((t) => {
+              const isActive = activeToolTab === t.id
+              return (
+                <button
+                  key={t.id}
+                  type="button"
+                  onClick={() => setActiveToolTab(t.id)}
+                  className={`tool-tab-btn flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold cursor-pointer ${
+                    isActive ? 'active' : ''
+                  }`}
+                >
+                  <span className={isActive ? 'text-indigo-600 dark:text-indigo-400' : 'text-zinc-500 dark:text-zinc-400'}>
+                    {t.icon}
+                  </span>
+                  <span>{t.name}</span>
+                </button>
+              )
+            })}
           </div>
         </div>
 

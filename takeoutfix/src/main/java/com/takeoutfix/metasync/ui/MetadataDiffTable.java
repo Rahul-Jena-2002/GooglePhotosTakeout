@@ -26,7 +26,7 @@ public class MetadataDiffTable extends TableView<TagDifference> {
 
     public MetadataDiffTable() {
         getStyleClass().add("table-view");
-        setStyle("-fx-background-color: #191A22; -fx-border-color: #30313B; -fx-border-radius: 8; -fx-background-radius: 8;");
+        setStyle(" -fx-border-color: #30313B; -fx-border-radius: 8; -fx-background-radius: 8;");
         setFixedCellSize(40);
         setPlaceholder(new Label("Select a photo pair to view and compare metadata"));
 
@@ -60,7 +60,7 @@ public class MetadataDiffTable extends TableView<TagDifference> {
                     setGraphic(null);
                 } else {
                     setText(item);
-                    setStyle("-fx-font-size: 13px; -fx-font-weight: 600; -fx-text-fill: #E6E7ED;");
+                    setStyle("-fx-font-size: 13px; -fx-font-weight: 600; ");
                 }
             }
         });
@@ -78,7 +78,7 @@ public class MetadataDiffTable extends TableView<TagDifference> {
                     setGraphic(null);
                 } else {
                     Label badge = new Label(item);
-                    badge.setStyle("-fx-font-size: 11px; -fx-font-weight: 600; -fx-padding: 2 6 2 6; -fx-background-radius: 4; -fx-background-color: #20212B; -fx-text-fill: #989BA8;");
+                    badge.setStyle("-fx-font-size: 11px; -fx-font-weight: 600; -fx-padding: 2 6 2 6; -fx-background-radius: 4; -fx-background-color: #20212B; ");
                     setGraphic(badge);
                     setText(null);
                 }
@@ -98,7 +98,7 @@ public class MetadataDiffTable extends TableView<TagDifference> {
                     setGraphic(null);
                 } else {
                     setText(item);
-                    setStyle("-fx-font-size: 12px; -fx-text-fill: #E6E7ED;");
+                    setStyle("-fx-font-size: 12px; ");
                 }
             }
         });
@@ -120,9 +120,9 @@ public class MetadataDiffTable extends TableView<TagDifference> {
                     if (diff.getStatus() == DiffStatus.DIFFERENT) {
                         setStyle("-fx-font-size: 12px; -fx-text-fill: #F59E0B; -fx-font-weight: 600;");
                     } else if (diff.getStatus() == DiffStatus.SOURCE_ONLY) {
-                        setStyle("-fx-font-size: 12px; -fx-text-fill: #989BA8; -fx-font-style: italic;");
+                        setStyle("-fx-font-size: 12px;  -fx-font-style: italic;");
                     } else {
-                        setStyle("-fx-font-size: 12px; -fx-text-fill: #E6E7ED;");
+                        setStyle("-fx-font-size: 12px; ");
                     }
                 }
             }
@@ -146,7 +146,7 @@ public class MetadataDiffTable extends TableView<TagDifference> {
                         case MATCH -> badge.setStyle(badge.getStyle() + "; -fx-text-fill: #10B981; -fx-background-color: rgba(16, 185, 129, 0.12);");
                         case DIFFERENT -> badge.setStyle(badge.getStyle() + "; -fx-text-fill: #F59E0B; -fx-background-color: rgba(245, 158, 11, 0.12);");
                         case SOURCE_ONLY -> badge.setStyle(badge.getStyle() + "; -fx-text-fill: #3B82F6; -fx-background-color: rgba(59, 130, 246, 0.12);");
-                        case DEST_ONLY -> badge.setStyle(badge.getStyle() + "; -fx-text-fill: #989BA8; -fx-background-color: rgba(152, 155, 168, 0.12);");
+                        case DEST_ONLY -> badge.setStyle(badge.getStyle() + ";  -fx-background-color: rgba(152, 155, 168, 0.12);");
                     }
                     HBox box = new HBox(badge);
                     box.setAlignment(Pos.CENTER_LEFT);

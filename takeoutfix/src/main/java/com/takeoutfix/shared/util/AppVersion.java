@@ -9,9 +9,9 @@ import java.util.Properties;
  */
 public class AppVersion {
 
-    private static String version = "2.1.8";
-    private static int buildNumber = 118;
-    private static String buildTimestamp = "";
+    private static String version = "2.2.4";
+    private static int buildNumber = 121;
+    private static String buildTimestamp = "2026-09-30T17:45:00Z";
 
     static {
         try (InputStream is = AppVersion.class.getResourceAsStream("/version.properties")) {
@@ -19,8 +19,8 @@ public class AppVersion {
                 Properties props = new Properties();
                 props.load(is);
                 version = props.getProperty("app.version", version);
-                buildNumber = Integer.parseInt(props.getProperty("build.number", "102"));
-                buildTimestamp = props.getProperty("build.timestamp", "");
+                buildNumber = Integer.parseInt(props.getProperty("build.number", "121"));
+                buildTimestamp = props.getProperty("build.timestamp", buildTimestamp);
             }
         } catch (Exception ignored) {}
     }

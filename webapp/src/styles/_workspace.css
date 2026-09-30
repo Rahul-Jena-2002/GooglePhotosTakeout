@@ -73,3 +73,228 @@ html.dark .interactive-drop-zone h3 {
 html.dark .interactive-drop-zone p {
   color: #9ca3af;
 }
+
+/* ==========================================================================
+   2. DESKTOP & MOBILE TOOL WORKSPACE DESIGN SYSTEM (JavaFX & shadcn inspired)
+   ========================================================================== */
+
+/* Base Canvas: JavaFX Light (#F6F6F8) & JavaFX Dark (#101114) */
+.tool-workspace-root {
+  background-color: #F6F6F8;
+  color: #18191E;
+  padding-bottom: max(env(safe-area-inset-bottom, 0px), 5rem);
+}
+
+html.dark .tool-workspace-root{
+  background-color: #101114;
+  color: #FAFAFA;
+}
+
+/* Tool Dropdown Switcher Button (Mobile & Desktop) */
+.tool-dropdown-trigger {
+  background-color: #FFFFFF !important;
+  color: #18191E !important;
+  border: 1px solid #E2E2E8 !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04) !important;
+  transition: all 0.15s ease-in-out;
+}
+
+.tool-dropdown-trigger:hover {
+  background-color: #F9FAFB !important;
+  border-color: #D4D4D8 !important;
+}
+
+html.dark .tool-dropdown-trigger{
+  background-color: #18191E !important;
+  color: #FAFAFA !important;
+  border-color: #363740 !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3) !important;
+}
+
+html.dark .tool-dropdown-trigger:hover{
+  background-color: #22232B !important;
+  border-color: #4B4C56 !important;
+}
+
+/* Tool Dropdown Menu Popover */
+.tool-dropdown-menu {
+  background-color: #FFFFFF !important;
+  border: 1px solid #E2E2E8 !important;
+  box-shadow: 0 16px 40px -8px rgba(0, 0, 0, 0.12), 0 0 0 1px rgba(0, 0, 0, 0.04) !important;
+}
+
+html.dark .tool-dropdown-menu{
+  background-color: #141418 !important;
+  border-color: #2F3038 !important;
+  box-shadow: 0 16px 40px -8px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(255, 255, 255, 0.05) !important;
+}
+
+/* Tool Dropdown Item */
+.tool-dropdown-item {
+  color: #475569 !important;
+  background-color: transparent !important;
+  transition: all 0.12s ease;
+}
+
+.tool-dropdown-item:hover {
+  background-color: #F4F4F6 !important;
+  color: #18191E !important;
+}
+
+.tool-dropdown-item.active {
+  background-color: rgba(99, 102, 241, 0.08) !important;
+  border-color: rgba(99, 102, 241, 0.25) !important;
+  color: #4338CA !important;
+}
+
+html.dark .tool-dropdown-item{
+  color: #A1A1AA !important;
+}
+
+html.dark .tool-dropdown-item:hover{
+  background-color: #1F2026 !important;
+  color: #FFFFFF !important;
+}
+
+html.dark .tool-dropdown-item.active{
+  background-color: rgba(124, 58, 237, 0.15) !important;
+  border-color: rgba(124, 58, 237, 0.35) !important;
+  color: #C4B5FD !important;
+}
+
+/* Segmented Toolbar Tabs (Desktop) */
+.tool-tab-track {
+  background-color: #EDEDF0;
+  border: 1px solid #E2E2E8;
+  border-radius: 12px;
+  padding: 4px;
+}
+
+html.dark .tool-tab-track{
+  background-color: #14151A;
+  border-color: #26272F;
+}
+
+.tool-tab-btn {
+  background-color: transparent !important;
+  color: #64748B !important;
+  border: 1px solid transparent !important;
+  font-weight: 500;
+  transition: all 0.15s ease-in-out;
+  cursor: pointer;
+}
+
+.tool-tab-btn:hover {
+  background-color: rgba(255, 255, 255, 0.6) !important;
+  color: #18191E !important;
+}
+
+.tool-tab-btn.active {
+  background-color: #FFFFFF !important;
+  color: #4F46E5 !important;
+  border: 1px solid #CBD5E1 !important;
+  font-weight: 700 !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08) !important;
+}
+
+html.dark .tool-tab-btn{
+  color: #94A3B8 !important;
+}
+
+html.dark .tool-tab-btn:hover{
+  background-color: rgba(255, 255, 255, 0.05) !important;
+  color: #FAFAFA !important;
+}
+
+html.dark .tool-tab-btn.active{
+  background-color: #202127 !important;
+  color: #FAFAFA !important;
+  border: 1px solid #363740 !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3) !important;
+}
+
+/* Choice Cards (Relative Shift, Fixed Date, GPS, etc.) */
+.choice-card {
+  transition: all 0.15s ease;
+  cursor: pointer;
+  border-radius: 12px;
+}
+
+.choice-card.inactive {
+  background-color: #FFFFFF !important;
+  border: 1px solid #E2E2E8 !important;
+  color: #475569 !important;
+}
+
+.choice-card.inactive:hover {
+  border-color: #CBD5E1 !important;
+  background-color: #F8FAFC !important;
+}
+
+.choice-card.active {
+  background-color: rgba(99, 102, 241, 0.05) !important;
+  border: 1.5px solid #6366F1 !important;
+  color: #18191E !important;
+  box-shadow: 0 0 0 1px rgba(99, 102, 241, 0.15) !important;
+}
+
+html.dark .choice-card.inactive{
+  background-color: #16171D !important;
+  border: 1px solid #2B2C35 !important;
+  color: #94A3B8 !important;
+}
+
+html.dark .choice-card.inactive:hover{
+  border-color: #40414E !important;
+  background-color: #1C1D24 !important;
+}
+
+html.dark .choice-card.active{
+  background-color: rgba(99, 102, 241, 0.12) !important;
+  border: 1.5px solid #818CF8 !important;
+  color: #FAFAFA !important;
+  box-shadow: 0 0 0 1px rgba(129, 140, 248, 0.25) !important;
+}
+
+/* Elevated JavaFX Surface Cards inside Tool Workspace */
+.tool-surface-card {
+  background-color: #FFFFFF !important;
+  border: 1px solid #E2E2E8 !important;
+  border-radius: 14px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
+}
+
+html.dark .tool-surface-card{
+  background-color: #16171D !important;
+  border: 1px solid #282932 !important;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25);
+}
+
+/* Quick Adjust Pill Chips */
+.quick-chip-btn {
+  background-color: #F1F1F4 !important;
+  border: 1px solid #E2E2E8 !important;
+  color: #334155 !important;
+  font-size: 11px;
+  font-weight: 600;
+  border-radius: 8px;
+  padding: 4px 10px;
+  transition: all 0.12s ease;
+  cursor: pointer;
+}
+
+.quick-chip-btn:hover {
+  background-color: #E4E4E8 !important;
+  color: #0F172A !important;
+}
+
+html.dark .quick-chip-btn{
+  background-color: #202128 !important;
+  border-color: #32333E !important;
+  color: #CBD5E1 !important;
+}
+
+html.dark .quick-chip-btn:hover{
+  background-color: #2A2B34 !important;
+  color: #FFFFFF !important;
+}

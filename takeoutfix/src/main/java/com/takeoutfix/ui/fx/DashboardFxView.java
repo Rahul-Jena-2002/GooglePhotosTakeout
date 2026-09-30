@@ -13,6 +13,7 @@ import javafx.scene.control.*;
 import javafx.scene.layout.*;
 import javafx.scene.paint.Color;
 import javafx.scene.shape.Circle;
+import javafx.stage.Stage;
 
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
@@ -52,7 +53,7 @@ public class DashboardFxView extends ScrollPane {
     // Telemetry & Hardware
     private final Label cpuLabel = new Label("CPU: 0%");
     private final ProgressBar cpuBar = new ProgressBar(0.0);
-    private final Label appRamLabel = new Label("App RAM: 0 MB");
+    private final Label appRamLabel = new Label("App: 0 MB");
     private final ProgressBar appRamBar = new ProgressBar(0.0);
     private final Label ramLabel = new Label("Sys RAM: -- / -- GB");
     private final ProgressBar ramBar = new ProgressBar(0.0);
@@ -68,10 +69,14 @@ public class DashboardFxView extends ScrollPane {
     private final Label kpiSuccessRateSub = new Label("No tasks run yet");
 
     // Task Manager Status
-    private final Label taskStatusBadge = new Label("Idle · 0 active jobs");
+    private final Label taskStatusBadge = new Label("Idle • 0 active jobs");
 
     // Recent Activity Container
     private final VBox recentActivityContent = new VBox(8);
+
+    // Layout Store & Draggable Grid
+    private final DashboardLayoutStore layoutStore = new DashboardLayoutStore();
+    private final DraggableCardGrid cardGrid = new DraggableCardGrid(layoutStore);
 
     private final ScheduledExecutorService telemetryScheduler = Executors.newSingleThreadScheduledExecutor(r -> {
         Thread t = new Thread(r, "fx-dash-telemetry");
@@ -96,17 +101,33 @@ public class DashboardFxView extends ScrollPane {
         // 1. Photography Workspace Header
         content.getChildren().add(buildPageHeader());
 
-        // 2. Compact Processing Status & System Resources (Secondary, Non-dominant)
-        content.getChildren().add(buildStatusAndTelemetryRow());
+        // 2. Register Dashboard Sections into DraggableCardGrid
+        cardGrid.registerCard(
+                DashboardLayoutStore.CARD_TELEMETRY,
+                "SYSTEM STATUS AND ENGINE TELEMETRY",
+                buildStatusAndTelemetryRow()
+        );
 
-        // 3. Photography KPI Metrics (4 Balanced Cards)
-        content.getChildren().add(buildKpiGrid());
+        cardGrid.registerCard(
+                DashboardLayoutStore.CARD_KPI,
+                "WORKSPACE METRICS AND INTEGRITY",
+                buildKpiGrid()
+        );
 
-        // 4. Balanced Photo Workflows & Tools (4 Core + 3 Archive & Vault)
-        content.getChildren().add(buildToolWorkflowsSection());
+        cardGrid.registerCard(
+                DashboardLayoutStore.CARD_WORKFLOWS,
+                "PHOTO WORKFLOWS AND TOOLS",
+                buildToolWorkflowsSection()
+        );
 
-        // 5. Recent Activity Section
-        content.getChildren().add(buildRecentActivitySection());
+        cardGrid.registerCard(
+                DashboardLayoutStore.CARD_ACTIVITY,
+                "RECENT WORKSPACE ACTIVITY",
+                buildRecentActivitySection()
+        );
+
+        cardGrid.refreshLayout();
+        content.getChildren().add(cardGrid);
 
         setContent(content);
 
@@ -136,25 +157,38 @@ public class DashboardFxView extends ScrollPane {
 
         Label subtitle = new Label("Your photos, metadata, and archives in one local workspace.");
         subtitle.getStyleClass().addAll("text-secondary");
-        subtitle.setStyle("-fx-font-size: 12px;");
+        subtitle.setStyle("-fx-font-size: 13px;");
         textCol.getChildren().addAll(title, subtitle);
 
         Region spacer = new Region();
         HBox.setHgrow(spacer, Priority.ALWAYS);
 
+        Button btnCustomize = new Button("Customize View");
+        btnCustomize.getStyleClass().add("btn-secondary");
+        btnCustomize.setGraphic(UiIcons.createSvgIcon(UiIcons.SLIDERS, 13, "currentColor"));
+        btnCustomize.setGraphicTextGap(6);
+        btnCustomize.setStyle("-fx-font-size: 13px; -fx-font-weight: 600;");
+        btnCustomize.setOnAction(e -> {
+            Stage owner = (getScene() != null && getScene().getWindow() instanceof Stage s) ? s : null;
+            CustomizeDashboardDialog dialog = new CustomizeDashboardDialog(owner, layoutStore);
+            dialog.showAndWait();
+        });
+
         Button btnExifViewer = new Button("EXIF Viewer");
         btnExifViewer.getStyleClass().add("btn-secondary");
         btnExifViewer.setGraphic(UiIcons.createSvgIcon(UiIcons.CAMERA, 13, "currentColor"));
         btnExifViewer.setGraphicTextGap(6);
+        btnExifViewer.setStyle("-fx-font-size: 13px; -fx-font-weight: 600;");
         btnExifViewer.setOnAction(e -> navigateTo(WorkspaceType.EXIF_VIEWER));
 
         Button btnStartRestore = new Button("Restore Metadata");
         btnStartRestore.getStyleClass().add("btn-primary");
         btnStartRestore.setGraphic(UiIcons.createSvgIcon(UiIcons.RESTORE, 13, "currentColor"));
         btnStartRestore.setGraphicTextGap(6);
+        btnStartRestore.setStyle("-fx-font-size: 13px; -fx-font-weight: 700;");
         btnStartRestore.setOnAction(e -> navigateTo(WorkspaceType.TAKEOUT_RESTORE));
 
-        header.getChildren().addAll(textCol, spacer, btnExifViewer, btnStartRestore);
+        header.getChildren().addAll(textCol, spacer, btnCustomize, btnExifViewer, btnStartRestore);
         return header;
     }
 
@@ -171,16 +205,16 @@ public class DashboardFxView extends ScrollPane {
 
         Label statusHeader = new Label("PROCESSING STATUS");
         statusHeader.getStyleClass().add("kpi-label");
-        statusHeader.setStyle("-fx-font-size: 9px; -fx-font-weight: 800;");
+        statusHeader.setStyle("-fx-font-size: 11px; -fx-font-weight: 700; -fx-letter-spacing: 0.5px;");
 
         Region spTop = new Region();
         HBox.setHgrow(spTop, Priority.ALWAYS);
 
         updateTaskStatus();
 
-        Label privacyPill = new Label("Local Processing · 100% On-Device");
+        Label privacyPill = new Label("Local Processing • 100% On-Device");
         privacyPill.setStyle(
-                "-fx-font-size: 10px; -fx-font-weight: 600; -fx-text-fill: #10b981; -fx-background-color: rgba(16, 185, 129, 0.10); -fx-padding: 2 6 2 6; -fx-background-radius: 4;");
+                "-fx-font-size: 11px; -fx-font-weight: 600; -fx-text-fill: #10b981; -fx-background-color: rgba(16, 185, 129, 0.12); -fx-padding: 3 8 3 8; -fx-background-radius: 4;");
         topStatus.getChildren().addAll(statusHeader, spTop, taskStatusBadge, privacyPill);
 
         // Session & Engine info row
@@ -190,25 +224,25 @@ public class DashboardFxView extends ScrollPane {
         Circle readyDot = new Circle(4, Color.web("#10b981"));
         Label engineLabel = new Label("Native ExifTool v13.x");
         engineLabel.getStyleClass().add("text-primary");
-        engineLabel.setStyle("-fx-font-size: 11px; -fx-font-weight: 700;");
+        engineLabel.setStyle("-fx-font-size: 12px; -fx-font-weight: 700;");
 
         Label engineState = new Label("Ready");
-        engineState.setStyle("-fx-font-size: 10px; -fx-text-fill: #10b981; -fx-font-weight: 600;");
+        engineState.setStyle("-fx-font-size: 11px; -fx-text-fill: #10b981; -fx-font-weight: 700;");
 
         Region sep = new Region();
         sep.setPrefWidth(6);
 
         userAvatarLabel.setAlignment(Pos.CENTER);
-        userAvatarLabel.setPrefSize(22, 22);
-        userAvatarLabel.setMinSize(22, 22);
+        userAvatarLabel.setPrefSize(24, 24);
+        userAvatarLabel.setMinSize(24, 24);
         userAvatarLabel.setStyle(
-                "-fx-background-color: #8b5cf6; -fx-text-fill: white; -fx-font-size: 10px; -fx-font-weight: 800; -fx-background-radius: 11;");
+                "-fx-background-color: #8b5cf6; -fx-text-fill: white; -fx-font-size: 11px; -fx-font-weight: 800; -fx-background-radius: 12;");
 
         VBox userDetails = new VBox(0);
         userNameLabel.getStyleClass().add("text-primary");
-        userNameLabel.setStyle("-fx-font-size: 11px; -fx-font-weight: 600;");
+        userNameLabel.setStyle("-fx-font-size: 12px; -fx-font-weight: 700;");
         userEmailLabel.getStyleClass().add("text-muted");
-        userEmailLabel.setStyle("-fx-font-size: 10px;");
+        userEmailLabel.setStyle("-fx-font-size: 11px;");
         userDetails.getChildren().addAll(userNameLabel, userEmailLabel);
 
         Region spacer = new Region();
@@ -216,7 +250,7 @@ public class DashboardFxView extends ScrollPane {
 
         userTierBadge.getStyleClass().add("dash-tag");
         userTierBadge.setStyle(
-                "-fx-font-size: 9px; -fx-font-weight: 700; -fx-text-fill: #8b5cf6; -fx-background-color: rgba(139, 92, 246, 0.12); -fx-padding: 2 6 2 6; -fx-background-radius: 4;");
+                "-fx-font-size: 10px; -fx-font-weight: 700; -fx-text-fill: #8b5cf6; -fx-background-color: rgba(139, 92, 246, 0.15); -fx-padding: 3 8 3 8; -fx-background-radius: 4;");
 
         infoRow.getChildren().addAll(readyDot, engineLabel, engineState, sep, userAvatarLabel, userDetails, spacer,
                 userTierBadge);
@@ -232,10 +266,10 @@ public class DashboardFxView extends ScrollPane {
 
         Label teleHeader = new Label("SYSTEM RESOURCES");
         teleHeader.getStyleClass().add("kpi-label");
-        teleHeader.setStyle("-fx-font-size: 9px; -fx-font-weight: 800;");
+        teleHeader.setStyle("-fx-font-size: 11px; -fx-font-weight: 700; -fx-letter-spacing: 0.5px;");
 
         cpuModelBadge.setStyle(
-                "-fx-font-size: 10px; -fx-font-weight: 600; -fx-text-fill: #8b5cf6; -fx-background-color: rgba(139, 92, 246, 0.12); -fx-padding: 2 6 2 6; -fx-background-radius: 4;");
+                "-fx-font-size: 11px; -fx-font-weight: 600; -fx-text-fill: #8b5cf6; -fx-background-color: rgba(139, 92, 246, 0.15); -fx-padding: 3 8 3 8; -fx-background-radius: 4;");
         cpuModelBadge.setVisible(false);
         cpuModelBadge.setManaged(false);
 
@@ -243,14 +277,14 @@ public class DashboardFxView extends ScrollPane {
         HBox.setHgrow(spTele, Priority.ALWAYS);
 
         hostSpecsLabel.getStyleClass().add("text-muted");
-        hostSpecsLabel.setStyle("-fx-font-size: 10px; -fx-font-weight: 500;");
+        hostSpecsLabel.setStyle("-fx-font-size: 11px; -fx-font-weight: 600;");
 
         String os = System.getProperty("os.name", "").toLowerCase();
-        String gpuText = os.contains("win") ? "Direct3D 11 · GPU"
-                : (os.contains("mac") ? "Metal · GPU" : "OpenGL · GPU");
+        String gpuText = os.contains("win") ? "Direct3D 11 • GPU"
+                : (os.contains("mac") ? "Metal • GPU" : "OpenGL • GPU");
         gpuBadge.setText(gpuText);
         gpuBadge.setStyle(
-                "-fx-font-size: 10px; -fx-font-weight: 600; -fx-text-fill: #10b981; -fx-background-color: rgba(16, 185, 129, 0.10); -fx-padding: 2 6 2 6; -fx-background-radius: 4;");
+                "-fx-font-size: 11px; -fx-font-weight: 600; -fx-text-fill: #10b981; -fx-background-color: rgba(16, 185, 129, 0.12); -fx-padding: 3 8 3 8; -fx-background-radius: 4;");
 
         teleHeaderRow.getChildren().addAll(teleHeader, cpuModelBadge, spTele, hostSpecsLabel, gpuBadge);
 
@@ -261,8 +295,8 @@ public class DashboardFxView extends ScrollPane {
         HBox cpuBox = new HBox(6);
         cpuBox.setAlignment(Pos.CENTER_LEFT);
         cpuLabel.getStyleClass().add("text-primary");
-        cpuLabel.setStyle("-fx-font-size: 11px; -fx-font-weight: 600; -fx-min-width: 62;");
-        cpuBar.setPrefHeight(6);
+        cpuLabel.setStyle("-fx-font-size: 12px; -fx-font-weight: 700; -fx-min-width: 68;");
+        cpuBar.setPrefHeight(8);
         cpuBar.setMaxWidth(Double.MAX_VALUE);
         HBox.setHgrow(cpuBar, Priority.ALWAYS);
         HBox.setHgrow(cpuBox, Priority.ALWAYS);
@@ -272,8 +306,8 @@ public class DashboardFxView extends ScrollPane {
         HBox appRamBox = new HBox(6);
         appRamBox.setAlignment(Pos.CENTER_LEFT);
         appRamLabel.getStyleClass().add("text-primary");
-        appRamLabel.setStyle("-fx-font-size: 11px; -fx-font-weight: 600; -fx-min-width: 76;");
-        appRamBar.setPrefHeight(6);
+        appRamLabel.setStyle("-fx-font-size: 12px; -fx-font-weight: 700; -fx-min-width: 82;");
+        appRamBar.setPrefHeight(8);
         appRamBar.setMaxWidth(Double.MAX_VALUE);
         HBox.setHgrow(appRamBar, Priority.ALWAYS);
         HBox.setHgrow(appRamBox, Priority.ALWAYS);
@@ -283,8 +317,8 @@ public class DashboardFxView extends ScrollPane {
         HBox ramBox = new HBox(6);
         ramBox.setAlignment(Pos.CENTER_LEFT);
         ramLabel.getStyleClass().add("text-primary");
-        ramLabel.setStyle("-fx-font-size: 11px; -fx-font-weight: 600; -fx-min-width: 108;");
-        ramBar.setPrefHeight(6);
+        ramLabel.setStyle("-fx-font-size: 12px; -fx-font-weight: 700; -fx-min-width: 116;");
+        ramBar.setPrefHeight(8);
         ramBar.setMaxWidth(Double.MAX_VALUE);
         HBox.setHgrow(ramBar, Priority.ALWAYS);
         HBox.setHgrow(ramBox, Priority.ALWAYS);
@@ -299,22 +333,30 @@ public class DashboardFxView extends ScrollPane {
         return row;
     }
 
-    private HBox buildKpiGrid() {
-        HBox grid = new HBox(12);
-        grid.setAlignment(Pos.CENTER);
+    private GridPane buildKpiGrid() {
+        GridPane grid = new GridPane();
+        grid.setHgap(12);
+        grid.setVgap(12);
 
-        VBox card1 = createKpiCard("DATA RECOVERED", kpiStorageRestored, "Cumulative data processed", UiIcons.FOLDER);
+        for (int i = 0; i < 4; i++) {
+            ColumnConstraints col = new ColumnConstraints();
+            col.setPercentWidth(25.0);
+            col.setHgrow(Priority.ALWAYS);
+            grid.getColumnConstraints().add(col);
+        }
+
+        VBox card1 = createKpiCard("DATA RECOVERED", kpiStorageRestored, "Cumulative data processed",
+                UiIcons.FOLDER);
         VBox card2 = createKpiCard("METADATA RESTORED", kpiFilesProcessed, "Photos & videos repaired",
                 UiIcons.CHECK_CIRCLE);
         VBox card3 = createKpiCard("FILES SCANNED", kpiScanned, "Takeout archives examined", UiIcons.CAMERA);
         VBox card4 = createKpiCard("FILE INTEGRITY", kpiSuccessRate, kpiSuccessRateSub, UiIcons.SHIELD_CHECK);
 
-        HBox.setHgrow(card1, Priority.ALWAYS);
-        HBox.setHgrow(card2, Priority.ALWAYS);
-        HBox.setHgrow(card3, Priority.ALWAYS);
-        HBox.setHgrow(card4, Priority.ALWAYS);
+        grid.add(card1, 0, 0);
+        grid.add(card2, 1, 0);
+        grid.add(card3, 2, 0);
+        grid.add(card4, 3, 0);
 
-        grid.getChildren().addAll(card1, card2, card3, card4);
         return grid;
     }
 
@@ -323,16 +365,16 @@ public class DashboardFxView extends ScrollPane {
     }
 
     private VBox createKpiCard(String title, Label valueLabel, Label subLabel, String iconPath) {
-        VBox card = new VBox(4);
+        VBox card = new VBox(6);
         card.getStyleClass().addAll("glass-card", "kpi-card");
-        card.setPadding(new Insets(12, 14, 12, 14));
+        card.setPadding(new Insets(12, 16, 12, 16));
 
         HBox topRow = new HBox();
         topRow.setAlignment(Pos.CENTER_LEFT);
 
         Label t = new Label(title);
         t.getStyleClass().add("kpi-label");
-        t.setStyle("-fx-font-size: 9px; -fx-font-weight: 800;");
+        t.setStyle("-fx-font-size: 11px; -fx-font-weight: 700; -fx-letter-spacing: 0.5px;");
 
         Region spacer = new Region();
         HBox.setHgrow(spacer, Priority.ALWAYS);
@@ -343,10 +385,10 @@ public class DashboardFxView extends ScrollPane {
         topRow.getChildren().addAll(t, spacer, iconNode);
 
         valueLabel.getStyleClass().add("kpi-value");
-        valueLabel.setStyle("-fx-font-size: 20px; -fx-font-weight: 800;");
+        valueLabel.setStyle("-fx-font-size: 22px; -fx-font-weight: 800;");
 
         subLabel.getStyleClass().add("text-muted");
-        subLabel.setStyle("-fx-font-size: 10px;");
+        subLabel.setStyle("-fx-font-size: 12px;");
 
         card.getChildren().addAll(topRow, valueLabel, subLabel);
         return card;
@@ -362,11 +404,11 @@ public class DashboardFxView extends ScrollPane {
 
         Label coreHeading = new Label("CORE PHOTO WORKFLOWS");
         coreHeading.getStyleClass().add("kpi-label");
-        coreHeading.setStyle("-fx-font-size: 10px; -fx-font-weight: 800;");
+        coreHeading.setStyle("-fx-font-size: 11px; -fx-font-weight: 700; -fx-letter-spacing: 0.5px;");
 
         Label coreBadge = new Label("4 TOOLS");
         coreBadge.setStyle(
-                "-fx-font-size: 9px; -fx-font-weight: 700; -fx-padding: 1 5 1 5; -fx-background-radius: 4; -fx-text-fill: #8b5cf6; -fx-background-color: rgba(139, 92, 246, 0.1);");
+                "-fx-font-size: 10px; -fx-font-weight: 700; -fx-padding: 2 7 2 7; -fx-background-radius: 4; -fx-text-fill: #8b5cf6; -fx-background-color: rgba(139, 92, 246, 0.15);");
 
         coreHeader.getChildren().addAll(coreHeading, coreBadge);
 
@@ -427,11 +469,11 @@ public class DashboardFxView extends ScrollPane {
 
         Label archiveHeading = new Label("ARCHIVE & SYNCHRONIZATION");
         archiveHeading.getStyleClass().add("kpi-label");
-        archiveHeading.setStyle("-fx-font-size: 10px; -fx-font-weight: 800;");
+        archiveHeading.setStyle("-fx-font-size: 11px; -fx-font-weight: 700; -fx-letter-spacing: 0.5px;");
 
         Label archiveBadge = new Label("3 TOOLS");
         archiveBadge.setStyle(
-                "-fx-font-size: 9px; -fx-font-weight: 700; -fx-padding: 1 5 1 5; -fx-background-radius: 4; -fx-text-fill: #71717a; -fx-background-color: rgba(113, 113, 122, 0.1);");
+                "-fx-font-size: 10px; -fx-font-weight: 700; -fx-padding: 2 7 2 7; -fx-background-radius: 4; -fx-text-fill: #8b5cf6; -fx-background-color: rgba(139, 92, 246, 0.15);");
 
         archiveHeader.getChildren().addAll(archiveHeading, archiveBadge);
 
@@ -494,7 +536,7 @@ public class DashboardFxView extends ScrollPane {
 
         Label titleLbl = new Label(title);
         titleLbl.getStyleClass().addAll("card-title", "text-primary");
-        titleLbl.setStyle("-fx-font-size: 13px; -fx-font-weight: 700;");
+        titleLbl.setStyle("-fx-font-size: 14px; -fx-font-weight: 700;");
 
         Region spacer = new Region();
         HBox.setHgrow(spacer, Priority.ALWAYS);
@@ -526,13 +568,13 @@ public class DashboardFxView extends ScrollPane {
         descLbl.setWrapText(true);
         descLbl.setMinHeight(36);
         descLbl.getStyleClass().addAll("card-subtitle", "text-secondary");
-        descLbl.setStyle("-fx-font-size: 11px; -fx-line-spacing: 2;");
+        descLbl.setStyle("-fx-font-size: 12px; -fx-line-spacing: 3;");
 
         // Footer Action Hint
         HBox foot = new HBox();
         Label hint = new Label("Open Tool →");
         hint.getStyleClass().add("text-muted");
-        hint.setStyle("-fx-font-size: 10px; -fx-font-weight: 600;");
+        hint.setStyle("-fx-font-size: 11px; -fx-font-weight: 700;");
         foot.getChildren().add(hint);
 
         card.getChildren().addAll(top, descLbl, foot);
@@ -551,14 +593,14 @@ public class DashboardFxView extends ScrollPane {
 
         Label heading = new Label("RECENT ACTIVITY");
         heading.getStyleClass().add("kpi-label");
-        heading.setStyle("-fx-font-size: 10px; -fx-font-weight: 800;");
+        heading.setStyle("-fx-font-size: 11px; -fx-font-weight: 700; -fx-letter-spacing: 0.5px;");
 
         Region spacer = new Region();
         HBox.setHgrow(spacer, Priority.ALWAYS);
 
         Button btnViewAll = new Button("View All History →");
         btnViewAll.getStyleClass().add("btn-ghost");
-        btnViewAll.setStyle("-fx-font-size: 11px; -fx-font-weight: 600; -fx-padding: 2 6 2 6;");
+        btnViewAll.setStyle("-fx-font-size: 12px; -fx-font-weight: 600; -fx-padding: 3 8 3 8;");
         btnViewAll.setOnAction(e -> navigateTo(WorkspaceType.HISTORY));
 
         headerRow.getChildren().addAll(heading, spacer, btnViewAll);
@@ -586,11 +628,11 @@ public class DashboardFxView extends ScrollPane {
             VBox textCol = new VBox(2);
             Label emptyTitle = new Label("No recent activity");
             emptyTitle.getStyleClass().add("text-primary");
-            emptyTitle.setStyle("-fx-font-size: 12px; -fx-font-weight: 700;");
+            emptyTitle.setStyle("-fx-font-size: 13px; -fx-font-weight: 700;");
 
             Label emptySub = new Label("Your completed tasks will appear here. Choose a tool above to get started.");
             emptySub.getStyleClass().add("text-muted");
-            emptySub.setStyle("-fx-font-size: 11px;");
+            emptySub.setStyle("-fx-font-size: 12px;");
 
             textCol.getChildren().addAll(emptyTitle, emptySub);
 
@@ -599,7 +641,7 @@ public class DashboardFxView extends ScrollPane {
 
             Button btnGetStarted = new Button("Get Started →");
             btnGetStarted.getStyleClass().add("btn-secondary");
-            btnGetStarted.setStyle("-fx-font-size: 11px; -fx-font-weight: 600; -fx-padding: 4 10 4 10;");
+            btnGetStarted.setStyle("-fx-font-size: 12px; -fx-font-weight: 600; -fx-padding: 5 12 5 12;");
             btnGetStarted.setOnAction(e -> navigateTo(WorkspaceType.TAKEOUT_RESTORE));
 
             emptyBox.getChildren().addAll(histIcon, textCol, sp, btnGetStarted);
@@ -620,7 +662,7 @@ public class DashboardFxView extends ScrollPane {
                 VBox details = new VBox(1);
                 Label title = new Label(friendlyOperationName(r.operationType()));
                 title.getStyleClass().add("text-primary");
-                title.setStyle("-fx-font-size: 12px; -fx-font-weight: 700;");
+                title.setStyle("-fx-font-size: 13px; -fx-font-weight: 700;");
 
                 String summaryText = r.summary();
                 if (summaryText.isBlank()) {
@@ -628,7 +670,7 @@ public class DashboardFxView extends ScrollPane {
                 }
                 Label sub = new Label(summaryText);
                 sub.getStyleClass().add("text-muted");
-                sub.setStyle("-fx-font-size: 10px;");
+                sub.setStyle("-fx-font-size: 12px;");
                 details.getChildren().addAll(title, sub);
 
                 Region sp = new Region();
@@ -637,11 +679,11 @@ public class DashboardFxView extends ScrollPane {
                 String dateStr = (r.completedAt() != null) ? TIME_FMT.format(r.completedAt()) : "Recently";
                 Label dateLbl = new Label(dateStr);
                 dateLbl.getStyleClass().add("text-muted");
-                dateLbl.setStyle("-fx-font-size: 10px;");
+                dateLbl.setStyle("-fx-font-size: 11px;");
 
                 Label statusBadge = new Label(r.status());
                 statusBadge.setStyle(
-                        "-fx-font-size: 9px; -fx-font-weight: 700; -fx-text-fill: #10b981; -fx-background-color: rgba(16, 185, 129, 0.12); -fx-padding: 2 6 2 6; -fx-background-radius: 4;");
+                        "-fx-font-size: 10px; -fx-font-weight: 700; -fx-text-fill: #10b981; -fx-background-color: rgba(16, 185, 129, 0.15); -fx-padding: 3 8 3 8; -fx-background-radius: 4;");
 
                 row.getChildren().addAll(iconNode, details, sp, dateLbl, statusBadge);
                 row.setOnMouseClicked(e -> navigateTo(WorkspaceType.HISTORY));
@@ -690,14 +732,14 @@ public class DashboardFxView extends ScrollPane {
             userAvatarLabel.setText(name.isEmpty() ? "U" : name.substring(0, 1).toUpperCase());
             userTierBadge.setText("PRO PLAN");
             userTierBadge.setStyle(
-                    "-fx-font-size: 9px; -fx-font-weight: 700; -fx-text-fill: #8b5cf6; -fx-background-color: rgba(139, 92, 246, 0.12); -fx-padding: 2 6 2 6; -fx-background-radius: 4;");
+                    "-fx-font-size: 10px; -fx-font-weight: 700; -fx-text-fill: #8b5cf6; -fx-background-color: rgba(139, 92, 246, 0.15); -fx-padding: 3 8 3 8; -fx-background-radius: 4;");
         } else {
             userNameLabel.setText("Local Session");
             userEmailLabel.setText("Photos remain on this device");
             userAvatarLabel.setText("L");
             userTierBadge.setText("FREE PLAN");
             userTierBadge.setStyle(
-                    "-fx-font-size: 9px; -fx-font-weight: 700; -fx-text-fill: #10b981; -fx-background-color: rgba(16, 185, 129, 0.12); -fx-padding: 2 6 2 6; -fx-background-radius: 4;");
+                    "-fx-font-size: 10px; -fx-font-weight: 700; -fx-text-fill: #10b981; -fx-background-color: rgba(16, 185, 129, 0.12); -fx-padding: 3 8 3 8; -fx-background-radius: 4;");
         }
 
         updateStatsDisplay();
@@ -728,13 +770,13 @@ public class DashboardFxView extends ScrollPane {
     private void updateTaskStatus() {
         int count = com.takeoutfix.task.TaskManager.getInstance().getActiveTaskCount();
         if (count == 0) {
-            taskStatusBadge.setText("Idle · No active jobs");
+            taskStatusBadge.setText("Idle • No active jobs");
             taskStatusBadge.setStyle(
-                    "-fx-font-size: 10px; -fx-font-weight: 600; -fx-text-fill: #71717a; -fx-background-color: rgba(113, 113, 122, 0.1); -fx-padding: 2 6 2 6; -fx-background-radius: 4;");
+                    "-fx-font-size: 10px; -fx-font-weight: 600; -fx-text-fill: #10b981; -fx-background-color: rgba(16, 185, 129, 0.12); -fx-padding: 3 8 3 8; -fx-background-radius: 4;");
         } else {
-            taskStatusBadge.setText("Processing · " + count + (count == 1 ? " active job" : " active jobs"));
+            taskStatusBadge.setText("Processing • " + count + (count == 1 ? " active job" : " active jobs"));
             taskStatusBadge.setStyle(
-                    "-fx-font-size: 10px; -fx-font-weight: 700; -fx-text-fill: #10b981; -fx-background-color: rgba(16, 185, 129, 0.15); -fx-padding: 2 6 2 6; -fx-background-radius: 4;");
+                    "-fx-font-size: 10px; -fx-font-weight: 700; -fx-text-fill: #8b5cf6; -fx-background-color: rgba(139, 92, 246, 0.16); -fx-padding: 3 8 3 8; -fx-background-radius: 4;");
         }
     }
 
@@ -803,5 +845,9 @@ public class DashboardFxView extends ScrollPane {
         } else {
             bar.getStyleClass().add("telemetry-bar-red");
         }
+    }
+
+    public void cleanup() {
+        telemetryScheduler.shutdownNow();
     }
 }
