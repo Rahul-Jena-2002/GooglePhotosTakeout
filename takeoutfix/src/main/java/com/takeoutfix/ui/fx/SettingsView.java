@@ -38,6 +38,7 @@ public class SettingsView extends VBox {
     private final VBox storagePane = new VBox(14);
     private final VBox privacyPane = new VBox(14);
     private final VBox advancedPane = new VBox(14);
+    private final VBox supportPane = new VBox(14);
     private final VBox aboutPane = new VBox(14);
 
     public SettingsView(NativeExifToolEngine engine) {
@@ -74,6 +75,7 @@ public class SettingsView extends VBox {
         buildStoragePane();
         buildPrivacyPane();
         buildAdvancedPane();
+        buildSupportPane();
         buildAboutPane();
 
         categoryList.getSelectionModel().select(0);
@@ -104,7 +106,7 @@ public class SettingsView extends VBox {
         box.setStyle("-fx-background-color: #191A22; -fx-border-color: #30313B; -fx-border-radius: 8; -fx-background-radius: 8; -fx-padding: 10;");
         VBox.setVgrow(box, Priority.ALWAYS);
 
-        categoryList.getItems().addAll("General", "Processing", "Updates", "File Safety", "Storage", "Privacy", "Advanced", "About");
+        categoryList.getItems().addAll("General", "Processing", "Updates", "File Safety", "Storage", "Privacy", "Advanced", "Support", "About");
         categoryList.setStyle("-fx-background-color: transparent; -fx-border-color: transparent;");
         VBox.setVgrow(categoryList, Priority.ALWAYS);
 
@@ -129,6 +131,7 @@ public class SettingsView extends VBox {
                         case "Storage" -> iconSvg = UiIcons.FOLDER;
                         case "Privacy" -> iconSvg = UiIcons.LOCK;
                         case "Advanced" -> iconSvg = UiIcons.RELOAD;
+                        case "Support" -> iconSvg = UiIcons.EXTERNAL_LINK;
                         default -> iconSvg = UiIcons.HEART;
                     }
 
@@ -154,7 +157,8 @@ public class SettingsView extends VBox {
                 case 4 -> contentPane.getChildren().add(storagePane);
                 case 5 -> contentPane.getChildren().add(privacyPane);
                 case 6 -> contentPane.getChildren().add(advancedPane);
-                case 7 -> contentPane.getChildren().add(aboutPane);
+                case 7 -> contentPane.getChildren().add(supportPane);
+                case 8 -> contentPane.getChildren().add(aboutPane);
             }
         });
 
@@ -529,6 +533,42 @@ public class SettingsView extends VBox {
         advancedPane.getChildren().add(card);
     }
 
+    private void buildSupportPane() {
+        supportPane.getChildren().clear();
+        supportPane.getChildren().add(createSectionHeader("Help & Support Center", "Get technical documentation, recovery assistance, and FAQ answers."));
+
+        VBox card = createCard();
+
+        VBox infoBox = new VBox(10);
+        Label title = new Label("Need Help or Encountered an Issue?");
+        title.setStyle("-fx-font-size: 15px; -fx-font-weight: 700; -fx-text-fill: #E6E7ED;");
+
+        Label desc = new Label("Our documentation covers step-by-step restoration for Google Takeout archives, metadata pairing edge-cases, and troubleshooting for corrupted files.");
+        desc.setWrapText(true);
+        desc.setStyle("-fx-font-size: 13px; -fx-text-fill: #989BA8;");
+
+        HBox actions = new HBox(10);
+        actions.setAlignment(Pos.CENTER_LEFT);
+
+        Button btnSupportPage = new Button("Open Support & FAQ");
+        btnSupportPage.getStyleClass().add("btn-primary");
+        btnSupportPage.setGraphic(UiIcons.createSvgIcon(UiIcons.EXTERNAL_LINK, 13, "#FAFAFA"));
+        btnSupportPage.setStyle("-fx-font-size: 12px; -fx-padding: 8 16;");
+        btnSupportPage.setOnAction(e -> openUrl("https://takeoutfix.pages.dev/support"));
+
+        Button btnGuides = new Button("Browse Guides");
+        btnGuides.getStyleClass().add("btn-secondary");
+        btnGuides.setGraphic(UiIcons.createSvgIcon(UiIcons.GLOBE, 13, "currentColor"));
+        btnGuides.setStyle("-fx-font-size: 12px; -fx-padding: 8 16;");
+        btnGuides.setOnAction(e -> openUrl("https://takeoutfix.pages.dev/guides"));
+
+        actions.getChildren().addAll(btnSupportPage, btnGuides);
+        infoBox.getChildren().addAll(title, desc, actions);
+        card.getChildren().add(infoBox);
+
+        supportPane.getChildren().add(card);
+    }
+
     private void buildAboutPane() {
         aboutPane.getChildren().clear();
         aboutPane.getChildren().add(createSectionHeader("About TakeoutFix", "Open-source photography suite engineered for Google Takeout recovery."));
@@ -551,13 +591,19 @@ public class SettingsView extends VBox {
         btnGithub.setStyle("-fx-font-size: 12px;");
         btnGithub.setOnAction(e -> openUrl("https://github.com/Rahul-Jena-2002/GooglePhotosTakeout"));
 
+        Button btnSupport = new Button("Support & FAQ");
+        btnSupport.getStyleClass().add("btn-secondary");
+        btnSupport.setGraphic(UiIcons.createSvgIcon(UiIcons.EXTERNAL_LINK, 13, "currentColor"));
+        btnSupport.setStyle("-fx-font-size: 12px;");
+        btnSupport.setOnAction(e -> openUrl("https://takeoutfix.pages.dev/support"));
+
         Button btnSponsor = new Button("Sponsor Project");
         btnSponsor.getStyleClass().add("btn-primary");
         btnSponsor.setGraphic(UiIcons.createSvgIcon(UiIcons.HEART, 13, "#FAFAFA"));
         btnSponsor.setStyle("-fx-font-size: 12px;");
         btnSponsor.setOnAction(e -> openUrl("https://github.com/sponsors/Rahul-Jena-2002"));
 
-        btnRow.getChildren().addAll(btnGithub, btnSponsor);
+        btnRow.getChildren().addAll(btnGithub, btnSupport, btnSponsor);
         brandBox.getChildren().addAll(appName, appSub, btnRow);
 
         card.getChildren().add(brandBox);

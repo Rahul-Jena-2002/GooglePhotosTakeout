@@ -123,21 +123,6 @@ jobs:
             throw "TakeoutFix.exe compilation failed."
           }
 
-          # 3. Self-sign (changes "Unknown Publisher" → "TakeoutFix"; non-blocking if it fails)
-          Write-Host "Self-signing TakeoutFix.exe..."
-          try {
-            $cert = New-SelfSignedCertificate `
-              -Subject "CN=TakeoutFix, O=TakeoutFix, C=US" `
-              -Type CodeSigningCert `
-              -CertStoreLocation "Cert:\CurrentUser\My" `
-              -NotAfter (Get-Date).AddYears(2) `
-              -HashAlgorithm SHA256
-            Set-AuthenticodeSignature -FilePath "TakeoutFix.exe" -Certificate $cert -HashAlgorithm SHA256 -TimestampServer "http://timestamp.digicert.com" | Out-Null
-            Write-Host "Signed OK: $($cert.Thumbprint)"
-          } catch {
-            Write-Host "Self-signing step failed (non-fatal): $_"
-          }
-
           Remove-Item $payloadZip -Force
           Write-Host "Done. Standalone single-file executable TakeoutFix.exe ready."
 

@@ -204,9 +204,11 @@ export default {
         );
       }
 
-      // Check if client explicitly wants a 302 redirect
-      const wantsRedirect = url.searchParams.get("redirect") === "true";
-      if (wantsRedirect && targetAsset.browser_download_url) {
+      // 302 Redirect directly to GitHub Release asset URL by default.
+      // This routes the download via github.com with highest domain trust, preventing Cloudflare Worker SmartScreen domain blocks.
+      // If client explicitly requests ?stream=true, it falls back to direct streaming.
+      const wantsStream = url.searchParams.get("stream") === "true";
+      if (!wantsStream && targetAsset.browser_download_url) {
         return Response.redirect(targetAsset.browser_download_url, 302);
       }
 
