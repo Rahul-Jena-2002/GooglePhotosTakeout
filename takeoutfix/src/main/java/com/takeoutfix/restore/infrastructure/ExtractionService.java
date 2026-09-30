@@ -33,10 +33,14 @@ public class ExtractionService {
     private UserService userService;
 
     public ExtractionService() {
+        this(NativeExifToolEngine.getDefault());
+    }
+
+    public ExtractionService(NativeExifToolEngine exifToolEngine) {
         this.scanner = new MediaScanner();
         this.matcher = new MetadataMatcher();
         this.restorer = new TimestampRestorer();
-        this.metadataInjector = new MetadataInjector();
+        this.metadataInjector = new MetadataInjector(exifToolEngine);
         this.fileService = new FileOperationService();
         this.sessionStatsService = new SessionStatsService();
         this.userService = new UserService();
@@ -142,6 +146,9 @@ public class ExtractionService {
                 throw e;
             } finally {
                 this.isRunning = false;
+                if (metadataInjector != null && metadataInjector.getExifToolEngine() != null) {
+                    metadataInjector.getExifToolEngine().cullIdleWorkers();
+                }
             }
         });
     }

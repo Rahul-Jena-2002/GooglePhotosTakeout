@@ -17,11 +17,15 @@ public class MetadataInjector {
     private NativeExifToolEngine exifToolEngine;
 
     public MetadataInjector() {
-        this(new NativeExifToolEngine());
+        this(NativeExifToolEngine.getDefault());
     }
 
     public MetadataInjector(NativeExifToolEngine exifToolEngine) {
-        this.exifToolEngine = exifToolEngine;
+        this.exifToolEngine = exifToolEngine != null ? exifToolEngine : NativeExifToolEngine.getDefault();
+    }
+
+    public NativeExifToolEngine getExifToolEngine() {
+        return exifToolEngine;
     }
 
     /**

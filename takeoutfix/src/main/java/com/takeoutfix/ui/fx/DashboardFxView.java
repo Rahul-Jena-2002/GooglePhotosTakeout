@@ -750,10 +750,11 @@ public class DashboardFxView extends ScrollPane {
                 double ramFraction = (totalRam > 0) ? (double) usedRam / totalRam : 0.0;
                 double cpuFraction = Math.max(0.0, Math.min(1.0, cpu / 100.0));
 
+                long appProcessMb = SystemHardwareInfo.getProcessWorkingSetMB();
                 Runtime rt = Runtime.getRuntime();
                 long appUsedMb = (rt.totalMemory() - rt.freeMemory()) / (1024 * 1024);
                 long appMaxMb = rt.maxMemory() / (1024 * 1024);
-                double appRamFraction = (appMaxMb > 0) ? Math.min(1.0, (double) appUsedMb / appMaxMb) : 0.0;
+                double appRamFraction = (totalRam > 0) ? Math.min(1.0, (double) (appProcessMb * 1024L * 1024L) / totalRam) : 0.0;
 
                 int pCores = SystemHardwareInfo.getPhysicalCores();
                 int lThreads = SystemHardwareInfo.getLogicalProcessors();
@@ -767,7 +768,10 @@ public class DashboardFxView extends ScrollPane {
                     cpuBar.setProgress(cpuFraction);
                     updateBarColor(cpuBar, cpuFraction);
 
-                    appRamLabel.setText(String.format(java.util.Locale.US, "App: %d MB", appUsedMb));
+                    appRamLabel.setText(String.format(java.util.Locale.US, "App: %d MB", appProcessMb));
+                    appRamLabel.setTooltip(new Tooltip(String.format(java.util.Locale.US,
+                            "App Process RAM (Task Manager): %d MB\nJVM Heap: %d MB used / %d MB max",
+                            appProcessMb, appUsedMb, appMaxMb)));
                     appRamBar.setProgress(appRamFraction);
                     updateBarColor(appRamBar, appRamFraction);
 

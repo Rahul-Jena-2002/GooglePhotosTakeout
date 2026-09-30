@@ -66,7 +66,7 @@ public class MetaSyncSwingPanel extends JPanel {
 
     public MetaSyncSwingPanel(UserSyncBridgeService userService) {
         this.userService = userService;
-        this.exifToolEngine = new NativeExifToolEngine();
+        this.exifToolEngine = NativeExifToolEngine.getDefault();
         this.metadataReader = new MetadataReader(exifToolEngine);
         this.metadataComparator = new MetadataComparator();
         this.writeSafetyService = new WriteSafetyService(metadataReader);

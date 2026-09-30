@@ -18,9 +18,29 @@ import org.apache.commons.compress.compressors.gzip.GzipCompressorInputStream;
 
 public class NativeExifToolEngine {
 
+    private static volatile NativeExifToolEngine defaultInstance;
+
+    public static NativeExifToolEngine getDefault() {
+        if (defaultInstance == null) {
+            synchronized (NativeExifToolEngine.class) {
+                if (defaultInstance == null) {
+                    defaultInstance = new NativeExifToolEngine();
+                }
+            }
+        }
+        return defaultInstance;
+    }
+
     private File exifToolBinary;
     private final BlockingQueue<PersistentExifTool> pool = new LinkedBlockingQueue<>();
-    private int activeWorkersCount = 0;
+    private final int maxWorkers = Math.max(2, Math.min(8, Runtime.getRuntime().availableProcessors()));
+    private final java.util.concurrent.atomic.AtomicInteger currentWorkers = new java.util.concurrent.atomic.AtomicInteger(0);
+    private final java.util.concurrent.ScheduledExecutorService idleReaper = java.util.concurrent.Executors.newSingleThreadScheduledExecutor(r -> {
+        Thread t = new Thread(r, "ExifTool-IdleReaper");
+        t.setDaemon(true);
+        return t;
+    });
+    private volatile long lastExecutionTime = System.currentTimeMillis();
 
     public NativeExifToolEngine() {
         init();
@@ -39,18 +59,15 @@ public class NativeExifToolEngine {
             }
             
             if (exifToolBinary != null && exifToolBinary.exists()) {
-                int maxProcessors = Runtime.getRuntime().availableProcessors();
-                int numWorkers = Math.max(12, Math.min(32, (int) Math.round(maxProcessors * 1.5)));
-                System.out.println("Dynamically initialized ExifTool pool with " + numWorkers + " workers for " + maxProcessors + " detected CPU cores (High-performance multi-process pipeline).");
-                for (int i = 0; i < numWorkers; i++) {
-                    try {
-                        pool.add(new PersistentExifTool(exifToolBinary));
-                        activeWorkersCount++;
-                    } catch (IOException e) {
-                        System.err.println("Failed to start persistent ExifTool worker: " + e.getMessage());
-                    }
-                }
                 Runtime.getRuntime().addShutdownHook(new Thread(this::cleanup));
+                // Periodic idle reaper: if idle for > 45 seconds, cull any background Perl workers
+                idleReaper.scheduleWithFixedDelay(() -> {
+                    try {
+                        if (currentWorkers.get() > 0 && (System.currentTimeMillis() - lastExecutionTime) > 45000) {
+                            cullIdleWorkers();
+                        }
+                    } catch (Throwable ignored) {}
+                }, 30, 30, TimeUnit.SECONDS);
             } else {
                 System.err.println("Failed to provision ExifTool!");
             }
@@ -64,12 +81,22 @@ public class NativeExifToolEngine {
         return exifToolBinary;
     }
 
-    public void cleanup() {
-        System.out.println("Cleaning up ExifTool pool...");
+    public synchronized void cullIdleWorkers() {
         PersistentExifTool worker;
         while ((worker = pool.poll()) != null) {
             worker.destroy();
+            currentWorkers.decrementAndGet();
         }
+        if (currentWorkers.get() < 0) {
+            currentWorkers.set(0);
+        }
+    }
+
+    public synchronized void cleanup() {
+        try {
+            idleReaper.shutdownNow();
+        } catch (Throwable ignored) {}
+        cullIdleWorkers();
     }
 
     private File extractWindowsExifTool(Path extractDir) throws IOException {
@@ -162,21 +189,36 @@ public class NativeExifToolEngine {
             return false;
         }
 
-        if (activeWorkersCount == 0) {
-            return executeFallback(args);
+        lastExecutionTime = System.currentTimeMillis();
+
+        PersistentExifTool worker = pool.poll();
+        if (worker == null) {
+            if (currentWorkers.get() < maxWorkers) {
+                synchronized (this) {
+                    if (currentWorkers.get() < maxWorkers) {
+                        try {
+                            worker = new PersistentExifTool(exifToolBinary);
+                            currentWorkers.incrementAndGet();
+                        } catch (IOException e) {
+                            System.err.println("Failed to spawn on-demand ExifTool worker: " + e.getMessage());
+                        }
+                    }
+                }
+            }
         }
 
-        PersistentExifTool worker = null;
-        try {
-            // Wait up to 30s for a free worker rather than falling back to slow spawn
-            worker = pool.poll(30, TimeUnit.SECONDS);
-            if (worker == null) {
-                System.err.println("ExifTool pool exhausted after 30s wait — using fallback spawn");
-                return executeFallback(args);
+        if (worker == null) {
+            try {
+                // Wait up to 30s for a free worker rather than falling back to slow spawn
+                worker = pool.poll(30, TimeUnit.SECONDS);
+                if (worker == null) {
+                    System.err.println("ExifTool pool exhausted after 30s wait — using fallback spawn");
+                    return executeFallback(args);
+                }
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                return false;
             }
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-            return false;
         }
 
         boolean success = false;
@@ -184,11 +226,8 @@ public class NativeExifToolEngine {
             success = worker.runCommand(args);
             if (!success) {
                 worker.destroy();
-                try {
-                    worker = new PersistentExifTool(exifToolBinary);
-                } catch (IOException ex) {
-                    worker = null;
-                }
+                currentWorkers.decrementAndGet();
+                worker = null;
             }
         } finally {
             if (worker != null) {

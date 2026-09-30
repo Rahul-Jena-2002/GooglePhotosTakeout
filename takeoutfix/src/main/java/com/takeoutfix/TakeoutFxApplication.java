@@ -55,8 +55,8 @@ public class TakeoutFxApplication extends Application {
         this.userSyncBridgeService = new UserSyncBridgeService();
         this.networkMonitorService = new NetworkMonitorService();
         this.sessionStatsService = new SessionStatsService();
-        this.exifToolEngine = new NativeExifToolEngine();
-        this.extractionService = new ExtractionService();
+        this.exifToolEngine = NativeExifToolEngine.getDefault();
+        this.extractionService = new ExtractionService(exifToolEngine);
         this.metadataSyncService = new MetadataSyncService(exifToolEngine);
         this.updateCheckerService = new com.takeoutfix.updates.UpdateCheckerService();
         this.updateCheckerService.start();
