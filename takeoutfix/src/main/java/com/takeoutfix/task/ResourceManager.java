@@ -38,9 +38,10 @@ public class ResourceManager {
 
         // Worker pools with daemon threads so JVM exits cleanly
         AtomicInteger cpuCount = new AtomicInteger(1);
+        int initialCore = calculateInitialWorkerCount();
         this.cpuExecutor = new ThreadPoolExecutor(
-                calculateInitialWorkerCount(),
-                availableCores,
+                initialCore,
+                Math.max(initialCore, availableCores),
                 60L, TimeUnit.SECONDS,
                 new LinkedBlockingQueue<>(500),
                 r -> {
@@ -111,18 +112,27 @@ public class ResourceManager {
                 }
 
                 if (targetWorkers != cpuExecutor.getCorePoolSize()) {
-                    cpuExecutor.setCorePoolSize(targetWorkers);
-                    cpuExecutor.setMaximumPoolSize(Math.max(targetWorkers, availableCores));
+                    safelyResizeCpuPool(targetWorkers, Math.max(targetWorkers, availableCores));
                 }
             }
         } catch (Throwable ignored) {}
     }
 
+    private void safelyResizeCpuPool(int targetCore, int targetMax) {
+        int currentMax = cpuExecutor.getMaximumPoolSize();
+        if (targetMax > currentMax) {
+            cpuExecutor.setMaximumPoolSize(targetMax);
+            cpuExecutor.setCorePoolSize(targetCore);
+        } else {
+            cpuExecutor.setCorePoolSize(targetCore);
+            cpuExecutor.setMaximumPoolSize(targetMax);
+        }
+    }
+
     public synchronized void setProcessingMode(ProcessingMode newMode) {
         this.mode = newMode;
         int target = calculateInitialWorkerCount();
-        cpuExecutor.setCorePoolSize(target);
-        cpuExecutor.setMaximumPoolSize(Math.max(target, availableCores));
+        safelyResizeCpuPool(target, Math.max(target, availableCores));
     }
 
     public synchronized void setCustomMaxWorkers(int workers) {

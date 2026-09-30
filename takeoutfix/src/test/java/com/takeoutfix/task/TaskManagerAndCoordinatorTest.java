@@ -85,7 +85,15 @@ public class TaskManagerAndCoordinatorTest {
         resourceManager.setProcessingMode(ResourceManager.ProcessingMode.BACKGROUND);
         assertEquals(ResourceManager.ProcessingMode.BACKGROUND, resourceManager.getProcessingMode());
 
-        resourceManager.setCustomMaxWorkers(6);
+        resourceManager.setCustomMaxWorkers(64);
+        resourceManager.setProcessingMode(ResourceManager.ProcessingMode.CUSTOM);
+        assertEquals(ResourceManager.ProcessingMode.CUSTOM, resourceManager.getProcessingMode());
+
+        resourceManager.setCustomMaxWorkers(1);
+        resourceManager.setProcessingMode(ResourceManager.ProcessingMode.CUSTOM);
+        assertEquals(ResourceManager.ProcessingMode.CUSTOM, resourceManager.getProcessingMode());
+
+        resourceManager.setCustomMaxWorkers(16);
         resourceManager.setProcessingMode(ResourceManager.ProcessingMode.CUSTOM);
         assertEquals(ResourceManager.ProcessingMode.CUSTOM, resourceManager.getProcessingMode());
 
