@@ -379,7 +379,7 @@ public class SystemHardwareInfo {
         int colon = line.indexOf(':');
         if (colon < 0) return 0;
         int start = colon + 1;
-        while (start < line.length() && line.charAt(start) == ' ') {
+        while (start < line.length() && Character.isWhitespace(line.charAt(start))) {
             start++;
         }
         int end = start;
@@ -431,7 +431,8 @@ public class SystemHardwareInfo {
                         String line;
                         while ((line = reader.readLine()) != null) {
                             if (line.startsWith("VmRSS:")) {
-                                return parseMeminfoKb(line);
+                                long bytes = parseMeminfoKb(line);
+                                if (bytes > 0) return bytes;
                             }
                         }
                     }
@@ -447,11 +448,14 @@ public class SystemHardwareInfo {
         } catch (Throwable ignored) {}
 
         Runtime rt = Runtime.getRuntime();
-        return rt.totalMemory();
+        long fallback = rt.totalMemory();
+        return fallback > 0 ? fallback : 1024 * 1024;
     }
 
     public static long getProcessWorkingSetMB() {
-        return getProcessWorkingSetBytes() / (1024 * 1024);
+        long bytes = getProcessWorkingSetBytes();
+        long mb = bytes / (1024 * 1024);
+        return bytes > 0 ? Math.max(1, mb) : 0;
     }
 
     private interface WinPsapi extends com.sun.jna.win32.StdCallLibrary {
