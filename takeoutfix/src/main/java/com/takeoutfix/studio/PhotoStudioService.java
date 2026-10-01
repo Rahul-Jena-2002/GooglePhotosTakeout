@@ -155,13 +155,31 @@ public class PhotoStudioService {
     }
 
     /**
-     * Executes the batch edit asynchronously.
+     * Executes the batch edit asynchronously with AtomicBoolean cancellation support.
      */
     public CompletableFuture<BatchResult> executeBatchAsync(
             List<StudioFileItem> items,
             StudioEditRequest request,
             ProgressCallback callback,
             AtomicBoolean cancelToken) {
+        com.takeoutfix.shared.task.CancellationToken token = null;
+        if (cancelToken != null) {
+            token = new com.takeoutfix.shared.task.CancellationToken();
+            if (cancelToken.get()) {
+                token.cancel();
+            }
+        }
+        return executeBatchAsync(items, request, callback, token);
+    }
+
+    /**
+     * Executes the batch edit asynchronously with cooperative pause and cancellation support.
+     */
+    public CompletableFuture<BatchResult> executeBatchAsync(
+            List<StudioFileItem> items,
+            StudioEditRequest request,
+            ProgressCallback callback,
+            com.takeoutfix.shared.task.CancellationToken token) {
 
         return CompletableFuture.supplyAsync(() -> {
             int total = items.size();
@@ -193,8 +211,11 @@ public class PhotoStudioService {
                 final File effectiveOutDir = outDir;
 
                 futures.add(CompletableFuture.runAsync(() -> {
-                    if (cancelToken != null && cancelToken.get()) {
-                        return;
+                    if (token != null) {
+                        if (token.isCancelled()) {
+                            return;
+                        }
+                        token.checkPauseAndCancel();
                     }
                     item.setStatus("Processing...");
 

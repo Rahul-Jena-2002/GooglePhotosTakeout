@@ -92,8 +92,10 @@ public class PhotoStudioFxView extends VBox {
     private final Label progressLabel = new Label("Add photos to get started.");
     private final Button btnExecute = new Button("Apply Changes");
     private final Button btnDryRun = new Button("Preview Changes");
+    private final Button btnPause = new Button("Pause");
     private final Button btnCancel = new Button("Cancel");
     private final AtomicBoolean cancelToken = new AtomicBoolean(false);
+    private com.takeoutfix.shared.task.CancellationToken activeCancellationToken;
     private final com.takeoutfix.auth.UserSyncBridgeService userService;
 
     public PhotoStudioFxView(Stage stage, NativeExifToolEngine exifEngine, com.takeoutfix.auth.UserSyncBridgeService userService, Consumer<WorkspaceType> onNavigate) {
@@ -939,11 +941,20 @@ public class PhotoStudioFxView extends VBox {
         btnExecute.setStyle("-fx-font-size: 13px; -fx-font-weight: 700; -fx-pref-height: 36px; -fx-padding: 6 20;");
         btnExecute.setOnAction(e -> handleExecute());
 
+        btnPause.getStyleClass().add("btn-secondary");
+        btnPause.setVisible(false);
+        btnPause.setGraphic(UiIcons.createSvgIcon(UiIcons.PAUSE, 12, "currentColor"));
+        btnPause.setGraphicTextGap(6);
+        btnPause.setStyle("-fx-font-size: 13px; -fx-padding: 7 14 7 14;");
+        btnPause.setOnAction(e -> handlePause());
+
         btnCancel.getStyleClass().add("btn-ghost");
         btnCancel.setVisible(false);
-        btnCancel.setOnAction(e -> cancelToken.set(true));
+        btnCancel.setGraphic(UiIcons.createSvgIcon(UiIcons.STOP, 11, "currentColor"));
+        btnCancel.setGraphicTextGap(6);
+        btnCancel.setOnAction(e -> handleCancel());
 
-        actionRow.getChildren().addAll(progressLabel, new Region(), btnDryRun, btnExecute, btnCancel);
+        actionRow.getChildren().addAll(progressLabel, new Region(), btnDryRun, btnExecute, btnPause, btnCancel);
         HBox.setHgrow(actionRow.getChildren().get(1), Priority.ALWAYS);
 
         footer.getChildren().addAll(outputOptionsRow, outDirRow, progressBar, actionRow);
@@ -1120,10 +1131,14 @@ public class PhotoStudioFxView extends VBox {
         StudioEditRequest req = buildCurrentRequest();
         btnExecute.setDisable(true);
         btnDryRun.setDisable(true);
+        btnPause.setVisible(true);
+        btnPause.setText("Pause");
+        btnPause.setGraphic(UiIcons.createSvgIcon(UiIcons.PAUSE, 12, "currentColor"));
         btnCancel.setVisible(true);
         progressBar.setVisible(true);
         progressBar.setProgress(0);
         cancelToken.set(false);
+        activeCancellationToken = new com.takeoutfix.shared.task.CancellationToken();
 
         List<StudioFileItem> snapshot = new ArrayList<>(selectedFiles);
 
@@ -1133,10 +1148,11 @@ public class PhotoStudioFxView extends VBox {
                 progressLabel.setText(String.format("Processing %d of %d: %s", current, total, item.getFileName()));
                 tableView.refresh();
             });
-        }, cancelToken).thenAccept(result -> {
+        }, activeCancellationToken).thenAccept(result -> {
             Platform.runLater(() -> {
                 btnExecute.setDisable(false);
                 btnDryRun.setDisable(false);
+                btnPause.setVisible(false);
                 btnCancel.setVisible(false);
                 progressBar.setVisible(false);
                 progressLabel.setText(String.format("Batch complete: %d succeeded, %d failed.",
@@ -1162,6 +1178,34 @@ public class PhotoStudioFxView extends VBox {
                 alert.showAndWait();
             });
         });
+    }
+
+    private void handlePause() {
+        if (activeCancellationToken == null) return;
+        if (activeCancellationToken.isPaused()) {
+            activeCancellationToken.resume();
+            btnPause.setText("Pause");
+            btnPause.setGraphic(UiIcons.createSvgIcon(UiIcons.PAUSE, 12, "currentColor"));
+            progressLabel.setText("Resuming edit batch...");
+        } else {
+            activeCancellationToken.pause();
+            btnPause.setText("Resume");
+            btnPause.setGraphic(UiIcons.createSvgIcon(UiIcons.PLAY, 12, "currentColor"));
+            progressLabel.setText("Edit batch paused.");
+        }
+    }
+
+    private void handleCancel() {
+        if (activeCancellationToken != null) {
+            activeCancellationToken.cancel();
+        }
+        cancelToken.set(true);
+        btnExecute.setDisable(false);
+        btnDryRun.setDisable(false);
+        btnPause.setVisible(false);
+        btnCancel.setVisible(false);
+        progressBar.setVisible(false);
+        progressLabel.setText("Operation cancelled by user.");
     }
 
     private void handleAddFiles() {

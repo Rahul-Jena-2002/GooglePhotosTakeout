@@ -20,17 +20,19 @@
     </properties>
 
     <dependencies>
-        <!-- Spring Framework Core & Dependency Injection (Zero Web / Zero Server Overhead) -->
+        <!-- Spring Boot (no web server — WebApplicationType.NONE in TakeoutFxApplication) -->
+        <!-- Provides DI, @Scheduled, @ConfigurationProperties, Events, auto-configuration -->
         <dependency>
-            <groupId>org.springframework</groupId>
-            <artifactId>spring-core</artifactId>
-            <version>7.0.9</version>
-            <scope>compile</scope>
-        </dependency>
-        <dependency>
-            <groupId>org.springframework</groupId>
-            <artifactId>spring-context</artifactId>
-            <version>7.0.9</version>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter</artifactId>
+            <version>3.3.4</version>
+            <!-- Exclude default Logback — we use slf4j-simple to avoid duplicate binding -->
+            <exclusions>
+                <exclusion>
+                    <groupId>ch.qos.logback</groupId>
+                    <artifactId>logback-classic</artifactId>
+                </exclusion>
+            </exclusions>
         </dependency>
 
         <!-- Core Domain Compression & File Handling (Latest CVE-free) -->
@@ -111,6 +113,13 @@
             <artifactId>atlantafx-base</artifactId>
             <version>2.0.1</version>
         </dependency>
+
+        <!-- OpenCV 4.9 with bundled native libs — Apache-2.0, loaded via nu.pattern.OpenCV.loadLocally() -->
+        <dependency>
+            <groupId>org.openpnp</groupId>
+            <artifactId>opencv</artifactId>
+            <version>4.9.0-0</version>
+        </dependency>
     </dependencies>
 
 
@@ -163,7 +172,7 @@
                 <configuration>
                     <archive>
                         <manifest>
-                            <mainClass>com.takeoutfix.TakeoutApplication</mainClass>
+                            <mainClass>com.takeoutfix.TakeoutFxApplication</mainClass>
                         </manifest>
                     </archive>
                 </configuration>
@@ -184,7 +193,7 @@
                             <createDependencyReducedPom>false</createDependencyReducedPom>
                             <transformers>
                                 <transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
-                                    <mainClass>com.takeoutfix.TakeoutApplication</mainClass>
+                                    <mainClass>com.takeoutfix.TakeoutFxApplication</mainClass>
                                 </transformer>
                             </transformers>
                             <filters>
@@ -208,7 +217,7 @@
                 <artifactId>exec-maven-plugin</artifactId>
                 <version>3.5.0</version>
                 <configuration>
-                    <mainClass>com.takeoutfix.TakeoutApplication</mainClass>
+                    <mainClass>com.takeoutfix.TakeoutFxApplication</mainClass>
                 </configuration>
             </plugin>
 

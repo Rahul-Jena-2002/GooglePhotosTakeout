@@ -78,8 +78,9 @@ public class SidebarNav extends VBox {
         Button btnDuplicates = createNavButton(WorkspaceType.DUPLICATE_FINDER, UiIcons.COPY, "Duplicate Finder");
         Button btnSyncDetails = createNavButton(WorkspaceType.METASYNC, UiIcons.SYNC, "Metadata Sync");
         Button btnPhotoVault = createNavButton(WorkspaceType.PHOTOVAULT, UiIcons.SHIELD_CHECK, "Private Photo Vault");
+        Button btnPhotoCulling = createNavButton(WorkspaceType.PHOTO_CULLING, UiIcons.ZAP, "AI Photo Picker");
 
-        toolsSection.getChildren().addAll(btnFixPhotos, btnEditDetails, btnViewDetails, btnCompare, btnDuplicates, btnSyncDetails, btnPhotoVault);
+        toolsSection.getChildren().addAll(btnFixPhotos, btnEditDetails, btnViewDetails, btnCompare, btnDuplicates, btnSyncDetails, btnPhotoVault, btnPhotoCulling);
         getChildren().add(toolsSection);
 
         select(WorkspaceType.DASHBOARD, false);

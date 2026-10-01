@@ -108,6 +108,10 @@ public class ArchiveCompareService {
      * Only indexes genuine photo and video files (ignores .json sidecars).
      */
     public Map<String, File> indexDirectory(Path rootDir) throws IOException {
+        return indexDirectory(rootDir, null);
+    }
+
+    public Map<String, File> indexDirectory(Path rootDir, com.takeoutfix.shared.task.CancellationToken token) throws IOException {
         if (!Files.isDirectory(rootDir)) {
             throw new IllegalArgumentException("Root path must be a valid directory: " + rootDir);
         }
@@ -119,6 +123,7 @@ public class ArchiveCompareService {
             stream.filter(Files::isRegularFile)
                   .filter(ArchiveCompareService::isMediaFile)
                   .forEach(p -> {
+                if (token != null) token.checkPauseAndCancel();
                 try {
                     // Security guard: prevent symlink escapes outside root
                     Path realPath = p.toRealPath();
@@ -144,8 +149,12 @@ public class ArchiveCompareService {
      * Compares two collection directories.
      */
     public ComparisonResult compare(Path sourceA, Path sourceB) throws IOException {
-        Map<String, File> filesA = indexDirectory(sourceA);
-        Map<String, File> filesB = indexDirectory(sourceB);
+        return compare(sourceA, sourceB, null);
+    }
+
+    public ComparisonResult compare(Path sourceA, Path sourceB, com.takeoutfix.shared.task.CancellationToken token) throws IOException {
+        Map<String, File> filesA = indexDirectory(sourceA, token);
+        Map<String, File> filesB = indexDirectory(sourceB, token);
 
         Set<String> allPaths = new TreeSet<>();
         allPaths.addAll(filesA.keySet());
@@ -153,7 +162,8 @@ public class ArchiveCompareService {
 
         List<CompareRecord> records = Collections.synchronizedList(new ArrayList<>());
 
-        allPaths.parallelStream().forEach(rel -> {
+        for (String rel : allPaths) {
+            if (token != null) token.checkPauseAndCancel();
             File fa = filesA.get(rel);
             File fb = filesB.get(rel);
 
@@ -177,7 +187,7 @@ public class ArchiveCompareService {
                     records.add(new CompareRecord(rel, aInfo, bInfo, DiffType.MODIFIED, fa, fb));
                 }
             }
-        });
+        }
 
         records.sort(Comparator.comparing(CompareRecord::getRelativePath));
         return new ComparisonResult(records);

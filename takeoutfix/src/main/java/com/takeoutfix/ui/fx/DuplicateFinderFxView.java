@@ -99,6 +99,10 @@ public class DuplicateFinderFxView extends VBox {
     private final Label spaceSavedLabel = new Label("0 MB");
 
     private final Button btnStartScan = new Button("Start Scan");
+    private final Button btnPause = new Button("Pause");
+    private final Button btnCancel = new Button("Cancel");
+    private com.takeoutfix.shared.task.CancellationToken activeCancellationToken;
+    private Task<ScanResult> activeScanTask;
     private final ProgressBar progressBar = new ProgressBar(0.0);
     private final Label progressLabel = new Label("Select photo folder to begin");
 
@@ -286,19 +290,38 @@ public class DuplicateFinderFxView extends VBox {
         });
 
         // Scan button & progress
-        VBox actionBlock = new VBox(2);
-        actionBlock.setAlignment(Pos.CENTER_RIGHT);
+        HBox actionBtnRow = new HBox(8);
+        actionBtnRow.setAlignment(Pos.CENTER_RIGHT);
 
         btnStartScan.getStyleClass().add("btn-primary");
         btnStartScan.setGraphic(UiIcons.createSvgIcon(UiIcons.PLAY, 13, "currentColor"));
         btnStartScan.setStyle("-fx-font-size: 13px; -fx-padding: 7 16 7 16;");
         btnStartScan.setOnAction(e -> startScan());
 
+        btnPause.getStyleClass().add("btn-secondary");
+        btnPause.setGraphic(UiIcons.createSvgIcon(UiIcons.PAUSE, 12, "currentColor"));
+        btnPause.setGraphicTextGap(6);
+        btnPause.setStyle("-fx-font-size: 13px; -fx-padding: 7 14 7 14;");
+        btnPause.setDisable(true);
+        btnPause.setOnAction(e -> handlePause());
+
+        btnCancel.getStyleClass().add("btn-secondary");
+        btnCancel.setGraphic(UiIcons.createSvgIcon(UiIcons.STOP, 11, "currentColor"));
+        btnCancel.setGraphicTextGap(6);
+        btnCancel.setStyle("-fx-font-size: 13px; -fx-padding: 7 14 7 14;");
+        btnCancel.setDisable(true);
+        btnCancel.setOnAction(e -> handleCancel());
+
+        actionBtnRow.getChildren().addAll(btnStartScan, btnPause, btnCancel);
+
+        VBox actionBlock = new VBox(4);
+        actionBlock.setAlignment(Pos.CENTER_RIGHT);
+
         progressBar.setPrefWidth(140);
         progressBar.setVisible(false);
         progressLabel.setStyle("-fx-font-size: 12px;"); progressLabel.getStyleClass().add("text-secondary");
 
-        actionBlock.getChildren().addAll(btnStartScan, progressLabel);
+        actionBlock.getChildren().addAll(actionBtnRow, progressLabel);
 
         row.getChildren().addAll(folderBlock, methodBlock, sensBlock, actionBlock);
         card.getChildren().addAll(row, progressBar);
@@ -754,7 +777,12 @@ public class DuplicateFinderFxView extends VBox {
             return;
         }
 
+        activeCancellationToken = new com.takeoutfix.shared.task.CancellationToken();
         btnStartScan.setDisable(true);
+        btnPause.setDisable(false);
+        btnPause.setText("Pause");
+        btnPause.setGraphic(UiIcons.createSvgIcon(UiIcons.PAUSE, 12, "currentColor"));
+        btnCancel.setDisable(false);
         progressBar.setVisible(true);
         progressBar.setProgress(ProgressIndicator.INDETERMINATE_PROGRESS);
         progressLabel.setText("Scanning directory and calculating hashes...");
@@ -777,9 +805,10 @@ public class DuplicateFinderFxView extends VBox {
         Task<ScanResult> task = new Task<>() {
             @Override
             protected ScanResult call() throws Exception {
-                return scanService.scanDirectory(selectedFolder.toPath(), strategy, scanThreshold);
+                return scanService.scanDirectory(selectedFolder.toPath(), strategy, scanThreshold, activeCancellationToken);
             }
         };
+        activeScanTask = task;
 
         task.setOnSucceeded(e -> {
             ScanResult res = task.getValue();
@@ -799,6 +828,8 @@ public class DuplicateFinderFxView extends VBox {
             spaceSavedLabel.setText(mb >= 1024.0 ? String.format("%.1f GB", mb / 1024.0) : String.format("%.1f MB", mb));
 
             btnStartScan.setDisable(false);
+            btnPause.setDisable(true);
+            btnCancel.setDisable(true);
             progressBar.setVisible(false);
             progressLabel.setText(String.format("Scan complete: %d duplicates in %d groups", items.size(), res.getClusters().size()));
 
@@ -812,15 +843,58 @@ public class DuplicateFinderFxView extends VBox {
             }
         });
 
+        task.setOnCancelled(e -> {
+            btnStartScan.setDisable(false);
+            btnPause.setDisable(true);
+            btnCancel.setDisable(true);
+            progressBar.setVisible(false);
+            progressLabel.setText("Scan cancelled by user.");
+        });
+
         task.setOnFailed(e -> {
             btnStartScan.setDisable(false);
+            btnPause.setDisable(true);
+            btnCancel.setDisable(true);
             progressBar.setVisible(false);
-            progressLabel.setText("Scan failed: " + task.getException().getMessage());
+            if (activeCancellationToken != null && activeCancellationToken.isCancelled()) {
+                progressLabel.setText("Scan cancelled by user.");
+            } else {
+                progressLabel.setText("Scan failed: " + task.getException().getMessage());
+            }
         });
 
         Thread t = new Thread(task, "duplicate-finder-engine");
         t.setDaemon(true);
         t.start();
+    }
+
+    private void handlePause() {
+        if (activeCancellationToken == null) return;
+        if (activeCancellationToken.isPaused()) {
+            activeCancellationToken.resume();
+            btnPause.setText("Pause");
+            btnPause.setGraphic(UiIcons.createSvgIcon(UiIcons.PAUSE, 12, "currentColor"));
+            progressLabel.setText("Scanning directory and calculating hashes...");
+        } else {
+            activeCancellationToken.pause();
+            btnPause.setText("Resume");
+            btnPause.setGraphic(UiIcons.createSvgIcon(UiIcons.PLAY, 12, "currentColor"));
+            progressLabel.setText("Scan paused.");
+        }
+    }
+
+    private void handleCancel() {
+        if (activeCancellationToken != null) {
+            activeCancellationToken.cancel();
+        }
+        if (activeScanTask != null) {
+            activeScanTask.cancel();
+        }
+        btnStartScan.setDisable(false);
+        btnPause.setDisable(true);
+        btnCancel.setDisable(true);
+        progressBar.setVisible(false);
+        progressLabel.setText("Scan cancelled by user.");
     }
 
     private void loadGroupIntoReview(DuplicateGroupItem item) {

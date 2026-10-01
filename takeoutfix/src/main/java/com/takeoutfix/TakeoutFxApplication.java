@@ -15,6 +15,10 @@ import javafx.scene.image.Image;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.StackPane;
 import javafx.stage.Stage;
+import org.springframework.boot.WebApplicationType;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.boot.builder.SpringApplicationBuilder;
+import org.springframework.context.ConfigurableApplicationContext;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -24,11 +28,17 @@ import java.util.Map;
  * Houses TakeoutFix (Google Takeout restoration) and MetaSync (RAW/JPEG metadata synchronization)
  * in a unified, hardware-accelerated desktop interface with shadcn-inspired styling.
  * Pure JavaFX implementation (zero Swing components).
+ *
+ * Spring Boot bootstraps in {@link #init()} with {@link WebApplicationType#NONE} —
+ * no embedded web server, no Tomcat. All @Component services are available via
+ * {@link #springContext} for injection into future services.
  */
+@SpringBootApplication
 public class TakeoutFxApplication extends Application {
 
     private Stage stage;
     private Scene scene;
+    private ConfigurableApplicationContext springContext;
 
     private SidebarNav sidebarNav;
     private HeaderBar headerBar;
@@ -50,6 +60,13 @@ public class TakeoutFxApplication extends Application {
 
     @Override
     public void init() {
+        // Bootstrap Spring Boot (no web server) before the JavaFX stage shows.
+        // init() runs off the FX application thread — safe for blocking startup.
+        springContext = new SpringApplicationBuilder(TakeoutFxApplication.class)
+                .web(WebApplicationType.NONE)
+                .headless(false) // JavaFX requires AWT not to be headless
+                .run(getParameters().getRaw().toArray(new String[0]));
+
         FxHardwareManager.initialize();
         this.taskManager = com.takeoutfix.task.TaskManager.getInstance();
         this.userSyncBridgeService = new UserSyncBridgeService();
@@ -104,6 +121,7 @@ public class TakeoutFxApplication extends Application {
             case EXIF_VIEWER -> new ExifViewerFxView(stage, exifToolEngine, this::switchWorkspace);
             case ARCHIVE_COMPARE -> new ArchiveCompareFxView(stage, this::switchWorkspace);
             case DUPLICATE_FINDER -> new DuplicateFinderFxView(stage, this::switchWorkspace);
+            case PHOTO_CULLING -> new com.takeoutfix.ui.fx.PhotoCullingView(stage, exifToolEngine, this::switchWorkspace);
             case HISTORY -> new HistoryView();
             case SETTINGS -> new SettingsView(exifToolEngine);
             default -> null;
@@ -218,6 +236,7 @@ public class TakeoutFxApplication extends Application {
 
     @Override
     public void stop() {
+        if (springContext != null) springContext.close();
         if (taskManager != null) {
             taskManager.shutdown();
         }

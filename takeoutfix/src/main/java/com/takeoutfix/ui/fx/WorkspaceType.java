@@ -13,6 +13,7 @@ public enum WorkspaceType {
     EXIF_VIEWER("View Photo Details", "Inspect photo details, camera specs, capture timestamps, and GPS map coordinates"),
     ARCHIVE_COMPARE("Compare Archives", "Compare photo library files with Google Takeout sidecars"),
     DUPLICATE_FINDER("Find Duplicates", "Scan directories for duplicate photos and reclaim disk space"),
+    PHOTO_CULLING("AI Photo Picker", "Group burst photos by visual similarity and recommend the best keeper in each group"),
     HISTORY("Activity History", "Inspect past restoration, sync, and editing history logs"),
     SETTINGS("Settings", "Configure application preferences, tool paths, and engine settings");
 

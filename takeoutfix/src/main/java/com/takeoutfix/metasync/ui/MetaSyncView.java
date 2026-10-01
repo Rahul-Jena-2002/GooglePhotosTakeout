@@ -42,6 +42,10 @@ public class MetaSyncView extends VBox {
     private final Label safetyModeLabel = new Label("Non-destructive: Export metadata to a separate destination, leaving source files unchanged.");
     private final Button syncCurrentBtn = new Button("Sync Selected Tags");
     private final Button syncAllBtn = new Button("Batch Sync All Pairs");
+    private final Button btnPause = new Button("Pause");
+    private final Button btnCancel = new Button("Cancel");
+    private com.takeoutfix.shared.task.CancellationToken activeBatchToken;
+    private Task<Void> activeBatchTask;
     private final ProgressBar progressBar = new ProgressBar(0.0);
     private final Label statusLabel = new Label("Select photo folders to begin comparison");
 
@@ -257,9 +261,23 @@ public class MetaSyncView extends VBox {
         syncAllBtn.setGraphic(UiIcons.createSvgIcon(UiIcons.SYNC, 13, "currentColor"));
         syncAllBtn.setOnAction(e -> executeSyncBatch());
 
+        btnPause.getStyleClass().add("btn-secondary");
+        btnPause.setStyle("-fx-font-size: 13px; -fx-padding: 7 14 7 14;");
+        btnPause.setGraphic(UiIcons.createSvgIcon(UiIcons.PAUSE, 12, "currentColor"));
+        btnPause.setGraphicTextGap(6);
+        btnPause.setDisable(true);
+        btnPause.setOnAction(e -> handlePause());
+
+        btnCancel.getStyleClass().add("btn-secondary");
+        btnCancel.setStyle("-fx-font-size: 13px; -fx-padding: 7 14 7 14;");
+        btnCancel.setGraphic(UiIcons.createSvgIcon(UiIcons.STOP, 11, "currentColor"));
+        btnCancel.setGraphicTextGap(6);
+        btnCancel.setDisable(true);
+        btnCancel.setOnAction(e -> handleCancel());
+
         statusLabel.setStyle("-fx-font-size: 12.5px;"); statusLabel.getStyleClass().add("text-secondary");
 
-        btnRow.getChildren().addAll(syncCurrentBtn, syncAllBtn, statusLabel);
+        btnRow.getChildren().addAll(syncCurrentBtn, syncAllBtn, btnPause, btnCancel, statusLabel);
 
         progressBar.setMaxWidth(Double.MAX_VALUE);
         progressBar.setStyle("-fx-pref-height: 4px;");
@@ -389,6 +407,14 @@ public class MetaSyncView extends VBox {
         File safeOut = pairs.get(0).getDestFile() != null ?
                 new File(pairs.get(0).getDestFile().getParentFile(), "MetaSync_Repaired") : null;
 
+        activeBatchToken = new com.takeoutfix.shared.task.CancellationToken();
+        syncCurrentBtn.setDisable(true);
+        syncAllBtn.setDisable(true);
+        btnPause.setDisable(false);
+        btnPause.setText("Pause");
+        btnPause.setGraphic(UiIcons.createSvgIcon(UiIcons.PAUSE, 12, "currentColor"));
+        btnCancel.setDisable(false);
+
         statusLabel.setText("Starting batch synchronization for " + pairs.size() + " pairs...");
         kpiStatus.setText("Batch Syncing");
         progressBar.setProgress(0.0);
@@ -397,6 +423,9 @@ public class MetaSyncView extends VBox {
             @Override
             protected Void call() {
                 for (int i = 0; i < pairs.size(); i++) {
+                    if (activeBatchToken.isCancelled()) break;
+                    activeBatchToken.checkPauseAndCancel();
+
                     PhotoPair p = pairs.get(i);
                     final int currentIdx = i + 1;
                     final int totalPairs = pairs.size();
@@ -411,24 +440,86 @@ public class MetaSyncView extends VBox {
                 return null;
             }
         };
+        activeBatchTask = task;
 
         task.setOnSucceeded(e -> {
-            progressBar.setProgress(1.0);
-            kpiStatus.setText("Completed");
-            statusLabel.setText("Batch synchronization completed successfully!");
-            if (activePair != null) inspectPair(activePair);
-            showAlert("Batch Sync Complete", String.format("Batch metadata synchronization completed successfully for %d photo pairs!", pairs.size()));
+            syncCurrentBtn.setDisable(activePair == null || !activePair.isPaired());
+            syncAllBtn.setDisable(false);
+            btnPause.setDisable(true);
+            btnCancel.setDisable(true);
+            if (activeBatchToken != null && activeBatchToken.isCancelled()) {
+                progressBar.setProgress(0.0);
+                kpiStatus.setText("Cancelled");
+                statusLabel.setText("Batch synchronization cancelled by user.");
+            } else {
+                progressBar.setProgress(1.0);
+                kpiStatus.setText("Completed");
+                statusLabel.setText("Batch synchronization completed successfully!");
+                if (activePair != null) inspectPair(activePair);
+                showAlert("Batch Sync Complete", String.format("Batch metadata synchronization completed successfully for %d photo pairs!", pairs.size()));
+            }
+        });
+
+        task.setOnCancelled(e -> {
+            syncCurrentBtn.setDisable(activePair == null || !activePair.isPaired());
+            syncAllBtn.setDisable(false);
+            btnPause.setDisable(true);
+            btnCancel.setDisable(true);
+            progressBar.setProgress(0.0);
+            kpiStatus.setText("Cancelled");
+            statusLabel.setText("Batch synchronization cancelled by user.");
         });
 
         task.setOnFailed(e -> {
+            syncCurrentBtn.setDisable(activePair == null || !activePair.isPaired());
+            syncAllBtn.setDisable(false);
+            btnPause.setDisable(true);
+            btnCancel.setDisable(true);
             progressBar.setProgress(0.0);
             kpiStatus.setText("Failed");
-            statusLabel.setText("Batch synchronization error: " + task.getException().getMessage());
+            if (activeBatchToken != null && activeBatchToken.isCancelled()) {
+                statusLabel.setText("Batch synchronization cancelled by user.");
+            } else {
+                statusLabel.setText("Batch synchronization error: " + task.getException().getMessage());
+            }
         });
 
         Thread th = new Thread(task, "MetaSync-Batch-Worker");
         th.setDaemon(true);
         th.start();
+    }
+
+    private void handlePause() {
+        if (activeBatchToken == null) return;
+        if (activeBatchToken.isPaused()) {
+            activeBatchToken.resume();
+            btnPause.setText("Pause");
+            btnPause.setGraphic(UiIcons.createSvgIcon(UiIcons.PAUSE, 12, "currentColor"));
+            kpiStatus.setText("Batch Syncing");
+            statusLabel.setText("Resuming batch synchronization...");
+        } else {
+            activeBatchToken.pause();
+            btnPause.setText("Resume");
+            btnPause.setGraphic(UiIcons.createSvgIcon(UiIcons.PLAY, 12, "currentColor"));
+            kpiStatus.setText("Paused");
+            statusLabel.setText("Batch synchronization paused.");
+        }
+    }
+
+    private void handleCancel() {
+        if (activeBatchToken != null) {
+            activeBatchToken.cancel();
+        }
+        if (activeBatchTask != null) {
+            activeBatchTask.cancel();
+        }
+        syncCurrentBtn.setDisable(activePair == null || !activePair.isPaired());
+        syncAllBtn.setDisable(false);
+        btnPause.setDisable(true);
+        btnCancel.setDisable(true);
+        progressBar.setProgress(0.0);
+        kpiStatus.setText("Cancelled");
+        statusLabel.setText("Batch synchronization cancelled by user.");
     }
 
     private void showAlert(String title, String content) {

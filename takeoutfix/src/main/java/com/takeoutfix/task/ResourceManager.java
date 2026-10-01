@@ -103,12 +103,12 @@ public class ResourceManager {
             // Adapt worker count in BALANCED mode based on real-time load
             if (mode == ProcessingMode.BALANCED) {
                 int targetWorkers;
-                if (currentCpuLoad > 80.0) {
-                    targetWorkers = Math.max(1, 2); // Heavy load -> throttle back
+                if (currentCpuLoad > 75.0) {
+                    targetWorkers = Math.max(1, 2); // Heavy load → throttle back, protect UI
                 } else if (currentCpuLoad > 50.0) {
-                    targetWorkers = Math.max(2, availableCores / 4); // Moderate load
+                    targetWorkers = Math.max(2, availableCores / 2); // Moderate load
                 } else {
-                    targetWorkers = Math.max(4, Math.min(10, (int) (availableCores * 0.6))); // Low load -> scale up
+                    targetWorkers = Math.max(4, availableCores - 2); // Low load → use nearly all cores
                 }
 
                 if (targetWorkers != cpuExecutor.getCorePoolSize()) {

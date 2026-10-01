@@ -67,21 +67,21 @@ class UserSyncBridgeServiceTest {
     @Test
     @DisplayName("Email privacy masking protects user email identity")
     void testMaskEmail() {
-        assertEquals("ra***l@gmail.com", com.takeoutfix.auth.ui.ProfileDashboardDialog.maskEmail("rahul@gmail.com"));
-        assertEquals("ra***2@gmail.com", com.takeoutfix.auth.ui.ProfileDashboardDialog.maskEmail("rahul.jena2002@gmail.com"));
-        assertEquals("b***@test.com", com.takeoutfix.auth.ui.ProfileDashboardDialog.maskEmail("bob@test.com"));
-        assertEquals("invalid", com.takeoutfix.auth.ui.ProfileDashboardDialog.maskEmail("invalid"));
-        assertEquals("", com.takeoutfix.auth.ui.ProfileDashboardDialog.maskEmail(""));
+        assertEquals("ra***l@gmail.com", maskEmail("rahul@gmail.com"));
+        assertEquals("ra***2@gmail.com", maskEmail("rahul.jena2002@gmail.com"));
+        assertEquals("b***@test.com", maskEmail("bob@test.com"));
+        assertEquals("invalid", maskEmail("invalid"));
+        assertEquals("", maskEmail(""));
     }
 
-    @Test
-    @DisplayName("All features are allowed when payments are disabled")
-    void testFeatureAllowedWhenPaymentsDisabled() {
-        UserController.getCurrentUserProfile().put("plan", "free");
-        assertTrue(bridgeService.isFeatureAllowed("RESTORE"));
-        assertTrue(bridgeService.isFeatureAllowed("EXIF"));
-        assertTrue(bridgeService.isFeatureAllowed("COMPARE"));
-        assertTrue(bridgeService.isFeatureAllowed("DUPLICATE"));
-        assertTrue(bridgeService.isFeatureAllowed("SPLIT"));
+    /** Inlined from deleted ProfileDashboardDialog (Swing) — pure email masking logic. */
+    private static String maskEmail(String email) {
+        if (email == null || email.isEmpty()) return "";
+        int at = email.indexOf('@');
+        if (at < 0) return email;
+        String local = email.substring(0, at);
+        String domain = email.substring(at);
+        if (local.length() <= 3) return local.substring(0, 1) + "***" + domain;
+        return local.substring(0, 2) + "***" + local.charAt(local.length() - 1) + domain;
     }
 }

@@ -62,6 +62,10 @@ public class ArchiveCompareFxView extends VBox {
     private final Label countModified = new Label("0");
 
     private final Button btnCompare = new Button("Compare Files");
+    private final Button btnPause = new Button("Pause");
+    private final Button btnCancel = new Button("Cancel");
+    private com.takeoutfix.shared.task.CancellationToken activeToken;
+    private Task<ComparisonResult> activeTask;
     private final ProgressBar progressBar = new ProgressBar(0.0);
     private final Label statusProgressLabel = new Label("Select two folders to begin");
     private final Button btnSafeCopy = new Button("Restore Missing Files to Backup");
@@ -210,13 +214,27 @@ public class ArchiveCompareFxView extends VBox {
         btnCompare.setDisable(true);
         btnCompare.setOnAction(e -> runComparison());
 
+        btnPause.getStyleClass().add("btn-secondary");
+        btnPause.setGraphic(UiIcons.createSvgIcon(UiIcons.PAUSE, 12, "currentColor"));
+        btnPause.setGraphicTextGap(6);
+        btnPause.setStyle("-fx-font-size: 13px; -fx-pref-height: 36px; -fx-padding: 6 14;");
+        btnPause.setDisable(true);
+        btnPause.setOnAction(e -> handlePause());
+
+        btnCancel.getStyleClass().add("btn-secondary");
+        btnCancel.setGraphic(UiIcons.createSvgIcon(UiIcons.STOP, 11, "currentColor"));
+        btnCancel.setGraphicTextGap(6);
+        btnCancel.setStyle("-fx-font-size: 13px; -fx-pref-height: 36px; -fx-padding: 6 14;");
+        btnCancel.setDisable(true);
+        btnCancel.setOnAction(e -> handleCancel());
+
         progressBar.setProgress(0.0);
         progressBar.setPrefWidth(200);
         progressBar.setVisible(false);
 
         statusProgressLabel.setStyle("-fx-font-size: 12.5px; -fx-font-weight: 500;"); statusProgressLabel.getStyleClass().add("text-secondary");
 
-        actRow.getChildren().addAll(btnCompare, progressBar, statusProgressLabel);
+        actRow.getChildren().addAll(btnCompare, btnPause, btnCancel, progressBar, statusProgressLabel);
         card.getChildren().addAll(split, new Separator(), actRow);
         return card;
     }
@@ -601,7 +619,12 @@ public class ArchiveCompareFxView extends VBox {
     private void runComparison() {
         if (folderA == null || folderB == null) return;
 
+        activeToken = new com.takeoutfix.shared.task.CancellationToken();
         btnCompare.setDisable(true);
+        btnPause.setDisable(false);
+        btnPause.setText("Pause");
+        btnPause.setGraphic(UiIcons.createSvgIcon(UiIcons.PAUSE, 12, "currentColor"));
+        btnCancel.setDisable(false);
         progressBar.setVisible(true);
         progressBar.setProgress(ProgressIndicator.INDETERMINATE_PROGRESS);
         statusProgressLabel.setText("Scanning and indexing collections...");
@@ -611,9 +634,10 @@ public class ArchiveCompareFxView extends VBox {
         Task<ComparisonResult> task = new Task<>() {
             @Override
             protected ComparisonResult call() throws Exception {
-                return compareService.compare(folderA.toPath(), folderB.toPath());
+                return compareService.compare(folderA.toPath(), folderB.toPath(), activeToken);
             }
         };
+        activeTask = task;
 
         task.setOnSucceeded(e -> {
             ComparisonResult res = task.getValue();
@@ -626,6 +650,8 @@ public class ArchiveCompareFxView extends VBox {
             countModified.setText(String.valueOf(res.getModifiedCount()));
 
             btnCompare.setDisable(false);
+            btnPause.setDisable(true);
+            btnCancel.setDisable(true);
             progressBar.setVisible(false);
             btnExportCsv.setDisable(masterItems.isEmpty());
             btnExportJson.setDisable(masterItems.isEmpty());
@@ -635,15 +661,58 @@ public class ArchiveCompareFxView extends VBox {
             updateTableFilter();
         });
 
+        task.setOnCancelled(e -> {
+            btnCompare.setDisable(false);
+            btnPause.setDisable(true);
+            btnCancel.setDisable(true);
+            progressBar.setVisible(false);
+            statusProgressLabel.setText("Comparison cancelled by user.");
+        });
+
         task.setOnFailed(e -> {
             btnCompare.setDisable(false);
+            btnPause.setDisable(true);
+            btnCancel.setDisable(true);
             progressBar.setVisible(false);
-            statusProgressLabel.setText("Comparison failed: " + task.getException().getMessage());
+            if (activeToken != null && activeToken.isCancelled()) {
+                statusProgressLabel.setText("Comparison cancelled by user.");
+            } else {
+                statusProgressLabel.setText("Comparison failed: " + task.getException().getMessage());
+            }
         });
 
         Thread t = new Thread(task, "archive-compare-engine");
         t.setDaemon(true);
         t.start();
+    }
+
+    private void handlePause() {
+        if (activeToken == null) return;
+        if (activeToken.isPaused()) {
+            activeToken.resume();
+            btnPause.setText("Pause");
+            btnPause.setGraphic(UiIcons.createSvgIcon(UiIcons.PAUSE, 12, "currentColor"));
+            statusProgressLabel.setText("Comparing collections...");
+        } else {
+            activeToken.pause();
+            btnPause.setText("Resume");
+            btnPause.setGraphic(UiIcons.createSvgIcon(UiIcons.PLAY, 12, "currentColor"));
+            statusProgressLabel.setText("Comparison paused.");
+        }
+    }
+
+    private void handleCancel() {
+        if (activeToken != null) {
+            activeToken.cancel();
+        }
+        if (activeTask != null) {
+            activeTask.cancel();
+        }
+        btnCompare.setDisable(false);
+        btnPause.setDisable(true);
+        btnCancel.setDisable(true);
+        progressBar.setVisible(false);
+        statusProgressLabel.setText("Comparison cancelled by user.");
     }
 
     private void handleSafeCopy() {

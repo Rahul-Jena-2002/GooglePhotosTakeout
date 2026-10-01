@@ -56,4 +56,51 @@ class CancellationTokenTest {
         TaskProgress indeterminate = TaskProgress.indeterminate("Scanning", "Reading folder...");
         assertTrue(indeterminate.isIndeterminate());
     }
+
+    @Test
+    void testPauseAndResume() throws Exception {
+        CancellationToken token = new CancellationToken();
+        assertFalse(token.isPaused());
+
+        AtomicBoolean resumed = new AtomicBoolean(false);
+        token.pause();
+        assertTrue(token.isPaused());
+
+        Thread worker = new Thread(() -> {
+            token.checkPauseAndCancel();
+            resumed.set(true);
+        });
+        worker.start();
+
+        Thread.sleep(50);
+        assertFalse(resumed.get()); // Still waiting in pause
+
+        token.resume();
+        assertFalse(token.isPaused());
+        worker.join(1000);
+        assertTrue(resumed.get());
+    }
+
+    @Test
+    void testCancelWhilePausedUnblocksThread() throws Exception {
+        CancellationToken token = new CancellationToken();
+        token.pause();
+
+        AtomicBoolean threw = new AtomicBoolean(false);
+        Thread worker = new Thread(() -> {
+            try {
+                token.checkPauseAndCancel();
+            } catch (CancellationToken.OperationCancelledException e) {
+                threw.set(true);
+            }
+        });
+        worker.start();
+
+        Thread.sleep(50);
+        assertFalse(threw.get());
+
+        token.cancel();
+        worker.join(1000);
+        assertTrue(threw.get());
+    }
 }

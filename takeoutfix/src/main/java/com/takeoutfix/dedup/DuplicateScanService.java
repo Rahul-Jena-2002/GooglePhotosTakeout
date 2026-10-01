@@ -125,6 +125,13 @@ public class DuplicateScanService {
      * All .json sidecars and non-media files are strictly excluded.
      */
     public ScanResult scanDirectory(Path directory, MatchStrategy strategy, double similarityThreshold) throws IOException {
+        return scanDirectory(directory, strategy, similarityThreshold, null);
+    }
+
+    /**
+     * Scans a directory recursively with cooperative cancellation and pause support.
+     */
+    public ScanResult scanDirectory(Path directory, MatchStrategy strategy, double similarityThreshold, com.takeoutfix.shared.task.CancellationToken token) throws IOException {
         if (!Files.isDirectory(directory)) {
             throw new IllegalArgumentException("Target path is not a directory: " + directory);
         }
@@ -136,6 +143,7 @@ public class DuplicateScanService {
             stream.filter(Files::isRegularFile)
                   .filter(DuplicateScanService::isMediaFile)
                   .forEach(p -> {
+                if (token != null) token.checkPauseAndCancel();
                 try {
                     Path realPath = p.toRealPath();
                     if (!realPath.startsWith(normalizedDir)) {
@@ -156,11 +164,13 @@ public class DuplicateScanService {
             // Group by filename (case-insensitive)
             Map<String, List<File>> nameMap = new HashMap<>();
             for (File f : mediaFiles) {
+                if (token != null) token.checkPauseAndCancel();
                 String key = f.getName().toLowerCase(Locale.ROOT);
                 nameMap.computeIfAbsent(key, k -> new ArrayList<>()).add(f);
             }
 
             for (List<File> group : nameMap.values()) {
+                if (token != null) token.checkPauseAndCancel();
                 if (group.size() > 1) {
                     File primary = group.get(0);
                     List<File> duplicates = group.subList(1, group.size());
@@ -172,18 +182,21 @@ public class DuplicateScanService {
             // EXACT_HASH: size bucketing then SHA-256
             Map<Long, List<File>> sizeMap = new HashMap<>();
             for (File f : mediaFiles) {
+                if (token != null) token.checkPauseAndCancel();
                 sizeMap.computeIfAbsent(f.length(), k -> new ArrayList<>()).add(f);
             }
 
             for (Map.Entry<Long, List<File>> entry : sizeMap.entrySet()) {
+                if (token != null) token.checkPauseAndCancel();
                 if (entry.getValue().size() > 1) {
                     Map<String, List<File>> hashMap = new ConcurrentHashMap<>();
-                    entry.getValue().parallelStream().forEach(f -> {
+                    for (File f : entry.getValue()) {
+                        if (token != null) token.checkPauseAndCancel();
                         String hash = exactHashAnalyzer.computeSha256(f);
                         if (hash != null) {
                             hashMap.computeIfAbsent(hash, k -> Collections.synchronizedList(new ArrayList<>())).add(f);
                         }
-                    });
+                    }
 
                     for (List<File> identicalGroup : hashMap.values()) {
                         if (identicalGroup.size() > 1) {
@@ -197,17 +210,18 @@ public class DuplicateScanService {
             }
         } else {
             // PERCEPTUAL_HASH or FEATURE_MATCH (Visual Similarity)
-            clusters.addAll(scanVisualDuplicates(mediaFiles, similarityThreshold, strategy));
+            clusters.addAll(scanVisualDuplicates(mediaFiles, similarityThreshold, strategy, token));
         }
 
         return new ScanResult(clusters, mediaFiles.size());
     }
 
-    private List<DuplicateCluster> scanVisualDuplicates(List<File> mediaFiles, double threshold, MatchStrategy strategy) {
+    private List<DuplicateCluster> scanVisualDuplicates(List<File> mediaFiles, double threshold, MatchStrategy strategy, com.takeoutfix.shared.task.CancellationToken token) {
         List<DuplicateCluster> clusters = new ArrayList<>();
         List<File> images = new ArrayList<>();
 
         for (File f : mediaFiles) {
+            if (token != null) token.checkPauseAndCancel();
             if (perceptualHashAnalyzer.isSupported(f)) {
                 images.add(f);
             }
@@ -216,19 +230,21 @@ public class DuplicateScanService {
         // Sort descending by file size (preferred keeper is higher resolution / larger file)
         images.sort((a, b) -> Long.compare(b.length(), a.length()));
 
-        // Precompute perceptual hashes concurrently
+        // Precompute perceptual hashes
         Map<File, PerceptualHashAnalyzer.LongPair> hashMap = new ConcurrentHashMap<>();
-        images.parallelStream().forEach(f -> {
+        for (File f : images) {
+            if (token != null) token.checkPauseAndCancel();
             PerceptualHashAnalyzer.LongPair p = PerceptualHashAnalyzer.computeFileHashes(f);
             if (p != null) {
                 hashMap.put(f, p);
             }
-        });
+        }
 
         Set<File> clustered = new HashSet<>();
         int groupIdx = 1;
 
         for (int i = 0; i < images.size(); i++) {
+            if (token != null) token.checkPauseAndCancel();
             File primary = images.get(i);
             if (clustered.contains(primary)) continue;
             PerceptualHashAnalyzer.LongPair hashPrimary = hashMap.get(primary);
@@ -238,6 +254,7 @@ public class DuplicateScanService {
             double minSim = 100.0;
 
             for (int j = i + 1; j < images.size(); j++) {
+                if (token != null) token.checkPauseAndCancel();
                 File candidate = images.get(j);
                 if (clustered.contains(candidate)) continue;
                 PerceptualHashAnalyzer.LongPair hashCand = hashMap.get(candidate);
