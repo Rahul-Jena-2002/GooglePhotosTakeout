@@ -87,6 +87,9 @@ jobs:
       - name: Package Java Windows (.exe)
         if: matrix.os == 'windows-latest'
         shell: pwsh
+        env:
+          SIGNING_CERT_B64: ${{ secrets.SIGNING_CERT_B64 }}
+          SIGNING_CERT_PASSWORD: ${{ secrets.SIGNING_CERT_PASSWORD }}
         run: |
           $appVer = "${{ steps.version.outputs.version }}"
 
@@ -126,19 +129,29 @@ jobs:
 
           Remove-Item $payloadZip -Force
 
-          # 3. Authenticode Code-Signing (Bypasses SmartScreen "Unknown Publisher" blocking)
-          Write-Host "Signing TakeoutFix.exe with Authenticode & Timestamp..."
-          try {
-            $cert = New-SelfSignedCertificate `
-              -Subject "CN=TakeoutFix, O=TakeoutFix, C=US" `
-              -Type CodeSigningCert `
-              -CertStoreLocation "Cert:\CurrentUser\My" `
-              -NotAfter (Get-Date).AddYears(5) `
-              -HashAlgorithm SHA256
-            Set-AuthenticodeSignature -FilePath "TakeoutFix.exe" -Certificate $cert -HashAlgorithm SHA256 -TimestampServer "http://timestamp.digicert.com" | Out-Null
-            Write-Host "Signed OK: $($cert.Thumbprint)"
-          } catch {
-            Write-Host "Self-signing step failed (non-fatal): $_"
+          # 3. Code-Signing (Bypasses SmartScreen "Unknown Publisher" warning)
+          # Requires SIGNING_CERT_B64 (base64 PFX) and SIGNING_CERT_PASSWORD secrets.
+          # When secrets are absent the step is skipped — the exe is unsigned but
+          # SmartScreen will show a dismissable "Unknown Publisher" prompt rather
+          # than quarantining it outright (which self-signed certs can trigger).
+          if ($env:SIGNING_CERT_B64 -and $env:SIGNING_CERT_B64 -ne '') {
+            Write-Host "Signing TakeoutFix.exe with Authenticode..."
+            $certBytes = [Convert]::FromBase64String($env:SIGNING_CERT_B64)
+            $pfxPath = Join-Path $env:TEMP "takeoutfix_sign.pfx"
+            [IO.File]::WriteAllBytes($pfxPath, $certBytes)
+            try {
+              $signtool = "${env:ProgramFiles(x86)}\Windows Kits\10\bin\x64\signtool.exe"
+              if (-not (Test-Path $signtool)) {
+                $signtool = (Get-ChildItem "${env:ProgramFiles(x86)}\Windows Kits" -Recurse -Filter "signtool.exe" -ErrorAction SilentlyContinue | Select-Object -First 1).FullName
+              }
+              & $signtool sign /fd SHA256 /tr http://timestamp.digicert.com /td SHA256 /f $pfxPath /p $env:SIGNING_CERT_PASSWORD "TakeoutFix.exe"
+              & $signtool sign /fd SHA256 /tr http://timestamp.digicert.com /td SHA256 /f $pfxPath /p $env:SIGNING_CERT_PASSWORD "TakeoutFix-Setup.exe" 2>$null
+              Write-Host "Signing complete."
+            } finally {
+              Remove-Item $pfxPath -Force -ErrorAction SilentlyContinue
+            }
+          } else {
+            Write-Host "SIGNING_CERT_B64 secret not set — skipping code signing (build will be unsigned)."
           }
 
           # 4. Build WiX Setup Installer (SmartScreen-friendly installer alternative)

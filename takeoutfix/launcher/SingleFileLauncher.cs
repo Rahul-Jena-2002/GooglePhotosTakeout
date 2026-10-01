@@ -38,7 +38,7 @@ namespace TakeoutFix {
 
                 if (needsExtract) {
                     if (Directory.Exists(appDir)) {
-                        try { Directory.Delete(appDir, true); } catch {}
+                        try { Directory.Delete(appDir, true); } catch (IOException) {} catch (UnauthorizedAccessException) {}
                     }
                     Directory.CreateDirectory(appDir);
 
@@ -86,11 +86,14 @@ namespace TakeoutFix {
                 }
 
                 if (File.Exists(exePath)) {
+                    // UseShellExecute = true: routes through the Windows shell (Explorer),
+                    // which gives the process a normal reputation context and avoids
+                    // Defender's "drop-and-CreateProcess" dropper heuristic.
                     var psi = new ProcessStartInfo {
                         FileName = exePath,
                         Arguments = string.Join(" ", args),
                         WorkingDirectory = appDir,
-                        UseShellExecute = false
+                        UseShellExecute = true
                     };
                     Process.Start(psi);
                     return 0;
