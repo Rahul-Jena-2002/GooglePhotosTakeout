@@ -11,9 +11,9 @@ import javafx.stage.Stage;
 /**
  * Windows native title bar theming using Desktop Window Manager (DWM) and JNA.
  * Applies DWMWA_USE_IMMERSIVE_DARK_MODE and DWMWA_CAPTION_COLOR dynamically so
- * the native OS window frame matches TakeoutFix's neutral monochromatic + violet design system.
+ * the native OS window frame matches TakeoutFix's Dracula-inspired design system.
  *
- * Dark: Caption #101114 (COLORREF 0x00141110), Text #FAFAFA (COLORREF 0x00FAFAFA)
+ * Dark: Caption #282A36 (COLORREF 0x00362A28), Text #F8F8F2 (COLORREF 0x00F2F8F8)
  * Light: Caption #F6F6F8 (COLORREF 0x00F8F6F6), Text #101114 (COLORREF 0x00141110)
  *
  * Safely fails closed on non-Windows platforms.
@@ -26,8 +26,8 @@ public final class WindowsTitleBarTheme {
     private static final int DWMWA_TEXT_COLOR = 36;
 
     // COLORREF format is 0x00BBGGRR
-    private static final int DARK_CAPTION_COLOR = 0x00141110; // #101114
-    private static final int DARK_TEXT_COLOR    = 0x00FAFAFA; // #FAFAFA
+    private static final int DARK_CAPTION_COLOR = 0x00362A28; // #282A36 (Dracula Canvas)
+    private static final int DARK_TEXT_COLOR    = 0x00F2F8F8; // #F8F8F2 (Dracula Text Primary)
     private static final int LIGHT_CAPTION_COLOR = 0x00F8F6F6; // #F6F6F8
     private static final int LIGHT_TEXT_COLOR    = 0x00141110; // #101114
 

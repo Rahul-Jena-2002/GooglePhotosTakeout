@@ -295,168 +295,33 @@ import Compare from "../components/ui/Compare";
         </p>
       </div>
 
-      <!-- Tools Grid -->
-      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <!-- Tools Grid: Focused Google Photos Restorer -->
+      <div class="max-w-3xl mx-auto">
         
-        <!-- Tool 1: TakeoutFix Core -->
-        <div class="rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-950/60 p-6 flex flex-col justify-between hover:border-indigo-500/50 transition-all duration-200 group">
+        <!-- Tool: TakeoutFix Core -->
+        <div class="rounded-2xl border border-indigo-500/30 bg-zinc-50 dark:bg-zinc-950/80 p-8 flex flex-col justify-between shadow-xl relative overflow-hidden group">
+          <div class="absolute top-0 right-0 w-64 h-64 bg-indigo-500/5 rounded-full blur-3xl -z-10 pointer-events-none"></div>
           <div>
-            <div class="flex items-center justify-between mb-4">
-              <div class="w-10 h-10 rounded-lg bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 flex items-center justify-center font-bold">
-                <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <div class="flex items-center justify-between mb-6">
+              <div class="w-12 h-12 rounded-xl bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 flex items-center justify-center font-bold">
+                <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                   <path stroke-linecap="round" stroke-linejoin="round" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
                 </svg>
               </div>
-              <span class="text-xs px-2.5 py-0.5 rounded-full bg-indigo-500/10 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-300 font-semibold border border-indigo-500/20">
-                Core Tool
+              <span class="text-xs px-3 py-1 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-semibold border border-emerald-500/20">
+                100% Free &amp; Offline
               </span>
             </div>
-            <h3 class="text-xl font-bold text-foreground group-hover:text-indigo-500 transition-colors">
-              TakeoutFix Restorer
+            <h3 class="text-2xl font-bold text-foreground">
+              Google Photos Takeout Restorer
             </h3>
-            <p class="text-sm text-zinc-500 dark:text-zinc-400 mt-2 leading-relaxed">
-              Google Photos JSON sidecar metadata injector. Merges dates, GPS coordinates, and camera tags back into your original photos and videos offline.
+            <p class="text-base text-zinc-500 dark:text-zinc-400 mt-3 leading-relaxed">
+              Google Photos JSON sidecar metadata injector. Merges original capture dates, GPS coordinates, descriptions, and camera tags back into your photos and videos directly in your browser. No cloud uploads, complete privacy.
             </p>
           </div>
-          <div class="pt-6">
-            <a href="/tool" class="inline-flex items-center gap-1.5 text-xs font-bold text-indigo-600 dark:text-indigo-400 hover:underline">
+          <div class="pt-8">
+            <a href="/tool" class="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-sm shadow-md transition-all">
               Launch Restoration Tool &rarr;
-            </a>
-          </div>
-        </div>
-
-        <!-- Tool 2: Photo Studio -->
-        <div class="rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-950/60 p-6 flex flex-col justify-between hover:border-purple-500/50 transition-all duration-200 group">
-          <div>
-            <div class="flex items-center justify-between mb-4">
-              <div class="w-10 h-10 rounded-lg bg-purple-500/10 text-purple-600 dark:text-purple-400 flex items-center justify-center font-bold">
-                <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" />
-                </svg>
-              </div>
-              <span class="text-xs px-2.5 py-0.5 rounded-full bg-purple-500/10 dark:bg-purple-950/40 text-purple-600 dark:text-purple-300 font-semibold border border-purple-500/20">
-                New
-              </span>
-            </div>
-            <h3 class="text-xl font-bold text-foreground group-hover:text-purple-500 transition-colors">
-              Photo Studio Suite
-            </h3>
-            <p class="text-sm text-zinc-500 dark:text-zinc-400 mt-2 leading-relaxed">
-              Batch EXIF & Date Editor. Shift capture dates by hours or minutes, stamp customizable photographer copyright notices, and manage GPS privacy in bulk.
-            </p>
-          </div>
-          <div class="pt-6">
-            <a href="/tool?tab=studio" class="inline-flex items-center gap-1.5 text-xs font-bold text-purple-600 dark:text-purple-400 hover:underline">
-              Open Photo Studio &rarr;
-            </a>
-          </div>
-        </div>
-
-        <!-- Tool 3: FolderFlow -->
-        <div class="rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-950/60 p-6 flex flex-col justify-between hover:border-violet-500/50 transition-all duration-200 group">
-          <div>
-            <div class="flex items-center justify-between mb-4">
-              <div class="w-10 h-10 rounded-lg bg-violet-500/10 text-violet-600 dark:text-violet-400 flex items-center justify-center font-bold">
-                <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
-                </svg>
-              </div>
-              <span class="text-xs px-2.5 py-0.5 rounded-full bg-zinc-200 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 font-semibold">
-                Organizer
-              </span>
-            </div>
-            <h3 class="text-xl font-bold text-foreground group-hover:text-violet-500 transition-colors">
-              FolderFlow
-            </h3>
-            <p class="text-sm text-zinc-500 dark:text-zinc-400 mt-2 leading-relaxed">
-              Chronological Media Organizer. Automatically scan thousands of loose images and sort them into clean, structured Year/Month directory trees.
-            </p>
-          </div>
-          <div class="pt-6">
-            <a href="/tool?tab=folderflow" class="inline-flex items-center gap-1.5 text-xs font-bold text-violet-600 dark:text-violet-400 hover:underline">
-              Sort Into Folders &rarr;
-            </a>
-          </div>
-        </div>
-
-        <!-- Tool 4: PhotoVault -->
-        <div class="rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-950/60 p-6 flex flex-col justify-between hover:border-emerald-500/50 transition-all duration-200 group">
-          <div>
-            <div class="flex items-center justify-between mb-4">
-              <div class="w-10 h-10 rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center font-bold">
-                <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-                </svg>
-              </div>
-              <span class="text-xs px-2.5 py-0.5 rounded-full bg-emerald-500/10 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-300 font-semibold border border-emerald-500/20">
-                Auditor
-              </span>
-            </div>
-            <h3 class="text-xl font-bold text-foreground group-hover:text-emerald-500 transition-colors">
-              PhotoVault Verifier
-            </h3>
-            <p class="text-sm text-zinc-500 dark:text-zinc-400 mt-2 leading-relaxed">
-              Bit-for-Bit Backup Verifier. Cryptographic SHA-256 backup audit, detecting corrupted bits and producing verification certificates for long-term storage.
-            </p>
-          </div>
-          <div class="pt-6">
-            <a href="/tool?tab=photovault" class="inline-flex items-center gap-1.5 text-xs font-bold text-emerald-600 dark:text-emerald-400 hover:underline">
-              Verify Backup Integrity &rarr;
-            </a>
-          </div>
-        </div>
-
-        <!-- Tool 5: EXIF Inspector -->
-        <div class="rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-950/60 p-6 flex flex-col justify-between hover:border-sky-500/50 transition-all duration-200 group">
-          <div>
-            <div class="flex items-center justify-between mb-4">
-              <div class="w-10 h-10 rounded-lg bg-sky-500/10 text-sky-600 dark:text-sky-400 flex items-center justify-center font-bold">
-                <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                </svg>
-              </div>
-              <span class="text-xs px-2.5 py-0.5 rounded-full bg-zinc-200 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 font-semibold">
-                Viewer
-              </span>
-            </div>
-            <h3 class="text-xl font-bold text-foreground group-hover:text-sky-500 transition-colors">
-              EXIF &amp; GPS Inspector
-            </h3>
-            <p class="text-sm text-zinc-500 dark:text-zinc-400 mt-2 leading-relaxed">
-              Examine deep camera IFD tags, exposure settings, ISO speeds, lens parameters, and map GPS coordinates right from your browser with zero latency.
-            </p>
-          </div>
-          <div class="pt-6">
-            <a href="/tool?tab=viewer" class="inline-flex items-center gap-1.5 text-xs font-bold text-sky-600 dark:text-sky-400 hover:underline">
-              Inspect Photo Metadata &rarr;
-            </a>
-          </div>
-        </div>
-
-        <!-- Tool 6: Comparator -->
-        <div class="rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-950/60 p-6 flex flex-col justify-between hover:border-amber-500/50 transition-all duration-200 group">
-          <div>
-            <div class="flex items-center justify-between mb-4">
-              <div class="w-10 h-10 rounded-lg bg-amber-500/10 text-amber-600 dark:text-amber-400 flex items-center justify-center font-bold">
-                <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M3 6l3 1m0 0l-3 9a5.002 5.002 0 006.001 0M6 7l3 9M6 7l6-2m6 2l3-1m-3 1l-3 9a5.002 5.002 0 006.001 0M18 7l3 9m-3-9l-6-2m0-2v2m0 16V5m0 16H9m3 0h3" />
-                </svg>
-              </div>
-              <span class="text-xs px-2.5 py-0.5 rounded-full bg-zinc-200 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 font-semibold">
-                Sidecar Diff
-              </span>
-            </div>
-            <h3 class="text-xl font-bold text-foreground group-hover:text-amber-500 transition-colors">
-              Sidecar Comparator
-            </h3>
-            <p class="text-sm text-zinc-500 dark:text-zinc-400 mt-2 leading-relaxed">
-              Compare Takeout JSON sidecars against embedded EXIF headers side-by-side to verify exact timestamp discrepancies before restoration.
-            </p>
-          </div>
-          <div class="pt-6">
-            <a href="/tool?tab=comparison" class="inline-flex items-center gap-1.5 text-xs font-bold text-amber-600 dark:text-amber-400 hover:underline">
-              Compare JSON vs EXIF &rarr;
             </a>
           </div>
         </div>

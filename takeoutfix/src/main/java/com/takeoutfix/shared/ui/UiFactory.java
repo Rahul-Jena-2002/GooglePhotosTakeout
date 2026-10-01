@@ -83,10 +83,10 @@ public final class UiFactory {
 
                 // 2. Translucent Glass Surface with Specular Gradient
                 Color topGlass = isDark
-                        ? new Color(22, 28, 42, 240)
+                        ? new Color(52, 55, 70, 240)
                         : new Color(255, 255, 255, 238);
                 Color bottomGlass = isDark
-                        ? new Color(14, 18, 28, 235)
+                        ? new Color(40, 42, 54, 235)
                         : new Color(248, 250, 252, 220);
 
                 GradientPaint glassGradient = new GradientPaint(0, 0, topGlass, 0, h, bottomGlass);
@@ -104,7 +104,7 @@ public final class UiFactory {
                         ? new Color(255, 255, 255, 45)
                         : new Color(255, 255, 255, 235);
                 Color bottomBorder = isDark
-                        ? new Color(42, 54, 76, 200)
+                        ? new Color(68, 71, 90, 200)
                         : new Color(203, 213, 225, 140);
 
                 GradientPaint borderGradient = new GradientPaint(0, 0, topBorder, 0, h, bottomBorder);
@@ -225,7 +225,7 @@ public final class UiFactory {
 
         btn.addMouseListener(new MouseAdapter() {
             @Override public void mouseEntered(MouseEvent e) {
-                if (btn.isEnabled()) btn.setBackground(ThemeColors.isDark() ? new Color(45, 45, 60) : new Color(226, 232, 240));
+                if (btn.isEnabled()) btn.setBackground(ThemeColors.isDark() ? new Color(68, 71, 90) : new Color(226, 232, 240));
             }
             @Override public void mouseExited(MouseEvent e) {
                 if (btn.isEnabled()) btn.setBackground(ThemeColors.secondaryButtonBg());
@@ -368,7 +368,7 @@ public final class UiFactory {
         return badge;
     }
 
-    // ─── Progress Bar ────────────────────────────────────────────────────────
+    // ─── Progress Bar ─────────────────────────────────────────────────────────
     public static JProgressBar createSlimProgressBar() {
         JProgressBar pb = new JProgressBar(0, 100) {
             @Override protected void paintComponent(Graphics g) {
@@ -481,7 +481,7 @@ public final class UiFactory {
         return tile;
     }
 
-    // ─── Rounded Logo badge ───────────────────────────────────────────────────
+    // ─── Rounded Logo badge ──────────────────────────────────────────────────
     /** Creates a small pill-shaped logo badge (e.g. "TF") with full rounded corners. */
     public static JLabel createLogoBadge(String text, Color bg, Color fg) {
         JLabel lbl = new JLabel(text, SwingConstants.CENTER) {
@@ -528,7 +528,7 @@ public final class UiFactory {
      * Automatically adapts its stroke color to dark / light mode.
      */
     public static javax.swing.Icon svgIcon(String name, float sizePx) {
-        return svgDynamicIcon(name, sizePx, () -> ThemeColors.isDark() ? new Color(226, 232, 240) : new Color(30, 41, 59));
+        return svgDynamicIcon(name, sizePx, () -> ThemeColors.isDark() ? new Color(248, 248, 242) : new Color(30, 41, 59));
     }
 
     /**
@@ -552,7 +552,7 @@ public final class UiFactory {
             icon.setColorFilter(new com.formdev.flatlaf.extras.FlatSVGIcon.ColorFilter(color -> {
                 Color c = colorSupplier != null ? colorSupplier.get() : null;
                 if (c != null) return c;
-                return ThemeColors.isDark() ? new Color(226, 232, 240) : new Color(30, 41, 59);
+                return ThemeColors.isDark() ? new Color(248, 248, 242) : new Color(30, 41, 59);
             }));
             return icon.derive(Math.round(sizePx), Math.round(sizePx));
         } catch (Throwable t) {
@@ -604,7 +604,7 @@ public final class UiFactory {
             return lbl;
         }
         // Graceful fallback — text pill
-        return createLogoBadge("TF", new Color(99, 102, 241), Color.WHITE);
+        return createLogoBadge("TF", new Color(189, 147, 249), Color.WHITE);
     }
 
     /**
@@ -647,5 +647,3 @@ public final class UiFactory {
         }
     }
 }
-
-

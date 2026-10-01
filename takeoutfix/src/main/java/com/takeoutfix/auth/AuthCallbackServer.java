@@ -119,7 +119,7 @@ public class AuthCallbackServer {
                 boolean hasVerifiedToken = params.containsKey("token") || params.containsKey("idToken") || params.containsKey("code");
 
                 if (stateProvided && !expectedState.equals(receivedState)) {
-                    String errorHtml = "<html><body style='background:#09090b;color:#f87171;font-family:sans-serif;padding:40px;text-align:center;'><h2>Security Error: OAuth State Mismatch</h2><p>Authentication rejected due to invalid state token.</p></body></html>";
+                    String errorHtml = "<html><body style='background:#282a36;color:#ff5555;font-family:sans-serif;padding:40px;text-align:center;'><h2>Security Error: OAuth State Mismatch</h2><p>Authentication rejected due to invalid state token.</p></body></html>";
                     byte[] errBytes = errorHtml.getBytes(StandardCharsets.UTF_8);
                     exchange.getResponseHeaders().set("Content-Type", "text/html; charset=utf-8");
                     exchange.sendResponseHeaders(400, errBytes.length);
@@ -131,7 +131,7 @@ public class AuthCallbackServer {
                     }
                     return;
                 } else if (!stateProvided && !hasVerifiedToken) {
-                    String errorHtml = "<html><body style='background:#09090b;color:#f87171;font-family:sans-serif;padding:40px;text-align:center;'><h2>Security Error: Missing Authentication Credentials</h2><p>Authentication rejected due to missing tokens.</p></body></html>";
+                    String errorHtml = "<html><body style='background:#282a36;color:#ff5555;font-family:sans-serif;padding:40px;text-align:center;'><h2>Security Error: Missing Authentication Credentials</h2><p>Authentication rejected due to missing tokens.</p></body></html>";
                     byte[] errBytes = errorHtml.getBytes(StandardCharsets.UTF_8);
                     exchange.getResponseHeaders().set("Content-Type", "text/html; charset=utf-8");
                     exchange.sendResponseHeaders(400, errBytes.length);
@@ -187,13 +187,13 @@ public class AuthCallbackServer {
 
                         @media (prefers-color-scheme: dark) {
                             :root {
-                                --bg: #1f1f1f;
-                                --text: #f1f3f4;
-                                --brand: #f1f3f4;
-                                --sub: #9aa0a6;
-                                --link: #8ab4f8;
-                                --pipe: #3c4043;
-                                --footer: #9aa0a6;
+                                --bg: #282a36;
+                                --text: #f8f8f2;
+                                --brand: #f8f8f2;
+                                --sub: #c4c5ce;
+                                --link: #bd93f9;
+                                --pipe: #44475a;
+                                --footer: #9294a3;
                             }
                         }
 
@@ -208,13 +208,13 @@ public class AuthCallbackServer {
                         }
 
                         [data-theme="dark"] {
-                            --bg: #18181b;
-                            --text: #f4f4f5;
-                            --brand: #ffffff;
-                            --sub: #a1a1aa;
-                            --link: #818cf8;
-                            --pipe: #3f3f46;
-                            --footer: #71717a;
+                            --bg: #282a36;
+                            --text: #f8f8f2;
+                            --brand: #f8f8f2;
+                            --sub: #c4c5ce;
+                            --link: #bd93f9;
+                            --pipe: #44475a;
+                            --footer: #9294a3;
                         }
 
                         body {
@@ -304,8 +304,8 @@ public class AuthCallbackServer {
                                 <circle cx="21" cy="11" r="2" fill="#ffffff" />
                                 <defs>
                                     <linearGradient id="brand-grad" x1="0" y1="0" x2="32" y2="32" gradientUnits="userSpaceOnUse">
-                                        <stop stop-color="#4f46e5" />
-                                        <stop offset="1" stop-color="#7c3aed" />
+                                        <stop stop-color="#bd93f9" />
+                                        <stop offset="1" stop-color="#cba6f7" />
                                     </linearGradient>
                                 </defs>
                             </svg>
@@ -330,9 +330,7 @@ public class AuthCallbackServer {
                     <script>
                         function closeNow() {
                             try { window.close(); } catch(e) {}
-                            try { window.open('', '_self', ''); window.close(); } catch(e) {}
-                            try { window.top.close(); } catch(e) {}
-                        }
+                            try { window.open('', '_self', ''); window.close(); } catch(e) {}\n                            try { window.top.close(); } catch(e) {}\n                        }
                         // Attempt automatic tab close after brief confirmation
                         setTimeout(closeNow, 1200);
                     </script>

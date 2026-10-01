@@ -10,13 +10,14 @@ import java.util.concurrent.atomic.AtomicInteger;
  * Periodically samples system load and dynamically scales thread pools according to the configured
  * ProcessingMode (Balanced by default, Performance, Background, or Custom).
  *
- * Safe engineering policy: Bounded concurrency ensures TakeoutFix never starves the user's host OS,
- * keeping the system responsive during high-volume photo library scans.
+ * Safe engineering policy: Bounded concurrency ensures TakeoutFix automatically utilizes
+ * up to 80-90% of available resources when the system has headroom, while leaving 10-15%
+ * dedicated capacity for the host OS and keeping foreground apps fluid.
  */
 public class ResourceManager {
 
     public enum ProcessingMode {
-        BALANCED,      // Adapt resource usage dynamically based on system load (Default)
+        BALANCED,      // Auto-adapt resource usage dynamically based on available CPU/RAM (Default)
         PERFORMANCE,   // Use more available CPU resources to complete tasks faster
         BACKGROUND,    // Minimum resource footprint to keep the computer quiet & responsive
         CUSTOM         // User-specified maximum worker threads
@@ -47,6 +48,9 @@ public class ResourceManager {
                 r -> {
                     Thread t = new Thread(r, "TakeoutFix-CPUWorker-" + cpuCount.getAndIncrement());
                     t.setDaemon(true);
+                    // Standard background worker priority so Windows preemptive scheduler
+                    // can instantly prioritize foreground apps and UI without stutter
+                    t.setPriority(Math.max(Thread.MIN_PRIORITY, Thread.NORM_PRIORITY - 1));
                     return t;
                 },
                 new ThreadPoolExecutor.CallerRunsPolicy()
@@ -61,6 +65,7 @@ public class ResourceManager {
                 r -> {
                     Thread t = new Thread(r, "TakeoutFix-IOWorker-" + ioCount.getAndIncrement());
                     t.setDaemon(true);
+                    t.setPriority(Math.max(Thread.MIN_PRIORITY, Thread.NORM_PRIORITY - 1));
                     return t;
                 },
                 new ThreadPoolExecutor.CallerRunsPolicy()
@@ -76,12 +81,29 @@ public class ResourceManager {
         this.monitorScheduler.scheduleAtFixedRate(this::sampleAndAdjust, 1, 3, TimeUnit.SECONDS);
     }
 
+    /**
+     * Calculates the target concurrency pool for automatic resource management.
+     * Targets 80% to 90% of available logical cores, leaving at least 1-3 dedicated cores
+     * for Windows, UI responsiveness, and background system services.
+     */
+    public int calculateMaxAutoWorkers() {
+        if (availableCores <= 2) {
+            return 1;
+        } else if (availableCores <= 4) {
+            return 3; // 75%
+        } else {
+            // Target ~80-85% logical cores, leaving at least 2 cores completely free for OS & UI
+            int target = (int) Math.round(availableCores * 0.85);
+            return Math.max(2, Math.min(target, availableCores - 2));
+        }
+    }
+
     private int calculateInitialWorkerCount() {
         return switch (mode) {
-            case PERFORMANCE -> Math.max(4, availableCores - 2);
+            case PERFORMANCE -> Math.max(4, availableCores - 1);
             case BACKGROUND -> Math.max(1, 2);
             case CUSTOM -> Math.max(1, customMaxWorkers);
-            case BALANCED -> Math.max(2, Math.min(8, availableCores / 2));
+            case BALANCED -> calculateMaxAutoWorkers();
         };
     }
 
@@ -100,15 +122,30 @@ public class ResourceManager {
                 }
             }
 
-            // Adapt worker count in BALANCED mode based on real-time load
+            // Adapt worker count in BALANCED mode based on real-time CPU and RAM load
             if (mode == ProcessingMode.BALANCED) {
+                int maxAutoWorkers = calculateMaxAutoWorkers();
                 int targetWorkers;
-                if (currentCpuLoad > 75.0) {
-                    targetWorkers = Math.max(1, 2); // Heavy load → throttle back, protect UI
-                } else if (currentCpuLoad > 50.0) {
+
+                // Check RAM pressure if available
+                double memPercent = 0.0;
+                if (osBean instanceof com.sun.management.OperatingSystemMXBean sunBean) {
+                    long totalMem = sunBean.getTotalMemorySize();
+                    long freeMem = sunBean.getFreeMemorySize();
+                    if (totalMem > 0) {
+                        memPercent = ((double) (totalMem - freeMem) / totalMem) * 100.0;
+                    }
+                }
+
+                // If host machine CPU is under heavy external load (>85%) or RAM is strained (>90%),
+                // dynamically throttle back to preserve Windows responsiveness
+                if (currentCpuLoad > 85.0 || memPercent > 90.0) {
+                    targetWorkers = Math.max(2, availableCores / 4); // Throttle back, protect system
+                } else if (currentCpuLoad > 70.0 || memPercent > 80.0) {
                     targetWorkers = Math.max(2, availableCores / 2); // Moderate load
                 } else {
-                    targetWorkers = Math.max(4, availableCores - 2); // Low load → use nearly all cores
+                    // System has ample headroom: utilize 80-90% target capacity
+                    targetWorkers = maxAutoWorkers;
                 }
 
                 if (targetWorkers != cpuExecutor.getCorePoolSize()) {

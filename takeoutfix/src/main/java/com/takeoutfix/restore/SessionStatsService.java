@@ -1,10 +1,12 @@
 package com.takeoutfix.restore;
 
+import com.takeoutfix.shared.history.OperationHistoryService;
 import org.json.JSONObject;
 import org.springframework.stereotype.Service;
 
 import java.io.File;
 import java.nio.file.Files;
+import java.util.List;
 import java.util.concurrent.atomic.AtomicLong;
 
 /**
@@ -49,19 +51,39 @@ public class SessionStatsService {
         save();
     }
 
-    // ── persistence ───────────────────────────────────────────────────────────
+    // ── persistence ─────────────────────────────────────────────────────────────
 
     private void load() {
-        if (!STATS_FILE.exists()) return;
-        try {
-            String content = Files.readString(STATS_FILE.toPath());
-            if (content != null && !content.isBlank()) {
-                JSONObject json = new JSONObject(content);
-                totalFiles.set(json.optLong("totalFiles", 0));
-                totalBytes.set(json.optLong("totalBytes", 0));
+        if (STATS_FILE.exists()) {
+            try {
+                String content = Files.readString(STATS_FILE.toPath());
+                if (content != null && !content.isBlank()) {
+                    JSONObject json = new JSONObject(content);
+                    totalFiles.set(json.optLong("totalFiles", 0));
+                    totalBytes.set(json.optLong("totalBytes", 0));
+                }
+            } catch (Exception ignored) {
+                // Corrupt or unreadable — start fresh
             }
-        } catch (Exception ignored) {
-            // Corrupt or unreadable — start fresh
+        }
+
+        // If stats are 0, aggregate from historical operations store so past runs are reflected
+        if (totalFiles.get() == 0 && totalBytes.get() == 0) {
+            try {
+                OperationHistoryService historyService = new OperationHistoryService();
+                List<OperationHistoryService.OperationRecord> records = historyService.loadRecords();
+                long filesSum = 0;
+                long bytesSum = 0;
+                for (var r : records) {
+                    filesSum += r.itemsProcessed();
+                    bytesSum += r.bytesProcessed();
+                }
+                if (filesSum > 0 || bytesSum > 0) {
+                    totalFiles.set(filesSum);
+                    totalBytes.set(bytesSum);
+                    save();
+                }
+            } catch (Exception ignored) {}
         }
     }
 

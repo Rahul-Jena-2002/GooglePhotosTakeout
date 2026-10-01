@@ -15,12 +15,7 @@ import { usePersistentHandles } from "../hooks/usePersistentHandles"
 import { useSettingsStore } from "../store/useSettingsStore"
 import { useAuth } from "../contexts/AuthContext"
 import { downloadSyncScript, downloadSyncBat } from "../services/restoration/WindowsDateSyncScript"
-import { PhotoStudioPanel } from "./PhotoStudioPanel"
-import { PhotoVaultPanel } from "./PhotoVaultPanel"
-import { FolderFlowPanel } from "./FolderFlowPanel"
-import { ExifViewerPanel } from "./ExifViewerPanel"
-import { ComparisonPanel } from "./ComparisonPanel"
-import { DuplicateHunterPanel } from "./DuplicateHunterPanel"
+// Subpanels removed - single restore tool workspace
 
 interface RestorePanelProps {
   // Tool tab routing
@@ -201,34 +196,8 @@ export function RestorePanel({
     return dedupedLogs;
   }, [logTab, dedupedLogs, restoredLogs, errorLogs, skippedLogs, fallbackLogs]);
 
-  // Tool menu dropdown state & outside click handler
-  const [toolMenuOpen, setToolMenuOpen] = useState(false)
-  const toolMenuRef = useRef<HTMLDivElement>(null)
-
-  useEffect(() => {
-    function handleClickOutside(event: MouseEvent) {
-      if (toolMenuRef.current && !toolMenuRef.current.contains(event.target as Node)) {
-        setToolMenuOpen(false)
-      }
-    }
-    document.addEventListener("mousedown", handleClickOutside)
-    return () => document.removeEventListener("mousedown", handleClickOutside)
-  }, [])
-
-  const TOOLS_LIST: { id: ToolTab; name: string; tag: string; icon: any; desc: string; badge?: string }[] = [
-    { id: 'restore', name: 'TakeoutFix', tag: 'Metadata Restorer', icon: <Layers className="w-4 h-4 text-zinc-700 dark:text-zinc-300" />, desc: 'Google Photos JSON metadata injector & sidecar merger', badge: 'Core' },
-    { id: 'studio', name: 'Photo Studio', tag: 'Batch EXIF Suite', icon: <Sliders className="w-4 h-4 text-zinc-700 dark:text-zinc-300" />, desc: 'Batch shift dates, timezones, and stamp creator presets' },
-    { id: 'photovault', name: 'PhotoVault', tag: 'Backup Verifier', icon: <ShieldCheck className="w-4 h-4 text-zinc-700 dark:text-zinc-300" />, desc: 'Bit-for-bit SHA-256 backup audit & certificate generator' },
-    { id: 'viewer', name: 'EXIF Inspector', tag: 'Metadata Viewer', icon: <Eye className="w-4 h-4 text-zinc-700 dark:text-zinc-300" />, desc: 'Deep camera IFD, exposure tags, and GPS coordinates' },
-    { id: 'comparison', name: 'Comparator', tag: 'Sidecar Diff', icon: <Scale className="w-4 h-4 text-zinc-700 dark:text-zinc-300" />, desc: 'Compare Google Takeout JSON sidecar vs image EXIF' },
-    { id: 'duplicates', name: 'Duplicate Hunter', tag: 'Space Reclaimer', icon: <Copy className="w-4 h-4 text-zinc-700 dark:text-zinc-300" />, desc: 'Find duplicate photos & reclaim gigabytes of storage' },
-  ]
-
-  const currentTool = TOOLS_LIST.find(t => t.id === activeToolTab) || TOOLS_LIST[0]
-  const isRestoreTab = activeToolTab === 'restore'
-
-  return (
-    <div className={`flex-grow w-full ${isRestoreTab ? 'lg:w-[72%]' : 'max-w-7xl mx-auto'} bg-white dark:bg-[#0D0E12] text-zinc-900 dark:text-zinc-100 flex flex-col h-auto order-1 lg:order-2 transition-colors`}>
+    return (
+    <div className="flex-grow w-full lg:w-[72%] bg-white dark:bg-[#0D0E12] text-zinc-900 dark:text-zinc-100 flex flex-col h-auto order-1 lg:order-2 transition-colors">
 
       {/* ── Persistent Handle Re-grant Banner (VS Code model) ──────────── */}
       {needsReGrant && !takeoutFolder && (
@@ -251,113 +220,26 @@ export function RestorePanel({
         </div>
       )}
 
-      {/* ── Studio Header with Clean Segmented Tabs ────────────────── */}
+      {/* ── Single Restore Tool Header ────────────────── */}
       <div className="p-3 sm:p-4 border-b border-zinc-200 dark:border-zinc-800/80 bg-zinc-50/50 dark:bg-zinc-900/30 flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-3">
-          {/* Mobile Tool Switcher Dropdown (< md) */}
-          <div className="relative md:hidden" ref={toolMenuRef}>
-            <button
-              type="button"
-              onClick={() => setToolMenuOpen(!toolMenuOpen)}
-              className="tool-dropdown-trigger flex items-center gap-2.5 px-3 py-2 rounded-xl text-left cursor-pointer transition-all min-h-[44px]"
-              aria-expanded={toolMenuOpen}
-              title="Click to switch tool"
-            >
-              <div className="w-7 h-7 rounded-lg bg-indigo-50 dark:bg-indigo-950/60 border border-indigo-200/80 dark:border-indigo-500/30 flex items-center justify-center text-indigo-600 dark:text-indigo-400 flex-shrink-0">
-                {currentTool.icon}
-              </div>
-              <div className="flex flex-col min-w-0 pr-1">
-                <div className="flex items-center gap-1.5">
-                  <span className="font-bold text-xs sm:text-sm text-zinc-900 dark:text-white truncate">{currentTool.name}</span>
-                  {currentTool.badge && (
-                    <span className="text-[9px] font-bold uppercase px-1.5 py-0.2 rounded bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20">
-                      {currentTool.badge}
-                    </span>
-                  )}
-                </div>
-                <span className="text-[10px] text-zinc-500 dark:text-zinc-400 truncate">{currentTool.tag}</span>
-              </div>
-              <ChevronDown className={`w-3.5 h-3.5 text-zinc-500 dark:text-zinc-400 transition-transform duration-200 ml-auto ${toolMenuOpen ? 'rotate-180' : ''}`} />
-            </button>
-
-            {toolMenuOpen && (
-              <div className="tool-dropdown-menu absolute left-0 top-full mt-2 w-[320px] max-w-[calc(100vw-32px)] rounded-2xl p-2 z-50 animate-in fade-in slide-in-from-top-1 duration-150">
-                <div className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-400 border-b border-zinc-100 dark:border-zinc-800/80 mb-1 flex items-center justify-between">
-                  <span>Available Tools</span>
-                  <span className="text-emerald-600 dark:text-emerald-400 font-semibold">100% Offline</span>
-                </div>
-                <div className="space-y-1">
-                  {TOOLS_LIST.map((tool) => {
-                    const isActive = activeToolTab === tool.id
-                    return (
-                      <button
-                        key={tool.id}
-                        type="button"
-                        onClick={() => {
-                          setActiveToolTab(tool.id)
-                          setToolMenuOpen(false)
-                        }}
-                        className={`tool-dropdown-item w-full flex items-start gap-2.5 p-2 rounded-xl text-left cursor-pointer min-h-[44px] ${
-                          isActive ? 'active' : ''
-                        }`}
-                      >
-                        <div className={`p-1.5 rounded-lg border flex-shrink-0 mt-0.5 ${
-                          isActive
-                            ? 'bg-indigo-100 dark:bg-indigo-950/80 border-indigo-300 dark:border-indigo-700/60 text-indigo-600 dark:text-indigo-400'
-                            : 'bg-zinc-100 dark:bg-zinc-800/80 border-zinc-200 dark:border-zinc-700/60 text-zinc-600 dark:text-zinc-400'
-                        }`}>
-                          {tool.icon}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center justify-between">
-                            <span className={`text-xs font-bold ${isActive ? 'text-indigo-700 dark:text-indigo-300' : 'text-zinc-900 dark:text-white'}`}>
-                              {tool.name}
-                            </span>
-                            {tool.badge && (
-                              <span className="text-[9px] font-bold uppercase px-1.5 py-0.2 rounded bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20">
-                                {tool.badge}
-                              </span>
-                            )}
-                          </div>
-                          <p className="text-[11px] text-zinc-500 dark:text-zinc-400 truncate mt-0.5">{tool.desc}</p>
-                        </div>
-                        {isActive && (
-                          <CheckCircle2 className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400 flex-shrink-0 mt-1" />
-                        )}
-                      </button>
-                    )
-                  })}
-                </div>
-              </div>
-            )}
+          <div className="w-8 h-8 rounded-lg bg-indigo-50 dark:bg-indigo-950/60 border border-indigo-200/80 dark:border-indigo-500/30 flex items-center justify-center text-indigo-600 dark:text-indigo-400 flex-shrink-0">
+            <Layers className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
           </div>
-
-          {/* Desktop Clean Segmented Tabs (>= md) */}
-          <div className="tool-tab-track hidden md:flex items-center gap-1 text-xs">
-            {TOOLS_LIST.map((t) => {
-              const isActive = activeToolTab === t.id
-              return (
-                <button
-                  key={t.id}
-                  type="button"
-                  onClick={() => setActiveToolTab(t.id)}
-                  className={`tool-tab-btn flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold cursor-pointer ${
-                    isActive ? 'active' : ''
-                  }`}
-                >
-                  <span className={isActive ? 'text-indigo-600 dark:text-indigo-400' : 'text-zinc-500 dark:text-zinc-400'}>
-                    {t.icon}
-                  </span>
-                  <span>{t.name}</span>
-                </button>
-              )
-            })}
+          <div>
+            <div className="flex items-center gap-1.5">
+              <span className="font-bold text-sm sm:text-base text-zinc-900 dark:text-white">Google Photos Metadata Restorer</span>
+              <span className="text-[10px] font-bold uppercase px-1.5 py-0.5 rounded bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20">
+                Core Engine
+              </span>
+            </div>
+            <p className="text-xs text-zinc-500 dark:text-zinc-400">Restore missing timestamps, EXIF tags, and JSON sidecars directly in your browser.</p>
           </div>
         </div>
 
         <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400 text-[10px] font-bold shadow-xs">
           <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 dark:bg-emerald-400 animate-pulse"></span>
-          Free &amp; Offline
+          Free &amp; 100% Offline
         </div>
       </div>
 
@@ -813,53 +695,9 @@ export function RestorePanel({
             </div>
           </div>
         </div>
-
         </>
-      )}
-
-      {/* ── PHOTO STUDIO BATCH EXIF SUITE TAB ───────────────────────── */}
-      {activeToolTab === 'studio' && <PhotoStudioPanel />}
-
-      {/* ── PHOTOVAULT BACKUP VERIFIER TAB ───────────────────────────── */}
-      {activeToolTab === 'photovault' && <PhotoVaultPanel />}
-
-      {/* ── FOLDERFLOW MEDIA ORGANIZER TAB ──────────────────────────── */}
-      {activeToolTab === 'folderflow' && <FolderFlowPanel />}
-
-      {/* ── EXIF & GPS INSPECTOR TAB ─────────────────────────────────── */}
-      {activeToolTab === 'viewer' && (
-        <ExifViewerPanel
-          viewerFile={viewerFile}
-          viewerExif={viewerExif}
-          viewerLoading={viewerLoading}
-          handleViewerFileChange={handleViewerFileChange}
-        />
-      )}
-
-      {/* ── METADATA COMPARATOR TAB ──────────────────────────────────── */}
-      {activeToolTab === 'comparison' && (
-        <ComparisonPanel
-          compMediaFile={compMediaFile}
-          compJsonFile={compJsonFile}
-          compResult={compResult}
-          handleCompFilesChange={handleCompFilesChange}
-        />
-      )}
-
-      {/* ── DUPLICATE MEDIA HUNTER TAB ───────────────────────────────── */}
-      {activeToolTab === 'duplicates' && (
-        <DuplicateHunterPanel
-          dupFolder={dupFolder}
-          dupIsScanning={dupIsScanning}
-          dupStats={dupStats}
-          dupGroups={dupGroups}
-          dupScanStatus={dupScanStatus}
-          handleSelectDupFolder={handleSelectDupFolder}
-          startDuplicateScan={startDuplicateScan}
-        />
       )}
 
     </div>
   )
 }
-

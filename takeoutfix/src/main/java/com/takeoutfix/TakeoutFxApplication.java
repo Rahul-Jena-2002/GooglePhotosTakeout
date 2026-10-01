@@ -1,7 +1,6 @@
 package com.takeoutfix;
 
 import com.takeoutfix.auth.UserSyncBridgeService;
-import com.takeoutfix.metasync.core.MetadataSyncService;
 
 import com.takeoutfix.network.NetworkMonitorService;
 import com.takeoutfix.restore.SessionStatsService;
@@ -53,7 +52,6 @@ public class TakeoutFxApplication extends Application {
     private SessionStatsService sessionStatsService;
     private NativeExifToolEngine exifToolEngine;
     private ExtractionService extractionService;
-    private MetadataSyncService metadataSyncService;
     private com.takeoutfix.updates.UpdateCheckerService updateCheckerService;
     private com.takeoutfix.task.TaskManager taskManager;
     private com.takeoutfix.task.PersistentTaskFooter persistentTaskFooter;
@@ -74,7 +72,6 @@ public class TakeoutFxApplication extends Application {
         this.sessionStatsService = new SessionStatsService();
         this.exifToolEngine = NativeExifToolEngine.getDefault();
         this.extractionService = new ExtractionService(exifToolEngine);
-        this.metadataSyncService = new MetadataSyncService(exifToolEngine);
         this.updateCheckerService = new com.takeoutfix.updates.UpdateCheckerService();
         this.updateCheckerService.start();
     }
@@ -114,14 +111,7 @@ public class TakeoutFxApplication extends Application {
     private javafx.scene.Node createWorkspace(WorkspaceType type) {
         return switch (type) {
             case TAKEOUT_RESTORE -> new TakeoutRestoreView(stage, extractionService, userSyncBridgeService, sessionStatsService, this::switchWorkspace);
-            case PHOTO_STUDIO -> new PhotoStudioFxView(stage, exifToolEngine, userSyncBridgeService, this::switchWorkspace);
-            case METASYNC -> new com.takeoutfix.metasync.ui.MetaSyncView(stage, metadataSyncService);
-            case PHOTOVAULT -> new PhotoVaultView(stage);
             case DASHBOARD -> new DashboardFxView(userSyncBridgeService, sessionStatsService, this::switchWorkspace);
-            case EXIF_VIEWER -> new ExifViewerFxView(stage, exifToolEngine, this::switchWorkspace);
-            case ARCHIVE_COMPARE -> new ArchiveCompareFxView(stage, this::switchWorkspace);
-            case DUPLICATE_FINDER -> new DuplicateFinderFxView(stage, this::switchWorkspace);
-            case PHOTO_CULLING -> new com.takeoutfix.ui.fx.PhotoCullingView(stage, exifToolEngine, this::switchWorkspace);
             case HISTORY -> new HistoryView();
             case SETTINGS -> new SettingsView(exifToolEngine);
             default -> null;

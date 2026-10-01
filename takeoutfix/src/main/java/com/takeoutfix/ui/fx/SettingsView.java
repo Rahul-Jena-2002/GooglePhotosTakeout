@@ -231,7 +231,7 @@ public class SettingsView extends VBox {
 
     private void buildProcessingPane() {
         processingPane.getChildren().clear();
-        processingPane.getChildren().add(createSectionHeader("Processing Engine", "Configure local image metadata processing and dynamic resource allocation."));
+        processingPane.getChildren().add(createSectionHeader("Processing Engine", "Configure local image metadata processing."));
 
         VBox card = createCard();
 
@@ -252,52 +252,7 @@ public class SettingsView extends VBox {
         binDesc.setStyle("-fx-font-size: 12px; ");
         binBox.getChildren().addAll(binTitle, binStatus, binDesc);
 
-        // Adaptive Resource Policy
-        VBox policyBox = new VBox(8);
-        Label pTitle = new Label("Adaptive Resource Policy (Processing Mode)");
-        pTitle.setStyle("-fx-font-size: 13px; -fx-font-weight: 600; ");
-
-        Label pDesc = new Label("Dynamic CPU and memory allocation adapts automatically based on system load.");
-        pDesc.setStyle("-fx-font-size: 12px; ");
-
-        ToggleGroup tgMode = new ToggleGroup();
-        RadioButton rbBalanced = new RadioButton("Balanced (Default) — Adapt resource usage dynamically based on system load");
-        rbBalanced.setToggleGroup(tgMode);
-        rbBalanced.setSelected(true);
-        rbBalanced.setStyle(" -fx-font-size: 12px;");
-
-        RadioButton rbPerformance = new RadioButton("Performance — Use more available resources to complete supported tasks faster");
-        rbPerformance.setToggleGroup(tgMode);
-        rbPerformance.setStyle(" -fx-font-size: 12px;");
-
-        RadioButton rbBackground = new RadioButton("Background — Limit resource usage to keep the computer responsive");
-        rbBackground.setToggleGroup(tgMode);
-        rbBackground.setStyle(" -fx-font-size: 12px;");
-
-        RadioButton rbCustom = new RadioButton("Custom — Set a preferred maximum worker count");
-        rbCustom.setToggleGroup(tgMode);
-        rbCustom.setStyle(" -fx-font-size: 12px;");
-
-        tgMode.selectedToggleProperty().addListener((obs, oldVal, newVal) -> {
-            var rm = com.takeoutfix.task.TaskManager.getInstance().getResourceManager();
-            if (newVal == rbPerformance) {
-                rm.setProcessingMode(com.takeoutfix.task.ResourceManager.ProcessingMode.PERFORMANCE);
-            } else if (newVal == rbBackground) {
-                rm.setProcessingMode(com.takeoutfix.task.ResourceManager.ProcessingMode.BACKGROUND);
-            } else if (newVal == rbCustom) {
-                rm.setProcessingMode(com.takeoutfix.task.ResourceManager.ProcessingMode.CUSTOM);
-            } else {
-                rm.setProcessingMode(com.takeoutfix.task.ResourceManager.ProcessingMode.BALANCED);
-            }
-        });
-
-        int cores = Runtime.getRuntime().availableProcessors();
-        Label coresInfo = new Label("System Hardware: " + cores + " Logical CPU Cores • Real-time load-balancing active");
-        coresInfo.setStyle("-fx-font-size: 11px; -fx-text-fill: #71717a;");
-
-        policyBox.getChildren().addAll(pTitle, pDesc, rbBalanced, rbPerformance, rbBackground, rbCustom, coresInfo);
-
-        card.getChildren().addAll(binBox, new Separator(), policyBox);
+        card.getChildren().add(binBox);
         processingPane.getChildren().add(card);
     }
 

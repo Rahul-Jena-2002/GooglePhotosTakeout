@@ -107,26 +107,26 @@ public class PersistentTaskFooter extends VBox {
 
     private void applyThemeStyles() {
         if (isDark) {
-            setStyle("-fx-background-color: #16161E; -fx-border-color: #2F334D transparent transparent transparent; -fx-border-width: 1;");
+            setStyle("-fx-background-color: #21222C; -fx-border-color: #44475A transparent transparent transparent; -fx-border-width: 1;");
 
             // Collapsed bar
-            greenDot.setFill(javafx.scene.paint.Color.web("#9ECE6A"));
-            taskCountBadge.setStyle("-fx-font-size: 12px; -fx-font-weight: 500; -fx-text-fill: #C0CAF5;");
-            telemetryLabel.setStyle("-fx-font-size: 12px; -fx-font-weight: 500; -fx-text-fill: #8089B3;");
-            toggleExpandBtn.setStyle("-fx-font-size: 12px; -fx-font-weight: 600; -fx-background-color: transparent; -fx-text-fill: #C0CAF5; -fx-cursor: hand;");
+            greenDot.setFill(javafx.scene.paint.Color.web("#50FA7B"));
+            taskCountBadge.setStyle("-fx-font-size: 12px; -fx-font-weight: 500; -fx-text-fill: #F8F8F2;");
+            telemetryLabel.setStyle("-fx-font-size: 12px; -fx-font-weight: 500; -fx-text-fill: #9294A3;");
+            toggleExpandBtn.setStyle("-fx-font-size: 12px; -fx-font-weight: 600; -fx-background-color: transparent; -fx-text-fill: #F8F8F2; -fx-cursor: hand;");
 
             // Drawer
-            expandedDrawer.setStyle("-fx-background-color: #1F2335; -fx-border-color: #2F334D transparent transparent transparent; -fx-border-width: 1;");
-            expandedHeaderLabel.setStyle("-fx-font-size: 14px; -fx-font-weight: 600; -fx-text-fill: #C0CAF5;");
-            btnViewAll.setStyle("-fx-font-size: 12px; -fx-font-weight: 600; -fx-background-color: transparent; -fx-text-fill: #BB9AF7; -fx-cursor: hand;");
-            btnCloseDrawer.setStyle("-fx-font-size: 12px; -fx-font-weight: 600; -fx-background-color: transparent; -fx-text-fill: #8089B3; -fx-cursor: hand;");
+            expandedDrawer.setStyle("-fx-background-color: #343746; -fx-border-color: #44475A transparent transparent transparent; -fx-border-width: 1;");
+            expandedHeaderLabel.setStyle("-fx-font-size: 14px; -fx-font-weight: 600; -fx-text-fill: #F8F8F2;");
+            btnViewAll.setStyle("-fx-font-size: 12px; -fx-font-weight: 600; -fx-background-color: transparent; -fx-text-fill: #BD93F9; -fx-cursor: hand;");
+            btnCloseDrawer.setStyle("-fx-font-size: 12px; -fx-font-weight: 600; -fx-background-color: transparent; -fx-text-fill: #9294A3; -fx-cursor: hand;");
 
-            appCpuMetric.setStyle("-fx-font-size: 12.5px; -fx-font-weight: 700; -fx-text-fill: #C0CAF5;");
-            appMemMetric.setStyle("-fx-font-size: 12.5px; -fx-font-weight: 700; -fx-text-fill: #C0CAF5;");
-            sysMemMetric.setStyle("-fx-font-size: 12.5px; -fx-font-weight: 700; -fx-text-fill: #C0CAF5;");
-            throughputMetric.setStyle("-fx-font-size: 12.5px; -fx-font-weight: 700; -fx-text-fill: #C0CAF5;");
+            appCpuMetric.setStyle("-fx-font-size: 12.5px; -fx-font-weight: 700; -fx-text-fill: #F8F8F2;");
+            appMemMetric.setStyle("-fx-font-size: 12.5px; -fx-font-weight: 700; -fx-text-fill: #F8F8F2;");
+            sysMemMetric.setStyle("-fx-font-size: 12.5px; -fx-font-weight: 700; -fx-text-fill: #F8F8F2;");
+            throughputMetric.setStyle("-fx-font-size: 12.5px; -fx-font-weight: 700; -fx-text-fill: #F8F8F2;");
             for (Label lbl : metricTitleLabels) {
-                lbl.setStyle("-fx-font-size: 12px; -fx-text-fill: #8089B3;");
+                lbl.setStyle("-fx-font-size: 12px; -fx-text-fill: #9294A3;");
             }
         } else {
             setStyle("-fx-background-color: #EDEDF5; -fx-border-color: #D9DAE6 transparent transparent transparent; -fx-border-width: 1;");
@@ -237,8 +237,8 @@ public class PersistentTaskFooter extends VBox {
         if (count == 0) {
             taskCountBadge.setText("Idle · Ready");
             if (isDark) {
-                taskCountBadge.setStyle("-fx-font-size: 11px; -fx-font-weight: 600; -fx-text-fill: #94A3B8; -fx-background-color: rgba(148, 163, 184, 0.12); -fx-border-color: rgba(148, 163, 184, 0.22); -fx-border-radius: 10; -fx-background-radius: 10; -fx-padding: 2 8 2 8;");
-                expandedSubLabel.setStyle("-fx-font-size: 11px; -fx-font-weight: 700; -fx-text-fill: #818CF8; -fx-background-color: rgba(129, 140, 248, 0.15); -fx-padding: 2 6 2 6; -fx-background-radius: 8;");
+                taskCountBadge.setStyle("-fx-font-size: 11px; -fx-font-weight: 600; -fx-text-fill: #9294A3; -fx-background-color: rgba(68, 71, 90, 0.5); -fx-border-color: #44475A; -fx-border-radius: 10; -fx-background-radius: 10; -fx-padding: 2 8 2 8;");
+                expandedSubLabel.setStyle("-fx-font-size: 11px; -fx-font-weight: 700; -fx-text-fill: #BD93F9; -fx-background-color: rgba(189, 147, 249, 0.15); -fx-padding: 2 6 2 6; -fx-background-radius: 8;");
             } else {
                 taskCountBadge.setStyle("-fx-font-size: 11px; -fx-font-weight: 600; -fx-text-fill: #475569; -fx-background-color: #F1F5F9; -fx-border-color: #CBD5E1; -fx-border-radius: 10; -fx-background-radius: 10; -fx-padding: 2 8 2 8;");
                 expandedSubLabel.setStyle("-fx-font-size: 11px; -fx-font-weight: 700; -fx-text-fill: #6366F1; -fx-background-color: #EEF2FF; -fx-padding: 2 6 2 6; -fx-background-radius: 8;");
@@ -247,8 +247,8 @@ public class PersistentTaskFooter extends VBox {
         } else {
             taskCountBadge.setText(count + (count == 1 ? " active task" : " active tasks"));
             if (isDark) {
-                taskCountBadge.setStyle("-fx-font-size: 11px; -fx-font-weight: 700; -fx-text-fill: #34D399; -fx-background-color: rgba(16, 185, 129, 0.18); -fx-border-color: rgba(52, 211, 153, 0.3); -fx-border-radius: 10; -fx-background-radius: 10; -fx-padding: 2 8 2 8;");
-                expandedSubLabel.setStyle("-fx-font-size: 11px; -fx-font-weight: 700; -fx-text-fill: #34D399; -fx-background-color: rgba(16, 185, 129, 0.18); -fx-padding: 2 6 2 6; -fx-background-radius: 8;");
+                taskCountBadge.setStyle("-fx-font-size: 11px; -fx-font-weight: 700; -fx-text-fill: #50FA7B; -fx-background-color: rgba(80, 250, 123, 0.18); -fx-border-color: rgba(80, 250, 123, 0.3); -fx-border-radius: 10; -fx-background-radius: 10; -fx-padding: 2 8 2 8;");
+                expandedSubLabel.setStyle("-fx-font-size: 11px; -fx-font-weight: 700; -fx-text-fill: #50FA7B; -fx-background-color: rgba(80, 250, 123, 0.18); -fx-padding: 2 6 2 6; -fx-background-radius: 8;");
             } else {
                 taskCountBadge.setStyle("-fx-font-size: 11px; -fx-font-weight: 700; -fx-text-fill: #047857; -fx-background-color: #ECFDF5; -fx-border-color: #A7F3D0; -fx-border-radius: 10; -fx-background-radius: 10; -fx-padding: 2 8 2 8;");
                 expandedSubLabel.setStyle("-fx-font-size: 11px; -fx-font-weight: 700; -fx-text-fill: #047857; -fx-background-color: #ECFDF5; -fx-padding: 2 6 2 6; -fx-background-radius: 8;");
@@ -264,7 +264,7 @@ public class PersistentTaskFooter extends VBox {
         taskCardsContainer.getChildren().clear();
         if (count == 0) {
             Label empty = new Label("No background tasks currently running. Long-running library scans and metadata repairs appear here.");
-            empty.setStyle("-fx-font-size: 12px; -fx-text-fill: " + (isDark ? "#94A3B8" : "#64748B") + "; -fx-padding: 12;");
+            empty.setStyle("-fx-font-size: 12px; -fx-text-fill: " + (isDark ? "#9294A3" : "#64748B") + "; -fx-padding: 12;");
             taskCardsContainer.getChildren().add(empty);
         } else {
             for (BackgroundTask task : taskManager.getActiveTasks()) {
@@ -288,9 +288,9 @@ public class PersistentTaskFooter extends VBox {
         VBox leftInfo = new VBox(3);
         leftInfo.setPrefWidth(160);
         Label toolLbl = new Label(task.getToolName());
-        toolLbl.setStyle("-fx-font-size: 12px; -fx-font-weight: 800; -fx-text-fill: " + (isDark ? "#F8FAFC" : "#0F172A") + ";");
+        toolLbl.setStyle("-fx-font-size: 12px; -fx-font-weight: 800; -fx-text-fill: " + (isDark ? "#F8F8F2" : "#0F172A") + ";");
         Label titleLbl = new Label(task.getTaskTitle());
-        titleLbl.setStyle("-fx-font-size: 11px; -fx-text-fill: " + (isDark ? "#94A3B8" : "#64748B") + ";");
+        titleLbl.setStyle("-fx-font-size: 11px; -fx-text-fill: " + (isDark ? "#9294A3" : "#64748B") + ";");
         leftInfo.getChildren().addAll(toolLbl, titleLbl);
 
         // Progress bar + detail label
@@ -301,13 +301,13 @@ public class PersistentTaskFooter extends VBox {
         progHeader.setAlignment(Pos.CENTER_LEFT);
         Label statusMsg = new Label();
         statusMsg.textProperty().bind(task.statusMessageProperty());
-        statusMsg.setStyle("-fx-font-size: 11px; -fx-text-fill: " + (isDark ? "#CBD5E1" : "#334155") + ";");
+        statusMsg.setStyle("-fx-font-size: 11px; -fx-text-fill: " + (isDark ? "#C4C5CE" : "#334155") + ";");
 
         Region sp = new Region();
         HBox.setHgrow(sp, Priority.ALWAYS);
 
         Label pctLbl = new Label();
-        pctLbl.setStyle("-fx-font-size: 11px; -fx-font-weight: 700; -fx-text-fill: " + (isDark ? "#34D399" : "#047857") + ";");
+        pctLbl.setStyle("-fx-font-size: 11px; -fx-font-weight: 700; -fx-text-fill: " + (isDark ? "#50FA7B" : "#047857") + ";");
         task.progressProperty().addListener((obs, oldVal, newVal) -> {
             double p = newVal.doubleValue();
             if (p >= 0) {
@@ -322,7 +322,7 @@ public class PersistentTaskFooter extends VBox {
         ProgressBar pbar = new ProgressBar(0);
         pbar.setMaxWidth(Double.MAX_VALUE);
         pbar.progressProperty().bind(task.progressProperty());
-        pbar.setStyle("-fx-accent: " + (isDark ? "#818CF8" : "#6366F1") + "; -fx-pref-height: 6px;");
+        pbar.setStyle("-fx-accent: " + (isDark ? "#BD93F9" : "#6366F1") + "; -fx-pref-height: 6px;");
 
         centerProgress.getChildren().addAll(progHeader, pbar);
 
@@ -343,7 +343,7 @@ public class PersistentTaskFooter extends VBox {
         });
 
         Button btnCancel = new Button("Cancel");
-        btnCancel.setStyle("-fx-font-size: 10px; -fx-font-weight: 600; -fx-text-fill: #ef4444; -fx-padding: 3 8 3 8; -fx-cursor: hand;");
+        btnCancel.setStyle("-fx-font-size: 10px; -fx-font-weight: 600; -fx-text-fill: " + (isDark ? "#FF5555" : "#ef4444") + "; -fx-padding: 3 8 3 8; -fx-cursor: hand;");
         btnCancel.setOnAction(e -> taskManager.cancelTask(task.getId()));
 
         actions.getChildren().addAll(btnPause, btnCancel);

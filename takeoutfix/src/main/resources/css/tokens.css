@@ -9,24 +9,24 @@
  * When migrating to JavaFX, these tokens map 1:1 to -fx- CSS properties.
  */
 
-/* ── Color Palette (Dark | Light IntelliJ IDEA New UI Tokens) ─────────────── */
+/* ── Color Palette (Dark Dracula | Light Theme Tokens) ─────────────── */
 
-/* Dark Theme Tokens */
---dark-bg-window:        #1A1B26;
---dark-bg-surface:       #1F2335;
---dark-bg-sidebar:       #16161E;
---dark-border:           #2F334D;
---dark-text:             #C0CAF5;
---dark-text-muted:       #8089B3;
---dark-accent:           #7C3AED;
---dark-accent-hover:     #6D28D9;
---dark-accent-text:      #BB9AF7;
---dark-accent-subtle:    #2A2545;
---dark-focus-ring:       #A78BFA;
---dark-success:          #9ECE6A;
---dark-warning:          #E0AF68;
---dark-error:            #F7768E;
---dark-info:             #7DCFFF;
+/* Dark Theme Tokens (Dracula) */
+--dark-bg-window:        #282A36;
+--dark-bg-surface:       #343746;
+--dark-bg-sidebar:       #21222C;
+--dark-border:           #44475A;
+--dark-text:             #F8F8F2;
+--dark-text-muted:       #9294A3;
+--dark-accent:           #BD93F9;
+--dark-accent-hover:     #CBA6F7;
+--dark-accent-text:      #BD93F9;
+--dark-accent-subtle:    #44475A;
+--dark-focus-ring:       #BD93F9;
+--dark-success:          #50FA7B;
+--dark-warning:          #F1FA8C;
+--dark-error:            #FF5555;
+--dark-info:             #8BE9FD;
 
 /* Light Theme Tokens */
 --light-bg-window:       #F4F4F9;
@@ -46,13 +46,13 @@
 --light-info:            #0369A1;
 
 /* Semantic Accents */
---accent-primary:        #7C3AED;
---accent-success:        #9ECE6A;
---accent-warning:        #E0AF68;
---accent-error:          #F7768E;
---accent-link:           #BB9AF7;
+--accent-primary:        #BD93F9;
+--accent-success:        #50FA7B;
+--accent-warning:        #F1FA8C;
+--accent-error:          #FF5555;
+--accent-link:           #BD93F9;
 
-/* ── Spacing Scale ──────────────────────────────────────────────────────── */
+/* ── Spacing Scale ─────────────────────────────────────────────────── */
 
 --space-xs:   4px;
 --space-sm:   8px;
@@ -61,7 +61,7 @@
 --space-xl:   24px;
 --space-2xl:  32px;
 
-/* ── Radius Scale ───────────────────────────────────────────────────────── */
+/* ── Radius Scale ──────────────────────────────────────────────────── */
 
 --radius-sm:   6px;
 --radius-md:   10px;   /* Cards */
@@ -86,7 +86,7 @@
 --font-weight-semibold: 600;
 --font-weight-bold:     700;
 
-/* ── Glass Effect ──────────────────────────────────────────────────────── */
+/* ── Glass Effect ──────────────────────────────────────────────────── */
 
 --glass-opacity:    0.12;
 --glass-blur:       20px;

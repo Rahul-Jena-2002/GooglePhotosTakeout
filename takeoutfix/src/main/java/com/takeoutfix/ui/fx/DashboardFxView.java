@@ -74,9 +74,7 @@ public class DashboardFxView extends ScrollPane {
     // Recent Activity Container
     private final VBox recentActivityContent = new VBox(8);
 
-    // Layout Store & Draggable Grid
-    private final DashboardLayoutStore layoutStore = new DashboardLayoutStore();
-    private final DraggableCardGrid cardGrid = new DraggableCardGrid(layoutStore);
+
 
     private final ScheduledExecutorService telemetryScheduler = Executors.newSingleThreadScheduledExecutor(r -> {
         Thread t = new Thread(r, "fx-dash-telemetry");
@@ -101,33 +99,32 @@ public class DashboardFxView extends ScrollPane {
         // 1. Photography Workspace Header
         content.getChildren().add(buildPageHeader());
 
-        // 2. Register Dashboard Sections into DraggableCardGrid
-        cardGrid.registerCard(
-                DashboardLayoutStore.CARD_TELEMETRY,
-                "SYSTEM STATUS AND ENGINE TELEMETRY",
-                buildStatusAndTelemetryRow()
-        );
+        // 2. Metrics & Integrity Section
+        VBox kpiSection = new VBox(6);
+        Label kpiTitle = new Label("WORKSPACE METRICS AND INTEGRITY");
+        kpiTitle.setStyle("-fx-font-size: 12px; -fx-font-weight: 700; -fx-letter-spacing: 0.5px;");
+        kpiTitle.getStyleClass().add("text-secondary");
+        kpiSection.getChildren().addAll(kpiTitle, buildKpiGrid());
+        content.getChildren().add(kpiSection);
 
-        cardGrid.registerCard(
-                DashboardLayoutStore.CARD_KPI,
-                "WORKSPACE METRICS AND INTEGRITY",
-                buildKpiGrid()
-        );
+        // 3. System Status & Engine Telemetry Section
+        VBox telemetrySection = new VBox(6);
+        Label telemetryTitle = new Label("SYSTEM STATUS AND ENGINE TELEMETRY");
+        telemetryTitle.setStyle("-fx-font-size: 12px; -fx-font-weight: 700; -fx-letter-spacing: 0.5px;");
+        telemetryTitle.getStyleClass().add("text-secondary");
+        telemetrySection.getChildren().addAll(telemetryTitle, buildStatusAndTelemetryRow());
+        content.getChildren().add(telemetrySection);
 
-        cardGrid.registerCard(
-                DashboardLayoutStore.CARD_WORKFLOWS,
-                "PHOTO WORKFLOWS AND TOOLS",
-                buildToolWorkflowsSection()
-        );
+        // 4. Photo Workflows & Tools Section (1 tool: Restore Google Takeout)
+        VBox workflowsSection = new VBox(6);
+        Label workflowsTitle = new Label("PHOTO WORKFLOWS AND TOOLS");
+        workflowsTitle.setStyle("-fx-font-size: 12px; -fx-font-weight: 700; -fx-letter-spacing: 0.5px;");
+        workflowsTitle.getStyleClass().add("text-secondary");
+        workflowsSection.getChildren().addAll(workflowsTitle, buildToolWorkflowsSection());
+        content.getChildren().add(workflowsSection);
 
-        cardGrid.registerCard(
-                DashboardLayoutStore.CARD_ACTIVITY,
-                "RECENT WORKSPACE ACTIVITY",
-                buildRecentActivitySection()
-        );
-
-        cardGrid.refreshLayout();
-        content.getChildren().add(cardGrid);
+        // 5. Recent Workspace Activity Section (Default permanently at bottom)
+        content.getChildren().add(buildRecentActivitySection());
 
         setContent(content);
 
@@ -173,24 +170,6 @@ public class DashboardFxView extends ScrollPane {
         Region spacer = new Region();
         HBox.setHgrow(spacer, Priority.ALWAYS);
 
-        Button btnCustomize = new Button("Customize View");
-        btnCustomize.getStyleClass().add("btn-secondary");
-        btnCustomize.setGraphic(UiIcons.createSvgIcon(UiIcons.SLIDERS, 13, "currentColor"));
-        btnCustomize.setGraphicTextGap(6);
-        btnCustomize.setStyle("-fx-font-size: 13px; -fx-font-weight: 600;");
-        btnCustomize.setOnAction(e -> {
-            Stage owner = (getScene() != null && getScene().getWindow() instanceof Stage s) ? s : null;
-            CustomizeDashboardDialog dialog = new CustomizeDashboardDialog(owner, layoutStore);
-            dialog.showAndWait();
-        });
-
-        Button btnExifViewer = new Button("EXIF Viewer");
-        btnExifViewer.getStyleClass().add("btn-secondary");
-        btnExifViewer.setGraphic(UiIcons.createSvgIcon(UiIcons.CAMERA, 13, "currentColor"));
-        btnExifViewer.setGraphicTextGap(6);
-        btnExifViewer.setStyle("-fx-font-size: 13px; -fx-font-weight: 600;");
-        btnExifViewer.setOnAction(e -> navigateTo(WorkspaceType.EXIF_VIEWER));
-
         Button btnStartRestore = new Button("Restore Metadata");
         btnStartRestore.getStyleClass().add("btn-primary");
         btnStartRestore.setGraphic(UiIcons.createSvgIcon(UiIcons.RESTORE, 13, "currentColor"));
@@ -198,7 +177,7 @@ public class DashboardFxView extends ScrollPane {
         btnStartRestore.setStyle("-fx-font-size: 13px; -fx-font-weight: 700;");
         btnStartRestore.setOnAction(e -> navigateTo(WorkspaceType.TAKEOUT_RESTORE));
 
-        header.getChildren().addAll(iconTile, textCol, spacer, btnCustomize, btnExifViewer, btnStartRestore);
+        header.getChildren().addAll(iconTile, textCol, spacer, btnStartRestore);
         return header;
     }
 
@@ -418,7 +397,7 @@ public class DashboardFxView extends ScrollPane {
         coreHeading.getStyleClass().add("kpi-label");
         coreHeading.setStyle("-fx-font-size: 11px; -fx-font-weight: 700; -fx-letter-spacing: 0.5px;");
 
-        Label coreBadge = new Label("4 TOOLS");
+        Label coreBadge = new Label("1 TOOL");
         coreBadge.setStyle(
                 "-fx-font-size: 10px; -fx-font-weight: 700; -fx-padding: 2 7 2 7; -fx-background-radius: 4; -fx-text-fill: #8b5cf6; -fx-background-color: rgba(139, 92, 246, 0.15);");
 
@@ -428,12 +407,10 @@ public class DashboardFxView extends ScrollPane {
         coreGrid.setHgap(12);
         coreGrid.setVgap(12);
 
-        for (int i = 0; i < 4; i++) {
-            ColumnConstraints col = new ColumnConstraints();
-            col.setPercentWidth(25.0);
-            col.setHgrow(Priority.ALWAYS);
-            coreGrid.getColumnConstraints().add(col);
-        }
+        ColumnConstraints col = new ColumnConstraints();
+        col.setPercentWidth(50.0);
+        col.setHgrow(Priority.ALWAYS);
+        coreGrid.getColumnConstraints().add(col);
 
         VBox tool1 = createToolCard(
                 "Restore Google Takeout",
@@ -443,94 +420,11 @@ public class DashboardFxView extends ScrollPane {
                 "CORE",
                 () -> navigateTo(WorkspaceType.TAKEOUT_RESTORE));
 
-        VBox tool2 = createToolCard(
-                "Edit Photo Metadata",
-                "Batch-edit timestamps, adjust time zones and apply copyright, author and metadata presets to your photos.",
-                UiIcons.SLIDERS,
-                "#71717a",
-                "METADATA",
-                () -> navigateTo(WorkspaceType.PHOTO_STUDIO));
-
-        VBox tool3 = createToolCard(
-                "EXIF Viewer",
-                "Explore camera settings, lens information, exposure, GPS coordinates and embedded metadata.",
-                UiIcons.CAMERA,
-                "#71717a",
-                "EXIF",
-                () -> navigateTo(WorkspaceType.EXIF_VIEWER));
-
-        VBox tool4 = createToolCard(
-                "Duplicate Finder",
-                "Find identical and potentially similar photos, review duplicate groups and safely quarantine unwanted copies.",
-                UiIcons.COPY,
-                "#71717a",
-                "STORAGE",
-                () -> navigateTo(WorkspaceType.DUPLICATE_FINDER));
-
         coreGrid.add(tool1, 0, 0);
-        coreGrid.add(tool2, 1, 0);
-        coreGrid.add(tool3, 2, 0);
-        coreGrid.add(tool4, 3, 0);
 
         coreSection.getChildren().addAll(coreHeader, coreGrid);
 
-        // ── Archive & Security (3 balanced cards across) ──
-        VBox archiveSection = new VBox(8);
-        HBox archiveHeader = new HBox(8);
-        archiveHeader.setAlignment(Pos.CENTER_LEFT);
-
-        Label archiveHeading = new Label("ARCHIVE & SYNCHRONIZATION");
-        archiveHeading.getStyleClass().add("kpi-label");
-        archiveHeading.setStyle("-fx-font-size: 11px; -fx-font-weight: 700; -fx-letter-spacing: 0.5px;");
-
-        Label archiveBadge = new Label("3 TOOLS");
-        archiveBadge.setStyle(
-                "-fx-font-size: 10px; -fx-font-weight: 700; -fx-padding: 2 7 2 7; -fx-background-radius: 4; -fx-text-fill: #8b5cf6; -fx-background-color: rgba(139, 92, 246, 0.15);");
-
-        archiveHeader.getChildren().addAll(archiveHeading, archiveBadge);
-
-        GridPane archiveGrid = new GridPane();
-        archiveGrid.setHgap(12);
-        archiveGrid.setVgap(12);
-
-        for (int i = 0; i < 3; i++) {
-            ColumnConstraints col = new ColumnConstraints();
-            col.setPercentWidth(33.333);
-            col.setHgrow(Priority.ALWAYS);
-            archiveGrid.getColumnConstraints().add(col);
-        }
-
-        VBox tool5 = createToolCard(
-                "Metadata Sync",
-                "Compare and synchronize metadata between RAW originals, edited JPEGs and other related photo files.",
-                UiIcons.SYNC,
-                "#8b5cf6",
-                "SYNC",
-                () -> navigateTo(WorkspaceType.METASYNC));
-
-        VBox tool6 = createToolCard(
-                "Compare Archives",
-                "Compare original photos with Google Takeout metadata to identify missing, changed or conflicting information.",
-                UiIcons.DIFF,
-                "#f59e0b",
-                "COMPARE",
-                () -> navigateTo(WorkspaceType.ARCHIVE_COMPARE));
-
-        VBox tool7 = createToolCard(
-                "Private Photo Vault",
-                "Store private photos in an encrypted local vault with controlled access and secure file handling.",
-                UiIcons.LOCK,
-                "#10b981",
-                "VAULT",
-                () -> navigateTo(WorkspaceType.PHOTOVAULT));
-
-        archiveGrid.add(tool5, 0, 0);
-        archiveGrid.add(tool6, 1, 0);
-        archiveGrid.add(tool7, 2, 0);
-
-        archiveSection.getChildren().addAll(archiveHeader, archiveGrid);
-
-        container.getChildren().addAll(coreSection, archiveSection);
+        container.getChildren().add(coreSection);
         return container;
     }
 
@@ -604,9 +498,9 @@ public class DashboardFxView extends ScrollPane {
         HBox headerRow = new HBox(8);
         headerRow.setAlignment(Pos.CENTER_LEFT);
 
-        Label heading = new Label("RECENT ACTIVITY");
-        heading.getStyleClass().add("kpi-label");
-        heading.setStyle("-fx-font-size: 11px; -fx-font-weight: 700; -fx-letter-spacing: 0.5px;");
+        Label heading = new Label("RECENT WORKSPACE ACTIVITY");
+        heading.setStyle("-fx-font-size: 12px; -fx-font-weight: 700; -fx-letter-spacing: 0.5px;");
+        heading.getStyleClass().add("text-secondary");
 
         Region spacer = new Region();
         HBox.setHgrow(spacer, Priority.ALWAYS);
@@ -681,6 +575,13 @@ public class DashboardFxView extends ScrollPane {
                 if (summaryText.isBlank()) {
                     summaryText = r.itemsProcessed() + " items processed";
                 }
+                if (r.bytesProcessed() > 0) {
+                    long b = r.bytesProcessed();
+                    String sz = (b < 1024*1024) ? String.format("%.1f KB", b / 1024.0) :
+                               (b < 1024*1024*1024) ? String.format("%.1f MB", b / (1024.0*1024.0)) :
+                               String.format("%.2f GB", b / (1024.0*1024.0*1024.0));
+                    summaryText += " • " + sz;
+                }
                 Label sub = new Label(summaryText);
                 sub.getStyleClass().add("text-muted");
                 sub.setStyle("-fx-font-size: 12px;");
@@ -710,12 +611,6 @@ public class DashboardFxView extends ScrollPane {
             return "Photo Task";
         return switch (type.toUpperCase()) {
             case "TAKEOUT_RESTORE", "RESTORE" -> "Takeout Metadata Restoration";
-            case "PHOTO_STUDIO", "METADATA_EDIT" -> "Batch Metadata Edit";
-            case "METASYNC", "SYNC" -> "Metadata Synchronization";
-            case "EXIF_VIEWER", "INSPECT" -> "EXIF Inspection";
-            case "ARCHIVE_COMPARE", "DIFF" -> "Archive Comparison";
-            case "DUPLICATE_FINDER", "DUPLICATES" -> "Duplicate Photo Scan";
-            case "PHOTOVAULT", "VAULT" -> "Vault Storage Access";
             default -> type;
         };
     }

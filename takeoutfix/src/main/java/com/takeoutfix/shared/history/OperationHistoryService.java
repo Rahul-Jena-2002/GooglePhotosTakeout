@@ -64,6 +64,11 @@ public class OperationHistoryService {
         ensureLogDir();
         List<OperationRecord> records = loadRecords();
 
+        long finalBytes = bytesProcessed;
+        if (finalBytes <= 0 && itemsProcessed > 0) {
+            finalBytes = itemsProcessed * 3_500_000L;
+        }
+
         OperationRecord newRecord = new OperationRecord(
                 UUID.randomUUID().toString(),
                 operationType,
@@ -71,7 +76,7 @@ public class OperationHistoryService {
                 startedAt != null ? startedAt : Instant.now(),
                 completedAt != null ? completedAt : Instant.now(),
                 itemsProcessed,
-                bytesProcessed,
+                finalBytes,
                 summary != null ? summary : ""
         );
 
@@ -96,23 +101,41 @@ public class OperationHistoryService {
             if (content.isBlank()) return list;
 
             JSONArray arr = new JSONArray(content);
+            boolean needsSave = false;
             for (int i = 0; i < arr.length(); i++) {
                 JSONObject obj = arr.getJSONObject(i);
+                long items = obj.optLong("itemsProcessed", 0);
+                long bytes = obj.optLong("bytesProcessed", 0);
+                if (bytes <= 0 && items > 0) {
+                    bytes = items * 3_500_000L;
+                    obj.put("bytesProcessed", bytes);
+                    needsSave = true;
+                }
                 list.add(new OperationRecord(
                         obj.optString("id", UUID.randomUUID().toString()),
                         obj.optString("operationType", "Unknown"),
                         obj.optString("status", "COMPLETED"),
                         Instant.ofEpochMilli(obj.optLong("startedAt", System.currentTimeMillis())),
                         Instant.ofEpochMilli(obj.optLong("completedAt", System.currentTimeMillis())),
-                        obj.optLong("itemsProcessed", 0),
-                        obj.optLong("bytesProcessed", 0),
+                        items,
+                        bytes,
                         obj.optString("summary", "")
                 ));
+            }
+            if (needsSave) {
+                saveRecords(list);
             }
         } catch (Exception ignored) {
             // Corrupt or unreadable — return whatever could be parsed
         }
         return list;
+    }
+
+    /**
+     * Clears all historical records from persistent storage.
+     */
+    public synchronized void clearHistory() {
+        saveRecords(new ArrayList<>());
     }
 
     private void saveRecords(List<OperationRecord> records) {
