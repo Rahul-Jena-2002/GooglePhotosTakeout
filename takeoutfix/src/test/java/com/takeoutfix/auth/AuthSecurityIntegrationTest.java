@@ -3,6 +3,7 @@ package com.takeoutfix.auth;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
 import java.io.IOException;
 import java.net.ConnectException;
@@ -10,6 +11,7 @@ import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.nio.file.Path;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
@@ -27,11 +29,14 @@ import static org.junit.jupiter.api.Assertions.*;
  */
 public class AuthSecurityIntegrationTest {
 
+    @TempDir
+    Path tempDir;
+
     private CredentialStore credentialStore;
 
     @BeforeEach
     public void setup() {
-        credentialStore = new CredentialStore();
+        credentialStore = new CredentialStore(tempDir.toFile());
         credentialStore.clear();
     }
 

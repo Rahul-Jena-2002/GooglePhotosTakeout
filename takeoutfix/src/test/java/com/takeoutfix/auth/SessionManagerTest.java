@@ -3,17 +3,23 @@ package com.takeoutfix.auth;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
+
+import java.nio.file.Path;
 
 import static org.junit.jupiter.api.Assertions.*;
 
 public class SessionManagerTest {
+
+    @TempDir
+    Path tempDir;
 
     private CredentialStore credentialStore;
     private SessionManager sessionManager;
 
     @BeforeEach
     public void setup() {
-        credentialStore = new CredentialStore();
+        credentialStore = new CredentialStore(tempDir.toFile());
         credentialStore.clear();
         sessionManager = new SessionManager(credentialStore, new FirebaseTokenService());
     }

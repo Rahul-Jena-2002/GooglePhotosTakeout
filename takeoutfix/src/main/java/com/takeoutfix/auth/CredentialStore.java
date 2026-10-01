@@ -43,9 +43,9 @@ public class CredentialStore {
     private static final Logger log = LoggerFactory.getLogger(CredentialStore.class);
     private static final SecureRandom SECURE_RANDOM = new SecureRandom();
 
-    private static final File CONFIG_DIR = new File(System.getProperty("user.home"), ".takeoutfix");
-    private static final File SESSION_METADATA_FILE = new File(CONFIG_DIR, "session.json");
-    private static final File ENCRYPTED_CREDENTIALS_FILE = new File(CONFIG_DIR, ".credentials.enc");
+    private final File configDir;
+    private final File sessionMetadataFile;
+    private final File encryptedCredentialsFile;
 
     private static final String SERVICE_NAME = "TakeoutFix";
     private static final String KEY_EMAIL = "email";
@@ -58,9 +58,20 @@ public class CredentialStore {
     private static final int KEY_LENGTH = 256;
 
     public CredentialStore() {
-        if (!CONFIG_DIR.exists()) {
-            CONFIG_DIR.mkdirs();
+        this(new File(System.getProperty("user.home"), ".takeoutfix"));
+    }
+
+    public CredentialStore(File configDir) {
+        this.configDir = configDir != null ? configDir : new File(System.getProperty("user.home"), ".takeoutfix");
+        this.sessionMetadataFile = new File(this.configDir, "session.json");
+        this.encryptedCredentialsFile = new File(this.configDir, ".credentials.enc");
+        if (!this.configDir.exists()) {
+            this.configDir.mkdirs();
         }
+    }
+
+    public File getConfigDir() {
+        return configDir;
     }
 
     /**
@@ -68,11 +79,11 @@ public class CredentialStore {
      */
     public synchronized AuthSession loadSession() {
         try {
-            if (!SESSION_METADATA_FILE.exists()) {
+            if (!sessionMetadataFile.exists()) {
                 return null;
             }
 
-            String metaContent = Files.readString(SESSION_METADATA_FILE.toPath(), StandardCharsets.UTF_8);
+            String metaContent = Files.readString(sessionMetadataFile.toPath(), StandardCharsets.UTF_8);
             if (metaContent == null || metaContent.isBlank()) {
                 return null;
             }
@@ -127,8 +138,8 @@ public class CredentialStore {
         }
 
         try {
-            if (!CONFIG_DIR.exists()) {
-                CONFIG_DIR.mkdirs();
+            if (!configDir.exists()) {
+                configDir.mkdirs();
             }
 
             // 1. Securely store tokens in OS Keyring / Encrypted Vault
@@ -145,7 +156,7 @@ public class CredentialStore {
             meta.put("expiresAt", session.getExpiresAt());
             meta.put("lastActive", System.currentTimeMillis());
 
-            Files.writeString(SESSION_METADATA_FILE.toPath(), meta.toString(2), StandardCharsets.UTF_8);
+            Files.writeString(sessionMetadataFile.toPath(), meta.toString(2), StandardCharsets.UTF_8);
 
         } catch (Exception e) {
             log.error("[CredentialStore] Failed to save credentials", e);
@@ -159,9 +170,9 @@ public class CredentialStore {
     public synchronized void clear() {
         // 1. Extract email BEFORE deleting the metadata file
         String accountEmail = null;
-        if (SESSION_METADATA_FILE.exists()) {
+        if (sessionMetadataFile.exists()) {
             try {
-                String metaContent = Files.readString(SESSION_METADATA_FILE.toPath(), StandardCharsets.UTF_8);
+                String metaContent = Files.readString(sessionMetadataFile.toPath(), StandardCharsets.UTF_8);
                 if (metaContent != null && !metaContent.isBlank()) {
                     JSONObject meta = new JSONObject(metaContent);
                     accountEmail = meta.optString(KEY_EMAIL, null);
@@ -182,18 +193,18 @@ public class CredentialStore {
         }
 
         // 3. Delete encrypted fallback vault (Isolated try-catch)
-        if (ENCRYPTED_CREDENTIALS_FILE.exists()) {
+        if (encryptedCredentialsFile.exists()) {
             try {
-                Files.deleteIfExists(ENCRYPTED_CREDENTIALS_FILE.toPath());
+                Files.deleteIfExists(encryptedCredentialsFile.toPath());
             } catch (Exception e) {
                 log.error("[CredentialStore] Failed to delete encrypted credentials vault file: {}", e.getMessage(), e);
             }
         }
 
         // 4. Delete session metadata file (Isolated try-catch, guaranteed to run)
-        if (SESSION_METADATA_FILE.exists()) {
+        if (sessionMetadataFile.exists()) {
             try {
-                Files.deleteIfExists(SESSION_METADATA_FILE.toPath());
+                Files.deleteIfExists(sessionMetadataFile.toPath());
             } catch (Exception e) {
                 log.error("[CredentialStore] Failed to delete session.json: {}", e.getMessage(), e);
             }
@@ -201,11 +212,11 @@ public class CredentialStore {
     }
 
     public synchronized boolean hasStoredCredential() {
-        if (!SESSION_METADATA_FILE.exists()) {
+        if (!sessionMetadataFile.exists()) {
             return false;
         }
         try {
-            String metaContent = Files.readString(SESSION_METADATA_FILE.toPath(), StandardCharsets.UTF_8);
+            String metaContent = Files.readString(sessionMetadataFile.toPath(), StandardCharsets.UTF_8);
             if (metaContent == null || metaContent.isBlank()) {
                 return false;
             }
@@ -239,7 +250,7 @@ public class CredentialStore {
                 markKeyringUnavailable(ignored);
             }
         }
-        if (ENCRYPTED_CREDENTIALS_FILE.exists()) {
+        if (encryptedCredentialsFile.exists()) {
             return StorageTier.ENCRYPTED_VAULT_FALLBACK;
         }
         return StorageTier.NONE;
@@ -302,9 +313,9 @@ public class CredentialStore {
         }
 
         // 2. Fall back to AES-256-GCM Encrypted Vault
-        if (ENCRYPTED_CREDENTIALS_FILE.exists()) {
+        if (encryptedCredentialsFile.exists()) {
             try {
-                String encContent = Files.readString(ENCRYPTED_CREDENTIALS_FILE.toPath(), StandardCharsets.UTF_8);
+                String encContent = Files.readString(encryptedCredentialsFile.toPath(), StandardCharsets.UTF_8);
                 if (encContent != null && !encContent.isBlank()) {
                     String decrypted = decrypt(encContent.trim());
                     if (decrypted != null && !decrypted.isBlank()) {
@@ -330,13 +341,13 @@ public class CredentialStore {
                 markKeyringUnavailable(ignored);
             }
         }
-        return ENCRYPTED_CREDENTIALS_FILE.exists();
+        return encryptedCredentialsFile.exists();
     }
 
     private void saveEncryptedBackup(String serialized) {
         try {
             String encrypted = encrypt(serialized);
-            Files.writeString(ENCRYPTED_CREDENTIALS_FILE.toPath(), encrypted, StandardCharsets.UTF_8);
+            Files.writeString(encryptedCredentialsFile.toPath(), encrypted, StandardCharsets.UTF_8);
             restrictPosixPermissions();
         } catch (Exception e) {
             log.error("[CredentialStore] Failed to write encrypted credential backup", e);
@@ -346,7 +357,7 @@ public class CredentialStore {
     private void restrictPosixPermissions() {
         if (!System.getProperty("os.name", "").toLowerCase().contains("win")) {
             try {
-                Files.setPosixFilePermissions(ENCRYPTED_CREDENTIALS_FILE.toPath(),
+                Files.setPosixFilePermissions(encryptedCredentialsFile.toPath(),
                         java.nio.file.attribute.PosixFilePermissions.fromString("rw-------"));
             } catch (Exception ignored) {
                 // Posix permissions unsupported on current filesystem

@@ -16,15 +16,21 @@ import static org.junit.jupiter.api.Assertions.*;
 @DisplayName("Application Startup Controller Architecture Tests")
 public class ApplicationStartupControllerTest {
 
+    private UserSyncBridgeService userSyncBridgeService;
+
     @BeforeEach
     void setupHeadless() {
         System.setProperty("java.awt.headless", "true");
         new CredentialStore().clear();
         UserController.logout();
+        userSyncBridgeService = new UserSyncBridgeService();
     }
 
     @org.junit.jupiter.api.AfterEach
     void tearDown() {
+        if (userSyncBridgeService != null) {
+            userSyncBridgeService.shutdown();
+        }
         new CredentialStore().clear();
         UserController.logout();
     }
@@ -32,7 +38,6 @@ public class ApplicationStartupControllerTest {
     @Test
     @DisplayName("Verify startup controller initializes with clean state and displays LoadingView")
     void testStartupDisplaysLoadingView() {
-        UserSyncBridgeService userSyncBridgeService = new UserSyncBridgeService();
         ApplicationStartupController controller = new ApplicationStartupController(
                 userSyncBridgeService,
                 new ExtractionService(),
@@ -51,7 +56,6 @@ public class ApplicationStartupControllerTest {
     @Test
     @DisplayName("Verify unauthenticated session triggers SignInView presentation")
     void testShowSignInPresentsSignInView() {
-        UserSyncBridgeService userSyncBridgeService = new UserSyncBridgeService();
         ApplicationStartupController controller = new ApplicationStartupController(
                 userSyncBridgeService,
                 new ExtractionService(),
@@ -71,7 +75,6 @@ public class ApplicationStartupControllerTest {
     @Test
     @DisplayName("Verify authenticated session triggers DashboardView presentation")
     void testShowDashboardPresentsDashboardView() {
-        UserSyncBridgeService userSyncBridgeService = new UserSyncBridgeService();
         ApplicationStartupController controller = new ApplicationStartupController(
                 userSyncBridgeService,
                 new ExtractionService(),

@@ -468,6 +468,10 @@ public class UserSyncBridgeService {
         }
     }
 
+    public void shutdown() {
+        executorService.shutdownNow();
+    }
+
     public static long getNumeric(Object obj) {
         if (obj instanceof Number num)
             return num.longValue();
@@ -481,3 +485,4 @@ public class UserSyncBridgeService {
         return 0;
     }
 }
+
