@@ -9,59 +9,50 @@
  * When migrating to JavaFX, these tokens map 1:1 to -fx- CSS properties.
  */
 
-/* ── Color Palette ──────────────────────────────────────────────────────── */
+/* ── Color Palette (Dark | Light IntelliJ IDEA New UI Tokens) ─────────────── */
 
-/* Brand / Primary */
---color-accent:          #6366f1;   /* Indigo 500 — ThemeColors.accent() */
---color-accent-hover:    #4f46e5;   /* Indigo 600 */
---color-accent-light:    #eef2ff;   /* Indigo 50  (light) */
---color-accent-dark:     #26234b;   /* Indigo 950 (dark)  */
+/* Dark Theme Tokens */
+--dark-bg-window:        #1A1B26;
+--dark-bg-surface:       #1F2335;
+--dark-bg-sidebar:       #16161E;
+--dark-border:           #2F334D;
+--dark-text:             #C0CAF5;
+--dark-text-muted:       #8089B3;
+--dark-accent:           #7C3AED;
+--dark-accent-hover:     #6D28D9;
+--dark-accent-text:      #BB9AF7;
+--dark-accent-subtle:    #2A2545;
+--dark-focus-ring:       #A78BFA;
+--dark-success:          #9ECE6A;
+--dark-warning:          #E0AF68;
+--dark-error:            #F7768E;
+--dark-info:             #7DCFFF;
 
-/* Semantic: Success */
---color-success:         #10b981;   /* Emerald 500 */
---color-success-light:   #ecfdf5;   /* Emerald 50  (light) */
---color-success-dark:    #082e20;   /* Emerald 950 (dark)  */
+/* Light Theme Tokens */
+--light-bg-window:       #F4F4F9;
+--light-bg-surface:      #FFFFFF;
+--light-bg-sidebar:      #EDEDF5;
+--light-border:          #D9DAE6;
+--light-text:            #1F2335;
+--light-text-muted:      #5F6585;
+--light-accent:          #6D28D9;
+--light-accent-hover:    #5B21B6;
+--light-accent-text:     #6D28D9;
+--light-accent-subtle:   #EDE7FB;
+--light-focus-ring:      #6D28D9;
+--light-success:         #2E7D32;
+--light-warning:         #B45309;
+--light-error:           #C62828;
+--light-info:            #0369A1;
 
-/* Semantic: Warning */
---color-warning:         #f59e0b;   /* Amber 500 */
---color-warning-light:   #fef3c7;   /* Amber 50  (light) */
---color-warning-dark:    #37260c;   /* Amber 950 (dark)  */
+/* Semantic Accents */
+--accent-primary:        #7C3AED;
+--accent-success:        #9ECE6A;
+--accent-warning:        #E0AF68;
+--accent-error:          #F7768E;
+--accent-link:           #BB9AF7;
 
-/* Semantic: Danger */
---color-danger:          #ef4444;   /* Rose 500 */
---color-danger-light:    #fef2f2;   /* Rose 50  (light) */
---color-danger-dark:     #371212;   /* Rose 950 (dark)  */
-
-/* ── Surface (Light Theme) ─────────────────────────────────────────────── */
-
---surface-canvas:        #f8fafc;   /* Background canvas */
---surface-card:          #ffffff;   /* Card face */
---surface-card-border:   #e2e8f0;   /* Card border */
---surface-input:         #f8fafc;   /* Input background */
---surface-input-border:  #cbd5e1;   /* Input border */
---surface-pill:          #f1f5f9;   /* Pill / chip background */
---surface-console:       #0f172a;   /* Terminal console */
-
-/* ── Surface (Dark Theme) ──────────────────────────────────────────────── */
-
---dark-canvas:           #0d0d12;
---dark-card:             #16161e;
---dark-card-border:      #2a2a36;
---dark-input:            #1c1c26;
---dark-input-border:     #373746;
---dark-pill:             #20202c;
-
-/* ── Typography ────────────────────────────────────────────────────────── */
-
---text-primary-light:    #0f172a;   /* Slate 900 */
---text-secondary-light:  #334155;   /* Slate 700 */
---text-muted-light:      #475569;   /* Slate 600 */
-
---text-primary-dark:     #fafafa;   /* Zinc 50 */
---text-secondary-dark:   #e4e4e7;   /* Zinc 200 */
---text-muted-dark:       #cbd5e1;   /* Slate 300 */
-
-/* ── Spacing Scale ─────────────────────────────────────────────────────── */
+/* ── Spacing Scale ──────────────────────────────────────────────────────── */
 
 --space-xs:   4px;
 --space-sm:   8px;
@@ -70,26 +61,32 @@
 --space-xl:   24px;
 --space-2xl:  32px;
 
-/* ── Radius Scale ──────────────────────────────────────────────────────── */
+/* ── Radius Scale ───────────────────────────────────────────────────────── */
 
 --radius-sm:   6px;
 --radius-md:   10px;   /* Cards */
 --radius-lg:   14px;   /* Panels */
 --radius-full: 9999px; /* Pills / badges */
 
-/* ── Typography Scale ──────────────────────────────────────────────────── */
+/* ── Typography Scale (IntelliJ IDEA Desktop Standards) ─────────────────── */
 
---font-family:      "Inter", "Segoe UI", -apple-system, BlinkMacSystemFont, sans-serif;
---font-size-xs:     11px;
---font-size-sm:     12px;
---font-size-base:   13px;
---font-size-md:     14px;
---font-size-lg:     16px;
---font-size-xl:     18px;
---font-size-2xl:    24px;
---font-weight-bold: 700;
+--font-family:      "Segoe UI", -apple-system, BlinkMacSystemFont, "Inter", Roboto, sans-serif;
+--font-family-mono: "Cascadia Code", "JetBrains Mono", "Consolas", "Courier New", monospace;
 
-/* ── Glass Effect (future JavaFX migration) ────────────────────────────── */
+--font-size-caption:     12px;      /* Status bar, captions, small badges */
+--font-size-secondary:   12.5px;    /* Descriptions, logs, paths, table headers */
+--font-size-label:       13px;      /* Form labels, placeholder text */
+--font-size-button:      13.5px;    /* Buttons, table content */
+--font-size-body:        14px;      /* Standard body, inputs, navigation, panel headings */
+--font-size-section:     15px;      /* Primary section headings */
+--font-size-page-title:  22px;      /* Main page headings */
+
+--font-weight-regular:  400;
+--font-weight-medium:   500;
+--font-weight-semibold: 600;
+--font-weight-bold:     700;
+
+/* ── Glass Effect ──────────────────────────────────────────────────────── */
 
 --glass-opacity:    0.12;
 --glass-blur:       20px;

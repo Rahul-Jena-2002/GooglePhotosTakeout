@@ -14,6 +14,7 @@ import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
+import javafx.scene.Node;
 import javafx.scene.control.*;
 import javafx.scene.input.Clipboard;
 import javafx.scene.input.ClipboardContent;
@@ -141,22 +142,20 @@ public class TakeoutRestoreView extends VBox {
         this.statsService = statsService;
         this.onToolSwitch = onToolSwitch;
 
-        setSpacing(10);
-        setPadding(new Insets(12, 16, 12, 16));
+        setSpacing(16);
+        setPadding(new Insets(24));
         VBox.setVgrow(this, Priority.ALWAYS);
 
         // 1. Header Row
         getChildren().add(buildHeaderRow());
 
-        // 2. High-Contrast KPI Metrics Deck
-        getChildren().add(buildKpiCardsDeck());
-
-        // 3. Resizable Vertical SplitPane (Workspace on Top | Diagnostics on Bottom)
+        // 2. Resizable Vertical SplitPane (Workspace on Top | Diagnostics on Bottom)
         SplitPane verticalSplit = new SplitPane();
         verticalSplit.setOrientation(javafx.geometry.Orientation.VERTICAL);
         VBox.setVgrow(verticalSplit, Priority.ALWAYS);
 
         VBox workspaceCard = buildUnifiedWorkspaceCard();
+        SplitPane.setResizableWithParent(workspaceCard, false);
         VBox logsCard = buildLogsConsoleCard();
         VBox.setVgrow(logsCard, Priority.ALWAYS);
 
@@ -171,6 +170,7 @@ public class TakeoutRestoreView extends VBox {
         splitVolumesCheck.setSelected(false);
 
         updateLogViewVisibility();
+        updateButtonStates();
         setupExtractionListeners();
     }
 
@@ -178,28 +178,29 @@ public class TakeoutRestoreView extends VBox {
         HBox header = new HBox(12);
         header.setAlignment(Pos.CENTER_LEFT);
 
+        StackPane iconTile = new StackPane(UiIcons.createSvgIcon(UiIcons.RESTORE, 16, "currentColor"));
+        iconTile.getStyleClass().add("header-icon-tile");
+
         VBox titleBox = new VBox(2);
         Label mainTitle = new Label("Takeout Metadata Restoration");
         mainTitle.getStyleClass().addAll("page-title", "header-title");
-        mainTitle.setStyle("-fx-font-size: 20px; -fx-font-weight: 800;");
 
         Label subtitle = new Label("Merge Google Takeout JSON sidecars and EXIF timestamps into media files");
         subtitle.getStyleClass().addAll("page-description", "header-subtitle");
-        subtitle.setStyle("-fx-font-size: 13px; -fx-font-weight: 500;");
 
         titleBox.getChildren().addAll(mainTitle, subtitle);
-        header.getChildren().add(titleBox);
+        header.getChildren().addAll(iconTile, titleBox);
         return header;
     }
 
     private HBox buildKpiCardsDeck() {
-        HBox deck = new HBox(10);
+        HBox deck = new HBox(12);
         deck.setAlignment(Pos.CENTER_LEFT);
 
-        VBox card1 = createSemanticKpiCard("FILES SCANNED", kpiScanned, UiIcons.CAMERA, "#A78BFA");
-        VBox card2 = createSemanticKpiCard("METADATA RESTORED", kpiRestored, UiIcons.CHECK_CIRCLE, "#22C55E");
-        VBox card3 = createSemanticKpiCard("NEEDS REVIEW", kpiNeedsReview, UiIcons.ALERT, "#F59E0B");
-        VBox card4 = createSemanticKpiCard("FAILED", kpiFailed, UiIcons.X, "#EF4444");
+        VBox card1 = createSemanticKpiCard("FILES SCANNED", kpiScanned, "Examined media files", UiIcons.CAMERA);
+        VBox card2 = createSemanticKpiCard("METADATA RESTORED", kpiRestored, "Cleanly paired with EXIF", UiIcons.CHECK_CIRCLE);
+        VBox card3 = createSemanticKpiCard("NEEDS REVIEW", kpiNeedsReview, "Ambiguous or partial sidecars", UiIcons.ALERT);
+        VBox card4 = createSemanticKpiCard("FAILED", kpiFailed, "Corrupted or missing tags", UiIcons.X);
 
         HBox.setHgrow(card1, Priority.ALWAYS);
         HBox.setHgrow(card2, Priority.ALWAYS);
@@ -210,10 +211,12 @@ public class TakeoutRestoreView extends VBox {
         return deck;
     }
 
-    private VBox createSemanticKpiCard(String labelText, Label valLabel, String iconSvg, String colorHex) {
+    private VBox createSemanticKpiCard(String labelText, Label valLabel, String subText, String iconSvg) {
         VBox card = new VBox(4);
         card.getStyleClass().add("kpi-card");
-        card.setStyle("-fx-background-radius: 8; -fx-border-radius: 8; -fx-border-width: 1; -fx-padding: 10 14 10 14;");
+        card.setPadding(new Insets(10, 16, 10, 16));
+        card.setPrefHeight(88);
+        card.setMinHeight(88);
 
         HBox topRow = new HBox(8);
         topRow.setAlignment(Pos.CENTER_LEFT);
@@ -225,15 +228,19 @@ public class TakeoutRestoreView extends VBox {
         Region sp = new Region();
         HBox.setHgrow(sp, Priority.ALWAYS);
 
-        Label icon = new Label();
-        icon.setGraphic(UiIcons.createSvgIcon(iconSvg, 13, colorHex));
+        Node icon = UiIcons.createSvgIcon(iconSvg, 13, "currentColor");
+        icon.setOpacity(0.5);
 
         topRow.getChildren().addAll(lbl, sp, icon);
 
-        valLabel.getStyleClass().add("kpi-value");
-        valLabel.setStyle(String.format("-fx-font-size: 24px; -fx-font-weight: 800; -fx-text-fill: %s;", colorHex));
+        valLabel.getStyleClass().setAll("kpi-value", "text-primary");
+        valLabel.setStyle("-fx-font-size: 24px; -fx-font-weight: 700;");
 
-        card.getChildren().addAll(topRow, valLabel);
+        Label sub = new Label(subText);
+        sub.getStyleClass().add("text-muted");
+        sub.setStyle("-fx-font-size: 12px;");
+
+        card.getChildren().addAll(topRow, valLabel, sub);
         return card;
     }
 
@@ -247,21 +254,23 @@ public class TakeoutRestoreView extends VBox {
         horizSplit.setOrientation(javafx.geometry.Orientation.HORIZONTAL);
         VBox.setVgrow(horizSplit, Priority.ALWAYS);
 
-        // Left Column: Operations Pipeline
+        // Left Column: Operations Pipeline + KPI Cards
         VBox leftCol = new VBox(8);
         VBox.setVgrow(leftCol, Priority.ALWAYS);
+        leftCol.setMinWidth(480);
 
+        HBox kpiDeck = buildKpiCardsDeck();
         VBox srcBox = buildSourceBox();
         VBox dstBox = buildDestinationBox();
         HBox actBox = buildActionButtonsBox();
         VBox progBox = buildProgressTelemetryBox();
 
-        leftCol.getChildren().addAll(srcBox, dstBox, actBox, progBox);
+        leftCol.getChildren().addAll(kpiDeck, new Separator(), srcBox, new Separator(), dstBox, new Separator(), actBox, progBox);
 
-        // Right Column: Restoration Options
+        // Right Column: Restoration Options (full vertical height)
         VBox rightCol = new VBox(8);
         VBox.setVgrow(rightCol, Priority.ALWAYS);
-        rightCol.setPrefWidth(320);
+        rightCol.setPrefWidth(330);
         rightCol.setMinWidth(280);
         rightCol.getChildren().add(buildRestorationControlsBox());
 
@@ -273,20 +282,18 @@ public class TakeoutRestoreView extends VBox {
 
     private VBox buildSourceBox() {
         VBox box = new VBox(6);
-        box.getStyleClass().add("inner-container");
-        box.setStyle("-fx-background-radius: 6; -fx-border-radius: 6; -fx-border-width: 1; -fx-padding: 8 12 8 12;");
+        box.setStyle("-fx-padding: 4 0 4 0;");
 
         HBox headerRow = new HBox(8);
         headerRow.setAlignment(Pos.CENTER_LEFT);
 
         Label title = new Label("Source Takeout Archive");
-        title.setStyle("-fx-font-size: 12px; -fx-font-weight: 700;");
+        title.setStyle("-fx-font-size: 13.5px; -fx-font-weight: 600;");
         title.getStyleClass().add("card-title");
 
         Region sp = new Region();
         HBox.setHgrow(sp, Priority.ALWAYS);
 
-        sourceMetaLabel.setStyle("-fx-font-size: 11px; -fx-font-weight: 500;");
         sourceMetaLabel.getStyleClass().add("text-muted");
 
         headerRow.getChildren().addAll(title, sp, sourceMetaLabel);
@@ -295,11 +302,11 @@ public class TakeoutRestoreView extends VBox {
         row.setAlignment(Pos.CENTER_LEFT);
 
         Button btnFolder = new Button("Browse Folder");
-        btnFolder.getStyleClass().add("btn-primary");
+        btnFolder.getStyleClass().add("btn-secondary");
         btnFolder.setGraphic(UiIcons.createSvgIcon(UiIcons.FOLDER, 14, "currentColor"));
         btnFolder.setGraphicTextGap(7);
         btnFolder.setMinWidth(Region.USE_PREF_SIZE);
-        btnFolder.setStyle("-fx-font-size: 12px; -fx-font-weight: 700; -fx-pref-height: 36px; -fx-padding: 0 14 0 14;");
+        btnFolder.setStyle("-fx-font-size: 13.5px; -fx-font-weight: 500; -fx-pref-height: 36px; -fx-padding: 0 16 0 16;");
         btnFolder.setOnAction(e -> chooseSourceFolder());
 
         Button btnZip = new Button("ZIP Archive");
@@ -307,7 +314,7 @@ public class TakeoutRestoreView extends VBox {
         btnZip.setGraphic(UiIcons.createSvgIcon(UiIcons.ZIP, 14, "currentColor"));
         btnZip.setGraphicTextGap(7);
         btnZip.setMinWidth(Region.USE_PREF_SIZE);
-        btnZip.setStyle("-fx-font-size: 12px; -fx-font-weight: 600; -fx-pref-height: 36px; -fx-padding: 0 14 0 14;");
+        btnZip.setStyle("-fx-font-size: 13.5px; -fx-font-weight: 500; -fx-pref-height: 36px; -fx-padding: 0 14 0 14;");
         btnZip.setOnAction(e -> chooseSourceZip());
 
         HBox pathDisplay = new HBox(8);
@@ -317,15 +324,15 @@ public class TakeoutRestoreView extends VBox {
         pathDisplay.setStyle("-fx-border-radius: 6; -fx-background-radius: 6; -fx-border-width: 1; -fx-padding: 4 10 4 10; -fx-pref-height: 36px;");
 
         Label pathIcon = new Label();
-        pathIcon.setGraphic(UiIcons.createSvgIcon(UiIcons.FOLDER, 13, "#71717A"));
+        pathIcon.setGraphic(UiIcons.createSvgIcon(UiIcons.FOLDER, 13, "currentColor"));
 
-        sourcePathLabel.setStyle("-fx-font-size: 12px;");
+        sourcePathLabel.setStyle("-fx-font-size: 12.5px; -fx-font-family: 'JetBrains Mono', 'Cascadia Code', 'Consolas', monospace;");
         sourcePathLabel.getStyleClass().add("text-secondary");
         sourcePathLabel.setTextOverrun(OverrunStyle.CENTER_ELLIPSIS);
         HBox.setHgrow(sourcePathLabel, Priority.ALWAYS);
 
         btnSourceClear.getStyleClass().add("btn-ghost");
-        btnSourceClear.setStyle("-fx-font-size: 11px; -fx-font-weight: 700; -fx-padding: 2 6 2 6; -fx-cursor: hand; -fx-text-fill: #A1A1AA;");
+        btnSourceClear.setStyle("-fx-font-size: 12px; -fx-font-weight: 600; -fx-padding: 2 6 2 6; -fx-cursor: hand;");
         btnSourceClear.setVisible(false);
         btnSourceClear.setOnAction(e -> clearSource());
 
@@ -362,20 +369,18 @@ public class TakeoutRestoreView extends VBox {
 
     private VBox buildDestinationBox() {
         VBox box = new VBox(6);
-        box.getStyleClass().add("inner-container");
-        box.setStyle("-fx-background-radius: 6; -fx-border-radius: 6; -fx-border-width: 1; -fx-padding: 8 12 8 12;");
+        box.setStyle("-fx-padding: 4 0 4 0;");
 
         HBox headerRow = new HBox(8);
         headerRow.setAlignment(Pos.CENTER_LEFT);
 
         Label title = new Label("Restored Destination");
-        title.setStyle("-fx-font-size: 12px; -fx-font-weight: 700;");
+        title.setStyle("-fx-font-size: 13.5px; -fx-font-weight: 600;");
         title.getStyleClass().add("card-title");
 
         Region sp = new Region();
         HBox.setHgrow(sp, Priority.ALWAYS);
 
-        outputMetaLabel.setStyle("-fx-font-size: 11px; -fx-font-weight: 500;");
         outputMetaLabel.getStyleClass().add("text-muted");
 
         headerRow.getChildren().addAll(title, sp, outputMetaLabel);
@@ -388,7 +393,7 @@ public class TakeoutRestoreView extends VBox {
         btnDest.setGraphic(UiIcons.createSvgIcon(UiIcons.OUTPUT_FOLDER, 14, "currentColor"));
         btnDest.setGraphicTextGap(7);
         btnDest.setMinWidth(Region.USE_PREF_SIZE);
-        btnDest.setStyle("-fx-font-size: 12px; -fx-font-weight: 600; -fx-pref-height: 36px; -fx-padding: 0 14 0 14;");
+        btnDest.setStyle("-fx-font-size: 13.5px; -fx-font-weight: 500; -fx-pref-height: 36px; -fx-padding: 0 16 0 16;");
         btnDest.setOnAction(e -> chooseDestinationFolder());
 
         HBox pathDisplay = new HBox(8);
@@ -398,15 +403,15 @@ public class TakeoutRestoreView extends VBox {
         pathDisplay.setStyle("-fx-border-radius: 6; -fx-background-radius: 6; -fx-border-width: 1; -fx-padding: 4 10 4 10; -fx-pref-height: 36px;");
 
         Label pathIcon = new Label();
-        pathIcon.setGraphic(UiIcons.createSvgIcon(UiIcons.OUTPUT_FOLDER, 13, "#71717A"));
+        pathIcon.setGraphic(UiIcons.createSvgIcon(UiIcons.OUTPUT_FOLDER, 13, "currentColor"));
 
-        outputPathLabel.setStyle("-fx-font-size: 12px;");
+        outputPathLabel.setStyle("-fx-font-size: 12.5px; -fx-font-family: 'JetBrains Mono', 'Cascadia Code', 'Consolas', monospace;");
         outputPathLabel.getStyleClass().add("text-secondary");
         outputPathLabel.setTextOverrun(OverrunStyle.CENTER_ELLIPSIS);
         HBox.setHgrow(outputPathLabel, Priority.ALWAYS);
 
         btnDestClear.getStyleClass().add("btn-ghost");
-        btnDestClear.setStyle("-fx-font-size: 11px; -fx-font-weight: 700; -fx-padding: 2 6 2 6; -fx-cursor: hand; -fx-text-fill: #A1A1AA;");
+        btnDestClear.setStyle("-fx-font-size: 12px; -fx-font-weight: 600; -fx-padding: 2 6 2 6; -fx-cursor: hand;");
         btnDestClear.setVisible(false);
         btnDestClear.setOnAction(e -> clearDestination());
 
@@ -417,8 +422,8 @@ public class TakeoutRestoreView extends VBox {
         box.setOnDragOver(event -> {
             if (event.getGestureSource() != box && event.getDragboard().hasFiles()) {
                 event.acceptTransferModes(TransferMode.COPY);
-                box.setStyle("-fx-background-color: rgba(34, 197, 94, 0.08); -fx-background-radius: 6; "
-                        + "-fx-border-color: #22C55E; -fx-border-radius: 6; -fx-border-width: 1; -fx-border-style: dashed; -fx-padding: 8 12 8 12;");
+                box.setStyle("-fx-background-color: rgba(54, 201, 143, 0.08); -fx-background-radius: 6; "
+                        + "-fx-border-color: #36C98F; -fx-border-radius: 6; -fx-border-width: 1; -fx-border-style: dashed; -fx-padding: 8 12 8 12;");
             }
             event.consume();
         });
@@ -445,21 +450,20 @@ public class TakeoutRestoreView extends VBox {
     private HBox buildActionButtonsBox() {
         HBox row = new HBox(8);
         row.setAlignment(Pos.CENTER_LEFT);
-        row.getStyleClass().add("inner-container");
-        row.setStyle("-fx-background-radius: 6; -fx-border-radius: 6; -fx-border-width: 1; -fx-padding: 8 12 8 12;");
+        row.setStyle("-fx-padding: 4 0 4 0;");
 
         btnStart.getStyleClass().add("btn-primary");
         btnStart.setGraphic(UiIcons.createSvgIcon(UiIcons.PLAY, 14, "currentColor"));
         btnStart.setGraphicTextGap(8);
         btnStart.setMinWidth(Region.USE_PREF_SIZE);
-        btnStart.setStyle("-fx-font-size: 13px; -fx-font-weight: 700; -fx-pref-height: 36px; -fx-padding: 0 18 0 18; -fx-background-radius: 6;");
+        btnStart.setStyle("-fx-font-size: 13.5px; -fx-font-weight: 600; -fx-pref-height: 36px; -fx-padding: 0 20 0 20; -fx-background-radius: 6;");
         btnStart.setOnAction(e -> handleStart());
 
         btnScan.getStyleClass().add("btn-secondary");
         btnScan.setGraphic(UiIcons.createSvgIcon(UiIcons.SEARCH, 13, "currentColor"));
         btnScan.setGraphicTextGap(7);
         btnScan.setMinWidth(Region.USE_PREF_SIZE);
-        btnScan.setStyle("-fx-font-size: 12px; -fx-font-weight: 600; -fx-pref-height: 36px; -fx-padding: 0 14 0 14; -fx-background-radius: 6;");
+        btnScan.setStyle("-fx-font-size: 13.5px; -fx-font-weight: 500; -fx-pref-height: 36px; -fx-padding: 0 14 0 14; -fx-background-radius: 6;");
         btnScan.setTooltip(new Tooltip("Scan and match JSON sidecars across archive without writing to disk."));
         btnScan.setOnAction(e -> handleScan());
 
@@ -467,7 +471,7 @@ public class TakeoutRestoreView extends VBox {
         btnPause.setGraphic(UiIcons.createSvgIcon(UiIcons.PAUSE, 12, "currentColor"));
         btnPause.setGraphicTextGap(6);
         btnPause.setMinWidth(Region.USE_PREF_SIZE);
-        btnPause.setStyle("-fx-font-size: 12px; -fx-font-weight: 600; -fx-pref-height: 36px; -fx-padding: 0 12 0 12; -fx-background-radius: 6;");
+        btnPause.setStyle("-fx-font-size: 13.5px; -fx-font-weight: 500; -fx-pref-height: 36px; -fx-padding: 0 12 0 12; -fx-background-radius: 6;");
         btnPause.setDisable(true);
         btnPause.setOnAction(e -> handlePause());
 
@@ -476,7 +480,7 @@ public class TakeoutRestoreView extends VBox {
         btnCancel.setGraphic(UiIcons.createSvgIcon(UiIcons.STOP, 11, "currentColor"));
         btnCancel.setGraphicTextGap(6);
         btnCancel.setMinWidth(Region.USE_PREF_SIZE);
-        btnCancel.setStyle("-fx-font-size: 12px; -fx-font-weight: 600; -fx-pref-height: 36px; -fx-padding: 0 12 0 12; -fx-background-radius: 6;");
+        btnCancel.setStyle("-fx-font-size: 13.5px; -fx-font-weight: 500; -fx-pref-height: 36px; -fx-padding: 0 12 0 12; -fx-background-radius: 6;");
         btnCancel.setDisable(true);
         btnCancel.setOnAction(e -> handleCancel());
 
@@ -484,7 +488,7 @@ public class TakeoutRestoreView extends VBox {
         btnOpenOutput.setGraphic(UiIcons.createSvgIcon(UiIcons.OUTPUT_FOLDER, 13, "currentColor"));
         btnOpenOutput.setGraphicTextGap(7);
         btnOpenOutput.setMinWidth(Region.USE_PREF_SIZE);
-        btnOpenOutput.setStyle("-fx-font-size: 12px; -fx-font-weight: 600; -fx-pref-height: 36px; -fx-padding: 0 12 0 12; -fx-background-radius: 6;");
+        btnOpenOutput.setStyle("-fx-font-size: 13.5px; -fx-font-weight: 500; -fx-pref-height: 36px; -fx-padding: 0 14 0 14; -fx-background-radius: 6;");
         btnOpenOutput.setOnAction(e -> handleOpenOutput());
 
         row.getChildren().addAll(btnStart, btnScan, btnPause, btnCancel, btnOpenOutput);
@@ -501,19 +505,18 @@ public class TakeoutRestoreView extends VBox {
 
         statusRow.getChildren().add(statusPulseDot);
 
-        operationStateLabel.setStyle("-fx-font-size: 12px; -fx-font-weight: 700;");
+        operationStateLabel.setStyle("-fx-font-size: 13px; -fx-font-weight: 600;");
         operationStateLabel.getStyleClass().add("text-primary");
         statusRow.getChildren().add(operationStateLabel);
 
         Region spacer = new Region();
         HBox.setHgrow(spacer, Priority.ALWAYS);
 
-        filesRatioLabel.setStyle("-fx-font-size: 12px; -fx-font-weight: 700; -fx-text-fill: #A78BFA; -fx-font-family: 'Consolas', monospace;");
+        filesRatioLabel.setStyle("-fx-font-size: 13px; -fx-font-weight: 700; -fx-font-family: 'JetBrains Mono', 'Cascadia Code', 'Consolas', monospace;"); filesRatioLabel.getStyleClass().add("brand-accent");
 
         statusRow.getChildren().addAll(spacer, filesRatioLabel);
 
-        currentFileLabel.setStyle("-fx-font-size: 11px; -fx-font-weight: 500;");
-        currentFileLabel.getStyleClass().add("text-muted");
+        currentFileLabel.getStyleClass().add("text-secondary");
         currentFileLabel.setTextOverrun(OverrunStyle.CENTER_ELLIPSIS);
 
         progressBar.setMaxWidth(Double.MAX_VALUE);
@@ -542,12 +545,14 @@ public class TakeoutRestoreView extends VBox {
         chip.getStyleClass().add("telemetry-chip");
 
         Label icon = new Label();
-        icon.setGraphic(UiIcons.createSvgIcon(iconSvg, 11, "#71717A"));
+        icon.setGraphic(UiIcons.createSvgIcon(iconSvg, 12, "currentColor"));
 
         Label name = new Label(label + ":");
         name.getStyleClass().add("telemetry-chip-label");
+        name.setStyle("-fx-font-size: 12px; -fx-font-weight: 600;");
 
         valLabel.getStyleClass().add("telemetry-chip-value");
+        valLabel.setStyle("-fx-font-family: 'JetBrains Mono', 'Cascadia Code', 'Consolas', monospace; -fx-font-size: 12.5px; -fx-font-weight: 700;");
 
         chip.getChildren().addAll(icon, name, valLabel);
         return chip;
@@ -562,18 +567,18 @@ public class TakeoutRestoreView extends VBox {
         HBox titleRow = new HBox(8);
         titleRow.setAlignment(Pos.CENTER_LEFT);
         Label title = new Label("RESTORATION OPTIONS");
-        title.setStyle("-fx-font-size: 11px; -fx-font-weight: 700; -fx-letter-spacing: 0.5px;");
+        title.setStyle("-fx-font-size: 12.5px; -fx-font-weight: 600; -fx-letter-spacing: 0.5px;");
         title.getStyleClass().add("card-title");
         titleRow.getChildren().add(title);
 
         // Group 1: Date & Timestamp Handling
         Label dateGroupLabel = new Label("Date & Timestamp Handling");
         dateGroupLabel.getStyleClass().add("text-muted");
-        dateGroupLabel.setStyle("-fx-font-size: 10px; -fx-font-weight: 700; -fx-text-transform: uppercase; -fx-padding: 6 0 2 0;");
+        dateGroupLabel.setStyle("-fx-font-size: 12px; -fx-font-weight: 700; -fx-text-transform: uppercase; -fx-padding: 8 0 4 0;"); dateGroupLabel.getStyleClass().add("section-sub-title");
 
         VBox dateBlock = new VBox(4);
         Label dateLbl = new Label("Fallback Date");
-        dateLbl.setStyle("-fx-font-size: 11px; -fx-font-weight: 500;");
+        dateLbl.setStyle("-fx-font-size: 13px; -fx-font-weight: 500;");
         dateLbl.getStyleClass().add("text-secondary");
 
         HBox dateRow = new HBox(6);
@@ -583,7 +588,7 @@ public class TakeoutRestoreView extends VBox {
         HBox.setHgrow(datePicker, Priority.ALWAYS);
 
         btnClearDate.getStyleClass().add("btn-ghost");
-        btnClearDate.setStyle("-fx-font-size: 11px; -fx-padding: 2 6 2 6; -fx-cursor: hand; -fx-text-fill: #A1A1AA;");
+        btnClearDate.setStyle("-fx-font-size: 12px; -fx-padding: 2 6 2 6; -fx-cursor: hand;");
         btnClearDate.setOnAction(e -> {
             datePicker.setValue(null);
             if (datePicker.getEditor() != null) datePicker.getEditor().clear();
@@ -592,21 +597,14 @@ public class TakeoutRestoreView extends VBox {
         dateRow.getChildren().addAll(datePicker, btnClearDate);
         dateBlock.getChildren().addAll(dateLbl, dateRow);
 
-        smartInterpolationCheck.setStyle("-fx-font-size: 12px; -fx-font-weight: 500;");
         smartInterpolationCheck.getStyleClass().add("text-primary");
 
         // Group 2: Output & Structure
         Label outputGroupLabel = new Label("Output & Structure");
-        outputGroupLabel.getStyleClass().add("text-muted");
-        outputGroupLabel.setStyle("-fx-font-size: 10px; -fx-font-weight: 700; -fx-text-transform: uppercase; -fx-padding: 8 0 2 0;");
+        outputGroupLabel.getStyleClass().addAll("section-sub-title", "text-muted");
 
-        organizeMonthCheck.setStyle("-fx-font-size: 12px; -fx-font-weight: 500;");
         organizeMonthCheck.getStyleClass().add("text-primary");
-
-        splitVolumesCheck.setStyle("-fx-font-size: 12px; -fx-font-weight: 500;");
         splitVolumesCheck.getStyleClass().add("text-primary");
-
-        keepAwakeCheck.setStyle("-fx-font-size: 12px; -fx-font-weight: 500;");
         keepAwakeCheck.getStyleClass().add("text-primary");
 
         Region spacer = new Region();
@@ -618,10 +616,10 @@ public class TakeoutRestoreView extends VBox {
         readinessCard.setStyle("-fx-border-radius: 6; -fx-background-radius: 6; -fx-border-width: 1; -fx-padding: 8 10 8 10;");
 
         Label engineLabel = new Label("ExifTool v13.x Embedded • Ready");
-        engineLabel.setStyle("-fx-font-size: 11px; -fx-font-weight: 600;");
+        engineLabel.setStyle("-fx-font-size: 12px; -fx-font-weight: 600;");
         engineLabel.getStyleClass().add("text-primary");
 
-        storageStatusLabel.setStyle("-fx-font-size: 11px; -fx-font-weight: 500;");
+        storageStatusLabel.setStyle("-fx-font-size: 12px; -fx-font-weight: 500;"); storageStatusLabel.getStyleClass().setAll("text-secondary");
         storageStatusLabel.getStyleClass().add("text-muted");
 
         readinessCard.getChildren().addAll(engineLabel, storageStatusLabel);
@@ -650,10 +648,10 @@ public class TakeoutRestoreView extends VBox {
         topRow.setAlignment(Pos.CENTER_LEFT);
 
         Label termIcon = new Label();
-        termIcon.setGraphic(UiIcons.createSvgIcon(UiIcons.TERMINAL, 13, "#A78BFA"));
+        termIcon.setGraphic(UiIcons.createSvgIcon(UiIcons.TERMINAL, 13, "currentColor"));
 
         Label logsTitle = new Label("DIAGNOSTICS & LOGS");
-        logsTitle.setStyle("-fx-font-size: 11px; -fx-font-weight: 700; -fx-letter-spacing: 0.5px;");
+        logsTitle.setStyle("-fx-font-size: 12px; -fx-font-weight: 600; -fx-letter-spacing: 0.5px;");
         logsTitle.getStyleClass().add("card-title");
 
         HBox filterTabs = new HBox(4);
@@ -672,7 +670,7 @@ public class TakeoutRestoreView extends VBox {
 
         logSearchField.setPromptText("Filter logs...");
         logSearchField.getStyleClass().add("text-field");
-        logSearchField.setStyle("-fx-font-size: 11px; -fx-pref-height: 26px; -fx-pref-width: 140px;");
+        logSearchField.setStyle("-fx-font-size: 12.5px; -fx-pref-height: 28px; -fx-pref-width: 150px;");
         logSearchField.textProperty().addListener((obs, oldV, newV) -> applyLogFilter());
 
         Region spacer = new Region();
@@ -681,23 +679,23 @@ public class TakeoutRestoreView extends VBox {
         Button btnExport = new Button("Export");
         btnExport.getStyleClass().add("btn-ghost");
         btnExport.setGraphic(UiIcons.createSvgIcon(UiIcons.DOWNLOAD, 12, "currentColor"));
-        btnExport.setStyle("-fx-font-size: 11px; -fx-font-weight: 500; -fx-padding: 3 6 3 6; -fx-cursor: hand;");
+        btnExport.setStyle("-fx-font-size: 12.5px; -fx-font-weight: 500; -fx-padding: 4 8 4 8; -fx-cursor: hand;");
         btnExport.setOnAction(e -> exportLogsToFile());
 
         Button btnCopy = new Button("Copy");
         btnCopy.getStyleClass().add("btn-ghost");
         btnCopy.setGraphic(UiIcons.createSvgIcon(UiIcons.COPY, 12, "currentColor"));
-        btnCopy.setStyle("-fx-font-size: 11px; -fx-font-weight: 500; -fx-padding: 3 6 3 6; -fx-cursor: hand;");
+        btnCopy.setStyle("-fx-font-size: 12.5px; -fx-font-weight: 500; -fx-padding: 4 8 4 8; -fx-cursor: hand;");
         btnCopy.setOnAction(e -> copyLogsToClipboard());
 
         Button btnClear = new Button("Clear");
         btnClear.getStyleClass().add("btn-ghost");
         btnClear.setGraphic(UiIcons.createSvgIcon(UiIcons.TRASH, 12, "currentColor"));
-        btnClear.setStyle("-fx-font-size: 11px; -fx-font-weight: 500; -fx-padding: 3 6 3 6; -fx-cursor: hand;");
+        btnClear.setStyle("-fx-font-size: 12.5px; -fx-font-weight: 500; -fx-padding: 4 8 4 8; -fx-cursor: hand;");
         btnClear.setOnAction(e -> clearLogs());
 
         btnCollapseLogs.getStyleClass().add("btn-ghost");
-        btnCollapseLogs.setStyle("-fx-font-size: 11px; -fx-font-weight: 500; -fx-padding: 3 6 3 6; -fx-cursor: hand;");
+        btnCollapseLogs.setStyle("-fx-font-size: 12.5px; -fx-font-weight: 500; -fx-padding: 4 8 4 8; -fx-cursor: hand;");
         btnCollapseLogs.setOnAction(e -> toggleCollapseLogs());
 
         topRow.getChildren().addAll(termIcon, logsTitle, filterTabs, logSearchField, spacer, btnExport, btnCopy, btnClear, btnCollapseLogs);
@@ -710,12 +708,11 @@ public class TakeoutRestoreView extends VBox {
         emptyIconCircle.getChildren().add(UiIcons.createSvgIcon(UiIcons.TERMINAL, 18, "#A78BFA"));
 
         Label emptyTitle = new Label("No restoration activity yet");
-        emptyTitle.setStyle("-fx-font-size: 13px; -fx-font-weight: 600;");
         emptyTitle.getStyleClass().add("empty-state-title");
 
         Label emptySub = new Label("Real-time telemetry, JSON sidecar matching, and EXIF diagnostics will appear here once the process starts.");
-        emptySub.setStyle("-fx-font-size: 11px; -fx-font-weight: 400; -fx-text-alignment: center;");
         emptySub.getStyleClass().add("empty-state-sub");
+        emptySub.setStyle("-fx-text-alignment: center;");
 
         logEmptyStateBox.getChildren().addAll(emptyIconCircle, emptyTitle, emptySub);
 
@@ -733,27 +730,26 @@ public class TakeoutRestoreView extends VBox {
                     row.setAlignment(Pos.CENTER_LEFT);
 
                     Label timeLabel = new Label(item.timestamp);
-                    timeLabel.setStyle("-fx-font-family: 'Consolas', 'Courier New', monospace; -fx-font-size: 11px; -fx-text-fill: #71717A;");
+                    timeLabel.setStyle("-fx-font-family: 'JetBrains Mono', 'Cascadia Code', 'Consolas', monospace; -fx-font-size: 12px;"); timeLabel.getStyleClass().add("timestamp");
 
                     Label badge = new Label(item.level.toUpperCase());
                     badge.getStyleClass().add("log-badge");
                     if ("SUCCESS".equalsIgnoreCase(item.level)) {
                         badge.getStyleClass().add("log-badge-success");
-                        badge.setStyle("-fx-background-color: rgba(34, 197, 94, 0.15); -fx-text-fill: #22C55E; -fx-font-size: 9px; -fx-font-weight: 800; -fx-padding: 1 6 1 6; -fx-background-radius: 3;");
+                        badge.setStyle("-fx-background-color: rgba(54, 201, 143, 0.15); -fx-text-fill: #36C98F; -fx-font-size: 10px; -fx-font-weight: 600; -fx-padding: 1 6 1 6; -fx-background-radius: 3;");
                     } else if ("ERROR".equalsIgnoreCase(item.level)) {
                         badge.getStyleClass().add("log-badge-error");
-                        badge.setStyle("-fx-background-color: rgba(239, 68, 68, 0.15); -fx-text-fill: #EF4444; -fx-font-size: 9px; -fx-font-weight: 800; -fx-padding: 1 6 1 6; -fx-background-radius: 3;");
+                        badge.setStyle("-fx-background-color: rgba(248, 113, 113, 0.15); -fx-text-fill: #F87171; -fx-font-size: 10px; -fx-font-weight: 600; -fx-padding: 1 6 1 6; -fx-background-radius: 3;");
                     } else if ("WARN".equalsIgnoreCase(item.level)) {
                         badge.getStyleClass().add("log-badge-warn");
-                        badge.setStyle("-fx-background-color: rgba(245, 158, 11, 0.15); -fx-text-fill: #F59E0B; -fx-font-size: 9px; -fx-font-weight: 800; -fx-padding: 1 6 1 6; -fx-background-radius: 3;");
+                        badge.setStyle("-fx-background-color: rgba(245, 185, 66, 0.15); -fx-text-fill: #F5B942; -fx-font-size: 10px; -fx-font-weight: 600; -fx-padding: 1 6 1 6; -fx-background-radius: 3;");
                     } else {
                         badge.getStyleClass().add("log-badge-info");
-                        badge.setStyle("-fx-background-color: rgba(167, 139, 250, 0.15); -fx-text-fill: #A78BFA; -fx-font-size: 9px; -fx-font-weight: 800; -fx-padding: 1 6 1 6; -fx-background-radius: 3;");
+                        badge.setStyle("-fx-background-color: rgba(167, 139, 250, 0.15); -fx-text-fill: #A78BFA; -fx-font-size: 10px; -fx-font-weight: 600; -fx-padding: 1 6 1 6; -fx-background-radius: 3;");
                     }
 
                     Label msgLabel = new Label(item.message);
-                    msgLabel.setStyle("-fx-font-size: 12px; -fx-font-weight: 500;");
-                    msgLabel.getStyleClass().add("text-primary");
+                    msgLabel.getStyleClass().addAll("log-entry", "text-primary");
                     msgLabel.setWrapText(true);
                     HBox.setHgrow(msgLabel, Priority.ALWAYS);
 
@@ -795,17 +791,16 @@ public class TakeoutRestoreView extends VBox {
     }
 
     private void styleTabButton(Button btn, String filterKey, boolean active) {
-        btn.getStyleClass().removeAll("log-tab-btn", "log-tab-btn-active");
-        btn.getStyleClass().add("log-tab-btn");
+        btn.getStyleClass().removeAll("log-tab-btn-active");
+        if (!btn.getStyleClass().contains("log-tab-btn")) {
+            btn.getStyleClass().add("log-tab-btn");
+        }
         if (active) {
             btn.getStyleClass().add("log-tab-btn-active");
-            btn.setStyle("-fx-background-color: rgba(167, 139, 250, 0.16); -fx-text-fill: #A78BFA; -fx-font-weight: 700; "
-                    + "-fx-font-size: 11px; -fx-padding: 3 8 3 8; -fx-background-radius: 4;");
-        } else {
-            btn.setStyle("-fx-background-color: transparent; -fx-text-fill: #A1A1AA; -fx-font-weight: 500; "
-                    + "-fx-font-size: 11px; -fx-padding: 3 8 3 8; -fx-background-radius: 4;");
         }
+        btn.setStyle("");
     }
+    
 
     private void setLogFilter(String filterKey) {
         this.currentLogFilter = filterKey;
@@ -928,6 +923,7 @@ public class TakeoutRestoreView extends VBox {
         btnSourceClear.setVisible(true);
 
         sourceMetaLabel.setText("Scanning archive...");
+        updateButtonStates();
         new Thread(() -> {
             try {
                 if (file.isFile() && file.getName().toLowerCase().endsWith(".zip")) {
@@ -957,6 +953,7 @@ public class TakeoutRestoreView extends VBox {
         sourcePathLabel.getStyleClass().add("text-secondary");
         sourceMetaLabel.setText("Awaiting selection • Folder or .zip");
         btnSourceClear.setVisible(false);
+        updateButtonStates();
     }
 
     private void chooseDestinationFolder() {
@@ -975,6 +972,7 @@ public class TakeoutRestoreView extends VBox {
         outputPathLabel.getStyleClass().add("text-primary");
         outputMetaLabel.setText("Destination selected");
         btnDestClear.setVisible(true);
+        updateButtonStates();
 
         try {
             long freeBytes = file.getUsableSpace();
@@ -990,6 +988,7 @@ public class TakeoutRestoreView extends VBox {
         outputPathLabel.getStyleClass().add("text-secondary");
         outputMetaLabel.setText("");
         btnDestClear.setVisible(false);
+        updateButtonStates();
         storageStatusLabel.setText("Target Drive: Select output folder to verify capacity");
     }
 
@@ -1266,7 +1265,7 @@ public class TakeoutRestoreView extends VBox {
     }
 
     private void updateButtonStates() {
-        btnStart.setDisable(isRunning);
+        btnStart.setDisable(isRunning || selectedSource == null || selectedOutput == null);
         btnScan.setDisable(isRunning);
         btnPause.setDisable(!isRunning);
         btnCancel.setDisable(!isRunning);
@@ -1345,6 +1344,22 @@ public class TakeoutRestoreView extends VBox {
                     kpiRestored.setText(String.valueOf(restored));
                     kpiNeedsReview.setText(String.valueOf(unmatched));
                     kpiFailed.setText(String.valueOf(errors));
+
+                    if (restored > 0) {
+                        kpiRestored.getStyleClass().setAll("kpi-value", "kpi-value-green");
+                    } else {
+                        kpiRestored.getStyleClass().setAll("kpi-value", "text-primary");
+                    }
+                    if (unmatched > 0) {
+                        kpiNeedsReview.getStyleClass().setAll("kpi-value", "kpi-value-amber");
+                    } else {
+                        kpiNeedsReview.getStyleClass().setAll("kpi-value", "text-primary");
+                    }
+                    if (errors > 0) {
+                        kpiFailed.getStyleClass().setAll("kpi-value", "kpi-value-red");
+                    } else {
+                        kpiFailed.getStyleClass().setAll("kpi-value", "text-primary");
+                    }
                 });
             }
         });

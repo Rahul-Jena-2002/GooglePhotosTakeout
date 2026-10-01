@@ -77,8 +77,8 @@ public class ExifViewerFxView extends VBox {
     private final StackPane previewContainer = new StackPane();
     private final ImageView previewImageView = new ImageView();
     private final VBox emptyPreviewBox;
-    private final Label previewNameLabel = new Label("No image selected");
-    private final Label previewMetaLabel = new Label("Select a photo to inspect its details.");
+    private final Label previewNameLabel = new Label("");
+    private final Label previewMetaLabel = new Label("");
     private final Label badgeExif = createBadge("EXIF —", false);
     private final Label badgeGps = createBadge("GPS —", false);
     private final Label badgeIptc = createBadge("IPTC —", false);
@@ -114,8 +114,8 @@ public class ExifViewerFxView extends VBox {
         this.emptyPreviewBox = buildEmptyPreview();
 
         getStyleClass().add("workspace-view");
-        setSpacing(14);
-        setPadding(new Insets(16, 20, 16, 20));
+        setSpacing(16);
+        setPadding(new Insets(24));
         VBox.setVgrow(this, Priority.ALWAYS);
 
         // 1. Header
@@ -146,16 +146,15 @@ public class ExifViewerFxView extends VBox {
         HBox header = new HBox(12);
         header.setAlignment(Pos.CENTER_LEFT);
 
-        Node icon = UiIcons.createSvgIcon(UiIcons.EYE, 22, "#A78BFA");
+        StackPane iconTile = new StackPane(UiIcons.createSvgIcon(UiIcons.EYE, 16, "currentColor"));
+        iconTile.getStyleClass().add("header-icon-tile");
 
         VBox titleBox = new VBox(2);
         Label title = new Label("Photo Details");
         title.getStyleClass().addAll("page-title", "header-title");
-        title.setStyle("-fx-font-size: 24px; -fx-font-weight: 700;");
 
         Label subtitle = new Label("Inspect image properties, camera settings and metadata.");
         subtitle.getStyleClass().addAll("page-description", "header-subtitle");
-        subtitle.setStyle("-fx-font-size: 13px;");
         titleBox.getChildren().addAll(title, subtitle);
 
         Region spacer = new Region();
@@ -168,7 +167,7 @@ public class ExifViewerFxView extends VBox {
         btnBrowse.setStyle("-fx-font-size: 13px; -fx-font-weight: 600; -fx-pref-height: 36px; -fx-padding: 6 16; -fx-cursor: hand;");
         btnBrowse.setOnAction(e -> chooseFile());
 
-        header.getChildren().addAll(icon, titleBox, spacer, btnBrowse);
+        header.getChildren().addAll(iconTile, titleBox, spacer, btnBrowse);
         return header;
     }
 
@@ -183,7 +182,7 @@ public class ExifViewerFxView extends VBox {
         previewHeader.setAlignment(Pos.CENTER_LEFT);
 
         Label lblSection = new Label("IMAGE PREVIEW");
-        lblSection.setStyle("-fx-font-size: 11px; -fx-font-weight: 700; -fx-text-fill: #A78BFA; -fx-letter-spacing: 0.5px;");
+        lblSection.setStyle("-fx-font-size: 12px; -fx-font-weight: 700; -fx-letter-spacing: 0.5px;"); lblSection.getStyleClass().add("section-sub-title");
 
         Region spacer = new Region();
         HBox.setHgrow(spacer, Priority.ALWAYS);
@@ -194,7 +193,7 @@ public class ExifViewerFxView extends VBox {
         // Preview Box with Clipping Mask
         previewContainer.setMinHeight(240);
         previewContainer.setPrefHeight(270);
-        previewContainer.setStyle("-fx-background-color: rgba(0,0,0,0.25); -fx-background-radius: 8; -fx-border-color: rgba(255,255,255,0.08); -fx-border-radius: 8;");
+        previewContainer.getStyleClass().add("exif-preview-placeholder");
         previewContainer.setAlignment(Pos.CENTER);
 
         Rectangle clip = new Rectangle();
@@ -217,14 +216,14 @@ public class ExifViewerFxView extends VBox {
         previewNameLabel.setStyle("-fx-font-size: 14px; -fx-font-weight: 700;"); previewNameLabel.getStyleClass().add("text-primary");
         previewNameLabel.setWrapText(true);
 
-        previewMetaLabel.setStyle("-fx-font-size: 12px; -fx-text-fill: #A1A1AA;");
+        previewMetaLabel.setStyle("-fx-font-size: 12.5px; -fx-font-weight: 500;"); previewMetaLabel.getStyleClass().add("text-secondary");
         previewMetaLabel.setWrapText(true);
         fileInfoBox.getChildren().addAll(previewNameLabel, previewMetaLabel);
 
         // Completeness Badges Card
         VBox compBox = new VBox(6);
         Label compTitle = new Label("METADATA STATUS");
-        compTitle.setStyle("-fx-font-size: 10px; -fx-font-weight: 700; -fx-text-fill: #71717A; -fx-letter-spacing: 0.5px;");
+        compTitle.setStyle("-fx-font-size: 11.5px; -fx-font-weight: 700; -fx-letter-spacing: 0.5px;"); compTitle.getStyleClass().add("section-sub-title");
 
         HBox badgesBox = new HBox(6);
         badgesBox.getChildren().addAll(badgeExif, badgeGps, badgeIptc);
@@ -245,7 +244,7 @@ public class ExifViewerFxView extends VBox {
         title.setStyle("-fx-font-size: 15px; -fx-font-weight: 700;"); title.getStyleClass().add("card-title");
 
         Label subtitle = new Label("Select a photo to inspect its details.");
-        subtitle.setStyle("-fx-font-size: 12px; -fx-text-fill: #71717A;");
+        subtitle.setStyle("-fx-font-size: 13px;"); subtitle.getStyleClass().add("empty-state-sub");
         subtitle.setWrapText(true);
 
         Button btnBrowse = new Button("Browse Photo");
@@ -268,7 +267,7 @@ public class ExifViewerFxView extends VBox {
         btnZoomOut.setDisable(true);
         btnZoomOut.setOnAction(e -> applyZoom(Math.max(0.5, currentZoom - 0.25)));
 
-        zoomLevelLabel.setStyle("-fx-font-size: 10px; -fx-font-weight: 600; -fx-text-fill: #71717A; -fx-min-width: 34px; -fx-alignment: center;");
+        zoomLevelLabel.setStyle("-fx-font-size: 11.5px; -fx-font-weight: 600; -fx-min-width: 36px; -fx-alignment: center;"); zoomLevelLabel.getStyleClass().add("text-secondary");
 
         btnZoomIn.getStyleClass().add("btn-ghost");
         btnZoomIn.setStyle("-fx-font-size: 11px; -fx-font-weight: 700; -fx-padding: 2 7; -fx-background-radius: 4;");
@@ -321,7 +320,7 @@ public class ExifViewerFxView extends VBox {
         HBox topGps = new HBox(6);
         topGps.setAlignment(Pos.CENTER_LEFT);
         Label tGps = new Label("GPS LOCATION");
-        tGps.setStyle("-fx-font-size: 11px; -fx-font-weight: 700; -fx-text-fill: #71717A;");
+        tGps.setStyle("-fx-font-size: 11.5px; -fx-font-weight: 700;"); tGps.getStyleClass().add("section-sub-title");
         topGps.getChildren().addAll(UiIcons.createSvgIcon(UiIcons.GLOBE, 13, "#A78BFA"), tGps);
 
         gpsVal.setStyle("-fx-font-size: 16px; -fx-font-weight: 700;"); gpsVal.getStyleClass().add("text-primary");
@@ -357,14 +356,14 @@ public class ExifViewerFxView extends VBox {
         HBox top = new HBox(6);
         top.setAlignment(Pos.CENTER_LEFT);
         Label t = new Label(title);
-        t.setStyle("-fx-font-size: 11px; -fx-font-weight: 700; -fx-text-fill: #71717A;");
+        t.setStyle("-fx-font-size: 11.5px; -fx-font-weight: 700;"); t.getStyleClass().add("section-sub-title");
         top.getChildren().addAll(UiIcons.createSvgIcon(iconPath, 13, "#A78BFA"), t);
 
         valLabel.setStyle("-fx-font-size: 16px; -fx-font-weight: 700;"); valLabel.getStyleClass().add("text-primary");
         valLabel.setWrapText(true);
 
         Label s = new Label(sub);
-        s.setStyle("-fx-font-size: 11px; -fx-text-fill: #71717A;");
+        s.setStyle("-fx-font-size: 12px; -fx-font-weight: 500;"); s.getStyleClass().add("text-secondary");
 
         card.getChildren().addAll(top, valLabel, s);
         return card;
@@ -408,7 +407,7 @@ public class ExifViewerFxView extends VBox {
         HBox.setHgrow(searchField, Priority.ALWAYS);
         searchField.textProperty().addListener((obs, oldVal, newVal) -> updateFilter());
 
-        tagCountLabel.setStyle("-fx-font-size: 12px; -fx-font-weight: 700; -fx-text-fill: #A78BFA; -fx-min-width: 60px;");
+        tagCountLabel.setStyle("-fx-font-size: 12.5px; -fx-font-weight: 700; -fx-min-width: 60px;"); tagCountLabel.getStyleClass().add("brand-accent");
         searchRow.getChildren().addAll(searchField, tagCountLabel);
 
         // Setup TableView
@@ -424,7 +423,7 @@ public class ExifViewerFxView extends VBox {
         localBadge.getChildren().addAll(
                 UiIcons.createSvgIcon(UiIcons.SHIELD_CHECK, 13, "#10b981"),
                 new Label("100% Local ExifTool Inspection") {{
-                    setStyle("-fx-font-size: 12px; -fx-text-fill: #71717A; -fx-font-weight: 600;");
+                    setStyle("-fx-font-size: 12px; -fx-font-weight: 600;"); getStyleClass().add("text-secondary");
                 }}
         );
 
@@ -535,7 +534,7 @@ public class ExifViewerFxView extends VBox {
         title.setStyle("-fx-font-size: 15px; -fx-font-weight: 700;"); title.getStyleClass().add("card-title");
 
         Label sub = new Label("Choose a photo to explore its metadata.");
-        sub.setStyle("-fx-font-size: 12px; -fx-text-fill: #71717A;");
+        sub.setStyle("-fx-font-size: 13px;"); sub.getStyleClass().add("empty-state-sub");
 
         box.getChildren().addAll(searchIcon, title, sub);
         return box;

@@ -56,7 +56,8 @@ public class SidebarNav extends VBox {
         // 1. Workspace Section
         VBox wsSection = new VBox(4);
         Label wsLabel = new Label("WORKSPACE");
-        wsLabel.setStyle("-fx-font-size: 10px; -fx-font-weight: 700; -fx-text-fill: #71717a; -fx-padding: 4 8 4 8;");
+        wsLabel.getStyleClass().add("nav-section-label");
+        wsLabel.setStyle("-fx-font-size: 11px; -fx-font-weight: 700; -fx-letter-spacing: 0.5px; -fx-padding: 4 8 4 8;");
         wsSection.getChildren().add(wsLabel);
 
         Button btnOverview = createNavButton(WorkspaceType.DASHBOARD, UiIcons.LAYERS, "Overview");
@@ -66,7 +67,8 @@ public class SidebarNav extends VBox {
         // 2. Photo Tools Section
         VBox toolsSection = new VBox(4);
         Label toolsLabel = new Label("PHOTO TOOLS");
-        toolsLabel.setStyle("-fx-font-size: 10px; -fx-font-weight: 700; -fx-text-fill: #71717a; -fx-padding: 8 8 4 8;");
+        toolsLabel.getStyleClass().add("nav-section-label");
+        toolsLabel.setStyle("-fx-font-size: 11px; -fx-font-weight: 700; -fx-letter-spacing: 0.5px; -fx-padding: 8 8 4 8;");
         toolsSection.getChildren().add(toolsLabel);
 
         Button btnFixPhotos = createNavButton(WorkspaceType.TAKEOUT_RESTORE, UiIcons.RESTORE, "Restore Metadata");
@@ -87,7 +89,8 @@ public class SidebarNav extends VBox {
         VBox section = new VBox(4);
 
         Label label = new Label("SYSTEM");
-        label.setStyle("-fx-font-size: 10px; -fx-font-weight: 700; -fx-text-fill: #71717a; -fx-padding: 8 8 4 8;");
+        label.getStyleClass().add("nav-section-label");
+        label.setStyle("-fx-font-size: 11px; -fx-font-weight: 700; -fx-letter-spacing: 0.5px; -fx-padding: 8 8 4 8;");
         section.getChildren().add(label);
 
         Button btnHistory = createNavButton(WorkspaceType.HISTORY, UiIcons.HISTORY, "Activity History");
@@ -102,11 +105,12 @@ public class SidebarNav extends VBox {
         btn.getStyleClass().add("nav-button");
         btn.setMaxWidth(Double.MAX_VALUE);
         btn.setAlignment(Pos.CENTER_LEFT);
+        btn.setFocusTraversable(false);
 
-        var icon = UiIcons.createSvgIcon(iconSvg, 15, "currentColor");
+        var icon = UiIcons.createSvgIcon(iconSvg, 16, "currentColor");
         btn.setGraphic(icon);
         btn.setGraphicTextGap(10);
-        btn.setStyle("-fx-font-size: 13px; -fx-font-weight: 600; -fx-padding: 8 12 8 12; -fx-background-radius: 6;");
+        btn.setStyle("-fx-font-size: 13px; -fx-font-weight: 500; -fx-padding: 7 12 7 12; -fx-background-radius: 6;");
 
         btn.setOnAction(e -> select(type, true));
         navButtons.put(type, btn);
@@ -131,19 +135,19 @@ public class SidebarNav extends VBox {
     }
 
     private void buildPrivacyFooter() {
-        VBox trustCard = new VBox(4);
+        VBox trustCard = new VBox(5);
         trustCard.getStyleClass().add("trust-badge");
-        trustCard.setStyle("-fx-border-radius: 8; -fx-background-radius: 8; -fx-padding: 10 12 10 12;");
+        trustCard.setStyle("-fx-background-color: transparent; -fx-border-width: 0; -fx-padding: 8 10 8 10;");
 
-        HBox trustRow = new HBox(6);
+        HBox trustRow = new HBox(7);
         trustRow.setAlignment(Pos.CENTER_LEFT);
-        var lockIcon = UiIcons.createSvgIcon(UiIcons.LOCK, 12, "#10b981");
+        var lockIcon = UiIcons.createSvgIcon(UiIcons.LOCK, 13, "#10b981");
         Label trustTitle = new Label("Processed Locally");
-        trustTitle.setStyle("-fx-font-size: 11px; -fx-font-weight: 700; -fx-text-fill: #10b981;");
+        trustTitle.setStyle("-fx-font-size: 12px; -fx-font-weight: 600; -fx-text-fill: #10b981;");
         trustRow.getChildren().addAll(lockIcon, trustTitle);
 
         Label trustSubtitle = new Label("Your files remain on your device during local processing.");
-        trustSubtitle.setStyle("-fx-font-size: 10px; -fx-text-fill: #71717a;");
+        trustSubtitle.setStyle("-fx-font-size: 11px;"); trustSubtitle.getStyleClass().add("trust-badge-text");
         trustSubtitle.setWrapText(true);
 
         trustCard.getChildren().addAll(trustRow, trustSubtitle);

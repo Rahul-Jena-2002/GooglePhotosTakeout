@@ -95,8 +95,8 @@ public class DashboardFxView extends ScrollPane {
         setFitToWidth(true);
         setStyle("-fx-background: transparent; -fx-background-color: transparent;");
 
-        VBox content = new VBox(18);
-        content.setPadding(new Insets(20, 24, 24, 24));
+        VBox content = new VBox(16);
+        content.setPadding(new Insets(24));
 
         // 1. Photography Workspace Header
         content.getChildren().add(buildPageHeader());
@@ -131,6 +131,15 @@ public class DashboardFxView extends ScrollPane {
 
         setContent(content);
 
+        // Ensure scroll starts exactly at top with zero clipping offset
+        setVvalue(0.0);
+        Platform.runLater(() -> setVvalue(0.0));
+        sceneProperty().addListener((obs, oldScene, newScene) -> {
+            if (newScene != null) {
+                Platform.runLater(() -> setVvalue(0.0));
+            }
+        });
+
         // Update initial user info and stats
         updateUserInfo();
         if (userService != null) {
@@ -150,14 +159,15 @@ public class DashboardFxView extends ScrollPane {
         header.setAlignment(Pos.CENTER_LEFT);
         header.setPadding(new Insets(0, 0, 2, 0));
 
+        StackPane iconTile = new StackPane(UiIcons.createSvgIcon(UiIcons.LAYERS, 16, "currentColor"));
+        iconTile.getStyleClass().add("header-icon-tile");
+
         VBox textCol = new VBox(3);
         Label title = new Label("Workspace Overview");
-        title.getStyleClass().addAll("page-title", "text-primary");
-        title.setStyle("-fx-font-size: 22px; -fx-font-weight: 800;");
+        title.getStyleClass().addAll("page-title", "header-title");
 
         Label subtitle = new Label("Your photos, metadata, and archives in one local workspace.");
-        subtitle.getStyleClass().addAll("text-secondary");
-        subtitle.setStyle("-fx-font-size: 13px;");
+        subtitle.getStyleClass().addAll("page-description", "header-subtitle");
         textCol.getChildren().addAll(title, subtitle);
 
         Region spacer = new Region();
@@ -188,7 +198,7 @@ public class DashboardFxView extends ScrollPane {
         btnStartRestore.setStyle("-fx-font-size: 13px; -fx-font-weight: 700;");
         btnStartRestore.setOnAction(e -> navigateTo(WorkspaceType.TAKEOUT_RESTORE));
 
-        header.getChildren().addAll(textCol, spacer, btnCustomize, btnExifViewer, btnStartRestore);
+        header.getChildren().addAll(iconTile, textCol, spacer, btnCustomize, btnExifViewer, btnStartRestore);
         return header;
     }
 
@@ -365,9 +375,11 @@ public class DashboardFxView extends ScrollPane {
     }
 
     private VBox createKpiCard(String title, Label valueLabel, Label subLabel, String iconPath) {
-        VBox card = new VBox(6);
+        VBox card = new VBox(4);
         card.getStyleClass().addAll("glass-card", "kpi-card");
-        card.setPadding(new Insets(12, 16, 12, 16));
+        card.setPadding(new Insets(10, 16, 10, 16));
+        card.setPrefHeight(88);
+        card.setMinHeight(88);
 
         HBox topRow = new HBox();
         topRow.setAlignment(Pos.CENTER_LEFT);
@@ -384,8 +396,8 @@ public class DashboardFxView extends ScrollPane {
 
         topRow.getChildren().addAll(t, spacer, iconNode);
 
-        valueLabel.getStyleClass().add("kpi-value");
-        valueLabel.setStyle("-fx-font-size: 22px; -fx-font-weight: 800;");
+        valueLabel.getStyleClass().setAll("kpi-value", "text-primary");
+        valueLabel.setStyle("-fx-font-size: 24px; -fx-font-weight: 700;");
 
         subLabel.getStyleClass().add("text-muted");
         subLabel.setStyle("-fx-font-size: 12px;");
@@ -526,13 +538,14 @@ public class DashboardFxView extends ScrollPane {
             Runnable action) {
         VBox card = new VBox(8);
         card.getStyleClass().add("dash-tool-card");
+        card.setAlignment(Pos.TOP_LEFT);
 
         // Top Row: Icon Container + Title + Tag
         HBox top = new HBox(8);
         top.setAlignment(Pos.CENTER_LEFT);
 
-        StackPane iconBox = new StackPane(UiIcons.createSvgIcon(iconPath, 15, accentColor));
-        iconBox.getStyleClass().add("dash-icon-box");
+        StackPane iconBox = new StackPane(UiIcons.createSvgIcon(iconPath, 15, "currentColor"));
+        iconBox.getStyleClass().addAll("dash-icon-box", "header-icon-tile");
 
         Label titleLbl = new Label(title);
         titleLbl.getStyleClass().addAll("card-title", "text-primary");
@@ -542,7 +555,8 @@ public class DashboardFxView extends ScrollPane {
         HBox.setHgrow(spacer, Priority.ALWAYS);
 
         Label tagLbl = new Label(tag);
-        tagLbl.getStyleClass().add("dash-tag");
+        tagLbl.getStyleClass().add("badge-neutral");
+        tagLbl.setStyle("-fx-font-size: 11px; -fx-font-weight: 600; -fx-padding: 2 6 2 6; -fx-background-radius: 4;");
 
         boolean isRunning = false;
         for (var t : com.takeoutfix.task.TaskManager.getInstance().getActiveTasks()) {
@@ -555,10 +569,7 @@ public class DashboardFxView extends ScrollPane {
         if (isRunning) {
             tagLbl.setText("⚡ RUNNING");
             tagLbl.setStyle(
-                    "-fx-text-fill: #10b981; -fx-background-color: rgba(16, 185, 129, 0.15); -fx-font-weight: 800;");
-        } else {
-            tagLbl.setStyle(
-                    "-fx-text-fill: " + accentColor + "; -fx-background-color: " + toRgba(accentColor, 0.1) + ";");
+                    "-fx-text-fill: #10b981; -fx-background-color: rgba(16, 185, 129, 0.15); -fx-font-weight: 700; -fx-font-size: 11px; -fx-padding: 2 6 2 6; -fx-background-radius: 4;");
         }
 
         top.getChildren().addAll(iconBox, titleLbl, spacer, tagLbl);
@@ -566,14 +577,16 @@ public class DashboardFxView extends ScrollPane {
         // Description
         Label descLbl = new Label(desc);
         descLbl.setWrapText(true);
-        descLbl.setMinHeight(36);
+        descLbl.setMinHeight(40);
+        VBox.setVgrow(descLbl, Priority.ALWAYS);
         descLbl.getStyleClass().addAll("card-subtitle", "text-secondary");
         descLbl.setStyle("-fx-font-size: 12px; -fx-line-spacing: 3;");
 
         // Footer Action Hint
         HBox foot = new HBox();
+        foot.setAlignment(Pos.CENTER_LEFT);
         Label hint = new Label("Open Tool →");
-        hint.getStyleClass().add("text-muted");
+        hint.getStyleClass().add("brand-accent");
         hint.setStyle("-fx-font-size: 11px; -fx-font-weight: 700;");
         foot.getChildren().add(hint);
 
@@ -732,14 +745,14 @@ public class DashboardFxView extends ScrollPane {
             userAvatarLabel.setText(name.isEmpty() ? "U" : name.substring(0, 1).toUpperCase());
             userTierBadge.setText("PRO PLAN");
             userTierBadge.setStyle(
-                    "-fx-font-size: 10px; -fx-font-weight: 700; -fx-text-fill: #8b5cf6; -fx-background-color: rgba(139, 92, 246, 0.15); -fx-padding: 3 8 3 8; -fx-background-radius: 4;");
+                    "-fx-font-size: 11px; -fx-font-weight: 700; -fx-text-fill: #8b5cf6; -fx-background-color: rgba(139, 92, 246, 0.15); -fx-padding: 3 8 3 8; -fx-background-radius: 4;");
         } else {
             userNameLabel.setText("Local Session");
             userEmailLabel.setText("Photos remain on this device");
             userAvatarLabel.setText("L");
             userTierBadge.setText("FREE PLAN");
             userTierBadge.setStyle(
-                    "-fx-font-size: 10px; -fx-font-weight: 700; -fx-text-fill: #10b981; -fx-background-color: rgba(16, 185, 129, 0.12); -fx-padding: 3 8 3 8; -fx-background-radius: 4;");
+                    "-fx-font-size: 11px; -fx-font-weight: 700; -fx-text-fill: #10b981; -fx-background-color: rgba(16, 185, 129, 0.12); -fx-padding: 3 8 3 8; -fx-background-radius: 4;");
         }
 
         updateStatsDisplay();
@@ -772,11 +785,11 @@ public class DashboardFxView extends ScrollPane {
         if (count == 0) {
             taskStatusBadge.setText("Idle • No active jobs");
             taskStatusBadge.setStyle(
-                    "-fx-font-size: 10px; -fx-font-weight: 600; -fx-text-fill: #10b981; -fx-background-color: rgba(16, 185, 129, 0.12); -fx-padding: 3 8 3 8; -fx-background-radius: 4;");
+                    "-fx-font-size: 11px; -fx-font-weight: 600; -fx-text-fill: #10b981; -fx-background-color: rgba(16, 185, 129, 0.12); -fx-padding: 3 8 3 8; -fx-background-radius: 4;");
         } else {
             taskStatusBadge.setText("Processing • " + count + (count == 1 ? " active job" : " active jobs"));
             taskStatusBadge.setStyle(
-                    "-fx-font-size: 10px; -fx-font-weight: 700; -fx-text-fill: #8b5cf6; -fx-background-color: rgba(139, 92, 246, 0.16); -fx-padding: 3 8 3 8; -fx-background-radius: 4;");
+                    "-fx-font-size: 11px; -fx-font-weight: 700; -fx-text-fill: #8b5cf6; -fx-background-color: rgba(139, 92, 246, 0.16); -fx-padding: 3 8 3 8; -fx-background-radius: 4;");
         }
     }
 

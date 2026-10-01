@@ -51,8 +51,9 @@ public class MetaSyncView extends VBox {
         this.stage = stage;
         this.syncService = syncService;
 
-        setSpacing(14);
-        setPadding(new Insets(16, 20, 16, 20));
+        getStyleClass().add("workspace-view");
+        setSpacing(16);
+        setPadding(new Insets(24));
         VBox.setVgrow(this, Priority.ALWAYS);
 
         explorerCard = new PairExplorerCard(stage, syncService.getPairingService());
@@ -79,15 +80,18 @@ public class MetaSyncView extends VBox {
     }
 
     private HBox buildHeaderRow() {
-        HBox header = new HBox(14);
+        HBox header = new HBox(12);
         header.setAlignment(Pos.CENTER_LEFT);
 
-        VBox titleBox = new VBox(3);
+        StackPane iconTile = new StackPane(UiIcons.createSvgIcon(UiIcons.SYNC, 16, "currentColor"));
+        iconTile.getStyleClass().add("header-icon-tile");
+
+        VBox titleBox = new VBox(2);
         HBox titleRow = new HBox(10);
         titleRow.setAlignment(Pos.CENTER_LEFT);
 
         Label title = new Label("Metadata Sync");
-        title.setStyle("-fx-font-size: 22px; -fx-font-weight: 700;");
+        title.getStyleClass().addAll("page-title", "header-title");
 
         Label badge = new Label("Safe copy enabled");
         badge.setStyle("-fx-font-size: 11px; -fx-font-weight: 600; -fx-text-fill: #10B981; -fx-background-color: rgba(16, 185, 129, 0.12); -fx-padding: 3 8 3 8; -fx-background-radius: 6;");
@@ -95,22 +99,22 @@ public class MetaSyncView extends VBox {
         titleRow.getChildren().addAll(title, badge);
 
         Label subtitle = new Label("Transfer selected metadata from RAW originals to JPEG or XMP exports.");
-        subtitle.setStyle("-fx-font-size: 13px;");
+        subtitle.getStyleClass().addAll("page-description", "header-subtitle");
         titleBox.getChildren().addAll(titleRow, subtitle);
 
         Region spacer = new Region();
         HBox.setHgrow(spacer, Priority.ALWAYS);
 
-        header.getChildren().addAll(titleBox, spacer);
+        header.getChildren().addAll(iconTile, titleBox, spacer);
         return header;
     }
 
     private HBox buildKpiRow() {
         HBox row = new HBox(12);
 
-        VBox card1 = createNeutralKpiCard("MATCHED PAIRS", kpiPairs, "RAW + JPEG / XMP pairs", "#3B82F6");
+        VBox card1 = createNeutralKpiCard("MATCHED PAIRS", kpiPairs, "RAW + JPEG / XMP pairs", null);
         VBox card2 = createNeutralKpiCard("DIFFERENCES", kpiDiffs, "Detected tag differences", "#F59E0B");
-        VBox card3 = createNeutralKpiCard("SELECTED TAGS", kpiSelected, "Queued for synchronization", "#9B78F5");
+        VBox card3 = createNeutralKpiCard("SELECTED TAGS", kpiSelected, "Queued for synchronization", "#7C3AED");
         VBox card4 = createNeutralKpiCard("SYNC STATUS", kpiStatus, "Current engine state", "#10B981");
 
         HBox.setHgrow(card1, Priority.ALWAYS);
@@ -122,18 +126,40 @@ public class MetaSyncView extends VBox {
         return row;
     }
 
-    private VBox createNeutralKpiCard(String title, Label valLabel, String sub, String accentColor) {
-        VBox card = new VBox(4);
+    private VBox createNeutralKpiCard(String title, Label valLabel, String sub, String semanticColor) {
+        VBox card = new VBox(2);
         card.getStyleClass().add("glass-card");
-        card.setStyle("-fx-border-radius: 8; -fx-background-radius: 8; -fx-padding: 12 16 12 16;");
+        card.setPadding(new Insets(10, 14, 10, 14));
+        card.setMinHeight(88);
+        card.setPrefHeight(88);
+        card.setMaxHeight(88);
 
         Label t = new Label(title);
-        t.setStyle("-fx-font-size: 11px; -fx-font-weight: 700;  -fx-letter-spacing: 0.5px;");
+        t.setStyle("-fx-font-size: 11px; -fx-font-weight: 600; -fx-letter-spacing: 0.5px;");
+        t.getStyleClass().add("text-secondary");
 
-        valLabel.setStyle(String.format("-fx-font-size: 26px; -fx-font-weight: 800; -fx-text-fill: %s;", accentColor));
+        valLabel.setStyle("-fx-font-size: 24px; -fx-font-weight: 700;");
+        valLabel.getStyleClass().add("text-primary");
+
+        if (semanticColor != null && !semanticColor.isBlank()) {
+            valLabel.textProperty().addListener((obs, oldVal, newVal) -> {
+                try {
+                    String digits = newVal.replaceAll("[^0-9]", "");
+                    int v = digits.isEmpty() ? 0 : Integer.parseInt(digits);
+                    if (v > 0) {
+                        valLabel.setStyle(String.format("-fx-font-size: 24px; -fx-font-weight: 700; -fx-text-fill: %s;", semanticColor));
+                    } else {
+                        valLabel.setStyle("-fx-font-size: 24px; -fx-font-weight: 700;");
+                    }
+                } catch (Exception ignored) {
+                    valLabel.setStyle("-fx-font-size: 24px; -fx-font-weight: 700;");
+                }
+            });
+        }
 
         Label s = new Label(sub);
-        s.setStyle("-fx-font-size: 12px; ");
+        s.setStyle("-fx-font-size: 12px; -fx-font-weight: 500;");
+        s.getStyleClass().add("text-secondary");
 
         card.getChildren().addAll(t, valLabel, s);
         return card;
@@ -202,7 +228,7 @@ public class MetaSyncView extends VBox {
         modeBadge.setStyle("-fx-font-size: 11px; -fx-font-weight: 600; -fx-text-fill: #10B981; -fx-background-color: rgba(16, 185, 129, 0.12); -fx-padding: 2 6 2 6; -fx-background-radius: 4;");
         safetyHeader.getChildren().addAll(syncTitle, modeBadge);
 
-        safetyModeLabel.setStyle("-fx-font-size: 12px; ");
+        safetyModeLabel.setStyle("-fx-font-size: 12.5px;"); safetyModeLabel.getStyleClass().add("text-secondary");
 
         inPlaceBackupCheck.setStyle("-fx-font-size: 12px;"); inPlaceBackupCheck.getStyleClass().add("text-primary");
         inPlaceBackupCheck.setOnAction(e -> {
@@ -231,7 +257,7 @@ public class MetaSyncView extends VBox {
         syncAllBtn.setGraphic(UiIcons.createSvgIcon(UiIcons.SYNC, 13, "currentColor"));
         syncAllBtn.setOnAction(e -> executeSyncBatch());
 
-        statusLabel.setStyle("-fx-font-size: 12px; ");
+        statusLabel.setStyle("-fx-font-size: 12.5px;"); statusLabel.getStyleClass().add("text-secondary");
 
         btnRow.getChildren().addAll(syncCurrentBtn, syncAllBtn, statusLabel);
 

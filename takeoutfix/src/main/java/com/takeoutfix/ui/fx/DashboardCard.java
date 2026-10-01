@@ -114,6 +114,24 @@ public class DashboardCard extends VBox {
         setupActionButton(btnHide, UiIcons.EYE_OFF, "Hide this card (can be restored from Customize View)",
                 () -> layoutStore.setCardVisible(cardId, false));
 
+        gripHandle.setOpacity(0.0);
+        btnMoveUp.setOpacity(0.0);
+        btnMoveDown.setOpacity(0.0);
+        btnHide.setOpacity(0.0);
+
+        setOnMouseEntered(e -> {
+            gripHandle.setOpacity(1.0);
+            btnMoveUp.setOpacity(1.0);
+            btnMoveDown.setOpacity(1.0);
+            btnHide.setOpacity(1.0);
+        });
+        setOnMouseExited(e -> {
+            gripHandle.setOpacity(0.0);
+            btnMoveUp.setOpacity(0.0);
+            btnMoveDown.setOpacity(0.0);
+            btnHide.setOpacity(0.0);
+        });
+
         headerRow.getChildren().addAll(gripHandle, titleLabel, spacer, btnMoveUp, btnMoveDown, btnHide);
     }
 

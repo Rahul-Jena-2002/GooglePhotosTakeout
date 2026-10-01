@@ -83,8 +83,8 @@ public class ArchiveCompareFxView extends VBox {
         this.onNavigate = onNavigate;
 
         getStyleClass().add("workspace-view");
-        setSpacing(14);
-        setPadding(new Insets(16, 20, 16, 20));
+        setSpacing(16);
+        setPadding(new Insets(24));
         VBox.setVgrow(this, Priority.ALWAYS);
 
         // 1. Header
@@ -96,6 +96,7 @@ public class ArchiveCompareFxView extends VBox {
         VBox.setVgrow(splitPane, Priority.ALWAYS);
 
         VBox topSection = new VBox(12, buildDualPickerCard(), buildKpiDeck());
+        SplitPane.setResizableWithParent(topSection, false);
         VBox tableCard = buildTableCard();
         VBox.setVgrow(tableCard, Priority.ALWAYS);
 
@@ -110,31 +111,21 @@ public class ArchiveCompareFxView extends VBox {
         HBox header = new HBox(12);
         header.setAlignment(Pos.CENTER_LEFT);
 
-        Node icon = UiIcons.createSvgIcon(UiIcons.DIFF, 22, "#A78BFA");
+        StackPane iconTile = new StackPane(UiIcons.createSvgIcon(UiIcons.DIFF, 16, "currentColor"));
+        iconTile.getStyleClass().add("header-icon-tile");
 
         VBox titleBox = new VBox(2);
         Label title = new Label("Compare Collections");
         title.getStyleClass().addAll("page-title", "header-title");
-        title.setStyle("-fx-font-size: 24px; -fx-font-weight: 700;");
 
         Label subtitle = new Label("Find missing, additional, and modified photos between two collections.");
         subtitle.getStyleClass().addAll("page-description", "header-subtitle");
-        subtitle.setStyle("-fx-font-size: 13px;");
         titleBox.getChildren().addAll(title, subtitle);
 
         Region spacer = new Region();
         HBox.setHgrow(spacer, Priority.ALWAYS);
 
-        Button btnBack = new Button("Back to Restore");
-        btnBack.getStyleClass().add("btn-secondary");
-        btnBack.setGraphic(UiIcons.createSvgIcon(UiIcons.RESTORE, 13, "currentColor"));
-        btnBack.setGraphicTextGap(6);
-        btnBack.setStyle("-fx-font-size: 12px; -fx-font-weight: 600; -fx-padding: 6 14;");
-        btnBack.setOnAction(e -> {
-            if (onNavigate != null) onNavigate.accept(WorkspaceType.TAKEOUT_RESTORE);
-        });
-
-        header.getChildren().addAll(icon, titleBox, spacer, btnBack);
+        header.getChildren().addAll(iconTile, titleBox, spacer);
         return header;
     }
 
@@ -151,7 +142,7 @@ public class ArchiveCompareFxView extends VBox {
         HBox.setHgrow(left, Priority.ALWAYS);
 
         Label aTitle = new Label("ORIGINAL COLLECTION");
-        aTitle.setStyle("-fx-font-size: 11px; -fx-font-weight: 700; -fx-text-fill: #A78BFA; -fx-letter-spacing: 0.5px;");
+        aTitle.setStyle("-fx-font-size: 12px; -fx-font-weight: 700; -fx-letter-spacing: 0.5px;"); aTitle.getStyleClass().add("section-sub-title");
 
         HBox aRow = new HBox(10);
         aRow.setAlignment(Pos.CENTER_LEFT);
@@ -169,8 +160,8 @@ public class ArchiveCompareFxView extends VBox {
 
         HBox aStatsRow = new HBox(6);
         aStatsRow.setAlignment(Pos.CENTER_LEFT);
-        sourceAStatsLabel.setStyle("-fx-font-size: 12px; -fx-text-fill: #A1A1AA;");
-        aStatsRow.getChildren().addAll(UiIcons.createSvgIcon(UiIcons.CAMERA, 12, "#71717A"), sourceAStatsLabel);
+        sourceAStatsLabel.setStyle("-fx-font-size: 12.5px; -fx-font-weight: 500;"); sourceAStatsLabel.getStyleClass().add("text-secondary");
+        aStatsRow.getChildren().addAll(UiIcons.createSvgIcon(UiIcons.CAMERA, 12, "currentColor"), sourceAStatsLabel);
 
         left.getChildren().addAll(aTitle, aRow, aStatsRow);
 
@@ -182,7 +173,7 @@ public class ArchiveCompareFxView extends VBox {
         HBox.setHgrow(right, Priority.ALWAYS);
 
         Label bTitle = new Label("BACKUP COLLECTION");
-        bTitle.setStyle("-fx-font-size: 11px; -fx-font-weight: 700; -fx-text-fill: #A78BFA; -fx-letter-spacing: 0.5px;");
+        bTitle.setStyle("-fx-font-size: 12px; -fx-font-weight: 700; -fx-letter-spacing: 0.5px;"); bTitle.getStyleClass().add("section-sub-title");
 
         HBox bRow = new HBox(10);
         bRow.setAlignment(Pos.CENTER_LEFT);
@@ -200,8 +191,8 @@ public class ArchiveCompareFxView extends VBox {
 
         HBox bStatsRow = new HBox(6);
         bStatsRow.setAlignment(Pos.CENTER_LEFT);
-        sourceBStatsLabel.setStyle("-fx-font-size: 12px; -fx-text-fill: #A1A1AA;");
-        bStatsRow.getChildren().addAll(UiIcons.createSvgIcon(UiIcons.CAMERA, 12, "#71717A"), sourceBStatsLabel);
+        sourceBStatsLabel.setStyle("-fx-font-size: 12.5px; -fx-font-weight: 500;"); sourceBStatsLabel.getStyleClass().add("text-secondary");
+        bStatsRow.getChildren().addAll(UiIcons.createSvgIcon(UiIcons.CAMERA, 12, "currentColor"), sourceBStatsLabel);
 
         right.getChildren().addAll(bTitle, bRow, bStatsRow);
 
@@ -223,7 +214,7 @@ public class ArchiveCompareFxView extends VBox {
         progressBar.setPrefWidth(200);
         progressBar.setVisible(false);
 
-        statusProgressLabel.setStyle("-fx-font-size: 12px; -fx-text-fill: #A1A1AA;");
+        statusProgressLabel.setStyle("-fx-font-size: 12.5px; -fx-font-weight: 500;"); statusProgressLabel.getStyleClass().add("text-secondary");
 
         actRow.getChildren().addAll(btnCompare, progressBar, statusProgressLabel);
         card.getChildren().addAll(split, new Separator(), actRow);
@@ -236,7 +227,7 @@ public class ArchiveCompareFxView extends VBox {
 
         VBox cExact = createMetricCard("IDENTICAL", countExact, "Identical content & hash", "#10B981");
         VBox cMissing = createMetricCard("MISSING", countMissing, "Missing from backup", "#F59E0B");
-        VBox cAdd = createMetricCard("ADDITIONAL", countAdditional, "Only in backup", "#3B82F6");
+        VBox cAdd = createMetricCard("ADDITIONAL", countAdditional, "Only in backup", null);
         VBox cMod = createMetricCard("MODIFIED", countModified, "Content differences", "#F43F5E");
 
         HBox.setHgrow(cExact, Priority.ALWAYS);
@@ -248,18 +239,39 @@ public class ArchiveCompareFxView extends VBox {
         return deck;
     }
 
-    private VBox createMetricCard(String title, Label valLabel, String sub, String accentColor) {
-        VBox card = new VBox(3);
+    private VBox createMetricCard(String title, Label valLabel, String sub, String semanticColor) {
+        VBox card = new VBox(2);
         card.getStyleClass().add("glass-card");
-        card.setPadding(new Insets(12, 16, 12, 16));
+        card.setPadding(new Insets(10, 14, 10, 14));
+        card.setMinHeight(88);
+        card.setPrefHeight(88);
+        card.setMaxHeight(88);
 
         Label t = new Label(title);
-        t.setStyle(String.format("-fx-font-size: 11px; -fx-font-weight: 700; -fx-text-fill: %s; -fx-letter-spacing: 0.5px;", accentColor));
+        t.setStyle("-fx-font-size: 11px; -fx-font-weight: 600; -fx-letter-spacing: 0.5px;");
+        t.getStyleClass().add("text-secondary");
 
-        valLabel.setStyle(String.format("-fx-font-size: 26px; -fx-font-weight: 800; -fx-text-fill: %s;", accentColor));
+        valLabel.setStyle("-fx-font-size: 24px; -fx-font-weight: 700;");
+        valLabel.getStyleClass().add("text-primary");
+
+        if (semanticColor != null && !semanticColor.isBlank()) {
+            valLabel.textProperty().addListener((obs, oldVal, newVal) -> {
+                try {
+                    int v = Integer.parseInt(newVal.replaceAll("[^0-9]", ""));
+                    if (v > 0) {
+                        valLabel.setStyle(String.format("-fx-font-size: 24px; -fx-font-weight: 700; -fx-text-fill: %s;", semanticColor));
+                    } else {
+                        valLabel.setStyle("-fx-font-size: 24px; -fx-font-weight: 700;");
+                    }
+                } catch (Exception ignored) {
+                    valLabel.setStyle("-fx-font-size: 24px; -fx-font-weight: 700;");
+                }
+            });
+        }
 
         Label s = new Label(sub);
-        s.setStyle("-fx-font-size: 12px; -fx-text-fill: #71717A;");
+        s.setStyle("-fx-font-size: 12px; -fx-font-weight: 500;");
+        s.getStyleClass().add("text-secondary");
 
         card.getChildren().addAll(t, valLabel, s);
         return card;
@@ -291,7 +303,7 @@ public class ArchiveCompareFxView extends VBox {
         searchField.textProperty().addListener((obs, oldVal, newVal) -> updateTableFilter());
         HBox.setHgrow(searchField, Priority.ALWAYS);
 
-        tableCountLabel.setStyle("-fx-font-size: 12px; -fx-font-weight: 700; -fx-text-fill: #A78BFA; -fx-min-width: 50px;");
+        tableCountLabel.setStyle("-fx-font-size: 12.5px; -fx-font-weight: 700; -fx-min-width: 50px;"); tableCountLabel.getStyleClass().add("brand-accent");
 
         topRow.getChildren().addAll(filterGroup, searchField, tableCountLabel);
 
@@ -499,21 +511,21 @@ public class ArchiveCompareFxView extends VBox {
             Label title = new Label("No comparison results yet");
             title.setStyle("-fx-font-size: 15px; -fx-font-weight: 700;"); title.getStyleClass().add("empty-state-title");
             Label sub = new Label("Choose two collections and compare their files to see differences here.");
-            sub.setStyle("-fx-font-size: 12px; -fx-text-fill: #71717A;");
+            sub.setStyle("-fx-font-size: 13px;"); sub.getStyleClass().add("empty-state-sub");
             emptyBox.getChildren().addAll(icon, title, sub);
         } else if (masterItems.isEmpty() || (filteredItems.isEmpty() && activeFilter == null)) {
             Node icon = UiIcons.createSvgIcon(UiIcons.CHECK_CIRCLE, 36, "#10B981");
             Label title = new Label("Collections are identical");
             title.setStyle("-fx-font-size: 15px; -fx-font-weight: 700; -fx-text-fill: #10B981;");
             Label sub = new Label("All scanned files have matching content and checksums.");
-            sub.setStyle("-fx-font-size: 12px; -fx-text-fill: #71717A;");
+            sub.setStyle("-fx-font-size: 13px;"); sub.getStyleClass().add("empty-state-sub");
             emptyBox.getChildren().addAll(icon, title, sub);
         } else {
             Node icon = UiIcons.createSvgIcon(UiIcons.SEARCH, 32, "#71717A");
             Label title = new Label("No matching files found");
             title.setStyle("-fx-font-size: 14px; -fx-font-weight: 700;"); title.getStyleClass().add("empty-state-title");
             Label sub = new Label("Try changing your filter or clearing the search box.");
-            sub.setStyle("-fx-font-size: 12px; -fx-text-fill: #71717A;");
+            sub.setStyle("-fx-font-size: 13px;"); sub.getStyleClass().add("empty-state-sub");
             emptyBox.getChildren().addAll(icon, title, sub);
         }
 

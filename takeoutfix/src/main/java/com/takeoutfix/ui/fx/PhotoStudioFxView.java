@@ -82,7 +82,11 @@ public class PhotoStudioFxView extends VBox {
     private final CheckBox chkSafeExport = new CheckBox("Save Edited Copies");
     private final CheckBox chkSyncOsTime = new CheckBox("Also Update File Timestamps");
     private File customOutputDir;
-    private final Label lblOutputDir = new Label("TakeoutFix_Studio_Export");
+    private File sourceDir;
+    private boolean userCustomizedOutputDir = false;
+    private String currentTab = "Dates";
+    private final Label lblOutputDir = new Label();
+    private Button btnResetDir;
 
     private final ProgressBar progressBar = new ProgressBar(0);
     private final Label progressLabel = new Label("Add photos to get started.");
@@ -99,8 +103,8 @@ public class PhotoStudioFxView extends VBox {
         this.studioService = new PhotoStudioService(exifEngine);
 
         getStyleClass().add("workspace-view");
-        setSpacing(14);
-        setPadding(new Insets(16, 20, 16, 20));
+        setSpacing(16);
+        setPadding(new Insets(24));
 
         // 1. Header
         buildHeader();
@@ -116,9 +120,11 @@ public class PhotoStudioFxView extends VBox {
 
         getChildren().addAll(splitPane, footer);
 
-        // Setup default output dir
-        customOutputDir = new File(System.getProperty("user.home"), "TakeoutFix_Studio_Export");
-        lblOutputDir.setText(customOutputDir.getAbsolutePath());
+        // Destination is initially blank until photos are added or user browses
+        customOutputDir = null;
+        userCustomizedOutputDir = false;
+        sourceDir = null;
+        lblOutputDir.setText("Auto-managed: [source]/TakeoutFix_Studio_Export");
 
         // Setup listeners to refresh previews in real time
         setupLivePreviewListeners();
@@ -129,19 +135,18 @@ public class PhotoStudioFxView extends VBox {
         HBox header = new HBox(12);
         header.setAlignment(Pos.CENTER_LEFT);
 
-        var icon = UiIcons.createSvgIcon(UiIcons.SLIDERS, 24, "#A78BFA");
+        StackPane iconTile = new StackPane(UiIcons.createSvgIcon(UiIcons.SLIDERS, 16, "currentColor"));
+        iconTile.getStyleClass().add("header-icon-tile");
 
         VBox titleBox = new VBox(2);
         Label title = new Label("Edit Metadata");
         title.getStyleClass().addAll("page-title", "header-title");
-        title.setStyle("-fx-font-size: 24px; -fx-font-weight: 700;");
 
         Label subtitle = new Label("Batch-adjust photo dates, correct time zones, update GPS information and manage metadata across multiple files.");
         subtitle.getStyleClass().addAll("page-description", "header-subtitle");
-        subtitle.setStyle("-fx-font-size: 13px;");
 
         titleBox.getChildren().addAll(title, subtitle);
-        header.getChildren().addAll(icon, titleBox);
+        header.getChildren().addAll(iconTile, titleBox);
 
         getChildren().add(header);
     }
@@ -167,6 +172,30 @@ public class PhotoStudioFxView extends VBox {
         btnBrowse.setOnAction(e -> handleAddFiles());
 
         box.getChildren().addAll(uploadIcon, title, subtitle, btnBrowse);
+
+        box.setOnDragOver(event -> {
+            if (event.getGestureSource() != box && event.getDragboard().hasFiles()) {
+                event.acceptTransferModes(TransferMode.COPY_OR_MOVE);
+            }
+            event.consume();
+        });
+
+        box.setOnDragDropped(event -> {
+            Dragboard db = event.getDragboard();
+            boolean success = false;
+            if (db.hasFiles() && !db.getFiles().isEmpty()) {
+                File first = db.getFiles().get(0);
+                sourceDir = first.isDirectory() ? first : first.getParentFile();
+                if (!userCustomizedOutputDir) {
+                    updateAutoOutputDir();
+                }
+                addFilesAsync(db.getFiles());
+                success = true;
+            }
+            event.setDropCompleted(success);
+            event.consume();
+        });
+
         return box;
     }
 
@@ -205,7 +234,7 @@ public class PhotoStudioFxView extends VBox {
         Region spacer = new Region();
         HBox.setHgrow(spacer, Priority.ALWAYS);
 
-        queueSummaryLabel.setStyle("-fx-font-size: 12px; -fx-font-weight: 700; -fx-text-fill: #A78BFA;");
+        queueSummaryLabel.setStyle("-fx-font-size: 12.5px; -fx-font-weight: 700;"); queueSummaryLabel.getStyleClass().add("brand-accent");
 
         toolbar.getChildren().addAll(btnAddFiles, btnAddFolder, btnClear, spacer, queueSummaryLabel);
 
@@ -384,7 +413,12 @@ public class PhotoStudioFxView extends VBox {
         tableView.setOnDragDropped(event -> {
             Dragboard db = event.getDragboard();
             boolean success = false;
-            if (db.hasFiles()) {
+            if (db.hasFiles() && !db.getFiles().isEmpty()) {
+                File first = db.getFiles().get(0);
+                sourceDir = first.isDirectory() ? first : first.getParentFile();
+                if (!userCustomizedOutputDir) {
+                    updateAutoOutputDir();
+                }
                 addFilesAsync(db.getFiles());
                 success = true;
             }
@@ -421,24 +455,30 @@ public class PhotoStudioFxView extends VBox {
         cardLocation.setManaged(false);
 
         tabDate.setOnAction(e -> {
+            currentTab = "Dates";
             activateTab(tabDate, tabCreator, tabLocation);
             cardDate.setVisible(true); cardDate.setManaged(true);
             cardPresets.setVisible(false); cardPresets.setManaged(false);
             cardLocation.setVisible(false); cardLocation.setManaged(false);
+            updateAutoOutputDir();
         });
 
         tabCreator.setOnAction(e -> {
+            currentTab = "Creator & Copyright";
             activateTab(tabCreator, tabDate, tabLocation);
             cardDate.setVisible(false); cardDate.setManaged(false);
             cardPresets.setVisible(true); cardPresets.setManaged(true);
             cardLocation.setVisible(false); cardLocation.setManaged(false);
+            updateAutoOutputDir();
         });
 
         tabLocation.setOnAction(e -> {
+            currentTab = "GPS & Location";
             activateTab(tabLocation, tabDate, tabCreator);
             cardDate.setVisible(false); cardDate.setManaged(false);
             cardPresets.setVisible(false); cardPresets.setManaged(false);
             cardLocation.setVisible(true); cardLocation.setManaged(true);
+            updateAutoOutputDir();
         });
 
         // Add controls to sidebar
@@ -496,19 +536,19 @@ public class PhotoStudioFxView extends VBox {
         VBox item1 = new VBox(2);
         rbTimeShift.setStyle("-fx-font-size: 13px; -fx-font-weight: 700;"); rbTimeShift.getStyleClass().add("text-primary");
         Label sub1 = new Label("Move all selected photo dates forward or backward.");
-        sub1.setStyle("-fx-font-size: 11px; -fx-text-fill: #A1A1AA; -fx-padding: 0 0 0 22;");
+        sub1.setStyle("-fx-font-size: 12px; -fx-padding: 0 0 0 22;"); sub1.getStyleClass().add("text-secondary");
         item1.getChildren().addAll(rbTimeShift, sub1);
 
         VBox item2 = new VBox(2);
         rbFixedIncrement.setStyle("-fx-font-size: 13px; -fx-font-weight: 700;"); rbFixedIncrement.getStyleClass().add("text-primary");
         Label sub2 = new Label("Assign a starting date and increment timestamps for each photo.");
-        sub2.setStyle("-fx-font-size: 11px; -fx-text-fill: #A1A1AA; -fx-padding: 0 0 0 22;");
+        sub2.setStyle("-fx-font-size: 12px; -fx-padding: 0 0 0 22;"); sub2.getStyleClass().add("text-secondary");
         item2.getChildren().addAll(rbFixedIncrement, sub2);
 
         VBox item3 = new VBox(2);
         rbKeepOriginal.setStyle("-fx-font-size: 13px; -fx-font-weight: 700;"); rbKeepOriginal.getStyleClass().add("text-primary");
         Label sub3 = new Label("Preserve existing date metadata.");
-        sub3.setStyle("-fx-font-size: 11px; -fx-text-fill: #A1A1AA; -fx-padding: 0 0 0 22;");
+        sub3.setStyle("-fx-font-size: 12px; -fx-padding: 0 0 0 22;"); sub3.getStyleClass().add("text-secondary");
         item3.getChildren().addAll(rbKeepOriginal, sub3);
 
         modeSelectBox.getChildren().addAll(item1, item2, item3);
@@ -557,7 +597,7 @@ public class PhotoStudioFxView extends VBox {
         presetsBox.getChildren().addAll(btnDstPlus, btnDstMinus, btnIst, btnReset);
 
         Label shiftHeader = new Label("Time Adjustment:");
-        shiftHeader.setStyle("-fx-font-size: 12px; -fx-font-weight: 700; -fx-text-fill: #A78BFA; -fx-text-transform: uppercase;");
+        shiftHeader.setStyle("-fx-font-size: 12px; -fx-font-weight: 700; -fx-text-transform: uppercase;"); shiftHeader.getStyleClass().add("section-sub-title");
         shiftControlBox.getChildren().setAll(shiftHeader, cbShiftDirection, gridSpinners, presetsBox);
 
         // 2. Fixed Increment Box
@@ -573,7 +613,7 @@ public class PhotoStudioFxView extends VBox {
         timeSpinners.setAlignment(Pos.CENTER_LEFT);
 
         Label fixedHeader = new Label("Base Starting Date & Interval:");
-        fixedHeader.setStyle("-fx-font-size: 12px; -fx-font-weight: 700; -fx-text-fill: #A78BFA; -fx-text-transform: uppercase;");
+        fixedHeader.setStyle("-fx-font-size: 12px; -fx-font-weight: 700; -fx-text-transform: uppercase;"); fixedHeader.getStyleClass().add("section-sub-title");
 
         Label lblBaseD = new Label("Base Starting Date:"); lblBaseD.setStyle("-fx-font-size: 12px;"); lblBaseD.getStyleClass().add("text-secondary");
         Label lblBaseT = new Label("Base Starting Time:"); lblBaseT.setStyle("-fx-font-size: 12px;"); lblBaseT.getStyleClass().add("text-secondary");
@@ -594,7 +634,7 @@ public class PhotoStudioFxView extends VBox {
         // 3. Keep Original Notice Box
         keepOriginalNoticeBox.setStyle("-fx-background-color: rgba(167, 139, 250, 0.08); -fx-border-color: rgba(167, 139, 250, 0.25); -fx-border-radius: 6; -fx-background-radius: 6; -fx-padding: 10;");
         Label noticeTitle = new Label("Existing Dates Preserved");
-        noticeTitle.setStyle("-fx-font-size: 12px; -fx-font-weight: 700; -fx-text-fill: #A78BFA;");
+        noticeTitle.setStyle("-fx-font-size: 12.5px; -fx-font-weight: 700;"); noticeTitle.getStyleClass().add("brand-accent");
         Label noticeText = new Label("Existing photo dates will be preserved. Other selected metadata fields (Creator, Copyright, GPS) can still be edited.");
         noticeText.setWrapText(true);
         noticeText.setStyle("-fx-font-size: 12px;"); noticeText.getStyleClass().add("text-secondary");
@@ -607,7 +647,7 @@ public class PhotoStudioFxView extends VBox {
         summaryBox.setAlignment(Pos.CENTER_LEFT);
         summaryBox.setStyle("-fx-background-color: rgba(167, 139, 250, 0.1); -fx-border-color: rgba(167, 139, 250, 0.25); -fx-border-radius: 6; -fx-background-radius: 6; -fx-padding: 8 10 8 10;");
         lblOperationSummary.setWrapText(true);
-        lblOperationSummary.setStyle("-fx-font-size: 12px; -fx-font-weight: 600; -fx-text-fill: #A78BFA;");
+        lblOperationSummary.setStyle("-fx-font-size: 12.5px; -fx-font-weight: 600;"); lblOperationSummary.getStyleClass().add("brand-accent");
         summaryBox.getChildren().addAll(UiIcons.createSvgIcon(UiIcons.HISTORY, 13, "#A78BFA"), lblOperationSummary);
 
         // Mode switch listener
@@ -666,13 +706,13 @@ public class PhotoStudioFxView extends VBox {
 
         // Artist
         Label lblArtist = new Label("Photographer / Artist Name:");
-        lblArtist.setStyle("-fx-font-size: 11px; -fx-font-weight: 600; -fx-text-fill: #a1a1aa;");
+        lblArtist.setStyle("-fx-font-size: 12px; -fx-font-weight: 600;"); lblArtist.getStyleClass().add("text-secondary");
         txtArtist.setPromptText("Enter your custom name or studio (e.g. John Doe)");
         txtArtist.setStyle("-fx-padding: 8 10; -fx-background-radius: 6;");
 
         // Copyright
         Label lblCopyright = new Label("Copyright Notice:");
-        lblCopyright.setStyle("-fx-font-size: 11px; -fx-font-weight: 600; -fx-text-fill: #a1a1aa;");
+        lblCopyright.setStyle("-fx-font-size: 12px; -fx-font-weight: 600;"); lblCopyright.getStyleClass().add("text-secondary");
         txtCopyright.setPromptText("© 2026 Your Name. All rights reserved.");
         txtCopyright.setStyle("-fx-padding: 8 10; -fx-background-radius: 6;");
 
@@ -700,7 +740,7 @@ public class PhotoStudioFxView extends VBox {
 
         // Description
         Label lblDesc = new Label("Image Caption / Description:");
-        lblDesc.setStyle("-fx-font-size: 11px; -fx-font-weight: 600; -fx-text-fill: #a1a1aa;");
+        lblDesc.setStyle("-fx-font-size: 12px; -fx-font-weight: 600;"); lblDesc.getStyleClass().add("text-secondary");
         txtDescription.setPromptText("Optional shoot notes, client code, or photo description...");
         txtDescription.setStyle("-fx-padding: 8 10; -fx-background-radius: 6;");
 
@@ -797,7 +837,7 @@ public class PhotoStudioFxView extends VBox {
 
         // Output section header and safety options
         Label lblOutputHeader = new Label("OUTPUT & SAFE EXPORT");
-        lblOutputHeader.setStyle("-fx-font-size: 11px; -fx-font-weight: 700; -fx-text-fill: #A78BFA; -fx-letter-spacing: 0.5px;");
+        lblOutputHeader.setStyle("-fx-font-size: 12px; -fx-font-weight: 700; -fx-letter-spacing: 0.5px;"); lblOutputHeader.getStyleClass().add("section-sub-title");
 
         chkSafeExport.setSelected(true);
         chkSafeExport.setStyle("-fx-font-size: 13px; -fx-font-weight: 600;"); chkSafeExport.getStyleClass().add("text-primary");
@@ -824,10 +864,17 @@ public class PhotoStudioFxView extends VBox {
         HBox outDirRow = new HBox(10);
         outDirRow.setAlignment(Pos.CENTER_LEFT);
 
-        Label lblDest = new Label("Destination Folder:");
-        lblDest.setStyle("-fx-font-size: 12px; -fx-font-weight: 600; -fx-text-fill: #A1A1AA;");
+        chkSafeExport.selectedProperty().addListener((o, oldV, newV) -> {
+            outDirRow.setVisible(newV);
+            outDirRow.setManaged(newV);
+        });
 
-        lblOutputDir.setStyle("-fx-font-size: 12px; -fx-padding: 4 8; -fx-background-radius: 4;"); lblOutputDir.getStyleClass().add("badge-neutral");
+        Label lblDest = new Label("Destination Folder:");
+        lblDest.setStyle("-fx-font-size: 12px; -fx-font-weight: 600;"); lblDest.getStyleClass().add("text-secondary");
+
+        lblOutputDir.setStyle("-fx-font-size: 12px; -fx-padding: 4 10; -fx-background-radius: 6; -fx-min-height: 28px; -fx-pref-height: 28px;");
+        lblOutputDir.getStyleClass().add("badge-neutral");
+        lblOutputDir.setMaxWidth(Double.MAX_VALUE);
         HBox.setHgrow(lblOutputDir, Priority.ALWAYS);
 
         Button btnChooseDir = new Button("Browse");
@@ -836,14 +883,39 @@ public class PhotoStudioFxView extends VBox {
         btnChooseDir.setOnAction(e -> {
             DirectoryChooser dc = new DirectoryChooser();
             dc.setTitle("Select Studio Export Destination Folder");
+            if (customOutputDir != null && customOutputDir.exists()) {
+                dc.setInitialDirectory(customOutputDir);
+            } else if (sourceDir != null && sourceDir.exists()) {
+                dc.setInitialDirectory(sourceDir);
+            }
             File sel = dc.showDialog(stage);
             if (sel != null) {
                 customOutputDir = sel;
+                userCustomizedOutputDir = true;
                 lblOutputDir.setText(sel.getAbsolutePath());
+                if (btnResetDir != null) {
+                    btnResetDir.setVisible(true);
+                    btnResetDir.setManaged(true);
+                }
             }
         });
 
-        outDirRow.getChildren().addAll(lblDest, lblOutputDir, btnChooseDir);
+        btnResetDir = new Button("Auto");
+        btnResetDir.getStyleClass().add("btn-ghost");
+        btnResetDir.setStyle("-fx-font-size: 11.5px; -fx-padding: 4 8; -fx-cursor: hand;");
+        btnResetDir.setTooltip(new Tooltip("Reset destination to auto-managed path: [source]\\TakeoutFix_Studio_Export\\[tool_type]"));
+        btnResetDir.setVisible(false);
+        btnResetDir.setManaged(false);
+        btnResetDir.setOnAction(e -> {
+            userCustomizedOutputDir = false;
+            if (btnResetDir != null) {
+                btnResetDir.setVisible(false);
+                btnResetDir.setManaged(false);
+            }
+            updateAutoOutputDir();
+        });
+
+        outDirRow.getChildren().addAll(lblDest, lblOutputDir, btnChooseDir, btnResetDir);
 
         // Progress bar
         progressBar.setMaxWidth(Double.MAX_VALUE);
@@ -853,7 +925,7 @@ public class PhotoStudioFxView extends VBox {
         HBox actionRow = new HBox(10);
         actionRow.setAlignment(Pos.CENTER_RIGHT);
 
-        progressLabel.setStyle("-fx-font-size: 12px; -fx-text-fill: #A1A1AA;");
+        progressLabel.setStyle("-fx-font-size: 12px;"); progressLabel.getStyleClass().add("text-secondary");
 
         btnDryRun.getStyleClass().add("btn-secondary");
         btnDryRun.setGraphic(UiIcons.createSvgIcon(UiIcons.EYE, 14, "currentColor"));
@@ -880,8 +952,8 @@ public class PhotoStudioFxView extends VBox {
 
     private Button createSmallPill(String text, Runnable action) {
         Button btn = new Button(text);
-        btn.getStyleClass().add("btn-ghost");
-        btn.setStyle("-fx-font-size: 10px; -fx-padding: 3 8 3 8; -fx-background-radius: 4; -fx-border-color: #27272a; -fx-border-radius: 4;");
+        btn.getStyleClass().addAll("btn-secondary", "filter-pill");
+        btn.setStyle("-fx-font-size: 11px; -fx-font-weight: 600; -fx-padding: 2 10 2 10; -fx-min-height: 28px; -fx-pref-height: 28px; -fx-max-height: 28px; -fx-cursor: hand;");
         btn.setOnAction(e -> {
             if (action != null) action.run();
             updateOperationSummary();
@@ -891,6 +963,28 @@ public class PhotoStudioFxView extends VBox {
     }
 
     private void setupLivePreviewListeners() {
+        rbTimeShift.selectedProperty().addListener((o, oldV, newV) -> {
+            if (newV) {
+                updateAutoOutputDir();
+                updateOperationSummary();
+                recalculatePreviews();
+            }
+        });
+        rbFixedIncrement.selectedProperty().addListener((o, oldV, newV) -> {
+            if (newV) {
+                updateAutoOutputDir();
+                updateOperationSummary();
+                recalculatePreviews();
+            }
+        });
+        rbKeepOriginal.selectedProperty().addListener((o, oldV, newV) -> {
+            if (newV) {
+                updateAutoOutputDir();
+                updateOperationSummary();
+                recalculatePreviews();
+            }
+        });
+
         spDays.valueProperty().addListener((o, oldV, newV) -> { updateOperationSummary(); recalculatePreviews(); });
         spHours.valueProperty().addListener((o, oldV, newV) -> { updateOperationSummary(); recalculatePreviews(); });
         spMinutes.valueProperty().addListener((o, oldV, newV) -> { updateOperationSummary(); recalculatePreviews(); });
@@ -1013,6 +1107,16 @@ public class PhotoStudioFxView extends VBox {
             return;
         }
 
+        if (chkSafeExport.isSelected()) {
+            if (customOutputDir == null) {
+                showAlert("Destination Required", "Please choose a destination folder or add photos to set the default export path.");
+                return;
+            }
+            if (!customOutputDir.exists()) {
+                customOutputDir.mkdirs();
+            }
+        }
+
         StudioEditRequest req = buildCurrentRequest();
         btnExecute.setDisable(true);
         btnDryRun.setDisable(true);
@@ -1067,6 +1171,13 @@ public class PhotoStudioFxView extends VBox {
                 "*.jpg", "*.jpeg", "*.png", "*.heic", "*.mp4", "*.mov", "*.dng", "*.cr2", "*.nef"));
         List<File> files = fc.showOpenMultipleDialog(stage);
         if (files != null && !files.isEmpty()) {
+            File parent = files.get(0).getParentFile();
+            if (parent != null) {
+                sourceDir = parent;
+            }
+            if (!userCustomizedOutputDir) {
+                updateAutoOutputDir();
+            }
             addFilesAsync(files);
         }
     }
@@ -1076,6 +1187,10 @@ public class PhotoStudioFxView extends VBox {
         dc.setTitle("Select Folder of Photos to Edit");
         File dir = dc.showDialog(stage);
         if (dir != null && dir.isDirectory()) {
+            sourceDir = dir;
+            if (!userCustomizedOutputDir) {
+                updateAutoOutputDir();
+            }
             List<File> files = new ArrayList<>();
             scanDir(dir, files);
             addFilesAsync(files);
@@ -1100,6 +1215,14 @@ public class PhotoStudioFxView extends VBox {
     }
 
     private void addFilesAsync(List<File> files) {
+        if (files == null || files.isEmpty()) return;
+        if (sourceDir == null) {
+            File first = files.get(0);
+            sourceDir = first.isDirectory() ? first : first.getParentFile();
+        }
+        if (!userCustomizedOutputDir) {
+            Platform.runLater(this::updateAutoOutputDir);
+        }
         progressLabel.setText("Inspecting original metadata for " + files.size() + " files...");
         new Thread(() -> {
             List<StudioFileItem> loaded = new ArrayList<>();
@@ -1110,6 +1233,7 @@ public class PhotoStudioFxView extends VBox {
             Platform.runLater(() -> {
                 queueItems.addAll(loaded);
                 updateQueueCount();
+                updateAutoOutputDir();
                 recalculatePreviews();
                 progressLabel.setText("Loaded " + files.size() + " files.");
             });
@@ -1124,11 +1248,64 @@ public class PhotoStudioFxView extends VBox {
             btnExecute.setText("Apply Changes");
             btnExecute.setDisable(true);
             btnDryRun.setDisable(true);
+            if (!userCustomizedOutputDir) {
+                sourceDir = null;
+                customOutputDir = null;
+                if (lblOutputDir != null) lblOutputDir.setText("");
+                if (btnResetDir != null) {
+                    btnResetDir.setVisible(false);
+                    btnResetDir.setManaged(false);
+                }
+            }
         } else {
             queueSummaryLabel.setText(String.format("%d of %d photos selected", selectedCount, totalCount));
             btnExecute.setText(selectedCount > 0 ? String.format("Apply Changes (%d)", selectedCount) : "Apply Changes");
             btnExecute.setDisable(selectedCount == 0);
             btnDryRun.setDisable(false);
+        }
+    }
+
+    private String getActiveToolType() {
+        if ("Creator & Copyright".equals(currentTab)) {
+            return "Creator_Copyright";
+        } else if ("GPS & Location".equals(currentTab)) {
+            return "Location";
+        } else {
+            // Dates tab
+            if (rbFixedIncrement != null && rbFixedIncrement.isSelected()) {
+                return "Fixed_Increment";
+            } else if (rbTimeShift != null && rbTimeShift.isSelected()) {
+                return "Time_Shift";
+            } else {
+                return "Dates";
+            }
+        }
+    }
+
+    private void updateAutoOutputDir() {
+        if (userCustomizedOutputDir) {
+            return;
+        }
+        if (sourceDir == null || queueItems.isEmpty()) {
+            customOutputDir = null;
+            if (lblOutputDir != null) {
+                lblOutputDir.setText("");
+            }
+            if (btnResetDir != null) {
+                btnResetDir.setVisible(false);
+                btnResetDir.setManaged(false);
+            }
+            return;
+        }
+        String toolType = getActiveToolType();
+        File studioExportBase = new File(sourceDir, "TakeoutFix_Studio_Export");
+        customOutputDir = new File(studioExportBase, toolType);
+        if (lblOutputDir != null) {
+            lblOutputDir.setText(customOutputDir.getAbsolutePath());
+        }
+        if (btnResetDir != null) {
+            btnResetDir.setVisible(false);
+            btnResetDir.setManaged(false);
         }
     }
 

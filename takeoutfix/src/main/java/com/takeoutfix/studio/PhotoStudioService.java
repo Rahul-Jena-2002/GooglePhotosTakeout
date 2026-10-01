@@ -169,7 +169,10 @@ public class PhotoStudioService {
             File outDir = request.getOutputDirectory();
             if (!request.isInPlace()) {
                 if (outDir == null) {
-                    outDir = new File(System.getProperty("user.home"), "TakeoutFix_Studio_Export");
+                    File fallbackBase = (items != null && !items.isEmpty() && items.get(0).getFile() != null && items.get(0).getFile().getParentFile() != null)
+                            ? items.get(0).getFile().getParentFile()
+                            : new File(System.getProperty("user.home"));
+                    outDir = new File(new File(fallbackBase, "TakeoutFix_Studio_Export"), "Studio_Output");
                 }
                 if (!outDir.exists()) {
                     outDir.mkdirs();

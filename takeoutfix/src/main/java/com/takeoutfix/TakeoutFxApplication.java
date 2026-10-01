@@ -195,6 +195,10 @@ public class TakeoutFxApplication extends Application {
         if (res != null) {
             scene.getStylesheets().add(res.toExternalForm());
         }
+        if (scene.getRoot() != null) {
+            scene.getRoot().getStyleClass().removeAll("dark", "light");
+            scene.getRoot().getStyleClass().add(dark ? "dark" : "light");
+        }
         if (stage != null) {
             WindowsTitleBarTheme.applyTheme(stage, dark);
         }

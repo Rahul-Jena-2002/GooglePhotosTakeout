@@ -78,7 +78,7 @@ public class MetadataDiffTable extends TableView<TagDifference> {
                     setGraphic(null);
                 } else {
                     Label badge = new Label(item);
-                    badge.setStyle("-fx-font-size: 11px; -fx-font-weight: 600; -fx-padding: 2 6 2 6; -fx-background-radius: 4; -fx-background-color: #20212B; ");
+                    badge.setStyle("-fx-font-size: 11px; -fx-font-weight: 600; -fx-padding: 2 6 2 6; -fx-background-radius: 4;"); badge.getStyleClass().add("badge-counter");
                     setGraphic(badge);
                     setText(null);
                 }

@@ -107,50 +107,48 @@ public class PersistentTaskFooter extends VBox {
 
     private void applyThemeStyles() {
         if (isDark) {
-            setStyle("-fx-background-color: #0F1117; -fx-border-color: #1E2330 transparent transparent transparent; -fx-border-width: 1;");
+            setStyle("-fx-background-color: #16161E; -fx-border-color: #2F334D transparent transparent transparent; -fx-border-width: 1;");
 
             // Collapsed bar
-            greenDot.setFill(javafx.scene.paint.Color.web("#10B981"));
-            privacyPill.setStyle("-fx-font-size: 11px; -fx-font-weight: 600; -fx-text-fill: #34D399;");
-            dotSeparator.setStyle("-fx-font-size: 11px; -fx-text-fill: #64748B;");
-            telemetryLabel.setStyle("-fx-font-size: 11px; -fx-font-weight: 600; -fx-text-fill: #CBD5E1;");
-            toggleExpandBtn.setStyle("-fx-font-size: 11px; -fx-font-weight: 700; -fx-background-color: transparent; -fx-text-fill: #CBD5E1; -fx-cursor: hand;");
+            greenDot.setFill(javafx.scene.paint.Color.web("#9ECE6A"));
+            taskCountBadge.setStyle("-fx-font-size: 12px; -fx-font-weight: 500; -fx-text-fill: #C0CAF5;");
+            telemetryLabel.setStyle("-fx-font-size: 12px; -fx-font-weight: 500; -fx-text-fill: #8089B3;");
+            toggleExpandBtn.setStyle("-fx-font-size: 12px; -fx-font-weight: 600; -fx-background-color: transparent; -fx-text-fill: #C0CAF5; -fx-cursor: hand;");
 
             // Drawer
-            expandedDrawer.setStyle("-fx-background-color: #141722; -fx-border-color: #242938 transparent transparent transparent; -fx-border-width: 1;");
-            expandedHeaderLabel.setStyle("-fx-font-size: 14px; -fx-font-weight: 800; -fx-text-fill: #F8FAFC;");
-            btnViewAll.setStyle("-fx-font-size: 11px; -fx-font-weight: 600; -fx-background-color: transparent; -fx-text-fill: #818CF8; -fx-cursor: hand;");
-            btnCloseDrawer.setStyle("-fx-font-size: 11px; -fx-font-weight: 700; -fx-background-color: transparent; -fx-text-fill: #94A3B8; -fx-cursor: hand;");
+            expandedDrawer.setStyle("-fx-background-color: #1F2335; -fx-border-color: #2F334D transparent transparent transparent; -fx-border-width: 1;");
+            expandedHeaderLabel.setStyle("-fx-font-size: 14px; -fx-font-weight: 600; -fx-text-fill: #C0CAF5;");
+            btnViewAll.setStyle("-fx-font-size: 12px; -fx-font-weight: 600; -fx-background-color: transparent; -fx-text-fill: #BB9AF7; -fx-cursor: hand;");
+            btnCloseDrawer.setStyle("-fx-font-size: 12px; -fx-font-weight: 600; -fx-background-color: transparent; -fx-text-fill: #8089B3; -fx-cursor: hand;");
 
-            appCpuMetric.setStyle("-fx-font-size: 11px; -fx-font-weight: 700; -fx-text-fill: #F8FAFC;");
-            appMemMetric.setStyle("-fx-font-size: 11px; -fx-font-weight: 700; -fx-text-fill: #F8FAFC;");
-            sysMemMetric.setStyle("-fx-font-size: 11px; -fx-font-weight: 700; -fx-text-fill: #F8FAFC;");
-            throughputMetric.setStyle("-fx-font-size: 11px; -fx-font-weight: 700; -fx-text-fill: #F8FAFC;");
+            appCpuMetric.setStyle("-fx-font-size: 12.5px; -fx-font-weight: 700; -fx-text-fill: #C0CAF5;");
+            appMemMetric.setStyle("-fx-font-size: 12.5px; -fx-font-weight: 700; -fx-text-fill: #C0CAF5;");
+            sysMemMetric.setStyle("-fx-font-size: 12.5px; -fx-font-weight: 700; -fx-text-fill: #C0CAF5;");
+            throughputMetric.setStyle("-fx-font-size: 12.5px; -fx-font-weight: 700; -fx-text-fill: #C0CAF5;");
             for (Label lbl : metricTitleLabels) {
-                lbl.setStyle("-fx-font-size: 11px; -fx-text-fill: #94A3B8;");
+                lbl.setStyle("-fx-font-size: 12px; -fx-text-fill: #8089B3;");
             }
         } else {
-            setStyle("-fx-background-color: #FFFFFF; -fx-border-color: #E2E8F0 transparent transparent transparent; -fx-border-width: 1;");
+            setStyle("-fx-background-color: #EDEDF5; -fx-border-color: #D9DAE6 transparent transparent transparent; -fx-border-width: 1;");
 
             // Collapsed bar
-            greenDot.setFill(javafx.scene.paint.Color.web("#059669"));
-            privacyPill.setStyle("-fx-font-size: 11px; -fx-font-weight: 600; -fx-text-fill: #047857;");
-            dotSeparator.setStyle("-fx-font-size: 11px; -fx-text-fill: #94A3B8;");
-            telemetryLabel.setStyle("-fx-font-size: 11px; -fx-font-weight: 600; -fx-text-fill: #334155;");
-            toggleExpandBtn.setStyle("-fx-font-size: 11px; -fx-font-weight: 700; -fx-background-color: transparent; -fx-text-fill: #334155; -fx-cursor: hand;");
+            greenDot.setFill(javafx.scene.paint.Color.web("#2E7D32"));
+            taskCountBadge.setStyle("-fx-font-size: 12px; -fx-font-weight: 500; -fx-text-fill: #1F2335;");
+            telemetryLabel.setStyle("-fx-font-size: 12px; -fx-font-weight: 500; -fx-text-fill: #5F6585;");
+            toggleExpandBtn.setStyle("-fx-font-size: 12px; -fx-font-weight: 600; -fx-background-color: transparent; -fx-text-fill: #1F2335; -fx-cursor: hand;");
 
             // Drawer
-            expandedDrawer.setStyle("-fx-background-color: #F8FAFC; -fx-border-color: #E2E8F0 transparent transparent transparent; -fx-border-width: 1;");
-            expandedHeaderLabel.setStyle("-fx-font-size: 14px; -fx-font-weight: 800; -fx-text-fill: #0F172A;");
-            btnViewAll.setStyle("-fx-font-size: 11px; -fx-font-weight: 600; -fx-background-color: transparent; -fx-text-fill: #6366F1; -fx-cursor: hand;");
-            btnCloseDrawer.setStyle("-fx-font-size: 11px; -fx-font-weight: 700; -fx-background-color: transparent; -fx-text-fill: #64748B; -fx-cursor: hand;");
+            expandedDrawer.setStyle("-fx-background-color: #FFFFFF; -fx-border-color: #D9DAE6 transparent transparent transparent; -fx-border-width: 1;");
+            expandedHeaderLabel.setStyle("-fx-font-size: 14px; -fx-font-weight: 700; -fx-text-fill: #1F2335;");
+            btnViewAll.setStyle("-fx-font-size: 12px; -fx-font-weight: 600; -fx-background-color: transparent; -fx-text-fill: #6D28D9; -fx-cursor: hand;");
+            btnCloseDrawer.setStyle("-fx-font-size: 12px; -fx-font-weight: 600; -fx-background-color: transparent; -fx-text-fill: #5F6585; -fx-cursor: hand;");
 
-            appCpuMetric.setStyle("-fx-font-size: 11px; -fx-font-weight: 700; -fx-text-fill: #0F172A;");
-            appMemMetric.setStyle("-fx-font-size: 11px; -fx-font-weight: 700; -fx-text-fill: #0F172A;");
-            sysMemMetric.setStyle("-fx-font-size: 11px; -fx-font-weight: 700; -fx-text-fill: #0F172A;");
-            throughputMetric.setStyle("-fx-font-size: 11px; -fx-font-weight: 700; -fx-text-fill: #0F172A;");
+            appCpuMetric.setStyle("-fx-font-size: 12.5px; -fx-font-weight: 700; -fx-text-fill: #1F2335;");
+            appMemMetric.setStyle("-fx-font-size: 12.5px; -fx-font-weight: 700; -fx-text-fill: #1F2335;");
+            sysMemMetric.setStyle("-fx-font-size: 12.5px; -fx-font-weight: 700; -fx-text-fill: #1F2335;");
+            throughputMetric.setStyle("-fx-font-size: 12.5px; -fx-font-weight: 700; -fx-text-fill: #1F2335;");
             for (Label lbl : metricTitleLabels) {
-                lbl.setStyle("-fx-font-size: 11px; -fx-text-fill: #64748B;");
+                lbl.setStyle("-fx-font-size: 12px; -fx-font-weight: 600; -fx-text-fill: #5F6585;");
             }
         }
     }
@@ -160,10 +158,8 @@ public class PersistentTaskFooter extends VBox {
         collapsedBar.setPadding(new Insets(6, 18, 6, 18));
         collapsedBar.setPrefHeight(34);
 
-        // Privacy indicator
-        HBox privacyBox = new HBox(6);
-        privacyBox.setAlignment(Pos.CENTER_LEFT);
-        privacyBox.getChildren().addAll(greenDot, privacyPill);
+        HBox statusBox = new HBox(6, greenDot, taskCountBadge);
+        statusBox.setAlignment(Pos.CENTER_LEFT);
 
         Region spacer = new Region();
         HBox.setHgrow(spacer, Priority.ALWAYS);
@@ -171,7 +167,7 @@ public class PersistentTaskFooter extends VBox {
         // Expand Toggle button
         toggleExpandBtn.setOnAction(e -> toggleExpanded());
 
-        collapsedBar.getChildren().addAll(privacyBox, dotSeparator, taskCountBadge, spacer, telemetryLabel, toggleExpandBtn);
+        collapsedBar.getChildren().addAll(statusBox, spacer, telemetryLabel, toggleExpandBtn);
     }
 
     private void buildExpandedDrawer() {

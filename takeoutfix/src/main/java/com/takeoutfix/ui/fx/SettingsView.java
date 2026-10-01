@@ -4,6 +4,7 @@ import javafx.geometry.Orientation;
 import javafx.scene.control.SplitPane;
 
 import com.takeoutfix.restore.infrastructure.NativeExifToolEngine;
+import com.takeoutfix.shared.theme.ThemeColors;
 import javafx.application.Platform;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
@@ -47,29 +48,29 @@ public class SettingsView extends VBox {
     public SettingsView(NativeExifToolEngine engine) {
         this.engine = engine;
 
-        setSpacing(14);
-        setPadding(new Insets(16, 20, 16, 20));
+        setSpacing(16);
+        setPadding(new Insets(24));
         VBox.setVgrow(this, Priority.ALWAYS);
 
         // 1. Header
         getChildren().add(buildHeaderRow());
 
-        // 2. Preferences Body: Category Navigation Sidebar + Detail Content Pane
-        SplitPane body = new SplitPane();
-        body.setOrientation(Orientation.HORIZONTAL);
+        // 2. Preferences Body: Two-column layout (No Splitter, 24px gap)
+        HBox body = new HBox(24);
         VBox.setVgrow(body, Priority.ALWAYS);
 
         VBox navSidebar = buildNavSidebar();
         navSidebar.setPrefWidth(220);
-        navSidebar.setMinWidth(180);
+        navSidebar.setMinWidth(220);
+        navSidebar.setMaxWidth(220);
 
         ScrollPane scrollContent = new ScrollPane(contentPane);
         scrollContent.setFitToWidth(true);
         scrollContent.setStyle("-fx-background-color: transparent; -fx-background: transparent; -fx-border-color: transparent;");
+        HBox.setHgrow(scrollContent, Priority.ALWAYS);
         VBox.setVgrow(scrollContent, Priority.ALWAYS);
 
-        body.getItems().addAll(navSidebar, scrollContent);
-        body.setDividerPositions(0.22);
+        body.getChildren().addAll(navSidebar, scrollContent);
         getChildren().add(body);
 
         // Initialize Panes
@@ -92,10 +93,10 @@ public class SettingsView extends VBox {
 
         VBox titleBox = new VBox(3);
         Label title = new Label("Settings");
-        title.setStyle("-fx-font-size: 22px; -fx-font-weight: 700;");
+        title.getStyleClass().addAll("page-title", "header-title");
 
         Label subtitle = new Label("Configure your workspace, processing engine, privacy and file safety.");
-        subtitle.setStyle("-fx-font-size: 13px;");
+        subtitle.getStyleClass().addAll("page-description", "header-subtitle");
         titleBox.getChildren().addAll(title, subtitle);
 
         Region spacer = new Region();
@@ -135,7 +136,7 @@ public class SettingsView extends VBox {
                         case "File Safety" -> iconSvg = UiIcons.SHIELD_CHECK;
                         case "Storage" -> iconSvg = UiIcons.FOLDER;
                         case "Privacy" -> iconSvg = UiIcons.LOCK;
-                        case "Advanced" -> iconSvg = UiIcons.RELOAD;
+                        case "Advanced" -> iconSvg = UiIcons.TERMINAL;
                         case "Support" -> iconSvg = UiIcons.EXTERNAL_LINK;
                         default -> iconSvg = UiIcons.HEART;
                     }
@@ -188,11 +189,25 @@ public class SettingsView extends VBox {
         ToggleGroup tgTheme = new ToggleGroup();
         RadioButton rbDark = new RadioButton("Dark (Default)");
         rbDark.setToggleGroup(tgTheme);
-        rbDark.setSelected(true);
         RadioButton rbLight = new RadioButton("Light");
         rbLight.setToggleGroup(tgTheme);
         RadioButton rbSystem = new RadioButton("System");
         rbSystem.setToggleGroup(tgTheme);
+
+        if (ThemeColors.isDark()) {
+            rbDark.setSelected(true);
+        } else {
+            rbLight.setSelected(true);
+        }
+
+        tgTheme.selectedToggleProperty().addListener((obs, oldVal, newVal) -> {
+            if (newVal == rbDark && !ThemeColors.isDark()) {
+                ThemeColors.setDark(true);
+            } else if (newVal == rbLight && ThemeColors.isDark()) {
+                ThemeColors.setDark(false);
+            }
+        });
+
         themeChoices.getChildren().addAll(rbDark, rbLight, rbSystem);
 
         themeBox.getChildren().addAll(themeLbl, themeDesc, themeChoices);
@@ -546,7 +561,7 @@ public class SettingsView extends VBox {
 
         VBox infoBox = new VBox(10);
         Label title = new Label("Need Help or Encountered an Issue?");
-        title.setStyle("-fx-font-size: 15px; -fx-font-weight: 700; ");
+        title.setStyle("-fx-font-size: 15px; -fx-font-weight: 600; ");
 
         Label desc = new Label("Our documentation covers step-by-step restoration for Google Takeout archives, metadata pairing edge-cases, and troubleshooting for corrupted files.");
         desc.setWrapText(true);
@@ -618,7 +633,7 @@ public class SettingsView extends VBox {
     private VBox createSectionHeader(String titleText, String subtitleText) {
         VBox box = new VBox(2);
         Label title = new Label(titleText);
-        title.setStyle("-fx-font-size: 16px; -fx-font-weight: 700; ");
+        title.setStyle("-fx-font-size: 16px; -fx-font-weight: 600; ");
         Label sub = new Label(subtitleText);
         sub.setStyle("-fx-font-size: 12px; ");
         box.getChildren().addAll(title, sub);

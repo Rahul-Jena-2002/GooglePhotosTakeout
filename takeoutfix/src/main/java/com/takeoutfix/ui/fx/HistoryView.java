@@ -105,8 +105,9 @@ public class HistoryView extends VBox {
     private ActivityRecord currentSelectedRecord = null;
 
     public HistoryView() {
-        setSpacing(14);
-        setPadding(new Insets(16, 20, 16, 20));
+        getStyleClass().add("workspace-view");
+        setSpacing(16);
+        setPadding(new Insets(24));
         VBox.setVgrow(this, Priority.ALWAYS);
 
         // 1. Header
@@ -134,15 +135,18 @@ public class HistoryView extends VBox {
     }
 
     private HBox buildHeaderRow() {
-        HBox header = new HBox(14);
+        HBox header = new HBox(12);
         header.setAlignment(Pos.CENTER_LEFT);
 
-        VBox titleBox = new VBox(3);
+        StackPane iconTile = new StackPane(UiIcons.createSvgIcon(UiIcons.HISTORY, 16, "currentColor"));
+        iconTile.getStyleClass().add("header-icon-tile");
+
+        VBox titleBox = new VBox(2);
         HBox titleRow = new HBox(10);
         titleRow.setAlignment(Pos.CENTER_LEFT);
 
         Label title = new Label("Activity History");
-        title.setStyle("-fx-font-size: 22px; -fx-font-weight: 700;");
+        title.getStyleClass().addAll("page-title", "header-title");
 
         Label badge = new Label("Local audit trail");
         badge.setStyle("-fx-font-size: 11px; -fx-font-weight: 600; -fx-text-fill: #10B981; -fx-background-color: rgba(16, 185, 129, 0.12); -fx-padding: 3 8 3 8; -fx-background-radius: 6;");
@@ -150,7 +154,7 @@ public class HistoryView extends VBox {
         titleRow.getChildren().addAll(title, badge);
 
         Label subtitle = new Label("Review and manage your recent operations.");
-        subtitle.setStyle("-fx-font-size: 13px;");
+        subtitle.getStyleClass().addAll("page-description", "header-subtitle");
         titleBox.getChildren().addAll(titleRow, subtitle);
 
         Region spacer = new Region();
@@ -166,7 +170,7 @@ public class HistoryView extends VBox {
         btnOpenFolder.setGraphic(UiIcons.createSvgIcon(UiIcons.OUTPUT_FOLDER, 13, "currentColor"));
         btnOpenFolder.setOnAction(e -> openLogsDirectory());
 
-        header.getChildren().addAll(titleBox, spacer, btnRefresh, btnOpenFolder);
+        header.getChildren().addAll(iconTile, titleBox, spacer, btnRefresh, btnOpenFolder);
         return header;
     }
 
@@ -174,7 +178,7 @@ public class HistoryView extends VBox {
         HBox deck = new HBox(12);
         deck.setAlignment(Pos.CENTER_LEFT);
 
-        VBox card1 = createNeutralKpiCard("TOTAL OPERATIONS", kpiTotal, "Recorded sessions", "#A78BFA");
+        VBox card1 = createNeutralKpiCard("TOTAL OPERATIONS", kpiTotal, "Recorded sessions", null);
         VBox card2 = createNeutralKpiCard("SUCCESSFUL", kpiSuccess, "Completed without errors", "#10B981");
         VBox card3 = createNeutralKpiCard("NEEDS REVIEW", kpiReview, "Warnings or skipped items", "#F59E0B");
 
@@ -186,18 +190,40 @@ public class HistoryView extends VBox {
         return deck;
     }
 
-    private VBox createNeutralKpiCard(String labelText, Label valLabel, String subText, String accentColor) {
-        VBox card = new VBox(4);
+    private VBox createNeutralKpiCard(String labelText, Label valLabel, String subText, String semanticColor) {
+        VBox card = new VBox(2);
         card.getStyleClass().add("glass-card");
-        card.setStyle("-fx-border-radius: 8; -fx-background-radius: 8; -fx-padding: 12 16 12 16;");
+        card.setPadding(new Insets(10, 14, 10, 14));
+        card.setMinHeight(88);
+        card.setPrefHeight(88);
+        card.setMaxHeight(88);
 
         Label lbl = new Label(labelText);
-        lbl.setStyle("-fx-font-size: 11px; -fx-font-weight: 700; -fx-letter-spacing: 0.5px;");
+        lbl.setStyle("-fx-font-size: 11px; -fx-font-weight: 600; -fx-letter-spacing: 0.5px;");
+        lbl.getStyleClass().add("text-secondary");
 
-        valLabel.setStyle(String.format("-fx-font-size: 26px; -fx-font-weight: 800; -fx-text-fill: %s;", accentColor));
+        valLabel.setStyle("-fx-font-size: 24px; -fx-font-weight: 700;");
+        valLabel.getStyleClass().add("text-primary");
+
+        if (semanticColor != null && !semanticColor.isBlank()) {
+            valLabel.textProperty().addListener((obs, oldVal, newVal) -> {
+                try {
+                    String digits = newVal.replaceAll("[^0-9]", "");
+                    int v = digits.isEmpty() ? 0 : Integer.parseInt(digits);
+                    if (v > 0) {
+                        valLabel.setStyle(String.format("-fx-font-size: 24px; -fx-font-weight: 700; -fx-text-fill: %s;", semanticColor));
+                    } else {
+                        valLabel.setStyle("-fx-font-size: 24px; -fx-font-weight: 700;");
+                    }
+                } catch (Exception ignored) {
+                    valLabel.setStyle("-fx-font-size: 24px; -fx-font-weight: 700;");
+                }
+            });
+        }
 
         Label sub = new Label(subText);
-        sub.setStyle("-fx-font-size: 12px;");
+        sub.setStyle("-fx-font-size: 12px; -fx-font-weight: 500;");
+        sub.getStyleClass().add("text-secondary");
 
         card.getChildren().addAll(lbl, valLabel, sub);
         return card;
@@ -446,10 +472,9 @@ public class HistoryView extends VBox {
         // Populate Structured Overview
         structuredSummaryPane.getChildren().clear();
 
-        // Summary Card
+        // Summary Block (no nested card border)
         VBox sumCard = new VBox(8);
-        sumCard.setStyle("-fx-background-radius: 8; -fx-padding: 14; -fx-border-radius: 8;");
-        sumCard.getStyleClass().add("inner-container");
+        sumCard.setPadding(new Insets(4, 0, 8, 0));
         Label sumTitle = new Label("Operation Outcome & Overview");
         sumTitle.setStyle("-fx-font-size: 13px; -fx-font-weight: 700;");
         sumTitle.getStyleClass().add("card-title");
@@ -460,16 +485,16 @@ public class HistoryView extends VBox {
 
         HBox tagRow = new HBox(8);
         tagRow.getChildren().addAll(
-                createTag("Category: " + rec.getCategory(), "#989BA8"),
+                createTag("Category: " + rec.getCategory(), "#8089B3"),
                 createTag("Local Operation", "#10B981"),
-                createTag("100% On-Device", "#3B82F6")
+                createTag("100% On-Device", "#8089B3")
         );
 
         sumCard.getChildren().addAll(sumTitle, sumDesc, tagRow);
 
-        // Metrics Deck
+        // Metrics Deck (clean spacing with 1px divider)
         GridPane grid = new GridPane();
-        grid.setHgap(12);
+        grid.setHgap(16);
         grid.setVgap(12);
 
         int colIdx = 0;
@@ -477,12 +502,12 @@ public class HistoryView extends VBox {
 
         for (Map.Entry<String, String> entry : rec.getMetrics().entrySet()) {
             VBox mBox = new VBox(2);
-            mBox.setStyle("-fx-background-radius: 6; -fx-padding: 10 14 10 14; -fx-border-radius: 6;");
-            mBox.getStyleClass().add("inner-container");
+            mBox.setPadding(new Insets(6, 10, 6, 10));
             Label k = new Label(entry.getKey().toUpperCase());
-            k.setStyle("-fx-font-size: 10px; -fx-font-weight: 700;");
+            k.setStyle("-fx-font-size: 11px; -fx-font-weight: 600; -fx-letter-spacing: 0.5px;");
+            k.getStyleClass().add("text-secondary");
             Label v = new Label(entry.getValue());
-            v.setStyle("-fx-font-size: 16px; -fx-font-weight: 800;");
+            v.setStyle("-fx-font-size: 16px; -fx-font-weight: 700;");
             v.getStyleClass().add("text-primary");
             mBox.getChildren().addAll(k, v);
 
@@ -496,18 +521,18 @@ public class HistoryView extends VBox {
             }
         }
 
-        // File Location Card
+        // File Location Card (no nested card border)
         VBox fileCard = new VBox(4);
-        fileCard.setStyle("-fx-background-radius: 6; -fx-padding: 10 12 10 12; -fx-border-radius: 6;");
-        fileCard.getStyleClass().add("inner-container");
-        Label fileTitle = new Label("Audit Log Location");
-        fileTitle.setStyle("-fx-font-size: 11px; -fx-font-weight: 600;");
+        fileCard.setPadding(new Insets(4, 0, 4, 0));
+        Label fileTitle = new Label("AUDIT LOG LOCATION");
+        fileTitle.setStyle("-fx-font-size: 11px; -fx-font-weight: 600; -fx-letter-spacing: 0.5px;");
+        fileTitle.getStyleClass().add("text-secondary");
         Label filePath = new Label(rec.getFile().getAbsolutePath());
         filePath.setStyle("-fx-font-size: 12px;");
         filePath.getStyleClass().add("text-primary");
         fileCard.getChildren().addAll(fileTitle, filePath);
 
-        structuredSummaryPane.getChildren().addAll(sumCard, grid, fileCard);
+        structuredSummaryPane.getChildren().addAll(sumCard, new Separator(), grid, new Separator(), fileCard);
     }
 
     private Label createTag(String text, String color) {

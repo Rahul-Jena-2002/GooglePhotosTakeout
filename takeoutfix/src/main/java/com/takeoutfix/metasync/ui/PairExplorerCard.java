@@ -64,7 +64,7 @@ public class PairExplorerCard extends VBox {
         Region spacer = new Region();
         HBox.setHgrow(spacer, Priority.ALWAYS);
 
-        pairCountLabel.setStyle("-fx-font-size: 11px; -fx-font-weight: 600;  -fx-background-color: #20212B; -fx-padding: 2 8 2 8; -fx-background-radius: 10;");
+        pairCountLabel.setStyle("-fx-font-size: 11px; -fx-font-weight: 600; -fx-padding: 2 8 2 8; -fx-background-radius: 10;"); pairCountLabel.getStyleClass().add("badge-counter");
         header.getChildren().addAll(title, spacer, pairCountLabel);
         getChildren().add(header);
     }
@@ -75,7 +75,7 @@ public class PairExplorerCard extends VBox {
         // RAW Folder
         VBox rawBox = new VBox(2);
         Label rawLbl = new Label("RAW Originals Library");
-        rawLbl.setStyle("-fx-font-size: 11px; -fx-font-weight: 600; ");
+        rawLbl.setStyle("-fx-font-size: 12px; -fx-font-weight: 600;"); rawLbl.getStyleClass().add("text-secondary");
 
         rawFolderField.setPromptText("Folder with RAW originals (.CR3, .NEF, .ARW)...");
         rawFolderField.setStyle("-fx-font-size: 12px;    -fx-border-radius: 6; -fx-background-radius: 6;");
@@ -93,7 +93,7 @@ public class PairExplorerCard extends VBox {
         // Export Folder
         VBox expBox = new VBox(2);
         Label expLbl = new Label("Destination / Export Library");
-        expLbl.setStyle("-fx-font-size: 11px; -fx-font-weight: 600; ");
+        expLbl.setStyle("-fx-font-size: 12px; -fx-font-weight: 600;"); expLbl.getStyleClass().add("text-secondary");
 
         exportFolderField.setPromptText("Folder with JPEGs or XMPs...");
         exportFolderField.setStyle("-fx-font-size: 12px;    -fx-border-radius: 6; -fx-background-radius: 6;");
@@ -155,7 +155,7 @@ public class PairExplorerCard extends VBox {
                 thumbView.setSmooth(true);
 
                 nameLbl.setStyle("-fx-font-size: 13px; -fx-font-weight: 600; ");
-                typeLbl.setStyle("-fx-font-size: 11px; ");
+                typeLbl.setStyle("-fx-font-size: 12px;"); typeLbl.getStyleClass().add("text-secondary");
 
                 textCol.getChildren().addAll(nameLbl, typeLbl);
                 HBox.setHgrow(spacer, Priority.ALWAYS);

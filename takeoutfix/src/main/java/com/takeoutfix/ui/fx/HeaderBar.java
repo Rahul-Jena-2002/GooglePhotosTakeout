@@ -148,7 +148,7 @@ public class HeaderBar extends HBox {
         if (logoView != null) {
             brand.getChildren().addAll(logoView, brandText, versionBtn);
         } else {
-            var fallback = UiIcons.createSvgIcon(UiIcons.RESTORE, 18, "#8b5cf6");
+            var fallback = UiIcons.createSvgIcon(UiIcons.RESTORE, 18, "#7C3AED");
             brand.getChildren().addAll(fallback, brandText, versionBtn);
         }
         return brand;
@@ -157,11 +157,12 @@ public class HeaderBar extends HBox {
     private void updateVersionBadge(com.takeoutfix.updates.UpdateCheckerService.UpdateInfo info) {
         if (info != null && info.isUpdateAvailable()) {
             versionBtn.setText("⚡ Update: " + info.versionTag());
-            versionBtn.setStyle("-fx-font-size: 10px; -fx-font-weight: 800; -fx-text-fill: #10b981; -fx-background-color: rgba(16, 185, 129, 0.18); -fx-padding: 2 7 2 7; -fx-background-radius: 4; -fx-border-color: rgba(16, 185, 129, 0.4); -fx-border-radius: 4; -fx-cursor: hand;");
+            versionBtn.setStyle("-fx-font-size: 11.5px; -fx-font-weight: 600; -fx-text-fill: #10b981; -fx-background-color: rgba(16, 185, 129, 0.18); -fx-padding: 3 8 3 8; -fx-background-radius: 4; -fx-border-color: rgba(16, 185, 129, 0.4); -fx-border-radius: 4; -fx-cursor: hand;");
             Tooltip.install(versionBtn, new Tooltip("New update " + info.versionTag() + " available! Click to review and install OTA."));
         } else {
             versionBtn.setText("v" + com.takeoutfix.shared.util.AppVersion.getVersion());
-            versionBtn.setStyle("-fx-font-size: 10px; -fx-font-weight: 600; -fx-text-fill: #8b5cf6; -fx-background-color: rgba(139, 92, 246, 0.12); -fx-padding: 2 6 2 6; -fx-background-radius: 4; -fx-cursor: hand; -fx-border-color: transparent;");
+            versionBtn.getStyleClass().setAll("button", "version-badge");
+            versionBtn.setStyle("-fx-font-size: 11.5px; -fx-font-weight: 600; -fx-padding: 3 8 3 8; -fx-background-radius: 4; -fx-cursor: hand; -fx-border-color: transparent;");
             Tooltip.install(versionBtn, new Tooltip("TakeoutFix Studio v" + com.takeoutfix.shared.util.AppVersion.getVersion() + " (Click to check for updates)"));
         }
     }
@@ -245,7 +246,7 @@ public class HeaderBar extends HBox {
             themeToggleBtn.setGraphic(UiIcons.createSvgIcon(UiIcons.SUN, 15, "#fbbf24"));
             themeToggleBtn.setTooltip(new Tooltip("Switch to Light Theme"));
         } else {
-            themeToggleBtn.setGraphic(UiIcons.createSvgIcon(UiIcons.MOON, 15, "#6366f1"));
+            themeToggleBtn.setGraphic(UiIcons.createSvgIcon(UiIcons.MOON, 15, "#6D28D9"));
             themeToggleBtn.setTooltip(new Tooltip("Switch to Dark Theme"));
         }
     }
@@ -256,7 +257,7 @@ public class HeaderBar extends HBox {
 
         onlineDot.setFill(javafx.scene.paint.Color.web("#10b981"));
         onlineLabel.setText("Connected");
-        onlineLabel.setStyle("-fx-font-size: 10px; -fx-font-weight: 600; -fx-text-fill: #10b981;");
+        onlineLabel.setStyle("-fx-font-size: 12px; -fx-font-weight: 500; -fx-text-fill: #10b981;");
 
         onlineBadge.getChildren().addAll(onlineDot, onlineLabel);
     }
@@ -266,20 +267,20 @@ public class HeaderBar extends HBox {
             onlineBadge.setStyle("-fx-background-color: rgba(16, 185, 129, 0.10); -fx-border-color: rgba(16, 185, 129, 0.20); -fx-border-radius: 12; -fx-background-radius: 12; -fx-padding: 3 10 3 10;");
             onlineDot.setFill(javafx.scene.paint.Color.web("#10b981"));
             onlineLabel.setText("Connected");
-            onlineLabel.setStyle("-fx-font-size: 10px; -fx-font-weight: 600; -fx-text-fill: #10b981;");
+            onlineLabel.setStyle("-fx-font-size: 12px; -fx-font-weight: 500; -fx-text-fill: #10b981;");
         } else {
             onlineBadge.setStyle("-fx-background-color: rgba(113, 113, 122, 0.10); -fx-border-color: rgba(113, 113, 122, 0.20); -fx-border-radius: 12; -fx-background-radius: 12; -fx-padding: 3 10 3 10;");
             onlineDot.setFill(javafx.scene.paint.Color.web("#71717a"));
             onlineLabel.setText("Offline");
-            onlineLabel.setStyle("-fx-font-size: 10px; -fx-font-weight: 600; -fx-text-fill: #71717a;");
+            onlineLabel.setStyle("-fx-font-size: 12px; -fx-font-weight: 500; -fx-text-fill: #9299A8;");
         }
     }
 
     private void setupProfileSection() {
         profileContainer.setAlignment(Pos.CENTER_LEFT);
 
-        avatarCircle.setStyle("-fx-font-size: 11px; -fx-font-weight: 700; -fx-text-fill: #ffffff; -fx-background-color: #6366f1; -fx-padding: 3 7 3 7; -fx-background-radius: 12;");
-        userPill.setStyle("-fx-font-size: 12px; -fx-font-weight: 600;");
+        avatarCircle.setStyle("-fx-font-size: 12px; -fx-font-weight: 600; -fx-text-fill: #ffffff; -fx-background-color: #7C3AED; -fx-padding: 3 7 3 7; -fx-background-radius: 12;");
+        userPill.setStyle("-fx-font-size: 13px; -fx-font-weight: 500;");
 
         profilePillBox.setAlignment(Pos.CENTER_LEFT);
         profilePillBox.setStyle("-fx-cursor: hand; -fx-padding: 3 8 3 8; -fx-background-radius: 6; -fx-background-color: rgba(113, 113, 122, 0.08);");
@@ -296,7 +297,7 @@ public class HeaderBar extends HBox {
         });
         Tooltip.install(profilePillBox, new Tooltip("Account & profile controls (Sign in optional for cloud sync)"));
 
-        authActionBtn.setStyle("-fx-font-size: 11px; -fx-font-weight: 700; -fx-padding: 5 12 5 12; -fx-background-radius: 6;");
+        authActionBtn.setStyle("-fx-font-size: 12px; -fx-font-weight: 600; -fx-padding: 5 12 5 12; -fx-background-radius: 6;");
 
         profileContainer.getChildren().addAll(profilePillBox, authActionBtn);
     }
@@ -322,7 +323,7 @@ public class HeaderBar extends HBox {
             String initial = name.substring(0, 1).toUpperCase();
 
             userPill.setText("Hi, " + firstName);
-            userPill.setStyle("-fx-font-size: 12px; -fx-font-weight: 700; -fx-text-fill: #6366f1;");
+            userPill.setStyle("-fx-font-size: 12px; -fx-font-weight: 700; -fx-text-fill: #7C3AED;");
             profilePillBox.setVisible(true);
             profilePillBox.setManaged(true);
 
