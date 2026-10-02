@@ -336,7 +336,7 @@ public class TakeoutRestoreView extends VBox {
         VBox.setVgrow(rightCol, Priority.ALWAYS);
         rightCol.setPrefWidth(330);
         rightCol.setMinWidth(280);
-        rightCol.getChildren().addAll(buildRestorationControlsBox(), buildStorageTelemetryCard());
+        rightCol.getChildren().add(buildUnifiedOptionsAndStorageCard());
 
         horizSplit.getItems().addAll(leftCol, rightCol);
         horizSplit.setDividerPositions(0.68);
@@ -622,37 +622,39 @@ public class TakeoutRestoreView extends VBox {
         return chip;
     }
 
-    private VBox buildRestorationControlsBox() {
-        VBox box = new VBox(8);
-        box.getStyleClass().add("inner-container");
-        box.setStyle("-fx-background-radius: 6; -fx-border-radius: 6; -fx-border-width: 1; -fx-padding: 10 12 10 12;");
+    private VBox buildUnifiedOptionsAndStorageCard() {
+        VBox card = new VBox(8);
+        card.getStyleClass().add("inner-container");
+        card.setStyle("-fx-background-radius: 8; -fx-border-radius: 8; -fx-border-width: 1; -fx-padding: 10 12 10 12;");
+        VBox.setVgrow(card, Priority.ALWAYS);
 
+        // --- PART 1: RESTORATION OPTIONS ---
         HBox titleRow = new HBox(8);
         titleRow.setAlignment(Pos.CENTER_LEFT);
         Label title = new Label("RESTORATION OPTIONS");
-        title.setStyle("-fx-font-size: 12.5px; -fx-font-weight: 600; -fx-letter-spacing: 0.5px;");
+        title.setStyle("-fx-font-size: 12px; -fx-font-weight: 700; -fx-letter-spacing: 0.5px;");
         title.getStyleClass().add("card-title");
-        titleRow.getChildren().add(title);
+        titleRow.getChildren().addAll(UiIcons.createSvgIcon(UiIcons.SETTINGS, 13, "currentColor"), title);
 
         // Group 1: Date & Timestamp Handling
         Label dateGroupLabel = new Label("Date & Timestamp Handling");
-        dateGroupLabel.getStyleClass().add("text-muted");
-        dateGroupLabel.setStyle("-fx-font-size: 12px; -fx-font-weight: 700; -fx-text-transform: uppercase; -fx-padding: 8 0 4 0;");
-        dateGroupLabel.getStyleClass().add("section-sub-title");
+        dateGroupLabel.getStyleClass().addAll("section-sub-title", "text-muted");
+        dateGroupLabel.setStyle("-fx-font-size: 11px; -fx-font-weight: 700; -fx-text-transform: uppercase; -fx-padding: 4 0 2 0;");
 
-        VBox dateBlock = new VBox(4);
+        VBox dateBlock = new VBox(3);
         Label dateLbl = new Label("Fallback Date");
-        dateLbl.setStyle("-fx-font-size: 13px; -fx-font-weight: 500;");
+        dateLbl.setStyle("-fx-font-size: 12px; -fx-font-weight: 500;");
         dateLbl.getStyleClass().add("text-secondary");
 
         HBox dateRow = new HBox(6);
         dateRow.setAlignment(Pos.CENTER_LEFT);
         datePicker.setPromptText("YYYY-MM-DD (Optional)");
         datePicker.setMaxWidth(Double.MAX_VALUE);
+        datePicker.setStyle("-fx-pref-height: 28px; -fx-font-size: 12px;");
         HBox.setHgrow(datePicker, Priority.ALWAYS);
 
         btnClearDate.getStyleClass().add("btn-ghost");
-        btnClearDate.setStyle("-fx-font-size: 12px; -fx-padding: 2 6 2 6; -fx-cursor: hand;");
+        btnClearDate.setStyle("-fx-font-size: 11px; -fx-padding: 2 6 2 6; -fx-cursor: hand;");
         btnClearDate.setOnAction(e -> {
             datePicker.setValue(null);
             if (datePicker.getEditor() != null) datePicker.getEditor().clear();
@@ -666,52 +668,40 @@ public class TakeoutRestoreView extends VBox {
         // Group 2: Output & Structure
         Label outputGroupLabel = new Label("Output & Structure");
         outputGroupLabel.getStyleClass().addAll("section-sub-title", "text-muted");
-        outputGroupLabel.setStyle("-fx-font-size: 12px; -fx-font-weight: 700; -fx-text-transform: uppercase; -fx-padding: 8 0 4 0;");
+        outputGroupLabel.setStyle("-fx-font-size: 11px; -fx-font-weight: 700; -fx-text-transform: uppercase; -fx-padding: 4 0 2 0;");
 
         organizeMonthCheck.getStyleClass().add("text-primary");
         splitVolumesCheck.getStyleClass().add("text-primary");
         keepAwakeCheck.getStyleClass().add("text-primary");
 
-        box.getChildren().addAll(
-                titleRow,
-                dateGroupLabel,
-                dateBlock,
-                smartInterpolationCheck,
-                outputGroupLabel,
-                organizeMonthCheck,
-                splitVolumesCheck,
-                keepAwakeCheck
-        );
-        return box;
-    }
+        // Mid-spacer and subtle divider between options and hardware telemetry
+        Region midSpacer = new Region();
+        VBox.setVgrow(midSpacer, Priority.ALWAYS);
 
-    private VBox buildStorageTelemetryCard() {
-        VBox card = new VBox(8);
-        card.getStyleClass().add("inner-container");
-        card.setStyle("-fx-background-radius: 6; -fx-border-radius: 6; -fx-border-width: 1; -fx-padding: 10 12 10 12;");
-        VBox.setVgrow(card, Priority.ALWAYS);
+        Separator sep = new Separator();
+        sep.setStyle("-fx-opacity: 0.25; -fx-padding: 2 0 2 0;");
 
-        // Header Row: Hard Drive Icon + Title + 100% Offline Pill
-        HBox headerRow = new HBox(8);
-        headerRow.setAlignment(Pos.CENTER_LEFT);
+        // --- PART 2: TARGET STORAGE & HARDWARE ---
+        HBox storeHeaderRow = new HBox(8);
+        storeHeaderRow.setAlignment(Pos.CENTER_LEFT);
 
-        Node icon = UiIcons.createSvgIcon(UiIcons.HARD_DRIVE, 14, "currentColor");
-        Label title = new Label("TARGET STORAGE & HARDWARE");
-        title.setStyle("-fx-font-size: 12px; -fx-font-weight: 700; -fx-letter-spacing: 0.5px;");
-        title.getStyleClass().add("card-title");
+        Node icon = UiIcons.createSvgIcon(UiIcons.HARD_DRIVE, 13, "currentColor");
+        Label storeTitle = new Label("TARGET STORAGE & HARDWARE");
+        storeTitle.setStyle("-fx-font-size: 12px; -fx-font-weight: 700; -fx-letter-spacing: 0.5px;");
+        storeTitle.getStyleClass().add("card-title");
 
-        Region sp = new Region();
-        HBox.setHgrow(sp, Priority.ALWAYS);
+        Region spStorage = new Region();
+        HBox.setHgrow(spStorage, Priority.ALWAYS);
 
         Label localPill = new Label("100% OFFLINE");
         localPill.setStyle("-fx-font-size: 9.5px; -fx-font-weight: 700; -fx-text-fill: #10B981; -fx-background-color: rgba(16, 185, 129, 0.12); -fx-padding: 2 6 2 6; -fx-background-radius: 4;");
 
-        headerRow.getChildren().addAll(icon, title, sp, localPill);
+        storeHeaderRow.getChildren().addAll(icon, storeTitle, spStorage, localPill);
 
         // Drive Mount & Capacity Box
-        VBox driveBox = new VBox(6);
+        VBox driveBox = new VBox(5);
         driveBox.getStyleClass().add("sub-card");
-        driveBox.setStyle("-fx-background-radius: 6; -fx-border-radius: 6; -fx-border-width: 1; -fx-padding: 8 10 8 10;");
+        driveBox.setStyle("-fx-background-radius: 6; -fx-border-radius: 6; -fx-border-width: 1; -fx-padding: 7 10 7 10;");
 
         HBox driveTitleRow = new HBox(6);
         driveTitleRow.setAlignment(Pos.CENTER_LEFT);
@@ -729,19 +719,16 @@ public class TakeoutRestoreView extends VBox {
 
         driveBox.getChildren().addAll(driveTitleRow, driveCapacityLabel, driveUsageBar, spaceReqLabel);
 
-        Region spacer = new Region();
-        VBox.setVgrow(spacer, Priority.ALWAYS);
-
         // System Readiness & Engine Block
-        VBox engineBox = new VBox(5);
+        VBox engineBox = new VBox(4);
         engineBox.getStyleClass().add("sub-card");
-        engineBox.setStyle("-fx-background-radius: 6; -fx-border-radius: 6; -fx-border-width: 1; -fx-padding: 8 10 8 10;");
+        engineBox.setStyle("-fx-background-radius: 6; -fx-border-radius: 6; -fx-border-width: 1; -fx-padding: 6 10 6 10;");
 
         HBox engRow = new HBox(6);
         engRow.setAlignment(Pos.CENTER_LEFT);
         Circle engDot = new Circle(3.5, Color.web("#10B981"));
         Label engLbl = new Label("Native ExifTool v13.x Embedded • Ready");
-        engLbl.setStyle("-fx-font-size: 11.5px; -fx-font-weight: 600;");
+        engLbl.setStyle("-fx-font-size: 11px; -fx-font-weight: 600;");
         engLbl.getStyleClass().add("text-primary");
         engRow.getChildren().addAll(engDot, engLbl);
 
@@ -749,13 +736,27 @@ public class TakeoutRestoreView extends VBox {
         chkRow.setAlignment(Pos.CENTER_LEFT);
         Circle chkDot = new Circle(3.5, Color.web("#8B5CF6"));
         Label chkLbl = new Label("Atomic Checkpointing • Auto-Resume Enabled");
-        chkLbl.setStyle("-fx-font-size: 11px; -fx-font-weight: 500;");
+        chkLbl.setStyle("-fx-font-size: 10.5px; -fx-font-weight: 500;");
         chkLbl.getStyleClass().add("text-muted");
         chkRow.getChildren().addAll(chkDot, chkLbl);
 
         engineBox.getChildren().addAll(engRow, chkRow);
 
-        card.getChildren().addAll(headerRow, driveBox, spacer, engineBox);
+        card.getChildren().addAll(
+                titleRow,
+                dateGroupLabel,
+                dateBlock,
+                smartInterpolationCheck,
+                outputGroupLabel,
+                organizeMonthCheck,
+                splitVolumesCheck,
+                keepAwakeCheck,
+                midSpacer,
+                sep,
+                storeHeaderRow,
+                driveBox,
+                engineBox
+        );
         return card;
     }
 
