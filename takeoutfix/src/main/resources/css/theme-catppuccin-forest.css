@@ -6,8 +6,8 @@
     -color-accent-muted: #7C9489;
     -color-accent-subtle: #2A3C33;
     -color-fg-default: #EAF2ED;
-    -color-fg-muted: #7C9489;
-    -color-fg-subtle: #7C9489;
+    -color-fg-muted: #B6CEBF;
+    -color-fg-subtle: #B6CEBF;
     -color-bg-default: #18221D;
     -color-bg-subtle: #1E2B25;
     -color-border-default: #2A3C33;
@@ -18,7 +18,7 @@
 
     /* Base Font & Canvas */
     -fx-font-family: "Segoe UI", "Inter", -apple-system, sans-serif;
-    -fx-font-size: 14px;
+    -fx-font-size: 15px;
     -fx-base: #18221D;
     -fx-background-color: #18221D;
     -fx-text-fill: #EAF2ED;
@@ -46,14 +46,14 @@
 
 .page-description {
     -fx-font-family: "Segoe UI", sans-serif;
-    -fx-font-size: 14px;
+    -fx-font-size: 15px;
     -fx-font-weight: normal;
     -fx-text-fill: #7C9489;
 }
 
 .section-title {
     -fx-font-family: "Segoe UI Semibold", "Segoe UI", sans-serif;
-    -fx-font-size: 14px;
+    -fx-font-size: 15px;
     -fx-font-weight: bold;
     -fx-text-fill: #EAF2ED;
 }
@@ -67,9 +67,9 @@
 
 .card-subtitle {
     -fx-font-family: "Segoe UI", sans-serif;
-    -fx-font-size: 13.5px;
+    -fx-font-size: 14px;
     -fx-font-weight: normal;
-    -fx-text-fill: #7C9489;
+    -fx-text-fill: #B6CEBF;
 }
 
 /* App Shell & Sidebar */
@@ -86,7 +86,7 @@
 
 .sidebar-brand, .sidebar-title {
     -fx-font-family: "Segoe UI Semibold", "Segoe UI", sans-serif;
-    -fx-font-size: 14px;
+    -fx-font-size: 15px;
     -fx-font-weight: bold;
     -fx-text-fill: #EAF2ED;
 }
@@ -176,7 +176,7 @@
 
 .header-title {
     -fx-font-family: "Segoe UI Semibold", "Segoe UI", sans-serif;
-    -fx-font-size: 14px;
+    -fx-font-size: 15px;
     -fx-font-weight: bold;
     -fx-text-fill: #EAF2ED;
 }
@@ -287,8 +287,8 @@
 
 /* Typography Scale — Enhanced Contrast for High Readability */
 .text-primary   { -fx-text-fill: #EAF2ED; -fx-font-weight: normal; }
-.text-secondary { -fx-text-fill: #7C9489; }
-.text-muted     { -fx-text-fill: #7C9489; }
+.text-secondary { -fx-text-fill: #B6CEBF; }
+.text-muted     { -fx-text-fill: #B6CEBF; }
 
 /* Status, Logs & Telemetry Typography */
 .status-text {
@@ -336,7 +336,7 @@
 /* Buttons — Height 30px, Radius 4px, 1px Border */
 .button {
     -fx-font-family: "Segoe UI Semibold", "Segoe UI", sans-serif;
-    -fx-font-size: 12.5px;
+    -fx-font-size: 14px;
     -fx-font-weight: bold;
     -fx-pref-height: 30px;
     -fx-background-radius: 4;
@@ -357,7 +357,7 @@
     -fx-text-fill: #18221D;
     -fx-font-family: "Segoe UI Semibold", "Segoe UI", sans-serif;
     -fx-font-weight: bold;
-    -fx-font-size: 12.5px;
+    -fx-font-size: 14px;
     -fx-pref-height: 30px;
     -fx-background-radius: 8;
     -fx-border-color: transparent;
@@ -402,7 +402,7 @@
     -fx-text-fill: #EAF2ED;
     -fx-font-family: "Segoe UI Semibold", "Segoe UI", sans-serif;
     -fx-font-weight: bold;
-    -fx-font-size: 12.5px;
+    -fx-font-size: 14px;
     -fx-pref-height: 30px;
     -fx-background-radius: 8;
     -fx-border-color: #2A3C33;
@@ -427,10 +427,10 @@
 /* Ghost Buttons — Flat */
 .btn-ghost {
     -fx-background-color: transparent;
-    -fx-text-fill: #7C9489;
+    -fx-text-fill: #B6CEBF;
     -fx-font-family: "Segoe UI Semibold", "Segoe UI", sans-serif;
     -fx-font-weight: bold;
-    -fx-font-size: 12.5px;
+    -fx-font-size: 13.5px;
     -fx-pref-height: 30px;
     -fx-background-radius: 4;
     -fx-border-color: transparent;
@@ -542,17 +542,22 @@
 }
 
 .check-box {
-    -fx-font-size: 13px;
+    -fx-font-size: 14.5px;
+    -fx-font-weight: 500;
     -fx-font-smoothing-type: lcd;
     -fx-text-fill: #EAF2ED;
 }
 
 .check-box .box {
     -fx-background-color: #1E2B25;
-    -fx-border-color: #2A3C33;
-    -fx-border-radius: 3;
-    -fx-background-radius: 3;
-    -fx-border-width: 1;
+    -fx-border-color: #385043;
+    -fx-border-radius: 4;
+    -fx-background-radius: 4;
+    -fx-border-width: 1.5;
+    -fx-min-width: 18px;
+    -fx-min-height: 18px;
+    -fx-pref-width: 18px;
+    -fx-pref-height: 18px;
 }
 
 .check-box:focused .box {
@@ -781,7 +786,7 @@
 
 .empty-state-title {
     -fx-font-family: "Segoe UI Semibold", "Segoe UI", sans-serif;
-    -fx-font-size: 14px;
+    -fx-font-size: 15px;
     -fx-font-weight: bold;
     -fx-text-fill: #EAF2ED;
 }

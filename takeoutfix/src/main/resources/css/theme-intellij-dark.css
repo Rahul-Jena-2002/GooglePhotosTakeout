@@ -6,8 +6,8 @@
     -color-accent-muted: #868A91;
     -color-accent-subtle: #393B40;
     -color-fg-default: #DFE1E5;
-    -color-fg-muted: #868A91;
-    -color-fg-subtle: #868A91;
+    -color-fg-muted: #B8BCC6;
+    -color-fg-subtle: #B8BCC6;
     -color-bg-default: #1E1F22;
     -color-bg-subtle: #2B2D30;
     -color-border-default: #393B40;
@@ -18,7 +18,7 @@
 
     /* Base Font & Canvas */
     -fx-font-family: "Segoe UI", "Inter", -apple-system, sans-serif;
-    -fx-font-size: 14px;
+    -fx-font-size: 15px;
     -fx-base: #1E1F22;
     -fx-background-color: #1E1F22;
     -fx-text-fill: #DFE1E5;
@@ -46,14 +46,14 @@
 
 .page-description {
     -fx-font-family: "Segoe UI", sans-serif;
-    -fx-font-size: 14px;
+    -fx-font-size: 15px;
     -fx-font-weight: normal;
     -fx-text-fill: #868A91;
 }
 
 .section-title {
     -fx-font-family: "Segoe UI Semibold", "Segoe UI", sans-serif;
-    -fx-font-size: 14px;
+    -fx-font-size: 15px;
     -fx-font-weight: bold;
     -fx-text-fill: #DFE1E5;
 }
@@ -86,7 +86,7 @@
 
 .sidebar-brand, .sidebar-title {
     -fx-font-family: "Segoe UI Semibold", "Segoe UI", sans-serif;
-    -fx-font-size: 14px;
+    -fx-font-size: 15px;
     -fx-font-weight: bold;
     -fx-text-fill: #DFE1E5;
 }
@@ -176,7 +176,7 @@
 
 .header-title {
     -fx-font-family: "Segoe UI Semibold", "Segoe UI", sans-serif;
-    -fx-font-size: 14px;
+    -fx-font-size: 15px;
     -fx-font-weight: bold;
     -fx-text-fill: #DFE1E5;
 }
@@ -287,8 +287,8 @@
 
 /* Typography Scale — Enhanced Contrast for High Readability */
 .text-primary   { -fx-text-fill: #DFE1E5; -fx-font-weight: normal; }
-.text-secondary { -fx-text-fill: #868A91; }
-.text-muted     { -fx-text-fill: #868A91; }
+.text-secondary { -fx-text-fill: #B8BCC6; }
+.text-muted     { -fx-text-fill: #B8BCC6; }
 
 /* Status, Logs & Telemetry Typography */
 .status-text {
@@ -336,7 +336,7 @@
 /* Buttons — Height 30px, Radius 4px, 1px Border */
 .button {
     -fx-font-family: "Segoe UI Semibold", "Segoe UI", sans-serif;
-    -fx-font-size: 12.5px;
+    -fx-font-size: 14px;
     -fx-font-weight: bold;
     -fx-pref-height: 30px;
     -fx-background-radius: 4;
@@ -357,7 +357,7 @@
     -fx-text-fill: #1E1F22;
     -fx-font-family: "Segoe UI Semibold", "Segoe UI", sans-serif;
     -fx-font-weight: bold;
-    -fx-font-size: 12.5px;
+    -fx-font-size: 14px;
     -fx-pref-height: 30px;
     -fx-background-radius: 8;
     -fx-border-color: transparent;
@@ -402,7 +402,7 @@
     -fx-text-fill: #DFE1E5;
     -fx-font-family: "Segoe UI Semibold", "Segoe UI", sans-serif;
     -fx-font-weight: bold;
-    -fx-font-size: 12.5px;
+    -fx-font-size: 14px;
     -fx-pref-height: 30px;
     -fx-background-radius: 8;
     -fx-border-color: #393B40;
@@ -430,7 +430,7 @@
     -fx-text-fill: #868A91;
     -fx-font-family: "Segoe UI Semibold", "Segoe UI", sans-serif;
     -fx-font-weight: bold;
-    -fx-font-size: 12.5px;
+    -fx-font-size: 13.5px;
     -fx-pref-height: 30px;
     -fx-background-radius: 4;
     -fx-border-color: transparent;
@@ -542,17 +542,22 @@
 }
 
 .check-box {
-    -fx-font-size: 13px;
+    -fx-font-size: 14.5px;
+    -fx-font-weight: 500;
     -fx-font-smoothing-type: lcd;
     -fx-text-fill: #DFE1E5;
 }
 
 .check-box .box {
     -fx-background-color: #2B2D30;
-    -fx-border-color: #393B40;
-    -fx-border-radius: 3;
-    -fx-background-radius: 3;
-    -fx-border-width: 1;
+    -fx-border-color: #4E5157;
+    -fx-border-radius: 4;
+    -fx-background-radius: 4;
+    -fx-border-width: 1.5;
+    -fx-min-width: 18px;
+    -fx-min-height: 18px;
+    -fx-pref-width: 18px;
+    -fx-pref-height: 18px;
 }
 
 .check-box:focused .box {
@@ -781,7 +786,7 @@
 
 .empty-state-title {
     -fx-font-family: "Segoe UI Semibold", "Segoe UI", sans-serif;
-    -fx-font-size: 14px;
+    -fx-font-size: 15px;
     -fx-font-weight: bold;
     -fx-text-fill: #DFE1E5;
 }
