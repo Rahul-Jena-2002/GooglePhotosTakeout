@@ -14,6 +14,5 @@
 
     <modules>
         <module>takeoutfix</module>
-        <module>photovault</module>
     </modules>
 </project>

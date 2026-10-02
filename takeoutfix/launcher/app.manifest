@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <assembly xmlns="urn:schemas-microsoft-com:asm.v1" manifestVersion="1.0">
   <assemblyIdentity
-    version="2.2.6.0"
+    version="2.2.7.0"
     processorArchitecture="*"
     name="TakeoutFix.Desktop"
     type="win32"
@@ -17,7 +17,7 @@
     </security>
   </trustInfo>
 
-  <!-- Declare compatibility with all modern Windows versions -->
+  <!-- Declare compatibility with legacy and modern Windows versions -->
   <compatibility xmlns="urn:schemas-microsoft-com:compatibility.v1">
     <application>
       <!-- Windows 10/11 -->
@@ -28,6 +28,8 @@
       <supportedOS Id="{4a2f28e3-53b9-4441-ba9c-d69d4a4a6e38}"/>
       <!-- Windows 7 -->
       <supportedOS Id="{35138b9a-5d96-4fbd-8e2d-a2440225f93a}"/>
+      <!-- Windows Vista -->
+      <supportedOS Id="{e2011457-1546-43c5-a5fe-008deee3d3f0}"/>
     </application>
   </compatibility>
 

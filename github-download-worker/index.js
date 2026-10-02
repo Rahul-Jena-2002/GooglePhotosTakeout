@@ -36,7 +36,7 @@
 
 const REPO_OWNER = "Rahul-Jena-2002";
 const REPO_NAME = "GooglePhotosTakeout";
-const CURRENT_OTA_VERSION = "2.2.6";
+const CURRENT_OTA_VERSION = "2.2.7";
 
 export default {
   async fetch(request, env, ctx) {
