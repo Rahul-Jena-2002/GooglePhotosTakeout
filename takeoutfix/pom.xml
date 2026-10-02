@@ -113,13 +113,6 @@
             <artifactId>atlantafx-base</artifactId>
             <version>2.0.1</version>
         </dependency>
-
-        <!-- OpenCV 4.9 with bundled native libs — Apache-2.0, loaded via nu.pattern.OpenCV.loadLocally() -->
-        <dependency>
-            <groupId>org.openpnp</groupId>
-            <artifactId>opencv</artifactId>
-            <version>4.9.0-0</version>
-        </dependency>
     </dependencies>
 
 

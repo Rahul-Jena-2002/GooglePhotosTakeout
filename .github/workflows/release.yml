@@ -83,6 +83,17 @@ jobs:
           mkdir -p jpackage-input
           cp takeoutfix/target/takeoutfix.jar jpackage-input/
 
+      - name: Build Minimal Custom Runtime (jlink)
+        shell: bash
+        run: |
+          jlink \
+            --add-modules java.base,java.desktop,java.logging,java.naming,java.management,java.instrument,java.sql,java.xml,java.net.http,jdk.crypto.ec,jdk.unsupported,jdk.security.auth \
+            --strip-debug \
+            --no-header-files \
+            --no-man-pages \
+            --compress=2 \
+            --output custom-runtime
+
       # ─── Windows: Standalone EXE + Setup Installer (SmartScreen hardened) ───
       - name: Package Java Windows (.exe)
         if: matrix.os == 'windows-latest'
@@ -93,10 +104,11 @@ jobs:
         run: |
           $appVer = "${{ steps.version.outputs.version }}"
 
-          # 1. Build Native Application Image
-          Write-Host "Building native application image..."
+          # 1. Build Native Application Image with Minimal Custom Runtime
+          Write-Host "Building native application image with minimal custom runtime..."
           jpackage `
             --type app-image `
+            --runtime-image "custom-runtime" `
             --input "jpackage-input" `
             --main-jar "takeoutfix.jar" `
             --main-class "com.takeoutfix.TakeoutApplication" `
@@ -203,6 +215,7 @@ jobs:
           # 1. Build app-image first to allow deep signing
           jpackage \
             --type app-image \
+            --runtime-image custom-runtime \
             --name "TakeoutFix" \
             --input "jpackage-input" \
             --main-jar "takeoutfix.jar" \
@@ -261,6 +274,7 @@ jobs:
           # 1. Build app-image as the base for all Linux packages
           jpackage \
             --type app-image \
+            --runtime-image custom-runtime \
             --name "TakeoutFix" \
             --input "jpackage-input" \
             --main-jar "takeoutfix.jar" \

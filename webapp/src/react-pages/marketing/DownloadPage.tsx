@@ -28,8 +28,8 @@ export default function DownloadPage() {
       badge: "Windows 10 & 11",
       desc: "Fast, pure single-file executable (.exe). Double-click to run immediately with zero installation and no ZIP extraction.",
       file: "TakeoutFix.exe",
-      url: "https://takeoutfix-download.takeoutfix.workers.dev/download/windows",
-      directUrl: "https://takeoutfix-download.takeoutfix.workers.dev/download/windows",
+      url: "https://github.com/Rahul-Jena-2002/GooglePhotosTakeout/releases/latest/download/TakeoutFix.exe",
+      directUrl: "https://github.com/Rahul-Jena-2002/GooglePhotosTakeout/releases/latest/download/TakeoutFix.exe",
       instructions: [
         "Click the download button below to get pure 'TakeoutFix.exe'.",
         "Double-click 'TakeoutFix.exe' in your Downloads folder to open it.",
@@ -41,8 +41,8 @@ export default function DownloadPage() {
       badge: "Apple Silicon & Intel",
       desc: "Universal Mac app compatible with all modern macOS versions and M-series or Intel chips.",
       file: "TakeoutFix.dmg",
-      url: "https://takeoutfix-download.takeoutfix.workers.dev/download/macos",
-      directUrl: "https://takeoutfix-download.takeoutfix.workers.dev/download/macos",
+      url: "https://github.com/Rahul-Jena-2002/GooglePhotosTakeout/releases/latest/download/TakeoutFix.dmg",
+      directUrl: "https://github.com/Rahul-Jena-2002/GooglePhotosTakeout/releases/latest/download/TakeoutFix.dmg",
       instructions: [
         "Download 'TakeoutFix.dmg' using the button below.",
         "Double-click the downloaded DMG file and drag TakeoutFix into your Applications folder.",
@@ -54,8 +54,8 @@ export default function DownloadPage() {
       badge: "Ubuntu, Fedora, Mint",
       desc: "Universal self-contained AppImage. Double-click to run on any major Linux distribution.",
       file: "TakeoutFix.AppImage",
-      url: "https://takeoutfix-download.takeoutfix.workers.dev/download/linux",
-      directUrl: "https://takeoutfix-download.takeoutfix.workers.dev/download/linux",
+      url: "https://github.com/Rahul-Jena-2002/GooglePhotosTakeout/releases/latest/download/TakeoutFix.AppImage",
+      directUrl: "https://github.com/Rahul-Jena-2002/GooglePhotosTakeout/releases/latest/download/TakeoutFix.AppImage",
       instructions: [
         "Download 'TakeoutFix.AppImage' using the button below.",
         "Right-click the file > Properties > Permissions > check 'Allow executing file as program'.",
