@@ -84,13 +84,11 @@ public class TakeoutRestoreView extends VBox {
     private final Label speedValLabel = new Label("0.0 f/s • 0.0 MB/s");
     private final Label etaValLabel = new Label("--:--");
 
-    // Restoration Options (Deep EXIF by default)
-    private final DatePicker datePicker = new DatePicker();
-    private final Button btnClearDate = new Button("✕");
+    // Restoration Options (All unchecked by default)
     private final CheckBox organizeMonthCheck = new CheckBox("Organize into Year/Month subfolders (YYYY/MM)");
-    private final CheckBox smartInterpolationCheck = new CheckBox("Smart Timestamp Interpolation");
-    private final CheckBox keepAwakeCheck = new CheckBox("Keep system awake while processing");
     private final CheckBox splitVolumesCheck = new CheckBox("Compress output into 2GB ZIP volumes");
+    private final CheckBox keepAwakeCheck = new CheckBox("Keep system awake while processing");
+    private final CheckBox shutdownAfterCheck = new CheckBox("Shutdown system after completion");
 
     // Storage Telemetry (Side-by-side metric cards: done and required)
     private long sourceSizeBytes = 0;
@@ -171,11 +169,11 @@ public class TakeoutRestoreView extends VBox {
         verticalSplit.setDividerPositions(0.60);
         getChildren().add(verticalSplit);
 
-        // Deep EXIF defaults enabled out of the box
-        smartInterpolationCheck.setSelected(true);
-        organizeMonthCheck.setSelected(true);
-        keepAwakeCheck.setSelected(true);
+        // Options unchecked by default
+        organizeMonthCheck.setSelected(false);
         splitVolumesCheck.setSelected(false);
+        keepAwakeCheck.setSelected(false);
+        shutdownAfterCheck.setSelected(false);
 
         updateLogViewVisibility();
         updateButtonStates();
@@ -207,7 +205,7 @@ public class TakeoutRestoreView extends VBox {
         deck.setAlignment(Pos.CENTER_LEFT);
 
         VBox card1 = createSemanticKpiCard("FILES SCANNED", kpiScanned, "Examined media files", UiIcons.CAMERA);
-        VBox card2 = createRestoredKpiCard("METADATA RESTORED", kpiRestored, kpiRestoredGb, "Cleanly paired with EXIF", UiIcons.CHECK_CIRCLE);
+        VBox card2 = createSemanticKpiCard("METADATA RESTORED", kpiRestored, "Cleanly paired with EXIF", UiIcons.CHECK_CIRCLE);
         VBox card3 = createSemanticKpiCard("NEEDS REVIEW", kpiNeedsReview, "Ambiguous or partial sidecars", UiIcons.ALERT);
         VBox card4 = createSemanticKpiCard("FAILED", kpiFailed, "Corrupted or missing tags", UiIcons.X);
 
@@ -218,47 +216,6 @@ public class TakeoutRestoreView extends VBox {
 
         deck.getChildren().addAll(card1, card2, card3, card4);
         return deck;
-    }
-
-    private VBox createRestoredKpiCard(String labelText, Label countLabel, Label gbLabel, String subText, String iconSvg) {
-        VBox card = new VBox(4);
-        card.getStyleClass().add("kpi-card");
-        card.setPadding(new Insets(10, 16, 10, 16));
-        card.setPrefHeight(88);
-        card.setMinHeight(88);
-
-        HBox topRow = new HBox(8);
-        topRow.setAlignment(Pos.CENTER_LEFT);
-
-        Label lbl = new Label(labelText);
-        lbl.getStyleClass().addAll("kpi-title", "kpi-label");
-        lbl.setStyle("-fx-font-size: 11px; -fx-font-weight: 700; -fx-letter-spacing: 0.5px;");
-
-        Region sp = new Region();
-        HBox.setHgrow(sp, Priority.ALWAYS);
-
-        Node icon = UiIcons.createSvgIcon(iconSvg, 13, "currentColor");
-        icon.setOpacity(0.5);
-
-        topRow.getChildren().addAll(lbl, sp, icon);
-
-        HBox valRow = new HBox(8);
-        valRow.setAlignment(Pos.CENTER_LEFT);
-
-        countLabel.getStyleClass().setAll("kpi-value", "text-primary");
-        countLabel.setStyle("-fx-font-size: 24px; -fx-font-weight: 700;");
-
-        gbLabel.getStyleClass().add("kpi-gb-badge");
-        gbLabel.setStyle("-fx-font-size: 11.5px; -fx-font-weight: 700; -fx-font-family: 'JetBrains Mono', 'Cascadia Code', 'Consolas', monospace; -fx-text-fill: #50FA7B; -fx-background-color: rgba(80, 250, 123, 0.12); -fx-padding: 2 7 2 7; -fx-background-radius: 4;");
-
-        valRow.getChildren().addAll(countLabel, gbLabel);
-
-        Label sub = new Label(subText);
-        sub.getStyleClass().add("text-muted");
-        sub.setStyle("-fx-font-size: 12px;");
-
-        card.getChildren().addAll(topRow, valRow, sub);
-        return card;
     }
 
     private void updateRestoredBytes(long bytes) {
@@ -638,43 +595,21 @@ public class TakeoutRestoreView extends VBox {
         title.getStyleClass().add("card-title");
         titleRow.getChildren().addAll(UiIcons.createSvgIcon(UiIcons.SETTINGS, 13, "currentColor"), title);
 
-        // Group 1: Date & Timestamp Handling
-        Label dateGroupLabel = new Label("Date & Timestamp Handling");
-        dateGroupLabel.getStyleClass().addAll("section-sub-title", "text-muted");
-        dateGroupLabel.setStyle("-fx-font-size: 11px; -fx-font-weight: 700; -fx-text-transform: uppercase; -fx-padding: 4 0 2 0;");
-
-        VBox dateBlock = new VBox(3);
-        Label dateLbl = new Label("Fallback Date");
-        dateLbl.setStyle("-fx-font-size: 12px; -fx-font-weight: 500;");
-        dateLbl.getStyleClass().add("text-secondary");
-
-        HBox dateRow = new HBox(6);
-        dateRow.setAlignment(Pos.CENTER_LEFT);
-        datePicker.setPromptText("YYYY-MM-DD (Optional)");
-        datePicker.setMaxWidth(Double.MAX_VALUE);
-        datePicker.setStyle("-fx-pref-height: 28px; -fx-font-size: 12px;");
-        HBox.setHgrow(datePicker, Priority.ALWAYS);
-
-        btnClearDate.getStyleClass().add("btn-ghost");
-        btnClearDate.setStyle("-fx-font-size: 11px; -fx-padding: 2 6 2 6; -fx-cursor: hand;");
-        btnClearDate.setOnAction(e -> {
-            datePicker.setValue(null);
-            if (datePicker.getEditor() != null) datePicker.getEditor().clear();
-        });
-
-        dateRow.getChildren().addAll(datePicker, btnClearDate);
-        dateBlock.getChildren().addAll(dateLbl, dateRow);
-
-        smartInterpolationCheck.getStyleClass().add("text-primary");
-
-        // Group 2: Output & Structure
+        // Group 1: Output & Structure
         Label outputGroupLabel = new Label("Output & Structure");
         outputGroupLabel.getStyleClass().addAll("section-sub-title", "text-muted");
         outputGroupLabel.setStyle("-fx-font-size: 11px; -fx-font-weight: 700; -fx-text-transform: uppercase; -fx-padding: 4 0 2 0;");
 
         organizeMonthCheck.getStyleClass().add("text-primary");
         splitVolumesCheck.getStyleClass().add("text-primary");
+
+        // Group 2: System & Power
+        Label systemGroupLabel = new Label("System & Power");
+        systemGroupLabel.getStyleClass().addAll("section-sub-title", "text-muted");
+        systemGroupLabel.setStyle("-fx-font-size: 11px; -fx-font-weight: 700; -fx-text-transform: uppercase; -fx-padding: 6 0 2 0;");
+
         keepAwakeCheck.getStyleClass().add("text-primary");
+        shutdownAfterCheck.getStyleClass().add("text-primary");
 
         // Mid-spacer and subtle divider between options and storage telemetry
         Region midSpacer = new Region();
@@ -711,13 +646,12 @@ public class TakeoutRestoreView extends VBox {
 
         card.getChildren().addAll(
                 titleRow,
-                dateGroupLabel,
-                dateBlock,
-                smartInterpolationCheck,
                 outputGroupLabel,
                 organizeMonthCheck,
                 splitVolumesCheck,
+                systemGroupLabel,
                 keepAwakeCheck,
+                shutdownAfterCheck,
                 midSpacer,
                 sep,
                 storeHeaderRow,
@@ -853,10 +787,11 @@ public class TakeoutRestoreView extends VBox {
 
         Label emptyTitle = new Label("No restoration activity yet");
         emptyTitle.getStyleClass().add("empty-state-title");
+        emptyTitle.setStyle("-fx-font-size: 14.5px; -fx-font-weight: 600;");
 
         Label emptySub = new Label("Real-time telemetry, JSON sidecar matching, and EXIF diagnostics will appear here once the process starts.");
         emptySub.getStyleClass().add("empty-state-sub");
-        emptySub.setStyle("-fx-text-alignment: center;");
+        emptySub.setStyle("-fx-font-size: 13px; -fx-text-alignment: center;");
 
         logEmptyStateBox.getChildren().addAll(emptyIconCircle, emptyTitle, emptySub);
 
@@ -870,27 +805,22 @@ public class TakeoutRestoreView extends VBox {
                     setText(null);
                     setGraphic(null);
                 } else {
-                    HBox row = new HBox(8);
+                    HBox row = new HBox(10);
                     row.setAlignment(Pos.CENTER_LEFT);
 
                     Label timeLabel = new Label(item.timestamp);
-                    timeLabel.setStyle("-fx-font-family: 'JetBrains Mono', 'Cascadia Code', 'Consolas', monospace; -fx-font-size: 12px;");
                     timeLabel.getStyleClass().add("timestamp");
 
                     Label badge = new Label(item.level.toUpperCase());
                     badge.getStyleClass().add("log-badge");
                     if ("SUCCESS".equalsIgnoreCase(item.level)) {
                         badge.getStyleClass().add("log-badge-success");
-                        badge.setStyle("-fx-background-color: rgba(54, 201, 143, 0.15); -fx-text-fill: #36C98F; -fx-font-size: 10px; -fx-font-weight: 600; -fx-padding: 1 6 1 6; -fx-background-radius: 3;");
                     } else if ("ERROR".equalsIgnoreCase(item.level)) {
                         badge.getStyleClass().add("log-badge-error");
-                        badge.setStyle("-fx-background-color: rgba(248, 113, 113, 0.15); -fx-text-fill: #F87171; -fx-font-size: 10px; -fx-font-weight: 600; -fx-padding: 1 6 1 6; -fx-background-radius: 3;");
                     } else if ("WARN".equalsIgnoreCase(item.level)) {
                         badge.getStyleClass().add("log-badge-warn");
-                        badge.setStyle("-fx-background-color: rgba(245, 185, 66, 0.15); -fx-text-fill: #F5B942; -fx-font-size: 10px; -fx-font-weight: 600; -fx-padding: 1 6 1 6; -fx-background-radius: 3;");
                     } else {
                         badge.getStyleClass().add("log-badge-info");
-                        badge.setStyle("-fx-background-color: rgba(167, 139, 250, 0.15); -fx-text-fill: #A78BFA; -fx-font-size: 10px; -fx-font-weight: 600; -fx-padding: 1 6 1 6; -fx-background-radius: 3;");
                     }
 
                     Label msgLabel = new Label(item.message);
@@ -1145,23 +1075,6 @@ public class TakeoutRestoreView extends VBox {
         updateStorageDisplay();
     }
 
-    private Optional<java.time.Instant> parseDateOverride() {
-        if (datePicker.getValue() != null) {
-            LocalDate d = datePicker.getValue();
-            return Optional.of(d.atStartOfDay(java.time.ZoneId.systemDefault()).toInstant());
-        }
-        String text = datePicker.getEditor() != null ? datePicker.getEditor().getText() : null;
-        if (text == null || text.trim().isEmpty() || text.startsWith("YYYY-MM-DD")) {
-            return Optional.empty();
-        }
-        try {
-            LocalDate d = LocalDate.parse(text.trim());
-            return Optional.of(d.atStartOfDay(java.time.ZoneId.systemDefault()).toInstant());
-        } catch (Exception e) {
-            return Optional.empty();
-        }
-    }
-
     private void handleScan() {
         if (isRunning) {
             showAlert("Process Running", "A scan or restoration process is already actively running.");
@@ -1269,7 +1182,8 @@ public class TakeoutRestoreView extends VBox {
         startTimeMs = System.currentTimeMillis();
         updateButtonStates();
 
-        if (keepAwakeCheck.isSelected()) {
+        boolean shutdownRequested = shutdownAfterCheck.isSelected();
+        if (keepAwakeCheck.isSelected() || shutdownRequested) {
             powerManager.startKeepAwake();
         }
 
@@ -1277,17 +1191,21 @@ public class TakeoutRestoreView extends VBox {
         operationStateLabel.setText("Initializing restoration engine...");
         currentFileLabel.setText("Extracting archive & parsing sidecars...");
 
+        PowerManager.PostAction postAction = shutdownRequested
+                ? PowerManager.PostAction.KEEP_AWAKE_THEN_SHUTDOWN
+                : PowerManager.PostAction.KEEP_AWAKE_ONLY;
+
         TakeoutRestoreTask restoreTask = new TakeoutRestoreTask(
                 extractionService,
                 selectedSource.getAbsolutePath(),
                 selectedOutput.getAbsolutePath(),
-                PowerManager.PostAction.KEEP_AWAKE_ONLY,
-                parseDateOverride(),
+                postAction,
+                Optional.empty(),
                 false,
                 splitVolumesCheck.isSelected(),
                 -1,
                 0,
-                smartInterpolationCheck.isSelected(),
+                true,
                 organizeMonthCheck.isSelected()
         );
 
@@ -1304,6 +1222,11 @@ public class TakeoutRestoreView extends VBox {
                     activeRestoreTask = null;
                     updateButtonStates();
                     powerManager.stopKeepAwake();
+
+                    if (shutdownRequested) {
+                        appendLog("WARN", "Restoration complete. Shutdown initiated: System will power off in 60 seconds. (Run 'shutdown /a' to cancel)");
+                        powerManager.runShutdownCommand(60);
+                    }
                 });
                 try {
                     int restored = 0;
@@ -1543,19 +1466,22 @@ public class TakeoutRestoreView extends VBox {
         alert.initOwner(stage);
         alert.setTitle("Restoration Finished");
         alert.setHeaderText("Google Takeout Restoration Complete");
+        String shutdownNote = shutdownAfterCheck.isSelected()
+                ? "\n\n⚠️ System shutdown scheduled in 60 seconds."
+                : "";
         alert.setContentText(String.format(
                 "Restoration process completed successfully!\n\n"
                         + "• Files Scanned: %s\n"
-                        + "• Metadata Restored: %s (%s)\n"
+                        + "• Metadata Restored: %s\n"
                         + "• Needs Review: %s\n"
                         + "• Failed: %s\n\n"
-                        + "Destination:\n%s",
+                        + "Destination:\n%s%s",
                 kpiScanned.getText(),
                 kpiRestored.getText(),
-                kpiRestoredGb.getText(),
                 kpiNeedsReview.getText(),
                 kpiFailed.getText(),
-                selectedOutput != null ? selectedOutput.getAbsolutePath() : ""
+                selectedOutput != null ? selectedOutput.getAbsolutePath() : "",
+                shutdownNote
         ));
         alert.show();
     }

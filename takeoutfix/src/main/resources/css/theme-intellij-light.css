@@ -320,9 +320,9 @@
 }
 
 .log-badge {
-    -fx-font-size: 10px;
+    -fx-font-size: 11.5px;
     -fx-font-weight: bold;
-    -fx-padding: 1 5 1 5;
+    -fx-padding: 2 6 2 6;
     -fx-background-radius: 3;
 }
 .log-badge-info    { -fx-background-color: rgba(3, 105, 161, 0.12); -fx-text-fill: #0369A1; }
@@ -338,19 +338,19 @@
 
 /* Status, Logs & Telemetry Typography */
 .status-text {
-    -fx-font-size: 12px;
+    -fx-font-size: 13px;
     -fx-text-fill: #6C707E;
 }
 
 .log-entry {
-    -fx-font-family: "Cascadia Code", "JetBrains Mono", "Consolas", monospace;
-    -fx-font-size: 12px;
+    -fx-font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Ubuntu, Cantarell, sans-serif;
+    -fx-font-size: 13.5px;
     -fx-text-fill: #1F2328;
 }
 
 .timestamp {
-    -fx-font-family: "Cascadia Code", "JetBrains Mono", "Consolas", monospace;
-    -fx-font-size: 11px;
+    -fx-font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Ubuntu, Cantarell, sans-serif;
+    -fx-font-size: 12.5px;
     -fx-text-fill: #6C707E;
 }
 
