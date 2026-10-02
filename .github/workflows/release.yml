@@ -64,11 +64,12 @@ jobs:
           echo "version=$CLEAN_VER" >> $GITHUB_OUTPUT
           echo "Package version resolved: $CLEAN_VER"
 
-      - name: Set up JDK 26
+      - name: Set up JDK 21 (Liberica with JavaFX)
         uses: actions/setup-java@v4
         with:
-          java-version: '26'
-          distribution: 'oracle'
+          java-version: '21'
+          distribution: 'liberica'
+          java-package: 'jdk+fx'
           cache: 'maven'
 
       - name: Run Java Desktop Tests
@@ -87,7 +88,7 @@ jobs:
         shell: bash
         run: |
           jlink \
-            --add-modules java.base,java.desktop,java.logging,java.naming,java.management,java.instrument,java.sql,java.xml,java.net.http,jdk.crypto.ec,jdk.unsupported,jdk.security.auth \
+            --add-modules java.base,java.desktop,java.logging,java.naming,java.management,java.instrument,java.sql,java.xml,java.net.http,jdk.crypto.ec,jdk.unsupported,jdk.security.auth,javafx.base,javafx.controls,javafx.fxml,javafx.graphics,javafx.swing,javafx.media \
             --strip-debug \
             --no-header-files \
             --no-man-pages \
