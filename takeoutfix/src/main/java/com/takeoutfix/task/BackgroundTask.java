@@ -26,9 +26,24 @@ public abstract class BackgroundTask implements Runnable {
     }
 
     public enum WorkloadType {
-        CPU_INTENSIVE,
-        IO_BOUND,
-        BALANCED
+        CPU_INTENSIVE("CPU Intensive"),
+        IO_BOUND("I/O Bound"),
+        BALANCED("Balanced");
+
+        private final String displayName;
+
+        WorkloadType(String displayName) {
+            this.displayName = displayName;
+        }
+
+        public String getDisplayName() {
+            return displayName;
+        }
+
+        @Override
+        public String toString() {
+            return displayName;
+        }
     }
 
     private final String id;
@@ -214,7 +229,9 @@ public abstract class BackgroundTask implements Runnable {
     public String getId() { return id; }
     public String getToolName() { return toolName; }
     public String getTaskTitle() { return taskTitle; }
+    public String getName() { return (taskTitle != null && !taskTitle.isBlank()) ? taskTitle : toolName; }
     public WorkloadType getWorkloadType() { return workloadType; }
+    public WorkloadType getType() { return workloadType; }
 
     public TaskState getState() { return rawState; }
     public void setState(TaskState s) {
