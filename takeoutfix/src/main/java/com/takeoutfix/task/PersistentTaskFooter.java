@@ -1,7 +1,9 @@
 package com.takeoutfix.task;
 
 import com.takeoutfix.network.SystemHardwareInfo;
+import com.takeoutfix.shared.theme.AppTheme;
 import com.takeoutfix.shared.theme.ThemeColors;
+import com.takeoutfix.shared.theme.ThemeManager;
 import com.takeoutfix.ui.fx.WorkspaceType;
 import javafx.animation.Animation;
 import javafx.animation.KeyFrame;
@@ -26,7 +28,7 @@ import java.util.function.Consumer;
 /**
  * Persistent footer and background task monitor attached to the bottom of the application shell.
  * Features:
- * - Full light / dark theme adaptation matching the application theme.
+ * - Full light / dark / forest / intellij theme adaptation matching the application theme.
  * - High-contrast, crystal-clear typography for readability across any display.
  * - Compact persistent status bar (privacy indicator, live active tasks count, CPU and memory telemetry).
  * - Expandable drawer displaying active task progress cards, pause/resume/cancel controls, and throughput metrics.
@@ -75,11 +77,11 @@ public class PersistentTaskFooter extends VBox {
 
         getChildren().addAll(expandedDrawer, collapsedBar);
 
-        // Apply initial theme from global ThemeColors state
-        setTheme(ThemeColors.isDark());
+        // Apply initial theme from ThemeManager
+        applyThemeStyles();
 
         // Register dynamic theme listener
-        ThemeColors.addThemeListener(() -> Platform.runLater(() -> setTheme(ThemeColors.isDark())));
+        ThemeManager.addListener(theme -> Platform.runLater(this::applyThemeStyles));
 
         // Task changes update counts & cards
         taskManager.addChangeListener(this::refreshUi);
@@ -106,16 +108,57 @@ public class PersistentTaskFooter extends VBox {
     }
 
     private void applyThemeStyles() {
-        if (isDark) {
+        AppTheme current = ThemeManager.getCurrentTheme();
+        this.isDark = (current != null) ? current.isDark() : ThemeColors.isDark();
+
+        if (current == AppTheme.CATPPUCCIN_FOREST) {
+            setStyle("-fx-background-color: #131B17; -fx-border-color: #24352D transparent transparent transparent; -fx-border-width: 1;");
+
+            greenDot.setFill(javafx.scene.paint.Color.web("#4EBA87"));
+            taskCountBadge.setStyle("-fx-font-size: 12px; -fx-font-weight: 500; -fx-text-fill: #EAF2ED;");
+            telemetryLabel.setStyle("-fx-font-size: 12px; -fx-font-weight: 500; -fx-text-fill: #7C9489;");
+            toggleExpandBtn.setStyle("-fx-font-size: 12px; -fx-font-weight: 600; -fx-background-color: transparent; -fx-text-fill: #EAF2ED; -fx-cursor: hand;");
+
+            expandedDrawer.setStyle("-fx-background-color: #1E2B25; -fx-border-color: #2A3C33 transparent transparent transparent; -fx-border-width: 1;");
+            expandedHeaderLabel.setStyle("-fx-font-size: 14px; -fx-font-weight: 600; -fx-text-fill: #FFFFFF;");
+            btnViewAll.setStyle("-fx-font-size: 12px; -fx-font-weight: 600; -fx-background-color: transparent; -fx-text-fill: #4EBA87; -fx-cursor: hand;");
+            btnCloseDrawer.setStyle("-fx-font-size: 12px; -fx-font-weight: 600; -fx-background-color: transparent; -fx-text-fill: #7C9489; -fx-cursor: hand;");
+
+            appCpuMetric.setStyle("-fx-font-size: 12.5px; -fx-font-weight: 700; -fx-text-fill: #EAF2ED;");
+            appMemMetric.setStyle("-fx-font-size: 12.5px; -fx-font-weight: 700; -fx-text-fill: #EAF2ED;");
+            sysMemMetric.setStyle("-fx-font-size: 12.5px; -fx-font-weight: 700; -fx-text-fill: #EAF2ED;");
+            throughputMetric.setStyle("-fx-font-size: 12.5px; -fx-font-weight: 700; -fx-text-fill: #EAF2ED;");
+            for (Label lbl : metricTitleLabels) {
+                lbl.setStyle("-fx-font-size: 12px; -fx-text-fill: #7C9489;");
+            }
+        } else if (current == AppTheme.INTELLIJ_DARK) {
+            setStyle("-fx-background-color: #1E1F22; -fx-border-color: #2B2D30 transparent transparent transparent; -fx-border-width: 1;");
+
+            greenDot.setFill(javafx.scene.paint.Color.web("#59A869"));
+            taskCountBadge.setStyle("-fx-font-size: 12px; -fx-font-weight: 500; -fx-text-fill: #DFE1E5;");
+            telemetryLabel.setStyle("-fx-font-size: 12px; -fx-font-weight: 500; -fx-text-fill: #868A91;");
+            toggleExpandBtn.setStyle("-fx-font-size: 12px; -fx-font-weight: 600; -fx-background-color: transparent; -fx-text-fill: #DFE1E5; -fx-cursor: hand;");
+
+            expandedDrawer.setStyle("-fx-background-color: #2B2D30; -fx-border-color: #393B40 transparent transparent transparent; -fx-border-width: 1;");
+            expandedHeaderLabel.setStyle("-fx-font-size: 14px; -fx-font-weight: 600; -fx-text-fill: #DFE1E5;");
+            btnViewAll.setStyle("-fx-font-size: 12px; -fx-font-weight: 600; -fx-background-color: transparent; -fx-text-fill: #3574F0; -fx-cursor: hand;");
+            btnCloseDrawer.setStyle("-fx-font-size: 12px; -fx-font-weight: 600; -fx-background-color: transparent; -fx-text-fill: #868A91; -fx-cursor: hand;");
+
+            appCpuMetric.setStyle("-fx-font-size: 12.5px; -fx-font-weight: 700; -fx-text-fill: #DFE1E5;");
+            appMemMetric.setStyle("-fx-font-size: 12.5px; -fx-font-weight: 700; -fx-text-fill: #DFE1E5;");
+            sysMemMetric.setStyle("-fx-font-size: 12.5px; -fx-font-weight: 700; -fx-text-fill: #DFE1E5;");
+            throughputMetric.setStyle("-fx-font-size: 12.5px; -fx-font-weight: 700; -fx-text-fill: #DFE1E5;");
+            for (Label lbl : metricTitleLabels) {
+                lbl.setStyle("-fx-font-size: 12px; -fx-text-fill: #868A91;");
+            }
+        } else if (isDark) {
             setStyle("-fx-background-color: #21222C; -fx-border-color: #44475A transparent transparent transparent; -fx-border-width: 1;");
 
-            // Collapsed bar
             greenDot.setFill(javafx.scene.paint.Color.web("#50FA7B"));
             taskCountBadge.setStyle("-fx-font-size: 12px; -fx-font-weight: 500; -fx-text-fill: #F8F8F2;");
             telemetryLabel.setStyle("-fx-font-size: 12px; -fx-font-weight: 500; -fx-text-fill: #9294A3;");
             toggleExpandBtn.setStyle("-fx-font-size: 12px; -fx-font-weight: 600; -fx-background-color: transparent; -fx-text-fill: #F8F8F2; -fx-cursor: hand;");
 
-            // Drawer
             expandedDrawer.setStyle("-fx-background-color: #343746; -fx-border-color: #44475A transparent transparent transparent; -fx-border-width: 1;");
             expandedHeaderLabel.setStyle("-fx-font-size: 14px; -fx-font-weight: 600; -fx-text-fill: #F8F8F2;");
             btnViewAll.setStyle("-fx-font-size: 12px; -fx-font-weight: 600; -fx-background-color: transparent; -fx-text-fill: #BD93F9; -fx-cursor: hand;");
@@ -131,13 +174,11 @@ public class PersistentTaskFooter extends VBox {
         } else {
             setStyle("-fx-background-color: #EDEDF5; -fx-border-color: #D9DAE6 transparent transparent transparent; -fx-border-width: 1;");
 
-            // Collapsed bar
             greenDot.setFill(javafx.scene.paint.Color.web("#2E7D32"));
             taskCountBadge.setStyle("-fx-font-size: 12px; -fx-font-weight: 500; -fx-text-fill: #1F2335;");
             telemetryLabel.setStyle("-fx-font-size: 12px; -fx-font-weight: 500; -fx-text-fill: #5F6585;");
             toggleExpandBtn.setStyle("-fx-font-size: 12px; -fx-font-weight: 600; -fx-background-color: transparent; -fx-text-fill: #1F2335; -fx-cursor: hand;");
 
-            // Drawer
             expandedDrawer.setStyle("-fx-background-color: #FFFFFF; -fx-border-color: #D9DAE6 transparent transparent transparent; -fx-border-width: 1;");
             expandedHeaderLabel.setStyle("-fx-font-size: 14px; -fx-font-weight: 700; -fx-text-fill: #1F2335;");
             btnViewAll.setStyle("-fx-font-size: 12px; -fx-font-weight: 600; -fx-background-color: transparent; -fx-text-fill: #6D28D9; -fx-cursor: hand;");
@@ -234,9 +275,17 @@ public class PersistentTaskFooter extends VBox {
 
     public void refreshUi() {
         int count = taskManager.getActiveTaskCount();
+        AppTheme current = ThemeManager.getCurrentTheme();
+
         if (count == 0) {
             taskCountBadge.setText("Idle · Ready");
-            if (isDark) {
+            if (current == AppTheme.CATPPUCCIN_FOREST) {
+                taskCountBadge.setStyle("-fx-font-size: 11px; -fx-font-weight: 600; -fx-text-fill: #7C9489; -fx-background-color: rgba(36, 53, 45, 0.6); -fx-border-color: #24352D; -fx-border-radius: 10; -fx-background-radius: 10; -fx-padding: 2 8 2 8;");
+                expandedSubLabel.setStyle("-fx-font-size: 11px; -fx-font-weight: 700; -fx-text-fill: #4EBA87; -fx-background-color: rgba(78, 186, 135, 0.15); -fx-padding: 2 6 2 6; -fx-background-radius: 8;");
+            } else if (current == AppTheme.INTELLIJ_DARK) {
+                taskCountBadge.setStyle("-fx-font-size: 11px; -fx-font-weight: 600; -fx-text-fill: #868A91; -fx-background-color: rgba(43, 45, 48, 0.6); -fx-border-color: #393B40; -fx-border-radius: 10; -fx-background-radius: 10; -fx-padding: 2 8 2 8;");
+                expandedSubLabel.setStyle("-fx-font-size: 11px; -fx-font-weight: 700; -fx-text-fill: #3574F0; -fx-background-color: rgba(53, 116, 240, 0.15); -fx-padding: 2 6 2 6; -fx-background-radius: 8;");
+            } else if (isDark) {
                 taskCountBadge.setStyle("-fx-font-size: 11px; -fx-font-weight: 600; -fx-text-fill: #9294A3; -fx-background-color: rgba(68, 71, 90, 0.5); -fx-border-color: #44475A; -fx-border-radius: 10; -fx-background-radius: 10; -fx-padding: 2 8 2 8;");
                 expandedSubLabel.setStyle("-fx-font-size: 11px; -fx-font-weight: 700; -fx-text-fill: #BD93F9; -fx-background-color: rgba(189, 147, 249, 0.15); -fx-padding: 2 6 2 6; -fx-background-radius: 8;");
             } else {
@@ -246,7 +295,13 @@ public class PersistentTaskFooter extends VBox {
             expandedSubLabel.setText("0 running");
         } else {
             taskCountBadge.setText(count + (count == 1 ? " active task" : " active tasks"));
-            if (isDark) {
+            if (current == AppTheme.CATPPUCCIN_FOREST) {
+                taskCountBadge.setStyle("-fx-font-size: 11px; -fx-font-weight: 700; -fx-text-fill: #4EBA87; -fx-background-color: rgba(78, 186, 135, 0.18); -fx-border-color: rgba(78, 186, 135, 0.3); -fx-border-radius: 10; -fx-background-radius: 10; -fx-padding: 2 8 2 8;");
+                expandedSubLabel.setStyle("-fx-font-size: 11px; -fx-font-weight: 700; -fx-text-fill: #4EBA87; -fx-background-color: rgba(78, 186, 135, 0.18); -fx-padding: 2 6 2 6; -fx-background-radius: 8;");
+            } else if (current == AppTheme.INTELLIJ_DARK) {
+                taskCountBadge.setStyle("-fx-font-size: 11px; -fx-font-weight: 700; -fx-text-fill: #3574F0; -fx-background-color: rgba(53, 116, 240, 0.18); -fx-border-color: rgba(53, 116, 240, 0.3); -fx-border-radius: 10; -fx-background-radius: 10; -fx-padding: 2 8 2 8;");
+                expandedSubLabel.setStyle("-fx-font-size: 11px; -fx-font-weight: 700; -fx-text-fill: #3574F0; -fx-background-color: rgba(53, 116, 240, 0.18); -fx-padding: 2 6 2 6; -fx-background-radius: 8;");
+            } else if (isDark) {
                 taskCountBadge.setStyle("-fx-font-size: 11px; -fx-font-weight: 700; -fx-text-fill: #50FA7B; -fx-background-color: rgba(80, 250, 123, 0.18); -fx-border-color: rgba(80, 250, 123, 0.3); -fx-border-radius: 10; -fx-background-radius: 10; -fx-padding: 2 8 2 8;");
                 expandedSubLabel.setStyle("-fx-font-size: 11px; -fx-font-weight: 700; -fx-text-fill: #50FA7B; -fx-background-color: rgba(80, 250, 123, 0.18); -fx-padding: 2 6 2 6; -fx-background-radius: 8;");
             } else {
@@ -278,51 +333,55 @@ public class PersistentTaskFooter extends VBox {
         card.setAlignment(Pos.CENTER_LEFT);
         card.setPadding(new Insets(10, 14, 10, 14));
 
-        if (isDark) {
+        AppTheme current = ThemeManager.getCurrentTheme();
+        if (current == AppTheme.CATPPUCCIN_FOREST) {
+            card.setStyle("-fx-background-color: #141D18; -fx-border-color: #24352D; -fx-border-radius: 6; -fx-background-radius: 6;");
+        } else if (current == AppTheme.INTELLIJ_DARK) {
+            card.setStyle("-fx-background-color: #1E1F22; -fx-border-color: #2B2D30; -fx-border-radius: 6; -fx-background-radius: 6;");
+        } else if (isDark) {
             card.setStyle("-fx-background-color: rgba(255, 255, 255, 0.04); -fx-border-color: rgba(255, 255, 255, 0.08); -fx-border-radius: 6; -fx-background-radius: 6;");
         } else {
             card.setStyle("-fx-background-color: #FFFFFF; -fx-border-color: #E2E8F0; -fx-border-radius: 6; -fx-background-radius: 6;");
         }
 
-        // Tool Icon / Name
+        // Left info: Name + Status text
         VBox leftInfo = new VBox(3);
-        leftInfo.setPrefWidth(160);
-        Label toolLbl = new Label(task.getToolName());
-        toolLbl.setStyle("-fx-font-size: 12px; -fx-font-weight: 800; -fx-text-fill: " + (isDark ? "#F8F8F2" : "#0F172A") + ";");
-        Label titleLbl = new Label(task.getTaskTitle());
-        titleLbl.setStyle("-fx-font-size: 11px; -fx-text-fill: " + (isDark ? "#9294A3" : "#64748B") + ";");
-        leftInfo.getChildren().addAll(toolLbl, titleLbl);
+        leftInfo.setPrefWidth(220);
+        Label title = new Label(task.getName());
+        title.setStyle("-fx-font-size: 12.5px; -fx-font-weight: 600; -fx-text-fill: " + (isDark ? "#F8F8F2" : "#1F2335") + ";");
+        Label typeLabel = new Label(task.getType().getDisplayName());
+        typeLabel.setStyle("-fx-font-size: 11px; -fx-text-fill: " + (isDark ? "#9294A3" : "#64748B") + ";");
+        leftInfo.getChildren().addAll(title, typeLabel);
 
-        // Progress bar + detail label
+        // Center progress bar and percent
         VBox centerProgress = new VBox(4);
         HBox.setHgrow(centerProgress, Priority.ALWAYS);
 
         HBox progHeader = new HBox(8);
         progHeader.setAlignment(Pos.CENTER_LEFT);
+
         Label statusMsg = new Label();
         statusMsg.textProperty().bind(task.statusMessageProperty());
-        statusMsg.setStyle("-fx-font-size: 11px; -fx-text-fill: " + (isDark ? "#C4C5CE" : "#334155") + ";");
+        statusMsg.setStyle("-fx-font-size: 11.5px; -fx-text-fill: " + (isDark ? "#9294A3" : "#64748B") + ";");
 
         Region sp = new Region();
         HBox.setHgrow(sp, Priority.ALWAYS);
 
         Label pctLbl = new Label();
-        pctLbl.setStyle("-fx-font-size: 11px; -fx-font-weight: 700; -fx-text-fill: " + (isDark ? "#50FA7B" : "#047857") + ";");
-        task.progressProperty().addListener((obs, oldVal, newVal) -> {
-            double p = newVal.doubleValue();
-            if (p >= 0) {
-                pctLbl.setText(String.format(Locale.US, "%.0f%%", p * 100));
-            } else {
-                pctLbl.setText("Processing...");
-            }
+        task.progressProperty().addListener((obs, oldV, newV) -> {
+            double p = newV.doubleValue();
+            if (p < 0) pctLbl.setText("Indeterminate");
+            else pctLbl.setText(String.format(Locale.ROOT, "%.0f%%", p * 100));
         });
+        pctLbl.setStyle("-fx-font-family: 'JetBrains Mono', 'Consolas', monospace; -fx-font-size: 11px; -fx-font-weight: 700; -fx-text-fill: " + (isDark ? "#F8F8F2" : "#1F2335") + ";");
 
         progHeader.getChildren().addAll(statusMsg, sp, pctLbl);
 
         ProgressBar pbar = new ProgressBar(0);
         pbar.setMaxWidth(Double.MAX_VALUE);
         pbar.progressProperty().bind(task.progressProperty());
-        pbar.setStyle("-fx-accent: " + (isDark ? "#BD93F9" : "#6366F1") + "; -fx-pref-height: 6px;");
+        String pbarColor = (current == AppTheme.CATPPUCCIN_FOREST) ? "#4EBA87" : (current == AppTheme.INTELLIJ_DARK) ? "#3574F0" : (isDark ? "#BD93F9" : "#6366F1");
+        pbar.setStyle("-fx-accent: " + pbarColor + "; -fx-pref-height: 6px;");
 
         centerProgress.getChildren().addAll(progHeader, pbar);
 

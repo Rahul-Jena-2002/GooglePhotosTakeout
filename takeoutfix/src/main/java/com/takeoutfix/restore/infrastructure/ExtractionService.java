@@ -62,6 +62,7 @@ public class ExtractionService {
     private volatile boolean paused = false;
     private volatile boolean cancelled = false;
     private volatile boolean isRunning = false;
+    private volatile RestorationCheckpoint activeCheckpoint = null;
     private final java.util.concurrent.atomic.AtomicInteger processed = new java.util.concurrent.atomic.AtomicInteger(0);
     private final AtomicLong processedBytes = new AtomicLong(0);
     private int totalFiles = 0;
@@ -186,12 +187,32 @@ public class ExtractionService {
             List<File> mediaFiles = scanner.listMediaFiles(input);
             totalFiles = mediaFiles.size();
             sendLog("INFO", "Found " + totalFiles + " media files in source archive.");
-            notifyStats(totalFiles, totalFiles, 0, 0, 0);
-            sendProgress("Found " + totalFiles + " media files. Beginning restoration...");
+
+            // Deterministic serial ordering: sort canonical path
+            mediaFiles.sort(Comparator.comparing(File::getAbsolutePath, String.CASE_INSENSITIVE_ORDER));
 
             java.util.concurrent.atomic.AtomicInteger matched = new java.util.concurrent.atomic.AtomicInteger(0);
             java.util.concurrent.atomic.AtomicInteger unmatched = new java.util.concurrent.atomic.AtomicInteger(0);
             java.util.concurrent.atomic.AtomicInteger errors = new java.util.concurrent.atomic.AtomicInteger(0);
+
+            // Load or initialize destination checkpoint
+            RestorationCheckpoint checkpoint = RestorationCheckpoint.load(effectiveOutput, input);
+            this.activeCheckpoint = checkpoint;
+            int resumedCount = checkpoint.getCompletedCount();
+            if (resumedCount > 0) {
+                matched.set(checkpoint.getMatchedCount());
+                unmatched.set(checkpoint.getUnmatchedCount());
+                errors.set(checkpoint.getErrorCount());
+                processedBytes.set(checkpoint.getProcessedBytes());
+                processed.set(resumedCount);
+                sendLog("INFO", "[CHECKPOINT RESUME] Found existing checkpoint in destination with "
+                        + String.format("%,d", resumedCount) + " files already restored. Resuming seamlessly in serial order...");
+                notifyStats(totalFiles, totalFiles, matched.get(), unmatched.get(), errors.get());
+                sendProgress("Resuming from checkpoint (" + resumedCount + "/" + totalFiles + ")...");
+            } else {
+                notifyStats(totalFiles, totalFiles, 0, 0, 0);
+                sendProgress("Found " + totalFiles + " media files. Beginning restoration in serial order...");
+            }
             
             Map<String, File[]> dirCache = new java.util.concurrent.ConcurrentHashMap<>();
 
@@ -203,13 +224,17 @@ public class ExtractionService {
             
             try {
                 if (outputZip) {
-                    processAsZipChunks(mediaFiles, input, effectiveOutput, takeoutDate, dirCache, workers, matched, unmatched, errors);
+                    processAsZipChunks(mediaFiles, input, effectiveOutput, takeoutDate, dirCache, workers, targetThreads, matched, unmatched, errors, checkpoint);
                 } else {
-                    processAsLooseFiles(mediaFiles, input, effectiveOutput, output, takeoutDate, dirCache, workers, matched, unmatched, errors);
+                    processAsLooseFiles(mediaFiles, input, effectiveOutput, output, takeoutDate, dirCache, workers, targetThreads, matched, unmatched, errors, checkpoint);
                 }
             } finally {
                 workers.shutdownNow();
                 this.activeWorkersPool = null;
+                if (checkpoint != null) {
+                    checkpoint.flush(!cancelled && !paused);
+                }
+                this.activeCheckpoint = null;
             }
 
             power.stopKeepAwake();
@@ -253,132 +278,170 @@ public class ExtractionService {
         }
     }
 
-    private void processAsLooseFiles(List<File> mediaFiles, File input, File effectiveOutput, File baseOutput, Optional<Instant> takeoutDate, Map<String, File[]> dirCache, ExecutorService workers, java.util.concurrent.atomic.AtomicInteger matched, java.util.concurrent.atomic.AtomicInteger unmatched, java.util.concurrent.atomic.AtomicInteger errors) {
+    private void processAsLooseFiles(List<File> mediaFiles, File input, File effectiveOutput, File baseOutput,
+                                     Optional<Instant> takeoutDate, Map<String, File[]> dirCache,
+                                     ExecutorService workers, int workerCount,
+                                     java.util.concurrent.atomic.AtomicInteger matched,
+                                     java.util.concurrent.atomic.AtomicInteger unmatched,
+                                     java.util.concurrent.atomic.AtomicInteger errors,
+                                     RestorationCheckpoint checkpoint) {
         activeFutures.clear();
-        List<java.util.concurrent.CompletableFuture<Void>> futures = new ArrayList<>();
-        for (File media : mediaFiles) {
-            java.util.concurrent.CompletableFuture<Void> cf = java.util.concurrent.CompletableFuture.runAsync(() -> {
-                if (cancelled) return;
-                while (paused && !cancelled) {
-                    try { Thread.sleep(150); } catch (InterruptedException e) {
-                        Thread.currentThread().interrupt(); // re-interrupt so shutdownNow() propagates
-                        return;
-                    }
-                }
-                try {
-                    if (cancelled) return;
-                    Optional<File> json = matcher.findMatchingJson(media, dirCache);
-                    if (json.isPresent()) {
-                        if (cancelled) return;
-                        Instant targetTs = restorer.parseInstantFromJson(json.get(), takeoutDate);
-                        File copiedFile;
-                        if (organizeYearMonth) {
-                            copiedFile = fileService.copyToChronologicalOutput(media, input, effectiveOutput, targetTs);
-                        } else {
-                            java.nio.file.Path relativePath = fileService.copyToOutput(media, input, effectiveOutput);
-                            copiedFile = new File(effectiveOutput, relativePath.toString());
-                        }
-                        if (cancelled) return;
-                        String displayPath = getDisplayPath(media, input);
-                        // Single merged ExifTool call: injects EXIF + GPS + album details in one pass
-                        Optional<AlbumDetails> album = getAlbumDetails(media);
-                        String albumTitle = album.map(AlbumDetails::getTitle).orElse(null);
-                        String albumDesc = album.map(AlbumDetails::getDescription).orElse(null);
-                        metadataInjector.injectMetadataAndAlbum(copiedFile, json.get(), albumTitle, albumDesc);
-                        Instant applied = restorer.restoreFromJson(copiedFile, json.get(), takeoutDate);
-                        mediaTimestampCache.put(media.getAbsolutePath(), applied);
-                        matched.incrementAndGet();
-                        processedBytes.addAndGet(media.length());
-                        notifyStats(totalFiles, totalFiles, matched.get(), unmatched.get(), errors.get());
-                        String destRelative = baseOutput.toPath().relativize(copiedFile.toPath()).toString();
-                        sendLog("SUCCESS", "[SUCCESS] Restored " + displayPath + " -> " + destRelative);
-                    } else {
-                        if (cancelled) return;
-                        
-                        // Priority 2: Filename date extraction fallback
-                        Optional<Instant> filenameDate = FilenameDateParser.parse(media.getName());
-                        Optional<Instant> interpolated = Optional.empty();
+        java.util.concurrent.ConcurrentLinkedQueue<File> queue = new java.util.concurrent.ConcurrentLinkedQueue<>(mediaFiles);
+        List<java.util.concurrent.CompletableFuture<Void>> workerFutures = new ArrayList<>();
 
-                        if (filenameDate.isPresent()) {
-                            Instant fnInstant = filenameDate.get();
+        for (int i = 0; i < workerCount; i++) {
+            java.util.concurrent.CompletableFuture<Void> wf = java.util.concurrent.CompletableFuture.runAsync(() -> {
+                while (!cancelled) {
+                    while (paused && !cancelled) {
+                        try {
+                            Thread.sleep(150);
+                        } catch (InterruptedException e) {
+                            Thread.currentThread().interrupt();
+                            return;
+                        }
+                    }
+                    if (cancelled) return;
+
+                    File media = queue.poll();
+                    if (media == null) {
+                        break;
+                    }
+
+                    String relKey = getDisplayPath(media, input);
+                    if (checkpoint != null && checkpoint.isFileAlreadyProcessed(relKey)) {
+                        checkLimitsAndIncrement(media.getName());
+                        continue;
+                    }
+
+                    boolean isMatch = false;
+                    boolean isUnmatch = false;
+                    boolean isErr = false;
+
+                    try {
+                        if (cancelled) return;
+                        Optional<File> json = matcher.findMatchingJson(media, dirCache);
+                        if (json.isPresent()) {
+                            if (cancelled) return;
+                            Instant targetTs = restorer.parseInstantFromJson(json.get(), takeoutDate);
                             File copiedFile;
                             if (organizeYearMonth) {
-                                copiedFile = fileService.copyToChronologicalOutput(media, input, effectiveOutput, fnInstant);
+                                copiedFile = fileService.copyToChronologicalOutput(media, input, effectiveOutput, targetTs);
                             } else {
                                 java.nio.file.Path relativePath = fileService.copyToOutput(media, input, effectiveOutput);
                                 copiedFile = new File(effectiveOutput, relativePath.toString());
                             }
                             if (cancelled) return;
                             String displayPath = getDisplayPath(media, input);
+                            // Single merged ExifTool call: injects EXIF + GPS + album details in one pass
                             Optional<AlbumDetails> album = getAlbumDetails(media);
-                            if (album.isPresent()) {
-                                metadataInjector.injectAlbumName(copiedFile, album.get().getTitle(), album.get().getDescription());
-                            }
-                            restorer.applyInstant(copiedFile, fnInstant);
-                            mediaTimestampCache.put(media.getAbsolutePath(), fnInstant);
+                            String albumTitle = album.map(AlbumDetails::getTitle).orElse(null);
+                            String albumDesc = album.map(AlbumDetails::getDescription).orElse(null);
+                            metadataInjector.injectMetadataAndAlbum(copiedFile, json.get(), albumTitle, albumDesc);
+                            Instant applied = restorer.restoreFromJson(copiedFile, json.get(), takeoutDate);
+                            mediaTimestampCache.put(media.getAbsolutePath(), applied);
                             matched.incrementAndGet();
                             processedBytes.addAndGet(media.length());
+                            isMatch = true;
                             notifyStats(totalFiles, totalFiles, matched.get(), unmatched.get(), errors.get());
-                            String formattedDate = java.time.LocalDateTime.ofInstant(fnInstant, java.time.ZoneId.systemDefault()).format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
                             String destRelative = baseOutput.toPath().relativize(copiedFile.toPath()).toString();
-                            sendLog("SUCCESS", "[FILENAME DATE] " + displayPath + " -> Extracted timestamp: " + formattedDate + " -> " + destRelative);
+                            sendLog("SUCCESS", "[SUCCESS] Restored " + displayPath + " -> " + destRelative);
                         } else {
-                            // Priority 3: Fallback to adjacent media estimation
-                            if (interpolateMissing) {
-                                interpolated = tryInterpolateTimestamp(media, input, dirCache, takeoutDate);
-                            }
+                            if (cancelled) return;
+                            
+                            // Priority 2: Filename date extraction fallback
+                            Optional<Instant> filenameDate = FilenameDateParser.parse(media.getName());
+                            Optional<Instant> interpolated = Optional.empty();
 
-                            if (interpolated.isPresent()) {
-                                Instant est = interpolated.get();
-                                File estimatedFile;
+                            if (filenameDate.isPresent()) {
+                                Instant fnInstant = filenameDate.get();
+                                File copiedFile;
                                 if (organizeYearMonth) {
-                                    estimatedFile = fileService.copyToChronologicalFolder(media, input, effectiveOutput, "estimated_metadata", est);
+                                    copiedFile = fileService.copyToChronologicalOutput(media, input, effectiveOutput, fnInstant);
                                 } else {
-                                    estimatedFile = fileService.copyToEstimated(media, input, effectiveOutput);
+                                    java.nio.file.Path relativePath = fileService.copyToOutput(media, input, effectiveOutput);
+                                    copiedFile = new File(effectiveOutput, relativePath.toString());
                                 }
                                 if (cancelled) return;
                                 String displayPath = getDisplayPath(media, input);
                                 Optional<AlbumDetails> album = getAlbumDetails(media);
                                 if (album.isPresent()) {
-                                    metadataInjector.injectAlbumName(estimatedFile, album.get().getTitle(), album.get().getDescription());
+                                    metadataInjector.injectAlbumName(copiedFile, album.get().getTitle(), album.get().getDescription());
                                 }
-                                restorer.applyInstant(estimatedFile, est);
-                                mediaTimestampCache.put(media.getAbsolutePath(), est);
+                                restorer.applyInstant(copiedFile, fnInstant);
+                                mediaTimestampCache.put(media.getAbsolutePath(), fnInstant);
                                 matched.incrementAndGet();
                                 processedBytes.addAndGet(media.length());
+                                isMatch = true;
                                 notifyStats(totalFiles, totalFiles, matched.get(), unmatched.get(), errors.get());
-                                String formattedDate = java.time.LocalDateTime.ofInstant(est, java.time.ZoneId.systemDefault()).format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
-                                sendLog("SUCCESS", "[ESTIMATED META] " + displayPath + " -> Estimated date from adjacent media: " + formattedDate + " (saved in estimated_metadata)");
+                                String formattedDate = java.time.LocalDateTime.ofInstant(fnInstant, java.time.ZoneId.systemDefault()).format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
+                                String destRelative = baseOutput.toPath().relativize(copiedFile.toPath()).toString();
+                                sendLog("SUCCESS", "[FILENAME DATE] " + displayPath + " -> Extracted timestamp: " + formattedDate + " -> " + destRelative);
                             } else {
-                                unmatched.incrementAndGet();
-                                processedBytes.addAndGet(media.length());
-                                notifyStats(totalFiles, totalFiles, matched.get(), unmatched.get(), errors.get());
-                                String displayPath = getDisplayPath(media, input);
-                                sendLog("WARN", "[NO META] " + displayPath + " -> copying to metadata_not_found");
-                                if (organizeYearMonth) {
-                                    fileService.copyToChronologicalFolder(media, input, effectiveOutput, "metadata_not_found", null);
+                                // Priority 3: Fallback to adjacent media estimation
+                                if (interpolateMissing) {
+                                    interpolated = tryInterpolateTimestamp(media, input, dirCache, takeoutDate);
+                                }
+
+                                if (interpolated.isPresent()) {
+                                    Instant est = interpolated.get();
+                                    File estimatedFile;
+                                    if (organizeYearMonth) {
+                                        estimatedFile = fileService.copyToChronologicalFolder(media, input, effectiveOutput, "estimated_metadata", est);
+                                    } else {
+                                        estimatedFile = fileService.copyToEstimated(media, input, effectiveOutput);
+                                    }
+                                    if (cancelled) return;
+                                    String displayPath = getDisplayPath(media, input);
+                                    Optional<AlbumDetails> album = getAlbumDetails(media);
+                                    if (album.isPresent()) {
+                                        metadataInjector.injectAlbumName(estimatedFile, album.get().getTitle(), album.get().getDescription());
+                                    }
+                                    restorer.applyInstant(estimatedFile, est);
+                                    mediaTimestampCache.put(media.getAbsolutePath(), est);
+                                    matched.incrementAndGet();
+                                    processedBytes.addAndGet(media.length());
+                                    isMatch = true;
+                                    notifyStats(totalFiles, totalFiles, matched.get(), unmatched.get(), errors.get());
+                                    String formattedDate = java.time.LocalDateTime.ofInstant(est, java.time.ZoneId.systemDefault()).format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
+                                    sendLog("SUCCESS", "[ESTIMATED META] " + displayPath + " -> Estimated date from adjacent media: " + formattedDate + " (saved in estimated_metadata)");
                                 } else {
-                                    fileService.copyToUnmatched(media, input, effectiveOutput);
+                                    unmatched.incrementAndGet();
+                                    processedBytes.addAndGet(media.length());
+                                    isUnmatch = true;
+                                    notifyStats(totalFiles, totalFiles, matched.get(), unmatched.get(), errors.get());
+                                    String displayPath = getDisplayPath(media, input);
+                                    sendLog("WARN", "[NO META] " + displayPath + " -> copying to metadata_not_found");
+                                    if (organizeYearMonth) {
+                                        fileService.copyToChronologicalFolder(media, input, effectiveOutput, "metadata_not_found", null);
+                                    } else {
+                                        fileService.copyToUnmatched(media, input, effectiveOutput);
+                                    }
                                 }
                             }
                         }
+                    } catch (Exception ex) {
+                        errors.incrementAndGet();
+                        unmatched.incrementAndGet();
+                        isErr = true;
+                        notifyStats(totalFiles, totalFiles, matched.get(), unmatched.get(), errors.get());
+                        String displayPath = getDisplayPath(media, input);
+                        sendLog("ERROR", "[ERROR] " + displayPath + " -> " + ex.getMessage());
+                        fileService.copyToUnmatchedSafe(media, input, effectiveOutput);
+                    } finally {
+                        if (checkpoint != null && !cancelled) {
+                            checkpoint.recordCompletedFile(relKey, isMatch, isUnmatch, isErr, media.length());
+                        }
+                        checkLimitsAndIncrement(media.getName());
                     }
-                } catch (Exception ex) {
-                    errors.incrementAndGet();
-                    unmatched.incrementAndGet();
-                    notifyStats(totalFiles, totalFiles, matched.get(), unmatched.get(), errors.get());
-                    String displayPath = getDisplayPath(media, input);
-                    sendLog("ERROR", "[ERROR] " + displayPath + " -> " + ex.getMessage());
-                    fileService.copyToUnmatchedSafe(media, input, effectiveOutput);
-                } finally {
-                    checkLimitsAndIncrement(media.getName());
                 }
             }, workers);
-            futures.add(cf);
-            activeFutures.add(cf);
+
+            workerFutures.add(wf);
+            activeFutures.add(wf);
         }
+
         try {
-            java.util.concurrent.CompletableFuture.allOf(futures.toArray(new java.util.concurrent.CompletableFuture[0])).join();
+            java.util.concurrent.CompletableFuture.allOf(workerFutures.toArray(new java.util.concurrent.CompletableFuture[0])).join();
         } catch (Exception ignored) {
         } finally {
             activeFutures.clear();
@@ -387,14 +450,20 @@ public class ExtractionService {
 
     /**
      * Processes media files into chunked ZIP archives using a producer-consumer pattern:
-     * - N worker threads do ExifTool injection in PARALLEL (no lock contention)
+     * - N worker threads do ExifTool injection in PARALLEL (no lock contention, polled in serial order)
      * - 1 dedicated ZIP writer thread consumes completed files from a BlockingQueue (serial I/O, no contention)
      * This achieves full CPU utilization while safely writing to a single ZipOutputStream.
      */
-    private void processAsZipChunks(List<File> mediaFiles, File input, File output, Optional<Instant> takeoutDate, Map<String, File[]> dirCache, ExecutorService workers, java.util.concurrent.atomic.AtomicInteger matched, java.util.concurrent.atomic.AtomicInteger unmatched, java.util.concurrent.atomic.AtomicInteger errors) {
+    private void processAsZipChunks(List<File> mediaFiles, File input, File output,
+                                    Optional<Instant> takeoutDate, Map<String, File[]> dirCache,
+                                    ExecutorService workers, int workerCount,
+                                    java.util.concurrent.atomic.AtomicInteger matched,
+                                    java.util.concurrent.atomic.AtomicInteger unmatched,
+                                    java.util.concurrent.atomic.AtomicInteger errors,
+                                    RestorationCheckpoint checkpoint) {
 
-        // A record to pass completed files from workers → zip writer
-        record ZipItem(File tempFile, File originalMedia, Instant timestamp) {}
+        // A record to pass completed files from workers -> zip writer
+        record ZipItem(File tempFile, File originalMedia, Instant timestamp, String relKey, boolean isMatch, boolean isUnmatch, boolean isErr) {}
         final Object POISON = new Object(); // sentinel to signal "all done"
 
         java.util.concurrent.BlockingQueue<Object> zipQueue = new java.util.concurrent.LinkedBlockingQueue<>(64);
@@ -432,6 +501,9 @@ public class ExtractionService {
                         java.nio.file.Files.copy(zi.tempFile.toPath(), zout);
                         zout.closeEntry();
                         currentZipSize += len;
+                        if (checkpoint != null) {
+                            checkpoint.recordCompletedFile(zi.relKey, zi.isMatch, zi.isUnmatch, zi.isErr, zi.originalMedia.length());
+                        }
                     } catch (Exception e) {
                         sendLog("ERROR", "[ZIP WRITE] " + zi.originalMedia.getName() + " -> " + e.getMessage());
                     } finally {
@@ -449,148 +521,175 @@ public class ExtractionService {
         zipWriter.setDaemon(true);
         zipWriter.start();
 
-        // === WORKER THREADS (parallel ExifTool processing — no locks, full CPU) ===
+        // === WORKER THREADS (parallel ExifTool processing — no locks, full CPU, serial polling) ===
         try {
             activeFutures.clear();
-            List<java.util.concurrent.CompletableFuture<Void>> futures = new ArrayList<>();
-            for (File media : mediaFiles) {
-                java.util.concurrent.CompletableFuture<Void> cf = java.util.concurrent.CompletableFuture.runAsync(() -> {
-                    if (cancelled) return;
-                    while (paused && !cancelled) {
-                        try { Thread.sleep(150); } catch (InterruptedException e) {
-                            Thread.currentThread().interrupt(); // re-interrupt so shutdownNow() propagates
-                            return;
-                        }
-                    }
-                    try {
-                        if (cancelled) return;
-                        Optional<File> json = matcher.findMatchingJson(media, dirCache);
-                        if (json.isPresent()) {
-                            File tempCopied = File.createTempFile("tmp_takeout_", "_" + media.getName());
-                            try {
-                                if (cancelled) { tempCopied.delete(); return; }
-                                java.nio.file.Files.copy(media.toPath(), tempCopied.toPath(), java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+            java.util.concurrent.ConcurrentLinkedQueue<File> queue = new java.util.concurrent.ConcurrentLinkedQueue<>(mediaFiles);
+            List<java.util.concurrent.CompletableFuture<Void>> workerFutures = new ArrayList<>();
 
-                                // Single merged ExifTool call (parallel — no lock needed)
-                                Optional<AlbumDetails> album = getAlbumDetails(media);
-                                String albumTitle = album.map(AlbumDetails::getTitle).orElse(null);
-                                String albumDesc = album.map(AlbumDetails::getDescription).orElse(null);
-                                metadataInjector.injectMetadataAndAlbum(tempCopied, json.get(), albumTitle, albumDesc);
-                                Instant applied = restorer.restoreFromJson(tempCopied, json.get(), takeoutDate);
-
-                                String displayPath = getDisplayPath(media, input);
-                                // Queue for zip writing (non-blocking enqueue)
-                                zipQueue.put(new ZipItem(tempCopied, media, applied));
-                                mediaTimestampCache.put(media.getAbsolutePath(), applied);
-                                matched.incrementAndGet();
-                                processedBytes.addAndGet(media.length());
-                                notifyStats(totalFiles, totalFiles, matched.get(), unmatched.get(), errors.get());
-                                sendLog("SUCCESS", "[SUCCESS] Restored " + displayPath);
-                            } catch (Exception ex) {
-                                tempCopied.delete();
-                                throw ex;
+            for (int i = 0; i < workerCount; i++) {
+                java.util.concurrent.CompletableFuture<Void> wf = java.util.concurrent.CompletableFuture.runAsync(() -> {
+                    while (!cancelled) {
+                        while (paused && !cancelled) {
+                            try { Thread.sleep(150); } catch (InterruptedException e) {
+                                Thread.currentThread().interrupt();
+                                return;
                             }
-                        } else {
+                        }
+                        if (cancelled) return;
+
+                        File media = queue.poll();
+                        if (media == null) break;
+
+                        String relKey = getDisplayPath(media, input);
+                        if (checkpoint != null && checkpoint.isFileAlreadyProcessed(relKey)) {
+                            checkLimitsAndIncrement(media.getName());
+                            continue;
+                        }
+
+                        boolean isMatch = false;
+                        boolean isUnmatch = false;
+                        boolean isErr = false;
+
+                        try {
                             if (cancelled) return;
-
-                            // Priority 2: Filename date extraction fallback
-                            Optional<Instant> filenameDate = FilenameDateParser.parse(media.getName());
-                            Optional<Instant> interpolated = Optional.empty();
-
-                            if (filenameDate.isPresent()) {
+                            Optional<File> json = matcher.findMatchingJson(media, dirCache);
+                            if (json.isPresent()) {
                                 File tempCopied = File.createTempFile("tmp_takeout_", "_" + media.getName());
                                 try {
                                     if (cancelled) { tempCopied.delete(); return; }
                                     java.nio.file.Files.copy(media.toPath(), tempCopied.toPath(), java.nio.file.StandardCopyOption.REPLACE_EXISTING);
-                                    Instant fnInstant = filenameDate.get();
+
+                                    // Single merged ExifTool call (parallel — no lock needed)
                                     Optional<AlbumDetails> album = getAlbumDetails(media);
-                                    if (album.isPresent()) {
-                                        metadataInjector.injectAlbumName(tempCopied, album.get().getTitle(), album.get().getDescription());
-                                    }
-                                    restorer.applyInstant(tempCopied, fnInstant);
-                                    zipQueue.put(new ZipItem(tempCopied, media, fnInstant));
-                                    mediaTimestampCache.put(media.getAbsolutePath(), fnInstant);
+                                    String albumTitle = album.map(AlbumDetails::getTitle).orElse(null);
+                                    String albumDesc = album.map(AlbumDetails::getDescription).orElse(null);
+                                    metadataInjector.injectMetadataAndAlbum(tempCopied, json.get(), albumTitle, albumDesc);
+                                    Instant applied = restorer.restoreFromJson(tempCopied, json.get(), takeoutDate);
+
+                                    String displayPath = getDisplayPath(media, input);
+                                    isMatch = true;
+                                    zipQueue.put(new ZipItem(tempCopied, media, applied, relKey, isMatch, isUnmatch, isErr));
+                                    mediaTimestampCache.put(media.getAbsolutePath(), applied);
                                     matched.incrementAndGet();
                                     processedBytes.addAndGet(media.length());
                                     notifyStats(totalFiles, totalFiles, matched.get(), unmatched.get(), errors.get());
-                                    String displayPath = getDisplayPath(media, input);
-                                    String formattedDate = java.time.LocalDateTime.ofInstant(fnInstant, java.time.ZoneId.systemDefault()).format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
-                                    sendLog("SUCCESS", "[FILENAME DATE] " + displayPath + " -> Extracted timestamp from filename: " + formattedDate);
+                                    sendLog("SUCCESS", "[SUCCESS] Restored " + displayPath);
                                 } catch (Exception ex) {
                                     tempCopied.delete();
                                     throw ex;
                                 }
                             } else {
-                                // Priority 3: Fallback to adjacent media estimation
-                                if (interpolateMissing) {
-                                    interpolated = tryInterpolateTimestamp(media, input, dirCache, takeoutDate);
-                                }
+                                if (cancelled) return;
 
-                                if (interpolated.isPresent()) {
+                                // Priority 2: Filename date extraction fallback
+                                Optional<Instant> filenameDate = FilenameDateParser.parse(media.getName());
+                                Optional<Instant> interpolated = Optional.empty();
+
+                                if (filenameDate.isPresent()) {
                                     File tempCopied = File.createTempFile("tmp_takeout_", "_" + media.getName());
                                     try {
                                         if (cancelled) { tempCopied.delete(); return; }
                                         java.nio.file.Files.copy(media.toPath(), tempCopied.toPath(), java.nio.file.StandardCopyOption.REPLACE_EXISTING);
-                                        Instant est = interpolated.get();
+                                        Instant fnInstant = filenameDate.get();
                                         Optional<AlbumDetails> album = getAlbumDetails(media);
                                         if (album.isPresent()) {
                                             metadataInjector.injectAlbumName(tempCopied, album.get().getTitle(), album.get().getDescription());
                                         }
-                                        restorer.applyInstant(tempCopied, est);
-                                        zipQueue.put(new ZipItem(tempCopied, media, est));
-                                        mediaTimestampCache.put(media.getAbsolutePath(), est);
+                                        restorer.applyInstant(tempCopied, fnInstant);
+                                        isMatch = true;
+                                        zipQueue.put(new ZipItem(tempCopied, media, fnInstant, relKey, isMatch, isUnmatch, isErr));
+                                        mediaTimestampCache.put(media.getAbsolutePath(), fnInstant);
                                         matched.incrementAndGet();
                                         processedBytes.addAndGet(media.length());
                                         notifyStats(totalFiles, totalFiles, matched.get(), unmatched.get(), errors.get());
                                         String displayPath = getDisplayPath(media, input);
-                                        String formattedDate = java.time.LocalDateTime.ofInstant(est, java.time.ZoneId.systemDefault()).format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
-                                        sendLog("SUCCESS", "[ESTIMATED META] " + displayPath + " -> Estimated date from adjacent media: " + formattedDate + " (saved in estimated_metadata)");
+                                        String formattedDate = java.time.LocalDateTime.ofInstant(fnInstant, java.time.ZoneId.systemDefault()).format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
+                                        sendLog("SUCCESS", "[FILENAME DATE] " + displayPath + " -> Extracted timestamp from filename: " + formattedDate);
                                     } catch (Exception ex) {
                                         tempCopied.delete();
                                         throw ex;
                                     }
                                 } else {
-                                    unmatched.incrementAndGet();
-                                    notifyStats(totalFiles, totalFiles, matched.get(), unmatched.get(), errors.get());
-                                    String displayPath = getDisplayPath(media, input);
-                                    sendLog("WARN", "[NO META] " + displayPath + " -> skipped in zip mode");
+                                    // Priority 3: Fallback to adjacent media estimation
+                                    if (interpolateMissing) {
+                                        interpolated = tryInterpolateTimestamp(media, input, dirCache, takeoutDate);
+                                    }
+
+                                    if (interpolated.isPresent()) {
+                                        File tempCopied = File.createTempFile("tmp_takeout_", "_" + media.getName());
+                                        try {
+                                            if (cancelled) { tempCopied.delete(); return; }
+                                            java.nio.file.Files.copy(media.toPath(), tempCopied.toPath(), java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+                                            Instant est = interpolated.get();
+                                            Optional<AlbumDetails> album = getAlbumDetails(media);
+                                            if (album.isPresent()) {
+                                                metadataInjector.injectAlbumName(tempCopied, album.get().getTitle(), album.get().getDescription());
+                                            }
+                                            restorer.applyInstant(tempCopied, est);
+                                            isMatch = true;
+                                            zipQueue.put(new ZipItem(tempCopied, media, est, relKey, isMatch, isUnmatch, isErr));
+                                            mediaTimestampCache.put(media.getAbsolutePath(), est);
+                                            matched.incrementAndGet();
+                                            processedBytes.addAndGet(media.length());
+                                            notifyStats(totalFiles, totalFiles, matched.get(), unmatched.get(), errors.get());
+                                            String displayPath = getDisplayPath(media, input);
+                                            String formattedDate = java.time.LocalDateTime.ofInstant(est, java.time.ZoneId.systemDefault()).format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
+                                            sendLog("SUCCESS", "[ESTIMATED META] " + displayPath + " -> Estimated date from adjacent media: " + formattedDate + " (saved in estimated_metadata)");
+                                        } catch (Exception ex) {
+                                            tempCopied.delete();
+                                            throw ex;
+                                        }
+                                    } else {
+                                        unmatched.incrementAndGet();
+                                        isUnmatch = true;
+                                        notifyStats(totalFiles, totalFiles, matched.get(), unmatched.get(), errors.get());
+                                        String displayPath = getDisplayPath(media, input);
+                                        sendLog("WARN", "[NO META] " + displayPath + " -> skipped in zip mode");
+                                        if (checkpoint != null) {
+                                            checkpoint.recordCompletedFile(relKey, false, true, false, media.length());
+                                        }
+                                    }
                                 }
                             }
+                        } catch (Exception ex) {
+                            errors.incrementAndGet();
+                            unmatched.incrementAndGet();
+                            isErr = true;
+                            notifyStats(totalFiles, totalFiles, matched.get(), unmatched.get(), errors.get());
+                            String displayPath = getDisplayPath(media, input);
+                            sendLog("ERROR", "[ERROR] " + displayPath + " -> " + ex.getMessage());
+                            if (checkpoint != null) {
+                                checkpoint.recordCompletedFile(relKey, false, false, true, media.length());
+                            }
+                        } finally {
+                            checkLimitsAndIncrement(media.getName());
                         }
-                    } catch (Exception ex) {
-                        errors.incrementAndGet();
-                        unmatched.incrementAndGet();
-                        notifyStats(totalFiles, totalFiles, matched.get(), unmatched.get(), errors.get());
-                        String displayPath = getDisplayPath(media, input);
-                        sendLog("ERROR", "[ERROR] " + displayPath + " -> " + ex.getMessage());
-                    } finally {
-                        checkLimitsAndIncrement(media.getName());
                     }
                 }, workers);
-                futures.add(cf);
-                activeFutures.add(cf);
+                workerFutures.add(wf);
+                activeFutures.add(wf);
             }
             try {
-                java.util.concurrent.CompletableFuture.allOf(futures.toArray(new java.util.concurrent.CompletableFuture[0])).join();
+                java.util.concurrent.CompletableFuture.allOf(workerFutures.toArray(new java.util.concurrent.CompletableFuture[0])).join();
             } catch (Exception ignored) {
             } finally {
                 activeFutures.clear();
             }
         } finally {
             // Signal zip writer to finish
-            try { zipQueue.put(POISON); } catch (InterruptedException ignored) {}
-            try { zipWriter.join(30_000); } catch (InterruptedException ignored) {}
+            try {
+                zipQueue.put(POISON);
+                zipWriter.join(30000);
+            } catch (Exception ignored) {}
         }
     }
-
-
-    public void togglePause() {
-        this.paused = !this.paused;
-    }
-
     public void cancel() {
         this.cancelled = true;
         this.isRunning = false; // immediately release lock so a new session can start
+        if (activeCheckpoint != null) {
+            activeCheckpoint.flush(false);
+        }
         ExecutorService p = this.activeWorkersPool;
         if (p != null) {
             p.shutdownNow();
@@ -884,6 +983,9 @@ public class ExtractionService {
 
     public void pause() {
         this.paused = true;
+        if (activeCheckpoint != null) {
+            activeCheckpoint.flush(false);
+        }
     }
 
     public void resume() {

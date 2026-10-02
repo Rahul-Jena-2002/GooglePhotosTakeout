@@ -153,6 +153,7 @@ export class SessionManager {
 
     const walk = async (handle: FileSystemDirectoryHandle, path: string[]) => {
       const currentFiles: FileSystemFileHandle[] = [];
+      const subDirs: [string, FileSystemDirectoryHandle][] = [];
 
       // @ts-ignore
       for await (const [name, entry] of handle) {
@@ -161,9 +162,13 @@ export class SessionManager {
         if (entry.kind === 'file' && isAllowedMediaFile(safeName)) {
           currentFiles.push(entry as FileSystemFileHandle);
         } else if (entry.kind === 'directory') {
-          await walk(entry as FileSystemDirectoryHandle, [...path, safeName]);
+          subDirs.push([safeName, entry as FileSystemDirectoryHandle]);
         }
       }
+
+      // Canonical sorting for deterministic serial order
+      currentFiles.sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: 'base' }));
+      subDirs.sort((a, b) => a[0].localeCompare(b[0], undefined, { sensitivity: 'base' }));
 
       for (const fileHandle of currentFiles) {
         const safeName = sanitizeFilename(fileHandle.name);
@@ -195,6 +200,10 @@ export class SessionManager {
           await new Promise(r => setTimeout(r, 0));
         }
       }
+
+      for (const [subName, subHandle] of subDirs) {
+        await walk(subHandle, [...path, subName]);
+      }
     };
 
     await walk(root, []);
@@ -222,6 +231,9 @@ export class SessionManager {
     // Instantiate zip.js reader
     const zipReader = new ZipReader(new BlobReader(file));
     const entries = await zipReader.getEntries();
+
+    // Canonical sorting of entries for deterministic serial ordering
+    entries.sort((a, b) => a.filename.localeCompare(b.filename, undefined, { sensitivity: 'base' }));
 
     // Build a lookup: normalized path → entry (for both media and JSON files)
     // Normalize Windows backslashes → forward slashes at ingestion time

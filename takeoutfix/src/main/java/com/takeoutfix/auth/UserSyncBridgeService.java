@@ -9,6 +9,8 @@ import org.springframework.stereotype.Service;
 import javax.swing.*;
 import java.awt.*;
 import java.io.File;
+import java.net.InetSocketAddress;
+import java.net.Socket;
 import java.nio.file.Files;
 import java.util.HashMap;
 import java.util.List;
@@ -25,6 +27,12 @@ import java.util.function.Consumer;
  * - On startup, silent token verification is executed via SessionManager.
  * - Tokens are stored in the OS Keyring via CredentialStore.
  * - Public metadata is stored in ~/.takeoutfix/session.json.
+ *
+ * Cloud synchronization strategy:
+ * - Only loads from Firebase once upon login to cache entitlements locally.
+ * - During restoration, all operations update local session storage without repeated cloud calls.
+ * - When the user pauses, stops/cancels, or completes an operation, or exits the application:
+ *   checks online connectivity, and only if online, synchronizes usage totals to Firebase.
  */
 @Service
 public class UserSyncBridgeService {
@@ -78,8 +86,50 @@ public class UserSyncBridgeService {
         });
     }
 
+    /**
+     * Synchronizes accumulated local metrics to Firebase Firestore when the user
+     * pauses, cancels/stops, or completes a restoration, verifying online status first.
+     */
+    public void syncIfOnline() {
+        if (!isSignedIn()) {
+            return;
+        }
+        executorService.submit(() -> {
+            if (checkOnlineConnectivity()) {
+                try {
+                    log.info("Network is online: Synchronizing local usage metrics to Firebase...");
+                    firebaseSyncService.pushCurrentTotalsToCloud();
+                    firebaseSyncService.drainPendingOfflineSync();
+                } catch (Exception e) {
+                    log.warn("Firebase sync attempt failed: {}", e.getMessage());
+                }
+            } else {
+                log.info("Network is offline: Firebase cloud sync safely deferred until online.");
+            }
+        });
+    }
+
+    /**
+     * Fast check to verify actual internet connectivity before executing cloud network calls.
+     */
+    public boolean checkOnlineConnectivity() {
+        try (Socket socket = new Socket()) {
+            socket.connect(new InetSocketAddress("8.8.8.8", 53), 1500);
+            return true;
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
     public void syncOnClose() {
-        firebaseSyncService.syncOnClose();
+        if (!isSignedIn()) return;
+        try {
+            if (checkOnlineConnectivity()) {
+                firebaseSyncService.syncOnClose();
+            } else {
+                log.info("Application closed offline: cloud sync skipped safely.");
+            }
+        } catch (Exception ignored) {}
     }
 
     /**
@@ -113,7 +163,7 @@ public class UserSyncBridgeService {
         });
     }
 
-    // ── Direct Email/Password & HTTPS Auth Methods ───────────────────────────
+    // ── Direct Email/Password & HTTPS Auth Methods ────────────────────────────
 
     public void signInWithEmail(String email, String password, Component parent,
             Consumer<Map<String, Object>> onSuccess, Consumer<String> onError) {
@@ -293,13 +343,21 @@ public class UserSyncBridgeService {
                         || (idToken != null && !idToken.trim().isEmpty()));
     }
 
+    public static final long GUEST_MAX_BYTES = 1024L * 1024L * 1024L; // 1 GB free guest storage limit
+
     public String getCurrentEmail() {
+        if (!isSignedIn()) {
+            return "Guest Tier · 1 GB Free Storage";
+        }
         return (String) getCurrentProfile().getOrDefault(KEY_EMAIL, "");
     }
 
     public String getCurrentName() {
+        if (!isSignedIn()) {
+            return "Guest User";
+        }
         return (String) getCurrentProfile().getOrDefault("name",
-                getCurrentProfile().getOrDefault("displayName", "Operator"));
+                getCurrentProfile().getOrDefault("displayName", "Google User"));
     }
 
     public boolean isPaymentsEnabled() {
@@ -308,48 +366,28 @@ public class UserSyncBridgeService {
 
     public String getCurrentPlan() {
         if (!isSignedIn())
-            return "none";
-        if (!isPaymentsEnabled()) {
-            return "free";
-        }
-        return (String) getCurrentProfile().getOrDefault("plan", "free");
+            return "guest";
+        return "unlimited";
     }
 
     public boolean isSuper() {
-        if (!isPaymentsEnabled()) return true;
-        String plan = (String) getCurrentProfile().getOrDefault("plan", "free");
-        return "super".equalsIgnoreCase(plan) || "admin".equalsIgnoreCase(plan);
+        return true;
     }
 
     public boolean isProOrSuper() {
-        if (!isPaymentsEnabled()) return true;
-        String plan = (String) getCurrentProfile().getOrDefault("plan", "free");
-        return isSuper() || "pro".equalsIgnoreCase(plan);
+        return true;
     }
 
     public boolean isFreeUnlimited() {
-        if (!isPaymentsEnabled()) return true;
-        return Boolean.TRUE.equals(getCurrentProfile().get("isFreeUnlimited"))
-                || Boolean.TRUE.equals(getCurrentProfile().get("isFreePromoActive"));
+        return isSignedIn();
     }
 
     public boolean isFeaturesUnlocked() {
-        if (!isPaymentsEnabled()) return true;
-        return isProOrSuper();
+        return true;
     }
 
     public boolean isFeatureAllowed(String feature) {
-        if (!isPaymentsEnabled()) return true;
-        if (feature == null) return true;
-        String f = feature.toUpperCase();
-        if (f.contains("RESTORE")) return true; // Core Photo Metadata Restorer is ALWAYS free!
-        if (f.contains("EXIF") || f.contains("COMPARE")) {
-            return isProOrSuper();
-        }
-        if (f.contains("DUPLICATE") || f.contains("SPLIT") || f.contains("VOLUME")) {
-            return isSuper();
-        }
-        return isProOrSuper();
+        return true;
     }
 
     public long getUsedFiles() {
@@ -369,15 +407,23 @@ public class UserSyncBridgeService {
         long b3 = getNumeric(p.get("totalBytes"));
         long b4 = getNumeric(p.get("lifetimeBytes"));
         long b5 = getNumeric(p.get("totalBytesProcessed"));
-        return Math.max(b1, Math.max(b2, Math.max(b3, Math.max(b4, b5))));
+        long maxUser = Math.max(b1, Math.max(b2, Math.max(b3, Math.max(b4, b5))));
+        if (!isSignedIn()) {
+            try {
+                long guestBytes = java.util.prefs.Preferences.userNodeForPackage(UserSyncBridgeService.class)
+                        .getLong("guest_used_bytes", 0L);
+                return Math.max(maxUser, guestBytes);
+            } catch (Exception ignored) {}
+        }
+        return maxUser;
     }
 
     public long getMaxFiles() {
-        return Long.MAX_VALUE;
+        return Long.MAX_VALUE; // No file limit
     }
 
     public long getMaxBytes() {
-        return Long.MAX_VALUE;
+        return isSignedIn() ? Long.MAX_VALUE : GUEST_MAX_BYTES;
     }
 
     public boolean canProcessMoreFiles() {
@@ -385,11 +431,29 @@ public class UserSyncBridgeService {
     }
 
     public boolean canProcessMoreFiles(long nextFilesCount) {
-        return nextFilesCount >= 0;
+        return true;
+    }
+
+    public boolean canProcessMoreBytes(long nextBytes) {
+        if (isSignedIn()) return true;
+        return (getUsedBytes() + nextBytes) <= GUEST_MAX_BYTES;
     }
 
     public boolean isQuotaExceeded() {
-        return false;
+        if (isSignedIn()) return false;
+        return getUsedBytes() >= GUEST_MAX_BYTES;
+    }
+
+    public void recordUsage(int files, long bytes) {
+        if (!isSignedIn()) {
+            try {
+                var prefs = java.util.prefs.Preferences.userNodeForPackage(UserSyncBridgeService.class);
+                long current = prefs.getLong("guest_used_bytes", 0L);
+                prefs.putLong("guest_used_bytes", current + Math.max(0, bytes));
+                prefs.flush();
+            } catch (Exception ignored) {}
+        }
+        UserController.incrementUsage(files, bytes);
     }
 
     // ── Mutators ─────────────────────────────────────────────────────────────
@@ -453,19 +517,9 @@ public class UserSyncBridgeService {
     private void recordUsageInternal(long files, long bytes, boolean synchronous) {
         UserController.incrementUsage(files, bytes);
         saveSessionFile(UserController.getCurrentUserProfile());
-        if (synchronous) {
-            boolean ok = firebaseSyncService.pushCurrentTotalsToCloud();
-            if (!ok) {
-                firebaseSyncService.recordPendingOfflineSync(files, bytes);
-            }
-        } else {
-            executorService.submit(() -> {
-                boolean ok = firebaseSyncService.pushCurrentTotalsToCloud();
-                if (!ok) {
-                    firebaseSyncService.recordPendingOfflineSync(files, bytes);
-                }
-            });
-        }
+        // Usage counts are saved purely into local storage/session during active execution.
+        // Network cloud synchronization is invoked only when paused, stopped, completed,
+        // or on app exit, preventing excessive and frequent network requests.
     }
 
     public void shutdown() {
@@ -485,4 +539,3 @@ public class UserSyncBridgeService {
         return 0;
     }
 }
-

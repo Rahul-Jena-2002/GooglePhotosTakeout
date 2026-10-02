@@ -1,0 +1,668 @@
+/* ==========================================================================
+   Catppuccin Green Forest / Evergreen Theme for TakeoutFix Studio
+   Palette: Rich Pine, Spruce, Deep Conifer Dark (#18221D / #131B17)
+   Accents: Emerald Pine Green (#4EBA87), Mint Sage (#81C784), Dark Moss (#2E7D5B)
+   ========================================================================== */
+
+.root {
+    -fx-base: #18221D;
+    -fx-background: #18221D;
+    -fx-background-color: #18221D;
+    -fx-control-inner-background: #16201B;
+    -fx-control-inner-background-alt: #1B2620;
+    -fx-accent: #4EBA87;
+    -fx-focus-color: #4EBA87;
+    -fx-faint-focus-color: rgba(78, 186, 135, 0.20);
+    -fx-font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    -fx-text-base-color: #EAF2ED;
+    -fx-text-fill: #EAF2ED;
+}
+
+.app-shell {
+    -fx-background-color: #18221D;
+}
+
+/* ==================== Top Header Bar ==================== */
+.top-header {
+    -fx-background-color: #131B17;
+    -fx-border-color: transparent transparent #24352D transparent;
+    -fx-border-width: 0 0 1 0;
+}
+
+/* ==================== Left Sidebar ==================== */
+.sidebar {
+    -fx-background-color: #131B17;
+    -fx-border-color: transparent #24352D transparent transparent;
+    -fx-border-width: 0 1 0 0;
+}
+
+.nav-section-label {
+    -fx-text-fill: #6D8278;
+    -fx-font-weight: 700;
+    -fx-font-size: 11px;
+    -fx-letter-spacing: 0.5px;
+}
+
+.nav-button {
+    -fx-background-color: transparent;
+    -fx-text-fill: #A8BDB4;
+    -fx-font-size: 13.5px;
+    -fx-font-weight: 500;
+    -fx-alignment: CENTER_LEFT;
+    -fx-padding: 8 12 8 12;
+    -fx-background-radius: 6;
+    -fx-cursor: hand;
+}
+
+.nav-button:hover {
+    -fx-background-color: rgba(78, 186, 135, 0.08);
+    -fx-text-fill: #EAF2ED;
+}
+
+.nav-button-selected {
+    -fx-background-color: rgba(78, 186, 135, 0.16);
+    -fx-text-fill: #4EBA87;
+    -fx-font-weight: 600;
+}
+
+.trust-card {
+    -fx-background-color: #16201B;
+    -fx-border-color: #24352D;
+    -fx-border-width: 1;
+    -fx-border-radius: 8;
+    -fx-background-radius: 8;
+    -fx-padding: 10 12 10 12;
+}
+
+/* ==================== Surface Cards ==================== */
+.glass-card, .card {
+    -fx-background-color: #1E2B25;
+    -fx-border-color: #2A3C33;
+    -fx-border-width: 1;
+    -fx-border-radius: 8;
+    -fx-background-radius: 8;
+}
+
+.sub-card, .inner-container {
+    -fx-background-color: #16201B;
+    -fx-border-color: #24352D;
+    -fx-border-width: 1;
+    -fx-border-radius: 6;
+    -fx-background-radius: 6;
+}
+
+.path-display-box {
+    -fx-background-color: #141D18;
+    -fx-border-color: #24352D;
+    -fx-border-width: 1;
+    -fx-border-radius: 6;
+    -fx-background-radius: 6;
+    -fx-padding: 4 8 4 8;
+    -fx-pref-height: 30px;
+    -fx-font-family: 'Cascadia Code', 'JetBrains Mono', 'Consolas', monospace;
+    -fx-font-size: 12px;
+}
+.path-display-box:hover {
+    -fx-border-color: #38956C;
+}
+
+.path-display-label {
+    -fx-font-family: 'Cascadia Code', 'JetBrains Mono', 'Consolas', monospace;
+    -fx-font-size: 12px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #EAF2ED;
+}
+
+.path-display-placeholder {
+    -fx-font-size: 12px;
+    -fx-font-weight: normal;
+    -fx-text-fill: #6D8278;
+}
+
+/* ==================== KPI Metric Cards ==================== */
+.kpi-card {
+    -fx-background-color: #1E2B25;
+    -fx-border-color: #2A3C33;
+    -fx-border-width: 1;
+    -fx-border-radius: 8;
+    -fx-background-radius: 8;
+}
+
+.kpi-title, .kpi-label {
+    -fx-text-fill: #7C9489;
+    -fx-font-weight: 700;
+    -fx-font-size: 11px;
+}
+
+.kpi-value {
+    -fx-text-fill: #4EBA87;
+    -fx-font-size: 24px;
+    -fx-font-weight: 700;
+}
+
+.kpi-value.text-primary {
+    -fx-text-fill: #4EBA87;
+}
+
+/* ==================== Typography ==================== */
+.card-title, .section-title {
+    -fx-text-fill: #FFFFFF;
+    -fx-font-weight: 700;
+}
+
+.section-sub-title {
+    -fx-font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    -fx-font-size: 12px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #7C9489;
+}
+
+.text-primary {
+    -fx-text-fill: #EAF2ED;
+}
+
+.text-secondary {
+    -fx-text-fill: #A8BDB4;
+}
+
+.text-muted {
+    -fx-text-fill: #6D8278;
+}
+
+.brand-accent {
+    -fx-text-fill: #4EBA87;
+}
+
+/* ==================== Buttons ==================== */
+.btn-primary {
+    -fx-background-color: linear-gradient(to bottom, #2E7D5B, #24664A);
+    -fx-text-fill: #FFFFFF;
+    -fx-font-weight: 700;
+    -fx-background-radius: 6;
+    -fx-border-color: transparent;
+    -fx-cursor: hand;
+}
+
+.btn-primary:hover {
+    -fx-background-color: linear-gradient(to bottom, #38956C, #2E7D5B);
+}
+
+.btn-primary:pressed {
+    -fx-background-color: #1E553E;
+}
+
+.btn-primary:disabled {
+    -fx-opacity: 0.45;
+}
+
+.btn-secondary {
+    -fx-background-color: #24332C;
+    -fx-text-fill: #E3EBE6;
+    -fx-border-color: #33483F;
+    -fx-border-width: 1;
+    -fx-border-radius: 6;
+    -fx-background-radius: 6;
+    -fx-cursor: hand;
+}
+
+.btn-secondary:hover {
+    -fx-background-color: #2E4138;
+    -fx-border-color: #425B50;
+    -fx-text-fill: #FFFFFF;
+}
+
+.btn-secondary:pressed {
+    -fx-background-color: #1A2620;
+}
+
+.btn-secondary:disabled {
+    -fx-opacity: 0.45;
+}
+
+.btn-ghost {
+    -fx-background-color: transparent;
+    -fx-text-fill: #A8BDB4;
+    -fx-cursor: hand;
+}
+
+.btn-ghost:hover {
+    -fx-background-color: rgba(78, 186, 135, 0.10);
+    -fx-text-fill: #EAF2ED;
+}
+
+.btn-danger {
+    -fx-background-color: rgba(248, 113, 113, 0.15);
+    -fx-text-fill: #F87171;
+    -fx-border-color: rgba(248, 113, 113, 0.35);
+    -fx-border-width: 1;
+    -fx-border-radius: 6;
+    -fx-background-radius: 6;
+    -fx-cursor: hand;
+}
+
+.btn-danger:hover {
+    -fx-background-color: rgba(248, 113, 113, 0.28);
+    -fx-text-fill: #FFFFFF;
+}
+
+/* ==================== Input Fields & Controls ==================== */
+.text-field, .password-field, .text-area {
+    -fx-background-color: #16201B;
+    -fx-text-fill: #EAF2ED;
+    -fx-prompt-text-fill: #6D8278;
+    -fx-border-color: #2B3D35;
+    -fx-border-width: 1;
+    -fx-border-radius: 6;
+    -fx-background-radius: 6;
+}
+
+.text-field:focused, .password-field:focused, .text-area:focused {
+    -fx-border-color: #4EBA87;
+    -fx-background-color: #18241E;
+}
+
+.combo-box, .choice-box {
+    -fx-background-color: #16201B;
+    -fx-border-color: #2B3D35;
+    -fx-border-width: 1;
+    -fx-border-radius: 6;
+    -fx-background-radius: 6;
+}
+
+.combo-box:hover, .choice-box:hover {
+    -fx-border-color: #3B5348;
+}
+
+.combo-box .cell, .choice-box .cell {
+    -fx-text-fill: #EAF2ED;
+}
+
+.menu-button {
+    -fx-background-color: #24332C;
+    -fx-text-fill: #E3EBE6;
+    -fx-border-color: #33483F;
+    -fx-border-radius: 6;
+    -fx-background-radius: 6;
+}
+
+.menu-button:hover {
+    -fx-background-color: #2E4138;
+}
+
+.context-menu {
+    -fx-background-color: #1A2520;
+    -fx-border-color: #2B3D35;
+    -fx-border-width: 1;
+    -fx-border-radius: 8;
+    -fx-background-radius: 8;
+    -fx-padding: 4;
+}
+
+.menu-item {
+    -fx-padding: 6 12 6 12;
+    -fx-background-radius: 4;
+}
+
+.menu-item:hover, .menu-item:focused {
+    -fx-background-color: rgba(78, 186, 135, 0.18);
+}
+
+.menu-item .label {
+    -fx-text-fill: #EAF2ED;
+}
+
+/* ==================== Progress Bar ==================== */
+.progress-bar {
+    -fx-accent: #4EBA87;
+}
+
+.progress-bar > .track {
+    -fx-background-color: #141D18;
+    -fx-background-radius: 4;
+}
+
+.progress-bar > .bar {
+    -fx-background-color: linear-gradient(to right, #2E7D5B, #4EBA87);
+    -fx-background-radius: 4;
+}
+
+/* ==================== CheckBox & Radio ==================== */
+.check-box .box {
+    -fx-background-color: #16201B;
+    -fx-border-color: #33483F;
+    -fx-border-width: 1.5;
+    -fx-border-radius: 4;
+    -fx-background-radius: 4;
+}
+
+.check-box:selected .box {
+    -fx-background-color: #2E7D5B;
+    -fx-border-color: #4EBA87;
+}
+
+.check-box:selected .mark {
+    -fx-background-color: #FFFFFF;
+}
+
+.check-box .text {
+    -fx-fill: #EAF2ED;
+}
+
+/* ==================== Tables & Lists ==================== */
+.table-view, .list-view {
+    -fx-background-color: #18221D;
+    -fx-border-color: #2A3C33;
+    -fx-border-width: 1;
+    -fx-border-radius: 6;
+    -fx-background-radius: 6;
+}
+
+.table-view .column-header-background {
+    -fx-background-color: #141D18;
+}
+
+.table-view .column-header {
+    -fx-background-color: transparent;
+    -fx-border-color: transparent transparent #24352D transparent;
+}
+
+.table-row-cell {
+    -fx-background-color: #18221D;
+    -fx-border-color: transparent transparent #1E2B25 transparent;
+}
+
+.table-row-cell:odd {
+    -fx-background-color: #1A2520;
+}
+
+.table-row-cell:selected, .list-cell:selected {
+    -fx-background-color: #223F32;
+    -fx-text-fill: #FFFFFF;
+}
+
+.list-cell {
+    -fx-background-color: transparent;
+    -fx-text-fill: #EAF2ED;
+    -fx-padding: 6 10 6 10;
+}
+
+.list-cell:filled:hover {
+    -fx-background-color: #24332C;
+}
+
+/* ==================== ScrollBars ==================== */
+.scroll-bar {
+    -fx-background-color: #131B17;
+}
+
+.scroll-bar .thumb {
+    -fx-background-color: #2B3D35;
+    -fx-background-radius: 4;
+}
+
+.scroll-bar .thumb:hover {
+    -fx-background-color: #3D574B;
+}
+
+/* ==================== Separator & SplitPane ==================== */
+.separator .line {
+    -fx-border-color: #24352D transparent transparent transparent;
+    -fx-border-width: 1 0 0 0;
+}
+
+.split-pane {
+    -fx-background-color: transparent;
+    -fx-box-border: transparent;
+    -fx-padding: 0;
+}
+
+.split-pane > .split-pane-divider {
+    -fx-background-color: #24352D;
+    -fx-padding: 0 1 0 1;
+    -fx-border-color: transparent;
+    -fx-background-insets: 0;
+}
+
+.split-pane:horizontal > .split-pane-divider {
+    -fx-cursor: h-resize;
+    -fx-pref-width: 4px;
+    -fx-min-width: 4px;
+}
+
+.split-pane:vertical > .split-pane-divider {
+    -fx-cursor: v-resize;
+    -fx-pref-height: 4px;
+    -fx-min-height: 4px;
+    -fx-padding: 1 0 1 0;
+}
+
+.split-pane > .split-pane-divider:hover {
+    -fx-background-color: #4EBA87;
+}
+
+.split-pane > .split-pane-divider:pressed {
+    -fx-background-color: #81C784;
+}
+
+/* ==================== Empty State Container ==================== */
+.empty-state-box {
+    -fx-background-color: #141D18;
+    -fx-background-radius: 6;
+    -fx-border-color: #24352D;
+    -fx-border-radius: 6;
+    -fx-border-width: 1;
+    -fx-padding: 24 16 24 16;
+    -fx-alignment: center;
+}
+
+.empty-state-title {
+    -fx-font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    -fx-font-size: 14px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #EAF2ED;
+}
+
+.empty-state-sub {
+    -fx-font-size: 12px;
+    -fx-text-fill: #6D8278;
+    -fx-text-alignment: center;
+}
+
+/* ==================== Logs Console & Badges ==================== */
+.log-entry {
+    -fx-font-family: "JetBrains Mono", "Cascadia Code", "Consolas", monospace;
+    -fx-font-size: 12px;
+    -fx-text-fill: #EAF2ED;
+}
+
+.timestamp {
+    -fx-font-family: "JetBrains Mono", "Cascadia Code", "Consolas", monospace;
+    -fx-font-size: 11px;
+    -fx-text-fill: #6D8278;
+}
+
+.log-badge {
+    -fx-font-family: "JetBrains Mono", "Cascadia Code", "Consolas", monospace;
+    -fx-font-size: 10px;
+    -fx-font-weight: 700;
+    -fx-padding: 2 6 2 6;
+    -fx-background-radius: 3;
+}
+
+.log-badge-info {
+    -fx-background-color: rgba(78, 186, 135, 0.15);
+    -fx-text-fill: #4EBA87;
+}
+
+.log-badge-success {
+    -fx-background-color: rgba(129, 199, 132, 0.20);
+    -fx-text-fill: #81C784;
+}
+
+.log-badge-warn {
+    -fx-background-color: rgba(245, 185, 66, 0.20);
+    -fx-text-fill: #F5B942;
+}
+
+.log-badge-error {
+    -fx-background-color: rgba(248, 113, 113, 0.20);
+    -fx-text-fill: #F87171;
+}
+
+.log-tab-btn {
+    -fx-background-color: transparent;
+    -fx-text-fill: #A8BDB4;
+    -fx-font-size: 11px;
+    -fx-font-weight: 700;
+    -fx-padding: 3 8 3 8;
+    -fx-border-color: #24352D;
+    -fx-border-radius: 4;
+    -fx-background-radius: 4;
+    -fx-cursor: hand;
+}
+
+.log-tab-btn:hover {
+    -fx-background-color: #24332C;
+    -fx-text-fill: #EAF2ED;
+}
+
+.log-tab-btn-active {
+    -fx-background-color: #24332C;
+    -fx-text-fill: #4EBA87;
+    -fx-border-color: #4EBA87;
+}
+
+/* ==================== Telemetry Chips ==================== */
+.telemetry-chip {
+    -fx-background-color: #141D18;
+    -fx-border-color: #24352D;
+    -fx-border-radius: 4;
+    -fx-background-radius: 4;
+    -fx-border-width: 1;
+    -fx-padding: 4 8 4 8;
+}
+
+.telemetry-chip-label {
+    -fx-font-size: 11px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #6D8278;
+}
+
+.telemetry-chip-value {
+    -fx-font-family: 'Cascadia Code', 'JetBrains Mono', 'Consolas', monospace;
+    -fx-font-size: 12px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #EAF2ED;
+}
+
+/* ==================== Header Icon Tile ==================== */
+.header-icon-tile {
+    -fx-min-width: 32px;
+    -fx-min-height: 32px;
+    -fx-max-width: 32px;
+    -fx-max-height: 32px;
+    -fx-background-radius: 8px;
+    -fx-background-color: #24352D;
+    -fx-alignment: CENTER;
+}
+.header-icon-tile .app-icon {
+    -fx-background-color: #4EBA87;
+}
+
+/* ==================== EXIF Placeholder ==================== */
+.exif-preview-placeholder {
+    -fx-background-color: #141D18;
+    -fx-border-color: #24352D;
+    -fx-border-style: dashed;
+    -fx-border-width: 1px;
+    -fx-background-radius: 8px;
+    -fx-border-radius: 8px;
+}
+
+/* ==================== DatePicker ==================== */
+.date-picker {
+    -fx-background-color: transparent;
+}
+.date-picker > .text-field {
+    -fx-background-color: #16201B;
+    -fx-text-fill: #EAF2ED;
+    -fx-border-color: #2B3D35;
+    -fx-border-radius: 4;
+    -fx-background-radius: 4;
+    -fx-font-size: 13px;
+    -fx-padding: 5 10 5 10;
+}
+.date-picker > .text-field:focused {
+    -fx-border-color: #4EBA87;
+    -fx-border-width: 2;
+}
+.date-picker > .arrow-button {
+    -fx-background-color: #16201B;
+    -fx-background-radius: 0 4 4 0;
+    -fx-cursor: hand;
+    -fx-padding: 0 8 0 8;
+}
+.date-picker > .arrow-button:hover {
+    -fx-background-color: #24332C;
+}
+.date-picker > .arrow-button > .arrow {
+    -fx-background-color: #4EBA87;
+}
+.date-picker-popup {
+    -fx-background-color: #16201B;
+    -fx-border-color: #24352D;
+    -fx-border-width: 1;
+    -fx-border-radius: 6;
+    -fx-background-radius: 6;
+    -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.5), 10, 0, 0, 4);
+}
+.date-picker-popup .month-year-pane {
+    -fx-background-color: #16201B;
+    -fx-padding: 6;
+}
+.date-picker-popup .spinner .button {
+    -fx-background-color: #141D18;
+}
+.date-picker-popup .day-cell {
+    -fx-background-color: #16201B;
+    -fx-text-fill: #EAF2ED;
+}
+.date-picker-popup .day-cell:hover {
+    -fx-background-color: #24332C;
+}
+.date-picker-popup .selected {
+    -fx-background-color: #2E7D5B;
+    -fx-text-fill: #FFFFFF;
+}
+
+/* ==================== App Icons ==================== */
+.app-icon {
+    -fx-background-color: #A8BDB4;
+}
+.btn-primary .app-icon {
+    -fx-background-color: #FFFFFF;
+}
+.btn-secondary .app-icon {
+    -fx-background-color: #E3EBE6;
+}
+.btn-ghost:hover .app-icon {
+    -fx-background-color: #EAF2ED;
+}
+
+/* ==================== Version Badge ==================== */
+.version-badge {
+    -fx-background-color: rgba(78, 186, 135, 0.12);
+    -fx-text-fill: #4EBA87;
+    -fx-border-color: rgba(78, 186, 135, 0.28);
+    -fx-border-radius: 4;
+    -fx-background-radius: 4;
+    -fx-font-size: 11.5px;
+    -fx-font-weight: 600;
+}
+
+/* ==================== Persistent Task Footer ==================== */
+.task-footer, .persistent-footer {
+    -fx-background-color: #131B17;
+    -fx-border-color: #24352D transparent transparent transparent;
+    -fx-border-width: 1 0 0 0;
+}

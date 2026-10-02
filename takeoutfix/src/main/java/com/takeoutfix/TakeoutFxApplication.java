@@ -1,11 +1,12 @@
 package com.takeoutfix;
 
 import com.takeoutfix.auth.UserSyncBridgeService;
-
 import com.takeoutfix.network.NetworkMonitorService;
 import com.takeoutfix.restore.SessionStatsService;
 import com.takeoutfix.restore.infrastructure.ExtractionService;
 import com.takeoutfix.restore.infrastructure.NativeExifToolEngine;
+import com.takeoutfix.shared.theme.AppTheme;
+import com.takeoutfix.shared.theme.ThemeManager;
 import com.takeoutfix.ui.fx.*;
 import javafx.application.Application;
 import javafx.application.Platform;
@@ -24,8 +25,8 @@ import java.util.Map;
 
 /**
  * Modern JavaFX Desktop Application entrypoint for TakeoutFix Studio.
- * Houses TakeoutFix (Google Takeout restoration) and MetaSync (RAW/JPEG metadata synchronization)
- * in a unified, hardware-accelerated desktop interface with shadcn-inspired styling.
+ * Houses TakeoutFix (Google Takeout restoration) in a unified, hardware-accelerated
+ * desktop interface with shadcn-inspired styling.
  * Pure JavaFX implementation (zero Swing components).
  *
  * Spring Boot bootstraps in {@link #init()} with {@link WebApplicationType#NONE} —
@@ -77,14 +78,12 @@ public class TakeoutFxApplication extends Application {
     }
 
     private void initWorkspaces() {
-        // Create Dashboard eagerly as the default workspace
-        DashboardFxView dashView = new DashboardFxView(
-                userSyncBridgeService, sessionStatsService, this::switchWorkspace);
-        workspaces.put(WorkspaceType.DASHBOARD, dashView);
-        workspaceContainer.getChildren().add(dashView);
+        TakeoutRestoreView restoreView = new TakeoutRestoreView(
+                stage, extractionService, userSyncBridgeService, sessionStatsService, this::switchWorkspace);
+        workspaces.put(WorkspaceType.TAKEOUT_RESTORE, restoreView);
+        workspaceContainer.getChildren().add(restoreView);
 
-        // Select Dashboard by default immediately
-        switchWorkspace(WorkspaceType.DASHBOARD);
+        switchWorkspace(WorkspaceType.TAKEOUT_RESTORE);
     }
 
     public void switchWorkspace(WorkspaceType type) {
@@ -111,22 +110,17 @@ public class TakeoutFxApplication extends Application {
     private javafx.scene.Node createWorkspace(WorkspaceType type) {
         return switch (type) {
             case TAKEOUT_RESTORE -> new TakeoutRestoreView(stage, extractionService, userSyncBridgeService, sessionStatsService, this::switchWorkspace);
-            case DASHBOARD -> new DashboardFxView(userSyncBridgeService, sessionStatsService, this::switchWorkspace);
             case HISTORY -> new HistoryView();
             case SETTINGS -> new SettingsView(exifToolEngine);
             default -> null;
         };
     }
 
-
     @Override
     public void start(Stage primaryStage) {
         try {
             this.stage = primaryStage;
-            primaryStage.setTitle("TakeoutFix — Photography Toolkit");
-            primaryStage.setMinWidth(1120);
-            primaryStage.setMinHeight(760);
-
+            primaryStage.setTitle("TakeoutFix - Google Takeout Restorer");
             applyWindowIcons(primaryStage);
 
             BorderPane root = new BorderPane();
@@ -158,13 +152,16 @@ public class TakeoutFxApplication extends Application {
             // Sync native OS title bar with default theme after HWND is realized
             Platform.runLater(this::applyTheme);
 
+            // Listen to ThemeManager updates
+            ThemeManager.addListener(theme -> Platform.runLater(this::applyTheme));
+
             // Restore session silently — no mandatory prompt on startup
             userSyncBridgeService.verifyStartupSession(authenticated -> {
                 Platform.runLater(() -> {
                     if (authenticated) {
-                        primaryStage.setTitle("TakeoutFix Operations Center — " + userSyncBridgeService.getCurrentName());
-                        boolean dark = (headerBar != null && headerBar.isDark());
-                        WindowsTitleBarTheme.applyTheme(primaryStage, dark);
+                        primaryStage.setTitle("TakeoutFix - Google Takeout Restorer — " + userSyncBridgeService.getCurrentName());
+                        AppTheme current = ThemeManager.getCurrentTheme();
+                        WindowsTitleBarTheme.applyTheme(primaryStage, current);
                     }
                     if (headerBar != null) {
                         headerBar.updateUserProfile();
@@ -180,7 +177,8 @@ public class TakeoutFxApplication extends Application {
 
     private void applyTheme() {
         if (scene == null) return;
-        boolean dark = (headerBar != null && headerBar.isDark());
+        AppTheme theme = ThemeManager.getCurrentTheme();
+        boolean dark = theme.isDark();
         com.takeoutfix.shared.theme.ThemeColors.setDark(dark);
 
         if (persistentTaskFooter != null) {
@@ -195,9 +193,7 @@ public class TakeoutFxApplication extends Application {
         } catch (Throwable ignored) {}
 
         scene.getStylesheets().clear();
-        String css = dark
-                ? "/css/takeoutfix-dark.css"
-                : "/css/takeoutfix-light.css";
+        String css = theme.getCssPath();
 
         var res = getClass().getResource(css);
         if (res != null) {
@@ -208,7 +204,7 @@ public class TakeoutFxApplication extends Application {
             scene.getRoot().getStyleClass().add(dark ? "dark" : "light");
         }
         if (stage != null) {
-            WindowsTitleBarTheme.applyTheme(stage, dark);
+            WindowsTitleBarTheme.applyTheme(stage, theme);
         }
     }
 

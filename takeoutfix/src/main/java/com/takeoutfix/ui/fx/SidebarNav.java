@@ -24,7 +24,7 @@ public class SidebarNav extends VBox {
     private final Consumer<WorkspaceType> onSelect;
     private final SessionStatsService statsService;
     private final Map<WorkspaceType, Button> navButtons = new HashMap<>();
-    private WorkspaceType activeWorkspace = WorkspaceType.DASHBOARD;
+    private WorkspaceType activeWorkspace = WorkspaceType.TAKEOUT_RESTORE;
 
     public SidebarNav(Consumer<WorkspaceType> onSelect, SessionStatsService statsService) {
         this.onSelect = onSelect;
@@ -53,30 +53,18 @@ public class SidebarNav extends VBox {
     }
 
     private void buildWorkspacesSection() {
-        // 1. Workspace Section
-        VBox wsSection = new VBox(4);
-        Label wsLabel = new Label("WORKSPACE");
-        wsLabel.getStyleClass().add("nav-section-label");
-        wsLabel.setStyle("-fx-font-size: 11px; -fx-font-weight: 700; -fx-letter-spacing: 0.5px; -fx-padding: 4 8 4 8;");
-        wsSection.getChildren().add(wsLabel);
-
-        Button btnOverview = createNavButton(WorkspaceType.DASHBOARD, UiIcons.LAYERS, "Overview");
-        wsSection.getChildren().add(btnOverview);
-        getChildren().add(wsSection);
-
-        // 2. Photo Tools Section
+        // Photo Tools / Restoration Section
         VBox toolsSection = new VBox(4);
         Label toolsLabel = new Label("PHOTO TOOLS");
         toolsLabel.getStyleClass().add("nav-section-label");
-        toolsLabel.setStyle("-fx-font-size: 11px; -fx-font-weight: 700; -fx-letter-spacing: 0.5px; -fx-padding: 8 8 4 8;");
+        toolsLabel.setStyle("-fx-font-size: 11px; -fx-font-weight: 700; -fx-letter-spacing: 0.5px; -fx-padding: 4 8 4 8;");
         toolsSection.getChildren().add(toolsLabel);
 
         Button btnFixPhotos = createNavButton(WorkspaceType.TAKEOUT_RESTORE, UiIcons.RESTORE, "Restore Metadata");
-
         toolsSection.getChildren().add(btnFixPhotos);
         getChildren().add(toolsSection);
 
-        select(WorkspaceType.DASHBOARD, false);
+        select(WorkspaceType.TAKEOUT_RESTORE, false);
     }
 
     private void buildSystemSection() {

@@ -185,7 +185,7 @@ export function useToolPipeline() {
   const currentUsedBytes = !user ? guestUsage.bytes : getUserBytes(userData as unknown as Record<string, unknown>);
 
   const [tierThresholds, setTierThresholds] = useState({
-    guest:         { maxFiles: Infinity, maxSizeMB: Infinity },
+    guest:         { maxFiles: Infinity, maxSizeMB: 1024 },
     free:          { maxFiles: Infinity, maxSizeMB: Infinity },
     recovery_pass: { maxFiles: Infinity, maxSizeMB: Infinity },
     pro:           { maxFiles: Infinity, maxSizeMB: Infinity },
@@ -194,13 +194,12 @@ export function useToolPipeline() {
   const [isFreePromoActive, setIsFreePromoActive] = useState(false)
   const [unlockFreeFeatures, setUnlockFreeFeatures] = useState(true)
 
-  // Core browser tool dynamically respects tier thresholds synced from Admin settings
-  const activeTierCfg = tierThresholds[plan] || tierThresholds.free || { maxFiles: Infinity, maxSizeMB: Infinity };
-  const isFreeUnlimited = tierThresholds.free.maxFiles === Infinity && tierThresholds.free.maxSizeMB === Infinity;
-  const limitFiles = isFreePromoActive ? Infinity : (activeTierCfg.maxFiles ?? Infinity);
-  const limitBytes = isFreePromoActive || activeTierCfg.maxSizeMB === Infinity
-    ? Infinity
-    : (activeTierCfg.maxSizeMB * 1024 * 1024);
+  // Core browser tool dynamically respects tier thresholds:
+  // Guest user has 1 GB storage limit (no file count limit).
+  // Signed-in user has 100% unlimited access.
+  const isFreeUnlimited = plan !== 'guest';
+  const limitFiles = Infinity;
+  const limitBytes = plan === 'guest' ? GUEST_MAX_BYTES : Infinity;
 
   const limitFilesRef = useRef(limitFiles)
   const limitBytesRef = useRef(limitBytes)
@@ -1500,8 +1499,11 @@ export function useToolPipeline() {
     }
 
     if (!user) {
-      // Sign-in is optional for client-side restoration
-      return
+      setQuotaAlert({
+        open: true,
+        message: "You have reached the 1 GB free guest storage limit (no file limit). Sign in to your Google Account to unlock 100% unlimited restoration access!"
+      });
+      return;
     }
 
     const storageExceeded = (currentUsedBytesRef.current + finalBytes) > limitBytesRef.current
@@ -2129,10 +2131,14 @@ export function useToolPipeline() {
       console.warn("Failed to check directory handles:", err)
     }
 
-    const isBypass = Boolean(!user || (user && (userData?.isAdmin || (import.meta as any).env?.DEV)));
+    const isBypass = Boolean(user && (userData?.isAdmin || (import.meta as any).env?.DEV));
     if (!isBypass && (currentUsedFiles >= limitFiles || currentUsedBytes >= limitBytes)) {
       if (!user) {
-        return
+        setQuotaAlert({
+          open: true,
+          message: "You have reached the 1 GB free guest storage limit (no file limit). Sign in to your Google Account to unlock 100% unlimited restoration access!"
+        });
+        return;
       }
 
       let limitReason = ""

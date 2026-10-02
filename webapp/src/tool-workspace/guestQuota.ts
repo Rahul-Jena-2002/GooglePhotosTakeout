@@ -1,14 +1,15 @@
 /**
  * Guest Quota Tracker
- * Securely tracks unauthenticated guest usage up to 100 files or 1 GB.
+ * Securely tracks unauthenticated guest usage with a 1 GB free storage limit (no file limit).
+ * Users can sign in anytime for 100% unlimited access.
  * Uses multi-vault resilience (localStorage + persistent cookie + IndexedDB)
  * to automatically self-heal if an individual browser storage key is cleared.
  */
 
 import { indexedDbService } from "../lib/indexedDbService";
 
-export const GUEST_MAX_FILES = Infinity;
-export const GUEST_MAX_BYTES = Infinity;
+export const GUEST_MAX_FILES = Infinity; // No file count limit
+export const GUEST_MAX_BYTES = 1024 * 1024 * 1024; // 1 GB free storage limit
 
 const STORAGE_KEY = "takeoutfix_guest_usage_v1";
 const COOKIE_NAME = "takeoutfix_gq_v1";
@@ -127,8 +128,7 @@ export function recordGuestUsage(files: number, bytes: number): GuestUsage {
 }
 
 export function isGuestQuotaExhausted(): boolean {
-  // Sign-in is optional; client-side browser restoration is unlimited for guests
-  return false;
+  return getGuestUsage().bytes >= GUEST_MAX_BYTES;
 }
 
 export function getRemainingGuestFiles(): number {
@@ -136,5 +136,5 @@ export function getRemainingGuestFiles(): number {
 }
 
 export function getRemainingGuestBytes(): number {
-  return Infinity;
+  return Math.max(0, GUEST_MAX_BYTES - getGuestUsage().bytes);
 }

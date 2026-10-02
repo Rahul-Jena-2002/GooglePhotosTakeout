@@ -2,6 +2,7 @@ package com.takeoutfix.updates;
 
 import com.takeoutfix.shared.util.AppVersion;
 import org.json.JSONObject;
+import org.springframework.stereotype.Service;
 
 import javax.swing.*;
 import java.awt.*;
@@ -42,6 +43,7 @@ import java.util.function.Consumer;
  *    - Clean removal of generic AI labels and safety badges.
  * ============================================================================
  */
+@Service
 public class UpdateCheckerService {
 
     private static final String REPO_RELEASES_API = "https://api.github.com/repos/Rahul-Jena-2002/GooglePhotosTakeout/releases/latest";
@@ -90,6 +92,13 @@ public class UpdateCheckerService {
      */
     public void start() {
         scheduler.schedule(this::checkForUpdates, 2, TimeUnit.SECONDS);
+    }
+
+    /**
+     * Gracefully shuts down the background update scheduler.
+     */
+    public void shutdown() {
+        scheduler.shutdownNow();
     }
 
     public void checkForUpdates() {
@@ -393,7 +402,7 @@ public class UpdateCheckerService {
             return;
         }
 
-        Frame owner = (parent instanceof Frame) ? (Frame) parent : (Frame) SwingUtilities.getWindowAncestor(parent);
+        Frame owner = (parent instanceof Frame) ? (Frame) parent : (parent != null ? (Frame) SwingUtilities.getWindowAncestor(parent) : null);
         JDialog progressDialog = new JDialog(owner, "TakeoutFix OTA Updater", true);
         progressDialog.setSize(440, 180);
         progressDialog.setLocationRelativeTo(parent);

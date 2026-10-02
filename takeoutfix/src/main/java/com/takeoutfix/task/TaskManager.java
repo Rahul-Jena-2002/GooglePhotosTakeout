@@ -17,7 +17,7 @@ import java.util.concurrent.ConcurrentHashMap;
  */
 public class TaskManager {
 
-    private static final TaskManager INSTANCE = new TaskManager();
+    private static volatile TaskManager INSTANCE = new TaskManager();
 
     public static TaskManager getInstance() {
         return INSTANCE;
@@ -40,6 +40,7 @@ public class TaskManager {
     public TaskManager(ResourceManager resourceManager, FileAccessCoordinator fileAccessCoordinator) {
         this.resourceManager = resourceManager;
         this.fileAccessCoordinator = fileAccessCoordinator;
+        INSTANCE = this;
     }
 
     /**

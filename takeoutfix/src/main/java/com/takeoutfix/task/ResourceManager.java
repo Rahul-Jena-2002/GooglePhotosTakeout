@@ -98,6 +98,13 @@ public class ResourceManager {
         }
     }
 
+    /**
+     * Alias for calculateMaxAutoWorkers, used by tasks dynamically calculating concurrency.
+     */
+    public int calculateOptimalWorkerCount() {
+        return calculateMaxAutoWorkers();
+    }
+
     private int calculateInitialWorkerCount() {
         return switch (mode) {
             case PERFORMANCE -> Math.max(4, availableCores - 1);
@@ -152,7 +159,8 @@ public class ResourceManager {
                     safelyResizeCpuPool(targetWorkers, Math.max(targetWorkers, availableCores));
                 }
             }
-        } catch (Throwable ignored) {}
+        } catch (Throwable ignored) {
+        }
     }
 
     private void safelyResizeCpuPool(int targetCore, int targetMax) {

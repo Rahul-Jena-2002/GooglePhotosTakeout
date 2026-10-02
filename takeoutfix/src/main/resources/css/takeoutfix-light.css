@@ -24,14 +24,16 @@
     -fx-text-fill: #1F2335;
     -fx-text-base-color: #1F2335;
     -fx-text-background-color: #1F2335;
-    -fx-font-smoothing-type: lcd;
+    -fx-font-smoothing-type: gray;
+    -fx-snap-to-pixel: true;
 }
 
 .label, .text {
     -fx-font-family: "Segoe UI", "Inter", -apple-system, sans-serif;
     -fx-text-fill: #1F2335;
     -fx-fill: #1F2335;
-    -fx-font-smoothing-type: lcd;
+    -fx-font-smoothing-type: gray;
+    -fx-snap-to-pixel: true;
 }
 
 /* Global Typography & Sizing Standards (IntelliJ IDEA Inspired) */

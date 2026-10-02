@@ -190,6 +190,10 @@ public abstract class BackgroundTask implements Runnable {
         return cancelRequested.get();
     }
 
+    public boolean isCancelled() {
+        return cancelRequested.get() || rawState == TaskState.CANCELLED || rawState == TaskState.CANCELLING;
+    }
+
     public boolean isPaused() {
         return pauseRequested.get() || rawState == TaskState.PAUSED || rawState == TaskState.PAUSING;
     }

@@ -76,17 +76,39 @@ export function CommandSidebar({
         <div className="flex justify-between items-center text-[9px] text-zinc-500 dark:text-white/40 font-bold uppercase tracking-wider">
           <span className="flex items-center gap-1"><HardDrive className="w-3 h-3 text-emerald-600 dark:text-emerald-400" /> Restoration Engine</span>
           <span className={`${plan === 'guest' ? 'text-amber-600 dark:text-amber-400' : 'text-emerald-600 dark:text-emerald-400'} font-mono font-bold`}>
-            {plan === 'guest' ? 'Guest (Local)' : '100% Free'}
+            {plan === 'guest' ? 'Guest (1 GB Limit)' : 'Unlimited Access'}
           </span>
         </div>
         <div className="text-xs font-bold text-zinc-900 dark:text-zinc-150 flex items-center justify-between">
           <span>Processed Volume</span>
-          <span className="font-mono text-zinc-700 dark:text-zinc-300">{formatByteSize(sessionBytes)} ({sessionFiles.toLocaleString()} files)</span>
+          <span className="font-mono text-zinc-700 dark:text-zinc-300">
+            {plan === 'guest'
+              ? `${formatByteSize(currentUsedBytes + sessionBytes)} / 1.0 GB`
+              : `${formatByteSize(sessionBytes)} (${sessionFiles.toLocaleString()} files)`}
+          </span>
         </div>
+        {plan === 'guest' && (
+          <div className="space-y-1 pt-1">
+            <Progress
+              value={Math.min(100, (((currentUsedBytes + sessionBytes) / (1024 * 1024 * 1024)) * 100))}
+              className="h-1.5 bg-zinc-200 dark:bg-white/10"
+            />
+            <div className="flex justify-between text-[9px] text-zinc-500 dark:text-zinc-400 font-medium">
+              <span>{Math.min(100, Math.round(((currentUsedBytes + sessionBytes) / (1024 * 1024 * 1024)) * 100))}% used</span>
+              <button
+                type="button"
+                onClick={() => window.dispatchEvent(new CustomEvent('takeoutfix:open-auth-modal', { detail: { mode: 'signin' } }))}
+                className="text-indigo-600 dark:text-indigo-400 hover:underline font-bold bg-transparent border-0 p-0 cursor-pointer"
+              >
+                Sign in for Unlimited
+              </button>
+            </div>
+          </div>
+        )}
         <div className="text-[10px] text-zinc-500 dark:text-zinc-400 font-medium">
           {plan === 'guest'
-            ? 'Local browser processing. Sign-in is optional (cloud backup & sync).'
-            : 'Unlimited batch processing enabled. All files are merged client-side.'}
+            ? 'Guest tier: 1 GB free restoration (no file count limit). Sign in to unlock unlimited storage.'
+            : 'Unlimited batch restoration active. Google Account connected.'}
         </div>
       </div>
 

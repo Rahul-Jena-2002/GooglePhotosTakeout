@@ -402,6 +402,16 @@ public final class SystemHardwareInfo {
      * On macOS, queries POSIX/BSD ps rss for the current process.
      * Universal safe fallback computes total JVM committed heap + non-heap memory.
      */
+    private static volatile long lastMacRssQueryTime = 0;
+    private static volatile long cachedMacRssBytes = 0;
+
+    /**
+     * Process-specific native Working Set (Physical RAM) in bytes.
+     * On Windows: Returns WorkingSetSize from PSAPI to match Windows Task Manager's "Memory" column.
+     * On Linux: Reads genuine resident set size (VmRSS) from /proc/self/status.
+     * On macOS: Queries POSIX/BSD resident set size (RSS) to match Activity Monitor.
+     * Universal safe fallback computes active JVM heap used + non-heap memory.
+     */
     public static long getProcessWorkingSetBytes() {
         if (IS_WIN) {
             try {
@@ -409,12 +419,13 @@ public final class SystemHardwareInfo {
                 WinPsapi.PROCESS_MEMORY_COUNTERS_EX counters = new WinPsapi.PROCESS_MEMORY_COUNTERS_EX();
                 counters.cb = counters.size();
                 if (WinPsapi.INSTANCE.GetProcessMemoryInfo(proc, counters, counters.cb)) {
+                    // Windows Task Manager 'Memory' column displays physical WorkingSetSize
+                    long ws = counters.WorkingSetSize != null ? counters.WorkingSetSize.longValue() : 0;
+                    if (ws > 0) return ws;
                     long priv = counters.PrivateUsage != null ? counters.PrivateUsage.longValue() : 0;
                     if (priv > 0) return priv;
                     long privateCommit = counters.PagefileUsage != null ? counters.PagefileUsage.longValue() : 0;
                     if (privateCommit > 0) return privateCommit;
-                    long ws = counters.WorkingSetSize != null ? counters.WorkingSetSize.longValue() : 0;
-                    if (ws > 0) return ws;
                 }
             } catch (Throwable ignored) {}
         } else if (IS_LINUX) {
@@ -434,23 +445,29 @@ public final class SystemHardwareInfo {
             } catch (Throwable ignored) {}
         } else if (IS_MAC) {
             try {
+                long now = System.currentTimeMillis();
+                if (now - lastMacRssQueryTime < 1000 && cachedMacRssBytes > 0) {
+                    return cachedMacRssBytes;
+                }
                 long pid = ProcessHandle.current().pid();
                 int rssKb = runCommandForInt("ps", "-o", "rss=", "-p", String.valueOf(pid));
                 if (rssKb > 0) {
-                    return rssKb * 1024L;
+                    cachedMacRssBytes = rssKb * 1024L;
+                    lastMacRssQueryTime = now;
+                    return cachedMacRssBytes;
                 }
             } catch (Throwable ignored) {}
         }
 
-        // Fallback: Total committed memory (Heap + Non-Heap Metaspace/CodeCache)
+        // Cross-platform Fallback: Active Used Memory (Heap used + Non-Heap used)
         try {
             var mem = ManagementFactory.getMemoryMXBean();
-            long totalCommitted = mem.getHeapMemoryUsage().getCommitted() + mem.getNonHeapMemoryUsage().getCommitted();
-            if (totalCommitted > 0) return totalCommitted;
+            long totalUsed = mem.getHeapMemoryUsage().getUsed() + mem.getNonHeapMemoryUsage().getUsed();
+            if (totalUsed > 0) return totalUsed;
         } catch (Throwable ignored) {}
 
         Runtime rt = Runtime.getRuntime();
-        long fallback = rt.totalMemory();
+        long fallback = rt.totalMemory() - rt.freeMemory();
         return fallback > 0 ? fallback : 1024 * 1024;
     }
 

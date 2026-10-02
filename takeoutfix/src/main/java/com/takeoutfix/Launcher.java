@@ -10,6 +10,12 @@ package com.takeoutfix;
  */
 public class Launcher {
     public static void main(String[] args) {
+        if (System.getProperty("prism.lcdtext") == null) {
+            System.setProperty("prism.lcdtext", "false");
+        }
+        if (System.getProperty("prism.text") == null) {
+            System.setProperty("prism.text", "t2k");
+        }
         TakeoutFxApplication.main(args);
     }
 }

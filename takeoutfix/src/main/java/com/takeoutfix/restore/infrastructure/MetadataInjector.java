@@ -1,6 +1,7 @@
 package com.takeoutfix.restore.infrastructure;
 
 import org.json.JSONObject;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import java.io.File;
@@ -20,6 +21,7 @@ public class MetadataInjector {
         this(NativeExifToolEngine.getDefault());
     }
 
+    @Autowired
     public MetadataInjector(NativeExifToolEngine exifToolEngine) {
         this.exifToolEngine = exifToolEngine != null ? exifToolEngine : NativeExifToolEngine.getDefault();
     }

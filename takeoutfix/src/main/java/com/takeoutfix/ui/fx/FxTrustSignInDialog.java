@@ -59,9 +59,9 @@ public class FxTrustSignInDialog extends Stage {
         highlightsBox.setStyle("-fx-background-color: rgba(255, 255, 255, 0.03); -fx-border-color: rgba(255, 255, 255, 0.08); -fx-border-radius: 6; -fx-background-radius: 6;");
 
         highlightsBox.getChildren().addAll(
-                createHighlightRow("✓", "Offline Execution: Restores timestamps and EXIF tags locally using native ExifTool."),
-                createHighlightRow("✓", "No File Limits: Full libraries of any size are processed completely free."),
-                createHighlightRow("✓", "Sign-In is Optional: Only connect if you want to sync activity history across devices.")
+                createHighlightRow("✓", "Free 1 GB Guest Tier: Up to 1 GB of restored media completely free with no file count limits."),
+                createHighlightRow("✓", "Sign In for Unlimited: Connect your Google Account to unlock 100% unlimited restoration access."),
+                createHighlightRow("✓", "Offline Execution: Restores timestamps and EXIF tags locally using native ExifTool.")
         );
         root.getChildren().add(highlightsBox);
 
@@ -70,7 +70,7 @@ public class FxTrustSignInDialog extends Stage {
         actionsBox.setAlignment(Pos.CENTER);
 
         // Continue as Guest (Default / Quick proceed)
-        Button btnGuest = new Button("Continue as Guest (Process Locally)");
+        Button btnGuest = new Button("Continue as Guest (1 GB Free)");
         btnGuest.setMaxWidth(Double.MAX_VALUE);
         btnGuest.setPrefHeight(38);
         btnGuest.setStyle("-fx-font-size: 13px; -fx-font-weight: 700; -fx-background-color: #8b5cf6; -fx-text-fill: white; -fx-background-radius: 6; -fx-cursor: hand;");
@@ -80,7 +80,7 @@ public class FxTrustSignInDialog extends Stage {
         });
 
         // Sign In with Google
-        Button btnGoogle = new Button("Sign In with Google (Optional)");
+        Button btnGoogle = new Button("Sign In with Google (Unlock Unlimited)");
         btnGoogle.setMaxWidth(Double.MAX_VALUE);
         btnGoogle.setPrefHeight(36);
         btnGoogle.setStyle("-fx-font-size: 12px; -fx-font-weight: 600; -fx-background-color: rgba(255, 255, 255, 0.06); -fx-text-fill: #e2e8f0; -fx-border-color: rgba(255, 255, 255, 0.12); -fx-border-radius: 6; -fx-background-radius: 6; -fx-cursor: hand;");
