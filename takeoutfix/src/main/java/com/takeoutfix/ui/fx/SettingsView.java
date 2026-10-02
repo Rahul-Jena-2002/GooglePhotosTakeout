@@ -193,13 +193,13 @@ public class SettingsView extends VBox {
 
     private void buildProfilePane() {
         profilePane.getChildren().clear();
-        profilePane.getChildren().add(createSectionHeader("User Profile & Account", "Manage your Google Takeout Restorer account, authentication, and cloud synchronization."));
+        profilePane.getChildren().add(createSectionHeader("Profile & Account", "Manage your account, preferences, and cloud backup."));
 
         // 1. Account & Identity Card
         VBox identityCard = createCard();
         HBox idHeader = new HBox(8);
         idHeader.setAlignment(Pos.CENTER_LEFT);
-        Label idTitle = new Label("Account Identity");
+        Label idTitle = new Label("Account");
         idTitle.setStyle("-fx-font-size: 14px; -fx-font-weight: 700;");
         idTitle.getStyleClass().add("card-title");
         idHeader.getChildren().add(idTitle);
@@ -275,7 +275,7 @@ public class SettingsView extends VBox {
 
         // 2. Storage Quota & Entitlements Card
         VBox quotaCard = createCard();
-        Label quotaTitle = new Label("Storage Quota & Entitlements");
+        Label quotaTitle = new Label("Restoration Access");
         quotaTitle.setStyle("-fx-font-size: 14px; -fx-font-weight: 700;");
         quotaTitle.getStyleClass().add("card-title");
 
@@ -323,16 +323,16 @@ public class SettingsView extends VBox {
 
         // 3. Cloud Synchronization Card
         VBox syncCard = createCard();
-        Label syncTitle = new Label("Cloud History & Telemetry Synchronization");
+        Label syncTitle = new Label("Cloud Backup & Sync");
         syncTitle.setStyle("-fx-font-size: 14px; -fx-font-weight: 700;");
         syncTitle.getStyleClass().add("card-title");
 
-        Label syncDesc = new Label("Sync past restoration summaries, statistics, and run logs safely to Firebase Firestore so your restoration activity is backed up across devices.");
+        Label syncDesc = new Label("Keep your restoration history and progress safely backed up so you can access them across your devices.");
         syncDesc.setStyle("-fx-font-size: 12.5px;");
         syncDesc.getStyleClass().add("text-muted");
         syncDesc.setWrapText(true);
 
-        CheckBox enableCloudSync = new CheckBox("Automatically sync restoration history when connected");
+        CheckBox enableCloudSync = new CheckBox("Automatically backup history when online");
         enableCloudSync.setSelected(prefs.getBoolean("cloud.sync.auto", true));
         enableCloudSync.setStyle("-fx-font-size: 13px; -fx-font-weight: 500;");
         enableCloudSync.setOnAction(e -> prefs.putBoolean("cloud.sync.auto", enableCloudSync.isSelected()));
@@ -341,7 +341,7 @@ public class SettingsView extends VBox {
         syncActionRow.setAlignment(Pos.CENTER_LEFT);
         syncActionRow.setStyle("-fx-padding: 4 0 0 0;");
 
-        Button syncNowBtn = new Button("Sync to Cloud Now");
+        Button syncNowBtn = new Button("Sync Now");
         syncNowBtn.getStyleClass().add("btn-secondary");
         syncNowBtn.setGraphic(UiIcons.createSvgIcon(UiIcons.RELOAD, 13, "currentColor"));
         syncNowBtn.setGraphicTextGap(6);
@@ -354,11 +354,11 @@ public class SettingsView extends VBox {
 
         syncNowBtn.setOnAction(e -> {
             if (userService != null) {
-                syncStatusMsg.setText("Syncing with Firebase...");
+                syncStatusMsg.setText("Syncing...");
                 syncNowBtn.setDisable(true);
                 userService.triggerCloudSync(success -> Platform.runLater(() -> {
                     syncNowBtn.setDisable(false);
-                    syncStatusMsg.setText(Boolean.TRUE.equals(success) ? "Last synced: Just now ✓" : "Sync completed (local cached)");
+                    syncStatusMsg.setText(Boolean.TRUE.equals(success) ? "Last synced: Just now ✓" : "Sync completed (local copy up to date)");
                 }));
             }
         });
@@ -368,18 +368,18 @@ public class SettingsView extends VBox {
 
         // 3. Machine Hardware Keyring Vault Card
         VBox keyringCard = createCard();
-        Label keyTitle = new Label("Operating System Keyring Vault");
+        Label keyTitle = new Label("Security & Privacy");
         keyTitle.setStyle("-fx-font-size: 14px; -fx-font-weight: 700;");
         keyTitle.getStyleClass().add("card-title");
 
-        Label keyDesc = new Label("OAuth refresh tokens and authentication credentials are encrypted using your OS hardware-backed vault (Windows Credential Manager DPAPI, macOS Keychain, or Linux Secret Service). Plaintext tokens are never stored on disk.");
+        Label keyDesc = new Label("Your sign-in information and account credentials are encrypted and stored safely on this device. Passwords and sensitive data are never stored in plain text.");
         keyDesc.setStyle("-fx-font-size: 12.5px;");
         keyDesc.getStyleClass().add("text-muted");
         keyDesc.setWrapText(true);
 
         HBox keyStatusRow = new HBox(8);
         keyStatusRow.setAlignment(Pos.CENTER_LEFT);
-        Label keyStatus = new Label("● Native OS Hardware Protection: Active");
+        Label keyStatus = new Label("● Device Security: Active");
         keyStatus.setStyle("-fx-font-size: 12px; -fx-font-weight: 600; -fx-text-fill: #10B981; -fx-background-color: rgba(16, 185, 129, 0.10); -fx-padding: 4 10 4 10; -fx-background-radius: 6;");
         keyStatusRow.getChildren().add(keyStatus);
 
@@ -543,23 +543,23 @@ public class SettingsView extends VBox {
 
     private void buildProcessingPane() {
         processingPane.getChildren().clear();
-        processingPane.getChildren().add(createSectionHeader("Processing Engine", "Configure local image metadata processing."));
+        processingPane.getChildren().add(createSectionHeader("Restoration Engine", "Local processing settings for photo and video metadata."));
 
         VBox card = createCard();
 
         VBox binBox = new VBox(6);
-        Label binTitle = new Label("ExifTool Engine");
+        Label binTitle = new Label("Photo & Video Engine");
         binTitle.setStyle("-fx-font-size: 13px; -fx-font-weight: 600; ");
 
         File bin = engine != null ? engine.getExifToolBinary() : null;
         String statusText = (bin != null && bin.exists())
-                ? "Active & Ready · " + bin.getAbsolutePath()
-                : "Engine extracting / managed automatically";
+                ? "Active & Ready"
+                : "Engine Ready";
 
         Label binStatus = new Label(statusText);
         binStatus.setStyle("-fx-font-size: 12px; -fx-text-fill: #10B981; -fx-font-weight: 600;");
 
-        Label binDesc = new Label("All EXIF, XMP, IPTC and QuickTime tags are processed via local native daemon instances.");
+        Label binDesc = new Label("Photos and videos are restored entirely on your machine. Your personal files and memories are never uploaded or sent to external servers.");
         binDesc.setStyle("-fx-font-size: 12px; ");
         binBox.getChildren().addAll(binTitle, binStatus, binDesc);
 

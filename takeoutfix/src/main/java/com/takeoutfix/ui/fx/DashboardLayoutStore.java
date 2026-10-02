@@ -44,7 +44,7 @@ public class DashboardLayoutStore {
         registerDefault(new CardDefinition(
                 CARD_WORKFLOWS,
                 "Photo Workflows & Tools",
-                "Direct launchcards for metadata restore, batch editor, EXIF inspector, duplicate finder, and private vault.",
+                "Quick shortcuts for photo restoration, history, and settings.",
                 true
         ));
         registerDefault(new CardDefinition(

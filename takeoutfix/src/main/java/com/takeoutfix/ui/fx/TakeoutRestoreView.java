@@ -192,7 +192,7 @@ public class TakeoutRestoreView extends VBox {
         Label mainTitle = new Label("Takeout Metadata Restoration");
         mainTitle.getStyleClass().addAll("page-title", "header-title");
 
-        Label subtitle = new Label("Merge Google Takeout JSON sidecars and EXIF timestamps into media files");
+        Label subtitle = new Label("Restore original photo dates, locations, and details back into your media files");
         subtitle.getStyleClass().addAll("page-description", "header-subtitle");
 
         titleBox.getChildren().addAll(mainTitle, subtitle);
@@ -205,7 +205,7 @@ public class TakeoutRestoreView extends VBox {
         deck.setAlignment(Pos.CENTER_LEFT);
 
         VBox card1 = createSemanticKpiCard("FILES SCANNED", kpiScanned, "Examined media files", UiIcons.CAMERA);
-        VBox card2 = createSemanticKpiCard("METADATA RESTORED", kpiRestored, "Cleanly paired with EXIF", UiIcons.CHECK_CIRCLE);
+        VBox card2 = createSemanticKpiCard("METADATA RESTORED", kpiRestored, "Dates & details restored", UiIcons.CHECK_CIRCLE);
         VBox card3 = createSemanticKpiCard("NEEDS REVIEW", kpiNeedsReview, "Ambiguous or partial sidecars", UiIcons.ALERT);
         VBox card4 = createSemanticKpiCard("FAILED", kpiFailed, "Corrupted or missing tags", UiIcons.X);
 
@@ -793,7 +793,7 @@ public class TakeoutRestoreView extends VBox {
         emptyTitle.getStyleClass().add("empty-state-title");
         emptyTitle.setStyle("-fx-font-size: 14.5px; -fx-font-weight: 600;");
 
-        Label emptySub = new Label("Real-time telemetry, JSON sidecar matching, and EXIF diagnostics will appear here once the process starts.");
+        Label emptySub = new Label("Activity logs, file matching details, and processing status will appear here when restoration starts.");
         emptySub.getStyleClass().add("empty-state-sub");
         emptySub.setStyle("-fx-font-size: 13px; -fx-text-alignment: center;");
 
@@ -1391,7 +1391,7 @@ public class TakeoutRestoreView extends VBox {
                     filesRatioLabel.setText(String.format("%,d / %,d files (%d%%)", processed, total, pct));
                     if (currentAction != null && currentAction.contains("Processing:")) {
                         currentFileLabel.setText(currentAction);
-                        operationStateLabel.setText("Injecting EXIF metadata...");
+                        operationStateLabel.setText("Applying photo metadata...");
                     } else if (currentAction != null) {
                         operationStateLabel.setText(currentAction);
                     }

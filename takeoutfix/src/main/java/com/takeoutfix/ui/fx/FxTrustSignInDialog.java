@@ -46,7 +46,7 @@ public class FxTrustSignInDialog extends Stage {
         Label title = new Label("100% Local & Private Processing");
         title.setStyle("-fx-font-size: 16px; -fx-font-weight: 800; -fx-text-fill: #f1f5f9;");
 
-        Label subtitle = new Label("Your photos, videos, and JSON metadata never leave this computer.");
+        Label subtitle = new Label("Your photos, videos, and files never leave this computer.");
         subtitle.setWrapText(true);
         subtitle.setStyle("-fx-font-size: 12px; -fx-text-fill: #94a3b8; -fx-text-alignment: center;");
 
@@ -61,7 +61,7 @@ public class FxTrustSignInDialog extends Stage {
         highlightsBox.getChildren().addAll(
                 createHighlightRow("✓", "Free 1 GB Guest Tier: Up to 1 GB of restored media completely free with no file count limits."),
                 createHighlightRow("✓", "Sign In for Unlimited: Connect your Google Account to unlock 100% unlimited restoration access."),
-                createHighlightRow("✓", "Offline Execution: Restores timestamps and EXIF tags locally using native ExifTool.")
+                createHighlightRow("✓", "100% Offline: Restores dates, locations, and photo details locally on your machine.")
         );
         root.getChildren().add(highlightsBox);
 

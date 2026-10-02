@@ -105,7 +105,7 @@ public class FxOtaUpdateDialog extends Stage {
         TextFlow textFlow = new TextFlow();
         String rawNotes = (updateInfo != null && updateInfo.releaseNotes() != null && !updateInfo.releaseNotes().isBlank())
                 ? updateInfo.releaseNotes()
-                : "• Bug fixes, improved duplicate detection and UI enhancements.\n• Background task manager and system resource coordinator.\n• High-throughput EXIF engine updates.";
+                : "• Performance improvements and faster photo processing.\n• Enhanced metadata restoration accuracy.\n• UI refinements and stability updates.";
 
         String[] lines = rawNotes.split("\r?\n");
         for (String line : lines) {

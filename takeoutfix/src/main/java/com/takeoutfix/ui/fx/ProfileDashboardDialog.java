@@ -82,7 +82,7 @@ public class ProfileDashboardDialog extends Stage {
 
         VBox card1 = createStatTile("TOTAL RESTORED", storageStr, "#3b82f6");
         VBox card2 = createStatTile("FILES RESTORED", String.valueOf(files), "#10b981");
-        VBox card3 = createStatTile("ENGINE", "Native ExifTool", "#8b5cf6");
+        VBox card3 = createStatTile("ENGINE", "Local & Offline", "#8b5cf6");
         VBox card4 = createStatTile("PRIVACY", "100% Local Run", "#10b981");
 
         statsGrid.add(card1, 0, 0);
@@ -99,7 +99,7 @@ public class ProfileDashboardDialog extends Stage {
         root.getChildren().addAll(opsTitle, statsGrid);
 
         // 3. Host System Summary
-        Label sysTitle = new Label("HOST HARDWARE TELEMETRY");
+        Label sysTitle = new Label("SYSTEM INFORMATION");
         sysTitle.setStyle("-fx-font-size: 10px; -fx-font-weight: 800; -fx-text-fill: #71717a;");
 
         VBox sysBox = new VBox(4);
