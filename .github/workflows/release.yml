@@ -111,7 +111,7 @@ jobs:
             --runtime-image "custom-runtime" `
             --input "jpackage-input" `
             --main-jar "takeoutfix.jar" `
-            --main-class "com.takeoutfix.TakeoutApplication" `
+            --main-class "com.takeoutfix.TakeoutFxApplication" `
             --name "TakeoutFix" `
             --icon "takeoutfix/icons/icon.ico" `
             --vendor "TakeoutFix" `
@@ -176,7 +176,7 @@ jobs:
             --name "TakeoutFix" \
             --input "jpackage-input" \
             --main-jar "takeoutfix.jar" \
-            --main-class "com.takeoutfix.TakeoutApplication" \
+            --main-class "com.takeoutfix.TakeoutFxApplication" \
             --icon "takeoutfix/icons/icon.icns" \
             --dest "dist-app" \
             --mac-package-identifier "com.takeoutfix.desktop" \
@@ -235,7 +235,7 @@ jobs:
             --name "TakeoutFix" \
             --input "jpackage-input" \
             --main-jar "takeoutfix.jar" \
-            --main-class "com.takeoutfix.TakeoutApplication" \
+            --main-class "com.takeoutfix.TakeoutFxApplication" \
             --icon "takeoutfix/icons/icon.png" \
             --dest "dist-linux" \
             --app-version "$APP_VER" \
