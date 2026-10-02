@@ -158,19 +158,7 @@ jobs:
               Remove-Item $pfxPath -Force -ErrorAction SilentlyContinue
             }
           } else {
-            Write-Host "Signing TakeoutFix.exe with Authenticode & DigiCert Timestamp..."
-            try {
-              $cert = New-SelfSignedCertificate `
-                -Subject "CN=TakeoutFix, O=TakeoutFix, C=US" `
-                -Type CodeSigningCert `
-                -CertStoreLocation "Cert:\CurrentUser\My" `
-                -NotAfter (Get-Date).AddYears(5) `
-                -HashAlgorithm SHA256
-              Set-AuthenticodeSignature -FilePath "TakeoutFix.exe" -Certificate $cert -HashAlgorithm SHA256 -TimestampServer "http://timestamp.digicert.com" | Out-Null
-              Write-Host "Signed TakeoutFix.exe OK: $($cert.Thumbprint)"
-            } catch {
-              Write-Host "Authenticode signing fallback non-fatal: $_"
-            }
+            Write-Host "SIGNING_CERT_B64 secret not set — skipping code signing (build will remain unsigned to avoid self-signed ML trojan false positives)."
           }
 
           # 4. Build WiX Setup Installer (SmartScreen-friendly installer alternative)
@@ -195,10 +183,6 @@ jobs:
             $generatedSetup = Get-ChildItem "dist-exe/*.exe" | Select-Object -First 1
             if ($generatedSetup) {
               Copy-Item $generatedSetup.FullName "./TakeoutFix-Setup.exe" -Force
-              if ($cert) {
-                Set-AuthenticodeSignature -FilePath "TakeoutFix-Setup.exe" -Certificate $cert -HashAlgorithm SHA256 -TimestampServer "http://timestamp.digicert.com" | Out-Null
-                Write-Host "Signed TakeoutFix-Setup.exe OK"
-              }
             }
           } catch {
             Write-Host "WiX setup packaging non-fatal: $_"

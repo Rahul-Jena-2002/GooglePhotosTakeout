@@ -90,7 +90,7 @@ namespace TakeoutFix {
                         FileName = exePath,
                         Arguments = string.Join(" ", args),
                         WorkingDirectory = appDir,
-                        UseShellExecute = false
+                        UseShellExecute = true
                     };
                     Process.Start(psi);
                     return 0;
