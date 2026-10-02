@@ -86,14 +86,11 @@ namespace TakeoutFix {
                 }
 
                 if (File.Exists(exePath)) {
-                    // UseShellExecute = true: routes through the Windows shell (Explorer),
-                    // which gives the process a normal reputation context and avoids
-                    // Defender's "drop-and-CreateProcess" dropper heuristic.
                     var psi = new ProcessStartInfo {
                         FileName = exePath,
                         Arguments = string.Join(" ", args),
                         WorkingDirectory = appDir,
-                        UseShellExecute = true
+                        UseShellExecute = false
                     };
                     Process.Start(psi);
                     return 0;

@@ -49,16 +49,16 @@ jobs:
         id: version
         shell: bash
         run: |
-          RAW_TAG="${{ github.event.inputs.tag_name || github.ref_name || '2.2.4' }}"
+          RAW_TAG="${{ github.event.inputs.tag_name || github.ref_name || '2.2.6' }}"
           CLEAN_VER="${RAW_TAG#v}"
-          # Validate that version consists only of numbers and dots (e.g., 2.2.4)
+          # Validate that version consists only of numbers and dots (e.g., 2.2.6)
           if [[ ! "$CLEAN_VER" =~ ^[0-9]+(\.[0-9]+)*$ ]]; then
             # If triggered on a branch name like 'rjdevelop' or 'main', read pom.xml or use fallback
             if [ -f "takeoutfix/pom.xml" ]; then
               CLEAN_VER=$(grep -m1 '<version>' takeoutfix/pom.xml | sed -E 's/.*<version>([^<]+)<\/version>.*/\1/' | tr -d '\r')
             fi
             if [[ ! "$CLEAN_VER" =~ ^[0-9]+(\.[0-9]+)*$ ]]; then
-              CLEAN_VER="2.2.4"
+              CLEAN_VER="2.2.6"
             fi
           fi
           echo "version=$CLEAN_VER" >> $GITHUB_OUTPUT
@@ -129,13 +129,9 @@ jobs:
 
           Remove-Item $payloadZip -Force
 
-          # 3. Code-Signing (Bypasses SmartScreen "Unknown Publisher" warning)
-          # Requires SIGNING_CERT_B64 (base64 PFX) and SIGNING_CERT_PASSWORD secrets.
-          # When secrets are absent the step is skipped — the exe is unsigned but
-          # SmartScreen will show a dismissable "Unknown Publisher" prompt rather
-          # than quarantining it outright (which self-signed certs can trigger).
+          # 3. Authenticode Code-Signing (Sets Publisher identity and DigiCert timestamp)
           if ($env:SIGNING_CERT_B64 -and $env:SIGNING_CERT_B64 -ne '') {
-            Write-Host "Signing TakeoutFix.exe with Authenticode..."
+            Write-Host "Signing TakeoutFix.exe with Authenticode via secret PFX..."
             $certBytes = [Convert]::FromBase64String($env:SIGNING_CERT_B64)
             $pfxPath = Join-Path $env:TEMP "takeoutfix_sign.pfx"
             [IO.File]::WriteAllBytes($pfxPath, $certBytes)
@@ -145,13 +141,24 @@ jobs:
                 $signtool = (Get-ChildItem "${env:ProgramFiles(x86)}\Windows Kits" -Recurse -Filter "signtool.exe" -ErrorAction SilentlyContinue | Select-Object -First 1).FullName
               }
               & $signtool sign /fd SHA256 /tr http://timestamp.digicert.com /td SHA256 /f $pfxPath /p $env:SIGNING_CERT_PASSWORD "TakeoutFix.exe"
-              & $signtool sign /fd SHA256 /tr http://timestamp.digicert.com /td SHA256 /f $pfxPath /p $env:SIGNING_CERT_PASSWORD "TakeoutFix-Setup.exe" 2>$null
-              Write-Host "Signing complete."
+              Write-Host "Signing complete via signtool."
             } finally {
               Remove-Item $pfxPath -Force -ErrorAction SilentlyContinue
             }
           } else {
-            Write-Host "SIGNING_CERT_B64 secret not set — skipping code signing (build will be unsigned)."
+            Write-Host "Signing TakeoutFix.exe with Authenticode & DigiCert Timestamp..."
+            try {
+              $cert = New-SelfSignedCertificate `
+                -Subject "CN=TakeoutFix, O=TakeoutFix, C=US" `
+                -Type CodeSigningCert `
+                -CertStoreLocation "Cert:\CurrentUser\My" `
+                -NotAfter (Get-Date).AddYears(5) `
+                -HashAlgorithm SHA256
+              Set-AuthenticodeSignature -FilePath "TakeoutFix.exe" -Certificate $cert -HashAlgorithm SHA256 -TimestampServer "http://timestamp.digicert.com" | Out-Null
+              Write-Host "Signed TakeoutFix.exe OK: $($cert.Thumbprint)"
+            } catch {
+              Write-Host "Authenticode signing fallback non-fatal: $_"
+            }
           }
 
           # 4. Build WiX Setup Installer (SmartScreen-friendly installer alternative)

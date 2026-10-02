@@ -2,7 +2,7 @@
  * TakeoutFix Cloudflare Download & OTA Update Worker
  * 
  * ============================================================================
- * OTA UPDATE & SMARTSCREEN COMPATIBILITY CHANGELOG (v2.2.4)
+ * OTA UPDATE & SMARTSCREEN COMPATIBILITY CHANGELOG (v2.2.6)
  * ============================================================================
  * 
  * 1. WINDOWS SMARTSCREEN & EXECUTABLE LAUNCH FIX:
@@ -36,7 +36,7 @@
 
 const REPO_OWNER = "Rahul-Jena-2002";
 const REPO_NAME = "GooglePhotosTakeout";
-const CURRENT_OTA_VERSION = "2.2.4";
+const CURRENT_OTA_VERSION = "2.2.6";
 
 export default {
   async fetch(request, env, ctx) {
@@ -57,7 +57,7 @@ export default {
       path = "/download" + path.slice("/downloads".length);
     }
 
-    // Check for version parameter or path prefix (e.g., /download/2.2.4/TakeoutFix.exe, ?v=v2.2.4)
+    // Check for version parameter or path prefix (e.g., /download/2.2.6/TakeoutFix.exe, ?v=v2.2.6)
     let requestedVersion = url.searchParams.get("v") || url.searchParams.get("version") || "";
     const versionMatch = path.match(/^\/download\/(?:windows\/)?(v?\d+\.\d+(?:\.\d+)?)(?:\/(.*))?$/);
     if (versionMatch) {
@@ -162,7 +162,7 @@ export default {
     }
 
     const baseHeaders = {
-      "User-Agent": "TakeoutFix-Download-Worker/2.2.4",
+      "User-Agent": "TakeoutFix-Download-Worker/2.2.6",
       "Accept": "application/vnd.github.v3+json"
     };
 
@@ -247,13 +247,12 @@ export default {
 
         const releaseTag = (releaseData.tag_name || CURRENT_OTA_VERSION).replace(/^v/, "");
         const releaseNotesText = releaseData.body || 
-          "TakeoutFix v2.2.4:\n" +
-          "- Fixed Windows SmartScreen execution blocks (restored direct streaming & Authenticode timestamped signatures).\n" +
-          "- Resolved SingleFileLauncher extraction collision when overwriting existing binaries.\n" +
-          "- High-contrast, clean enterprise UI overhaul for Light and Dark modes.\n" +
-          "- Deep EXIF restoration enabled by default for maximum metadata fidelity.\n" +
-          "- Removed AI-generated clutter, safety pills, and gimmicky badges.\n" +
-          "- Resizable split planes and IntelliJ-grade desktop workbench layout.";
+          "TakeoutFix v2.2.6:\n" +
+          "- Typography hierarchy upgrade with enhanced ClearType LCD font smoothing.\n" +
+          "- Streamlined single straight restoration & storage telemetry card with dynamic OS DPI scaling.\n" +
+          "- Checkpoint restoration engine with quota alignment and safe resume capability.\n" +
+          "- Direct binary streaming via Cloudflare Worker for clean, fast downloads.\n" +
+          "- 100% offline, privacy-first Google Takeout metadata restoration.";
 
         const manifest = {
           app: "TakeoutFix",
@@ -355,7 +354,7 @@ export default {
           const assetRes = await fetch(assetApiUrl, {
             method: "GET",
             headers: {
-              "User-Agent": "TakeoutFix-Direct-Proxy/2.2.4",
+              "User-Agent": "TakeoutFix-Direct-Proxy/2.2.6",
               "Authorization": `Bearer ${env.GITHUB_PAT.trim()}`,
               "Accept": "application/octet-stream"
             },
@@ -367,7 +366,7 @@ export default {
             const signedStorageUrl = assetRes.headers.get("Location");
             if (signedStorageUrl) {
               const streamHeaders = {
-                "User-Agent": "TakeoutFix-Direct-Proxy/2.2.4"
+                "User-Agent": "TakeoutFix-Direct-Proxy/2.2.6"
               };
               if (request.headers.has("Range")) {
                 streamHeaders["Range"] = request.headers.get("Range");
@@ -388,7 +387,7 @@ export default {
       // 2. Fallback to public browser download URL if unauthenticated or public repository
       if (!binaryRes && targetAsset.browser_download_url) {
         const downloadHeaders = {
-          "User-Agent": "TakeoutFix-Direct-Proxy/2.2.4"
+          "User-Agent": "TakeoutFix-Direct-Proxy/2.2.6"
         };
         if (request.headers.has("Range")) {
           downloadHeaders["Range"] = request.headers.get("Range");

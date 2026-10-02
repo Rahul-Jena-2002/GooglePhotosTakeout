@@ -9,9 +9,9 @@ import java.util.Properties;
  */
 public class AppVersion {
 
-    private static String version = "2.2.4";
-    private static int buildNumber = 121;
-    private static String buildTimestamp = "2026-09-30T17:45:00Z";
+    private static String version = "2.2.6";
+    private static int buildNumber = 122;
+    private static String buildTimestamp = "2026-10-02T11:30:00Z";
 
     static {
         try (InputStream is = AppVersion.class.getResourceAsStream("/version.properties")) {
