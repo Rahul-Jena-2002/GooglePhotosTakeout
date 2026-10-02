@@ -4,12 +4,13 @@ import com.takeoutfix.auth.UserController;
 import com.takeoutfix.auth.UserSyncBridgeService;
 import com.takeoutfix.network.NetworkMonitorService;
 import com.takeoutfix.restore.SessionStatsService;
+import com.takeoutfix.shared.theme.AppTheme;
+import com.takeoutfix.shared.theme.ThemeManager;
 import javafx.application.Platform;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
-import javafx.scene.control.Button;
-import javafx.scene.control.Label;
-import javafx.scene.control.Tooltip;
+import javafx.scene.Node;
+import javafx.scene.control.*;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import javafx.scene.layout.HBox;
@@ -27,7 +28,7 @@ import java.util.function.Consumer;
  * Matches the production look of TakeoutFix Operations Center:
  * - Brand icon + TakeoutFix + v2.1.8 badge
  * - Navigation pills: Dashboard, Restore, MetaSync, Website
- * - Theme toggle (Sun/Moon)
+ * - Theme dropdown menu (All supported IDE & app themes)
  * - Network status indicator (ONLINE / OFFLINE)
  * - User Profile pill (Hi, <Name> [Avatar]) + Sign In / Sign Out button
  */
@@ -40,9 +41,9 @@ public class HeaderBar extends HBox {
     private final Runnable onThemeToggled;
     private final Consumer<WorkspaceType> onWorkspaceSelected;
 
-    // Theme state (Dark mode by default)
+    // Theme dropdown state
     private boolean isDark = true;
-    private final Button themeToggleBtn = new Button();
+    private final MenuButton themeMenuBtn = new MenuButton();
     private final Button sponsorBtn = new Button("Sponsor");
 
     // Online Status Pill
@@ -92,8 +93,8 @@ public class HeaderBar extends HBox {
         Region spacer = new Region();
         HBox.setHgrow(spacer, Priority.ALWAYS);
 
-        // 3. Theme Toggle & Sponsor Buttons
-        setupThemeToggle();
+        // 3. Theme Dropdown Menu & Sponsor Buttons
+        setupThemeMenu();
         setupSponsorBtn();
 
         // 4. Online Network Pill
@@ -102,7 +103,7 @@ public class HeaderBar extends HBox {
         // 5. User Profile / Sign-In controls
         setupProfileSection();
 
-        getChildren().addAll(brandBox, navPillsBox, spacer, sponsorBtn, themeToggleBtn, onlineBadge, profileContainer);
+        getChildren().addAll(brandBox, navPillsBox, spacer, sponsorBtn, themeMenuBtn, onlineBadge, profileContainer);
 
         // Hook listeners
         if (networkService != null) {
@@ -114,6 +115,8 @@ public class HeaderBar extends HBox {
         if (updateCheckerService != null) {
             updateCheckerService.addListener(info -> Platform.runLater(() -> updateVersionBadge(info)));
         }
+
+        ThemeManager.addListener(theme -> Platform.runLater(() -> updateThemeMenu(theme)));
 
         updateUserProfile();
         updateVersionBadge(updateCheckerService != null ? updateCheckerService.getLatestUpdate() : null);
@@ -221,15 +224,50 @@ public class HeaderBar extends HBox {
         // Active workspace is indicated dynamically in the Left Sidebar Navigation
     }
 
-    private void setupThemeToggle() {
-        updateThemeIcon();
-        themeToggleBtn.getStyleClass().add("btn-ghost");
-        themeToggleBtn.setStyle("-fx-padding: 6; -fx-background-radius: 6;");
-        themeToggleBtn.setOnAction(e -> {
-            isDark = !isDark;
-            updateThemeIcon();
-            if (onThemeToggled != null) onThemeToggled.run();
-        });
+    private void setupThemeMenu() {
+        themeMenuBtn.getStyleClass().addAll("btn-ghost", "theme-menu-btn");
+        themeMenuBtn.setStyle("-fx-font-size: 12px; -fx-font-weight: 600; -fx-padding: 4 10 4 10; -fx-background-radius: 6; -fx-cursor: hand;");
+        updateThemeMenu(ThemeManager.getCurrentTheme());
+    }
+
+    private void updateThemeMenu(AppTheme theme) {
+        if (theme == null) theme = ThemeManager.getCurrentTheme();
+        this.isDark = theme.isDark();
+        themeMenuBtn.setGraphic(createThemeIcon(theme, 13));
+        themeMenuBtn.setGraphicTextGap(6);
+        themeMenuBtn.setText(theme.getDisplayName());
+        Tooltip.install(themeMenuBtn, new Tooltip("Active Theme: " + theme.getDisplayName() + "\nClick to switch theme"));
+
+        themeMenuBtn.getItems().clear();
+        for (AppTheme t : AppTheme.values()) {
+            String prefix = (t == theme) ? "✓  " : "    ";
+            MenuItem item = new MenuItem(prefix + t.getDisplayName());
+            Node itemIcon = createThemeIcon(t, 13);
+            if (itemIcon != null) item.setGraphic(itemIcon);
+            if (t == theme) {
+                item.setStyle("-fx-font-weight: bold;");
+            }
+            final AppTheme target = t;
+            item.setOnAction(e -> {
+                ThemeManager.setTheme(target);
+                if (onThemeToggled != null) onThemeToggled.run();
+            });
+            themeMenuBtn.getItems().add(item);
+        }
+    }
+
+    private Node createThemeIcon(AppTheme theme, double size) {
+        if (theme == AppTheme.CATPPUCCIN_FOREST) {
+            return UiIcons.createSvgIcon(UiIcons.FOREST, size, "#4EBA87");
+        } else if (theme == AppTheme.INTELLIJ_DARK) {
+            return UiIcons.createSvgIcon(UiIcons.TERMINAL, size, "#3574F0");
+        } else if (theme == AppTheme.INTELLIJ_LIGHT) {
+            return UiIcons.createSvgIcon(UiIcons.TERMINAL, size, "#3574F0");
+        } else if (theme != null && theme.isDark()) {
+            return UiIcons.createSvgIcon(UiIcons.MOON, size, "#BD93F9");
+        } else {
+            return UiIcons.createSvgIcon(UiIcons.SUN, size, "#EAB308");
+        }
     }
 
     private void setupSponsorBtn() {
@@ -239,16 +277,6 @@ public class HeaderBar extends HBox {
         sponsorBtn.setStyle("-fx-font-size: 13px; -fx-font-weight: 600; -fx-padding: 6 12 6 12; -fx-background-radius: 6; -fx-cursor: hand;");
         sponsorBtn.setTooltip(new Tooltip("Sponsor TakeoutFix on GitHub (Opens in browser)"));
         sponsorBtn.setOnAction(e -> openUrl("https://github.com/sponsors/Rahul-Jena-2002"));
-    }
-
-    private void updateThemeIcon() {
-        if (isDark) {
-            themeToggleBtn.setGraphic(UiIcons.createSvgIcon(UiIcons.SUN, 15, "#fbbf24"));
-            themeToggleBtn.setTooltip(new Tooltip("Switch to Light Theme"));
-        } else {
-            themeToggleBtn.setGraphic(UiIcons.createSvgIcon(UiIcons.MOON, 15, "#6D28D9"));
-            themeToggleBtn.setTooltip(new Tooltip("Switch to Dark Theme"));
-        }
     }
 
     private void setupOnlineBadge() {
@@ -356,7 +384,7 @@ public class HeaderBar extends HBox {
     }
 
     public boolean isDark() {
-        return isDark;
+        return ThemeManager.isDark();
     }
 
     private void openUrl(String url) {
