@@ -23,7 +23,7 @@
     -fx-text-fill: #DFE1E5;
     -fx-text-base-color: #DFE1E5;
     -fx-text-background-color: #DFE1E5;
-    -fx-font-smoothing-type: gray;
+    -fx-font-smoothing-type: lcd;
     -fx-snap-to-pixel: true;
 }
 
@@ -31,7 +31,7 @@
     -fx-font-family: "Segoe UI", "Inter", -apple-system, sans-serif;
     -fx-text-fill: #DFE1E5;
     -fx-fill: #DFE1E5;
-    -fx-font-smoothing-type: gray;
+    -fx-font-smoothing-type: lcd;
     -fx-snap-to-pixel: true;
 }
 
@@ -273,9 +273,9 @@
 }
 
 .log-badge {
-    -fx-font-size: 11.5px;
+    -fx-font-size: 10px;
     -fx-font-weight: bold;
-    -fx-padding: 2 6 2 6;
+    -fx-padding: 1 5 1 5;
     -fx-background-radius: 3;
 }
 .log-badge-info    { -fx-background-color: rgba(139, 233, 253, 0.15); -fx-text-fill: #8BE9FD; }
@@ -290,19 +290,19 @@
 
 /* Status, Logs & Telemetry Typography */
 .status-text {
-    -fx-font-size: 13px;
+    -fx-font-size: 12px;
     -fx-text-fill: #868A91;
 }
 
 .log-entry {
     -fx-font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Ubuntu, Cantarell, sans-serif;
-    -fx-font-size: 13.5px;
+    -fx-font-size: 11px;
     -fx-text-fill: #DFE1E5;
 }
 
 .timestamp {
     -fx-font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Ubuntu, Cantarell, sans-serif;
-    -fx-font-size: 12.5px;
+    -fx-font-size: 10.5px;
     -fx-text-fill: #868A91;
 }
 
@@ -540,6 +540,8 @@
 }
 
 .check-box {
+    -fx-font-size: 13px;
+    -fx-font-smoothing-type: lcd;
     -fx-text-fill: #DFE1E5;
 }
 

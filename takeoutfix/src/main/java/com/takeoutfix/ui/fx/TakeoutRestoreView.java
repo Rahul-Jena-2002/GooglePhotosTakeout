@@ -349,7 +349,7 @@ public class TakeoutRestoreView extends VBox {
         Label pathIcon = new Label();
         pathIcon.setGraphic(UiIcons.createSvgIcon(UiIcons.FOLDER, 13, "currentColor"));
 
-        sourcePathLabel.setStyle("-fx-font-size: 12.5px; -fx-font-family: 'JetBrains Mono', 'Cascadia Code', 'Consolas', monospace;");
+        sourcePathLabel.setStyle("-fx-font-size: 13px;");
         sourcePathLabel.getStyleClass().add("text-secondary");
         sourcePathLabel.setTextOverrun(OverrunStyle.CENTER_ELLIPSIS);
         HBox.setHgrow(sourcePathLabel, Priority.ALWAYS);
@@ -428,7 +428,7 @@ public class TakeoutRestoreView extends VBox {
         Label pathIcon = new Label();
         pathIcon.setGraphic(UiIcons.createSvgIcon(UiIcons.OUTPUT_FOLDER, 13, "currentColor"));
 
-        outputPathLabel.setStyle("-fx-font-size: 12.5px; -fx-font-family: 'JetBrains Mono', 'Cascadia Code', 'Consolas', monospace;");
+        outputPathLabel.setStyle("-fx-font-size: 13px;");
         outputPathLabel.getStyleClass().add("text-secondary");
         outputPathLabel.setTextOverrun(OverrunStyle.CENTER_ELLIPSIS);
         HBox.setHgrow(outputPathLabel, Priority.ALWAYS);
@@ -598,18 +598,22 @@ public class TakeoutRestoreView extends VBox {
         // Group 1: Output & Structure
         Label outputGroupLabel = new Label("Output & Structure");
         outputGroupLabel.getStyleClass().addAll("section-sub-title", "text-muted");
-        outputGroupLabel.setStyle("-fx-font-size: 11px; -fx-font-weight: 700; -fx-text-transform: uppercase; -fx-padding: 4 0 2 0;");
+        outputGroupLabel.setStyle("-fx-font-size: 12px; -fx-font-weight: 700; -fx-text-transform: uppercase; -fx-padding: 4 0 2 0;");
 
         organizeMonthCheck.getStyleClass().add("text-primary");
+        organizeMonthCheck.setStyle("-fx-font-size: 13px; -fx-cursor: hand;");
         splitVolumesCheck.getStyleClass().add("text-primary");
+        splitVolumesCheck.setStyle("-fx-font-size: 13px; -fx-cursor: hand;");
 
         // Group 2: System & Power
         Label systemGroupLabel = new Label("System & Power");
         systemGroupLabel.getStyleClass().addAll("section-sub-title", "text-muted");
-        systemGroupLabel.setStyle("-fx-font-size: 11px; -fx-font-weight: 700; -fx-text-transform: uppercase; -fx-padding: 6 0 2 0;");
+        systemGroupLabel.setStyle("-fx-font-size: 12px; -fx-font-weight: 700; -fx-text-transform: uppercase; -fx-padding: 6 0 2 0;");
 
         keepAwakeCheck.getStyleClass().add("text-primary");
+        keepAwakeCheck.setStyle("-fx-font-size: 13px; -fx-cursor: hand;");
         shutdownAfterCheck.getStyleClass().add("text-primary");
+        shutdownAfterCheck.setStyle("-fx-font-size: 13px; -fx-cursor: hand;");
 
         // Mid-spacer and subtle divider between options and storage telemetry
         Region midSpacer = new Region();
@@ -667,11 +671,11 @@ public class TakeoutRestoreView extends VBox {
         card.setStyle("-fx-background-radius: 6; -fx-border-radius: 6; -fx-border-width: 1; -fx-padding: 10 6 10 6;");
         HBox.setHgrow(card, Priority.ALWAYS);
 
-        valueLabel.setStyle("-fx-font-family: 'JetBrains Mono', 'Cascadia Code', 'Consolas', monospace; -fx-font-size: 12.5px; -fx-font-weight: 700; -fx-text-alignment: center;");
+        valueLabel.setStyle("-fx-font-family: 'JetBrains Mono', 'Cascadia Code', 'Consolas', monospace; -fx-font-size: 13px; -fx-font-weight: 700; -fx-text-alignment: center;");
         valueLabel.getStyleClass().add("text-primary");
         valueLabel.setAlignment(Pos.CENTER);
 
-        tagLabel.setStyle("-fx-font-size: 11px; -fx-font-weight: 600; -fx-opacity: 0.75; -fx-text-alignment: center;");
+        tagLabel.setStyle("-fx-font-size: 11.5px; -fx-font-weight: 600; -fx-opacity: 0.85; -fx-text-alignment: center;");
         tagLabel.getStyleClass().add("text-muted");
         tagLabel.setAlignment(Pos.CENTER);
 
@@ -995,7 +999,7 @@ public class TakeoutRestoreView extends VBox {
     private void setSourceFile(File file) {
         this.selectedSource = file;
         sourcePathLabel.setText(file.getAbsolutePath());
-        sourcePathLabel.setStyle("-fx-font-size: 12px; -fx-font-weight: 700;");
+        sourcePathLabel.setStyle("-fx-font-size: 13px; -fx-font-weight: 600;");
         sourcePathLabel.getStyleClass().add("text-primary");
         btnSourceClear.setVisible(true);
 
@@ -1036,7 +1040,7 @@ public class TakeoutRestoreView extends VBox {
         selectedSource = null;
         sourceSizeBytes = 0;
         sourcePathLabel.setText("No archive selected — browse or drop Takeout directory / ZIP");
-        sourcePathLabel.setStyle("-fx-font-size: 12px;");
+        sourcePathLabel.setStyle("-fx-font-size: 13px;");
         sourcePathLabel.getStyleClass().add("text-secondary");
         sourceMetaLabel.setText("Awaiting selection • Folder or .zip");
         btnSourceClear.setVisible(false);
@@ -1056,7 +1060,7 @@ public class TakeoutRestoreView extends VBox {
     private void setDestinationFile(File file) {
         this.selectedOutput = file;
         outputPathLabel.setText(file.getAbsolutePath());
-        outputPathLabel.setStyle("-fx-font-size: 12px; -fx-font-weight: 700;");
+        outputPathLabel.setStyle("-fx-font-size: 13px; -fx-font-weight: 600;");
         outputPathLabel.getStyleClass().add("text-primary");
         outputMetaLabel.setText("Destination selected");
         btnDestClear.setVisible(true);
@@ -1067,7 +1071,7 @@ public class TakeoutRestoreView extends VBox {
     private void clearDestination() {
         selectedOutput = null;
         outputPathLabel.setText("No destination folder selected yet — restored files will be saved here");
-        outputPathLabel.setStyle("-fx-font-size: 12px;");
+        outputPathLabel.setStyle("-fx-font-size: 13px;");
         outputPathLabel.getStyleClass().add("text-secondary");
         outputMetaLabel.setText("");
         btnDestClear.setVisible(false);
