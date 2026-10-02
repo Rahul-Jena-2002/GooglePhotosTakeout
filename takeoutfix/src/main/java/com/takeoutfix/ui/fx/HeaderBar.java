@@ -144,7 +144,7 @@ public class HeaderBar extends HBox {
         } catch (Exception ignored) {}
 
         Label brandText = new Label("TakeoutFix");
-        brandText.setStyle("-fx-font-size: 16px; -fx-font-weight: 800;");
+        brandText.setStyle("-fx-font-size: 17px; -fx-font-weight: 800;");
 
         versionBtn.setOnAction(e -> handleVersionClick());
 
@@ -226,7 +226,7 @@ public class HeaderBar extends HBox {
 
     private void setupThemeMenu() {
         themeMenuBtn.getStyleClass().addAll("btn-ghost", "theme-menu-btn");
-        themeMenuBtn.setStyle("-fx-font-size: 12px; -fx-font-weight: 600; -fx-padding: 4 10 4 10; -fx-background-radius: 6; -fx-cursor: hand;");
+        themeMenuBtn.setStyle("-fx-font-size: 13px; -fx-font-weight: 600; -fx-padding: 5 10 5 10; -fx-background-radius: 6; -fx-cursor: hand;");
         updateThemeMenu(ThemeManager.getCurrentTheme());
     }
 
@@ -285,7 +285,7 @@ public class HeaderBar extends HBox {
 
         onlineDot.setFill(javafx.scene.paint.Color.web("#10b981"));
         onlineLabel.setText("Connected");
-        onlineLabel.setStyle("-fx-font-size: 12px; -fx-font-weight: 500; -fx-text-fill: #10b981;");
+        onlineLabel.setStyle("-fx-font-size: 12.5px; -fx-font-weight: 500; -fx-text-fill: #10b981;");
 
         onlineBadge.getChildren().addAll(onlineDot, onlineLabel);
     }
@@ -295,7 +295,7 @@ public class HeaderBar extends HBox {
             onlineBadge.setStyle("-fx-background-color: rgba(16, 185, 129, 0.10); -fx-border-color: rgba(16, 185, 129, 0.20); -fx-border-radius: 12; -fx-background-radius: 12; -fx-padding: 3 10 3 10;");
             onlineDot.setFill(javafx.scene.paint.Color.web("#10b981"));
             onlineLabel.setText("Connected");
-            onlineLabel.setStyle("-fx-font-size: 12px; -fx-font-weight: 500; -fx-text-fill: #10b981;");
+            onlineLabel.setStyle("-fx-font-size: 12.5px; -fx-font-weight: 500; -fx-text-fill: #10b981;");
         } else {
             onlineBadge.setStyle("-fx-background-color: rgba(113, 113, 122, 0.10); -fx-border-color: rgba(113, 113, 122, 0.20); -fx-border-radius: 12; -fx-background-radius: 12; -fx-padding: 3 10 3 10;");
             onlineDot.setFill(javafx.scene.paint.Color.web("#71717a"));
@@ -308,7 +308,7 @@ public class HeaderBar extends HBox {
         profileContainer.setAlignment(Pos.CENTER_LEFT);
 
         avatarCircle.setStyle("-fx-font-size: 12px; -fx-font-weight: 600; -fx-text-fill: #ffffff; -fx-background-color: #7C3AED; -fx-padding: 3 7 3 7; -fx-background-radius: 12;");
-        userPill.setStyle("-fx-font-size: 13px; -fx-font-weight: 500;");
+        userPill.setStyle("-fx-font-size: 13.5px; -fx-font-weight: 500;");
 
         profilePillBox.setAlignment(Pos.CENTER_LEFT);
         profilePillBox.setStyle("-fx-cursor: hand; -fx-padding: 3 8 3 8; -fx-background-radius: 6; -fx-background-color: rgba(113, 113, 122, 0.08);");

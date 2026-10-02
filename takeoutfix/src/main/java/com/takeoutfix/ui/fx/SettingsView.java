@@ -160,7 +160,7 @@ public class SettingsView extends VBox {
 
                     Node icon = UiIcons.createSvgIcon(iconSvg, 14, "#989BA8");
                     Label lbl = new Label(item);
-                    lbl.setStyle("-fx-font-size: 13px; -fx-font-weight: 600;");
+                    lbl.setStyle("-fx-font-size: 14px; -fx-font-weight: 600;");
                     lbl.getStyleClass().add("text-primary");
 
                     row.getChildren().addAll(icon, lbl);
@@ -200,7 +200,7 @@ public class SettingsView extends VBox {
         HBox idHeader = new HBox(8);
         idHeader.setAlignment(Pos.CENTER_LEFT);
         Label idTitle = new Label("Account");
-        idTitle.setStyle("-fx-font-size: 14px; -fx-font-weight: 700;");
+        idTitle.setStyle("-fx-font-size: 16px; -fx-font-weight: 700;");
         idTitle.getStyleClass().add("card-title");
         idHeader.getChildren().add(idTitle);
 
@@ -229,19 +229,19 @@ public class SettingsView extends VBox {
 
         VBox userDetails = new VBox(4);
         Label nameLbl = new Label(name);
-        nameLbl.setStyle("-fx-font-size: 16px; -fx-font-weight: 700;");
+        nameLbl.setStyle("-fx-font-size: 17.5px; -fx-font-weight: 700;");
         nameLbl.getStyleClass().add("text-primary");
 
         Label emailLbl = new Label(email);
-        emailLbl.setStyle("-fx-font-size: 13px;");
+        emailLbl.setStyle("-fx-font-size: 13.5px;");
         emailLbl.getStyleClass().add("text-muted");
 
         HBox badgeRow = new HBox(6);
         badgeRow.setAlignment(Pos.CENTER_LEFT);
         Label statusBadge = new Label(signedIn ? "● Google Account Connected · Unlimited Access" : "○ Guest Mode · 1 GB Limit (Sign in for Unlimited)");
         statusBadge.setStyle(signedIn
-                ? "-fx-font-size: 11px; -fx-font-weight: 600; -fx-text-fill: #10B981; -fx-background-color: rgba(16, 185, 129, 0.12); -fx-padding: 2 8 2 8; -fx-background-radius: 12;"
-                : "-fx-font-size: 11px; -fx-font-weight: 600; -fx-text-fill: #F59E0B; -fx-background-color: rgba(245, 158, 11, 0.12); -fx-padding: 2 8 2 8; -fx-background-radius: 12;");
+                ? "-fx-font-size: 12px; -fx-font-weight: 600; -fx-text-fill: #10B981; -fx-background-color: rgba(16, 185, 129, 0.12); -fx-padding: 3 9 3 9; -fx-background-radius: 12;"
+                : "-fx-font-size: 12px; -fx-font-weight: 600; -fx-text-fill: #F59E0B; -fx-background-color: rgba(245, 158, 11, 0.12); -fx-padding: 3 9 3 9; -fx-background-radius: 12;");
         badgeRow.getChildren().add(statusBadge);
 
         userDetails.getChildren().addAll(nameLbl, emailLbl, badgeRow);
@@ -251,7 +251,7 @@ public class SettingsView extends VBox {
 
         Button authBtn = new Button(signedIn ? "Sign Out" : "Sign In with Google (Unlock Unlimited)");
         authBtn.getStyleClass().add(signedIn ? "btn-secondary" : "btn-primary");
-        authBtn.setStyle("-fx-font-size: 13px; -fx-font-weight: 600; -fx-pref-height: 38px; -fx-padding: 0 18 0 18; -fx-background-radius: 6; -fx-cursor: hand;");
+        authBtn.setStyle("-fx-font-size: 13.5px; -fx-font-weight: 600; -fx-pref-height: 38px; -fx-padding: 0 18 0 18; -fx-background-radius: 6; -fx-cursor: hand;");
         if (!signedIn) {
             authBtn.setGraphic(UiIcons.createGoogleIcon(16));
             authBtn.setGraphicTextGap(8);
@@ -276,7 +276,7 @@ public class SettingsView extends VBox {
         // 2. Storage Quota & Entitlements Card
         VBox quotaCard = createCard();
         Label quotaTitle = new Label("Restoration Access");
-        quotaTitle.setStyle("-fx-font-size: 14px; -fx-font-weight: 700;");
+        quotaTitle.setStyle("-fx-font-size: 16px; -fx-font-weight: 700;");
         quotaTitle.getStyleClass().add("card-title");
 
         long usedBytes = userService != null ? userService.getUsedBytes() : 0L;
@@ -297,14 +297,14 @@ public class SettingsView extends VBox {
             HBox qRow = new HBox(8);
             qRow.setAlignment(Pos.CENTER_LEFT);
             Label qUsedLbl = new Label(String.format("%.1f MB / 1,024 MB (1.0 GB)", usedMb));
-            qUsedLbl.setStyle("-fx-font-size: 13px; -fx-font-weight: 700;");
+            qUsedLbl.setStyle("-fx-font-size: 14.5px; -fx-font-weight: 700;");
             qUsedLbl.getStyleClass().add("text-primary");
 
             Region sp = new Region();
             HBox.setHgrow(sp, Priority.ALWAYS);
 
             Label qPctLbl = new Label(String.format("%d%% Used", (int) (pct * 100)));
-            qPctLbl.setStyle("-fx-font-size: 12px; -fx-font-weight: 600; -fx-text-fill: " + (pct >= 1.0 ? "#EF4444" : "#F59E0B") + ";");
+            qPctLbl.setStyle("-fx-font-size: 13px; -fx-font-weight: 600; -fx-text-fill: " + (pct >= 1.0 ? "#EF4444" : "#F59E0B") + ";");
 
             qRow.getChildren().addAll(qUsedLbl, sp, qPctLbl);
 
@@ -313,7 +313,7 @@ public class SettingsView extends VBox {
             qBar.setStyle("-fx-accent: " + (pct >= 1.0 ? "#EF4444" : "#8B5CF6") + "; -fx-pref-height: 8px;");
 
             Label qNote = new Label("Free guest mode includes up to 1 GB of restored media with no file count limits. Sign in to your Google Account to unlock 100% unlimited restoration access.");
-            qNote.setStyle("-fx-font-size: 12px;");
+            qNote.setStyle("-fx-font-size: 13.5px;");
             qNote.getStyleClass().add("text-muted");
             qNote.setWrapText(true);
 
@@ -324,17 +324,17 @@ public class SettingsView extends VBox {
         // 3. Cloud Synchronization Card
         VBox syncCard = createCard();
         Label syncTitle = new Label("Cloud Backup & Sync");
-        syncTitle.setStyle("-fx-font-size: 14px; -fx-font-weight: 700;");
+        syncTitle.setStyle("-fx-font-size: 16px; -fx-font-weight: 700;");
         syncTitle.getStyleClass().add("card-title");
 
         Label syncDesc = new Label("Keep your restoration history and progress safely backed up so you can access them across your devices.");
-        syncDesc.setStyle("-fx-font-size: 12.5px;");
+        syncDesc.setStyle("-fx-font-size: 13.5px;");
         syncDesc.getStyleClass().add("text-muted");
         syncDesc.setWrapText(true);
 
         CheckBox enableCloudSync = new CheckBox("Automatically backup history when online");
         enableCloudSync.setSelected(prefs.getBoolean("cloud.sync.auto", true));
-        enableCloudSync.setStyle("-fx-font-size: 13px; -fx-font-weight: 500;");
+        enableCloudSync.setStyle("-fx-font-size: 14px; -fx-font-weight: 500;");
         enableCloudSync.setOnAction(e -> prefs.putBoolean("cloud.sync.auto", enableCloudSync.isSelected()));
 
         HBox syncActionRow = new HBox(12);
@@ -345,11 +345,11 @@ public class SettingsView extends VBox {
         syncNowBtn.getStyleClass().add("btn-secondary");
         syncNowBtn.setGraphic(UiIcons.createSvgIcon(UiIcons.RELOAD, 13, "currentColor"));
         syncNowBtn.setGraphicTextGap(6);
-        syncNowBtn.setStyle("-fx-font-size: 12.5px; -fx-font-weight: 600; -fx-pref-height: 36px; -fx-padding: 0 16 0 16;");
+        syncNowBtn.setStyle("-fx-font-size: 13px; -fx-font-weight: 600; -fx-pref-height: 36px; -fx-padding: 0 16 0 16;");
         syncNowBtn.setDisable(!signedIn);
 
         Label syncStatusMsg = new Label(signedIn ? "Ready to sync" : "Sign in to enable cloud synchronization");
-        syncStatusMsg.setStyle("-fx-font-size: 12px;");
+        syncStatusMsg.setStyle("-fx-font-size: 13px;");
         syncStatusMsg.getStyleClass().add("text-muted");
 
         syncNowBtn.setOnAction(e -> {
@@ -369,18 +369,18 @@ public class SettingsView extends VBox {
         // 3. Machine Hardware Keyring Vault Card
         VBox keyringCard = createCard();
         Label keyTitle = new Label("Security & Privacy");
-        keyTitle.setStyle("-fx-font-size: 14px; -fx-font-weight: 700;");
+        keyTitle.setStyle("-fx-font-size: 16px; -fx-font-weight: 700;");
         keyTitle.getStyleClass().add("card-title");
 
         Label keyDesc = new Label("Your sign-in information and account credentials are encrypted and stored safely on this device. Passwords and sensitive data are never stored in plain text.");
-        keyDesc.setStyle("-fx-font-size: 12.5px;");
+        keyDesc.setStyle("-fx-font-size: 13.5px;");
         keyDesc.getStyleClass().add("text-muted");
         keyDesc.setWrapText(true);
 
         HBox keyStatusRow = new HBox(8);
         keyStatusRow.setAlignment(Pos.CENTER_LEFT);
         Label keyStatus = new Label("● Device Security: Active");
-        keyStatus.setStyle("-fx-font-size: 12px; -fx-font-weight: 600; -fx-text-fill: #10B981; -fx-background-color: rgba(16, 185, 129, 0.10); -fx-padding: 4 10 4 10; -fx-background-radius: 6;");
+        keyStatus.setStyle("-fx-font-size: 13px; -fx-font-weight: 600; -fx-text-fill: #10B981; -fx-background-color: rgba(16, 185, 129, 0.10); -fx-padding: 4 10 4 10; -fx-background-radius: 6;");
         keyStatusRow.getChildren().add(keyStatus);
 
         keyringCard.getChildren().addAll(keyTitle, keyDesc, keyStatusRow);
@@ -549,7 +549,7 @@ public class SettingsView extends VBox {
 
         VBox binBox = new VBox(6);
         Label binTitle = new Label("Photo & Video Engine");
-        binTitle.setStyle("-fx-font-size: 13px; -fx-font-weight: 600; ");
+        binTitle.setStyle("-fx-font-size: 16px; -fx-font-weight: 700; ");
 
         File bin = engine != null ? engine.getExifToolBinary() : null;
         String statusText = (bin != null && bin.exists())
@@ -557,10 +557,10 @@ public class SettingsView extends VBox {
                 : "Engine Ready";
 
         Label binStatus = new Label(statusText);
-        binStatus.setStyle("-fx-font-size: 12px; -fx-text-fill: #10B981; -fx-font-weight: 600;");
+        binStatus.setStyle("-fx-font-size: 13px; -fx-text-fill: #10B981; -fx-font-weight: 600;");
 
         Label binDesc = new Label("Photos and videos are restored entirely on your machine. Your personal files and memories are never uploaded or sent to external servers.");
-        binDesc.setStyle("-fx-font-size: 12px; ");
+        binDesc.setStyle("-fx-font-size: 13.5px; ");
         binBox.getChildren().addAll(binTitle, binStatus, binDesc);
 
         card.getChildren().add(binBox);
@@ -825,13 +825,13 @@ public class SettingsView extends VBox {
     }
 
     private VBox createSectionHeader(String titleText, String subtitleText) {
-        VBox box = new VBox(2);
+        VBox box = new VBox(4);
         Label title = new Label(titleText);
-        title.setStyle("-fx-font-size: 16px; -fx-font-weight: 600; ");
+        title.setStyle("-fx-font-size: 18px; -fx-font-weight: 700; ");
         title.getStyleClass().add("card-title");
 
         Label sub = new Label(subtitleText);
-        sub.setStyle("-fx-font-size: 12px; ");
+        sub.setStyle("-fx-font-size: 13.5px; ");
         sub.getStyleClass().add("text-muted");
 
         box.getChildren().addAll(title, sub);
@@ -852,14 +852,14 @@ public class SettingsView extends VBox {
     }
 
     private VBox createToggle(String titleText, String descText, boolean defaultVal, Consumer<Boolean> onToggle) {
-        VBox box = new VBox(4);
+        VBox box = new VBox(5);
         CheckBox chk = new CheckBox(titleText);
         chk.setSelected(defaultVal);
-        chk.setStyle("-fx-font-size: 13px; -fx-font-weight: 600; ");
+        chk.setStyle("-fx-font-size: 14px; -fx-font-weight: 600; ");
         chk.setOnAction(e -> onToggle.accept(chk.isSelected()));
 
         Label desc = new Label(descText);
-        desc.setStyle("-fx-font-size: 12px; ");
+        desc.setStyle("-fx-font-size: 13px; ");
         desc.getStyleClass().add("text-muted");
         desc.setWrapText(true);
 
@@ -870,10 +870,10 @@ public class SettingsView extends VBox {
     private VBox createDirSelector(String titleText, String descText, String initialPath, Consumer<String> onSelected) {
         VBox box = new VBox(6);
         Label title = new Label(titleText);
-        title.setStyle("-fx-font-size: 13px; -fx-font-weight: 600; ");
+        title.setStyle("-fx-font-size: 14px; -fx-font-weight: 600; ");
 
         Label desc = new Label(descText);
-        desc.setStyle("-fx-font-size: 12px; ");
+        desc.setStyle("-fx-font-size: 13px; ");
         desc.getStyleClass().add("text-muted");
 
         HBox row = new HBox(8);
@@ -881,12 +881,12 @@ public class SettingsView extends VBox {
 
         TextField pathField = new TextField(initialPath);
         pathField.setEditable(false);
-        pathField.setStyle("-fx-font-size: 12px; -fx-pref-height: 32px;");
+        pathField.setStyle("-fx-font-size: 13px; -fx-pref-height: 34px;");
         HBox.setHgrow(pathField, Priority.ALWAYS);
 
         Button btnBrowse = new Button("Browse");
         btnBrowse.getStyleClass().add("btn-secondary");
-        btnBrowse.setStyle("-fx-font-size: 12px; -fx-padding: 4 12 4 12;");
+        btnBrowse.setStyle("-fx-font-size: 13px; -fx-padding: 4 14 4 14;");
         btnBrowse.setOnAction(e -> {
             DirectoryChooser dc = new DirectoryChooser();
             dc.setTitle("Select " + titleText);

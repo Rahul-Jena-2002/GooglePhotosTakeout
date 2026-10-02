@@ -57,7 +57,7 @@ public class SidebarNav extends VBox {
         VBox toolsSection = new VBox(4);
         Label toolsLabel = new Label("PHOTO TOOLS");
         toolsLabel.getStyleClass().add("nav-section-label");
-        toolsLabel.setStyle("-fx-font-size: 11px; -fx-font-weight: 700; -fx-letter-spacing: 0.5px; -fx-padding: 4 8 4 8;");
+        toolsLabel.setStyle("-fx-font-size: 12px; -fx-font-weight: 700; -fx-letter-spacing: 0.5px; -fx-padding: 4 8 4 8;");
         toolsSection.getChildren().add(toolsLabel);
 
         Button btnFixPhotos = createNavButton(WorkspaceType.TAKEOUT_RESTORE, UiIcons.RESTORE, "Restore Metadata");
@@ -72,7 +72,7 @@ public class SidebarNav extends VBox {
 
         Label label = new Label("SYSTEM");
         label.getStyleClass().add("nav-section-label");
-        label.setStyle("-fx-font-size: 11px; -fx-font-weight: 700; -fx-letter-spacing: 0.5px; -fx-padding: 8 8 4 8;");
+        label.setStyle("-fx-font-size: 12px; -fx-font-weight: 700; -fx-letter-spacing: 0.5px; -fx-padding: 8 8 4 8;");
         section.getChildren().add(label);
 
         Button btnHistory = createNavButton(WorkspaceType.HISTORY, UiIcons.HISTORY, "Activity History");
@@ -92,7 +92,7 @@ public class SidebarNav extends VBox {
         var icon = UiIcons.createSvgIcon(iconSvg, 16, "currentColor");
         btn.setGraphic(icon);
         btn.setGraphicTextGap(10);
-        btn.setStyle("-fx-font-size: 13px; -fx-font-weight: 500; -fx-padding: 7 12 7 12; -fx-background-radius: 6;");
+        btn.setStyle("-fx-font-size: 14px; -fx-font-weight: 500; -fx-padding: 8 12 8 12; -fx-background-radius: 6;");
 
         btn.setOnAction(e -> select(type, true));
         navButtons.put(type, btn);
@@ -125,11 +125,11 @@ public class SidebarNav extends VBox {
         trustRow.setAlignment(Pos.CENTER_LEFT);
         var lockIcon = UiIcons.createSvgIcon(UiIcons.LOCK, 13, "#10b981");
         Label trustTitle = new Label("Processed Locally");
-        trustTitle.setStyle("-fx-font-size: 12px; -fx-font-weight: 600; -fx-text-fill: #10b981;");
+        trustTitle.setStyle("-fx-font-size: 13px; -fx-font-weight: 600; -fx-text-fill: #10b981;");
         trustRow.getChildren().addAll(lockIcon, trustTitle);
 
         Label trustSubtitle = new Label("Your files remain on your device during local processing.");
-        trustSubtitle.setStyle("-fx-font-size: 11px;"); trustSubtitle.getStyleClass().add("trust-badge-text");
+        trustSubtitle.setStyle("-fx-font-size: 12px;"); trustSubtitle.getStyleClass().add("trust-badge-text");
         trustSubtitle.setWrapText(true);
 
         trustCard.getChildren().addAll(trustRow, trustSubtitle);

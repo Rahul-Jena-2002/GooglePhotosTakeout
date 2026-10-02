@@ -18,6 +18,7 @@
 
     /* Base Font & Canvas */
     -fx-font-family: "Segoe UI", "Inter", -apple-system, sans-serif;
+    -fx-font-size: 14px;
     -fx-base: #282A36;
     -fx-background-color: #282A36;
     -fx-text-fill: #F8F8F2;
@@ -38,13 +39,14 @@
 /* Global Typography & Sizing Standards (IntelliJ IDEA Inspired) */
 .page-title {
     -fx-font-family: "Segoe UI Semibold", "Segoe UI", sans-serif;
-    -fx-font-size: 20px;
+    -fx-font-size: 22px;
     -fx-font-weight: 600;
     -fx-text-fill: #F8F8F2;
 }
 
 .page-description {
     -fx-font-family: "Segoe UI", sans-serif;
+    -fx-font-size: 14px;
     -fx-font-weight: normal;
     -fx-text-fill: #A8ABB8;
 }
@@ -58,14 +60,14 @@
 
 .card-title {
     -fx-font-family: "Segoe UI Semibold", "Segoe UI", sans-serif;
-    -fx-font-size: 13.5px;
+    -fx-font-size: 15.5px;
     -fx-font-weight: bold;
     -fx-text-fill: #F8F8F2;
 }
 
 .card-subtitle {
     -fx-font-family: "Segoe UI", sans-serif;
-    -fx-font-size: 12px;
+    -fx-font-size: 13.5px;
     -fx-font-weight: normal;
     -fx-text-fill: #A8ABB8;
 }
@@ -96,7 +98,7 @@
 
 .nav-section-label {
     -fx-font-family: "Segoe UI Semibold", "Segoe UI", sans-serif;
-    -fx-font-size: 11px;
+    -fx-font-size: 12px;
     -fx-font-weight: bold;
     -fx-text-fill: #A8ABB8;
     -fx-padding: 6 8 3 8;

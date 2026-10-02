@@ -290,12 +290,22 @@ public class TakeoutRestoreView extends VBox {
 
         leftCol.getChildren().addAll(kpiDeck, srcBox, dstBox, actBox, progBox);
 
-        // Right Column: Restoration Options + Dedicated Storage & Hardware Card
+        // Right Column: Restoration Options (compact) + Dedicated Storage Card (outside at bottom)
         VBox rightCol = new VBox(10);
         VBox.setVgrow(rightCol, Priority.ALWAYS);
         rightCol.setPrefWidth(330);
         rightCol.setMinWidth(280);
-        rightCol.getChildren().add(buildUnifiedOptionsAndStorageCard());
+
+        VBox optionsCard = buildRestorationOptionsCard();
+        VBox.setVgrow(optionsCard, Priority.NEVER);
+
+        Region rightSpacer = new Region();
+        VBox.setVgrow(rightSpacer, Priority.ALWAYS);
+
+        VBox storageCard = buildDedicatedStorageCard();
+        VBox.setVgrow(storageCard, Priority.NEVER);
+
+        rightCol.getChildren().addAll(optionsCard, rightSpacer, storageCard);
 
         horizSplit.getItems().addAll(leftCol, rightCol);
         horizSplit.setDividerPositions(0.68);
@@ -328,7 +338,7 @@ public class TakeoutRestoreView extends VBox {
         btnFolder.getStyleClass().add("btn-secondary");
         btnFolder.setGraphic(UiIcons.createSvgIcon(UiIcons.FOLDER, 14, "currentColor"));
         btnFolder.setGraphicTextGap(7);
-        btnFolder.setMinWidth(Region.USE_PREF_SIZE);
+        btnFolder.setMinWidth(130);
         btnFolder.setStyle("-fx-font-size: 13.5px; -fx-font-weight: 500; -fx-pref-height: 36px; -fx-padding: 0 16 0 16;");
         btnFolder.setOnAction(e -> chooseSourceFolder());
 
@@ -336,7 +346,7 @@ public class TakeoutRestoreView extends VBox {
         btnZip.getStyleClass().add("btn-secondary");
         btnZip.setGraphic(UiIcons.createSvgIcon(UiIcons.ZIP, 14, "currentColor"));
         btnZip.setGraphicTextGap(7);
-        btnZip.setMinWidth(Region.USE_PREF_SIZE);
+        btnZip.setMinWidth(115);
         btnZip.setStyle("-fx-font-size: 13.5px; -fx-font-weight: 500; -fx-pref-height: 36px; -fx-padding: 0 14 0 14;");
         btnZip.setOnAction(e -> chooseSourceZip());
 
@@ -415,7 +425,7 @@ public class TakeoutRestoreView extends VBox {
         btnDest.getStyleClass().add("btn-secondary");
         btnDest.setGraphic(UiIcons.createSvgIcon(UiIcons.OUTPUT_FOLDER, 14, "currentColor"));
         btnDest.setGraphicTextGap(7);
-        btnDest.setMinWidth(Region.USE_PREF_SIZE);
+        btnDest.setMinWidth(155);
         btnDest.setStyle("-fx-font-size: 13.5px; -fx-font-weight: 500; -fx-pref-height: 36px; -fx-padding: 0 16 0 16;");
         btnDest.setOnAction(e -> chooseDestinationFolder());
 
@@ -478,22 +488,22 @@ public class TakeoutRestoreView extends VBox {
         btnStart.getStyleClass().add("btn-primary");
         btnStart.setGraphic(UiIcons.createSvgIcon(UiIcons.PLAY, 14, "currentColor"));
         btnStart.setGraphicTextGap(8);
-        btnStart.setMinWidth(Region.USE_PREF_SIZE);
-        btnStart.setStyle("-fx-font-size: 13.5px; -fx-font-weight: 600; -fx-pref-height: 36px; -fx-padding: 0 20 0 20; -fx-background-radius: 6;");
+        btnStart.setMinWidth(140);
+        btnStart.setStyle("-fx-font-size: 13.5px; -fx-font-weight: 600; -fx-pref-height: 36px; -fx-padding: 0 18 0 18; -fx-background-radius: 6;");
         btnStart.setOnAction(e -> handleStart());
 
         btnScan.getStyleClass().add("btn-secondary");
         btnScan.setGraphic(UiIcons.createSvgIcon(UiIcons.SEARCH, 13, "currentColor"));
         btnScan.setGraphicTextGap(7);
-        btnScan.setMinWidth(Region.USE_PREF_SIZE);
+        btnScan.setMinWidth(120);
         btnScan.setStyle("-fx-font-size: 13.5px; -fx-font-weight: 500; -fx-pref-height: 36px; -fx-padding: 0 14 0 14; -fx-background-radius: 6;");
-        btnScan.setTooltip(new Tooltip("Scan and match JSON sidecars across archive without writing to disk."));
+        btnScan.setTooltip(new Tooltip("Scan archive and preview matched items without writing to disk."));
         btnScan.setOnAction(e -> handleScan());
 
         btnPause.getStyleClass().add("btn-secondary");
         btnPause.setGraphic(UiIcons.createSvgIcon(UiIcons.PAUSE, 12, "currentColor"));
         btnPause.setGraphicTextGap(6);
-        btnPause.setMinWidth(Region.USE_PREF_SIZE);
+        btnPause.setMinWidth(80);
         btnPause.setStyle("-fx-font-size: 13.5px; -fx-font-weight: 500; -fx-pref-height: 36px; -fx-padding: 0 12 0 12; -fx-background-radius: 6;");
         btnPause.setDisable(true);
         btnPause.setOnAction(e -> handlePause());
@@ -502,7 +512,7 @@ public class TakeoutRestoreView extends VBox {
         btnCancel.setText("Stop");
         btnCancel.setGraphic(UiIcons.createSvgIcon(UiIcons.STOP, 11, "currentColor"));
         btnCancel.setGraphicTextGap(6);
-        btnCancel.setMinWidth(Region.USE_PREF_SIZE);
+        btnCancel.setMinWidth(75);
         btnCancel.setStyle("-fx-font-size: 13.5px; -fx-font-weight: 500; -fx-pref-height: 36px; -fx-padding: 0 12 0 12; -fx-background-radius: 6;");
         btnCancel.setDisable(true);
         btnCancel.setOnAction(e -> handleCancel());
@@ -510,7 +520,7 @@ public class TakeoutRestoreView extends VBox {
         btnOpenOutput.getStyleClass().add("btn-secondary");
         btnOpenOutput.setGraphic(UiIcons.createSvgIcon(UiIcons.OUTPUT_FOLDER, 13, "currentColor"));
         btnOpenOutput.setGraphicTextGap(7);
-        btnOpenOutput.setMinWidth(Region.USE_PREF_SIZE);
+        btnOpenOutput.setMinWidth(150);
         btnOpenOutput.setStyle("-fx-font-size: 13.5px; -fx-font-weight: 500; -fx-pref-height: 36px; -fx-padding: 0 14 0 14; -fx-background-radius: 6;");
         btnOpenOutput.setOnAction(e -> handleOpenOutput());
 
@@ -581,61 +591,69 @@ public class TakeoutRestoreView extends VBox {
         return chip;
     }
 
-    private VBox buildUnifiedOptionsAndStorageCard() {
-        VBox card = new VBox(8);
+    private VBox buildRestorationOptionsCard() {
+        VBox card = new VBox(6);
         card.getStyleClass().add("inner-container");
         card.setStyle("-fx-background-radius: 8; -fx-border-radius: 8; -fx-border-width: 1; -fx-padding: 10 12 10 12;");
-        VBox.setVgrow(card, Priority.ALWAYS);
 
-        // --- PART 1: RESTORATION OPTIONS ---
+        // Header
         HBox titleRow = new HBox(8);
         titleRow.setAlignment(Pos.CENTER_LEFT);
         Label title = new Label("RESTORATION OPTIONS");
-        title.setStyle("-fx-font-size: 12px; -fx-font-weight: 700; -fx-letter-spacing: 0.5px;");
+        title.setStyle("-fx-font-size: 12.5px; -fx-font-weight: 700; -fx-letter-spacing: 0.5px;");
         title.getStyleClass().add("card-title");
         titleRow.getChildren().addAll(UiIcons.createSvgIcon(UiIcons.SETTINGS, 13, "currentColor"), title);
 
         // Group 1: Output & Structure
         Label outputGroupLabel = new Label("Output & Structure");
         outputGroupLabel.getStyleClass().addAll("section-sub-title", "text-muted");
-        outputGroupLabel.setStyle("-fx-font-size: 12px; -fx-font-weight: 700; -fx-text-transform: uppercase; -fx-padding: 4 0 2 0;");
+        outputGroupLabel.setStyle("-fx-font-size: 12.5px; -fx-font-weight: 700; -fx-text-transform: uppercase; -fx-padding: 4 0 2 0;");
 
         organizeMonthCheck.getStyleClass().add("text-primary");
-        organizeMonthCheck.setStyle("-fx-font-size: 13px; -fx-cursor: hand;");
+        organizeMonthCheck.setStyle("-fx-font-size: 13.5px; -fx-cursor: hand;");
         splitVolumesCheck.getStyleClass().add("text-primary");
-        splitVolumesCheck.setStyle("-fx-font-size: 13px; -fx-cursor: hand;");
+        splitVolumesCheck.setStyle("-fx-font-size: 13.5px; -fx-cursor: hand;");
 
         // Group 2: System & Power
         Label systemGroupLabel = new Label("System & Power");
         systemGroupLabel.getStyleClass().addAll("section-sub-title", "text-muted");
-        systemGroupLabel.setStyle("-fx-font-size: 12px; -fx-font-weight: 700; -fx-text-transform: uppercase; -fx-padding: 6 0 2 0;");
+        systemGroupLabel.setStyle("-fx-font-size: 12.5px; -fx-font-weight: 700; -fx-text-transform: uppercase; -fx-padding: 6 0 2 0;");
 
         keepAwakeCheck.getStyleClass().add("text-primary");
-        keepAwakeCheck.setStyle("-fx-font-size: 13px; -fx-cursor: hand;");
+        keepAwakeCheck.setStyle("-fx-font-size: 13.5px; -fx-cursor: hand;");
         shutdownAfterCheck.getStyleClass().add("text-primary");
-        shutdownAfterCheck.setStyle("-fx-font-size: 13px; -fx-cursor: hand;");
+        shutdownAfterCheck.setStyle("-fx-font-size: 13.5px; -fx-cursor: hand;");
 
-        // Mid-spacer and subtle divider between options and storage telemetry
-        Region midSpacer = new Region();
-        VBox.setVgrow(midSpacer, Priority.ALWAYS);
+        card.getChildren().addAll(
+                titleRow,
+                outputGroupLabel,
+                organizeMonthCheck,
+                splitVolumesCheck,
+                systemGroupLabel,
+                keepAwakeCheck,
+                shutdownAfterCheck
+        );
+        return card;
+    }
 
-        Separator sep = new Separator();
-        sep.setStyle("-fx-opacity: 0.25; -fx-padding: 2 0 2 0;");
+    private VBox buildDedicatedStorageCard() {
+        VBox card = new VBox(8);
+        card.getStyleClass().add("inner-container");
+        card.setStyle("-fx-background-radius: 8; -fx-border-radius: 8; -fx-border-width: 1; -fx-padding: 10 12 10 12;");
 
-        // --- PART 2: STORAGE TELEMETRY (TWO SMALL SIDE-BY-SIDE CARDS: done & required) ---
         HBox storeHeaderRow = new HBox(8);
         storeHeaderRow.setAlignment(Pos.CENTER_LEFT);
 
         Node icon = UiIcons.createSvgIcon(UiIcons.HARD_DRIVE, 13, "currentColor");
         Label storeTitle = new Label("STORAGE");
-        storeTitle.setStyle("-fx-font-size: 12px; -fx-font-weight: 700; -fx-letter-spacing: 0.5px;");
+        storeTitle.setStyle("-fx-font-size: 12.5px; -fx-font-weight: 700; -fx-letter-spacing: 0.5px;");
         storeTitle.getStyleClass().add("card-title");
 
         Region spStorage = new Region();
         HBox.setHgrow(spStorage, Priority.ALWAYS);
 
         Label localPill = new Label("100% OFFLINE");
-        localPill.setStyle("-fx-font-size: 9.5px; -fx-font-weight: 700; -fx-text-fill: #10B981; -fx-background-color: rgba(16, 185, 129, 0.12); -fx-padding: 2 6 2 6; -fx-background-radius: 4;");
+        localPill.setStyle("-fx-font-size: 10px; -fx-font-weight: 700; -fx-text-fill: #10B981; -fx-background-color: rgba(16, 185, 129, 0.12); -fx-padding: 2 6 2 6; -fx-background-radius: 4;");
 
         storeHeaderRow.getChildren().addAll(icon, storeTitle, spStorage, localPill);
 
@@ -647,20 +665,7 @@ public class TakeoutRestoreView extends VBox {
         VBox reqCard = createStorageSubCard(storageReqValue, storageReqLabel);
 
         dualCardsRow.getChildren().addAll(doneCard, reqCard);
-
-        card.getChildren().addAll(
-                titleRow,
-                outputGroupLabel,
-                organizeMonthCheck,
-                splitVolumesCheck,
-                systemGroupLabel,
-                keepAwakeCheck,
-                shutdownAfterCheck,
-                midSpacer,
-                sep,
-                storeHeaderRow,
-                dualCardsRow
-        );
+        card.getChildren().addAll(storeHeaderRow, dualCardsRow);
         return card;
     }
 
