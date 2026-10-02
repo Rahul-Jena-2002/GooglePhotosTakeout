@@ -36,13 +36,10 @@ jobs:
         include:
           - os: windows-latest
             primary_artifact: TakeoutFix.exe
-            extra_artifacts: TakeoutFix-payload.zip
           - os: macos-latest
             primary_artifact: TakeoutFix.dmg
-            extra_artifacts: ''
           - os: ubuntu-latest
             primary_artifact: TakeoutFix.AppImage
-            extra_artifacts: ''
 
     steps:
       - name: Checkout Code
@@ -122,24 +119,27 @@ jobs:
             --dest "dist-app" `
             --verbose
 
-          # 2. Package TakeoutFix-payload.zip and Compile Fixed-Hash TakeoutFix.exe
-          Write-Host "Creating TakeoutFix-payload.zip..."
-          Compress-Archive -Path "dist-app\TakeoutFix\*" -DestinationPath "TakeoutFix-payload.zip" -Force
+          # 2. Package into Direct Standalone Single-File EXE (Zero-Install, Runs Immediately on Double-Click)
+          Write-Host "Creating Direct Standalone TakeoutFix.exe (No Installation Wizard)..."
+          $payloadZip = "dist-app\payload.zip"
+          Compress-Archive -Path "dist-app\TakeoutFix\*" -DestinationPath $payloadZip -Force
 
-          Write-Host "Compiling Fixed-Hash Launcher TakeoutFix.exe (Permanent SmartScreen Reputation)..."
           $cscPath = "C:\Windows\Microsoft.NET\Framework64\v4.0.30319\csc.exe"
           & $cscPath `
             "/target:winexe" `
             "/platform:x64" `
             "/win32icon:takeoutfix\icons\icon.ico" `
             "/win32manifest:takeoutfix\launcher\app.manifest" `
-            "/reference:System.IO.Compression.dll,System.IO.Compression.FileSystem.dll,System.Windows.Forms.dll,System.Drawing.dll" `
+            "/reference:System.IO.Compression.dll,System.IO.Compression.FileSystem.dll,System.Windows.Forms.dll" `
+            "/resource:$payloadZip,payload.zip" `
             "/out:TakeoutFix.exe" `
             "takeoutfix\launcher\SingleFileLauncher.cs"
 
           if (-not (Test-Path "TakeoutFix.exe")) {
             throw "TakeoutFix.exe compilation failed."
           }
+
+          Remove-Item $payloadZip -Force
 
           # 3. Authenticode Code-Signing (Sets Publisher identity and DigiCert timestamp)
           if ($env:SIGNING_CERT_B64 -and $env:SIGNING_CERT_B64 -ne '') {
@@ -289,9 +289,7 @@ jobs:
         continue-on-error: true
         with:
           name: java-${{ matrix.os }}
-          path: |
-            ${{ matrix.primary_artifact }}
-            ${{ matrix.extra_artifacts }}
+          path: ${{ matrix.primary_artifact }}
           retention-days: 1
 
       - name: Attach Binaries to GitHub Release
@@ -299,9 +297,7 @@ jobs:
         if: (startsWith(github.ref, 'refs/tags/') || github.event_name == 'release' || github.event_name == 'workflow_dispatch') && github.event_name != 'pull_request'
         with:
           tag_name: ${{ github.event.inputs.tag_name || github.ref_name || 'latest' }}
-          files: |
-            ${{ matrix.primary_artifact }}
-            ${{ matrix.extra_artifacts }}
+          files: ${{ matrix.primary_artifact }}
 
   # ════════════════════════════════════════════════════════════════════════════
   # 2. RELEASE RETENTION POLICY: Retain current + previous 9 releases (10 total)
