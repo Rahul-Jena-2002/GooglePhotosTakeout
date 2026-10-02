@@ -91,14 +91,14 @@ public class TakeoutRestoreView extends VBox {
     private final CheckBox smartInterpolationCheck = new CheckBox("Smart Timestamp Interpolation");
     private final CheckBox keepAwakeCheck = new CheckBox("Keep system awake while processing");
     private final CheckBox splitVolumesCheck = new CheckBox("Compress output into 2GB ZIP volumes");
-    private final Label storageStatusLabel = new Label("Target Drive: Select output folder to verify capacity");
 
-    // Storage & Drive Telemetry (Dedicated Right Column Storage Card)
+    // Storage Telemetry (Side-by-side metric cards: done and required)
     private long sourceSizeBytes = 0;
-    private final Label driveMountLabel = new Label("No destination selected");
-    private final Label driveCapacityLabel = new Label("Select destination folder to monitor drive capacity");
-    private final ProgressBar driveUsageBar = new ProgressBar(0.0);
-    private final Label spaceReqLabel = new Label("Awaiting destination selection");
+    private long restoredBytes = 0;
+    private final Label storageDoneValue = new Label("-- / --");
+    private final Label storageDoneLabel = new Label("done");
+    private final Label storageReqValue = new Label("-- / --");
+    private final Label storageReqLabel = new Label("required");
 
     // Logs & Diagnostics Model
     private static class LogEntry {
@@ -262,17 +262,19 @@ public class TakeoutRestoreView extends VBox {
     }
 
     private void updateRestoredBytes(long bytes) {
+        this.restoredBytes = bytes;
         if (bytes <= 0) {
             kpiRestoredGb.setText("0.00 GB");
-            return;
-        }
-        double gb = bytes / (1024.0 * 1024.0 * 1024.0);
-        if (gb >= 0.01) {
-            kpiRestoredGb.setText(String.format(java.util.Locale.US, "%.2f GB", gb));
         } else {
-            double mb = bytes / (1024.0 * 1024.0);
-            kpiRestoredGb.setText(String.format(java.util.Locale.US, "%.1f MB", mb));
+            double gb = bytes / (1024.0 * 1024.0 * 1024.0);
+            if (gb >= 0.01) {
+                kpiRestoredGb.setText(String.format(java.util.Locale.US, "%.2f GB", gb));
+            } else {
+                double mb = bytes / (1024.0 * 1024.0);
+                kpiRestoredGb.setText(String.format(java.util.Locale.US, "%.1f MB", mb));
+            }
         }
+        updateStorageDisplay();
     }
 
     private VBox createSemanticKpiCard(String labelText, Label valLabel, String subText, String iconSvg) {
@@ -674,19 +676,19 @@ public class TakeoutRestoreView extends VBox {
         splitVolumesCheck.getStyleClass().add("text-primary");
         keepAwakeCheck.getStyleClass().add("text-primary");
 
-        // Mid-spacer and subtle divider between options and hardware telemetry
+        // Mid-spacer and subtle divider between options and storage telemetry
         Region midSpacer = new Region();
         VBox.setVgrow(midSpacer, Priority.ALWAYS);
 
         Separator sep = new Separator();
         sep.setStyle("-fx-opacity: 0.25; -fx-padding: 2 0 2 0;");
 
-        // --- PART 2: TARGET STORAGE & HARDWARE ---
+        // --- PART 2: STORAGE TELEMETRY (TWO SMALL SIDE-BY-SIDE CARDS: done & required) ---
         HBox storeHeaderRow = new HBox(8);
         storeHeaderRow.setAlignment(Pos.CENTER_LEFT);
 
         Node icon = UiIcons.createSvgIcon(UiIcons.HARD_DRIVE, 13, "currentColor");
-        Label storeTitle = new Label("TARGET STORAGE & HARDWARE");
+        Label storeTitle = new Label("STORAGE");
         storeTitle.setStyle("-fx-font-size: 12px; -fx-font-weight: 700; -fx-letter-spacing: 0.5px;");
         storeTitle.getStyleClass().add("card-title");
 
@@ -698,49 +700,14 @@ public class TakeoutRestoreView extends VBox {
 
         storeHeaderRow.getChildren().addAll(icon, storeTitle, spStorage, localPill);
 
-        // Drive Mount & Capacity Box
-        VBox driveBox = new VBox(5);
-        driveBox.getStyleClass().add("sub-card");
-        driveBox.setStyle("-fx-background-radius: 6; -fx-border-radius: 6; -fx-border-width: 1; -fx-padding: 7 10 7 10;");
+        // Two small cards side-by-side: [ done ] and [ required ]
+        HBox dualCardsRow = new HBox(8);
+        dualCardsRow.setAlignment(Pos.CENTER);
 
-        HBox driveTitleRow = new HBox(6);
-        driveTitleRow.setAlignment(Pos.CENTER_LEFT);
-        driveMountLabel.getStyleClass().add("text-primary");
+        VBox doneCard = createStorageSubCard(storageDoneValue, storageDoneLabel);
+        VBox reqCard = createStorageSubCard(storageReqValue, storageReqLabel);
 
-        Region spDrive = new Region();
-        HBox.setHgrow(spDrive, Priority.ALWAYS);
-
-        driveCapacityLabel.getStyleClass().add("text-muted");
-
-        driveTitleRow.getChildren().addAll(driveMountLabel, spDrive);
-
-        driveUsageBar.setMaxWidth(Double.MAX_VALUE);
-        driveUsageBar.setPrefHeight(6);
-
-        driveBox.getChildren().addAll(driveTitleRow, driveCapacityLabel, driveUsageBar, spaceReqLabel);
-
-        // System Readiness & Engine Block
-        VBox engineBox = new VBox(4);
-        engineBox.getStyleClass().add("sub-card");
-        engineBox.setStyle("-fx-background-radius: 6; -fx-border-radius: 6; -fx-border-width: 1; -fx-padding: 6 10 6 10;");
-
-        HBox engRow = new HBox(6);
-        engRow.setAlignment(Pos.CENTER_LEFT);
-        Circle engDot = new Circle(3.5, Color.web("#10B981"));
-        Label engLbl = new Label("Native ExifTool v13.x Embedded • Ready");
-        engLbl.setStyle("-fx-font-size: 11px; -fx-font-weight: 600;");
-        engLbl.getStyleClass().add("text-primary");
-        engRow.getChildren().addAll(engDot, engLbl);
-
-        HBox chkRow = new HBox(6);
-        chkRow.setAlignment(Pos.CENTER_LEFT);
-        Circle chkDot = new Circle(3.5, Color.web("#8B5CF6"));
-        Label chkLbl = new Label("Atomic Checkpointing • Auto-Resume Enabled");
-        chkLbl.setStyle("-fx-font-size: 10.5px; -fx-font-weight: 500;");
-        chkLbl.getStyleClass().add("text-muted");
-        chkRow.getChildren().addAll(chkDot, chkLbl);
-
-        engineBox.getChildren().addAll(engRow, chkRow);
+        dualCardsRow.getChildren().addAll(doneCard, reqCard);
 
         card.getChildren().addAll(
                 titleRow,
@@ -754,72 +721,65 @@ public class TakeoutRestoreView extends VBox {
                 midSpacer,
                 sep,
                 storeHeaderRow,
-                driveBox,
-                engineBox
+                dualCardsRow
         );
         return card;
     }
 
+    private VBox createStorageSubCard(Label valueLabel, Label tagLabel) {
+        VBox card = new VBox(3);
+        card.getStyleClass().add("sub-card");
+        card.setAlignment(Pos.CENTER);
+        card.setStyle("-fx-background-radius: 6; -fx-border-radius: 6; -fx-border-width: 1; -fx-padding: 10 6 10 6;");
+        HBox.setHgrow(card, Priority.ALWAYS);
+
+        valueLabel.setStyle("-fx-font-family: 'JetBrains Mono', 'Cascadia Code', 'Consolas', monospace; -fx-font-size: 12.5px; -fx-font-weight: 700; -fx-text-alignment: center;");
+        valueLabel.getStyleClass().add("text-primary");
+        valueLabel.setAlignment(Pos.CENTER);
+
+        tagLabel.setStyle("-fx-font-size: 11px; -fx-font-weight: 600; -fx-opacity: 0.75; -fx-text-alignment: center;");
+        tagLabel.getStyleClass().add("text-muted");
+        tagLabel.setAlignment(Pos.CENTER);
+
+        card.getChildren().addAll(valueLabel, tagLabel);
+        return card;
+    }
+
     private void updateStorageDisplay() {
-        if (selectedOutput == null) {
-            driveMountLabel.setText("No destination selected");
-            driveMountLabel.setStyle("-fx-font-size: 12px; -fx-font-weight: 600;");
-            driveCapacityLabel.setText("Select destination folder to monitor drive capacity");
-            driveCapacityLabel.setStyle("-fx-font-size: 11px;");
-            driveUsageBar.setProgress(0.0);
-            spaceReqLabel.setText("Awaiting destination selection");
-            spaceReqLabel.setStyle("-fx-font-size: 11px; -fx-text-fill: #9294A3;");
-            storageStatusLabel.setText("Target Drive: Select output folder to verify capacity");
-            return;
+        String doneLeft = formatStorageGb(restoredBytes);
+        String doneRight = sourceSizeBytes > 0 ? formatStorageGb(sourceSizeBytes) : "--";
+        storageDoneValue.setText(doneLeft + " / " + doneRight);
+
+        long freeBytes = 0;
+        if (selectedOutput != null) {
+            try {
+                freeBytes = selectedOutput.getUsableSpace();
+            } catch (Exception ignored) {}
         }
 
-        try {
-            long totalBytes = selectedOutput.getTotalSpace();
-            long freeBytes = selectedOutput.getUsableSpace();
-            long usedBytes = Math.max(0, totalBytes - freeBytes);
+        String reqLeft = sourceSizeBytes > 0 ? formatStorageGb(sourceSizeBytes) : "--";
+        String reqRight = freeBytes > 0 ? formatStorageGb(freeBytes) : "--";
+        storageReqValue.setText(reqLeft + " / " + reqRight);
 
-            double freeGb = freeBytes / (1024.0 * 1024.0 * 1024.0);
-            double totalGb = totalBytes / (1024.0 * 1024.0 * 1024.0);
-            double usedPercent = (totalBytes > 0) ? (double) usedBytes / totalBytes : 0.0;
-
-            String rootPath = (selectedOutput.toPath().getRoot() != null) ? selectedOutput.toPath().getRoot().toString() : selectedOutput.getAbsolutePath();
-            driveMountLabel.setText(String.format(java.util.Locale.US, "Drive %s • %,.1f GB Free", rootPath, freeGb));
-            driveMountLabel.setStyle("-fx-font-size: 12px; -fx-font-weight: 700;");
-
-            driveCapacityLabel.setText(String.format(java.util.Locale.US, "Used: %,.1f GB / %,.1f GB (%,.0f%% Used)", (usedBytes / (1024.0 * 1024.0 * 1024.0)), totalGb, usedPercent * 100.0));
-            driveCapacityLabel.setStyle("-fx-font-size: 11px;");
-
-            driveUsageBar.setProgress(usedPercent);
-            if (usedPercent > 0.90) {
-                driveUsageBar.setStyle("-fx-accent: #EF4444;");
-            } else if (usedPercent > 0.75) {
-                driveUsageBar.setStyle("-fx-accent: #F59E0B;");
+        if (sourceSizeBytes > 0 && freeBytes > 0) {
+            if (freeBytes < sourceSizeBytes) {
+                storageReqValue.setStyle("-fx-font-family: 'JetBrains Mono', 'Cascadia Code', 'Consolas', monospace; -fx-font-size: 12.5px; -fx-font-weight: 700; -fx-text-fill: #EF4444; -fx-text-alignment: center;");
             } else {
-                driveUsageBar.setStyle("-fx-accent: #10B981;");
+                storageReqValue.setStyle("-fx-font-family: 'JetBrains Mono', 'Cascadia Code', 'Consolas', monospace; -fx-font-size: 12.5px; -fx-font-weight: 700; -fx-text-fill: #10B981; -fx-text-alignment: center;");
             }
+        } else {
+            storageReqValue.setStyle("-fx-font-family: 'JetBrains Mono', 'Cascadia Code', 'Consolas', monospace; -fx-font-size: 12.5px; -fx-font-weight: 700; -fx-text-alignment: center;");
+        }
+    }
 
-            storageStatusLabel.setText(String.format(java.util.Locale.US, "Target Drive: %,.0f GB free space", freeGb));
-
-            // Space Requirement Analysis vs Source Takeout Archive
-            if (sourceSizeBytes > 0) {
-                double reqGb = (sourceSizeBytes * 1.15) / (1024.0 * 1024.0 * 1024.0);
-                if (freeBytes >= (sourceSizeBytes * 1.15)) {
-                    double headroomGb = freeGb - reqGb;
-                    spaceReqLabel.setText(String.format(java.util.Locale.US, "✓ Sufficient space: ~%,.1f GB needed (%,.1f GB headroom)", reqGb, headroomGb));
-                    spaceReqLabel.setStyle("-fx-font-size: 11px; -fx-font-weight: 600; -fx-text-fill: #10B981;");
-                } else {
-                    spaceReqLabel.setText(String.format(java.util.Locale.US, "⚠️ Low space: ~%,.1f GB required, but only %,.1f GB free!", reqGb, freeGb));
-                    spaceReqLabel.setStyle("-fx-font-size: 11px; -fx-font-weight: 700; -fx-text-fill: #EF4444;");
-                }
-            } else {
-                spaceReqLabel.setText("Ready: Select or drop Takeout archive to calculate headroom");
-                spaceReqLabel.setStyle("-fx-font-size: 11px; -fx-text-fill: #9294A3;");
-            }
-        } catch (Exception e) {
-            driveMountLabel.setText("Selected: " + selectedOutput.getName());
-            driveCapacityLabel.setText("Capacity check unavailable");
-            driveUsageBar.setProgress(0.0);
-            spaceReqLabel.setText("Output folder ready");
+    private String formatStorageGb(long bytes) {
+        if (bytes <= 0) return "0 GB";
+        double gb = bytes / (1024.0 * 1024.0 * 1024.0);
+        if (gb >= 1.0) {
+            return String.format(java.util.Locale.US, "%.1f GB", gb);
+        } else {
+            double mb = bytes / (1024.0 * 1024.0);
+            return String.format(java.util.Locale.US, "%.0f MB", mb);
         }
     }
 
@@ -1078,6 +1038,8 @@ public class TakeoutRestoreView extends VBox {
         kpiRestoredGb.setText("0.00 GB");
         kpiNeedsReview.setText("0");
         kpiFailed.setText("0");
+        restoredBytes = 0;
+        updateStorageDisplay();
         updateLogViewVisibility();
     }
 
