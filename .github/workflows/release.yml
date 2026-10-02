@@ -242,25 +242,7 @@ jobs:
             --vendor "TakeoutFix" \
             --verbose
 
-          # 2. Build standard .deb package using alien or jpackage
-          if jpackage \
-            --type deb \
-            --app-image "dist-linux/TakeoutFix" \
-            --name "takeoutfix" \
-            --icon "takeoutfix/icons/icon.png" \
-            --dest "dist-deb" \
-            --app-version "$APP_VER" \
-            --vendor "TakeoutFix" \
-            --linux-menu-group "Utility" \
-            --linux-shortcut \
-            --verbose 2>&1; then
-            DEB_FILE=$(find dist-deb -name "*.deb" | head -n 1)
-            if [ -n "$DEB_FILE" ]; then
-              cp "$DEB_FILE" ./TakeoutFix.deb
-            fi
-          fi
-
-          # 3. Build standalone AppImage using appimagetool
+          # 2. Build standalone AppImage using appimagetool
           rm -rf AppDir
           mkdir -p AppDir/usr AppDir/usr/share/icons/hicolor/256x256/apps AppDir/usr/share/applications
           cp -r dist-linux/TakeoutFix/* AppDir/usr/
@@ -300,20 +282,14 @@ jobs:
             ARCH=x86_64 ./appimagetool --appimage-extract-and-run AppDir ./TakeoutFix.AppImage
           }
           chmod +x ./TakeoutFix.AppImage
-
-          # 4. Portable tar.gz archive (runs on any Linux without FUSE or root privileges)
-          tar -czf ./TakeoutFix-Linux-Portable.tar.gz -C dist-linux TakeoutFix
-          echo "Generated: AppImage, DEB package, and Portable tar.gz for Linux"
+          echo "Generated: TakeoutFix.AppImage for Linux"
 
       - name: Upload Java Artifact
         uses: actions/upload-artifact@v4
         continue-on-error: true
         with:
           name: java-${{ matrix.os }}
-          path: |
-            ${{ matrix.primary_artifact }}
-            *.deb
-            *.tar.gz
+          path: ${{ matrix.primary_artifact }}
           retention-days: 1
 
       - name: Attach Binaries to GitHub Release
@@ -321,10 +297,7 @@ jobs:
         if: (startsWith(github.ref, 'refs/tags/') || github.event_name == 'release' || github.event_name == 'workflow_dispatch') && github.event_name != 'pull_request'
         with:
           tag_name: ${{ github.event.inputs.tag_name || github.ref_name || 'latest' }}
-          files: |
-            ${{ matrix.primary_artifact }}
-            *.deb
-            *.tar.gz
+          files: ${{ matrix.primary_artifact }}
 
   # ════════════════════════════════════════════════════════════════════════════
   # 2. RELEASE RETENTION POLICY: Retain current + previous 9 releases (10 total)
