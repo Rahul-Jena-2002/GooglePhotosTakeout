@@ -18,7 +18,6 @@
 
     /* Base Font & Canvas */
     -fx-font-family: "Segoe UI", "Inter", -apple-system, sans-serif;
-    -fx-font-size: 13px;
     -fx-base: #F7F8FA;
     -fx-background-color: #F7F8FA;
     -fx-text-fill: #1F2328;
@@ -46,7 +45,6 @@
 
 .page-description {
     -fx-font-family: "Segoe UI", sans-serif;
-    -fx-font-size: 13px;
     -fx-font-weight: normal;
     -fx-text-fill: #6C707E;
 }
@@ -116,7 +114,6 @@
 .sidebar-item, .nav-button {
     -fx-background-color: transparent;
     -fx-text-fill: #1F2328;
-    -fx-font-size: 13px;
     -fx-font-weight: normal;
     -fx-pref-height: 30px;
     -fx-alignment: CENTER_LEFT;
@@ -527,7 +524,6 @@
     -fx-prompt-text-fill: #6C707E;
     -fx-padding: 5 10 5 10;
     -fx-pref-height: 30px;
-    -fx-font-size: 13px;
 }
 
 .text-field:focused {
@@ -573,7 +569,6 @@
 
 .combo-box .list-cell {
     -fx-text-fill: #1F2328;
-    -fx-font-size: 13px;
 }
 
 .combo-box-popup .list-view {
@@ -596,7 +591,6 @@
 
 .check-box {
     -fx-text-fill: #1F2328;
-    -fx-font-size: 13px;
 }
 
 .check-box .box {
@@ -624,7 +618,6 @@
 /* Radio Button */
 .radio-button {
     -fx-text-fill: #1F2328;
-    -fx-font-size: 13px;
 }
 
 .radio-button .radio {
@@ -695,7 +688,6 @@
 
 .table-cell {
     -fx-text-fill: #1F2328;
-    -fx-font-size: 13px;
     -fx-padding: 6 10 6 10;
 }
 
@@ -760,7 +752,6 @@
 
 .tab-pane .tab .tab-label {
     -fx-text-fill: #6C707E;
-    -fx-font-size: 13px;
     -fx-font-weight: normal;
 }
 
@@ -915,7 +906,6 @@
     -fx-border-color: #D1D4DA;
     -fx-border-radius: 4;
     -fx-background-radius: 4;
-    -fx-font-size: 13px;
     -fx-padding: 5 10 5 10;
 }
 .date-picker > .text-field:focused {

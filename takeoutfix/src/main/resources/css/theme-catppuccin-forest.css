@@ -589,7 +589,6 @@
     -fx-border-color: #2B3D35;
     -fx-border-radius: 4;
     -fx-background-radius: 4;
-    -fx-font-size: 13px;
     -fx-padding: 5 10 5 10;
 }
 .date-picker > .text-field:focused {

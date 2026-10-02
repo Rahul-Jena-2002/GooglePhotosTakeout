@@ -329,7 +329,7 @@ public class TakeoutRestoreView extends VBox {
         HBox actBox = buildActionButtonsBox();
         VBox progBox = buildProgressTelemetryBox();
 
-        leftCol.getChildren().addAll(kpiDeck, new Separator(), srcBox, new Separator(), dstBox, new Separator(), actBox, progBox);
+        leftCol.getChildren().addAll(kpiDeck, srcBox, dstBox, actBox, progBox);
 
         // Right Column: Restoration Options + Dedicated Storage & Hardware Card
         VBox rightCol = new VBox(10);
