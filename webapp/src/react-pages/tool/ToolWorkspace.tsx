@@ -16,7 +16,6 @@ import { AuthProvider, useAuth } from "../../contexts/AuthContext"
 import { ToastContainer } from "../../components/ui/toast"
 import { useToolPipeline } from "../../tool-workspace/useToolPipeline"
 import { RestorePanel } from "../../tool-workspace/RestorePanel"
-import { CommandSidebar } from "../../tool-workspace/CommandSidebar"
 import { ToolModals } from "../../tool-workspace/ToolModals"
 
 // ---------------------------------------------------------------------------
@@ -103,7 +102,7 @@ export function ToolWorkspaceContent() {
   // ── Main workspace layout ──────────────────────────────────────────────────
   return (
     <AdBlockGate>
-      <div className="tool-workspace-root w-full min-h-[calc(100vh-64px)] h-auto flex flex-col lg:flex-row bg-[#F6F6F8] dark:bg-[#101114] text-zinc-900 dark:text-zinc-100 transition-colors duration-150">
+      <div className="tool-workspace-root w-full min-h-[calc(100vh-64px)] h-auto flex flex-col bg-[#F6F6F8] dark:bg-[#101114] text-zinc-900 dark:text-zinc-100 transition-colors duration-150">
 
         {/* Main content: 4 tool tabs */}
         <RestorePanel
@@ -158,34 +157,17 @@ export function ToolWorkspaceContent() {
           handleSelectDupFolder={pipeline.handleSelectDupFolder}
           startDuplicateScan={pipeline.startDuplicateScan}
           zipMode={pipeline.zipMode}
+          elapsedSeconds={pipeline.elapsedSeconds}
+          speedMBs={pipeline.speedMBs}
+          downloadAuditLog={pipeline.downloadAuditLog}
+          downloadIssuesLog={pipeline.downloadIssuesLog}
+          sessionFiles={pipeline.sessionFiles}
+          sessionBytes={pipeline.sessionBytes}
+          currentUsedBytes={pipeline.currentUsedBytes}
+          formatByteSize={pipeline.formatByteSize}
         />
 
-        {/* Left sidebar: command center - ONLY visible on Restore tab */}
-        {pipeline.activeToolTab === 'restore' && (
-          <CommandSidebar
-            plan={pipeline.plan}
-            tierThresholds={pipeline.tierThresholds}
-            isFreePromoActive={pipeline.isFreePromoActive}
-            limitFiles={pipeline.limitFiles}
-            limitBytes={pipeline.limitBytes}
-            currentUsedFiles={pipeline.currentUsedFiles}
-            currentUsedBytes={pipeline.currentUsedBytes}
-            sessionFiles={pipeline.sessionFiles}
-            sessionBytes={pipeline.sessionBytes}
-            formatByteSize={pipeline.formatByteSize}
-            stats={pipeline.stats}
-            isProcessing={pipeline.isProcessing}
-            isPaused={pipeline.isPaused}
-            useDeepExif={pipeline.useDeepExif}
-            maxWorkers={pipeline.maxWorkers}
-            telemetryCpu={pipeline.telemetryCpu}
-            telemetryMem={pipeline.telemetryMem}
-            telemetryTabHeap={pipeline.telemetryTabHeap}
-            telemetryWorkers={pipeline.telemetryWorkers}
-            userData={pipeline.userData}
-            resetUserQuota={pipeline.resetUserQuota}
-          />
-        )}
+
 
       </div>
 

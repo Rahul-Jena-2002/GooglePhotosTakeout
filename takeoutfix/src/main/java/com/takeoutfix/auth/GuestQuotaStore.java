@@ -11,7 +11,7 @@ import java.util.prefs.Preferences;
 
 /**
  * Local persistent quota tracker for Guest Mode (unauthenticated trial).
- * Enforces a strict limit of 100 files or 1 GB (1,073,741,824 bytes).
+ * Enforces a strict limit of 1 GB (1,073,741,824 bytes).
  * Uses dual-vault redundancy: standard JSON file + OS Java Preferences
  * so deleting either one automatically self-heals from the other.
  */
@@ -19,8 +19,8 @@ public final class GuestQuotaStore {
 
     private static final Logger log = LoggerFactory.getLogger(GuestQuotaStore.class);
 
-    public static final int MAX_GUEST_FILES = 100;
-    public static final long MAX_GUEST_BYTES = 1024L * 1024L * 1024L; // 1 GB
+    public static final int MAX_GUEST_FILES = Integer.MAX_VALUE; // No file count limit in guest mode
+    public static final long MAX_GUEST_BYTES = 1024L * 1024L * 1024L; // 1 GB free trial limit
 
     private static final File CONFIG_DIR = new File(System.getProperty("user.home"), ".takeoutfix");
     private static final File GUEST_QUOTA_FILE = new File(CONFIG_DIR, "guest_quota.json");
@@ -112,7 +112,8 @@ public final class GuestQuotaStore {
     }
 
     public static synchronized boolean isExhausted() {
-        return false;
+        loadIfNeeded();
+        return cachedBytes >= MAX_GUEST_BYTES;
     }
 
     public static synchronized int getRemainingFiles() {
@@ -120,7 +121,8 @@ public final class GuestQuotaStore {
     }
 
     public static synchronized long getRemainingBytes() {
-        return Long.MAX_VALUE;
+        loadIfNeeded();
+        return Math.max(0L, MAX_GUEST_BYTES - cachedBytes);
     }
 
     public static synchronized void resetForTesting() {

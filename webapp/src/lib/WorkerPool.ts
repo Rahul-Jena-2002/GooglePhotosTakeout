@@ -17,22 +17,16 @@ export class WorkerPool {
   private maxWorkers: number;
   private terminated = false;
 
-  private workerType: 'piexifjs' | 'wasm';
-
-  constructor(maxWorkers: number, workerType: 'piexifjs' | 'wasm' = 'piexifjs') {
-    this.maxWorkers = maxWorkers;
-    this.workerType = workerType;
+  constructor(maxWorkers: number) {
+    this.maxWorkers = Math.max(1, maxWorkers);
     this.initPool();
   }
 
   private initPool() {
     for (let i = 0; i < this.maxWorkers; i++) {
       try {
-        // Vite and Astro support relative URL resolution for module workers
-        const workerUrl = this.workerType === 'wasm' 
-          ? new URL('../workers/WasmProcessWorker.ts', import.meta.url)
-          : new URL('../workers/ProcessWorker.ts', import.meta.url);
-          
+        // High-performance WebAssembly ExifTool + QuickTime atom injector worker
+        const workerUrl = new URL('../workers/WasmProcessWorker.ts', import.meta.url);
         const worker = new Worker(workerUrl, { type: 'module' });
         this.instances.push({ worker, busy: false });
       } catch (err) {
@@ -67,14 +61,11 @@ export class WorkerPool {
     const { worker } = idleInstance;
 
     worker.onmessage = (e: MessageEvent) => {
-      // Clear event listeners to prevent memory retention
       worker.onmessage = null;
       worker.onerror = null;
       idleInstance.busy = false;
 
       task.resolve(e.data);
-      
-      // Attempt to dispatch next queued task
       this.dispatch();
     };
 
@@ -83,22 +74,19 @@ export class WorkerPool {
       worker.onerror = null;
       idleInstance.busy = false;
 
-      // Recycle the crashed worker to ensure future tasks run correctly
+      // Recycle crashed worker
       try {
         worker.terminate();
       } catch {}
 
       try {
-        const workerUrl = this.workerType === 'wasm' 
-          ? new URL('../workers/WasmProcessWorker.ts', import.meta.url)
-          : new URL('../workers/ProcessWorker.ts', import.meta.url);
+        const workerUrl = new URL('../workers/WasmProcessWorker.ts', import.meta.url);
         idleInstance.worker = new Worker(workerUrl, { type: 'module' });
       } catch (e) {
         console.error("Failed to recycle worker after crash:", e);
       }
 
       task.reject(err);
-      
       this.dispatch();
     };
 

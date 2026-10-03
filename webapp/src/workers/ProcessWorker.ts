@@ -1,39 +1,45 @@
-import { injectExifDate } from '../services/restoration/ExifRestorer';
-import { injectImageExif } from '../services/restoration/DeepExifRestorer';
+import { injectWasmExif } from '../services/restoration/WasmExifRestorer';
 import { injectMp4CreationTime, isVideoFilename } from '../services/restoration/VideoMetadataRestorer';
+
+// Polyfill window & document in worker context for zeroperl WebAssembly
+if (typeof self !== 'undefined') {
+  if (typeof (self as any).window === 'undefined') {
+    (self as any).window = self;
+  }
+  if (typeof (self as any).document === 'undefined') {
+    (self as any).document = {
+      createElement: () => ({}),
+      head: { appendChild: () => {} },
+      body: { appendChild: () => {} }
+    };
+  }
+}
 
 self.onmessage = async (e: MessageEvent) => {
   const { action, payload } = e.data || {};
   if (!action) return;
 
-  if (action === 'inject_exif' || action === 'inject_video') {
+  if (action === 'inject_wasm' || action === 'inject_video' || action === 'inject_exif') {
     const { buffer, epochSec, lat, lng, filename, description, people, albumName, type } = payload;
     try {
       const isVideo = type === 'video' || (filename && isVideoFilename(filename));
+      let resultBuffer: ArrayBuffer;
 
       if (isVideo) {
-        // Direct in-memory MP4/MOV QuickTime atom injection
-        const resultBuffer = injectMp4CreationTime(buffer, epochSec);
-        (self as any).postMessage(
-          { success: true, buffer: resultBuffer, filename },
-          [resultBuffer]
-        );
-      } else if (lat !== undefined && lng !== undefined) {
-        // Perform CPU-heavy deep EXIF and GPS injection inside the worker thread
-        const resultBuffer: ArrayBuffer = await injectImageExif(buffer, epochSec, lat, lng, description, people, albumName);
-        (self as any).postMessage(
-          { success: true, buffer: resultBuffer, filename },
-          [resultBuffer]
-        );
+        // High-speed, zero-copy QuickTime mvhd/tkhd/mdhd container atom injection
+        resultBuffer = injectMp4CreationTime(buffer, epochSec);
       } else {
-        // Standard EXIF date-only injection — returns {bytes, success, reason}
-        const result = injectExifDate(buffer, epochSec, undefined, undefined, description, people, albumName);
-        const resultBuffer = result.bytes.buffer as ArrayBuffer;
-        (self as any).postMessage(
-          { success: result.success, error: result.reason, buffer: resultBuffer, filename },
-          [resultBuffer]
-        );
+        // Full-fidelity WebAssembly ExifTool injection for photos
+        const u8 = new Uint8Array(buffer);
+        const outU8 = await injectWasmExif(u8, epochSec, lat, lng, description, people, albumName, filename);
+        resultBuffer = outU8.buffer;
       }
+
+      // Transfer the buffer back to main thread with zero copy
+      (self as any).postMessage(
+        { success: true, buffer: resultBuffer, filename },
+        [resultBuffer]
+      );
     } catch (err) {
       const errMsg = err instanceof Error ? err.message : 'Metadata Injection Error';
       console.error("Worker metadata injection failed for file:", filename, err);
@@ -45,5 +51,3 @@ self.onmessage = async (e: MessageEvent) => {
     }
   }
 };
-
-

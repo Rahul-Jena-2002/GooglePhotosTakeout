@@ -6,12 +6,12 @@
  * 100% client-side via W3C File System Access API.
  */
 import { useState, useRef } from "react"
-import { FolderTree, CheckCircle2, Play, Square, FolderUp, HardDrive, Calendar, Sparkles } from "lucide-react"
+import { FolderTree, CheckCircle2, Play, Square, FolderUp, Calendar, Sparkles } from "lucide-react"
 import { Button } from "../components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card"
 import { Progress } from "../components/ui/progress"
 import { useToastStore } from "../store/useToastStore"
-import piexif from "piexifjs"
+import { extractExifDateFast } from "../services/restoration/DeepExifRestorer"
 
 export type OrganizePattern = 'year_month' | 'year_month_name' | 'year_month_day' | 'year_only'
 
@@ -65,33 +65,15 @@ export function FolderFlowPanel() {
 
   // Extract date from EXIF or filename fallback
   const extractFileDate = async (file: File): Promise<Date> => {
-    // 1. Try EXIF for JPEG
-    if (file.name.match(/\.jpe?g$/i)) {
-      try {
-        const buf = await file.slice(0, 128 * 1024).arrayBuffer()
-        const bytes = new Uint8Array(buf)
-        let binary = ""
-        for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i])
-        const exif = piexif.load("data:image/jpeg;base64," + btoa(binary))
-        const dtStr = exif["Exif"]?.[piexif.ExifIFD.DateTimeOriginal]
-        if (dtStr) {
-          // Format: "YYYY:MM:DD HH:MM:SS"
-          const parts = String(dtStr).trim().split(" ")
-          if (parts.length >= 1) {
-            const dateParts = parts[0].split(":")
-            if (dateParts.length === 3) {
-              const y = parseInt(dateParts[0], 10)
-              const m = parseInt(dateParts[1], 10) - 1
-              const d = parseInt(dateParts[2], 10)
-              if (y >= 1970 && y <= 2100) return new Date(y, m, d)
-            }
-          }
-        }
-      } catch {}
-    }
+    // 1. Try fast EXIF header scan (JPEG / TIFF / PNG)
+    try {
+      const buf = await file.slice(0, 65536).arrayBuffer()
+      const exifDt = extractExifDateFast(buf)
+      if (exifDt) return exifDt
+    } catch {}
 
     // 2. Try filename regex e.g. IMG_20230815_... or 2023-08-15
-    const regexMatch = file.name.match(/(\d{4})[-_]?(\d{2})[-_]?(\d{2})/)
+    const regexMatch = file.name.match(/(\d{4})[-_]?(\\d{2})[-_]?(\\d{2})/)
     if (regexMatch) {
       const y = parseInt(regexMatch[1], 10)
       const m = parseInt(regexMatch[2], 10) - 1
@@ -259,8 +241,11 @@ export function FolderFlowPanel() {
                 <CheckCircle2 className="w-4 h-4 text-emerald-400 flex-shrink-0" />
               </div>
             ) : (
-              <Button onClick={handlePickSource} className="btn-monochrome-primary w-full py-4 text-xs font-bold">
-                Select Source Folder
+              <Button
+                onClick={handlePickSource}
+                className="btn-monochrome-secondary w-full h-11 text-xs font-bold flex items-center justify-center gap-2 border-dashed"
+              >
+                <FolderUp className="w-4 h-4 text-zinc-400" /> Select Source Directory
               </Button>
             )}
           </CardContent>
@@ -270,8 +255,8 @@ export function FolderFlowPanel() {
           <CardHeader className="py-3 px-4 border-b border-zinc-800/80 bg-zinc-900/40">
             <CardTitle className="text-xs font-bold uppercase tracking-wider text-zinc-300 flex items-center justify-between">
               <span className="flex items-center gap-2">
-                <HardDrive className="w-4 h-4 text-emerald-400" />
-                2. Output Destination Folder
+                <FolderUp className="w-4 h-4 text-emerald-400" />
+                2. Output Directory
               </span>
               {destDir && (
                 <button onClick={handlePickDest} className="text-[10px] text-zinc-400 hover:text-white font-bold px-2 py-0.5 rounded border border-zinc-800 bg-zinc-900">
@@ -287,8 +272,11 @@ export function FolderFlowPanel() {
                 <CheckCircle2 className="w-4 h-4 text-emerald-400 flex-shrink-0" />
               </div>
             ) : (
-              <Button onClick={handlePickDest} className="btn-monochrome-primary w-full py-4 text-xs font-bold">
-                Select Destination Folder
+              <Button
+                onClick={handlePickDest}
+                className="btn-monochrome-secondary w-full h-11 text-xs font-bold flex items-center justify-center gap-2 border-dashed"
+              >
+                <FolderUp className="w-4 h-4 text-zinc-400" /> Select Output Directory
               </Button>
             )}
           </CardContent>
@@ -296,7 +284,7 @@ export function FolderFlowPanel() {
       </div>
 
       {/* Pattern Selector */}
-      <div className="p-4 rounded-xl bg-zinc-950 border border-zinc-800 mb-6">
+      <div className="p-4 rounded-xl bg-zinc-950/40 border border-zinc-800 mb-6">
         <label className="block text-xs font-bold uppercase tracking-wider text-zinc-400 mb-3 flex items-center gap-2">
           <Calendar className="w-4 h-4 text-indigo-400" />
           Select Organization Structure:

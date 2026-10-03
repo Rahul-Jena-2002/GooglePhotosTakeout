@@ -2,7 +2,7 @@
  * PhotoVaultPanel — Browser-native edition of PhotoVault Backup Verifier.
  *
  * Implements the authoritative PhotoVault specification:
- * - 100% offline & client-side verification
+ * - Local Verification & client-side verification
  * - Folder pickers for Original & Backup directories (W3C File System Access API)
  * - Safe path validation (prevents nested / identical directories)
  * - OS artifact exclusions (.DS_Store, Thumbs.db, desktop.ini) with explicit disclosure
@@ -402,7 +402,7 @@ export function PhotoVaultPanel() {
           ? 'None'
           : excludedList.slice(0, 50).join('\n') + (excludedList.length > 50 ? `\n...and ${excludedList.length - 50} more` : ''),
         `========================================================================`,
-        `Verified locally by PhotoVault (100% offline & read-only execution).`,
+        `Verified locally by PhotoVault (local & read-only execution).`,
       ].join('\n')
     } else {
       mime = 'text/html'
@@ -453,7 +453,7 @@ export function PhotoVaultPanel() {
       </table>
     ` : ''}
     <p style="margin-top:32px; font-size:12px; color:#71717a; text-align:center;">
-      PhotoVault • 100% Offline Read-Only Verification Engine
+      PhotoVault • Local Verification Read-Only Verification Engine
     </p>
   </div>
 </body>
@@ -492,7 +492,7 @@ export function PhotoVaultPanel() {
               PhotoVault Backup Verifier
             </h2>
             <span className="text-[10px] uppercase font-mono px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 font-bold">
-              100% Offline
+              Local Verification
             </span>
           </div>
           <p className="text-xs text-zinc-500 dark:text-zinc-400">

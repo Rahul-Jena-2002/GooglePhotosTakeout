@@ -94,6 +94,12 @@ public class TakeoutRestoreTask extends BackgroundTask {
             public void onStats(int scanned, int total, int restored, int unmatched, int errors) {
                 setTotalItems(total);
             }
+
+            @Override
+            public void onGuestLimitReached() {
+                setState(TaskState.PAUSED);
+                setStatusMessage("1 GB Free Guest Limit reached. Sign in to continue.");
+            }
         };
 
         extractionService.addRestorationListener(listener);
@@ -146,5 +152,9 @@ public class TakeoutRestoreTask extends BackgroundTask {
         if (extractionFuture != null && !extractionFuture.isDone()) {
             extractionFuture.cancel(true);
         }
+    }
+
+    public ExtractionService getExtractionService() {
+        return extractionService;
     }
 }

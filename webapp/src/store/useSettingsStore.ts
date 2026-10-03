@@ -1,11 +1,14 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 
-export type ExifEngine = 'piexifjs' | 'wasm';
+export type ExifEngine = 'wasm';
+export type DriveProfile = 'auto' | 'ssd' | 'hdd';
 
 interface SettingsState {
   exifEngine: ExifEngine;
   setExifEngine: (engine: ExifEngine) => void;
+  driveProfile: DriveProfile;
+  setDriveProfile: (profile: DriveProfile) => void;
   organizeYearMonth: boolean;
   setOrganizeYearMonth: (val: boolean) => void;
   generateSyncScript: boolean;
@@ -15,8 +18,10 @@ interface SettingsState {
 export const useSettingsStore = create<SettingsState>()(
   persist(
     (set) => ({
-      exifEngine: 'piexifjs',
-      setExifEngine: (engine) => set({ exifEngine: engine }),
+      exifEngine: 'wasm',
+      setExifEngine: () => set({ exifEngine: 'wasm' }),
+      driveProfile: 'auto',
+      setDriveProfile: (profile) => set({ driveProfile: profile }),
       organizeYearMonth: true,
       setOrganizeYearMonth: (val) => set({ organizeYearMonth: val }),
       generateSyncScript: true,

@@ -1,8 +1,8 @@
 /**
- * CommandSidebar — left "Command Center" panel.
- * Pure display: quotas, telemetry, stats counters, upgrade banner.
+ * CommandSidebar — left dashboard panel.
+ * Clean, senior-level UI: volume, progress, restoration stats counters, and privacy status.
  */
-import { Activity, HardDrive, Cpu, Database, CheckCircle2, AlertCircle, XCircle, ShieldCheck } from "lucide-react"
+import { Activity, HardDrive, Database, CheckCircle2, AlertCircle, XCircle, ShieldCheck } from "lucide-react"
 import { Progress } from "../components/ui/progress"
 import AdUnit from "../components/monetization/AdUnit"
 import { Button } from "../components/ui/button"
@@ -21,23 +21,18 @@ interface CommandSidebarProps {
   stats: { scanned: number; matched: number; unmatched: number; exifFailed: number; errors: number; total: number }
   isProcessing: boolean
   isPaused: boolean
-  useDeepExif: boolean
-  maxWorkers: number
-  telemetryCpu: number
-  telemetryMem: number
-  telemetryTabHeap: number
-  telemetryWorkers: number
-  userData: any
-  resetUserQuota: () => Promise<void>
+  useDeepExif?: boolean
+  maxWorkers?: number
+  telemetryCpu?: number
+  telemetryMem?: number
+  telemetryTabHeap?: number
+  telemetryWorkers?: number
+  userData?: any
+  resetUserQuota?: () => Promise<void>
 }
 
 export function CommandSidebar({
   plan,
-  tierThresholds,
-  isFreePromoActive,
-  limitFiles,
-  limitBytes,
-  currentUsedFiles,
   currentUsedBytes,
   sessionFiles,
   sessionBytes,
@@ -45,41 +40,36 @@ export function CommandSidebar({
   stats,
   isProcessing,
   isPaused,
-  useDeepExif,
-  maxWorkers,
-  telemetryCpu,
-  telemetryMem,
-  telemetryTabHeap,
-  telemetryWorkers,
-  userData,
-  resetUserQuota,
 }: CommandSidebarProps) {
   return (
-    <div className="w-full lg:w-[28%] lg:min-w-[340px] p-3 border-t lg:border-t-0 lg:border-r border-zinc-200 dark:border-white/5 bg-zinc-50/60 dark:bg-black/40 flex flex-col h-auto order-2 lg:order-1 transition-colors">
+    <div className="w-full lg:w-[28%] lg:min-w-[340px] p-4 border-t lg:border-t-0 lg:border-r border-zinc-200 dark:border-white/5 bg-zinc-50/60 dark:bg-black/40 flex flex-col h-auto order-2 lg:order-1 transition-colors">
 
-      <div className="mb-2 flex items-center justify-between">
+      {/* Header */}
+      <div className="mb-3 flex items-center justify-between">
         <h1 className="text-sm font-bold tracking-wider text-zinc-900 dark:text-white flex items-center gap-1.5 uppercase">
-          <Activity className="w-4 h-4 text-indigo-500 dark:text-indigo-400 animate-pulse" />
-          Command Center
+          <Activity className="w-4 h-4 text-indigo-500 dark:text-indigo-400" />
+          Dashboard
         </h1>
-        <span className={`text-[9px] font-bold font-mono px-2 py-0.5 rounded border ${
+        <span className={`text-[10px] font-semibold px-2 py-0.5 rounded border ${
           isProcessing
-            ? isPaused ? 'bg-zinc-200 dark:bg-zinc-800 border-zinc-300 dark:border-zinc-700 text-zinc-700 dark:text-zinc-300' : 'bg-indigo-500/10 border-indigo-500/20 text-indigo-600 dark:text-indigo-400 animate-pulse'
+            ? isPaused
+              ? 'bg-amber-500/10 border-amber-500/20 text-amber-600 dark:text-amber-400'
+              : 'bg-indigo-500/10 border-indigo-500/20 text-indigo-600 dark:text-indigo-400 animate-pulse'
             : 'bg-zinc-200/60 dark:bg-zinc-500/10 border-zinc-300 dark:border-zinc-500/20 text-zinc-600 dark:text-zinc-400'
         }`}>
-          {isProcessing ? isPaused ? 'PAUSED' : (useDeepExif ? 'DEEP RESTORE' : 'ACTIVE') : 'IDLE'}
+          {isProcessing ? (isPaused ? 'PAUSED' : 'PROCESSING') : 'READY'}
         </span>
       </div>
 
-      {/* Engine Status */}
-      <div className="space-y-2 mb-3 bg-white dark:bg-white/[0.02] border border-zinc-200 dark:border-white/5 p-3 rounded-xl shadow-xs">
-        <div className="flex justify-between items-center text-[9px] text-zinc-500 dark:text-white/40 font-bold uppercase tracking-wider">
-          <span className="flex items-center gap-1"><HardDrive className="w-3 h-3 text-emerald-600 dark:text-emerald-400" /> Restoration Engine</span>
-          <span className={`${plan === 'guest' ? 'text-amber-600 dark:text-amber-400' : 'text-emerald-600 dark:text-emerald-400'} font-mono font-bold`}>
-            {plan === 'guest' ? 'Guest (1 GB Limit)' : 'Unlimited Access'}
+      {/* Processing Volume & Status */}
+      <div className="space-y-2 mb-4 bg-white dark:bg-white/[0.02] border border-zinc-200 dark:border-white/5 p-3.5 rounded-xl shadow-xs">
+        <div className="flex justify-between items-center text-[10px] text-zinc-500 dark:text-zinc-400 font-semibold uppercase tracking-wider">
+          <span className="flex items-center gap-1.5"><HardDrive className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" /> Status</span>
+          <span className="text-emerald-600 dark:text-emerald-400 font-semibold text-[10px] bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">
+            Ready
           </span>
         </div>
-        <div className="text-xs font-bold text-zinc-900 dark:text-zinc-150 flex items-center justify-between">
+        <div className="text-xs font-semibold text-zinc-900 dark:text-zinc-150 flex items-center justify-between pt-1">
           <span>Processed Volume</span>
           <span className="font-mono text-zinc-700 dark:text-zinc-300">
             {plan === 'guest'
@@ -98,108 +88,73 @@ export function CommandSidebar({
               <button
                 type="button"
                 onClick={() => window.dispatchEvent(new CustomEvent('takeoutfix:open-auth-modal', { detail: { mode: 'signin' } }))}
-                className="text-indigo-600 dark:text-indigo-400 hover:underline font-bold bg-transparent border-0 p-0 cursor-pointer"
+                className="text-indigo-600 dark:text-indigo-400 hover:underline font-semibold bg-transparent border-0 p-0 cursor-pointer"
               >
-                Sign in for Unlimited
+                Sign in to expand
               </button>
             </div>
           </div>
         )}
-        <div className="text-[10px] text-zinc-500 dark:text-zinc-400 font-medium">
+        <div className="text-[10px] text-zinc-500 dark:text-zinc-400 font-medium pt-0.5">
           {plan === 'guest'
-            ? 'Guest tier: 1 GB free restoration (no file count limit). Sign in to unlock unlimited storage.'
-            : 'Unlimited batch restoration active. Google Account connected.'}
+            ? 'Guest mode: 1 GB free batch processing. Sign in for higher limits.'
+            : 'Google Account connected. Full batch restoration enabled.'}
         </div>
       </div>
 
-      {/* Upper Ad Slot — Utilizes empty space above telemetry */}
-      <div className="mb-3">
-        <AdUnit type="compact" placement="TOOL_SIDEBAR_TOP" />
-      </div>
-
-      {/* Engine Resource Telemetry */}
-      <div className="space-y-2.5 mb-3 bg-white dark:bg-white/[0.01] border border-zinc-200 dark:border-white/5 p-2.5 rounded-lg shadow-xs">
-        <span className="text-[9px] text-zinc-500 dark:text-white/40 font-bold uppercase tracking-wider flex items-center gap-1">
-          <Cpu className="w-3.5 h-3.5 text-zinc-500 dark:text-zinc-450" /> Resource Telemetry
-        </span>
-        <div className="space-y-2">
-          <div>
-            <div className="flex justify-between text-[9px] font-bold text-zinc-600 dark:text-zinc-400 mb-1">
-              <span>CPU Cores</span>
-              <span className="font-mono text-zinc-800 dark:text-zinc-350">{telemetryWorkers} / {navigator.hardwareConcurrency || 4} Cores ({telemetryCpu}%)</span>
-            </div>
-            <Progress value={telemetryCpu} className="h-1 bg-zinc-200 dark:bg-white/10" />
-          </div>
-
-          <div>
-            <div className="flex justify-between text-[9px] font-bold text-zinc-600 dark:text-zinc-400 mb-1">
-              <span>RAM (Engine/Tab)</span>
-              <span className="font-mono text-zinc-800 dark:text-zinc-350">{telemetryMem.toFixed(0)}MB / {telemetryTabHeap.toFixed(0)}MB</span>
-            </div>
-            <Progress value={Math.min(100, ((telemetryMem + telemetryTabHeap) / 2048) * 100)} className="h-1 bg-zinc-200 dark:bg-white/10" />
-          </div>
-
-          <div className="flex justify-between items-center text-[9px] text-zinc-600 dark:text-zinc-400 border-t border-zinc-200 dark:border-white/5 pt-2 mt-1">
-            <span>Concurrency</span>
-            <span className="font-mono text-zinc-900 dark:text-white font-bold">Auto ({maxWorkers} Threads)</span>
-          </div>
-        </div>
-      </div>
-
-      {/* Scanning/Loading Logo Indicator */}
+      {/* Scanning/Loading Indicator (only while processing) */}
       {isProcessing && (
-        <div className="mb-3 bg-white dark:bg-white/[0.01] border border-zinc-200 dark:border-white/5 p-4 rounded-lg flex flex-col items-center justify-center text-center space-y-2">
+        <div className="mb-4 bg-white dark:bg-white/[0.01] border border-zinc-200 dark:border-white/5 p-4 rounded-xl flex flex-col items-center justify-center text-center space-y-2">
           <div className="relative flex items-center justify-center">
-            {/* Dynamic spinning outer ring */}
             <div className="w-10 h-10 border-2 border-indigo-500/20 border-t-indigo-500 rounded-full animate-spin"></div>
-            {/* Pulsing inner dot */}
             <Activity className="absolute w-4 h-4 text-indigo-500 dark:text-indigo-400 animate-pulse" />
           </div>
-          <div className="text-[10px] text-zinc-600 dark:text-zinc-400 font-bold uppercase tracking-wider animate-pulse">Restoring Assets...</div>
+          <div className="text-[10px] text-zinc-600 dark:text-zinc-400 font-semibold uppercase tracking-wider animate-pulse">
+            {isPaused ? 'Restoration Paused' : 'Restoring Photos & Videos...'}
+          </div>
         </div>
       )}
 
       {/* Stats counters */}
-      <div className={`grid ${stats.exifFailed > 0 ? 'grid-cols-3' : 'grid-cols-2'} gap-1.5 mb-3`}>
-        <div className="bg-zinc-100 dark:bg-white/[0.02] border border-zinc-200 dark:border-white/5 p-2 rounded flex flex-col justify-between h-14">
-          <span className="text-[9px] text-zinc-500 dark:text-white/40 flex items-center gap-1 font-medium"><Database className="w-3 h-3"/> Scanned</span>
-          <span className="text-xs font-bold text-zinc-900 dark:text-white truncate">{stats.scanned} / {stats.total || '—'}</span>
+      <div className="space-y-1.5 mb-4">
+        <div className="text-[10px] text-zinc-500 dark:text-zinc-400 font-semibold uppercase tracking-wider px-0.5">
+          Restoration Summary
         </div>
-        <div className="bg-emerald-50 dark:bg-green-500/5 border border-emerald-200 dark:border-green-500/10 p-2 rounded flex flex-col justify-between h-14">
-          <span className="text-[9px] text-emerald-700 dark:text-green-400/70 flex items-center gap-1 font-semibold"><CheckCircle2 className="w-3 h-3 text-emerald-600 dark:text-green-400"/> Restored</span>
-          <span className="text-xs font-bold text-emerald-800 dark:text-green-400 truncate">{stats.matched} / {stats.total || '—'}</span>
-        </div>
-        {stats.exifFailed > 0 && (
-          <div className="bg-amber-50 dark:bg-amber-500/5 border border-amber-300 dark:border-amber-500/10 p-2 rounded flex flex-col justify-between h-14">
-            <span className="text-[9px] text-amber-800 dark:text-amber-400/70 flex items-center gap-1 font-semibold"><Activity className="w-3 h-3 text-amber-600 dark:text-amber-400"/> Fallback</span>
-            <span className="text-xs font-bold text-amber-900 dark:text-amber-400 truncate">{stats.exifFailed}</span>
+        <div className={`grid ${stats.exifFailed > 0 ? 'grid-cols-3' : 'grid-cols-2'} gap-2`}>
+          <div className="bg-white dark:bg-white/[0.02] border border-zinc-200 dark:border-white/5 p-2.5 rounded-lg flex flex-col justify-between h-16 shadow-2xs">
+            <span className="text-[10px] text-zinc-500 dark:text-zinc-400 flex items-center gap-1 font-medium"><Database className="w-3.5 h-3.5"/> Scanned</span>
+            <span className="text-sm font-semibold text-zinc-900 dark:text-white truncate">{stats.scanned} / {stats.total || '—'}</span>
           </div>
-        )}
-        <div className="bg-amber-50 dark:bg-yellow-500/5 border border-amber-300 dark:border-yellow-500/10 p-2 rounded flex flex-col justify-between h-14">
-          <span className="text-[9px] text-amber-800 dark:text-yellow-400/70 flex items-center gap-1 font-semibold"><AlertCircle className="w-3 h-3 text-amber-600 dark:text-yellow-400"/> Unmatched</span>
-          <span className="text-xs font-bold text-amber-900 dark:text-yellow-400 truncate">{stats.unmatched}</span>
-        </div>
-        <div className="bg-rose-50 dark:bg-red-500/5 border border-rose-200 dark:border-red-500/10 p-2 rounded flex flex-col justify-between h-14">
-          <span className="text-[9px] text-rose-700 dark:text-red-400/70 flex items-center gap-1 font-semibold"><XCircle className="w-3 h-3 text-rose-600 dark:text-red-400"/> Errors</span>
-          <span className="text-xs font-bold text-rose-800 dark:text-red-400 truncate">{stats.errors}</span>
+          <div className="bg-emerald-50/70 dark:bg-emerald-500/5 border border-emerald-200 dark:border-emerald-500/10 p-2.5 rounded-lg flex flex-col justify-between h-16 shadow-2xs">
+            <span className="text-[10px] text-emerald-700 dark:text-emerald-400 flex items-center gap-1 font-semibold"><CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400"/> Restored</span>
+            <span className="text-sm font-semibold text-emerald-800 dark:text-emerald-400 truncate">{stats.matched} / {stats.total || '—'}</span>
+          </div>
+          {stats.exifFailed > 0 && (
+            <div className="bg-amber-50/70 dark:bg-amber-500/5 border border-amber-300 dark:border-amber-500/10 p-2.5 rounded-lg flex flex-col justify-between h-16 shadow-2xs">
+              <span className="text-[10px] text-amber-800 dark:text-amber-400 flex items-center gap-1 font-semibold"><Activity className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400"/> Fallback</span>
+              <span className="text-sm font-semibold text-amber-900 dark:text-amber-400 truncate">{stats.exifFailed}</span>
+            </div>
+          )}
+          <div className="bg-amber-50/70 dark:bg-amber-500/5 border border-amber-300 dark:border-amber-500/10 p-2.5 rounded-lg flex flex-col justify-between h-16 shadow-2xs">
+            <span className="text-[10px] text-amber-800 dark:text-amber-400 flex items-center gap-1 font-semibold"><AlertCircle className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400"/> Unmatched</span>
+            <span className="text-sm font-semibold text-amber-900 dark:text-amber-400 truncate">{stats.unmatched}</span>
+          </div>
+          <div className="bg-rose-50/70 dark:bg-rose-500/5 border border-rose-200 dark:border-rose-500/10 p-2.5 rounded-lg flex flex-col justify-between h-16 shadow-2xs">
+            <span className="text-[10px] text-rose-700 dark:text-rose-400 flex items-center gap-1 font-semibold"><XCircle className="w-3.5 h-3.5 text-rose-600 dark:text-rose-400"/> Errors</span>
+            <span className="text-sm font-semibold text-rose-800 dark:text-rose-400 truncate">{stats.errors}</span>
+          </div>
         </div>
       </div>
 
-      {/* Engine Trust Card at bottom */}
+      {/* Privacy Guarantee Card */}
       <div className="mt-auto pt-3 border-t border-zinc-200 dark:border-white/5 space-y-2.5">
-        <AdUnit type="compact" placement="TOOL_SIDEBAR_BOTTOM" />
-        <div className="p-3 rounded-xl border border-zinc-200 dark:border-white/5 bg-white dark:bg-white/[0.02] shadow-xs">
-          <div className="flex justify-between items-center">
-            <div className="flex items-center gap-1.5 text-xs font-bold text-zinc-900 dark:text-white">
-              <ShieldCheck className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
-              100% Free &amp; Offline
-            </div>
-            <span className="text-[9px] font-mono tracking-wide px-2 py-0.5 rounded border border-emerald-500/20 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 uppercase font-bold">
-              Active
-            </span>
+        <div className="p-3.5 rounded-xl border border-zinc-200 dark:border-white/5 bg-white dark:bg-white/[0.02] shadow-xs">
+          <div className="flex items-center gap-2 text-xs font-semibold text-zinc-900 dark:text-zinc-100">
+            <ShieldCheck className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+            <span>Private &amp; Local</span>
           </div>
-          <p className="mt-2 text-[9.5px] text-zinc-600 dark:text-zinc-400 leading-normal font-medium">
-            Zero server uploads. Your photos and JSON companion sidecars are restored directly in your browser with unlimited capacity.
+          <p className="mt-1.5 text-[11px] text-zinc-500 dark:text-zinc-400 leading-relaxed">
+            All files are processed directly on your computer. Your photos never leave your device.
           </p>
         </div>
       </div>

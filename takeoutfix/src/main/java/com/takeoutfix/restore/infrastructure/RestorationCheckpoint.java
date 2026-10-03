@@ -187,6 +187,22 @@ public class RestorationCheckpoint {
         }
     }
 
+    /**
+     * Deletes the checkpoint and any temporary checkpoint file once restoration finishes cleanly.
+     */
+    public void deleteCheckpointFile() {
+        try {
+            if (checkpointFile != null) {
+                Files.deleteIfExists(checkpointFile.toPath());
+            }
+            if (tmpCheckpointFile != null) {
+                Files.deleteIfExists(tmpCheckpointFile.toPath());
+            }
+        } catch (Exception e) {
+            log.warn("Failed to delete checkpoint file: {}", e.getMessage());
+        }
+    }
+
     public Set<String> getCompletedFiles() {
         return Collections.unmodifiableSet(completedFiles);
     }

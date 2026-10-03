@@ -5,7 +5,7 @@
  * - Batch Date Shifter (±days, ±hours, ±minutes, fixed datetime, or sequential increment)
  * - Customizable Creator Presets (Photographer/Artist, Copyright Stamp, Caption) with localStorage persistence
  * - GPS Location Manager (Strip GPS for privacy or inject custom coordinates)
- * 100% private & client-side using W3C File System Access API & piexifjs.
+ * 100% private & client-side using W3C File System Access API & WebAssembly ExifTool.
  */
 
 import { useState, useEffect, useRef } from "react"
@@ -27,7 +27,7 @@ import { Button } from "../components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "../components/ui/card"
 import { Progress } from "../components/ui/progress"
 import { useToastStore } from "../store/useToastStore"
-import piexif from "piexifjs"
+import { injectImageExif, extractExifDateFast, isSupportedImageFormat } from "../services/restoration/DeepExifRestorer"
 
 interface QueuedPhoto {
   file: File
@@ -129,32 +129,12 @@ export function PhotoStudioPanel() {
 
   // Extract EXIF date helper
   const extractExifDate = async (file: File): Promise<Date | undefined> => {
-    if (!file.name.match(/\.jpe?g$/i)) return new Date(file.lastModified)
     try {
-      const buf = await file.slice(0, 128 * 1024).arrayBuffer()
-      const bytes = new Uint8Array(buf)
-      let binary = ""
-      for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i])
-      const exif = piexif.load("data:image/jpeg;base64," + btoa(binary))
-      const dtStr = exif["Exif"]?.[piexif.ExifIFD.DateTimeOriginal] || exif["0th"]?.[piexif.ImageIFD.DateTime]
-      if (dtStr) {
-        const parts = String(dtStr).trim().split(" ")
-        if (parts.length >= 2) {
-          const dParts = parts[0].split(":")
-          const tParts = parts[1].split(":")
-          if (dParts.length === 3 && tParts.length >= 2) {
-            const y = parseInt(dParts[0], 10)
-            const m = parseInt(dParts[1], 10) - 1
-            const d = parseInt(dParts[2], 10)
-            const hh = parseInt(tParts[0], 10)
-            const mm = parseInt(tParts[1], 10)
-            const ss = parseInt(tParts[2] || "0", 10)
-            return new Date(y, m, d, hh, mm, ss)
-          }
-        }
-      }
+      const buf = await file.slice(0, 65536).arrayBuffer()
+      const exifDt = extractExifDateFast(buf)
+      if (exifDt) return exifDt
     } catch {}
-    return new Date(file.lastModified)
+    return new Date(file.lastModified || Date.now())
   }
 
   // Calculate new date based on mode
@@ -271,87 +251,51 @@ export function PhotoStudioPanel() {
         const item = photos[i]
         const origDate = item.originalDate || new Date(item.file.lastModified)
         const targetDate = computeNewDate(origDate, i)
+        const epochSec = Math.floor(targetDate.getTime() / 1000)
 
-        if (item.file.name.match(/\.jpe?g$/i)) {
-          // Read as binary
-          const buffer = await item.file.arrayBuffer()
-          const bytes = new Uint8Array(buffer)
-          let binary = ""
-          for (let b = 0; b < bytes.length; b++) binary += String.fromCharCode(bytes[b])
+        const rawBuffer = await item.file.arrayBuffer()
+        let outputBuffer: ArrayBuffer
 
-          let exifObj: any = { "0th": {}, "Exif": {}, "GPS": {}, "Interop": {}, "1st": {}, "thumbnail": null }
-          try {
-            exifObj = piexif.load("data:image/jpeg;base64," + btoa(binary))
-          } catch {}
-
-          if (!exifObj["0th"]) exifObj["0th"] = {}
-          if (!exifObj["Exif"]) exifObj["Exif"] = {}
-
-          // 1. Update EXIF Dates
-          const exifDateStr = formatDateToExif(targetDate)
-          exifObj["0th"][piexif.ImageIFD.DateTime] = exifDateStr
-          exifObj["Exif"][piexif.ExifIFD.DateTimeOriginal] = exifDateStr
-          exifObj["Exif"][piexif.ExifIFD.DateTimeDigitized] = exifDateStr
-
-          // 2. Creator & Copyright Presets
-          if (creator.artist.trim()) {
-            exifObj["0th"][piexif.ImageIFD.Artist] = creator.artist.trim()
-          }
-          if (creator.copyright.trim()) {
-            exifObj["0th"][piexif.ImageIFD.Copyright] = creator.copyright.trim()
-          }
-          if (creator.description.trim()) {
-            exifObj["0th"][piexif.ImageIFD.ImageDescription] = creator.description.trim()
-          }
-
-          // 3. Location
-          if (locationMode === 'strip') {
-            exifObj["GPS"] = {}
-          } else if (locationMode === 'set' && latitude && longitude) {
-            const lat = parseFloat(latitude)
-            const lng = parseFloat(longitude)
-            if (!isNaN(lat) && !isNaN(lng)) {
-              if (!exifObj["GPS"]) exifObj["GPS"] = {}
-              exifObj["GPS"][piexif.GPSIFD.GPSLatitudeRef] = lat >= 0 ? 'N' : 'S'
-              exifObj["GPS"][piexif.GPSIFD.GPSLatitude] = piexif.GPSHelper.degToDmsRational(Math.abs(lat))
-              exifObj["GPS"][piexif.GPSIFD.GPSLongitudeRef] = lng >= 0 ? 'E' : 'W'
-              exifObj["GPS"][piexif.GPSIFD.GPSLongitude] = piexif.GPSHelper.degToDmsRational(Math.abs(lng))
+        if (isSupportedImageFormat(item.file.name)) {
+          let lat: number | undefined
+          let lng: number | undefined
+          if (locationMode === 'set' && latitude && longitude) {
+            const pLat = parseFloat(latitude)
+            const pLng = parseFloat(longitude)
+            if (!isNaN(pLat) && !isNaN(pLng)) {
+              lat = pLat
+              lng = pLng
             }
           }
 
-          // Dump updated EXIF
-          const exifBytes = piexif.dump(exifObj)
-          const newBinary = piexif.insert(exifBytes, "data:image/jpeg;base64," + btoa(binary))
-          
-          // Convert data URI back to blob
-          const byteString = atob(newBinary.split(',')[1])
-          const ab = new ArrayBuffer(byteString.length)
-          const ia = new Uint8Array(ab)
-          for (let b = 0; b < byteString.length; b++) ia[b] = byteString.charCodeAt(b)
-          const modifiedBlob = new Blob([ab], { type: "image/jpeg" })
-
-          if (destDir) {
-            const fileHandle = await destDir.getFileHandle(item.file.name, { create: true })
-            const writable = await (fileHandle as any).createWritable()
-            await writable.write(modifiedBlob)
-            await writable.close()
-          } else {
-            outputBlobs.push({ name: item.file.name, blob: modifiedBlob })
+          try {
+            outputBuffer = await injectImageExif(rawBuffer, epochSec, {
+              lat,
+              lng,
+              description: creator.description.trim() || undefined,
+              artist: creator.artist.trim() || undefined,
+              copyright: creator.copyright.trim() || undefined,
+              filename: item.file.name
+            })
+          } catch (err) {
+            console.warn("WASM Exif injection fallback:", err)
+            outputBuffer = rawBuffer
           }
-          successCount++
         } else {
-          // For non-JPEG formats (PNG, WebP, etc.), clone blob preserving modified timestamp
-          const copyBlob = new Blob([await item.file.arrayBuffer()], { type: item.file.type })
-          if (destDir) {
-            const fileHandle = await destDir.getFileHandle(item.file.name, { create: true })
-            const writable = await (fileHandle as any).createWritable()
-            await writable.write(copyBlob)
-            await writable.close()
-          } else {
-            outputBlobs.push({ name: item.file.name, blob: copyBlob })
-          }
-          successCount++
+          outputBuffer = rawBuffer
         }
+
+        const modifiedBlob = new Blob([outputBuffer], { type: item.file.type || 'image/jpeg' })
+
+        if (destDir) {
+          const fileHandle = await destDir.getFileHandle(item.file.name, { create: true })
+          const writable = await (fileHandle as any).createWritable()
+          await writable.write(modifiedBlob)
+          await writable.close()
+        } else {
+          outputBlobs.push({ name: item.file.name, blob: modifiedBlob })
+        }
+        successCount++
 
         const pct = Math.round(((i + 1) / photos.length) * 100)
         setProgress(pct)

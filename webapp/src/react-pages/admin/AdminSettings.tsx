@@ -34,7 +34,7 @@ export default function AdminSettings() {
   const [ticketSlaHours, setTicketSlaHours] = useState("24")
   const [freeQuotaMB, setFreeQuotaMB] = useState("500")
   
-  const { exifEngine, setExifEngine } = useSettingsStore()
+  const { driveProfile, setDriveProfile } = useSettingsStore()
 
   const [savingGlobal, setSavingGlobal] = useState(false)
 
@@ -178,64 +178,50 @@ export default function AdminSettings() {
         <Card className="bg-zinc-900 border-zinc-800 shadow-none">
           <CardHeader>
             <CardTitle className="text-sm font-semibold flex items-center gap-2 text-zinc-200">
-              <Shield className="w-4 h-4 text-indigo-400" /> Platform Maintenance
+              <Settings className="w-4 h-4 text-emerald-400" /> Storage & Processing Engine
             </CardTitle>
-            <CardDescription className="text-zinc-500 text-xs">Temporarily gate public actions or toggle debug behaviors.</CardDescription>
+            <CardDescription className="text-zinc-500 text-xs">ExifTool WebAssembly & Drive profile optimizations.</CardDescription>
           </CardHeader>
-          <CardContent className="space-y-5">
-            <div className="flex items-center justify-between p-4 bg-zinc-950/40 border border-zinc-800/80 rounded-xl">
-              <div>
-                <div className="text-xs font-bold text-zinc-200">Global Maintenance Mode</div>
-                <div className="text-[10px] text-zinc-500 mt-0.5">Locks all public tool workspace routes for updates.</div>
+          <CardContent className="space-y-4">
+            <div className="flex flex-col gap-2 p-3.5 bg-zinc-950/40 border border-zinc-800/80 rounded-xl">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-zinc-200">Metadata Engine</span>
+                <span className="text-[10px] font-mono bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-2 py-0.5 rounded font-bold">
+                  100% ExifTool WASM Active
+                </span>
               </div>
-              <button 
-                onClick={() => setMaintenance(!maintenance)}
-                className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full transition-colors duration-200 focus:outline-none ${maintenance ? 'bg-emerald-500/20 border border-emerald-500/30' : 'bg-rose-500/20 border border-rose-500/30'}`}
-              >
-                <span className={`pointer-events-none absolute top-1 h-4 w-4 rounded-full bg-white shadow transition-all duration-200 ${maintenance ? 'left-6' : 'left-1'}`} />
-              </button>
+              <div className="text-[10px] text-zinc-500">
+                Deep metadata injection (JPEG, PNG, WebP, HEIC, TIFF, DNG, RAW) runs client-side via WebAssembly zeroperl without server uploads.
+              </div>
             </div>
 
-            <div className="flex items-center justify-between p-4 bg-zinc-950/40 border border-zinc-800/80 rounded-xl">
-              <div>
-                <div className="text-xs font-bold text-zinc-200">Auto-Approve Star Reviews</div>
-                <div className="text-[10px] text-zinc-500 mt-0.5">Automatically publish 5-star submissions on landing section.</div>
+            <div className="flex flex-col gap-2 p-3.5 bg-zinc-950/40 border border-zinc-800/80 rounded-xl">
+              <div className="text-xs font-bold text-zinc-200">Drive Concurrency Profile</div>
+              <div className="text-[10px] text-zinc-500 mb-1">
+                Sequential 1-thread mode prevents head thrashing and mechanical wear on external HDDs and USB sticks.
               </div>
-              <button 
-                onClick={() => setReviewAutoApprove(!reviewAutoApprove)}
-                className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full transition-colors duration-200 focus:outline-none ${reviewAutoApprove ? 'bg-emerald-500/20 border border-emerald-500/30' : 'bg-rose-500/20 border border-rose-500/30'}`}
-              >
-                <span className={`pointer-events-none absolute top-1 h-4 w-4 rounded-full bg-white shadow transition-all duration-200 ${reviewAutoApprove ? 'left-6' : 'left-1'}`} />
-              </button>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Local Settings */}
-        <Card className="bg-zinc-900 border-zinc-800 shadow-none">
-          <CardHeader>
-            <CardTitle className="text-sm font-semibold flex items-center gap-2 text-zinc-200">
-              <Settings className="w-4 h-4 text-emerald-400" /> Local Processing Engine
-            </CardTitle>
-            <CardDescription className="text-zinc-500 text-xs">Test the new WebAssembly engine. (Saves locally to your browser)</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-5">
-            <div className="flex flex-col gap-2 p-4 bg-zinc-950/40 border border-zinc-800/80 rounded-xl">
-              <div className="text-xs font-bold text-zinc-200">EXIF Processing Engine</div>
-              <div className="text-[10px] text-zinc-500 mb-2">Switch between the legacy piexifjs engine and the new WASM-powered ExifTool/FFmpeg engine.</div>
               
-              <div className="flex gap-2 mt-2">
+              <div className="grid grid-cols-3 gap-2 mt-1">
                 <button
-                  onClick={() => setExifEngine('piexifjs')}
-                  className={`flex-1 py-2 rounded-lg text-[11px] font-semibold border transition-all ${exifEngine === 'piexifjs' ? 'bg-indigo-600 text-white border-indigo-700 shadow-sm' : 'bg-zinc-100 dark:bg-zinc-900/50 text-zinc-600 dark:text-zinc-400 border-zinc-200 dark:border-zinc-800/80 hover:bg-zinc-200 dark:hover:bg-zinc-800'}`}
+                  type="button"
+                  onClick={() => setDriveProfile('auto')}
+                  className={`py-2 px-1 rounded-lg text-[10px] font-semibold border transition-all ${driveProfile === 'auto' ? 'bg-indigo-600 text-white border-indigo-700 shadow-sm' : 'bg-zinc-100 dark:bg-zinc-900/50 text-zinc-600 dark:text-zinc-400 border-zinc-200 dark:border-zinc-800/80 hover:bg-zinc-200 dark:hover:bg-zinc-800'}`}
                 >
-                  piexifjs (Legacy JS)
+                  ⚡ Auto-Adaptive
                 </button>
                 <button
-                  onClick={() => setExifEngine('wasm')}
-                  className={`flex-1 py-2 rounded-lg text-[11px] font-semibold border transition-all ${exifEngine === 'wasm' ? 'bg-emerald-600 text-white border-emerald-700 shadow-sm' : 'bg-zinc-100 dark:bg-zinc-900/50 text-zinc-600 dark:text-zinc-400 border-zinc-200 dark:border-zinc-800/80 hover:bg-zinc-200 dark:hover:bg-zinc-800'}`}
+                  type="button"
+                  onClick={() => setDriveProfile('ssd')}
+                  className={`py-2 px-1 rounded-lg text-[10px] font-semibold border transition-all ${driveProfile === 'ssd' ? 'bg-emerald-600 text-white border-emerald-700 shadow-sm' : 'bg-zinc-100 dark:bg-zinc-900/50 text-zinc-600 dark:text-zinc-400 border-zinc-200 dark:border-zinc-800/80 hover:bg-zinc-200 dark:hover:bg-zinc-800'}`}
                 >
-                  ExifTool / FFmpeg (WASM)
+                  🚀 Turbo SSD
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setDriveProfile('hdd')}
+                  className={`py-2 px-1 rounded-lg text-[10px] font-semibold border transition-all ${driveProfile === 'hdd' ? 'bg-amber-600 text-white border-amber-700 shadow-sm' : 'bg-zinc-100 dark:bg-zinc-900/50 text-zinc-600 dark:text-zinc-400 border-zinc-200 dark:border-zinc-800/80 hover:bg-zinc-200 dark:hover:bg-zinc-800'}`}
+                >
+                  🛡️ Low-Wear HDD
                 </button>
               </div>
             </div>

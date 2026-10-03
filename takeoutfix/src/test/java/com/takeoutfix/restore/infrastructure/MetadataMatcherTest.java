@@ -61,4 +61,55 @@ public class MetadataMatcherTest {
         assertTrue(match.isPresent(), "Numbered duplicate JSON should be matched");
         assertEquals(jsonPath.getFileName().toString(), match.get().getName());
     }
+
+    @Test
+    @DisplayName("Verify edited/cropped photo matches original supplemental metadata: IMG_0316-edited.JPG -> IMG_0316.JPG.supplemental-metadata.json")
+    void testEditedPhotoMatchesOriginalSupplementalMetadata(@TempDir Path tempDir) throws IOException {
+        Path originalMedia = Files.createFile(tempDir.resolve("IMG_0316.JPG"));
+        Path editedMedia = Files.createFile(tempDir.resolve("IMG_0316-edited.JPG"));
+        Path jsonPath = Files.createFile(tempDir.resolve("IMG_0316.JPG.supplemental-metadata.json"));
+
+        MetadataMatcher matcher = new MetadataMatcher();
+        Map<String, File[]> dirCache = new HashMap<>();
+
+        // Test original file
+        Optional<File> origMatch = matcher.findMatchingJson(originalMedia.toFile(), dirCache);
+        assertTrue(origMatch.isPresent(), "Original photo should match JSON");
+        assertEquals(jsonPath.getFileName().toString(), origMatch.get().getName());
+
+        // Test -edited companion file (same folder cache)
+        Optional<File> editedMatch = matcher.findMatchingJson(editedMedia.toFile(), dirCache);
+        assertTrue(editedMatch.isPresent(), "Edited companion photo should match original's JSON");
+        assertEquals(jsonPath.getFileName().toString(), editedMatch.get().getName());
+    }
+
+    @Test
+    @DisplayName("Verify CIMG edited photo matches original supplemental metadata: CIMG0655-edited.JPG -> CIMG0655.JPG.supplemental-metadata.json")
+    void testCimgEditedPhotoMatch(@TempDir Path tempDir) throws IOException {
+        Path originalMedia = Files.createFile(tempDir.resolve("CIMG0655.JPG"));
+        Path editedMedia = Files.createFile(tempDir.resolve("CIMG0655-edited.JPG"));
+        Path jsonPath = Files.createFile(tempDir.resolve("CIMG0655.JPG.supplemental-metadata.json"));
+
+        MetadataMatcher matcher = new MetadataMatcher();
+        Map<String, File[]> dirCache = new HashMap<>();
+
+        Optional<File> editedMatch = matcher.findMatchingJson(editedMedia.toFile(), dirCache);
+        assertTrue(editedMatch.isPresent(), "CIMG edited photo should match original's JSON");
+        assertEquals(jsonPath.getFileName().toString(), editedMatch.get().getName());
+    }
+
+    @Test
+    @DisplayName("Verify effects/mix edited photo matches original JSON: photo_effects.jpg -> photo.json")
+    void testEffectsPhotoMatch(@TempDir Path tempDir) throws IOException {
+        Path originalMedia = Files.createFile(tempDir.resolve("photo.jpg"));
+        Path effectsMedia = Files.createFile(tempDir.resolve("photo_effects.jpg"));
+        Path jsonPath = Files.createFile(tempDir.resolve("photo.json"));
+
+        MetadataMatcher matcher = new MetadataMatcher();
+        Map<String, File[]> dirCache = new HashMap<>();
+
+        Optional<File> match = matcher.findMatchingJson(effectsMedia.toFile(), dirCache);
+        assertTrue(match.isPresent(), "Effects photo should match original's JSON");
+        assertEquals(jsonPath.getFileName().toString(), match.get().getName());
+    }
 }

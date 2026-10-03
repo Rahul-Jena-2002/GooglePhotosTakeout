@@ -9,12 +9,12 @@ import { useToolStore } from "../store/useToolStore"
 import { useToastStore } from "../store/useToastStore"
 import { sanitizeFilename, findMatchingJsonName, safeParseJson, extractTimestamp } from "../services/restoration/MetadataMatcher"
 // ZipMetadataMatcher is used via normalizeZipPath only (findMatchingJsonNameForZip resolved during scan phase)
-import { isJpeg } from "../services/restoration/ExifRestorer"
+import { isSupportedImageFormat, parseImageMetadata, isJpeg } from "../services/restoration/DeepExifRestorer"
 import { isVideoFilename } from "../services/restoration/VideoMetadataRestorer"
 import { db } from "../firebase"
 import { doc, setDoc, increment, addDoc, collection, onSnapshot } from "firebase/firestore"
 import { indexedDbService } from "../lib/indexedDbService"
-import piexif from "piexifjs"
+// piexifjs eliminated in favor of 100% WebAssembly ExifTool
 import { detectAdBlock } from "../services/monetization/AdBlockDetector"
 import { SessionManager, type ActiveSession, type FileRecord } from "../lib/SessionManager"
 import { WorkerPool } from "../lib/WorkerPool"
@@ -23,6 +23,7 @@ import { useSettingsStore } from "../store/useSettingsStore";
 import { normalizeZipPath } from "../services/restoration/ZipMetadataMatcher"
 import { generateSyncBatContent, generateSyncShContent } from "../services/restoration/WindowsDateSyncScript"
 import { getGuestUsage, recordGuestUsage, GUEST_MAX_FILES, GUEST_MAX_BYTES } from "./guestQuota"
+import { saveHandles } from "../lib/handleStore"
 
 // ---------------------------------------------------------------------------
 // Streaming zip.js writer that pipes directly to a FileSystemWritableFileStream
@@ -151,6 +152,58 @@ export const getPlanCardStyles = (plan: string, thresholds?: {
 // Hook
 // ---------------------------------------------------------------------------
 export function useToolPipeline() {
+  const wakeLockSentinelRef = useRef<any>(null);
+  const auditLogLinesRef = useRef<string[]>([]);
+  const issuesLogLinesRef = useRef<string[]>([]);
+  const latestAuditLogRef = useRef<string>("");
+  const latestIssuesLogRef = useRef<string>("");
+
+  const [elapsedSeconds, setElapsedSeconds] = useState<number>(0);
+  const [filesPerSec, setFilesPerSec] = useState<string>("0.0");
+  const [speedMBs, setSpeedMBs] = useState<string>("0.0");
+
+  const requestWakeLock = async () => {
+    if (typeof navigator !== 'undefined' && 'wakeLock' in navigator) {
+      try {
+        wakeLockSentinelRef.current = await (navigator as any).wakeLock.request('screen');
+      } catch {}
+    }
+  };
+
+  const releaseWakeLock = () => {
+    if (wakeLockSentinelRef.current) {
+      try {
+        wakeLockSentinelRef.current.release();
+      } catch {}
+      wakeLockSentinelRef.current = null;
+    }
+  };
+
+  const downloadAuditLog = () => {
+    const text = latestAuditLogRef.current || auditLogLinesRef.current.join('\r\n') || "No logs recorded.";
+    const blob = new Blob([text], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'restoration_log.txt';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  };
+
+  const downloadIssuesLog = () => {
+    const text = latestIssuesLogRef.current || issuesLogLinesRef.current.join('\r\n') || "No issues recorded.";
+    const blob = new Blob([text], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'restoration_issues.txt';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  };
   const { user, userData, refreshUserData } = useAuth()
 
   const isPassExpired = userData?.plan === 'recovery_pass' && userData?.expiresAt && Date.now() >= userData.expiresAt;
@@ -596,26 +649,12 @@ export function useToolPipeline() {
 
   useEffect(() => {
     const timer = setInterval(() => {
-      let heap = 0;
-      const perf = performance as unknown as { memory?: { usedJSHeapSize: number; totalJSHeapSize: number } };
-      if (perf.memory) {
-        heap = perf.memory.usedJSHeapSize / (1024 * 1024);
-      }
-      const baseHeap = heap > 0 ? heap : (isProcessing ? 240.0 : 120.0);
-      setTelemetryTabHeap(parseFloat(baseHeap.toFixed(1)));
-
-      const activeCount = activeWorkersCount;
-      setTelemetryWorkers(activeCount > 0 ? activeCount : (isProcessing ? 1 : 0));
-      const cpuPercent = isProcessing ? Math.min(99, Math.max(8, (activeCount / Math.max(1, maxWorkers)) * 75 + 10)) : 1.2;
-      setTelemetryCpu(parseFloat(cpuPercent.toFixed(1)));
-      setTelemetryMem(parseFloat((baseHeap * 0.8).toFixed(1)));
-
       if (isProcessingRef.current) {
         setTimeTick(t => t + 1);
       }
     }, 1000);
     return () => clearInterval(timer);
-  }, [isProcessing, isPaused, activeWorkersCount, maxWorkers]);
+  }, []);
 
   const updateActiveSession = async (status: 'initializing' | 'processing' | 'completed' | 'failed' | 'cancelled', fields: Record<string, unknown> = {}) => {
     if (!user) return
@@ -855,13 +894,19 @@ export function useToolPipeline() {
       requestAnimationFrame(() => {
         setStats({ ...statsBuffer.current });
         setProgress(progressBuffer.current);
+        if (startTimeRef.current && isProcessingRef.current && !isPausedRef.current) {
+          const el = Math.max(1, Math.floor((Date.now() - startTimeRef.current) / 1000));
+          setElapsedSeconds(el);
+          setFilesPerSec((statsBuffer.current.scanned / el).toFixed(1));
+          setSpeedMBs(((sessionBytesRef.current / 1048576) / el).toFixed(2));
+        }
         setSessionBytes(sessionBytesRef.current);
         setSessionFiles(sessionFilesRef.current);
         setLogs(prev => {
           if (logsBuffer.current.length === 0) return prev;
           const newLogs = [...prev, ...logsBuffer.current];
           logsBuffer.current = [];
-          return newLogs;
+          return newLogs.length > 400 ? newLogs.slice(-400) : newLogs;
         });
       });
     }, 250);
@@ -882,7 +927,10 @@ export function useToolPipeline() {
     // 1. Initialize WorkerPool with selected engine
     const engine = useSettingsStore.getState().exifEngine;
     console.log('[PIPELINE ENGINE SELECTED]', engine);
-    const pool = new WorkerPool(maxWorkersRef.current, engine);
+    const driveProfile = useSettingsStore.getState().driveProfile;
+    const effectiveWorkers = driveProfile === 'hdd' ? 1 : maxWorkersRef.current;
+    console.log('[PIPELINE ENGINE: WASM ExifTool] Concurrency:', effectiveWorkers, 'Profile:', driveProfile);
+    const pool = new WorkerPool(effectiveWorkers);
     workerPoolRef.current = pool;
 
     // 2. Open ZIP Reader if ZIP source
@@ -1221,7 +1269,7 @@ export function useToolPipeline() {
 
             const engine = useSettingsStore.getState().exifEngine;
             const isVideo = isVideoFilename(fileRecord.filename);
-            const isSupported = isJpeg(fileRecord.filename) || isVideo;
+            const isSupported = isSupportedImageFormat(fileRecord.filename) || isVideo;
 
             if (epochSec && isSupported) {
               actionStr = isVideo ? 'Restored (Video Meta)' : 'Restored';
@@ -1237,7 +1285,7 @@ export function useToolPipeline() {
               }
 
               if (bufferOrBlob) {
-                const taskName = isVideo ? 'inject_video' : (engine === 'wasm' ? 'inject_wasm' : 'inject_exif');
+                const taskName = isVideo ? 'inject_video' : 'inject_wasm';
                 const res = await pool.runTask(taskName, {
                   buffer: bufferOrBlob,
                   epochSec,
@@ -1252,7 +1300,7 @@ export function useToolPipeline() {
 
                 bufferOrBlob = res.buffer || bufferOrBlob;
                 if (res.success) {
-                  actionStr = isVideo ? 'Restored (QuickTime Meta)' : (engine === 'wasm' ? 'WASM Injected' : 'Deep Injected');
+                  actionStr = 'Restored';
                 } else {
                   actionStr = `Copied (Meta fallback: ${res.error || 'skipped'})`;
                   levelStr = 'warn';
@@ -1372,6 +1420,18 @@ export function useToolPipeline() {
               filename: fileRecord.filename,
               action: actionStr
             });
+            const logTs = new Date().toISOString().replace('T', ' ').substring(0, 19);
+            const fullRel = fileRecord.relativePath.length > 0 ? '/' + fileRecord.relativePath.join('/') + '/' : '/';
+            const logLine = fullRel + fileRecord.filename + ' | ' + actionStr;
+            if (levelStr === 'success') {
+              auditLogLinesRef.current.push('[' + logTs + '] RESTORED: ' + logLine);
+            } else if (levelStr === 'warn') {
+              auditLogLinesRef.current.push('[' + logTs + '] WARN/UNMATCHED: ' + logLine);
+              issuesLogLinesRef.current.push('[' + logTs + '] UNMATCHED: ' + logLine);
+            } else {
+              auditLogLinesRef.current.push('[' + logTs + '] ERROR: ' + logLine);
+              issuesLogLinesRef.current.push('[' + logTs + '] ERROR: ' + logLine);
+            }
             fileBuffer.current = fileRecord.filename;
             progressBuffer.current = statsBuffer.current.total > 0
               ? Math.floor((statsBuffer.current.scanned / statsBuffer.current.total) * 100)
@@ -1569,8 +1629,64 @@ export function useToolPipeline() {
     setProgress(100)
     setCurrentFile("Processing Complete")
 
-    // Auto-generate sync scripts (.bat for Windows, .sh for Mac/Linux) in output folder if direct folder mode was used
+    // Write dual audit & issue logs to disk/zip
     const outHandle = (currentSessionRef.current?.outputHandle as FileSystemDirectoryHandle) || outputFolder;
+    const auditText = [
+      "==================================================================",
+      "TAKEOUTFIX - COMPLETE RESTORATION AUDIT LOG",
+      "==================================================================",
+      `Generated: ${new Date().toISOString()}`,
+      `Application: TakeoutFix Metadata Restorer`,
+      `Total Files Scanned: ${statsBuffer.current.scanned}`,
+      `Successfully Restored: ${statsBuffer.current.matched}`,
+      `Unmatched Sidecars: ${statsBuffer.current.unmatched}`,
+      `Metadata Fallbacks: ${statsBuffer.current.exifFailed}`,
+      `Errors: ${statsBuffer.current.errors}`,
+      "==================================================================",
+      "",
+      ...auditLogLinesRef.current
+    ].join('\r\n');
+
+    const issuesText = [
+      "==================================================================",
+      "TAKEOUTFIX - RESTORATION ISSUES & REVIEW REPORT",
+      "==================================================================",
+      `Generated: ${new Date().toISOString()}`,
+      `Unmatched Sidecars: ${statsBuffer.current.unmatched}`,
+      `Metadata Fallbacks: ${statsBuffer.current.exifFailed}`,
+      `Errors: ${statsBuffer.current.errors}`,
+      "==================================================================",
+      "",
+      ...(issuesLogLinesRef.current.length > 0 ? issuesLogLinesRef.current : ["No errors or unmatched sidecars encountered. All files restored perfectly."])
+    ].join('\r\n');
+
+    latestAuditLogRef.current = auditText;
+    latestIssuesLogRef.current = issuesText;
+
+    if (zipModeRef.current && currentZipWriterRef.current) {
+      try {
+        await currentZipWriterRef.current.add("restoration_log.txt", new BlobReader(new Blob([auditText], { type: "text/plain" })));
+        await currentZipWriterRef.current.add("restoration_issues.txt", new BlobReader(new Blob([issuesText], { type: "text/plain" })));
+      } catch (logErr) {
+        console.warn("Could not append logs into ZIP:", logErr);
+      }
+    } else if (outHandle) {
+      try {
+        const aHandle = await outHandle.getFileHandle("restoration_log.txt", { create: true });
+        const aWritable = await (aHandle as any).createWritable();
+        await aWritable.write(auditText);
+        await aWritable.close();
+
+        const iHandle = await outHandle.getFileHandle("restoration_issues.txt", { create: true });
+        const iWritable = await (iHandle as any).createWritable();
+        await iWritable.write(issuesText);
+        await iWritable.close();
+      } catch (logErr) {
+        console.warn("Could not write logs to output folder:", logErr);
+      }
+    }
+
+    // Auto-generate sync scripts (.bat for Windows, .sh for Mac/Linux) in output folder if direct folder mode was used
     if (outHandle && useSettingsStore.getState().generateSyncScript && restoredTimestampsCatalogRef.current.length > 0) {
       try {
         const jsonHandle = await outHandle.getFileHandle('file_timestamps.json', { create: true });
@@ -1682,66 +1798,13 @@ export function useToolPipeline() {
         gpsInfo: {} as Record<string, string>
       }
 
-      if (file.name.match(/\.jpe?g$/i)) {
+      if (isSupportedImageFormat(file.name)) {
         try {
-          const bytes = new Uint8Array(arrayBuffer)
-          let binary = ""
-          // Convert in chunks to avoid stack overflow for large files
-          const chunkSize = 65536
-          for (let i = 0; i < bytes.length; i += chunkSize) {
-            const sub = bytes.subarray(i, i + chunkSize)
-            binary += String.fromCharCode.apply(null, sub as any)
-          }
-          const base64 = btoa(binary)
-          const exifObj = piexif.load("data:image/jpeg;base64," + base64)
-
-          if (exifObj["0th"]) {
-            const make = exifObj["0th"][piexif.ImageIFD.Make]
-            const model = exifObj["0th"][piexif.ImageIFD.Model]
-            const software = exifObj["0th"][piexif.ImageIFD.Software]
-            if (make) result.cameraInfo["Manufacturer"] = String(make).replace(/\0/g, "").trim()
-            if (model) result.cameraInfo["Camera Model"] = String(model).replace(/\0/g, "").trim()
-            if (software) result.cameraInfo["Software"] = String(software).replace(/\0/g, "").trim()
-          }
-
-          if (exifObj["Exif"]) {
-            const dateOriginal = exifObj["Exif"][piexif.ExifIFD.DateTimeOriginal]
-            if (dateOriginal) result.cameraInfo["Date Taken (EXIF)"] = String(dateOriginal).replace(/\0/g, "").trim()
-          }
-
-          if (exifObj["GPS"]) {
-            const latRef = exifObj["GPS"][piexif.GPSIFD.GPSLatitudeRef]
-            const latRaw = exifObj["GPS"][piexif.GPSIFD.GPSLatitude] as any[]
-            const lonRef = exifObj["GPS"][piexif.GPSIFD.GPSLongitudeRef]
-            const lonRaw = exifObj["GPS"][piexif.GPSIFD.GPSLongitude] as any[]
-            const altRef = exifObj["GPS"][piexif.GPSIFD.GPSAltitudeRef]
-            const altRaw = exifObj["GPS"][piexif.GPSIFD.GPSAltitude] as any
-
-            if (latRaw && latRef) {
-              const deg = latRaw[0][0] / latRaw[0][1]
-              const min = latRaw[1][0] / latRaw[1][1]
-              const sec = latRaw[2][0] / latRaw[2][1]
-              let dd = deg + min / 60 + sec / 3600
-              if (String(latRef).replace(/\0/g, "").trim() === "S") dd = -dd
-              result.gpsInfo["Latitude"] = dd.toFixed(6)
-            }
-            if (lonRaw && lonRef) {
-              const deg = lonRaw[0][0] / lonRaw[0][1]
-              const min = lonRaw[1][0] / lonRaw[1][1]
-              const sec = lonRaw[2][0] / lonRaw[2][1]
-              let dd = deg + min / 60 + sec / 3600
-              if (String(lonRef).replace(/\0/g, "").trim() === "W") dd = -dd
-              result.gpsInfo["Longitude"] = dd.toFixed(6)
-            }
-            if (altRaw) {
-              const val = Array.isArray(altRaw) ? (altRaw[0] / altRaw[1]) : Number(altRaw)
-              let m = val
-              if (altRef === 1) m = -m
-              result.gpsInfo["Altitude"] = `${m.toFixed(1)} meters`
-            }
-          }
+          const parsed = await parseImageMetadata(arrayBuffer, file.name);
+          result.cameraInfo = { ...result.cameraInfo, ...parsed.cameraInfo };
+          result.gpsInfo = { ...result.gpsInfo, ...parsed.gpsInfo };
         } catch (err) {
-          console.warn("Exif parser fail:", err)
+          console.warn("Exif parser fail:", err);
         }
       }
       setViewerExif(result)
@@ -1767,31 +1830,14 @@ export function useToolPipeline() {
       let mediaDate = "No EXIF Original Date found"
       let mediaGps = "No GPS coordinates found"
 
-      if (activeMedia.name.match(/\.jpe?g$/i)) {
+      if (isSupportedImageFormat(activeMedia.name)) {
         try {
-          const bytes = new Uint8Array(mediaBuf)
-          let binary = ""
-          const chunkSize = 65536
-          for (let i = 0; i < bytes.length; i += chunkSize) {
-            const sub = bytes.subarray(i, i + chunkSize)
-            binary += String.fromCharCode.apply(null, sub as any)
+          const parsed = await parseImageMetadata(mediaBuf, activeMedia.name);
+          if (parsed.cameraInfo["Date Taken (EXIF)"]) {
+            mediaDate = parsed.cameraInfo["Date Taken (EXIF)"];
           }
-          const base64 = btoa(binary)
-          const exif = piexif.load("data:image/jpeg;base64," + base64)
-
-          if (exif["Exif"] && exif["Exif"][piexif.ExifIFD.DateTimeOriginal]) {
-            mediaDate = String(exif["Exif"][piexif.ExifIFD.DateTimeOriginal]).replace(/\0/g, "").trim()
-          }
-          if (exif["GPS"] && exif["GPS"][piexif.GPSIFD.GPSLatitude]) {
-            const latR = exif["GPS"][piexif.GPSIFD.GPSLatitude] as any[]
-            const latRef = exif["GPS"][piexif.GPSIFD.GPSLatitudeRef]
-            const lonR = exif["GPS"][piexif.GPSIFD.GPSLongitude] as any[]
-            const lonRef = exif["GPS"][piexif.GPSIFD.GPSLongitudeRef]
-            if (latR && latRef && lonR && lonRef) {
-              const latDeg = latR[0][0] / latR[0][1] + (latR[1][0] / latR[1][1] / 60) + (latR[2][0] / latR[2][1] / 3600)
-              const lonDeg = lonR[0][0] / lonR[0][1] + (lonR[1][0] / lonR[1][1] / 60) + (lonR[2][0] / lonR[2][1] / 3600)
-              mediaGps = `${latDeg.toFixed(5)}°, ${lonDeg.toFixed(5)}°`
-            }
+          if (parsed.gpsInfo["Latitude"] && parsed.gpsInfo["Longitude"]) {
+            mediaGps = `${parsed.gpsInfo["Latitude"]}°, ${parsed.gpsInfo["Longitude"]}°`;
           }
         } catch {}
       }
@@ -2000,7 +2046,7 @@ export function useToolPipeline() {
           : `An internal filesystem tracking collision occurred. Please select again. (${err.message || err})`,
         "error",
         4500,
-        isNotAllowed ? "Permission Denied" : "Directory Failure"
+        isNotAllowed ? "Permission Denied" : "Folder Selection Error"
       )
     } finally {
       setTakeoutLock(false)
@@ -2050,7 +2096,7 @@ export function useToolPipeline() {
           : `An internal filesystem tracking collision occurred. Please select again. (${err.message || err})`,
         "error",
         4500,
-        isNotAllowed ? "Permission Obliteration" : "Directory Failure"
+        isNotAllowed ? "Permission Denied" : "Folder Selection Error"
       )
     } finally {
       setOutputLock(false)

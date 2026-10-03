@@ -17,6 +17,13 @@ public class MetadataMatcher {
     private static final int MAX_STEM = 46;
     private static final Pattern NUMBERED_PATTERN = Pattern.compile("(.+)(\\(\\d+\\))(\\..+)$");
 
+    // Matches Google Photos suffixes on edited, cropped, or filtered companion photos
+    // e.g. IMG_0316-edited.JPG, CIMG0655-edited.JPG, photo_effects.jpg, etc.
+    private static final Pattern EDITED_SUFFIX_PATTERN = Pattern.compile(
+        "[-_](edited|edit|effects|smile|mix|animation|collage|motion|panoramic)(\\(\\d+\\))?$",
+        Pattern.CASE_INSENSITIVE
+    );
+
     private static final String DYNAMIC_REGEX;
     private static final List<String> DYNAMIC_SUFFIXES = new ArrayList<>();
 
@@ -93,13 +100,60 @@ public class MetadataMatcher {
         f = filesByName.get(nameNoExt + ".json");
         if (f != null) return Optional.of(f);
 
-        // 2. All generated candidate names — in-memory map lookup, zero I/O
+        // 2. Edited/cropped/effects companion match: Google Takeout only creates JSON for the unedited original
+        // e.g. "IMG_0316-edited.JPG" -> shares "IMG_0316.JPG.supplemental-metadata.json" or "IMG_0316.json"
+        Matcher editedMatcher = EDITED_SUFFIX_PATTERN.matcher(nameNoExt);
+        if (editedMatcher.find()) {
+            String uneditedBase = editedMatcher.replaceFirst("");
+            String ext = (lastDot > 0 ? name.substring(lastDot) : "");
+            String uneditedFullName = uneditedBase + ext;
+
+            f = filesByName.get(uneditedFullName + ".supplemental-metadata.json");
+            if (f != null) return Optional.of(f);
+
+            f = filesByName.get(uneditedBase + ".supplemental-metadata.json");
+            if (f != null) return Optional.of(f);
+
+            f = filesByName.get(uneditedFullName + ".json");
+            if (f != null) return Optional.of(f);
+
+            f = filesByName.get(uneditedBase + ".json");
+            if (f != null) return Optional.of(f);
+
+            // Extension case variations (e.g. .JPG vs .jpg)
+            String lowerExt = ext.toLowerCase();
+            if (!lowerExt.equals(ext)) {
+                f = filesByName.get(uneditedBase + lowerExt + ".supplemental-metadata.json");
+                if (f != null) return Optional.of(f);
+                f = filesByName.get(uneditedBase + lowerExt + ".json");
+                if (f != null) return Optional.of(f);
+            }
+            String upperExt = ext.toUpperCase();
+            if (!upperExt.equals(ext)) {
+                f = filesByName.get(uneditedBase + upperExt + ".supplemental-metadata.json");
+                if (f != null) return Optional.of(f);
+                f = filesByName.get(uneditedBase + upperExt + ".json");
+                if (f != null) return Optional.of(f);
+            }
+
+            for (String candidate : getJsonCandidates(uneditedFullName)) {
+                f = filesByName.get(candidate);
+                if (f != null) return Optional.of(f);
+            }
+
+            Optional<File> uneditedDynamic = findDynamicMatch(media, uneditedFullName, uneditedBase, files);
+            if (uneditedDynamic.isPresent()) {
+                return uneditedDynamic;
+            }
+        }
+
+        // 3. All generated candidate names — in-memory map lookup, zero I/O
         for (String candidate : getJsonCandidates(name)) {
             f = filesByName.get(candidate);
             if (f != null) return Optional.of(f);
         }
 
-        // 3. Fallback: scan cached files array for dynamic suffix match (still in-memory, no I/O)
+        // 4. Fallback: scan cached files array for dynamic suffix match (still in-memory, no I/O)
         return findDynamicMatch(media, name, nameNoExt, files);
     }
 
@@ -199,8 +253,8 @@ public class MetadataMatcher {
     private String normalizeBase(String base) {
         String s = base.trim();
         s = s.replaceAll("\\s*\\(\\d+\\)$", "");
-        s = s.replaceAll("(?i)[\\s_-]*(copy|edited|edit)$", "");
-        s = s.replaceAll("[\\s_-]*\\d+$", "");
+        s = s.replaceAll("(?i)[\\s_-]+(copy|edited|edit|effects|smile|mix|animation|collage|motion|panoramic)(\\(\\d+\\)|[\\s_-]*\\d+)?$", "");
+        s = s.replaceAll("\\s+\\d+$", "");
         s = s.replaceAll("[\\s_]+$", "");
         s = s.replaceAll("-+$", "");
         return s;

@@ -1,5 +1,6 @@
 package com.takeoutfix.ui.fx;
 
+import com.takeoutfix.auth.GuestQuotaStore;
 import com.takeoutfix.auth.UserSyncBridgeService;
 import com.takeoutfix.restore.PowerManager;
 import com.takeoutfix.restore.SessionStatsService;
@@ -9,6 +10,9 @@ import com.takeoutfix.restore.infrastructure.ExtractionService;
 import com.takeoutfix.restore.infrastructure.MediaScanner;
 import com.takeoutfix.task.BackgroundTask;
 import com.takeoutfix.task.TaskManager;
+import javafx.animation.Animation;
+import javafx.animation.KeyFrame;
+import javafx.animation.Timeline;
 import javafx.application.Platform;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
@@ -26,6 +30,7 @@ import javafx.scene.shape.Circle;
 import javafx.stage.DirectoryChooser;
 import javafx.stage.FileChooser;
 import javafx.stage.Stage;
+import javafx.util.Duration;
 
 import java.awt.Desktop;
 import java.io.File;
@@ -136,6 +141,31 @@ public class TakeoutRestoreView extends VBox {
     private final PowerManager powerManager = new PowerManager();
     private com.takeoutfix.restore.TakeoutRestoreTask activeRestoreTask = null;
     private com.takeoutfix.restore.TakeoutScanTask activeScanTask = null;
+
+    private Timeline telemetryTimeline;
+
+    private void startTelemetryTimeline() {
+        stopTelemetryTimeline();
+        telemetryTimeline = new Timeline(new KeyFrame(Duration.seconds(1), e -> {
+            if (isRunning && !isPaused && startTimeMs > 0) {
+                long elapsedSec = (System.currentTimeMillis() - startTimeMs) / 1000;
+                long hours = elapsedSec / 3600;
+                long mins = (elapsedSec % 3600) / 60;
+                long secs = elapsedSec % 60;
+                elapsedValLabel.setText(String.format("%02d:%02d:%02d", hours, mins, secs));
+                updateStorageDisplay();
+            }
+        }));
+        telemetryTimeline.setCycleCount(Animation.INDEFINITE);
+        telemetryTimeline.play();
+    }
+
+    private void stopTelemetryTimeline() {
+        if (telemetryTimeline != null) {
+            telemetryTimeline.stop();
+            telemetryTimeline = null;
+        }
+    }
 
     public TakeoutRestoreView(Stage stage,
                               ExtractionService extractionService,
@@ -663,6 +693,8 @@ public class TakeoutRestoreView extends VBox {
 
         VBox doneCard = createStorageSubCard(storageDoneValue, storageDoneLabel);
         VBox reqCard = createStorageSubCard(storageReqValue, storageReqLabel);
+        storageDoneValue.setTooltip(new Tooltip("Restored data / Total source archive data"));
+        storageReqValue.setTooltip(new Tooltip("Remaining required disk space / Available free space on destination"));
 
         dualCardsRow.getChildren().addAll(doneCard, reqCard);
         card.getChildren().addAll(storeHeaderRow, dualCardsRow);
@@ -700,16 +732,30 @@ public class TakeoutRestoreView extends VBox {
             } catch (Exception ignored) {}
         }
 
-        String reqLeft = sourceSizeBytes > 0 ? formatStorageGb(sourceSizeBytes) : "--";
+        // Dynamic remaining required space: counts down as files are written
+        long remainingBytes = Math.max(0, sourceSizeBytes - restoredBytes);
+        String reqLeft = sourceSizeBytes > 0 ? formatStorageGb(remainingBytes) : "--";
         String reqRight = freeBytes > 0 ? formatStorageGb(freeBytes) : "--";
         storageReqValue.setText(reqLeft + " / " + reqRight);
 
-        if (sourceSizeBytes > 0 && freeBytes > 0) {
-            if (freeBytes < sourceSizeBytes) {
+        if (restoredBytes > 0 && remainingBytes > 0) {
+            storageReqLabel.setText("remaining required");
+        } else if (remainingBytes == 0 && sourceSizeBytes > 0) {
+            storageReqLabel.setText("all written");
+        } else {
+            storageReqLabel.setText("required");
+        }
+
+        if (remainingBytes > 0 && freeBytes > 0) {
+            if (freeBytes < remainingBytes) {
+                // Warning: destination disk does not have enough free space for the remaining files
                 storageReqValue.setStyle("-fx-font-family: 'JetBrains Mono', 'Cascadia Code', 'Consolas', monospace; -fx-font-size: 15px; -fx-font-weight: 700; -fx-text-fill: #EF4444; -fx-text-alignment: center;");
             } else {
+                // Healthy: available free space safely accommodates the remaining files
                 storageReqValue.setStyle("-fx-font-family: 'JetBrains Mono', 'Cascadia Code', 'Consolas', monospace; -fx-font-size: 15px; -fx-font-weight: 700; -fx-text-fill: #10B981; -fx-text-alignment: center;");
             }
+        } else if (remainingBytes == 0 && sourceSizeBytes > 0) {
+            storageReqValue.setStyle("-fx-font-family: 'JetBrains Mono', 'Cascadia Code', 'Consolas', monospace; -fx-font-size: 15px; -fx-font-weight: 700; -fx-text-fill: #10B981; -fx-text-alignment: center;");
         } else {
             storageReqValue.setStyle("-fx-font-family: 'JetBrains Mono', 'Cascadia Code', 'Consolas', monospace; -fx-font-size: 15px; -fx-font-weight: 700; -fx-text-alignment: center;");
         }
@@ -1118,6 +1164,16 @@ public class TakeoutRestoreView extends VBox {
         }
 
         boolean signedIn = userService != null && userService.isSignedIn();
+        if (!signedIn && GuestQuotaStore.isExhausted()) {
+            FxTrustSignInDialog trustDialog = new FxTrustSignInDialog(stage, userService, () -> {
+                if (userService != null && userService.isSignedIn()) {
+                    executeLiveRestoration();
+                }
+            });
+            trustDialog.showAndWait();
+            return;
+        }
+
         java.util.prefs.Preferences prefs = java.util.prefs.Preferences.userNodeForPackage(TakeoutRestoreView.class);
         boolean suppress = prefs.getBoolean("suppress_trust_popup", false);
         if (!signedIn && !suppress) {
@@ -1189,6 +1245,7 @@ public class TakeoutRestoreView extends VBox {
         isRunning = true;
         isPaused = false;
         startTimeMs = System.currentTimeMillis();
+        startTelemetryTimeline();
         updateButtonStates();
 
         boolean shutdownRequested = shutdownAfterCheck.isSelected();
@@ -1223,6 +1280,7 @@ public class TakeoutRestoreView extends VBox {
         restoreTask.stateProperty().addListener((obs, oldState, newState) -> {
             if (newState == BackgroundTask.TaskState.COMPLETED) {
                 Platform.runLater(() -> {
+                    stopTelemetryTimeline();
                     operationStateLabel.setText("Restoration Complete");
                     currentFileLabel.setText("Restoration completed successfully.");
                     showRestoreCompletionPopup();
@@ -1266,6 +1324,7 @@ public class TakeoutRestoreView extends VBox {
                 } catch (Exception ignored) {}
             } else if (newState == BackgroundTask.TaskState.FAILED) {
                 Platform.runLater(() -> {
+                    stopTelemetryTimeline();
                     Throwable ex = restoreTask.getFailureError();
                     String msg = ex != null ? (ex.getMessage() != null ? ex.getMessage() : ex.getClass().getSimpleName()) : "Unknown error";
                     appendLog("ERROR", "Restoration failed: " + msg);
@@ -1279,6 +1338,7 @@ public class TakeoutRestoreView extends VBox {
                 });
             } else if (newState == BackgroundTask.TaskState.CANCELLED) {
                 Platform.runLater(() -> {
+                    stopTelemetryTimeline();
                     isRunning = false;
                     isPaused = false;
                     activeRestoreTask = null;
@@ -1290,6 +1350,7 @@ public class TakeoutRestoreView extends VBox {
                 });
             } else if (newState == BackgroundTask.TaskState.PAUSED) {
                 Platform.runLater(() -> {
+                    if (telemetryTimeline != null) telemetryTimeline.pause();
                     isPaused = true;
                     updateButtonStates();
                     operationStateLabel.setText("Restoration paused.");
@@ -1297,6 +1358,7 @@ public class TakeoutRestoreView extends VBox {
                 });
             } else if (newState == BackgroundTask.TaskState.PROCESSING && isPaused) {
                 Platform.runLater(() -> {
+                    if (telemetryTimeline != null) telemetryTimeline.play();
                     isPaused = false;
                     updateButtonStates();
                     operationStateLabel.setText("Restoring metadata...");
@@ -1326,8 +1388,10 @@ public class TakeoutRestoreView extends VBox {
             isPaused = !isPaused;
             updateButtonStates();
             if (isPaused) {
+                if (telemetryTimeline != null) telemetryTimeline.pause();
                 extractionService.pause();
             } else {
+                if (telemetryTimeline != null) telemetryTimeline.play();
                 extractionService.resume();
             }
         }
@@ -1335,6 +1399,7 @@ public class TakeoutRestoreView extends VBox {
 
     private void handleCancel() {
         if (!isRunning) return;
+        stopTelemetryTimeline();
         if (activeRestoreTask != null) {
             activeRestoreTask.cancel();
         } else if (activeScanTask != null) {
@@ -1465,6 +1530,29 @@ public class TakeoutRestoreView extends VBox {
                     if (curBytes > 0) {
                         updateRestoredBytes(curBytes);
                     }
+                });
+            }
+
+            @Override
+            public void onGuestLimitReached() {
+                Platform.runLater(() -> {
+                    stopTelemetryTimeline();
+                    isPaused = true;
+                    updateButtonStates();
+                    operationStateLabel.setText("1 GB Free Guest Limit Reached");
+                    currentFileLabel.setText("Sign in with Google to unlock unlimited restoration.");
+
+                    FxTrustSignInDialog trustDialog = new FxTrustSignInDialog(stage, userService, () -> {
+                        if (userService != null && userService.isSignedIn()) {
+                            isPaused = false;
+                            updateButtonStates();
+                            startTelemetryTimeline();
+                            if (extractionService != null) {
+                                extractionService.resume();
+                            }
+                        }
+                    });
+                    trustDialog.showAndWait();
                 });
             }
         });

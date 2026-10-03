@@ -764,6 +764,7 @@ export async function getMonetizationContent(
 
   // 7. Apply Selection Mode & Fallback Logic for standard/tool slots
   let resolvedAffiliate: ResolvedMonetizationItem | null = null;
+  let resolvedSecondaryAffiliate: ResolvedMonetizationItem | null = null;
   let resolvedAd: ResolvedMonetizationItem | null = null;
   let resolvedSecondaryAd: ResolvedMonetizationItem | null = null;
 
@@ -793,10 +794,12 @@ export async function getMonetizationContent(
   // Tool and desktop sidebars never show affiliate deals, ONLY real ads
   if (isSidebarPlacement || isToolPlacement || mode === "ADS_ONLY") {
     resolvedAffiliate = null;
+    resolvedSecondaryAffiliate = null;
   }
 
   const isEmpty =
     !resolvedAffiliate &&
+    !resolvedSecondaryAffiliate &&
     !resolvedAd &&
     !resolvedSecondaryAd &&
     resolvedItems.length === 0;
@@ -806,7 +809,7 @@ export async function getMonetizationContent(
     enabled: true,
     mode,
     affiliate: resolvedAffiliate,
-    secondaryAffiliate: selectedSecondaryAffiliate,
+    secondaryAffiliate: resolvedSecondaryAffiliate,
     ad: resolvedAd,
     secondaryAd: resolvedSecondaryAd,
     items: resolvedItems.length > 0 ? resolvedItems : undefined,

@@ -1,18 +1,8 @@
-import { injectImageExif } from './DeepExifRestorer';
+import { injectImageExif, isSupportedImageFormat } from './DeepExifRestorer';
 
 /**
- * High-performance EXIF date, GPS, description, people, and album metadata restorer.
- * Uses binary payload injection for zero-overhead browser processing.
- * 
- * @param fileData Uint8Array containing the image data
- * @param epochSec The timestamp to inject
- * @param lat Optional latitude
- * @param lng Optional longitude
- * @param description Optional description
- * @param people Optional people tags
- * @param albumName Optional album name
- * @param filename The original filename
- * @returns A Uint8Array of the modified file
+ * High-performance WebAssembly EXIF date, GPS, description, people, and album metadata restorer.
+ * Uses native zeroperl WebAssembly ExifTool for multi-format browser processing.
  */
 export async function injectWasmExif(
   fileData: Uint8Array,
@@ -27,11 +17,16 @@ export async function injectWasmExif(
   const resBuffer = await injectImageExif(
     fileData.buffer as ArrayBuffer,
     epochSec,
-    lat,
-    lng,
-    description,
-    people,
-    albumName
+    {
+      lat,
+      lng,
+      description,
+      people,
+      albumName,
+      filename
+    }
   );
   return new Uint8Array(resBuffer);
 }
+
+export { isSupportedImageFormat };

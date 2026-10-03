@@ -33,7 +33,7 @@ public class NativeExifToolEngine {
 
     private File exifToolBinary;
     private final BlockingQueue<PersistentExifTool> pool = new LinkedBlockingQueue<>();
-    private final int maxWorkers = Math.max(2, Math.min(8, Runtime.getRuntime().availableProcessors()));
+    private volatile int maxWorkers = Math.max(2, Math.min(8, Runtime.getRuntime().availableProcessors()));
     private final java.util.concurrent.atomic.AtomicInteger currentWorkers = new java.util.concurrent.atomic.AtomicInteger(0);
     private final java.util.concurrent.ScheduledExecutorService idleReaper = java.util.concurrent.Executors.newSingleThreadScheduledExecutor(r -> {
         Thread t = new Thread(r, "ExifTool-IdleReaper");
@@ -81,6 +81,14 @@ public class NativeExifToolEngine {
         return exifToolBinary;
     }
 
+    public int getMaxWorkers() {
+        return maxWorkers;
+    }
+
+    public void setMaxWorkers(int limit) {
+        this.maxWorkers = Math.max(1, limit);
+    }
+
     public synchronized void cullIdleWorkers() {
         PersistentExifTool worker;
         while ((worker = pool.poll()) != null) {
@@ -111,40 +119,15 @@ public class NativeExifToolEngine {
             if (is == null) throw new IOException("exiftool_win.zip not found in resources/bin");
 
             ZipEntry entry;
-            byte[] buf = new byte[8192];
             while ((entry = zis.getNextEntry()) != null) {
-                String entryName = entry.getName().replace('\\', '/');
-                if (entry.isDirectory()) continue;
-
-                // Strip leading directory (e.g. exiftool-13.59_64/)
-                String relativePath = entryName;
-                if (entryName.contains("/")) {
-                    relativePath = entryName.substring(entryName.indexOf("/") + 1);
-                }
-
-                Path targetPath = extractDir.resolve(relativePath).normalize();
-                if (!targetPath.startsWith(extractDir.normalize())) {
-                    throw new SecurityException("Zip Slip detected in archive entry: " + entryName);
-                }
-
-                File outFile;
-                if (relativePath.equalsIgnoreCase("exiftool(-k).exe") || relativePath.equalsIgnoreCase("exiftool.exe")) {
-                    outFile = exe;
+                File outFile = extractDir.resolve(entry.getName()).toFile();
+                if (entry.isDirectory()) {
+                    outFile.mkdirs();
                 } else {
-                    outFile = targetPath.toFile();
+                    outFile.getParentFile().mkdirs();
+                    Files.copy(zis, outFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
                 }
-
-                File parent = outFile.getParentFile();
-                if (parent != null && !parent.exists()) {
-                    parent.mkdirs();
-                }
-
-                try (FileOutputStream fos = new FileOutputStream(outFile)) {
-                    int len;
-                    while ((len = zis.read(buf)) > 0) {
-                        fos.write(buf, 0, len);
-                    }
-                }
+                zis.closeEntry();
             }
         }
         return exe;
@@ -152,23 +135,21 @@ public class NativeExifToolEngine {
 
     private File extractUnixExifTool(Path extractDir) throws IOException {
         File script = extractDir.resolve("exiftool").toFile();
-        if (script.exists() && script.length() > 0) return script;
+        if (script.exists() && script.canExecute()) {
+            return script;
+        }
 
         try (InputStream is = getClass().getResourceAsStream("/bin/exiftool_unix.tar.gz");
-             BufferedInputStream bis = new BufferedInputStream(is);
-             GzipCompressorInputStream gzis = new GzipCompressorInputStream(bis);
+             GzipCompressorInputStream gzis = new GzipCompressorInputStream(is);
              TarArchiveInputStream tar = new TarArchiveInputStream(gzis)) {
             if (is == null) throw new IOException("exiftool_unix.tar.gz not found in resources/bin");
 
             TarArchiveEntry entry;
-            while ((entry = (TarArchiveEntry) tar.getNextEntry()) != null) {
+            while ((entry = tar.getNextTarEntry()) != null) {
                 String name = entry.getName();
-                if (entry.isDirectory()) continue;
-                
-                String relativePath = name;
-                if (name.contains("/")) {
-                    relativePath = name.substring(name.indexOf("/") + 1);
-                }
+                int slash = name.indexOf('/');
+                String relativePath = (slash != -1) ? name.substring(slash + 1) : name;
+                if (relativePath.isEmpty()) continue;
 
                 if (relativePath.equals("exiftool") || relativePath.startsWith("lib/")) {
                     File outFile = extractDir.resolve(relativePath).toFile();
@@ -208,16 +189,19 @@ public class NativeExifToolEngine {
         }
 
         if (worker == null) {
-            try {
-                // Wait up to 30s for a free worker rather than falling back to slow spawn
-                worker = pool.poll(30, TimeUnit.SECONDS);
-                if (worker == null) {
-                    System.err.println("ExifTool pool exhausted after 30s wait — using fallback spawn");
-                    return executeFallback(args);
+            // Apply controlled backpressure: wait for active workers to complete disk writes
+            long deadline = System.currentTimeMillis() + 60_000L;
+            while (worker == null && System.currentTimeMillis() < deadline) {
+                try {
+                    worker = pool.poll(5, TimeUnit.SECONDS);
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    return false;
                 }
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-                return false;
+            }
+            if (worker == null) {
+                System.err.println("ExifTool workers busy after 60s backpressure wait — running single fallback");
+                return executeFallback(args);
             }
         }
 
@@ -231,7 +215,12 @@ public class NativeExifToolEngine {
             }
         } finally {
             if (worker != null) {
-                pool.offer(worker);
+                if (currentWorkers.get() > maxWorkers) {
+                    worker.destroy();
+                    currentWorkers.decrementAndGet();
+                } else {
+                    pool.offer(worker);
+                }
             }
         }
         return success;
