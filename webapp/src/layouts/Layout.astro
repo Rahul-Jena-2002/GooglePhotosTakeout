@@ -616,6 +616,20 @@ window.__h82AlnkH6D91__("WyJwdWItNzYyODczNjE3MjIzMzk5NSIsW251bGwsbnVsbCxudWxsLCJ
               </div>
             </div>
 
+            <!-- Restore Tool Action Link (Always visible in right navbar for ALL users - logged in or guest) -->
+            <a 
+              id="desktop-tool-link"
+              href="/tool" 
+              class={`hidden sm:inline-flex items-center px-3.5 py-1.5 rounded-full text-xs font-semibold transition-all duration-150 cursor-pointer whitespace-nowrap ${
+                isActive('/tool') 
+                  ? 'bg-indigo-600 text-white shadow-xs' 
+                  : 'bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20'
+              }`} 
+              data-astro-reload
+            >
+              Restore Tool
+            </a>
+
             <!-- Auth Trigger Button / Dropdown -->
             <div id="auth-section" class="relative flex flex-col items-end">
               <!-- Loading spinner or loading indicator by default -->
@@ -636,7 +650,6 @@ window.__h82AlnkH6D91__("WyJwdWItNzYyODczNjE3MjIzMzk5NSIsW251bGwsbnVsbCxudWxsLCJ
               <div id="profile-container" class="relative hidden flex items-center gap-4">
                 <!-- Desktop App Links (logged in) -->
                 <div class="hidden lg:flex items-center gap-6 mr-2">
-                  <a id="desktop-tool-link" href="/tool" class={`nav-link text-sm font-medium transition-colors duration-150 ${isActive('/tool') ? 'active text-[#8170CC] font-bold' : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white'}`} data-astro-reload>Restore Tool</a>
                   <a id="desktop-dashboard-link" href="/dashboard" class={`nav-link text-sm font-medium transition-colors duration-150 ${isActive('/dashboard') ? 'active text-[#8170CC] font-bold' : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white'}`} data-astro-prefetch="hover">Dashboard</a>
                   <a id="desktop-admin-link" href="/admin" class={`nav-link text-sm font-medium transition-colors duration-150 hidden ${isActive('/admin') ? 'active text-[#8170CC] font-bold' : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white'}`} data-astro-reload>Admin Center</a>
                 </div>
