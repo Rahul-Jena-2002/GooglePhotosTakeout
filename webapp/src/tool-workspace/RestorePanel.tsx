@@ -118,6 +118,8 @@ export function RestorePanel({
   pauseProcessing,
   resumeProcessing,
   resetForNewRestore,
+  plan = 'guest',
+  currentUsedBytes = 0,
   sessionFiles = 0,
   sessionBytes = 0,
   formatByteSize = (bytes: number) => `${(bytes / (1024 * 1024)).toFixed(1)} MB`,
@@ -221,6 +223,15 @@ export function RestorePanel({
           {sessionBytes > 0 && (
             <span className="text-[11px] font-mono font-medium text-zinc-700 dark:text-zinc-300 px-2.5 py-0.5 rounded-md bg-zinc-100 dark:bg-zinc-800/60 border border-zinc-200 dark:border-zinc-700/40">
               {formatByteSize(sessionBytes)} ({sessionFiles.toLocaleString()} files)
+            </span>
+          )}
+          {plan === 'guest' ? (
+            <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-amber-500/10 border border-amber-500/30 text-amber-600 dark:text-amber-400">
+              1.0 GB Free Limit
+            </span>
+          ) : (
+            <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-600 dark:text-emerald-400">
+              Unlimited Account
             </span>
           )}
           <span className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full border ${
@@ -593,6 +604,68 @@ export function RestorePanel({
                 </div>
               )}
             </div>
+          </div>
+
+          {/* Data Volume & Quota Monitoring Card */}
+          <div className="p-3 sm:p-3.5 rounded-xl bg-white dark:bg-zinc-900/40 border border-zinc-200 dark:border-white/10 shadow-2xs space-y-2">
+            <div className="flex flex-wrap items-center justify-between gap-2.5">
+              <div className="flex items-center gap-2.5 min-w-0">
+                <div className="w-8 h-8 rounded-lg bg-indigo-50 dark:bg-indigo-950/60 border border-indigo-200/80 dark:border-indigo-500/30 flex items-center justify-center text-indigo-600 dark:text-indigo-400 shrink-0">
+                  <HardDrive className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
+                </div>
+                <div className="min-w-0">
+                  <div className="flex flex-wrap items-center gap-2 text-xs font-semibold text-zinc-900 dark:text-white">
+                    <span>Processed Volume &amp; Quota</span>
+                    <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border ${
+                      plan === 'guest'
+                        ? 'bg-amber-500/10 border-amber-500/20 text-amber-600 dark:text-amber-400'
+                        : 'bg-emerald-500/10 border-emerald-500/20 text-emerald-600 dark:text-emerald-400'
+                    }`}>
+                      {plan === 'guest' ? 'Guest Mode (1.0 GB Free Quota)' : 'Account Active (Unlimited Volume)'}
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-zinc-500 dark:text-zinc-400 truncate">
+                    {plan === 'guest'
+                      ? 'Free guest mode allows up to 1.0 GB per batch. Sign in for 100% free unlimited processing.'
+                      : 'Signed in with your account. Full library restoration and unlimited volume enabled.'}
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-3 ml-auto sm:ml-0">
+                <div className="text-right">
+                  <div className="text-xs sm:text-sm font-mono font-bold text-zinc-900 dark:text-white">
+                    {plan === 'guest'
+                      ? `${formatByteSize(currentUsedBytes + sessionBytes)} / 1.0 GB`
+                      : `${formatByteSize(sessionBytes || currentUsedBytes)} ${sessionFiles > 0 ? `(${sessionFiles.toLocaleString()} files)` : ''}`}
+                  </div>
+                  <div className="text-[10px] text-zinc-500 dark:text-zinc-400 font-mono">
+                    {plan === 'guest'
+                      ? `${Math.min(100, Math.round(((currentUsedBytes + sessionBytes) / (1024 * 1024 * 1024)) * 100))}% of guest quota used`
+                      : 'Unlimited batch allowance'}
+                  </div>
+                </div>
+
+                {plan === 'guest' && (
+                  <button
+                    type="button"
+                    onClick={() => window.dispatchEvent(new CustomEvent('takeoutfix:open-auth-modal', { detail: { mode: 'signin' } }))}
+                    className="px-2.5 py-1 text-xs font-semibold rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white cursor-pointer transition-all shadow-2xs whitespace-nowrap"
+                  >
+                    Sign in to expand
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {plan === 'guest' && (
+              <div className="pt-1.5 border-t border-zinc-100 dark:border-white/5">
+                <Progress
+                  value={Math.min(100, (((currentUsedBytes + sessionBytes) / (1024 * 1024 * 1024)) * 100))}
+                  className="h-1.5 bg-zinc-200 dark:bg-white/10 rounded-full"
+                />
+              </div>
+            )}
           </div>
 
           {/* Restoration Summary Counters */}
