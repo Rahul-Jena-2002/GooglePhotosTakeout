@@ -130,7 +130,7 @@ jobs:
             "/target:winexe" `
             "/platform:x64" `
             "/win32icon:takeoutfix\icons\icon.ico" `
-            "/win32manifest:takeoutfix\launcher\app.manifest" `
+            "/win32manifest:takeoutfix\launcher\TakeoutFix.manifest" `
             "/reference:System.IO.Compression.dll,System.IO.Compression.FileSystem.dll,System.Windows.Forms.dll" `
             "/resource:$payloadZip,payload.zip" `
             "/out:TakeoutFix.exe" `
