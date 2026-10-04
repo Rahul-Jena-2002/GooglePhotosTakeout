@@ -17,6 +17,7 @@ interface DownloadOption {
   url: string;
   directUrl: string;
   instructions: string[];
+  smartScreenNote?: boolean;
 }
 
 export default function DownloadPage() {
@@ -30,10 +31,12 @@ export default function DownloadPage() {
       file: "TakeoutFix.exe",
       url: "https://github.com/Rahul-Jena-2002/GooglePhotosTakeout/releases/latest/download/TakeoutFix.exe",
       directUrl: "https://github.com/Rahul-Jena-2002/GooglePhotosTakeout/releases/latest/download/TakeoutFix.exe",
+      smartScreenNote: true,
       instructions: [
-        "Click the download button below to get pure 'TakeoutFix.exe'.",
-        "Double-click 'TakeoutFix.exe' in your Downloads folder to open it.",
-        "Select your unzipped Google Takeout folder to automatically restore all photo dates, duplicates, and locations."
+        "Click the download button below to get 'TakeoutFix.exe'.",
+        "Double-click 'TakeoutFix.exe' in your Downloads folder.",
+        "If Windows SmartScreen appears, click 'More info' then 'Run anyway' — this is a new release building reputation.",
+        "Select your unzipped Google Takeout folder to restore all photo dates, duplicates, and locations."
       ]
     },
     mac: {
@@ -162,6 +165,23 @@ export default function DownloadPage() {
                   ))}
                 </ol>
               </div>
+
+              {/* SmartScreen notice for Windows */}
+              {activeOption.smartScreenNote && (
+                <div className="mt-4 p-4 rounded-xl bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/25 flex gap-3">
+                  <span className="text-amber-500 text-lg leading-none mt-0.5 flex-shrink-0">⚠</span>
+                  <div className="space-y-1.5">
+                    <p className="text-xs font-bold text-amber-800 dark:text-amber-300">Windows SmartScreen may appear on first run</p>
+                    <p className="text-[11px] text-amber-700 dark:text-amber-400 leading-relaxed">
+                      Because TakeoutFix is a new release, Windows shows a security prompt while reputation builds.
+                      It is completely safe — click <strong className="font-bold">&ldquo;More info&rdquo;</strong> then <strong className="font-bold">&ldquo;Run anyway&rdquo;</strong>.
+                    </p>
+                    <p className="text-[11px] text-amber-600 dark:text-amber-500 leading-relaxed">
+                      Alternative: right-click <code className="bg-amber-100 dark:bg-amber-900/40 px-1 rounded font-mono">TakeoutFix.exe</code> → Properties → check <strong>Unblock</strong> → OK, then double-click.
+                    </p>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
 

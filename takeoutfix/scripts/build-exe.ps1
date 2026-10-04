@@ -10,7 +10,7 @@ if (Test-Path $usersPath) { Remove-Item $usersPath -Force }
 New-Item -ItemType Directory -Force -Path "jpackage-input" | Out-Null
 Copy-Item "takeoutfix/target/takeoutfix.jar" "jpackage-input/takeoutfix.jar" -Force
 
-$appVersion = "2.1.8"
+$appVersion = "2.2.7"
 
 # 1. Build Native Application Image (Standalone Runtime + App)
 Write-Host "Building native application image..."
@@ -38,6 +38,7 @@ $cscPath = "C:\Windows\Microsoft.NET\Framework64\v4.0.30319\csc.exe"
 & $cscPath `
   /target:winexe `
   /win32icon:takeoutfix\icons\icon.ico `
+  /win32manifest:takeoutfix\launcher\TakeoutFix.manifest `
   /reference:System.IO.Compression.dll,System.IO.Compression.FileSystem.dll,System.Windows.Forms.dll `
   /resource:$payloadZip,payload.zip `
   /out:dist-exe\TakeoutFix.exe `
