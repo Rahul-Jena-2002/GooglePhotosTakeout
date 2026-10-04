@@ -23,7 +23,10 @@ public class TaskManagerAndCoordinatorTest {
         }
         CountDownLatch latch = new CountDownLatch(1);
         try {
-            Platform.startup(latch::countDown);
+            Platform.startup(() -> {
+                Platform.setImplicitExit(false);
+                latch.countDown();
+            });
             latch.await(2, TimeUnit.SECONDS);
         } catch (Throwable ignored) {}
     }

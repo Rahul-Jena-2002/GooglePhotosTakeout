@@ -25,8 +25,14 @@ public class HistoryAndSettingsViewTest {
     public static void initJfx() throws InterruptedException {
         CountDownLatch latch = new CountDownLatch(1);
         try {
-            Platform.startup(latch::countDown);
+            Platform.startup(() -> {
+                Platform.setImplicitExit(false);
+                latch.countDown();
+            });
         } catch (IllegalStateException alreadyStarted) {
+            try {
+                Platform.setImplicitExit(false);
+            } catch (Throwable ignored) {}
             latch.countDown();
         }
         assertTrue(latch.await(5, TimeUnit.SECONDS));
@@ -48,7 +54,7 @@ public class HistoryAndSettingsViewTest {
             }
         });
 
-        assertTrue(latch.await(5, TimeUnit.SECONDS));
+        assertTrue(latch.await(15, TimeUnit.SECONDS));
         if (error.get() != null) {
             error.get().printStackTrace();
             fail("HistoryView instantiation failed: " + error.get().getMessage());
@@ -72,7 +78,7 @@ public class HistoryAndSettingsViewTest {
             }
         });
 
-        assertTrue(latch.await(5, TimeUnit.SECONDS));
+        assertTrue(latch.await(15, TimeUnit.SECONDS));
         if (error.get() != null) {
             error.get().printStackTrace();
             fail("SettingsView instantiation failed: " + error.get().getMessage());

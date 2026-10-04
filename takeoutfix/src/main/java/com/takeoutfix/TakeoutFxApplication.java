@@ -59,22 +59,43 @@ public class TakeoutFxApplication extends Application {
 
     @Override
     public void init() {
-        // Bootstrap Spring Boot (no web server) before the JavaFX stage shows.
-        // init() runs off the FX application thread — safe for blocking startup.
-        springContext = new SpringApplicationBuilder(TakeoutFxApplication.class)
-                .web(WebApplicationType.NONE)
-                .headless(false) // JavaFX requires AWT not to be headless
-                .run(getParameters().getRaw().toArray(new String[0]));
+        try {
+            // Bootstrap Spring Boot (no web server) before the JavaFX stage shows.
+            // init() runs off the FX application thread — safe for blocking startup.
+            springContext = new SpringApplicationBuilder(TakeoutFxApplication.class)
+                    .web(WebApplicationType.NONE)
+                    .headless(false) // JavaFX requires AWT not to be headless
+                    .run(getParameters().getRaw().toArray(new String[0]));
 
-        FxHardwareManager.initialize();
-        this.taskManager = com.takeoutfix.task.TaskManager.getInstance();
-        this.userSyncBridgeService = new UserSyncBridgeService();
-        this.networkMonitorService = new NetworkMonitorService();
-        this.sessionStatsService = new SessionStatsService();
-        this.exifToolEngine = NativeExifToolEngine.getDefault();
-        this.extractionService = new ExtractionService(exifToolEngine);
-        this.updateCheckerService = new com.takeoutfix.updates.UpdateCheckerService();
-        this.updateCheckerService.start();
+            FxHardwareManager.initialize();
+            this.taskManager = com.takeoutfix.task.TaskManager.getInstance();
+            this.userSyncBridgeService = new UserSyncBridgeService();
+            this.networkMonitorService = new NetworkMonitorService();
+            this.sessionStatsService = new SessionStatsService();
+            this.exifToolEngine = NativeExifToolEngine.getDefault();
+            this.extractionService = new ExtractionService(exifToolEngine);
+            this.updateCheckerService = new com.takeoutfix.updates.UpdateCheckerService();
+            this.updateCheckerService.start();
+        } catch (Throwable t) {
+            System.err.println("CRITICAL: Failed to initialize TakeoutFix Application init: " + t.getMessage());
+            t.printStackTrace();
+            try {
+                java.nio.file.Path logDir = java.nio.file.Paths.get(System.getProperty("user.home"), ".takeoutfix");
+                java.nio.file.Files.createDirectories(logDir);
+                java.nio.file.Path logFile = logDir.resolve("startup-error.log");
+                try (java.io.PrintWriter pw = new java.io.PrintWriter(java.nio.file.Files.newBufferedWriter(logFile))) {
+                    t.printStackTrace(pw);
+                }
+            } catch (Exception ignored) {}
+            try {
+                javax.swing.JOptionPane.showMessageDialog(null,
+                        "TakeoutFix encountered a critical startup error:\n" + t.toString() +
+                        "\n\nDetails saved to: ~/.takeoutfix/startup-error.log",
+                        "TakeoutFix Initialization Error",
+                        javax.swing.JOptionPane.ERROR_MESSAGE);
+            } catch (Exception ignored) {}
+            throw (t instanceof RuntimeException re) ? re : new RuntimeException("TakeoutFix startup failed", t);
+        }
     }
 
     private void initWorkspaces() {

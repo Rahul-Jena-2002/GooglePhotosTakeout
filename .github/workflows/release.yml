@@ -88,7 +88,7 @@ jobs:
         shell: bash
         run: |
           jlink \
-            --add-modules java.base,java.desktop,java.logging,java.naming,java.management,java.instrument,java.sql,java.xml,java.net.http,jdk.crypto.ec,jdk.unsupported,jdk.security.auth,javafx.base,javafx.controls,javafx.fxml,javafx.graphics,javafx.swing,javafx.media \
+            --add-modules java.base,java.compiler,java.desktop,java.instrument,java.logging,java.management,java.naming,java.net.http,java.prefs,java.scripting,java.sql,java.xml,jdk.crypto.ec,jdk.httpserver,jdk.jfr,jdk.management,jdk.net,jdk.security.auth,jdk.unsupported,jdk.unsupported.desktop,javafx.base,javafx.controls,javafx.fxml,javafx.graphics,javafx.swing,javafx.media \
             --strip-debug \
             --no-header-files \
             --no-man-pages \

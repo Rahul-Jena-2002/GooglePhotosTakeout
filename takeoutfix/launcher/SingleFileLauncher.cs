@@ -168,7 +168,17 @@ namespace TakeoutFix {
                         WorkingDirectory = appDir,
                         UseShellExecute = true
                     };
-                    Process.Start(psi);
+                    Process p = Process.Start(psi);
+                    if (p != null) {
+                        try {
+                            if (p.WaitForExit(2500) && p.ExitCode != 0) {
+                                string logPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".takeoutfix", "startup-error.log");
+                                string extra = File.Exists(logPath) ? "\n\nDetails:\n" + File.ReadAllText(logPath) : "";
+                                MessageBox.Show("TakeoutFix closed unexpectedly during startup (Exit Code " + p.ExitCode + ")." + extra, "TakeoutFix Startup Failure", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                                return p.ExitCode;
+                            }
+                        } catch { }
+                    }
                     return 0;
                 } else {
                     MessageBox.Show("Failed to launch TakeoutFix application.", "TakeoutFix", MessageBoxButtons.OK, MessageBoxIcon.Error);

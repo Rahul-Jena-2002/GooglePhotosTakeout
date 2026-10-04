@@ -19,11 +19,12 @@ jpackage `
   --type app-image `
   --input "jpackage-input" `
   --main-jar "takeoutfix.jar" `
-  --main-class "com.takeoutfix.TakeoutApplication" `
+  --main-class "com.takeoutfix.TakeoutFxApplication" `
   --name "TakeoutFix" `
   --icon "takeoutfix/icons/icon.ico" `
   --vendor "TakeoutFix" `
   --app-version "$appVersion" `
+  --add-modules "java.base,java.compiler,java.desktop,java.instrument,java.logging,java.management,java.naming,java.net.http,java.prefs,java.scripting,java.sql,java.xml,jdk.crypto.ec,jdk.httpserver,jdk.jfr,jdk.management,jdk.net,jdk.security.auth,jdk.unsupported,jdk.unsupported.desktop,javafx.base,javafx.controls,javafx.fxml,javafx.graphics,javafx.swing,javafx.media" `
   --dest "dist-app" `
   --verbose
 
