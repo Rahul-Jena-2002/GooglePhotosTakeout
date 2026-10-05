@@ -8,7 +8,7 @@ Allow: /
 User-agent: Medianet
 Allow: /
 
-# Explicit access for AI Search & Answer Engines (GEO - Generative Engine Optimization)
+# Explicit access for AI crawlers
 User-agent: GPTBot
 Allow: /
 
@@ -33,6 +33,5 @@ Disallow: /profile
 Disallow: /auth/
 Disallow: /auth/desktop
 
-# Sitemaps & LLM Context Standards
+# Sitemap
 Sitemap: https://takeoutfix.pages.dev/sitemap.xml
-# LLMs.txt Reference: https://takeoutfix.pages.dev/llms.txt

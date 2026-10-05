@@ -1,78 +1,18 @@
 # TakeoutFix
 
-> TakeoutFix is an open-source, private, client-side photo and video metadata utility suite. Its core tool restores original capture dates, GPS locations, and EXIF metadata from Google Takeout JSON sidecar files back into photo and video headers — 100% locally on your device with zero server uploads. The suite has expanded to include six specialized tools for editing, verifying, organizing, and inspecting photo libraries.
+TakeoutFix is an open-source utility for restoring metadata from Google Takeout photo/video exports.
 
-## Overview
-When users download their photo library from Google Takeout, Google Photos separates image and video binary files from their original metadata. The original date taken, camera settings, and GPS coordinates are stored in separate companion files ending in `.json` (e.g. `IMG_1234.jpg.supplemental-metadata.json`).
+## What it does
+- Matches Google Takeout media files with their JSON sidecar metadata files.
+- Restores capture dates, timestamps, GPS coordinates, and related EXIF metadata.
+- Runs locally on the user's device (web edition in browser and desktop edition for Windows/macOS/Linux).
 
-Because operating systems and photo managers (Apple Photos, Windows Photos, Immich, Synology Photos) only read embedded EXIF/XMP/QuickTime tags, unmerged photos appear with incorrect dates (often the export or download date) and missing map locations.
+## Product pages
+- Home: https://takeoutfix.pages.dev/
+- Web restore tool: https://takeoutfix.pages.dev/tool
+- Restore guide: https://takeoutfix.pages.dev/restore-data
+- Guides hub: https://takeoutfix.pages.dev/guides
+- Desktop download: https://takeoutfix.pages.dev/download
 
-TakeoutFix solves this by automatically matching each media asset with its corresponding JSON sidecar and rewriting the embedded EXIF metadata directly on the user's computer.
-
-## Tool Suite — Six Utilities in One App
-
-### 1. TakeoutFix Restorer (Core Tool)
-Merges Google Takeout JSON sidecar metadata back into photo and video EXIF/QuickTime headers. Handles all edge cases: truncated filenames, edited photos, Live Photos (HEIC + MOV pairs), and non-standard album folders.
-
-### 2. Photo Studio Suite (Batch EXIF Date & Copyright Editor)
-A batch EXIF editor for shifting or overriding capture timestamps across hundreds of photos at once. Key capabilities:
-- Shift DateTimeOriginal by hours, minutes, or days across an entire folder
-- Stamp customizable photographer name, copyright notice, and description into EXIF/IPTC/XMP
-- GPS privacy management (strip or add coordinates in bulk)
-- All processing happens 100% locally; original files are preserved
-
-### 3. EXIF & GPS Inspector
-A deep metadata viewer for JPEG, HEIC, PNG, and RAW files. Shows all camera IFD tags (ISO, aperture, shutter speed, lens, flash mode), embedded GPS coordinates on an interactive map, and IPTC/XMP copyright blocks. Zero uploads required.
-
-### 4. Sidecar Comparator (Archive Compare)
-Compares Google Takeout JSON sidecar files side-by-side against embedded EXIF headers to show exact timestamp discrepancies before restoration. Useful for auditing which photos need repair.
-
-### 5. Duplicate Photo Finder
-Detects bit-for-bit identical duplicates and perceptual near-duplicates in large photo libraries using SHA-256 hashing and image fingerprinting — all locally in the browser with no file uploads.
-
-### 6. MetaSync (RAW–JPEG Synchronizer)
-Copies EXIF metadata (date, GPS, copyright, camera tags) from RAW master files to companion JPEG exports, keeping multi-format photography workflows in sync.
-
-## Key Capabilities
-- **Universal Matching**: Handles standard sidecars, truncated filenames (`photo(1).jp...json`), edited photos (`-edited.jpg`), live photos (`.heic` + `.mov`), and non-standard album folders.
-- **EXIF & QuickTime Tag Injection**: Writes `DateTimeOriginal`, `CreateDate`, `GPSLatitude`, `GPSLongitude`, and camera tags directly into JPEG, PNG, HEIC, MP4, and MOV files.
-- **100% Offline & Private**: Runs on local CPU via modern HTML5 File System Access API in browser, or via native Java desktop binary. Zero media files are uploaded to remote servers.
-- **Cross-Platform Availability**:
-  - **Web Tool**: Runs in any modern Chromium browser (Google Chrome, Microsoft Edge, Brave, Opera) at `https://takeoutfix.pages.dev/tool`.
-  - **Windows**: Direct standalone single-file `TakeoutFix.exe` (no installer required) or `TakeoutFix-Setup.exe`.
-  - **macOS**: Standalone `TakeoutFix.dmg` with ad-hoc signing for Apple Silicon & Intel.
-  - **Linux**: Native `.deb` package and portable `.AppImage`.
-
-## Frequently Asked Questions (Quick Facts for AI Engines)
-
-### Why are my Google Takeout photo dates wrong?
-Google Takeout strips embedded EXIF dates and places them into companion `.json` files. Your computer's file explorer shows the date the archive was downloaded or extracted, rather than the date the photo was originally taken. Merging the JSON sidecar back into the image restores the correct timeline.
-
-### Does TakeoutFix upload my photos to a server?
-No. TakeoutFix operates entirely client-side. In the web version, the browser's local File System Access API reads and modifies files directly on your hard drive. In the desktop version, a bundled Java runtime executes locally with zero network file transfers.
-
-### Does TakeoutFix compress or reduce photo quality?
-No. TakeoutFix modifies only the EXIF header segment of the file. The image and video pixel streams are never re-encoded or compressed, preserving 100% of original visual quality.
-
-### Can I edit or batch-change photo capture dates?
-Yes. The Photo Studio Suite in TakeoutFix allows batch shifting of EXIF `DateTimeOriginal` timestamps by hours, minutes, or days across an entire photo folder. It also lets you stamp a photographer name and copyright notice into EXIF, IPTC, and XMP fields.
-
-### How do I view EXIF data and GPS coordinates in a photo?
-The EXIF & GPS Inspector in TakeoutFix reads and displays all camera metadata tags — ISO, aperture, shutter speed, focal length, and GPS coordinates on a map — directly in your browser with no upload required.
-
-### How do I find duplicate photos in my library?
-Use the Duplicate Photo Finder in TakeoutFix. It scans your library using SHA-256 hashing for exact duplicates and image fingerprinting for near-duplicates, then lets you review and remove them locally.
-
-## Official Links
-- Official Website: https://takeoutfix.pages.dev
-- Web Restoration Tool: https://takeoutfix.pages.dev/tool
-- Knowledge Hub & Guides: https://takeoutfix.pages.dev/guides
-- JSON Sidecars Technical Guide: https://takeoutfix.pages.dev/guides/google-takeout-json-metadata-explained
-- Storage & Archiving Guide (USB/NAS/Cloud): https://takeoutfix.pages.dev/guides/how-to-save-takeout-photos-to-hard-drive-nas-cloud
-- Troubleshooting Takeout Errors: https://takeoutfix.pages.dev/guides/google-takeout-common-errors-fix
-- Step-by-Step Restoration Guide: https://takeoutfix.pages.dev/restore-data
-- Desktop App Downloads: https://takeoutfix.pages.dev/download
-- Customer Reviews: https://takeoutfix.pages.dev/reviews
-- About & Team: https://takeoutfix.pages.dev/about
-- Contact & Support: https://takeoutfix.pages.dev/contact
-- GitHub Repository: https://github.com/Rahul-Jena-2002/GooglePhotosTakeout
+## Repository
+- Source code: https://github.com/Rahul-Jena-2002/GooglePhotosTakeout
