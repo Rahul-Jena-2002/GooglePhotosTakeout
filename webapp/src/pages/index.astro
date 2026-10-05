@@ -105,39 +105,36 @@ import Compare from "../components/ui/Compare";
           <span>Restore original dates &amp; locations</span>
         </div>
       </div>
+      <p class="mt-8 text-sm sm:text-base text-zinc-500 max-w-4xl mx-auto leading-relaxed">
+        Fix wrong Google Takeout dates by restoring JSON sidecar metadata directly into your files, including EXIF timestamps and GPS coordinates, while staying fully offline. Start with the <a href="/restore-data" class="text-zinc-800 dark:text-zinc-200 underline underline-offset-4">restoration guide</a>, then use the focused help pages for <a href="/fix-google-takeout-dates" class="text-zinc-800 dark:text-zinc-200 underline underline-offset-4">date fixes</a>, <a href="/restore-gps-google-takeout" class="text-zinc-800 dark:text-zinc-200 underline underline-offset-4">GPS restoration</a>, and the <a href="/metadata-fixer" class="text-zinc-800 dark:text-zinc-200 underline underline-offset-4">metadata fixer workflow</a>.
+      </p>
     </section>
 
-
-
-    <!-- 2. STATS SECTION (5-CARD REALTIME TELEMETRY) -->
+    <!-- 2. RESTORATION COVERAGE SNAPSHOT -->
     <section class="w-full relative z-10">
       <div class="flex items-center justify-end max-w-7xl mx-auto px-4 pt-8 pb-3">
-        <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-emerald-500/20 bg-emerald-50/50 dark:bg-emerald-950/20 text-xs font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider">
-          <div class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></div>
-          <span>Realtime Telemetry</span>
+        <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-zinc-300 dark:border-zinc-700 bg-zinc-100/60 dark:bg-zinc-900/60 text-xs font-bold text-zinc-700 dark:text-zinc-300 uppercase tracking-wider">
+          <span>What gets restored</span>
         </div>
       </div>
       <div class="max-w-7xl mx-auto px-4 pb-4 grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 text-center">
         <div class="glass-card p-5 sm:p-8 flex flex-col items-center justify-center">
-          <div id="stat-users" class="text-2xl sm:text-4xl md:text-5xl font-black mb-2 sm:mb-3 text-foreground">29</div>
-          <div class="text-[10px] sm:text-xs md:text-sm font-bold text-zinc-400 uppercase tracking-widest">Registered Users</div>
+          <div class="text-lg sm:text-2xl md:text-3xl font-black mb-2 sm:mb-3 text-foreground">Capture Dates</div>
+          <div class="text-[10px] sm:text-xs md:text-sm font-bold text-zinc-400 uppercase tracking-widest">DateTimeOriginal &amp; related tags</div>
         </div>
         <div class="glass-card p-5 sm:p-8 flex flex-col items-center justify-center">
-          <div id="stat-restored" class="text-2xl sm:text-4xl md:text-5xl font-black mb-2 sm:mb-3 text-foreground">2,17,668</div>
-          <div class="text-[10px] sm:text-xs md:text-sm font-bold text-zinc-400 uppercase tracking-widest">Files Restored</div>
+          <div class="text-lg sm:text-2xl md:text-3xl font-black mb-2 sm:mb-3 text-foreground">GPS Coordinates</div>
+          <div class="text-[10px] sm:text-xs md:text-sm font-bold text-zinc-400 uppercase tracking-widest">Latitude / longitude from sidecars</div>
         </div>
         <div class="glass-card p-5 sm:p-8 flex flex-col items-center justify-center">
-          <div id="stat-bytes" class="text-2xl sm:text-4xl md:text-5xl font-black mb-2 sm:mb-3 text-foreground">229 GB</div>
-          <div class="text-[10px] sm:text-xs md:text-sm font-bold text-zinc-400 uppercase tracking-widest">Data Processed</div>
+          <div class="text-lg sm:text-2xl md:text-3xl font-black mb-2 sm:mb-3 text-foreground">EXIF Metadata</div>
+          <div class="text-[10px] sm:text-xs md:text-sm font-bold text-zinc-400 uppercase tracking-widest">Header metadata re-embedded</div>
         </div>
         <div class="glass-card p-5 sm:p-8 flex flex-col items-center justify-center">
-          <div id="stat-success" class="text-2xl sm:text-4xl md:text-5xl font-black mb-2 sm:mb-3 text-foreground">90.8%</div>
-          <div class="text-[10px] sm:text-xs md:text-sm font-bold text-zinc-400 uppercase tracking-widest">Recovery Accuracy*</div>
+          <div class="text-lg sm:text-2xl md:text-3xl font-black mb-2 sm:mb-3 text-foreground">Local Processing</div>
+          <div class="text-[10px] sm:text-xs md:text-sm font-bold text-zinc-400 uppercase tracking-widest">No cloud upload required</div>
         </div>
       </div>
-      <p class="max-w-7xl mx-auto px-4 text-[10px] sm:text-[11px] text-zinc-500 dark:text-zinc-400 text-left pt-2 pb-6">
-        * Recovery accuracy based on standard Google Takeout exports with complete JSON sidecar files. Results may vary with partial or corrupted exports.
-      </p>
     </section>
 
     <!-- Sponsored Deals: Below Telemetry -->
@@ -376,8 +373,6 @@ import Compare from "../components/ui/Compare";
 </Layout>
 
 <script>
-  import { db } from "../firebase";
-
   let autoPlayInterval: number | undefined;
   let userInteractionTimeout: number | undefined;
 
@@ -387,121 +382,7 @@ import Compare from "../components/ui/Compare";
     window.clearTimeout(userInteractionTimeout);
   });
 
-  // 1. Fetch Stats directly from Firestore REST API on the client side
-  const loadKvStats = async () => {
-    try {
-      const res = await fetch("https://firestore.googleapis.com/v1/projects/takeout-fix/databases/(default)/documents/platform_stats/global", { cache: "no-store" });
-      if (!res.ok) return;
-      const data = await res.json();
-      if (!data) return;
-      const fields = data.fields || {};
-        
-        const stats = {
-          filesRestored: parseInt(fields.filesRestored?.integerValue || "217668"),
-          bytesProcessed: parseInt(fields.bytesProcessed?.integerValue || "245899264000"),
-          ticketsResolved: parseInt(fields.ticketsResolved?.integerValue || "2"),
-          usersCount: parseInt(fields.usersCount?.integerValue || "29"),
-          filesScanned: parseInt(fields.filesScanned?.integerValue || "239722")
-        };
-        
-        const formatBytes = (bytes: number) => {
-          if (bytes === 0) return '0 B';
-          const k = 1024;
-          const sizes = ['B', 'KB', 'MB', 'GB', 'TB', 'PB'];
-          const i = Math.floor(Math.log(bytes) / Math.log(k));
-          return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
-        };
-
-        const usersEl = document.getElementById("stat-users");
-        const restoredEl = document.getElementById("stat-restored");
-        const bytesEl = document.getElementById("stat-bytes");
-        const successEl = document.getElementById("stat-success");
-        const resolvedEl = document.getElementById("stat-resolved");
-
-        if (usersEl) usersEl.innerText = stats.usersCount.toLocaleString('en-IN');
-        if (restoredEl) restoredEl.innerText = stats.filesRestored.toLocaleString('en-IN');
-        if (bytesEl) bytesEl.innerText = formatBytes(stats.bytesProcessed);
-        
-        const successRate = stats.filesScanned > 0 
-          ? (stats.filesRestored / stats.filesScanned) * 100 
-          : 90.8;
-        if (successEl) successEl.innerText = successRate.toFixed(1) + "%";
-        
-        if (resolvedEl) resolvedEl.innerText = stats.ticketsResolved.toLocaleString('en-IN');
-    } catch (err) {
-      console.warn("Failed to load global KV stats:", err);
-    }
-  };
-
-  // 2. Fetch Featured Reviews from Firestore (with 1-hour localStorage caching)
-  const loadReviews = async () => {
-    try {
-      const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
-      const CACHE_KEY = "takeoutfix_featured_reviews_cache";
-      const CACHE_TTL = 3600 * 1000; // 1 hour
-
-      let allApproved: any[] = [];
-      try {
-        const cached = localStorage.getItem(CACHE_KEY);
-        if (cached) {
-          const { data, timestamp } = JSON.parse(cached);
-          if (Date.now() - timestamp < CACHE_TTL && Array.isArray(data) && data.length > 0) {
-            allApproved = data;
-          }
-        }
-      } catch (_) {}
-
-      if (allApproved.length === 0) {
-        const { collection, query, where, getDocs, limit } = await import("firebase/firestore");
-        const q = query(collection(db, "reviews"), where("status", "==", "APPROVED"), limit(10));
-        const snap = await getDocs(q);
-        allApproved = snap.docs.map(d => ({ id: d.id, ...d.data() as any }));
-        try {
-          localStorage.setItem(CACHE_KEY, JSON.stringify({ data: allApproved, timestamp: Date.now() }));
-        } catch (_) {}
-      }
-      
-      if (allApproved.length > 0) {
-        allApproved.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
-        const featured = allApproved.filter(r => r.featured);
-        const displayList = featured.length > 0 ? featured.slice(0, 3) : allApproved.slice(0, 3);
-        
-        const reviewsSection = document.getElementById("reviews-section");
-        const container = document.getElementById("reviews-list-container");
-        
-        if (reviewsSection && container) {
-          reviewsSection.classList.remove("hidden");
-          container.innerHTML = displayList.map(r => {
-            const name = esc(r.displayName || "Anonymous");
-            const msg = esc(r.message || "");
-            const initial = esc((r.displayName || "U").charAt(0));
-            const stars = Math.min(Math.max(Math.floor(r.rating || 5), 0), 10);
-            return `
-            <div class="bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 p-8 rounded-lg text-left relative overflow-hidden group shadow-none">
-              <div class="flex text-zinc-900 dark:text-zinc-100 mb-4">
-                ${Array(stars).fill('<svg class="w-5 h-5 fill-current" viewBox="0 0 24 24"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg>').join("")}
-              </div>
-              <p class="text-zinc-500 italic mb-6 leading-relaxed">"${msg}"</p>
-              <div class="flex items-center gap-3">
-                <div class="w-10 h-10 rounded-full bg-zinc-200 dark:bg-zinc-800 flex items-center justify-center font-bold text-lg text-foreground">
-                  ${initial}
-                </div>
-                <div>
-                  <div class="font-bold text-foreground">${name}</div>
-                  <div class="text-xs text-zinc-400">Verified Restoration</div>
-                </div>
-              </div>
-            </div>
-          `;
-          }).join("");
-        }
-      }
-    } catch (e) {
-      console.warn("Failed to load verified reviews:", e);
-    }
-  };
-
-  // 4. Discrete Auto-scrolling Timeline Slider with Play/Pause and Center Magnify
+  // Discrete Auto-scrolling Timeline Slider with Play/Pause and Center Magnify
   const setupTimelineSlider = () => {
     const track = document.getElementById("timeline-track") as HTMLDivElement | null;
     const arrowLeft = document.getElementById("timeline-arrow-left") as HTMLButtonElement | null;
@@ -652,8 +533,6 @@ import Compare from "../components/ui/Compare";
 
   // Run all setups on page load
   document.addEventListener("astro:page-load", () => {
-    loadKvStats();
-    loadReviews();
     setupTimelineSlider();
   });
 </script>

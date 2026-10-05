@@ -82,7 +82,7 @@ Open [http://localhost:4321](http://localhost:4321) in your browser.
 
 ### 3. Building the Java Desktop App
 ```bash
-cd native
+cd takeoutfix
 mvn clean package -DskipTests
 java -jar target/takeoutfix.jar
 ```
