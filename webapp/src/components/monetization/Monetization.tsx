@@ -97,6 +97,14 @@ export default function Monetization({
     };
 
     loadLocal();
+    if (!auth) {
+      window.addEventListener("storage", loadLocal);
+      window.addEventListener("takeoutfix_user_sync", loadLocal);
+      return () => {
+        window.removeEventListener("storage", loadLocal);
+        window.removeEventListener("takeoutfix_user_sync", loadLocal);
+      };
+    }
     const unsub = auth.onAuthStateChanged((u) => {
       if (u) loadLocal();
       else setLocalUserData(null);

@@ -154,7 +154,7 @@ export function CommandSidebar({
             <span>Private &amp; Local</span>
           </div>
           <p className="mt-1.5 text-[11px] text-zinc-500 dark:text-zinc-400 leading-relaxed">
-            All files are processed directly on your computer. Your photos never leave your device.
+              Selected media is processed on your device. Account and site features may use network services.
           </p>
         </div>
       </div>

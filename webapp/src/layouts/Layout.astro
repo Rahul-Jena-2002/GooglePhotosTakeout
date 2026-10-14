@@ -2,7 +2,6 @@
 import "../index.css";
 import { ClientRouter } from "astro:transitions";
 import AuthModal from "../react-pages/auth/AuthModal";
-import GoogleOneTap from "../components/auth/GoogleOneTap";
 import AdUnit from "../components/monetization/AdUnit";
 
 interface Props {
@@ -253,7 +252,6 @@ const googleClientId = cfRuntimeEnv.PUBLIC_GOOGLE_CLIENT_ID || import.meta.env.P
     <title>{title}</title>
     <ClientRouter fallback="swap" />
     <meta name="description" content={description} />
-    <meta name="keywords" content="take out fix, takeoutfixer, meta data fix, metadata fixer, how to fix metadata, how to fix meta data, metadata fix, restore metadata, Google Takeout metadata fix, EXIF metadata fix, Google Photos metadata fixer, EXIF recovery, GPS coordinates, JSON sidecar fixer, restore photo date taken, takeoutfix, photo studio exif editor, batch exif date editor, exif viewer, photo metadata viewer, duplicate photo finder, archive compare tool, metasync raw jpeg, photo copyright editor" />
     <meta name="robots" content={robots} />
     <meta name="google-site-verification" content="yjn_T1bJ3RfrKhKTaT4in3ciTBkK5Ngw9LfOChfRztk" />
     <meta name="msvalidate.01" content="08D1F97545A3AA2CABA8BC66F3CCCC4D" />
@@ -283,7 +281,7 @@ const googleClientId = cfRuntimeEnv.PUBLIC_GOOGLE_CLIENT_ID || import.meta.env.P
         "@context": "https://schema.org",
         "@type": "WebSite",
         "name": "TakeoutFix",
-        "alternateName": ["Takeout Fix", "Google Takeout Metadata Fixer", "TakeoutFixer", "Takeout Fixer", "Metadata Fixer", "Metadata Fix", "Restore Metadata"],
+        "alternateName": ["Takeout Fix", "TakeoutFixer"],
         "url": "https://takeoutfix.pages.dev"
       }
     </script>
@@ -294,13 +292,7 @@ const googleClientId = cfRuntimeEnv.PUBLIC_GOOGLE_CLIENT_ID || import.meta.env.P
         "@context": "https://schema.org",
         "@type": "SoftwareApplication",
         "name": "TakeoutFix",
-        "alternateName": [
-          "Takeout Fix", "TakeoutFixer", "Takeout Fixer", "Take Out Fix",
-          "Metadata Fixer", "Meta Data Fixer", "Metadata Fix Tool",
-          "Google Takeout Fixer", "Google Takeout Metadata Fixer",
-          "Google Photos Metadata Fixer", "Google Takeout Merger",
-          "EXIF Fixer", "Photo Metadata Fixer"
-        ],
+        "alternateName": ["Takeout Fix", "TakeoutFixer"],
         "url": "https://takeoutfix.pages.dev",
         "description": "Restore missing dates, GPS locations, and EXIF metadata from your Google Takeout photos and videos locally in your browser. Independent utility — not affiliated with Google LLC.",
         "applicationCategory": "MultimediaApplication",
@@ -329,121 +321,6 @@ const googleClientId = cfRuntimeEnv.PUBLIC_GOOGLE_CLIENT_ID || import.meta.env.P
           "price": "0.00",
           "priceCurrency": "USD"
         }
-      }
-    </script>
-
-    <!-- FAQPage Schema for Rich Snippets & AI Answer Engines -->
-    <script type="application/ld+json">
-      {
-        "@context": "https://schema.org",
-        "@type": "FAQPage",
-        "mainEntity": [
-          {
-            "@type": "Question",
-            "name": "Why are my Google Takeout photo dates wrong or set to today?",
-            "acceptedAnswer": {
-              "@type": "Answer",
-              "text": "When you export photos from Google Takeout, Google strips original capture timestamps and stores them in separate JSON sidecars. Your computer displays the download or extraction date instead. TakeoutFix re-embeds the original JSON timestamps back into EXIF headers so photos sort chronologically."
-            }
-          },
-          {
-            "@type": "Question",
-            "name": "How can I fix Google Takeout metadata offline on Windows or Mac?",
-            "acceptedAnswer": {
-              "@type": "Answer",
-              "text": "You can use the TakeoutFix desktop app. On Windows, run the standalone TakeoutFix.exe directly with no installation. On macOS, open TakeoutFix.dmg. Both applications process files 100% locally on your computer with zero file uploads."
-            }
-          },
-          {
-            "@type": "Question",
-            "name": "What is a take out fix or takeout fix?",
-            "acceptedAnswer": {
-              "@type": "Answer",
-              "text": "A take out fix or takeout fix is the process of repairing missing EXIF metadata after downloading photos using Google Takeout. Google Takeout stores metadata separately in JSON sidecar files. TakeoutFix (also called TakeoutFixer) solves this automatically in your browser."
-            }
-          },
-          {
-            "@type": "Question",
-            "name": "How do I fix metadata after Google Takeout?",
-            "acceptedAnswer": {
-              "@type": "Answer",
-              "text": "Open TakeoutFix in your browser, select your Takeout folder containing both the image files and their .json sidecar files, then click Restore My Data. The tool automatically matches each photo to its JSON sidecar and writes the date, GPS, and EXIF data back into the file header. No installation or upload required."
-            }
-          },
-          {
-            "@type": "Question",
-            "name": "What is a metadata fixer for Google Photos?",
-            "acceptedAnswer": {
-              "@type": "Answer",
-              "text": "A metadata fixer for Google Photos reads the .json sidecar files created during a Google Takeout export and writes the stored metadata (date taken, GPS location, camera model) back into the photo EXIF header. TakeoutFix is a free metadata fixer and meta data fix tool that works entirely in your web browser."
-            }
-          },
-          {
-            "@type": "Question",
-            "name": "What is a Google Takeout merger?",
-            "acceptedAnswer": {
-              "@type": "Answer",
-              "text": "A Google Takeout merger is a tool that merges the photo and video binary files with their detached JSON metadata sidecar files produced by a Google Takeout export. TakeoutFix performs this merge locally on your device with no server, no upload, and no privacy risk."
-            }
-          },
-          {
-            "@type": "Question",
-            "name": "Does TakeoutFix work as a meta data fixer?",
-            "acceptedAnswer": {
-              "@type": "Answer",
-              "text": "Yes. TakeoutFix is both a metadata fixer and a meta data fixer. It repairs EXIF metadata that was stripped out of your photos and videos during a Google Takeout or Google Photos export."
-            }
-          },
-          {
-            "@type": "Question",
-            "name": "Can I edit or change photo capture dates in batch using TakeoutFix?",
-            "acceptedAnswer": {
-              "@type": "Answer",
-              "text": "Yes. TakeoutFix Studio includes a Photo Studio Suite that lets you shift or override the EXIF DateTimeOriginal tag across hundreds of photos at once. You can offset dates by hours or minutes, stamp a photographer copyright notice, and manage GPS privacy — all processed 100% locally with no file uploads."
-            }
-          },
-          {
-            "@type": "Question",
-            "name": "How do I view EXIF metadata and GPS coordinates in a photo?",
-            "acceptedAnswer": {
-              "@type": "Answer",
-              "text": "TakeoutFix includes a built-in EXIF and GPS Inspector. Open the tool, select any JPEG, HEIC, or PNG file, and it instantly displays all EXIF tags including camera model, ISO, aperture, shutter speed, and an interactive GPS map — entirely in your browser with zero uploads."
-            }
-          }
-        ]
-      }
-    </script>
-
-    <!-- HowTo Schema -->
-    <script type="application/ld+json">
-      {
-        "@context": "https://schema.org",
-        "@type": "HowTo",
-        "name": "How to Fix Google Takeout Metadata",
-        "description": "How to restore missing photo dates, GPS, and EXIF metadata from Google Takeout using TakeoutFix - the free online metadata fixer.",
-        "totalTime": "PT5M",
-        "step": [
-          {
-            "@type": "HowToStep",
-            "name": "Open TakeoutFix",
-            "text": "Visit takeoutfix.pages.dev and sign in or continue as free user."
-          },
-          {
-            "@type": "HowToStep",
-            "name": "Select your Google Takeout folder",
-            "text": "Click 'Restore My Data' and select the folder containing your Google Takeout photos and JSON sidecar files."
-          },
-          {
-            "@type": "HowToStep",
-            "name": "Run the metadata fixer",
-            "text": "TakeoutFix automatically matches each photo to its JSON sidecar and writes back the date taken, GPS coordinates, and camera info into the EXIF header."
-          },
-          {
-            "@type": "HowToStep",
-            "name": "Download restored photos",
-            "text": "Your photos are saved locally with full EXIF metadata restored. No upload, no cloud processing."
-          }
-        ]
       }
     </script>
 
@@ -740,8 +617,8 @@ window.__h82AlnkH6D91__("WyJwdWItNzYyODczNjE3MjIzMzk5NSIsW251bGwsbnVsbCxudWxsLCJ
         </div>
       </main>
 
-      <!-- FOOTER — hidden on tool page and specialized for auth pages -->
-      { !isToolPage && !isAuthPage && <footer class="w-full border-t border-white/5 bg-black/40 backdrop-blur-md mt-auto py-16">
+      <!-- Shared homepage footer used on every page. -->
+      <footer class="w-full border-t border-white/5 bg-black/40 backdrop-blur-md mt-auto py-16">
           <div class="max-w-7xl mx-auto px-6">
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-12 mb-12">
               
@@ -804,7 +681,7 @@ window.__h82AlnkH6D91__("WyJwdWItNzYyODczNjE3MjIzMzk5NSIsW251bGwsbnVsbCxudWxsLCJ
                   <li><a href="/about" class="text-zinc-400 hover:text-white transition-colors">About Us</a></li>
                   <li><a href="/contact" class="text-zinc-400 hover:text-white transition-colors">Contact Support</a></li>
                   <li><a href="/disclaimer" class="text-zinc-400 hover:text-white transition-colors">Disclaimer</a></li>
-                  <li><a href="/privacy" class="text-zinc-400 hover:text-white transition-colors">Privacy Policy</a></li>
+                  <li><a href="/privacy" class="text-zinc-400 hover:text-white transition-colors">Privacy, Cookies &amp; Data</a></li>
                   <li><a href="/terms" class="text-zinc-400 hover:text-white transition-colors">Terms of Service</a></li>
                   <li>
                     <a href="https://github.com/Rahul-Jena-2002/GooglePhotosTakeout" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1.5 text-zinc-400 hover:text-white transition-colors font-semibold">
@@ -837,7 +714,7 @@ window.__h82AlnkH6D91__("WyJwdWItNzYyODczNjE3MjIzMzk5NSIsW251bGwsbnVsbCxudWxsLCJ
                   <a href="/about" class="hover:text-zinc-900 dark:hover:text-zinc-200 transition-colors ml-1">About</a> &middot;
                   <a href="/contact" class="hover:text-zinc-900 dark:hover:text-zinc-200 transition-colors ml-1">Contact</a> &middot;
                   <a href="/disclaimer" class="hover:text-zinc-900 dark:hover:text-zinc-200 transition-colors ml-1">Disclaimer</a> &middot;
-                  <a href="/privacy" class="hover:text-zinc-900 dark:hover:text-zinc-200 transition-colors ml-1">Privacy</a> &middot;
+                  <a href="/privacy" class="hover:text-zinc-900 dark:hover:text-zinc-200 transition-colors ml-1">Privacy &amp; Cookies</a> &middot;
                   <a href="/privacy#cookies" data-open-consent-settings class="hover:text-zinc-900 dark:hover:text-zinc-200 transition-colors ml-1">Privacy &amp; cookie choices</a> &middot;
                   <a href="/terms" class="hover:text-zinc-900 dark:hover:text-zinc-200 transition-colors ml-1">Terms</a> &middot;
                   <a href="https://github.com/Rahul-Jena-2002/GooglePhotosTakeout" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1 hover:text-zinc-900 dark:hover:text-zinc-200 transition-colors ml-1">
@@ -852,31 +729,45 @@ window.__h82AlnkH6D91__("WyJwdWItNzYyODczNjE3MjIzMzk5NSIsW251bGwsbnVsbCxudWxsLCJ
                 </div>
               </div>
             </div>
-        </footer> }
-
-      { isAuthPage && (
-        <footer class="w-full border-t border-zinc-200/50 dark:border-white/5 bg-white/40 dark:bg-black/30 backdrop-blur-md mt-auto py-5">
-          <div class="max-w-7xl mx-auto px-6 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-zinc-500">
-            <div class="flex items-center gap-2">
-              <span class="font-medium text-zinc-700 dark:text-zinc-300">TakeoutFix</span>
-              <span>&copy; {new Date().getFullYear()}</span>
-              <span class="hidden md:inline text-zinc-400">&bull; Local metadata restoration utility</span>
-            </div>
-            <div class="flex items-center gap-5 text-xs text-zinc-500 dark:text-zinc-400">
-              <a href="/terms" class="hover:text-zinc-900 dark:hover:text-white transition-colors">Terms of Service</a>
-              <a href="/privacy" class="hover:text-zinc-900 dark:hover:text-white transition-colors">Privacy Policy</a>
-              <a href="/support" class="hover:text-zinc-900 dark:hover:text-white transition-colors">Support</a>
-            </div>
-          </div>
         </footer>
-      )}
     </div>
+
+    <script is:inline>
+      document.addEventListener("click", (event) => {
+        const target = event.target instanceof Element
+          ? event.target.closest("[data-open-consent-settings]")
+          : null;
+        if (!target) return;
+
+        const googlefc = window.googlefc;
+        if (!googlefc) return;
+
+        event.preventDefault();
+        googlefc.callbackQueue = googlefc.callbackQueue || [];
+
+        let opened = false;
+        const fallback = window.setTimeout(() => {
+          if (!opened) window.location.assign(target.href);
+        }, 3000);
+
+        googlefc.callbackQueue.push({
+          CONSENT_API_READY: () => {
+            opened = true;
+            window.clearTimeout(fallback);
+            if (typeof googlefc.showRevocationMessage === "function") {
+              googlefc.showRevocationMessage();
+            } else {
+              window.location.assign(target.href);
+            }
+          },
+        });
+      });
+    </script>
     
     <div id="vanilla-toast-container" class="fixed top-[80px] right-6 z-[99999] flex flex-col gap-2.5 max-w-sm w-[calc(100%-2rem)] pointer-events-none items-end"></div>
 
     <!-- Global Auth Modal (popup sign-in/sign-up, available on every page) -->
     <AuthModal client:only="react" />
-    <GoogleOneTap client:only="react" />
 
     <!-- CLIENT SIDE EVENT HANDLERS AND AUTH LISTENER -->
     <script>
@@ -996,6 +887,13 @@ window.__h82AlnkH6D91__("WyJwdWItNzYyODczNjE3MjIzMzk5NSIsW251bGwsbnVsbCxudWxsLCJ
       // Register Auth State Listener once globally
       setupAuthListeners();
 
+      // Discourage casual inspection on the tool page; this is not access control.
+      document.addEventListener("keydown", (event) => {
+        if (window.location.pathname.replace(/\/$/, "") === "/tool" && event.key === "F12") {
+          event.preventDefault();
+        }
+      });
+
       // Instant Top Micro-Progress Bar Feedback on navigation
       document.addEventListener("astro:before-preparation", () => {
         const progress = document.getElementById("astro-nav-progress");
@@ -1107,37 +1005,6 @@ window.__h82AlnkH6D91__("WyJwdWItNzYyODczNjE3MjIzMzk5NSIsW251bGwsbnVsbCxudWxsLCJ
         }
       }
 
-    </script>
-    <script is:inline>
-      document.addEventListener("click", (event) => {
-        const target = event.target instanceof Element
-          ? event.target.closest("[data-open-consent-settings]")
-          : null;
-        if (!target) return;
-
-        const googlefc = window.googlefc;
-        if (!googlefc) return;
-
-        event.preventDefault();
-        googlefc.callbackQueue = googlefc.callbackQueue || [];
-
-        let opened = false;
-        const fallback = window.setTimeout(() => {
-          if (!opened) window.location.assign(target.href);
-        }, 3000);
-
-        googlefc.callbackQueue.push({
-          CONSENT_API_READY: () => {
-            opened = true;
-            window.clearTimeout(fallback);
-            if (typeof googlefc.showRevocationMessage === "function") {
-              googlefc.showRevocationMessage();
-            } else {
-              window.location.assign(target.href);
-            }
-          },
-        });
-      });
     </script>
   </body>
 </html>

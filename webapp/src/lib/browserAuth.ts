@@ -108,7 +108,7 @@ export const syncUserUI = () => {
         }
       }
 
-      let planLabel = "100% Free & Unlimited";
+      let planLabel = cachedUser.plan === "free" ? "Free plan" : cachedUser.plan === "recovery_pass" ? "Recovery Pass" : "Account plan";
       if (dropdownPlan) dropdownPlan.innerText = planLabel;
       if (mobileUserPlan) mobileUserPlan.innerText = planLabel;
       
@@ -227,6 +227,12 @@ export const syncUserUI = () => {
 export const setupAuthListeners = () => {
   if (isAuthListenerInitialized) return;
   isAuthListenerInitialized = true;
+
+  // The public site and guest tool remain usable without local Firebase config.
+  if (!auth) {
+    syncUserUI();
+    return;
+  }
 
   auth.onAuthStateChanged((user) => {
     if (unsubUserDoc) unsubUserDoc();

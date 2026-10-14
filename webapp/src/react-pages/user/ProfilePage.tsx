@@ -5,7 +5,7 @@ import { Button } from "../../components/ui/button"
 // No react-router-dom imports
 import { collection, query, where, doc, updateDoc, getDocs } from "firebase/firestore"
 import { db } from "../../firebase"
-import { ShieldAlert, User, Check, AlertCircle } from "lucide-react"
+import { ShieldAlert, User, Check, AlertCircle, Trash2 } from "lucide-react"
 import { motion } from "framer-motion"
 
 
@@ -13,7 +13,7 @@ import { AuthProvider } from "../../contexts/AuthContext"
 import { ToastContainer } from "../../components/ui/toast"
 
 function ProfilePageContent() {
-  const { user, userData, loading, logout, refreshUserData } = useAuth()
+  const { user, userData, loading, logout, deleteAccount, refreshUserData } = useAuth()
   // No react-router-dom hooks
 
   // Profile Edit States
@@ -25,6 +25,9 @@ function ProfilePageContent() {
   const [successMsg, setSuccessMsg] = useState("")
   const [saveLoading, setSaveLoading] = useState(false)
   const [failedPhotoUrl, setFailedPhotoUrl] = useState<string | null>(null)
+  const [deleteLoading, setDeleteLoading] = useState(false)
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+  const [deletePassword, setDeletePassword] = useState("")
 
   // Sync inputs with userData when loaded
   useEffect(() => {
@@ -121,6 +124,32 @@ function ProfilePageContent() {
     await logout()
     if (typeof window !== 'undefined') {
       window.location.href = "/"
+    }
+  }
+
+  const usesGoogleSignIn = user?.providerData.some((provider) => provider.providerId === "google.com") ?? false
+  const requiresPassword = !usesGoogleSignIn && (user?.providerData.some((provider) => provider.providerId === "password") ?? false)
+
+  const handleDeleteAccount = () => {
+    setErrorMsg("");
+    setDeletePassword("");
+    setShowDeleteConfirm(true);
+  }
+
+  const confirmDeleteAccount = async () => {
+    setErrorMsg("");
+    setDeleteLoading(true);
+    try {
+      await deleteAccount(deletePassword || undefined);
+      window.location.href = "/";
+    } catch (err: any) {
+      console.error("Account deletion failed:", err);
+      setErrorMsg(err?.code === "auth/wrong-password" || err?.code === "auth/invalid-credential"
+        ? "That password could not be verified. Check it and try again."
+        : err?.code === "auth/requires-recent-login"
+          ? "Please sign in again and retry account deletion."
+          : "Account deletion could not be completed. Please try again or contact support.");
+      setDeleteLoading(false);
     }
   }
 
@@ -250,7 +279,7 @@ function ProfilePageContent() {
 
               {!isEditing ? (
                 <div className="space-y-6">
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="bg-white/[0.02] border border-white/5 rounded-xl p-4">
                       <span className="text-[10px] text-white/45 block uppercase font-bold tracking-wider mb-1">First Name</span>
                       <span className="text-sm font-semibold text-white">{userData?.firstName || "—"}</span>
@@ -261,16 +290,21 @@ function ProfilePageContent() {
                     </div>
                   </div>
 
+                  <div className="bg-white/[0.02] border border-white/5 rounded-xl p-4">
+                    <span className="text-[10px] text-white/45 block uppercase font-bold tracking-wider mb-1">Email address</span>
+                    <span className="text-sm font-semibold text-white break-all">{user.email || "Not available"}</span>
+                  </div>
+
                   <div className="bg-white/[0.02] border border-white/5 rounded-xl p-4 flex justify-between items-center">
                     <div>
                       <span className="text-[10px] text-white/45 block uppercase font-bold tracking-wider mb-1">Username Reference</span>
                       <span className="text-sm font-semibold font-mono text-zinc-450 dark:text-zinc-300">@{userData?.username || "—"}</span>
                     </div>
                     <div className="text-right">
-                      <span className="text-[10px] text-white/45 block uppercase font-bold tracking-wider mb-1">Account Access</span>
-                      <span className="text-xs font-bold text-emerald-400 dark:text-emerald-300 bg-emerald-500/10 border border-emerald-500/20 px-2.5 py-0.5 rounded-full inline-flex items-center gap-1.5">
+                      <span className="text-[10px] text-white/45 block uppercase font-bold tracking-wider mb-1">Account Status</span>
+                      <span className="text-xs font-bold text-emerald-400 dark:text-emerald-300 bg-emerald-500/10 border border-emerald-500/20 px-2.5 py-0.5 rounded-full inline-flex items-center gap-1.5 capitalize">
                         <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
-                        100% Free & Unlimited
+                        Active · {(userData?.plan || "free").replace(/_/g, " ")}
                       </span>
                     </div>
                   </div>
@@ -352,6 +386,49 @@ function ProfilePageContent() {
             </CardContent>
           </Card>
         </motion.div>
+
+        <section className="rounded-xl border border-red-500/20 bg-red-500/[0.03] p-5 sm:p-6" aria-labelledby="delete-account-heading">
+          <div className="flex items-start gap-3">
+            <Trash2 className="mt-0.5 h-4 w-4 shrink-0 text-red-300" aria-hidden="true" />
+            <div>
+              <h2 id="delete-account-heading" className="text-sm font-semibold text-red-300">Danger zone · Delete account</h2>
+              <p className="mt-2 text-sm leading-relaxed text-white/60">Permanently remove your account and associated TakeoutFix cloud records. This cannot be undone. Photos and files processed locally are not uploaded and remain on your device.</p>
+              <a href="/privacy#account-deletion" className="mt-2 inline-block text-xs text-white/60 underline underline-offset-2 hover:text-white">Review what account deletion removes</a>
+            </div>
+          </div>
+          <Button onClick={handleDeleteAccount} disabled={deleteLoading} variant="outline" className="mt-4 border-red-500/30 text-red-300 hover:bg-red-500/10">
+            <Trash2 className="mr-2 h-4 w-4" />{deleteLoading ? "Deleting account..." : "Delete my account"}
+          </Button>
+        </section>
+
+        {showDeleteConfirm && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 p-4" role="presentation">
+            <section role="dialog" aria-modal="true" aria-labelledby="delete-confirm-title" className="w-full max-w-md rounded-2xl border border-white/10 bg-zinc-950 p-6 shadow-2xl">
+              <h2 id="delete-confirm-title" className="text-lg font-bold text-white">Permanently delete your account?</h2>
+              <p className="mt-2 text-sm leading-relaxed text-zinc-400">Your TakeoutFix account and associated cloud records will be removed. This cannot be undone. Your local files are not uploaded and will remain on your device.</p>
+              {requiresPassword && (
+                <label className="mt-5 block text-sm font-medium text-zinc-200">
+                  Confirm with your password
+                  <input
+                    type="password"
+                    autoComplete="current-password"
+                    value={deletePassword}
+                    onChange={(event) => setDeletePassword(event.target.value)}
+                    className="mt-2 w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2.5 text-white outline-none focus:border-zinc-400"
+                  />
+                </label>
+              )}
+              {usesGoogleSignIn && <p className="mt-4 text-xs text-zinc-400">Google will ask you to confirm your sign-in before deletion.</p>}
+              {errorMsg && <p className="mt-4 text-sm text-red-300" role="alert">{errorMsg}</p>}
+              <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+                <Button variant="outline" disabled={deleteLoading} onClick={() => setShowDeleteConfirm(false)} className="border-white/10 text-zinc-200 hover:bg-white/5">Cancel</Button>
+                <Button disabled={deleteLoading || (requiresPassword && !deletePassword)} onClick={confirmDeleteAccount} className="border border-red-500/30 bg-red-600 text-white hover:bg-red-700">
+                  {deleteLoading ? "Deleting account…" : "Permanently delete"}
+                </Button>
+              </div>
+            </section>
+          </div>
+        )}
         
         <motion.div 
           initial={{ opacity: 0 }}

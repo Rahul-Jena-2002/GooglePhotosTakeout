@@ -56,18 +56,59 @@ const toolFaqSchema = {
 
 <Layout 
   title="Google Takeout Photos Metadata Fixer & Merger Online | TakeoutFix"
-  description="Restore Google Takeout photo dates, GPS coordinates, and EXIF metadata directly in your browser. 100% private, client-side Web Worker engine with zero server uploads."
+  description="Restore dates and locations for photos from a Google Takeout download. Choose your files, select where to save the restored copies, and run the tool on your device."
   isToolPage={true}
 >
   <script type="application/ld+json" set:html={JSON.stringify(toolFaqSchema)} />
 
   <!-- 1. INTERACTIVE TOOL WORKSPACE (UNMODIFIED UI) -->
-  <ToolWorkspace client:only="react" />
+  <div id="tool-workspace">
+  <ToolWorkspace client:only="react">
+    <section slot="fallback" class="w-full bg-background text-foreground">
+      <div class="max-w-7xl mx-auto px-6 py-16 sm:py-20">
+        <div class="max-w-3xl">
+          <p class="inline-flex items-center rounded-full border border-zinc-200 dark:border-zinc-800 bg-zinc-100 dark:bg-zinc-900 px-3 py-1 text-xs font-bold uppercase tracking-wider text-zinc-800 dark:text-zinc-100">
+            Google Photos Metadata Restorer
+          </p>
+          <h1 class="mt-6 text-4xl sm:text-5xl md:text-6xl font-bold tracking-tight text-foreground leading-tight">
+            Restore your Takeout photos.
+          </h1>
+          <p class="mt-5 max-w-2xl text-lg sm:text-xl text-zinc-600 dark:text-zinc-400 leading-relaxed">
+            Choose your Google Takeout files to restore their original dates and locations. Your photos are processed locally in your browser.
+          </p>
+          <div class="mt-8 flex flex-wrap items-center gap-4">
+            <a href="#tool-workspace" class="btn-monochrome-primary inline-flex h-14 items-center rounded-lg px-8 font-bold">Open Restore Tool</a>
+            <span class="text-sm font-semibold text-zinc-600 dark:text-zinc-400">Free to use · No upload required</span>
+          </div>
+        </div>
+      </div>
+    </section>
+  </ToolWorkspace>
+  </div>
 
-  <!-- In-Page Sponsored Recommendations Banner -->
+  <!-- Responsive ad placement managed by the existing monetization settings. -->
   <section class="w-full max-w-5xl mx-auto px-4 py-3 relative z-10" aria-label="Sponsored recommendations">
-    <AdUnit client:only="react" placement="TOOL_MANUAL_TOP" />
+    <div class="tool-ad-slot">
+      <AdUnit client:only="react" placement="TOOL_MANUAL_TOP" />
+      <div class="tool-ad-placeholder" aria-label="Advertisement slot">
+        <span>ADVERTISEMENT</span>
+        <span>Ad space · ads appear when available</span>
+      </div>
+    </div>
   </section>
+
+  <style>
+    .tool-ad-slot { position: relative; min-height: 72px; }
+    .tool-ad-placeholder {
+      min-height: 72px; border: 1px dashed rgb(212 212 216); border-radius: .75rem;
+      background: rgb(250 250 250 / .8); display: flex; flex-direction: column;
+      align-items: center; justify-content: center; gap: .25rem; color: rgb(113 113 122);
+      font-size: 11px; text-align: center;
+    }
+    .tool-ad-placeholder span:first-child { font-size: 9px; font-weight: 700; letter-spacing: .08em; }
+    .dark .tool-ad-placeholder { border-color: rgb(63 63 70); background: rgb(24 24 27 / .5); color: rgb(161 161 170); }
+    .tool-ad-slot:has(iframe, a[href], ins[data-ad-status="filled"]) .tool-ad-placeholder { display: none; }
+  </style>
 
   <!-- 2. SCROLLABLE USER MANUAL & POST-RESTORATION GUIDE (BELOW WORKSPACE) -->
   <div class="w-full bg-zinc-50 dark:bg-zinc-950 border-t border-zinc-200 dark:border-zinc-800/80 text-zinc-700 dark:text-zinc-300 font-sans relative z-10">
@@ -83,20 +124,20 @@ const toolFaqSchema = {
           How to Use the TakeoutFix Restore Tool
         </h2>
         <p class="text-base text-zinc-600 dark:text-zinc-400 max-w-2xl mx-auto leading-relaxed">
-          Learn how the client-side injection engine pairs your Google Photos JSON sidecars, and what to do after the restoration completes.
+          Choose your Takeout files, restore photo dates and locations, then save the finished copies.
         </p>
       </div>
 
       <!-- Quick Jump Navigation Strip -->
       <div class="flex flex-wrap items-center justify-center gap-2 pb-10 mb-12 border-b border-zinc-200 dark:border-zinc-800 text-xs">
         <a href="#post-restoration" class="px-3 py-1.5 rounded-lg bg-white dark:bg-zinc-900 hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-700 dark:text-zinc-300 hover:text-zinc-900 dark:hover:text-white transition-colors border border-zinc-200 dark:border-zinc-800 shadow-sm">
-          ⚡ What to Do After Injecting (Sync Scripts)
+          ⚡ After the restore
         </a>
         <a href="#how-it-works" class="px-3 py-1.5 rounded-lg bg-white dark:bg-zinc-900 hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-700 dark:text-zinc-300 hover:text-zinc-900 dark:hover:text-white transition-colors border border-zinc-200 dark:border-zinc-800 shadow-sm">
           🔍 How Metadata Pairing Works
         </a>
         <a href="#supported-formats" class="px-3 py-1.5 rounded-lg bg-white dark:bg-zinc-900 hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-700 dark:text-zinc-300 hover:text-zinc-900 dark:hover:text-white transition-colors border border-zinc-200 dark:border-zinc-800 shadow-sm">
-          📁 Supported Formats
+          📁 File types
         </a>
         <a href="#privacy-architecture" class="px-3 py-1.5 rounded-lg bg-white dark:bg-zinc-900 hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-700 dark:text-zinc-300 hover:text-zinc-900 dark:hover:text-white transition-colors border border-zinc-200 dark:border-zinc-800 shadow-sm">
           🔒 Privacy &amp; Offline Guarantee
@@ -117,7 +158,7 @@ const toolFaqSchema = {
               <Icon name="check-circle-2" class="w-5 h-5" />
             </div>
             <div>
-              <span class="text-xs font-mono font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400">Crucial Next Step</span>
+              <span class="text-xs font-mono font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400">After the restore</span>
               <h3 class="text-xl sm:text-2xl font-bold text-zinc-900 dark:text-white">What to do after clicking "Start Restore"</h3>
             </div>
           </div>
@@ -133,10 +174,10 @@ const toolFaqSchema = {
                 <span>💡 Why does File Explorer / Finder show today's date?</span>
               </div>
               <p class="text-zinc-600 dark:text-zinc-400">
-                Web browsers run inside a sandboxed environment for your computer's security. While the browser can write files and inject permanent binary EXIF metadata directly inside your photos, operating systems <em>do not allow web browsers to modify the operating system's filesystem creation dates</em>.
+                Your browser can restore the date and location stored inside each photo. It cannot change the separate “Date created” value shown by your computer's file manager.
               </p>
               <p class="text-zinc-600 dark:text-zinc-400">
-                Photo applications like <strong>Apple Photos, Google Photos, and Adobe Lightroom</strong> immediately read the restored internal EXIF dates correctly. But to fix the date shown in your desktop folder view, TakeoutFix automatically generates a companion synchronization script.
+                Photo apps such as <strong>Apple Photos, Google Photos, and Lightroom</strong> use the restored photo date. If you also want to change the date shown in your computer's folders, the tool provides an optional helper script. Review it before running it.
               </p>
             </div>
 
@@ -219,7 +260,7 @@ const toolFaqSchema = {
             <div class="font-mono text-xs font-bold text-indigo-600 dark:text-indigo-400 mb-1">STAGE 02</div>
             <h4 class="font-bold text-zinc-900 dark:text-white text-sm mb-2">Heuristic Sidecar Pairing</h4>
             <p class="text-xs text-zinc-600 dark:text-zinc-400 leading-relaxed">
-              Google alters filenames by truncating long titles (at 47/51 characters) or adding tags like <code class="font-mono text-[10px] bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 px-1 py-0.5 rounded text-zinc-800 dark:text-zinc-200">-edited</code> and <code class="font-mono text-[10px] bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 px-1 py-0.5 rounded text-zinc-800 dark:text-zinc-200">(1)</code>. TakeoutFix resolves these variants to locate the exact original JSON sidecar.
+              Google Takeout may shorten a filename or add labels such as <code class="font-mono text-[10px] bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 px-1 py-0.5 rounded text-zinc-800 dark:text-zinc-200">-edited</code> and <code class="font-mono text-[10px] bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 px-1 py-0.5 rounded text-zinc-800 dark:text-zinc-200">(1)</code>. The tool checks these filename differences when matching a photo to its extra information file.
             </p>
           </div>
 
@@ -227,7 +268,7 @@ const toolFaqSchema = {
             <div class="font-mono text-xs font-bold text-indigo-600 dark:text-indigo-400 mb-1">STAGE 03</div>
             <h4 class="font-bold text-zinc-900 dark:text-white text-sm mb-2">Lossless Binary Header Injection</h4>
             <p class="text-xs text-zinc-600 dark:text-zinc-400 leading-relaxed">
-              Timestamps, camera tags, and GPS coordinates are injected into standard EXIF IFD and QuickTime user-data atoms. Your image pixels and video frames are never re-encoded or compressed.
+              The tool adds the saved date and location to supported photo and video files. It does not resize or recompress your media.
             </p>
           </div>
         </div>
@@ -248,11 +289,11 @@ const toolFaqSchema = {
             <ul class="space-y-2 text-xs text-zinc-600 dark:text-zinc-400">
               <li class="flex items-center justify-between py-1 border-b border-zinc-100 dark:border-zinc-800/60">
                 <span class="text-zinc-800 dark:text-white font-medium">JPEG / JPG</span>
-                <span class="font-mono text-emerald-600 dark:text-emerald-400">Full EXIF 2.31 + GPS IFD</span>
+                <span class="font-mono text-emerald-600 dark:text-emerald-400">Dates and locations</span>
               </li>
               <li class="flex items-center justify-between py-1 border-b border-zinc-100 dark:border-zinc-800/60">
                 <span class="text-zinc-800 dark:text-white font-medium">Apple HEIC / HEIF</span>
-                <span class="font-mono text-emerald-600 dark:text-emerald-400">Native EXIF Container</span>
+                <span class="font-mono text-emerald-600 dark:text-emerald-400">Photo information</span>
               </li>
               <li class="flex items-center justify-between py-1 border-b border-zinc-100 dark:border-zinc-800/60">
                 <span class="text-zinc-800 dark:text-white font-medium">PNG &amp; WebP</span>
@@ -299,12 +340,12 @@ const toolFaqSchema = {
               <Icon name="shield-check" class="w-5 h-5" />
             </div>
             <div>
-              <span class="text-xs font-mono font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400">Zero-Knowledge Architecture</span>
-              <h3 class="text-xl font-bold text-zinc-900 dark:text-white">100% Client-Side Privacy Guarantee</h3>
+              <span class="text-xs font-mono font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400">Your files stay on your device</span>
+              <h3 class="text-xl font-bold text-zinc-900 dark:text-white">Private photo restoration</h3>
             </div>
           </div>
           <p class="text-xs sm:text-sm text-zinc-600 dark:text-zinc-400 leading-relaxed mb-4">
-            TakeoutFix does not transmit your photos, videos, or Takeout archives across the internet. All file reads, JSON parsing, and metadata injections are executed locally on your computer's CPU via multi-threaded background Web Workers.
+            Your selected photos and Takeout archive are processed on your device and are not uploaded by the restore tool. The website may still use account, analytics, or advertising services as described in the <a href="/privacy" class="underline">Privacy Policy</a>.
           </p>
           <div class="p-3.5 rounded-xl bg-zinc-100 dark:bg-black/40 border border-zinc-200 dark:border-zinc-800/80 text-xs text-zinc-700 dark:text-zinc-400 font-mono">
             🧪 <strong>Offline Test:</strong> Once the page is loaded, you can disconnect your computer from the Wi-Fi or internet. The TakeoutFix restore engine will continue processing your entire library at full speed with zero network connectivity.
@@ -323,7 +364,7 @@ const toolFaqSchema = {
         <div class="space-y-4">
           <details class="p-4 rounded-xl bg-white dark:bg-zinc-900/60 border border-zinc-200 dark:border-zinc-800 shadow-sm group">
             <summary class="font-bold text-sm text-zinc-900 dark:text-white cursor-pointer select-none flex justify-between items-center">
-              <span>Can TakeoutFix handle massive archives (over 50,000 photos)?</span>
+              <span>Can I restore a large Takeout download?</span>
               <span class="text-zinc-500 group-open:rotate-180 transition-transform">▼</span>
             </summary>
             <div class="pt-3 text-xs text-zinc-600 dark:text-zinc-400 leading-relaxed border-t border-zinc-100 dark:border-zinc-800/60 mt-3">
@@ -343,11 +384,11 @@ const toolFaqSchema = {
 
           <details class="p-4 rounded-xl bg-white dark:bg-zinc-900/60 border border-zinc-200 dark:border-zinc-800 shadow-sm group">
             <summary class="font-bold text-sm text-zinc-900 dark:text-white cursor-pointer select-none flex justify-between items-center">
-              <span>What if a photo does not have a companion JSON sidecar?</span>
+              <span>What if an extra information file is missing?</span>
               <span class="text-zinc-500 group-open:rotate-180 transition-transform">▼</span>
             </summary>
             <div class="pt-3 text-xs text-zinc-600 dark:text-zinc-400 leading-relaxed border-t border-zinc-100 dark:border-zinc-800/60 mt-3">
-              TakeoutFix features a deterministic fallback engine. If a sidecar JSON is absent, the engine extracts embedded capture dates from standard filename patterns (e.g. <code class="font-mono text-zinc-800 dark:text-zinc-300">IMG_20220815_142312.jpg</code>) or preserves the file safely in your unmatched catalog so no media is ever misplaced.
+              If the extra <code class="font-mono text-zinc-800 dark:text-zinc-300">.json</code> file is missing, the tool may still find a date in the photo's filename. If it cannot match the information, it keeps the file in the results so you can review it; it does not silently discard it.
             </div>
           </details>
         </div>
@@ -367,7 +408,7 @@ const toolFaqSchema = {
           <a href="/terms" class="hover:text-zinc-900 dark:hover:text-white transition-colors">Terms of Service</a>
         </div>
         <div class="text-[11px] text-zinc-500 dark:text-zinc-600">
-          TakeoutFix © {new Date().getFullYear()} • 100% Client-Side Engine
+          TakeoutFix © {new Date().getFullYear()} • Restore your photos on your device
         </div>
       </div>
 

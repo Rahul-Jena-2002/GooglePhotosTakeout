@@ -20,7 +20,7 @@ export default function TermsPage() {
         <section>
           <h2 className="text-2xl font-bold text-white mb-4">2. License Grant</h2>
           <p>
-            TakeoutFix grants you a personal, non-exclusive, non-transferable license to use the software solely for recovering metadata from your own Google Takeout exports. The software operates locally on your device.
+            The source code is made available under the GNU General Public License, version 2 or (at your option) any later version. See the repository's LICENSE file for the terms. The license permits copying and redistribution subject to its conditions; it does not grant rights to the TakeoutFix name, logo, or other project branding. Third-party components and assets may have separate licenses.
           </p>
         </section>
 
@@ -32,9 +32,9 @@ export default function TermsPage() {
         </section>
 
         <section>
-          <h2 className="text-2xl font-bold text-white mb-4">4. 100% Free Software Utility</h2>
+          <h2 className="text-2xl font-bold text-white mb-4">4. Software Access</h2>
           <p>
-            TakeoutFix is provided as a 100% free, client-side utility with unlimited local processing. There are no subscriptions, paywalls, or fees required to process your photos and metadata.
+            The browser tool processes selected media files on your device. Guest processing limits and any account features are shown in the tool and may change. The MIT license covers the published source code; it does not guarantee hosted service availability or unlimited hosted processing.
           </p>
         </section>
 

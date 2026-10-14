@@ -2,7 +2,6 @@
 export const prerender = true;
 import Layout from "../../layouts/Layout.astro";
 import Icon from "../../components/ui/Icon.astro";
-import AdUnit from "../../components/monetization/AdUnit";
 
 const troubleshootingFaqSchema = {
   "@context": "https://schema.org",
@@ -13,7 +12,7 @@ const troubleshootingFaqSchema = {
       "name": "Why does Google Takeout truncate long photo filenames?",
       "acceptedAnswer": {
         "@type": "Answer",
-        "text": "Google Takeout enforces a 47-character (or 51-character including extension) limit when writing ZIP entries. This causes names like '2023-Summer-Vacation-Roadtrip-Grand-Canyon.jpg' to become truncated, breaking exact string matching with the JSON sidecar."
+        "text": "If a media filename and sidecar name differ, compare the base title and nearby files. Do not assume a fixed truncation length; inspect the specific export and test candidate matches before batch processing."
       }
     },
     {
@@ -21,15 +20,15 @@ const troubleshootingFaqSchema = {
       "name": "Why is GPS location data missing from photos in shared albums?",
       "acceptedAnswer": {
         "@type": "Answer",
-        "text": "By default, Google Photos strips precise GPS coordinates from shared albums to protect user privacy. Photos exported from personal timeline albums retain GPS, whereas shared album exports may have 0.0, 0.0 coordinates in the JSON."
+        "text": "A zero coordinate is not a usable location. Check the sidecar and any original copy; if no location is present, a metadata tool cannot infer it reliably."
       }
     },
     {
       "@type": "Question",
-      "name": "Why are my photo timestamps off by several hours after restoration?",
+        "name": "Why is my photo time off by several hours?",
       "acceptedAnswer": {
         "@type": "Answer",
-        "text": "Google Takeout records photoTakenTime in UTC (Coordinated Universal Time). If an image editor or script fails to account for your local timezone offset, photos will appear shifted by your UTC offset (e.g. -5 hours for EST or +8 hours for SGT)."
+        "text": "Compare the time shown in the photo app with a photo whose capture time you know. Time handling can vary; test a few files before changing a whole library."
       }
     }
   ]
@@ -38,8 +37,8 @@ const troubleshootingFaqSchema = {
 const articleSchema = {
   "@context": "https://schema.org",
   "@type": "TechArticle",
-  "headline": "Troubleshooting Common Google Takeout Errors & Metadata Failures",
-  "description": "Comprehensive troubleshooting manual for resolving truncated filenames, duplicate JSON sidecars, missing GPS tags, and timezone offsets in Google Takeout exports.",
+  "headline": "Fix Common Google Takeout Photo Problems",
+  "description": "Simple checks for missing files, duplicate photos, missing locations, and photo dates that look wrong after a Google Takeout download.",
   "author": {
     "@type": "Person",
     "name": "Rahul Jena",
@@ -51,13 +50,13 @@ const articleSchema = {
     "url": "https://takeoutfix.pages.dev"
   },
   "datePublished": "2026-09-20",
-  "dateModified": "2026-09-28"
+  "dateModified": "2026-10-14"
 };
 ---
 
-<Layout 
-  title="Troubleshooting Google Takeout Errors & Metadata Glitches | TakeoutFix" 
-  description="Fix truncated filenames, missing GPS, timezone offsets, and mismatched JSON sidecars in your Google Takeout export with this practical troubleshooting guide."
+<Layout
+  title="Fix Common Google Takeout Photo Problems | TakeoutFix"
+  description="Find photos with missing details, mismatched file names, or dates that look wrong after a Google Takeout download."
 >
   <script type="application/ld+json" set:html={JSON.stringify(troubleshootingFaqSchema)} />
   <script type="application/ld+json" set:html={JSON.stringify(articleSchema)} />
@@ -71,16 +70,16 @@ const articleSchema = {
         <span>/</span>
         <a href="/guides" class="hover:text-zinc-300 transition-colors">Guides</a>
         <span>/</span>
-        <span class="text-zinc-400">Troubleshooting Takeout Errors</span>
+        <span class="text-zinc-400">Takeout photo help</span>
       </nav>
 
       <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-amber-500/10 border border-amber-500/20 text-amber-500 dark:text-amber-400 text-xs font-semibold uppercase tracking-wider mb-4 font-mono">
         <Icon name="alert-triangle" class="w-3.5 h-3.5" />
-        Troubleshooting Manual
+        Photo help guide
       </div>
 
       <h1 class="text-3xl sm:text-4xl md:text-5xl font-extrabold tracking-tight text-zinc-900 dark:text-white mb-6 leading-tight max-w-4xl">
-        Troubleshooting Common Google Takeout Errors &amp; Metadata Glitches
+        Fix Common Google Takeout Photo Problems
       </h1>
 
       <div class="flex flex-wrap items-center gap-4 text-xs text-zinc-500 font-mono pb-6 border-b border-zinc-200 dark:border-zinc-800">
@@ -88,7 +87,7 @@ const articleSchema = {
         <span>&bull;</span>
         <span>Published September 2026</span>
         <span>&bull;</span>
-        <span>1,420 words &bull; 10 min read</span>
+        <span>About 5 min read</span>
       </div>
     </div>
 
@@ -105,36 +104,32 @@ const articleSchema = {
             Overview of Edge Cases
           </h2>
           <p class="text-sm leading-relaxed text-zinc-600 dark:text-zinc-300">
-            Google Takeout is notorious among archivists for edge cases that break standard restoration scripts. These include 47-character truncated names, irregular parenthesis placement in duplicate files, timezone skew between UTC and camera local clocks, and missing GPS data in shared albums. This manual diagnoses each failure mode and provides battle-tested remediation steps.
+            A Takeout download may contain duplicate photos, edited copies, or extra details files that are hard to match. These simple checks can help you understand what's happening before you restore a large folder. Results vary between downloads.
           </p>
         </div>
 
-        <!-- Ad Unit: Article Top Placement -->
-        <div class="my-8">
-          <AdUnit client:only="react" placement="ARTICLE_TOP" />
-        </div>
 
         <section id="problem-1" class="space-y-4">
           <h2 class="text-2xl sm:text-3xl font-bold text-zinc-900 dark:text-white">
-            Problem 1: The 47-Character Filename Truncation Bug
+            Problem 1: A photo and its extra details file have different names
           </h2>
           <p class="text-zinc-600 dark:text-zinc-300">
-            One of the most perplexing anomalies in Google Takeout archives is truncated filenames. When Google's export packager creates ZIP archives, it caps file entry names at approximately 47 characters before the extension.
+            A photo and its extra details file may have slightly different names, especially if the photo was edited or copied. Compare files in the same folder before deciding that a file is missing.
           </p>
           <div class="bg-zinc-950 border border-zinc-800 rounded-xl p-5 font-mono text-xs text-zinc-300 space-y-2">
-            <div class="text-rose-400"># Original file name in Google Photos:</div>
+            <div class="text-rose-400"># Example media file:</div>
             <div>2024_08_15_Summer_Holiday_Family_Reunion_Barbecue_At_The_Lake.jpg</div>
-            <div class="text-amber-400 mt-2"># How Takeout names the image:</div>
+            <div class="text-amber-400 mt-2"># Another copy may have a changed name:</div>
             <div>2024_08_15_Summer_Holiday_Family_Reunion_Ba.jpg</div>
-            <div class="text-indigo-400 mt-2"># How Takeout names the companion JSON sidecar:</div>
+            <div class="text-indigo-400 mt-2"># Sidecar name to inspect:</div>
             <div>2024_08_15_Summer_Holiday_Family_Reunion_Barbecue_At_The_Lake.jpg.json</div>
           </div>
           <p class="text-zinc-600 dark:text-zinc-300">
-            Because the image name is truncated while the JSON sidecar retains the full original title (or truncates at a different byte boundary), naive string matching algorithms fail completely.
+            If the names are hard to match, check the other files in that folder and use the tool's match report. Do not guess based only on part of a file name.
           </p>
           <div class="bg-zinc-100 dark:bg-zinc-900/60 border border-zinc-200 dark:border-white/10 rounded-xl p-5 text-sm text-zinc-700 dark:text-zinc-300">
             <strong class="text-zinc-900 dark:text-white block mb-1">How to fix it:</strong>
-            TakeoutFix uses dynamic fuzzy prefix matching and directory index maps. If an exact 1:1 match is not found, it evaluates candidate sidecars sharing common prefixes and verifies timestamp correlation before applying metadata.
+            Make a copy of the relevant folder and process a small sample first. Review unmatched or ambiguous files in the tool output; do not overwrite the source export until you have checked the results.
           </div>
         </section>
 
@@ -152,21 +147,17 @@ const articleSchema = {
             <li>Sidecar Pattern C: <code class="font-mono text-xs text-indigo-400 bg-zinc-100 dark:bg-zinc-800 px-1 py-0.5 rounded">IMG_1024.json(1)</code></li>
           </ul>
           <p class="text-zinc-600 dark:text-zinc-300">
-            Standard batch scripts fail when encountering Pattern B and C. TakeoutFix normalizes suffix permutations automatically, stripping trailing numbers and inspecting candidate sidecars within the same subfolder.
+            When several files share a title, compare the full folder path and timestamps rather than choosing the first similarly named sidecar. Process a small sample and inspect the resulting metadata before scaling up.
           </p>
         </section>
 
-        <!-- Ad Unit: Article Middle Placement -->
-        <div class="my-8">
-          <AdUnit client:only="react" placement="ARTICLE_MIDDLE" />
-        </div>
 
         <section id="problem-3" class="space-y-4">
           <h2 class="text-2xl sm:text-3xl font-bold text-zinc-900 dark:text-white">
-            Problem 3: Missing GPS Data in Shared Album Exports
+            Problem 3: A photo has no location
           </h2>
           <p class="text-zinc-600 dark:text-zinc-300">
-            If you download photos that were part of a "Shared Album", you may inspect the JSON sidecar and find:
+            Some photos may not include a location in your download. If you are comfortable opening the extra .json details file, you can check whether it contains a location; otherwise, try another copy of the photo.
           </p>
           <div class="bg-zinc-950 border border-zinc-800 rounded-xl p-5 font-mono text-xs text-zinc-300">
 <pre>{`"geoData": {
@@ -176,51 +167,44 @@ const articleSchema = {
 }`}</pre>
           </div>
           <p class="text-zinc-600 dark:text-zinc-300">
-            This is an intentional Google privacy safeguard. When photos are shared in group albums or collaborative links, Google strips location coordinates to protect contributors.
+            TakeoutFix can only restore a location when one is present in the photo or its extra details file. It cannot work out a location that was never saved.
           </p>
           <div class="bg-zinc-100 dark:bg-zinc-900/60 border border-zinc-200 dark:border-white/10 rounded-xl p-5 text-sm text-zinc-700 dark:text-zinc-300">
             <strong class="text-zinc-900 dark:text-white block mb-1">Solution:</strong>
-            When requesting a Google Takeout export, always select <strong>"Photos from [Year]"</strong> folders (your primary personal timeline) rather than individual "Shared Album" entries. Primary timeline exports contain the unstripped <code class="font-mono text-xs text-indigo-400 bg-zinc-100 dark:bg-zinc-800 px-1 py-0.5 rounded">geoDataExif</code> coordinates.
+            Check another copy of the photo or its original backup if the location matters. A different download may not include the missing location either.
           </div>
         </section>
 
         <section id="problem-4" class="space-y-4">
           <h2 class="text-2xl sm:text-3xl font-bold text-zinc-900 dark:text-white">
-            Problem 4: Timezone Shifts (UTC vs. Local Time)
+            Problem 4: The photo time looks a few hours off
           </h2>
           <p class="text-zinc-600 dark:text-zinc-300">
-            Google Takeout exports timestamp values as UTC Unix epoch seconds in <code class="font-mono text-xs text-indigo-400 bg-zinc-100 dark:bg-zinc-800 px-1 py-0.5 rounded">photoTakenTime.timestamp</code>.
-          </p>
-          <p class="text-zinc-600 dark:text-zinc-300">
-            However, standard camera EXIF (<code class="font-mono text-xs">DateTimeOriginal</code>) does not natively specify a timezone offset unless tag <code class="font-mono text-xs">0x9011</code> (<code>OffsetTimeOriginal</code>) is populated. If a tool writes UTC time as local time without offset compensation, a photo taken at 8:00 PM in California (UTC-7) will display as 3:00 AM the next day.
+            Different photo apps may display the same time differently. Compare the restored photo with one whose capture time you know, and check a few files before restoring a large folder.
           </p>
           <p class="text-sm text-zinc-600 dark:text-zinc-300">
-            TakeoutFix reconciles the formatted local string (<code class="font-mono text-xs">formatted</code> field) against the UTC timestamp to derive the original shooting timezone, embedding proper EXIF 2.31/2.32 offset tags (<code class="font-mono text-xs">OffsetTime</code>, <code class="font-mono text-xs">OffsetTimeOriginal</code>) so your photos display the correct local capture hour anywhere in the world.
+            Keep the original download. If the time still looks wrong, stop and check the tool's report before continuing.
           </p>
         </section>
 
         <section id="problem-5" class="space-y-4">
           <h2 class="text-2xl sm:text-3xl font-bold text-zinc-900 dark:text-white">
-            Problem 5: Apple Live Photo Separation (HEIC + MOV)
+            Problem 5: A Live Photo appears as two files
           </h2>
           <p class="text-zinc-600 dark:text-zinc-300">
-            On iOS, a Live Photo is comprised of a still image (<code class="font-mono text-xs">.HEIC</code>) and a short video clip (<code class="font-mono text-xs">.MOV</code>) sharing a common Content Identifier UUID in their metadata.
+            An iPhone Live Photo can include a picture and a short video. A Takeout download may save these as two files.
           </p>
           <p class="text-zinc-600 dark:text-zinc-300">
-            Google Takeout exports both files, but frequently only provides a JSON sidecar for the HEIC file, leaving the companion MOV without direct metadata. TakeoutFix correlates the still HEIC and video MOV files using name matching and embeds matching QuickTime creation dates into the video stream so Apple Photos and Google Photos recognize them as a unified Live Photo upon re-import.
+            Check that both files are present and try them in your photo app. Keep the original download because file names alone may not show whether the pair is connected.
           </p>
         </section>
 
-        <!-- Ad Unit: Article Bottom Placement -->
-        <div class="my-8">
-          <AdUnit client:only="react" placement="ARTICLE_BOTTOM" />
-        </div>
 
         <!-- Action Footer -->
         <section class="bg-zinc-50 dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-8 text-center shadow-sm">
-          <h3 class="text-2xl font-bold text-zinc-900 dark:text-white mb-3">Fix Truncated Names &amp; Timezone Glitches</h3>
+          <h3 class="text-2xl font-bold text-zinc-900 dark:text-white mb-3">Need help with your Takeout photos?</h3>
           <p class="text-sm text-zinc-600 dark:text-zinc-400 max-w-xl mx-auto mb-6">
-            TakeoutFix is specifically designed to handle every known Google Takeout edge case automatically without code or terminal commands.
+            No single workflow can resolve every export variation. Keep the original archive, test a small copy, and use the tool's report to identify files that need manual review.
           </p>
           <div class="flex flex-wrap gap-4 justify-center">
             <a href="/tool" class="px-6 py-3 rounded-xl bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 hover:opacity-90 font-semibold text-sm transition-opacity shadow-sm">
@@ -246,9 +230,9 @@ const articleSchema = {
             <nav class="space-y-2 text-sm text-zinc-600 dark:text-zinc-400">
               <a href="#problem-1" class="block hover:text-zinc-900 dark:hover:text-white transition-colors py-1">1. 47-Char Truncation Bug</a>
               <a href="#problem-2" class="block hover:text-zinc-900 dark:hover:text-white transition-colors py-1">2. Parenthesis in Duplicates</a>
-              <a href="#problem-3" class="block hover:text-zinc-900 dark:hover:text-white transition-colors py-1">3. Missing Shared Album GPS</a>
-              <a href="#problem-4" class="block hover:text-zinc-900 dark:hover:text-white transition-colors py-1">4. Timezone Shifts (UTC vs Local)</a>
-              <a href="#problem-5" class="block hover:text-zinc-900 dark:hover:text-white transition-colors py-1">5. Live Photo Separation (HEIC+MOV)</a>
+              <a href="#problem-3" class="block hover:text-zinc-900 dark:hover:text-white transition-colors py-1">3. A photo has no location</a>
+              <a href="#problem-4" class="block hover:text-zinc-900 dark:hover:text-white transition-colors py-1">4. The photo time looks wrong</a>
+              <a href="#problem-5" class="block hover:text-zinc-900 dark:hover:text-white transition-colors py-1">5. A Live Photo appears as two files</a>
             </nav>
           </div>
 

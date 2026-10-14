@@ -23,7 +23,7 @@ const DEFAULT_FAQS: FaqItem[] = [
   {    id: "archive-limits",
     tag: "Limits",
     question: "Is there a limit on archive sizes?",
-    answer: "The browser tool handles standard archives directly on your machine. If you have a huge photo collection (over 50GB), our free desktop app is also available to process massive files without crashing."
+    answer: "The browser tool processes selected files locally. For very large archives, see the desktop app download page for current platform options and requirements."
   }
 ];
 

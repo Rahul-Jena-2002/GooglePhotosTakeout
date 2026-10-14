@@ -145,6 +145,11 @@ function AdminRouterContent() {
                 <AdminUserDashboard />
               </RequireRole>
             } />
+            <Route path="statistics" element={
+              <RequireRole allow={["SUPER_ADMIN", "ADMIN"]}>
+                <AdminStatistics />
+              </RequireRole>
+            } />
             <Route path="revenue"           element={<Navigate to="/admin" replace />} />
             <Route path="payments"          element={<Navigate to="/admin" replace />} />
             <Route path="monetization"      element={<Navigate to="/admin" replace />} />

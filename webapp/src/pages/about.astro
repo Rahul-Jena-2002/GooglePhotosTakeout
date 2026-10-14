@@ -21,7 +21,7 @@ const aboutPageSchema = {
   "@context": "https://schema.org",
   "@type": "AboutPage",
   "name": "About TakeoutFix",
-  "description": "Learn about the mission, engineering architecture, and team behind TakeoutFix — the privacy-first Google Takeout photo metadata restorer.",
+  "description": "Learn about TakeoutFix, an independent browser tool for restoring available photo metadata from Google Takeout exports.",
   "url": "https://takeoutfix.pages.dev/about",
   "mainEntity": organizationSchema
 };
@@ -29,7 +29,7 @@ const aboutPageSchema = {
 
 <Layout 
   title="About Us – The Mission & Team Behind TakeoutFix" 
-  description="Learn about TakeoutFix, our local-first engineering philosophy, and how we help users restore missing photo EXIF metadata from Google Takeout exports safely and privately."
+description="Learn about TakeoutFix, its local-first approach, available restore features, and the independent project maintainer."
 >
   <!-- Schema.org JSON-LD Structured Data -->
   <script type="application/ld+json" set:html={JSON.stringify(aboutPageSchema)} />
@@ -40,14 +40,14 @@ const aboutPageSchema = {
     <div class="text-center mb-16 relative">
       <div class="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-zinc-900 dark:text-zinc-100 text-xs font-semibold uppercase tracking-wider mb-6 font-mono">
         <Icon name="info" class="w-4 h-4 text-zinc-900 dark:text-zinc-100" />
-        About Our Project &amp; Architecture
+        About TakeoutFix
       </div>
       <h1 class="text-4xl sm:text-5xl md:text-6xl font-extrabold tracking-tight text-zinc-900 dark:text-white mb-6 leading-tight">
-        Preserving Digital Memories with <br class="hidden sm:inline" />
-        <span class="text-zinc-500 dark:text-zinc-400">Privacy-First Engineering</span>
+        Keep your photo memories in order <br class="hidden sm:inline" />
+        <span class="text-zinc-500 dark:text-zinc-400">with TakeoutFix</span>
       </h1>
       <p class="text-base sm:text-lg md:text-xl text-zinc-600 dark:text-zinc-400 max-w-3xl mx-auto leading-relaxed font-normal">
-        TakeoutFix was founded to solve a frustrating problem faced by millions: when you export your photo archives from Google Takeout, your photos lose their capture dates, camera tags, and GPS coordinates. We built a fast, zero-upload tool to reunite them.
+        Some photos downloaded from Google Takeout may show the wrong date or be missing a location in another photo app. TakeoutFix helps restore the details available in your download. Your selected photos stay on your device while the tool works.
       </p>
     </div>
 
@@ -58,9 +58,9 @@ const aboutPageSchema = {
         <div class="w-12 h-12 rounded-xl bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 flex items-center justify-center mb-6 text-zinc-900 dark:text-white">
           <Icon name="shield-check" class="w-6 h-6" />
         </div>
-        <h3 class="text-xl font-bold text-zinc-900 dark:text-white mb-3">100% Local-First</h3>
+        <h3 class="text-xl font-bold text-zinc-900 dark:text-white mb-3">Your photos stay on your device</h3>
         <p class="text-sm text-zinc-600 dark:text-zinc-400 leading-relaxed font-normal">
-          Your personal photos and memories never leave your device. All parsing, file matching, and EXIF injection execute inside your browser sandbox via WebAssembly and Web Workers.
+          The restore tool works in your browser. The photos you select are not uploaded to our servers.
         </p>
       </div>
 
@@ -68,9 +68,9 @@ const aboutPageSchema = {
         <div class="w-12 h-12 rounded-xl bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 flex items-center justify-center mb-6 text-zinc-900 dark:text-white">
           <Icon name="cpu" class="w-6 h-6" />
         </div>
-        <h3 class="text-xl font-bold text-zinc-900 dark:text-white mb-3">Lossless Integrity</h3>
+        <h3 class="text-xl font-bold text-zinc-900 dark:text-white mb-3">The picture stays the same</h3>
         <p class="text-sm text-zinc-600 dark:text-zinc-400 leading-relaxed font-normal">
-          We never recompress, re-encode, or alter your photo pixels. We directly write standard EXIF, IPTC, and QuickTime headers into file metadata segments with bit-for-bit preservation.
+          TakeoutFix updates supported photo details without changing how the picture looks. Keep a copy of your original download before you begin.
         </p>
       </div>
 
@@ -78,28 +78,28 @@ const aboutPageSchema = {
         <div class="w-12 h-12 rounded-xl bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 flex items-center justify-center mb-6 text-zinc-900 dark:text-white">
           <Icon name="zap" class="w-6 h-6" />
         </div>
-        <h3 class="text-xl font-bold text-zinc-900 dark:text-white mb-3">Multi-Platform Reach</h3>
+        <h3 class="text-xl font-bold text-zinc-900 dark:text-white mb-3">Choose how to restore</h3>
         <p class="text-sm text-zinc-600 dark:text-zinc-400 leading-relaxed font-normal">
-          Whether you prefer our zero-install web application or high-throughput standalone desktop utilities for Windows and macOS, we offer tools for libraries of any scale.
+          Use the browser tool for everyday restores. A desktop app is available for people who prefer a separate application.
         </p>
       </div>
 
     </div>
 
-    <!-- The Problem We Solve (In-Depth Technical Story) -->
+    <!-- The problem TakeoutFix solves -->
     <div class="bg-zinc-50 dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-8 sm:p-12 mb-16 shadow-sm">
       <h2 class="text-2xl sm:text-3xl font-extrabold text-zinc-900 dark:text-white mb-6">
         Why Was TakeoutFix Built?
       </h2>
       <div class="space-y-6 text-zinc-700 dark:text-zinc-300 text-sm sm:text-base leading-relaxed font-normal">
         <p>
-          Google Takeout is the primary service Google provides for users exercising their data portability rights to export their stored Google Photos archives. However, instead of baking the capture timestamps, geolocation data, and camera settings directly into each media file's EXIF header, Google separates this crucial information into companion files ending in <code class="text-xs font-mono px-2 py-0.5 rounded bg-zinc-200 dark:bg-zinc-800 text-zinc-800 dark:text-zinc-200 border border-zinc-300 dark:border-zinc-700">.json</code>.
+          Google Takeout lets you download a copy of your Google Photos. Some extra details, such as comments, may be saved in separate files ending in <code class="text-xs font-mono px-2 py-0.5 rounded bg-zinc-200 dark:bg-zinc-800 text-zinc-800 dark:text-zinc-200 border border-zinc-300 dark:border-zinc-700">.json</code>. These are text files that can hold information about a photo.
         </p>
         <p>
-          When you subsequently attempt to import these photos into Apple Photos, Synology Photos, Windows Photo Gallery, or Lightroom, these programs cannot read Google's proprietary JSON sidecars. As a consequence, thousands of irreplaceable family memories appear scrambled, all sharing the date you downloaded the zip archive instead of the year they were captured.
+          Some photo apps do not use those extra files when importing photos. As a result, a photo may show the download date instead of the day it was taken. The exact result depends on the files in your download and the app you use.
         </p>
         <p>
-          Traditional solutions required running complex terminal tools or installing third-party Python environments, which are intimidating and inaccessible for everyday users. TakeoutFix was engineered to provide an accessible, beautiful, and completely secure solution: a high-performance metadata restorer that runs right in your browser with zero cloud uploads required.
+          TakeoutFix was made to make this process easier. Choose your Takeout folder, select where to save the restored copies, and review the results. The selected photos are handled on your device.
         </p>
       </div>
     </div>
@@ -114,7 +114,7 @@ const aboutPageSchema = {
         <h3 class="text-2xl font-bold text-zinc-900 dark:text-white mb-1">Rahul Jena</h3>
         <p class="text-zinc-500 dark:text-zinc-400 font-mono text-xs font-semibold mb-4">Founder &amp; Software Engineer</p>
         <p class="text-sm text-zinc-600 dark:text-zinc-400 leading-relaxed font-normal mb-6">
-          A software engineer specializing in systems architecture, web technologies, and multimedia processing. Creator and lead architect of the TakeoutFix client engine.
+          I created TakeoutFix to make it easier to inspect Google Takeout exports and restore supported metadata locally in a browser. The project is independently maintained; questions and corrections are welcome through the support page.
         </p>
         <div class="flex flex-wrap gap-3 justify-center sm:justify-start">
           <a 
@@ -127,20 +127,20 @@ const aboutPageSchema = {
             href="/guides" 
             class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 border border-zinc-200 dark:border-zinc-700 text-xs font-semibold text-zinc-900 dark:text-white transition-all"
           >
-            Technical Guides
+            Helpful Guides
           </a>
         </div>
       </div>
 
       <div class="lg:col-span-7 bg-zinc-50 dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-8 sm:p-10 space-y-6 shadow-sm">
-        <h3 class="text-2xl font-bold text-zinc-900 dark:text-white">Our Engineering &amp; Quality Standards</h3>
+        <h3 class="text-2xl font-bold text-zinc-900 dark:text-white">What to expect</h3>
         <ul class="space-y-5 text-sm text-zinc-600 dark:text-zinc-400 font-normal">
           <li class="flex items-start gap-4">
             <div class="w-7 h-7 rounded-full bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-600 dark:text-emerald-400 flex-shrink-0 mt-0.5">
               <Icon name="check" class="w-4 h-4" />
             </div>
             <span>
-              <strong class="text-zinc-900 dark:text-white">Extensive Format Testing:</strong> Our algorithms are rigorously verified across JPEG, PNG, WebP, Apple HEIC/HEIF, Canon CR2/CR3, Nikon NEF, Sony ARW, and MP4/MOV QuickTime files.
+              <strong class="text-zinc-900 dark:text-white">Supported files:</strong> The tool works with selected photo and video formats. Check the restore guide for the current supported file list.
             </span>
           </li>
           <li class="flex items-start gap-4">
@@ -148,7 +148,7 @@ const aboutPageSchema = {
               <Icon name="check" class="w-4 h-4" />
             </div>
             <span>
-              <strong class="text-zinc-900 dark:text-white">Edge Case Handling:</strong> We handle real-world Takeout anomalies including truncated JSON filenames (e.g., <code class="text-xs font-mono">IMG_1234(1).JPG</code> vs <code class="text-xs font-mono">IMG_1234.JPG(1).json</code>), edited suffixes, and timezone offsets.
+              <strong class="text-zinc-900 dark:text-white">Check the results:</strong> File names and available details can vary. Try a few photos first and review the report before restoring a large folder.
             </span>
           </li>
           <li class="flex items-start gap-4">
@@ -156,7 +156,7 @@ const aboutPageSchema = {
               <Icon name="check" class="w-4 h-4" />
             </div>
             <span>
-              <strong class="text-zinc-900 dark:text-white">Zero Telemetry of Personal Data:</strong> We never log, track, or collect file names, photo thumbnails, or EXIF metadata. Everything stays securely on your machine.
+              <strong class="text-zinc-900 dark:text-white">Private photo processing:</strong> The browser restore tool does not upload the selected photo or video files. Account and website information is explained in our <a href="/privacy" class="underline font-semibold">Privacy Policy</a>.
             </span>
           </li>
         </ul>

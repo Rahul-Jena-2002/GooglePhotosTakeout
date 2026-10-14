@@ -30,12 +30,11 @@ const pageTitle = curated.title;
 const pageDescription = curated.description;
 const badgeText = curated.badge;
 const badgeColor = curated.badgeColor;
-const headlineGrad = curated.headlineGradient;
-const headlineRest = curated.headlineText;
+const headlineText = curated.headlineText;
 const introText = curated.intro;
 const ctaButtonText = curated.ctaText;
 const ctaButtonLink = curated.ctaLink;
-const robotsDirective = "index, follow"; // Curated pages are indexed for SEO
+const robotsDirective = "noindex, follow"; // Consolidated keyword variants should not compete with the substantive guides.
 
 const matchedAction = "Restore";
 const matchedTarget = "EXIF Metadata";
@@ -68,7 +67,7 @@ const matchedSource = "Google Takeout";
       </div>
       
       <h1 class="text-4xl md:text-6xl font-extrabold tracking-tight text-white mb-6 leading-tight animate-fade-in">
-        <span class="text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 via-purple-400 to-pink-500">{headlineGrad}</span>{headlineRest}
+        <span class="text-indigo-300">{headlineText}</span>
       </h1>
       
       <p class="text-lg md:text-xl text-zinc-400 max-w-3xl mx-auto font-normal leading-relaxed mb-8">

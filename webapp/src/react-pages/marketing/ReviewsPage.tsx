@@ -58,7 +58,7 @@ function ReviewsPageContent() {
         photoURL: user?.photoURL || null,
         rating,
         message,
-        status: "APPROVED",
+        status: "PENDING",
         createdAt: serverTimestamp()
       })
       setSubmitSuccess(true)
@@ -66,7 +66,6 @@ function ReviewsPageContent() {
       setMessage("")
       setDisplayName("")
       setRating(5)
-      fetchReviews()
     } catch (err) {
       console.error("Error submitting review", err)
     } finally {
@@ -98,7 +97,7 @@ function ReviewsPageContent() {
           transition={{ duration: 0.5, delay: 0.2, ease: "easeOut" }}
           className="text-xl text-zinc-600 dark:text-zinc-400 max-w-2xl mx-auto mb-8"
         >
-          See what our community thinks about TakeoutFix. Real reviews from users who successfully restored their Google Takeout metadata.
+          Community-submitted feedback about using TakeoutFix. Results can vary by export, device, browser, and file type.
         </motion.p>
 
         {/* Review Action */}
@@ -124,7 +123,7 @@ function ReviewsPageContent() {
             animate={{ opacity: 1, scale: 1 }}
             className="inline-block bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400 px-6 py-3 rounded-full text-sm font-medium"
           >
-            Thank you! Your review has been published.
+            Thank you! Your review was submitted for moderation.
           </motion.div>
         )}
       </div>

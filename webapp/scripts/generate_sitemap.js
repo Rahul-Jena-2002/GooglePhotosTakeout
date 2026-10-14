@@ -2,7 +2,6 @@ import fs from 'fs';
 import path from 'path';
 
 const baseUrl = "https://takeoutfix.pages.dev";
-const today = new Date().toISOString().split('T')[0];
 
 // ─── High-Value Canonical & Editorial Pillar Pages (AdSense Compliant) ────────
 const indexablePages = [
@@ -14,18 +13,12 @@ const indexablePages = [
   { loc: "/guides/google-takeout-json-metadata-explained",         changefreq: "monthly", priority: "0.9" },
   { loc: "/guides/how-to-save-takeout-photos-to-hard-drive-nas-cloud", changefreq: "monthly", priority: "0.9" },
   { loc: "/guides/google-takeout-common-errors-fix",               changefreq: "monthly", priority: "0.9" },
-  { loc: "/restore-data",                                          changefreq: "weekly",  priority: "0.9" },
-  { loc: "/tool",                                                  changefreq: "monthly", priority: "0.9" },
   { loc: "/download",                                              changefreq: "monthly", priority: "0.8" },
-  { loc: "/reviews",                                               changefreq: "weekly",  priority: "0.8" },
   { loc: "/support",                                               changefreq: "monthly", priority: "0.7" },
   { loc: "/privacy",                                               changefreq: "monthly", priority: "0.4" },
   { loc: "/terms",                                                 changefreq: "monthly", priority: "0.4" },
-  // Distinct Technical Problem-Solving Pillar Guides
-  { loc: "/fix-google-takeout-dates",                              changefreq: "monthly", priority: "0.8" },
-  { loc: "/restore-gps-google-takeout",                            changefreq: "monthly", priority: "0.8" },
-  { loc: "/google-takeout-to-apple-photos",                        changefreq: "monthly", priority: "0.8" },
-  { loc: "/metadata-fixer",                                        changefreq: "monthly", priority: "0.8" },
+  { loc: "/restore-data",                                          changefreq: "weekly",  priority: "0.9" },
+  { loc: "/tool",                                                  changefreq: "weekly",  priority: "0.9" },
 ];
 
 let mainXml = `<?xml version="1.0" encoding="UTF-8"?>
@@ -36,7 +29,6 @@ let mainXml = `<?xml version="1.0" encoding="UTF-8"?>
 for (const page of indexablePages) {
   mainXml += `  <url>
     <loc>${baseUrl}${page.loc}</loc>
-    <lastmod>${today}</lastmod>
     <changefreq>${page.changefreq}</changefreq>
     <priority>${page.priority}</priority>
   </url>\n`;

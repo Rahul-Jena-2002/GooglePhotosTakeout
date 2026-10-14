@@ -12,6 +12,14 @@
     <name>Takeout Workspace</name>
     <description>Workspace aggregator for IDE project discovery</description>
 
+    <licenses>
+        <license>
+            <name>GNU General Public License v2 or later</name>
+            <url>https://www.gnu.org/licenses/old-licenses/gpl-2.0.html</url>
+            <distribution>repo</distribution>
+        </license>
+    </licenses>
+
     <modules>
         <module>takeoutfix</module>
     </modules>

@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { type User, onAuthStateChanged, signInWithPopup, signInWithRedirect, getRedirectResult, GoogleAuthProvider, signOut } from 'firebase/auth';
+import { type User, onAuthStateChanged, signInWithPopup, signInWithRedirect, getRedirectResult, GoogleAuthProvider, EmailAuthProvider, signOut, reauthenticateWithPopup, reauthenticateWithCredential, deleteUser } from 'firebase/auth';
 import { doc, getDoc, setDoc, getDocs, collection, query, where, deleteDoc, onSnapshot, increment, addDoc, updateDoc } from 'firebase/firestore';
 import { auth, db } from '../firebase';
 import { indexedDbService } from '../lib/indexedDbService';
@@ -190,6 +190,7 @@ interface AuthContextType {
   loading: boolean;
   login: () => Promise<void>;
   logout: () => Promise<void>;
+  deleteAccount: (password?: string) => Promise<void>;
   refreshUserData: () => Promise<void>;
   region: string;
   setRegion: (r: string) => void;
@@ -419,6 +420,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [platformStats, setPlatformStats] = useState<any>(null);
 
   useEffect(() => {
+    if (!db) return;
     const unsub = onSnapshot(doc(db, "platform_stats", "global"), (snap) => {
       if (snap.exists()) {
         const data = snap.data();
@@ -437,6 +439,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [enablePricingAndPayments, setEnablePricingAndPayments] = useState<boolean>(false);
 
   useEffect(() => {
+    if (!db) return;
     const unsub = onSnapshot(doc(db, "settings", "global"), (snap) => {
       if (snap.exists()) {
         const data = snap.data();
@@ -622,9 +625,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
               refundPolicy: newRefund,
               comparisonRows: newComparison,
               foundingCount: newFounding,
-              pricingTiers: tiersData,
-              campaigns: activeCampaign,
-              activeCampaignDiscounts: discounts
+              pricingTiers: {},
+              campaigns: null,
+              activeCampaignDiscounts: {}
             },
             timestamp: Date.now()
           }));
@@ -1270,6 +1273,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     }
 
+    // Browsing and guest-mode restoration do not require Firebase Auth.
+    if (!auth) {
+      setUser(null);
+      setUserData(null);
+      setAdminData(null);
+      setLoading(false);
+      return;
+    }
+
     const unsubscribe = onAuthStateChanged(auth, async (u) => {
       setUser(u);
       if (u) {
@@ -1399,6 +1411,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, [user, userData?.plan, userData?.expiresAt]);
 
   const login = async () => {
+    if (!auth) throw new Error("Google sign-in is unavailable because Firebase is not configured for this site.");
     const provider = new GoogleAuthProvider();
     provider.setCustomParameters({ prompt: 'select_account' });
     try {
@@ -1450,6 +1463,55 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } catch (_) {}
     setSessionRegistered(false);
     setHasSeenSelfInSessions(false);
+  };
+
+  const deleteAccount = async (password?: string) => {
+    if (!user) throw new Error('You must be signed in to delete your account.');
+
+    if (user.providerData.some((provider) => provider.providerId === 'google.com')) {
+      const provider = new GoogleAuthProvider();
+      provider.setCustomParameters({ prompt: 'select_account' });
+      await reauthenticateWithPopup(user, provider);
+    } else if (user.providerData.some((provider) => provider.providerId === 'password') && user.email && password) {
+      await reauthenticateWithCredential(user, EmailAuthProvider.credential(user.email, password));
+    } else {
+      throw new Error('A recent sign-in with your account provider is required to delete this account.');
+    }
+
+    const userRef = doc(db, 'users', user.uid);
+    const userSnap = await getDoc(userRef);
+    const sessionsSnap = await getDocs(collection(db, 'recoveryHistory', user.uid, 'sessions'));
+    const recoveryQuery = query(collection(db, 'recoveries'), where('uid', '==', user.uid));
+    const recoveriesSnap = await getDocs(recoveryQuery);
+    const transactionsSnap = await getDocs(query(collection(db, 'transactions'), where('uid', '==', user.uid)));
+    const ticketsSnap = await getDocs(query(collection(db, 'tickets'), where('uid', '==', user.uid)));
+    const purchaseLogsSnap = await getDocs(query(collection(db, 'purchase_logs'), where('userId', '==', user.uid)));
+    const activeSessionsSnap = await getDocs(query(collection(db, 'active_sessions'), where('uid', '==', user.uid)));
+
+    const { writeBatch } = await import('firebase/firestore');
+    const documents = [
+      ...(userSnap.exists() ? [userRef] : []),
+      ...sessionsSnap.docs.map((item) => item.ref),
+      ...recoveriesSnap.docs.map((item) => item.ref),
+      ...transactionsSnap.docs.map((item) => item.ref),
+      ...ticketsSnap.docs.map((item) => item.ref),
+      ...purchaseLogsSnap.docs.map((item) => item.ref),
+      ...activeSessionsSnap.docs.map((item) => item.ref),
+    ];
+    for (let i = 0; i < documents.length; i += 450) {
+      const batch = writeBatch(db);
+      documents.slice(i, i + 450).forEach((ref) => batch.delete(ref));
+      await batch.commit();
+    }
+    await indexedDbService.clearAllData();
+    await deleteUser(user);
+
+    for (const key of ['takeoutfix_user_data', 'takeoutfix_admin_data', 'takeoutfix_device_session_id', 'takeoutfix_login_time', 'takeoutfix_last_uid']) {
+      localStorage.removeItem(key);
+    }
+    sessionStorage.removeItem('takeoutfix_admin_session');
+    setUserData(null);
+    setAdminData(null);
   };
 
   const handleConfirmEvict = async () => {
@@ -1559,6 +1621,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       loading,
       login,
       logout,
+      deleteAccount,
       refreshUserData: () => user ? refreshUserData(user) : Promise.resolve(),
       region,
       setRegion,
@@ -1622,6 +1685,7 @@ export const useAuth = () => {
       loading: false,
       login: async () => {},
       logout: async () => {},
+      deleteAccount: async () => {},
       refreshUserData: async () => {},
       region: 'in',
       setRegion: () => {},

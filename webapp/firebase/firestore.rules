@@ -44,8 +44,8 @@ service cloud.firestore {
     match /users/{userId} {
       allow read: if request.auth != null && (request.auth.uid == userId || isAdmin());
       allow create: if request.auth != null && request.auth.uid == userId && (!request.resource.data.keys().hasAny(['isAdmin']) || request.resource.data.isAdmin == false || isAdmin());
-      allow update: if request.auth != null && (request.auth.uid == userId && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['isAdmin']) || isAdmin()) || isAdmin());
-      allow delete: if isAdmin();
+      allow update: if request.auth != null && (request.auth.uid == userId && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['firstName', 'lastName', 'username', 'displayName', 'usedBytes', 'usedFiles', 'totalBytesProcessed', 'totalFilesProcessed', 'lifetimeFiles', 'lifetimeBytes', 'passExpiredAt', 'sessionIds']) || isAdmin());
+      allow delete: if request.auth != null && request.auth.uid == userId;
     }
 
     // ─── Admins Collection ───────────────────────────────────────────────────────
@@ -97,7 +97,7 @@ service cloud.firestore {
         isAdmin() ||
         resource.data.recipientEmail in [request.auth.token.email, request.auth.token.email.lower(), 'all']
       );
-      allow create: if request.auth != null;
+      allow create: if isAdmin();
       allow update: if request.auth != null && (
         isAdmin() ||
         resource.data.recipientEmail in [request.auth.token.email, request.auth.token.email.lower(), 'all']
@@ -119,7 +119,7 @@ service cloud.firestore {
     // ─── Admin Activity Feed ─────────────────────────────────────────────────────
     match /admin_activity/{logId} {
       allow read: if isAdmin();
-      allow create: if request.auth != null;
+      allow create: if isAdmin();
       allow update, delete: if isSuperAdmin();
     }
 
@@ -131,7 +131,8 @@ service cloud.firestore {
 
     // ─── Recovery History ─────────────────────────────────────────────────────────
     match /recoveryHistory/{uid}/sessions/{sessionId} {
-      allow read, write: if request.auth != null && request.auth.uid == uid;
+      allow read, write: if request.auth != null && request.auth.uid == uid
+        && request.resource.data.keys().hasOnly(['archiveName', 'timestamp', 'filesProcessed', 'matched', 'recovered', 'failed', 'bytesProcessed', 'duration', 'status', 'recoveredFromCrash']);
       allow read: if isAdmin();
     }
 
@@ -144,14 +145,24 @@ service cloud.firestore {
     // ─── Support Tickets ─────────────────────────────────────────────────────────
     match /tickets/{ticketId} {
       allow create: if request.auth != null && request.resource.data.uid == request.auth.uid;
-      allow read, update: if request.auth != null && resource.data.uid == request.auth.uid;
+      allow read: if request.auth != null && resource.data.uid == request.auth.uid;
+      allow update: if request.auth != null && resource.data.uid == request.auth.uid
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['message', 'messages', 'updatedAt', 'lastMessage', 'lastMessageAt']);
       allow read, write: if isAdmin();
     }
 
     // ─── Reviews ─────────────────────────────────────────────────────────────────
     match /reviews/{reviewId} {
       allow read: if true;
-      allow create: if request.auth != null && request.resource.data.uid == request.auth.uid;
+      allow create: if request.auth != null
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.status == 'PENDING'
+        && request.resource.data.rating is int
+        && request.resource.data.rating >= 1
+        && request.resource.data.rating <= 5
+        && request.resource.data.message is string
+        && request.resource.data.message.size() > 0
+        && request.resource.data.message.size() <= 2000;
       allow update, delete: if isModeratorOrAbove();
     }
 
@@ -165,14 +176,15 @@ service cloud.firestore {
 
     // ─── Active Sessions ─────────────────────────────────────────────────────────
     match /active_sessions/{sessionId} {
-      allow create, update: if request.auth != null && request.resource.data.uid == request.auth.uid;
+      allow create, update: if request.auth != null && request.resource.data.uid == request.auth.uid
+        && request.resource.data.keys().hasOnly(['uid', 'deviceName', 'userAgent', 'createdAt', 'lastSeen', 'sessionId']);
       allow read, delete: if request.auth != null && (resource.data.uid == request.auth.uid || isAdmin());
     }
 
     // ─── Platform Stats ───────────────────────────────────────────────────────────
     match /platform_stats/{document} {
       allow read: if true;
-      allow update, create: if request.auth != null;
+      allow update, create: if isAdmin() || (request.auth != null && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['filesRestored', 'filesScanned', 'bytesProcessed', 'ticketsResolved']));
     }
 
     // ─── Settings Collection ─────────────────────────────────────────────────────

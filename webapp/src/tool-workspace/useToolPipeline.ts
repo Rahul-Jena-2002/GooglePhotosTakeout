@@ -504,29 +504,17 @@ export function useToolPipeline() {
   // Calculate optimal threads based on hardwareConcurrency, device memory, and headroom
   const getOptimalThreadCount = () => {
     const isMobile = /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent);
-    const cores = navigator.hardwareConcurrency || 4;
-    let mem = 8;
+    const cores = navigator.hardwareConcurrency || 2;
+    let mem = 4;
     if ('deviceMemory' in navigator) {
-      mem = (navigator as unknown as { deviceMemory: number }).deviceMemory || 8;
+      mem = (navigator as unknown as { deviceMemory: number }).deviceMemory || 4;
     }
 
-    if (isMobile) {
-      return Math.max(2, Math.min(cores, Math.floor(cores * 0.75)));
-    }
-
-    // High performance desktop mode: maximize CPU core saturation
-    let optimal = cores;
-    if (mem >= 16) {
-      optimal = Math.min(32, cores);
-    } else if (mem >= 8) {
-      optimal = Math.min(24, cores);
-    } else if (mem >= 4) {
-      optimal = Math.min(8, Math.max(2, Math.floor(cores * 0.85)));
-    } else {
-      optimal = Math.max(1, Math.min(cores, Math.floor(mem)));
-    }
-
-    return Math.max(1, optimal);
+    // Each worker loads the WebAssembly metadata engine. Keep headroom for the
+    // browser, archive reader, and output buffers instead of saturating every core.
+    const memoryWorkers = mem >= 8 ? 4 : mem >= 4 ? 2 : 1;
+    const cpuWorkers = Math.max(1, Math.floor(cores / 2));
+    return Math.min(memoryWorkers, cpuWorkers, isMobile ? 2 : 4);
   };
 
   useEffect(() => {
@@ -980,13 +968,13 @@ export function useToolPipeline() {
     statsBuffer.current.total = (session.scannedCount || 0) + totalPending;
 
     // 6. Queue-based concurrency engine (prevents premature break / worker starvation freeze)
-    const inflightLimit = (session.zipFile || zipModeRef.current) ? 1 : maxWorkersRef.current;
+    const inflightLimit = (session.zipFile || zipModeRef.current) ? 1 : effectiveWorkers;
     let inFlightCount = 0;
     let isProcessingHeavy = false;
     const fileQueue: FileRecord[] = [];
     let isFetchingPage = false;
     let noMorePending = false;
-    const claimedIds = new Set<string>();
+    let lastPendingId: string | null = null;
 
     const pumpQueue = async () => {
       if (!isProcessingRef.current || isPausedRef.current) {
@@ -1003,19 +991,13 @@ export function useToolPipeline() {
       if (fileQueue.length < inflightLimit * 3 && !isFetchingPage && !noMorePending) {
         isFetchingPage = true;
         try {
-          const nextBatch = await sessionManager.getPendingFilesPage(null, 150);
+          const nextBatch = await sessionManager.getPendingFilesPage(lastPendingId, 150);
           if (!nextBatch || nextBatch.length === 0) {
             noMorePending = true;
           } else {
-            let newlyAdded = 0;
-            for (const item of nextBatch) {
-              if (!claimedIds.has(item.id)) {
-                claimedIds.add(item.id);
-                fileQueue.push(item);
-                newlyAdded++;
-              }
-            }
-            if (nextBatch.length < 150 || newlyAdded === 0) {
+            lastPendingId = nextBatch[nextBatch.length - 1].id;
+            fileQueue.push(...nextBatch);
+            if (nextBatch.length < 150) {
               noMorePending = true;
             }
           }
@@ -1041,6 +1023,7 @@ export function useToolPipeline() {
           return;
         } else if (remainingInDb > 0 && isProcessingRef.current && !isPausedRef.current) {
           noMorePending = false;
+          lastPendingId = null;
         }
       }
 
@@ -1052,6 +1035,7 @@ export function useToolPipeline() {
       // Dispatch up to inflightLimit tasks
       while (inFlightCount < inflightLimit && fileQueue.length > 0) {
         if (!isProcessingRef.current || isPausedRef.current) break;
+        if (isProcessingHeavy && inFlightCount > 0) break;
 
         const nextFile = fileQueue[0];
         if (!nextFile) {
@@ -1488,6 +1472,7 @@ export function useToolPipeline() {
                 await completeProcessing();
               } else if (remainingInDb > 0 && isProcessingRef.current && !isPausedRef.current) {
                 noMorePending = false;
+                lastPendingId = null;
                 pumpQueue();
               }
             }

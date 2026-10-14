@@ -131,7 +131,7 @@ export default function SeoLandingPage() {
         <h1
           className="text-4xl md:text-6xl font-extrabold tracking-tight text-white mb-6 leading-tight t-animate-fade-in-up-100"
         >
-          {matchedAction} <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 via-purple-400 to-pink-500">{matchedTarget}</span> from {matchedSource}
+          {matchedAction} <span className="text-indigo-300">{matchedTarget}</span> from {matchedSource}
         </h1>
         
         <p

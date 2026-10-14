@@ -8,7 +8,6 @@ import { FolderUp, HardDrive, Play, Square, Pause, Database, CheckCircle2, Alert
 import { Button } from "../components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card"
 import { Progress } from "../components/ui/progress"
-import AdUnit from "../components/monetization/AdUnit"
 import { type LogEntry, type ToolTab } from "./useToolPipeline"
 import type { ActiveSession } from "../lib/SessionManager"
 import { usePersistentHandles } from "../hooks/usePersistentHandles"
@@ -688,9 +687,19 @@ export function RestorePanel({
             </div>
           </div>
 
-          {/* Ad Unit (Seamlessly integrated, collapses if empty) */}
-          <div className="w-full">
-            <AdUnit type="horizontal" placement="TOOL_RESTORE_TOP" />
+          {/* Existing A-Ads zones, displayed as a compact responsive grid. */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5" aria-label="Advertisements">
+            {["2456560", "2456616", "2456617", "2456618", "2456619", "2456620"].map((zone) => (
+              <div key={zone} className="min-w-0 h-[92px] overflow-hidden rounded-lg border border-zinc-200 dark:border-white/10 bg-white/80 dark:bg-zinc-900/40 p-1.5">
+                <iframe
+                  data-aa={zone}
+                  title="Advertisement"
+                  loading="lazy"
+                  src={`https://acceptable.a-ads.com/${zone}/?size=Adaptive`}
+                  className="block h-full w-full border-0"
+                />
+              </div>
+            ))}
           </div>
 
           {/* Activity Logs Terminal */}

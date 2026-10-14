@@ -253,29 +253,26 @@ export default function LandingPage() {
         </div>
         <div className="max-w-7xl mx-auto px-4 pb-4 grid grid-cols-2 lg:grid-cols-5 gap-4 sm:gap-6 text-center">
           <div className="glass-card p-5 sm:p-8 flex flex-col items-center justify-center">
-            <div className="text-2xl sm:text-4xl md:text-5xl font-black mb-2 sm:mb-3 text-foreground">{(stats.usersCount > 0 ? stats.usersCount : 27).toLocaleString('en-IN')}</div>
+            <div className="text-2xl sm:text-4xl md:text-5xl font-black mb-2 sm:mb-3 text-foreground">{stats.usersCount > 0 ? stats.usersCount.toLocaleString('en-IN') : "—"}</div>
             <div className="text-[10px] sm:text-xs md:text-sm font-bold text-zinc-400 uppercase tracking-widest">Registered Users</div>
           </div>
           <div className="glass-card p-5 sm:p-8 flex flex-col items-center justify-center">
-            <div className="text-2xl sm:text-4xl md:text-5xl font-black mb-2 sm:mb-3 text-foreground">{(stats.filesRestored > 0 ? stats.filesRestored : 217668).toLocaleString('en-IN')}</div>
+            <div className="text-2xl sm:text-4xl md:text-5xl font-black mb-2 sm:mb-3 text-foreground">{stats.filesRestored > 0 ? stats.filesRestored.toLocaleString('en-IN') : "—"}</div>
             <div className="text-[10px] sm:text-xs md:text-sm font-bold text-zinc-400 uppercase tracking-widest">Files Restored</div>
           </div>
           <div className="glass-card p-5 sm:p-8 flex flex-col items-center justify-center">
-            <div className="text-2xl sm:text-4xl md:text-5xl font-black mb-2 sm:mb-3 text-foreground">{formatBytes(stats.bytesProcessed > 0 ? stats.bytesProcessed : 245899264000)}</div>
+            <div className="text-2xl sm:text-4xl md:text-5xl font-black mb-2 sm:mb-3 text-foreground">{stats.bytesProcessed > 0 ? formatBytes(stats.bytesProcessed) : "—"}</div>
             <div className="text-[10px] sm:text-xs md:text-sm font-bold text-zinc-400 uppercase tracking-widest">Data Processed</div>
           </div>
           <div className="glass-card p-5 sm:p-8 flex flex-col items-center justify-center">
-            <div className="text-2xl sm:text-4xl md:text-5xl font-black mb-2 sm:mb-3 text-foreground">{stats.filesScanned > 0 ? ((stats.filesRestored / stats.filesScanned) * 100).toFixed(1) + "%" : "90.8%"}</div>
-            <div className="text-[10px] sm:text-xs md:text-sm font-bold text-zinc-400 uppercase tracking-widest">Recovery Accuracy*</div>
+            <div className="text-2xl sm:text-4xl md:text-5xl font-black mb-2 sm:mb-3 text-foreground">{stats.filesScanned > 0 ? ((stats.filesRestored / stats.filesScanned) * 100).toFixed(1) + "%" : "—"}</div>
+            <div className="text-[10px] sm:text-xs md:text-sm font-bold text-zinc-400 uppercase tracking-widest">Restore rate</div>
           </div>
           <div className="glass-card p-5 sm:p-8 flex flex-col items-center justify-center col-span-2 lg:col-span-1">
-            <div className="text-2xl sm:text-4xl md:text-5xl font-black mb-2 sm:mb-3 text-foreground">{(stats.ticketsResolved > 0 ? stats.ticketsResolved : 2).toLocaleString('en-IN')}</div>
+            <div className="text-2xl sm:text-4xl md:text-5xl font-black mb-2 sm:mb-3 text-foreground">{stats.ticketsResolved > 0 ? stats.ticketsResolved.toLocaleString('en-IN') : "—"}</div>
             <div className="text-[10px] sm:text-xs md:text-sm font-bold text-zinc-400 uppercase tracking-widest">Tickets Resolved</div>
           </div>
         </div>
-        <p className="max-w-7xl mx-auto px-4 text-[10px] sm:text-[11px] text-zinc-500 dark:text-zinc-400 text-left pt-2 pb-6">
-          * Recovery accuracy based on standard Google Takeout exports with complete JSON sidecar files. Results may vary with partial or corrupted exports.
-        </p>
       </section>
 
       {/* 3. PROBLEM SECTION */}

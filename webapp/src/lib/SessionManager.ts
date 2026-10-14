@@ -387,12 +387,11 @@ export class SessionManager {
    * Use this instead of getPendingFiles() for large archives to prevent
    * materialising thousands of FileRecord + FileHandle objects into the heap.
    *
-   * @param offset - Number of records to skip (0-based)
+   * @param lastId - Last returned record ID; subsequent pages start after it
    * @param limit  - Maximum records to return per page (default 200)
    */
   public async getPendingFilesPage(lastId?: string | null, limit: number = 200): Promise<FileRecord[]> {
-    const allPending = await indexedDbService.getAllByIndex('files', 'status', 'pending') as FileRecord[];
-    return allPending.slice(0, limit);
+    return indexedDbService.getPendingFilesPage(lastId ?? null, limit) as Promise<FileRecord[]>;
   }
 
   public async getPendingFiles(): Promise<FileRecord[]> {

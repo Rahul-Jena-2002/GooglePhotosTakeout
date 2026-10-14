@@ -4,7 +4,7 @@ import Layout from "../layouts/Layout.astro";
 import Icon from "../components/ui/Icon.astro";
 ---
 
-<Layout title="TakeoutFix | Privacy Policy" description="Read the TakeoutFix Privacy Policy. We guarantee 100% offline local processing: your photos and videos never leave your device.">
+<Layout title="TakeoutFix | Privacy Policy" description="Learn what account and operational data TakeoutFix handles, how Google sign-in works, and how to delete your account.">
   <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 mt-12 font-sans">
     
     <!-- Hero Header -->
@@ -15,7 +15,7 @@ import Icon from "../components/ui/Icon.astro";
       </div>
       <h1 class="text-4xl sm:text-5xl md:text-6xl font-extrabold tracking-tight text-zinc-900 dark:text-white mb-4">Privacy Policy</h1>
       <p class="text-lg md:text-xl text-zinc-600 dark:text-zinc-400 max-w-2xl mx-auto">Your files are yours. They never leave your device.</p>
-      <p class="text-xs text-zinc-500 mt-2">Last updated: June 12, 2026</p>
+      <p class="text-xs text-zinc-500 mt-2">Last updated: October 14, 2026</p>
       <p class="text-xs text-zinc-500 dark:text-zinc-400 mt-3 max-w-xl mx-auto leading-relaxed">
         TakeoutFix is an independent software utility. Google Takeout™ and Google Photos™ are trademarks of Google LLC.
         TakeoutFix is not affiliated with, endorsed by, or sponsored by Google LLC.
@@ -50,59 +50,71 @@ import Icon from "../components/ui/Icon.astro";
 
         <section id="collected" class="space-y-4">
           <h2 class="text-2xl font-bold text-zinc-900 dark:text-white mb-4">Data We DO Collect</h2>
-          <p class="text-zinc-600 dark:text-zinc-400 text-sm">To provide and improve our service, we collect minimal operational data:</p>
+          <p class="text-zinc-600 dark:text-zinc-400 text-sm">We collect the information needed to provide accounts, support, billing, security, and advertising:</p>
           <ul class="list-disc pl-6 space-y-2 text-zinc-600 dark:text-zinc-400 text-sm">
-            <li><strong class="text-zinc-900 dark:text-white">Google Account Information:</strong> Optional authentication via Google Sign-In for profile synchronization and community reviews.</li>
+            <li><strong class="text-zinc-900 dark:text-white">Google sign-in information:</strong> When you choose Google sign-in, Firebase Authentication receives your Google account identifier, email address, name, and profile image (when provided). We use this information for authentication, your TakeoutFix profile, and account features. We do not request access to Google Drive, Google Photos, Gmail, or other Google user content.</li>
+            <li><strong class="text-zinc-900 dark:text-white">Profile and account records:</strong> Names and usernames you enter, account settings, plan status, usage totals, restoration history, and account security/session records.</li>
             <li><strong class="text-zinc-900 dark:text-white">Support Inquiries:</strong> Any information you voluntarily provide when contacting customer support.</li>
-            <li><strong class="text-zinc-900 dark:text-white">Anonymous Error Telemetry:</strong> General client error telemetry (via Sentry) to help us identify and fix browser-specific crashes.</li>
-            <li><strong class="text-zinc-900 dark:text-white">Aggregated Platform Metrics:</strong> High-level aggregated counts (e.g., number of files processed, success rates) to power our public telemetry counter. We never see file names or media contents.</li>
+            <li><strong class="text-zinc-900 dark:text-white">Diagnostics and hosting logs:</strong> Error reports and standard request/security metadata (such as IP address, browser details, requested URL, and request time) may be processed by our diagnostic and hosting providers.</li>
+            <li><strong class="text-zinc-900 dark:text-white">Billing records:</strong> Purchase, transaction, and payment status information needed to provide paid features and receipts. Payment providers handle payment processing under their own privacy terms.</li>
+            <li><strong class="text-zinc-900 dark:text-white">Advertising information:</strong> Ad providers may process browser/device details and ad impressions or interactions when ads are shown.</li>
+            <li><strong class="text-zinc-900 dark:text-white">Media content:</strong> We do not receive the photos, videos, filenames, or metadata processed by the browser restoration tool.</li>
           </ul>
         </section>
 
         <section id="coppa" class="space-y-4">
-          <h2 class="text-2xl font-bold text-zinc-900 dark:text-white mb-4">Children's Privacy (COPPA Compliance)</h2>
+          <h2 class="text-2xl font-bold text-zinc-900 dark:text-white mb-4">Children's Privacy</h2>
           <p class="text-zinc-600 dark:text-zinc-400 text-sm leading-relaxed">
-            TakeoutFix is intended for general audiences and is not directed to children under the age of 13. In accordance with the Children's Online Privacy Protection Act (COPPA) and Article 8 of the GDPR, we do not knowingly collect, solicit, or maintain personal information from individuals under 13 (or under 16 in the European Economic Area / UK). If we become aware that personal information from an underage user has been submitted without verifiable parental consent, we will take prompt steps to remove such information immediately.
+            TakeoutFix is not directed to children under 13. If you believe a child has provided personal information through an account or support request, contact us so we can review and address the request.
           </p>
         </section>
 
         <section id="local-processing" class="space-y-4">
           <h2 class="text-2xl font-bold text-zinc-900 dark:text-white mb-4">Local Processing</h2>
           <p class="text-zinc-600 dark:text-zinc-400 text-sm leading-relaxed">
-            The core TakeoutFix engine runs entirely within your web browser using Web Workers and the File System Access API. All matching, metadata parsing, and deep EXIF injection happens locally using your device's CPU and RAM. No server receives your Takeout data.
+            The media processing tool runs in your browser using local file access and browser workers. Media file contents are processed on your device and are not uploaded by the restoration flow. Account, support, payment, diagnostics, and advertising features use separate network services described below.
           </p>
         </section>
 
         <section id="cookies" class="space-y-4">
-          <h2 class="text-2xl font-bold text-zinc-900 dark:text-white mb-4">Cookies &amp; Third-Party Services</h2>
+          <h2 class="text-2xl font-bold text-zinc-900 dark:text-white mb-4">Cookies, Browser Storage &amp; Third-Party Services</h2>
           <p class="text-zinc-600 dark:text-zinc-400 text-sm leading-relaxed mb-4">
-            We use essential cookies and local browser storage to manage authentication sessions, remember theme preferences, and track local application state. We do not sell, rent, or trade your personal data to third parties.
+            Cookies are small values stored by a website or its providers. Firebase Authentication may use cookies or browser storage to maintain your sign-in session. TakeoutFix also uses local storage and IndexedDB for preferences and local workspace or processing state; this browser storage stays on your device unless a feature explicitly sends account data to a service. Clearing browser storage can sign you out or remove local workspace data. We do not sell or rent your personal data.
           </p>
           <p class="text-zinc-600 dark:text-zinc-400 text-sm leading-relaxed mb-4">
             We integrate trusted third-party service providers to support our operations:
           </p>
           <ul class="list-disc pl-6 space-y-2 mb-4 text-zinc-600 dark:text-zinc-400 text-sm">
             <li><strong class="text-zinc-900 dark:text-white">Firebase (Google LLC):</strong> Authentication, hosting, and operational database services.</li>
-            <li><strong class="text-zinc-900 dark:text-white">Sentry:</strong> Anonymous error reporting and diagnostic logging to identify application defects.</li>
-            <li><strong class="text-zinc-900 dark:text-white">Cloudflare Pages:</strong> Edge content delivery network and static asset hosting.</li>
+            <li><strong class="text-zinc-900 dark:text-white">Sentry:</strong> Error reporting and diagnostic context used to identify application defects.</li>
+            <li><strong class="text-zinc-900 dark:text-white">Cloudflare Pages:</strong> Hosting and content delivery; its infrastructure may process request and security logs.</li>
+            <li><strong class="text-zinc-900 dark:text-white">Google AdSense and A-Ads:</strong> Advertising providers may use cookies or similar technologies and process ad impressions or interactions when their ads are shown. Their practices and available controls are described in their own privacy materials.</li>
+            <li><strong class="text-zinc-900 dark:text-white">Payment providers:</strong> Payment processors handle checkout and may retain transaction records under their own terms and legal obligations.</li>
           </ul>
-          <p class="text-zinc-600 dark:text-zinc-400 text-sm leading-relaxed mb-4">Use the “Privacy &amp; cookie choices” link in the site footer to reopen Google's consent message when it is available. You can also manage browser storage in your browser settings and review ad personalization in <a href="https://adssettings.google.com" target="_blank" rel="noopener noreferrer" class="text-zinc-900 dark:text-white underline font-semibold">Google Ads Settings</a>.</p>
+          <p class="text-zinc-600 dark:text-zinc-400 text-sm leading-relaxed">The exact cookies, storage keys, and retention periods vary by provider, browser, and region. Use the “Privacy &amp; cookie choices” link in the footer to reopen Google's consent message when it is available and change your choice. You can manage browser storage in your browser settings and review Google's ad personalization choices in <a href="https://adssettings.google.com" target="_blank" rel="noopener noreferrer" class="text-zinc-900 dark:text-white underline font-semibold">Google Ads Settings</a>. The Google AdSense account's Privacy &amp; messaging settings control the consent message presented by Google's publisher tools; this policy page alone does not collect or record consent. Google requires publishers serving personalized ads in the EEA, UK, or Switzerland to use a Google-certified CMP integrated with the IAB TCF. See <a href="https://support.google.com/adsense/answer/13554020" target="_blank" rel="noopener noreferrer" class="text-zinc-900 dark:text-white underline font-semibold">Google's CMP requirements</a> and confirm the message is configured in the AdSense account before serving those ads.</p>
+        </section>
+
+        <section id="account-deletion" class="space-y-4">
+          <h2 class="text-2xl font-bold text-zinc-900 dark:text-white mb-4">Account deletion and data requests</h2>
+          <p class="text-zinc-600 dark:text-zinc-400 text-sm leading-relaxed">To delete your TakeoutFix account, sign in and open <a href="/profile" class="text-zinc-900 dark:text-white underline font-semibold">Profile Settings</a>, then choose <strong class="text-zinc-900 dark:text-white">Delete my account</strong>. This removes the Firebase sign-in account and associated TakeoutFix profile, recovery history, transaction, support-ticket, purchase-log, and active-session records handled by the deletion flow. Records held separately by payment or support providers may require a separate request or be retained where required by law. You may also review or remove TakeoutFix's connection in your Google Account settings; that action alone does not delete your TakeoutFix account. For data requests, contact <a href="mailto:takeoutfix.support@gmail.com" class="text-zinc-900 dark:text-white underline font-semibold">takeoutfix.support@gmail.com</a>. Files and browser data stored only on your device remain under your control.</p>
+        </section>
+
+        <section id="google-data" class="space-y-4">
+          <h2 class="text-2xl font-bold text-zinc-900 dark:text-white mb-4">Google user data</h2>
+          <p class="text-zinc-600 dark:text-zinc-400 text-sm leading-relaxed">Google sign-in data is used only to authenticate you and provide TakeoutFix account features. We do not sell Google user data or transfer it to advertising networks or data brokers. Account data is handled by Firebase services over encrypted connections and is subject to Google's applicable privacy and security terms.</p>
         </section>
 
         <section id="advertising" class="bg-zinc-50 dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-8 shadow-sm">
           <h2 class="text-2xl font-bold text-zinc-900 dark:text-white mb-4">Google AdSense &amp; Advertising Cookies</h2>
           <p class="mb-3 text-zinc-600 dark:text-zinc-400 text-sm leading-relaxed">
-            We use Google AdSense and third-party advertising partners to serve ads when you visit our website. These partners may use cookies, web beacons, and similar tracking technologies to collect non-personally identifiable information about your visits to this and other websites in order to provide advertisements about goods and services of interest to you.
+            If ads are enabled on this site, Google and its advertising partners may use cookies or similar technologies to serve, limit, and measure advertising. Availability and personalization depend on your location, consent choices, and browser settings.
           </p>
           <ul class="list-disc pl-6 space-y-2 mb-4 text-sm text-zinc-600 dark:text-zinc-400">
             <li>
-              <strong class="text-zinc-900 dark:text-white">Third-Party Vendors &amp; Google:</strong> Third-party vendors, including Google, use cookies to serve ads based on a user's prior visits to this website or other websites across the Internet.
+              <strong class="text-zinc-900 dark:text-white">Advertising partners:</strong> Google and other vendors may process information about visits and ad interactions under their own privacy terms.
             </li>
             <li>
-              <strong class="text-zinc-900 dark:text-white">Advertising Cookies:</strong> Google's use of advertising cookies enables it and its partners to serve ads to users based on their visits to this site and/or other sites on the Internet.
-            </li>
-            <li>
-              <strong class="text-zinc-900 dark:text-white">Personalized Advertising Opt-Out:</strong> Users may opt out of personalized advertising by visiting Google's <a href="https://adssettings.google.com" target="_blank" rel="noopener noreferrer" class="text-zinc-900 dark:text-white underline font-semibold">Google Ads Settings</a>.
+              <strong class="text-zinc-900 dark:text-white">Ad choices:</strong> Where available, users can review or change Google's ad personalization settings in <a href="https://adssettings.google.com" target="_blank" rel="noopener noreferrer" class="text-zinc-900 dark:text-white underline font-semibold">Google Ads Settings</a>.
             </li>
             <li>
               <strong class="text-zinc-900 dark:text-white">Third-Party Ad Network Opt-Out:</strong> Alternatively, users can opt out of a third-party vendor's use of cookies for personalized advertising by visiting <a href="https://www.aboutads.info" target="_blank" rel="noopener noreferrer" class="text-zinc-900 dark:text-white underline font-semibold">www.aboutads.info</a> or the European Interactive Digital Advertising Alliance (EDAA) consumer choice page at <a href="https://www.youronlinechoices.eu" target="_blank" rel="noopener noreferrer" class="text-zinc-900 dark:text-white underline font-semibold">youronlinechoices.eu</a>.
@@ -136,7 +148,8 @@ import Icon from "../components/ui/Icon.astro";
               <a href="#local-processing" class="block hover:text-zinc-900 dark:hover:text-white transition-colors py-1">5. Local Processing</a>
               <a href="#cookies" class="block hover:text-zinc-900 dark:hover:text-white transition-colors py-1">6. Cookies &amp; Third Parties</a>
               <a href="#advertising" class="block hover:text-zinc-900 dark:hover:text-white transition-colors py-1">7. Google AdSense &amp; Ads</a>
-              <a href="#contact" class="block hover:text-zinc-900 dark:hover:text-white transition-colors py-1">8. Contact Desk</a>
+              <a href="#account-deletion" class="block hover:text-zinc-900 dark:hover:text-white transition-colors py-1">8. Account Deletion</a>
+              <a href="#contact" class="block hover:text-zinc-900 dark:hover:text-white transition-colors py-1">9. Contact Desk</a>
             </nav>
           </div>
 

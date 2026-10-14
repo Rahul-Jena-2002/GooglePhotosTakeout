@@ -227,8 +227,8 @@ Your EXIF metadata recovery tools are active.
       >
         <motion.div variants={itemVariants} className="flex justify-between items-center border-b border-white/5 pb-4">
           <div>
-            <h1 className="text-3xl font-bold tracking-tighter">Account Dashboard</h1>
-            <p className="text-sm text-white/50 mt-1">Monitor your usage limits, logs, and account options.</p>
+            <h1 className="text-3xl font-bold tracking-tighter">Welcome back, {userData?.firstName || user?.displayName?.split(" ")[0] || "there"}</h1>
+            <p className="text-sm text-white/50 mt-1">Your account overview for restoration activity, billing, and support.</p>
           </div>
           <a href="/profile">
             <Button variant="outline" className="border-white/10 hover:bg-white/5 text-xs rounded-full">
@@ -245,8 +245,8 @@ Your EXIF metadata recovery tools are active.
                   <ShieldCheck className="w-5 h-5 text-emerald-400" />
                   Restoration Studio
                 </span>
-                <span className="text-xs bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 px-2.5 py-1 rounded-md font-bold">
-                  100% Free &amp; Unlimited
+                  <span className="text-xs bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 px-2.5 py-1 rounded-md font-bold">
+                  Processed on your device
                 </span>
               </CardTitle>
             </CardHeader>
@@ -357,7 +357,7 @@ Your EXIF metadata recovery tools are active.
                           {/* Summary Bar */}
                           <div className="flex justify-between items-center p-3.5 bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-lg text-xs mb-1">
                             <span className="font-semibold text-zinc-900 dark:text-zinc-100">Lifetime Recovery Stats</span>
-                            <span className="font-mono font-bold text-zinc-100">
+                            <span className="font-mono font-bold text-zinc-900 dark:text-zinc-100">
                               {totalFilesVal.toLocaleString()} files • {formatBytes(totalBytesVal)}
                             </span>
                           </div>

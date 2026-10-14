@@ -13,7 +13,7 @@
   <a href="https://takeoutfix.pages.dev"><img src="https://img.shields.io/badge/Web_App-takeoutfix.pages.dev-blue?style=flat-square" alt="Web App" /></a>
   <img src="https://img.shields.io/badge/Platform-Windows%20%7C%20macOS%20%7C%20Linux-success?style=flat-square" alt="Platforms" />
   <img src="https://img.shields.io/badge/Privacy-100%25%20Local%20Processing-emerald?style=flat-square" alt="100% Local" />
-  <img src="https://img.shields.io/badge/License-MIT-gray?style=flat-square" alt="License" />
+  <img src="https://img.shields.io/badge/License-GPL--2.0--or--later-gray?style=flat-square" alt="License: GPL-2.0-or-later" />
 </p>
 
 ---
@@ -107,5 +107,6 @@ TakeoutFix was designed with one fundamental principle:
 
 ## 📄 License
 
-This project is licensed under the MIT License — see the [LICENSE](LICENSE) file for details.
-Google Takeout™ and Google Photos™ are trademarks of Google LLC. TakeoutFix is an independent utility and is not affiliated with, endorsed by, or sponsored by Google LLC.
+This project is licensed under the GNU General Public License, version 2 or (at your option) any later version — see [LICENSE](LICENSE). Modified versions distributed to others must comply with the GPL's source and licensing requirements. The license permits copying and redistribution; it does not prevent forks or commercial distribution.
+
+The TakeoutFix name, logo, and other project branding are not licensed under the GPL. See [TRADEMARKS.md](TRADEMARKS.md). Google Takeout™ and Google Photos™ are trademarks of Google LLC. TakeoutFix is an independent utility and is not affiliated with, endorsed by, or sponsored by Google LLC.

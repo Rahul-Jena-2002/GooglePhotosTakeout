@@ -4,6 +4,29 @@ import Layout from "../layouts/Layout.astro";
 import DownloadPage from "../react-pages/marketing/DownloadPage";
 ---
 
-<Layout title="Download TakeoutFix Desktop Application — Offline EXIF Restorer" description="Download the standalone TakeoutFix desktop app for Windows, macOS, and Linux. Restore dates, GPS coordinates, and photo EXIF metadata 100% offline with extreme native speed and no file size limits.">
-  <DownloadPage client:only="react" />
+<Layout title="Download TakeoutFix Desktop Application" description="Download TakeoutFix for desktop. Review the available platform builds and release details before restoring Google Takeout photo metadata.">
+  <DownloadPage client:only="react">
+    <main slot="fallback" class="min-h-screen text-zinc-900 dark:text-white relative py-12 px-4 sm:px-6 lg:px-8">
+      <div class="w-full max-w-7xl mx-auto space-y-12">
+        <header class="text-center space-y-4 max-w-4xl mx-auto pt-2">
+          <p class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-xs font-bold uppercase tracking-wider text-zinc-800 dark:text-zinc-100">
+            Free desktop restoration tool
+          </p>
+          <h1 class="text-4xl sm:text-5xl md:text-6xl font-bold tracking-tight text-foreground">Download TakeoutFix</h1>
+          <p class="text-lg sm:text-xl text-zinc-600 dark:text-zinc-400 leading-relaxed max-w-3xl mx-auto">
+            Choose the desktop app for your computer to restore large Google Takeout photo libraries locally.
+          </p>
+        </header>
+        <section aria-labelledby="download-options" class="bg-white dark:bg-zinc-950/60 border border-zinc-200 dark:border-zinc-800 p-6 sm:p-8 rounded-2xl shadow-sm">
+          <h2 id="download-options" class="text-2xl sm:text-3xl font-bold tracking-tight mb-6">Choose your operating system</h2>
+          <div class="grid gap-4 sm:grid-cols-3">
+            <a class="flex min-h-16 items-center justify-center rounded-xl border border-zinc-200 dark:border-zinc-700 px-5 py-4 font-bold text-center hover:bg-zinc-50 dark:hover:bg-zinc-900" href="https://github.com/Rahul-Jena-2002/GooglePhotosTakeout/releases/latest/download/TakeoutFix.exe">Download for Windows</a>
+            <a class="flex min-h-16 items-center justify-center rounded-xl border border-zinc-200 dark:border-zinc-700 px-5 py-4 font-bold text-center hover:bg-zinc-50 dark:hover:bg-zinc-900" href="https://github.com/Rahul-Jena-2002/GooglePhotosTakeout/releases/latest/download/TakeoutFix.dmg">Download for macOS</a>
+            <a class="flex min-h-16 items-center justify-center rounded-xl border border-zinc-200 dark:border-zinc-700 px-5 py-4 font-bold text-center hover:bg-zinc-50 dark:hover:bg-zinc-900" href="https://github.com/Rahul-Jena-2002/GooglePhotosTakeout/releases/latest/download/TakeoutFix.AppImage">Download for Linux</a>
+          </div>
+          <p class="mt-6 text-sm text-zinc-600 dark:text-zinc-400">Downloads come from the project’s GitHub Releases. The desktop app processes files on your computer. You can also <a class="font-semibold underline underline-offset-4" href="/tool">use the browser restore tool</a>.</p>
+        </section>
+      </div>
+    </main>
+  </DownloadPage>
 </Layout>

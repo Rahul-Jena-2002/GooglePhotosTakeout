@@ -2,13 +2,12 @@
 export const prerender = true;
 import Layout from "../../layouts/Layout.astro";
 import Icon from "../../components/ui/Icon.astro";
-import AdUnit from "../../components/monetization/AdUnit";
 
 const articleSchema = {
   "@context": "https://schema.org",
   "@type": "TechArticle",
-  "headline": "The Definitive Guide to Google Takeout JSON Sidecars & EXIF Metadata",
-  "description": "Comprehensive technical analysis of why Google Takeout separates photo metadata into JSON files, how timestamps and GPS data are structured, and how to reconstruct EXIF headers.",
+  "headline": "Google Takeout JSON Sidecars and Photo Metadata",
+  "description": "A plain-language guide to the extra files in a Google Photos download, what details they may contain, and how to check them safely.",
   "author": {
     "@type": "Person",
     "name": "Rahul Jena",
@@ -21,14 +20,14 @@ const articleSchema = {
     "logo": "https://takeoutfix.pages.dev/favicon-192x192.png"
   },
   "datePublished": "2026-09-15",
-  "dateModified": "2026-09-28",
-  "articleSection": "Data Architecture"
+  "dateModified": "2026-10-14",
+  "articleSection": "Photo dates and details"
 };
 ---
 
-<Layout 
-  title="Google Takeout JSON Metadata Explained (Deep Technical Guide) | TakeoutFix" 
-  description="Learn why Google Takeout creates companion .json sidecar files, how photoTakenTime and geoData work, and how standard EXIF tags are rebuilt."
+<Layout
+  title="Google Takeout Extra Photo Files: A Simple Guide | TakeoutFix"
+  description="Learn what the extra .json files in a Google Photos download may contain, how to match them with photos, and how to restore dates or locations safely."
 >
   <script type="application/ld+json" set:html={JSON.stringify(articleSchema)} />
 
@@ -41,24 +40,24 @@ const articleSchema = {
         <span>/</span>
         <a href="/guides" class="hover:text-zinc-300 transition-colors">Guides</a>
         <span>/</span>
-        <span class="text-zinc-400">JSON Sidecars Explained</span>
+        <span class="text-zinc-400">Extra .json files</span>
       </nav>
 
       <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-indigo-500 dark:text-indigo-400 text-xs font-semibold uppercase tracking-wider mb-4 font-mono">
-        <Icon name="cpu" class="w-3.5 h-3.5" />
-        Technical Architecture Deep-Dive
+        <Icon name="file-text" class="w-3.5 h-3.5" />
+        Photo file guide
       </div>
 
       <h1 class="text-3xl sm:text-4xl md:text-5xl font-extrabold tracking-tight text-zinc-900 dark:text-white mb-6 leading-tight max-w-4xl">
-        Google Takeout JSON Sidecars: The Definitive Technical Architecture Guide
+        Google Takeout Extra Photo Files: A Simple Guide
       </h1>
 
       <div class="flex flex-wrap items-center gap-4 text-xs text-zinc-500 font-mono pb-6 border-b border-zinc-200 dark:border-zinc-800">
-        <span>By <strong>Rahul Jena</strong> (Systems Engineer)</span>
+        <span>By <strong>Rahul Jena</strong></span>
         <span>&bull;</span>
-        <span>Published September 2026</span>
+        <span>Published September 2026 · Updated October 2026</span>
         <span>&bull;</span>
-        <span>1,450 words &bull; 9 min read</span>
+        <span>About 5 min read</span>
       </div>
     </div>
 
@@ -75,192 +74,102 @@ const articleSchema = {
             Executive Summary
           </h2>
           <p class="text-sm leading-relaxed text-zinc-600 dark:text-zinc-300">
-            When exporting a photo library via Google Takeout, users routinely discover that their photos display the current download date rather than when they were snapped. This occurs because Google does not mutate the raw photo files during export; instead, it stores capture timestamps, camera descriptors, editing history, and GPS geodata in detached companion files ending in <code class="text-indigo-400 bg-zinc-100 dark:bg-zinc-800 px-1.5 py-0.5 rounded font-mono text-xs">.json</code>. This article provides a comprehensive technical breakdown of Google's JSON schema, explains why standard photo software fails to read sidecars, and details how standard EXIF/IPTC segments can be restored bit-for-bit without lossy compression.
+            A Google Photos download may include extra .json files beside some photos. This guide explains what they are, how to tell which photo they belong to, and what to do if a photo's date or location looks wrong.
           </p>
         </div>
 
-        <!-- Ad Unit: Article Top Placement -->
-        <div class="my-8">
-          <AdUnit client:only="react" placement="ARTICLE_TOP" />
-        </div>
 
         <section id="why-json" class="space-y-4">
           <h2 class="text-2xl sm:text-3xl font-bold text-zinc-900 dark:text-white">
-            1. Why Does Google Takeout Separate Metadata into JSON Files?
+            1. What are the extra files for?
           </h2>
           <p class="text-zinc-600 dark:text-zinc-300">
-            To understand why Google Takeout generates sidecar files, we must examine how modern cloud storage infrastructure functions at petabyte scale. When you upload a picture from an Android device or iPhone to Google Photos, Google processes the file through an ingest pipeline:
+            These are small details files that may sit beside a photo or video. Their names often start with the photo's name and end in <code>.json</code>. The names and contents can vary, so compare the full names of nearby files. You do not need to open or edit these files to use TakeoutFix.
           </p>
           <ol class="list-decimal pl-6 space-y-3 text-sm text-zinc-600 dark:text-zinc-300">
-            <li>
-              <strong class="text-zinc-900 dark:text-white">Metadata Extraction:</strong> The ingestion server reads the photo's existing EXIF tags (shutter speed, focal length, GPS, timestamp) and indexes them into Google's distributed database (Spanner/Bigtable).
-            </li>
-            <li>
-              <strong class="text-zinc-900 dark:text-white">Cloud Editing &amp; User Annotations:</strong> When you modify a date in the Google Photos interface, add a description, or adjust a location pin, Google does not rewrite the binary media file stored in Google Cloud Storage. Modifying multi-gigabyte or millions of distributed objects in place is computationally cost-prohibitive and risks bit-rot. Instead, edits are recorded as delta records in the database.
-            </li>
-            <li>
-              <strong class="text-zinc-900 dark:text-white">Export Packaging:</strong> When you request a Google Takeout export, Google's batch job packages your media files in their raw, immutable state, while dumping the database records as plain JSON sidecars.
-            </li>
+            <li>Google says extra details, such as comments added in Google Photos, may be saved in a separate JSON file.</li>
+            <li>Because the details file is separate, another photo app may not read it automatically.</li>
+            <li>Not every photo has one of these files. The information available depends on your download.</li>
           </ol>
           <p class="text-zinc-600 dark:text-zinc-300">
-            While computationally efficient for Google, this architecture delegates the burden of metadata reconciliation to the end user.
+            Read <a href="https://support.google.com/photos/answer/3024190" target="_blank" rel="noopener noreferrer" class="underline font-semibold">Google Photos Help: download your data</a> for Google's current instructions. What appears in your own download may differ.
           </p>
         </section>
 
         <section id="anatomy-schema" class="space-y-4">
           <h2 class="text-2xl sm:text-3xl font-bold text-zinc-900 dark:text-white">
-            2. The Anatomy of a Google Takeout JSON Sidecar
+            2. What details might be included?
           </h2>
           <p class="text-zinc-600 dark:text-zinc-300">
-            Every photo or video exported from Google Takeout is accompanied by a companion JSON document. If your photo is named <code class="text-zinc-900 dark:text-zinc-200 bg-zinc-100 dark:bg-zinc-800 px-1.5 py-0.5 rounded font-mono text-xs">IMG_2024.jpg</code>, the sidecar is typically named <code class="text-zinc-900 dark:text-zinc-200 bg-zinc-100 dark:bg-zinc-800 px-1.5 py-0.5 rounded font-mono text-xs">IMG_2024.jpg.json</code>.
+            Some details files include the photo's name, the date it was taken, or its location. Others may contain different information or no details that can be restored. A file ending in <code class="text-zinc-900 dark:text-zinc-200 bg-zinc-100 dark:bg-zinc-800 px-1.5 py-0.5 rounded font-mono text-xs">.json</code> is a clue that it may be a details file; its full name helps match it to the photo.
           </p>
           <p class="text-zinc-600 dark:text-zinc-300">
-            Below is an authentic schema snippet showing the critical fields extracted during an export:
+            In simple terms, a details file may tell the tool:
           </p>
 
-          <div class="bg-zinc-950 border border-zinc-800 rounded-xl p-5 font-mono text-xs overflow-x-auto text-zinc-300">
-<pre>{`{
-  "title": "IMG_2024.jpg",
-  "description": "Family trip to Yosemite National Park",
-  "imageViews": "4",
-  "creationTime": {
-    "timestamp": "1714582800",
-    "formatted": "May 1, 2024, 5:00:00 PM UTC"
-  },
-  "photoTakenTime": {
-    "timestamp": "1714578124",
-    "formatted": "May 1, 2024, 3:42:04 PM UTC"
-  },
-  "geoData": {
-    "latitude": 37.74557,
-    "longitude": -119.59360,
-    "altitude": 1218.4,
-    "latitudeSpan": 0.0,
-    "longitudeSpan": 0.0
-  },
-  "geoDataExif": {
-    "latitude": 37.74557,
-    "longitude": -119.59360,
-    "altitude": 1218.4
-  },
-  "people": [
-    { "name": "Sarah Connor" }
-  ]
-}`}</pre>
-          </div>
-
-          <p class="text-zinc-600 dark:text-zinc-300">
-            Notice the key distinctions in Google's schema:
-          </p>
           <ul class="list-disc pl-6 space-y-2 text-sm text-zinc-600 dark:text-zinc-300">
-            <li>
-              <strong><code>photoTakenTime</code> vs. <code>creationTime</code>:</strong> <code>creationTime</code> reflects when the asset was uploaded or ingested into Google's cloud. <code>photoTakenTime</code> represents the actual shutter click timestamp. Using <code>creationTime</code> instead of <code>photoTakenTime</code> can cause photos taken years earlier to be misfiled under their upload year.
-            </li>
-            <li>
-              <strong><code>geoData</code> vs. <code>geoDataExif</code>:</strong> <code>geoDataExif</code> contains the original hardware GPS coordinates captured by the camera sensor. <code>geoData</code> contains user-edited or estimated locations added in the Google Photos interface.
-            </li>
+            <li>The photo or video the file belongs to.</li>
+            <li>When it was taken, if that date is available.</li>
+            <li>Where it was taken, if a location is available.</li>
           </ul>
+          <p class="text-zinc-600 dark:text-zinc-300">The extra file might not have every detail. TakeoutFix only restores information it can find, so some photos may stay unchanged.</p>
         </section>
 
-        <!-- Ad Unit: Article Middle Placement -->
-        <div class="my-8">
-          <AdUnit client:only="react" placement="ARTICLE_MIDDLE" />
-        </div>
 
         <section id="why-programs-fail" class="space-y-4">
           <h2 class="text-2xl sm:text-3xl font-bold text-zinc-900 dark:text-white">
-            3. Why Operating Systems &amp; Image Viewers Ignore JSON Sidecars
+            3. Why might another app show a different date?
           </h2>
           <p class="text-zinc-600 dark:text-zinc-300">
-            Operating systems (Windows Explorer, macOS Finder) and photo management software (Apple Photos, Adobe Lightroom, Synology Photos) do not parse custom JSON sidecars created by third-party cloud services. They rely exclusively on established, international binary metadata standards:
+            A photo can have a date saved inside the photo and a different date in a separate details file. Some apps use the date inside the photo and ignore the extra file, so the photo may appear under the wrong day after import. App behavior can vary; try a few restored photos first.
           </p>
-          <ul class="list-disc pl-6 space-y-3 text-sm text-zinc-600 dark:text-zinc-300">
-            <li>
-              <strong class="text-zinc-900 dark:text-white">EXIF (Exchangeable Image File Format):</strong> Standardized by JEITA/CIPA (Standard CP-3451C / EXIF 2.32). Encapsulated in the JPEG <code>APP1</code> marker segment (<code class="font-mono text-xs">0xFFE1</code>).
-            </li>
-            <li>
-              <strong class="text-zinc-900 dark:text-white">TIFF Header Segments:</strong> Used in RAW camera files (Canon CR2/CR3, Nikon NEF, Sony ARW) and DNG digital negatives.
-            </li>
-            <li>
-              <strong class="text-zinc-900 dark:text-white">QuickTime UserData / Atoms:</strong> Used in MP4 and MOV video containers (specifically the <code class="font-mono text-xs">moov.udta.meta.keys</code> atom hierarchy).
-            </li>
-          </ul>
           <p class="text-zinc-600 dark:text-zinc-300">
-            When you extract a Takeout ZIP archive onto your hard drive, the operating system assigns the current moment of extraction as the file system attribute: <code class="font-mono text-xs text-rose-400 bg-zinc-100 dark:bg-zinc-800 px-1 py-0.5 rounded">FileCreateDate</code>. Because the image viewer detects no embedded EXIF date in an altered photo, it falls back to the file system creation date. Consequently, a photo from 2012 appears to have been taken today.
+            Your computer may also show when a file was downloaded or copied. Keep your original download and check a small group of photos in the app you plan to use before moving your whole library.
           </p>
         </section>
 
         <section id="restoration-mechanism" class="space-y-4">
           <h2 class="text-2xl sm:text-3xl font-bold text-zinc-900 dark:text-white">
-            4. How Reconstructing EXIF Tags Works Losslessly
+            4. What happens when you restore a photo?
           </h2>
           <p class="text-zinc-600 dark:text-zinc-300">
-            A common misconception is that fixing photo dates requires re-compressing or re-rendering the image. This is incorrect. In modern binary manipulation, image pixels and image metadata exist in completely separate segments of the file stream.
+            TakeoutFix updates available photo details without changing the visible picture. It works only with supported file types and information present in your download. Keep the original files as a backup.
           </p>
           <p class="text-zinc-600 dark:text-zinc-300">
-            To repair a JPEG image:
+            The process is simple:
           </p>
           <ol class="list-decimal pl-6 space-y-3 text-sm text-zinc-600 dark:text-zinc-300">
-            <li>The restorer reads the JPEG Start-of-Image (SOI) marker (<code class="font-mono text-xs">0xFFD8</code>).</li>
-            <li>It scans for the existing <code class="font-mono text-xs">APP1</code> EXIF segment. If present, it parses the IFD0 (Image File Directory) and ExifSubIFD structures.</li>
-            <li>It maps the Unix timestamp from <code class="font-mono text-xs">photoTakenTime.timestamp</code> to the standard EXIF date format string: <code class="font-mono text-xs text-emerald-400">YYYY:MM:DD HH:MM:SS</code>.</li>
-            <li>It updates or injects tag <code class="font-mono text-xs">0x9003</code> (<code>DateTimeOriginal</code>), tag <code class="font-mono text-xs">0x9004</code> (<code>CreateDate</code>), and tag <code class="font-mono text-xs">0x0132</code> (<code>ModifyDate</code>).</li>
-            <li>If latitude and longitude are present, it converts decimal degrees into sexagesimal rational fractions (Degrees, Minutes, Seconds) and writes the GPS IFD tags (<code class="font-mono text-xs">0x0001</code> GPSLatitudeRef, <code class="font-mono text-xs">0x0002</code> GPSLatitude, <code class="font-mono text-xs">0x0003</code> GPSLongitudeRef, <code class="font-mono text-xs">0x0004</code> GPSLongitude).</li>
-            <li>The restorer writes the revised APP1 segment back into the byte buffer. The compressed photo pixel bitstream remains untouched, guaranteeing bit-for-bit lossless output.</li>
+            <li>It looks for a matching details file.</li>
+            <li>It adds the date or location that is available to a supported photo or video.</li>
+            <li>You review the results and keep the original files until you are satisfied.</li>
           </ol>
         </section>
 
         <section id="solution-comparison" class="space-y-4">
           <h2 class="text-2xl sm:text-3xl font-bold text-zinc-900 dark:text-white">
-            5. Comparing Solutions: CLI vs. Desktop vs. Browser
+            5. Which TakeoutFix option should I use?
           </h2>
           <p class="text-zinc-600 dark:text-zinc-300">
-            Users seeking to resolve this issue have three main avenues:
+            Use the browser tool for a typical archive. If you have an exceptionally large library, see the desktop app page for its requirements and limits.
           </p>
-          <div class="overflow-x-auto mb-8">
-            <table class="w-full text-left text-xs border border-zinc-200 dark:border-white/10 rounded-xl overflow-hidden">
-              <thead class="bg-zinc-100 dark:bg-zinc-900 text-zinc-900 dark:text-white font-mono uppercase tracking-wider">
-                <tr>
-                  <th class="p-3 border-b border-zinc-200 dark:border-white/10">Approach</th>
-                  <th class="p-3 border-b border-zinc-200 dark:border-white/10">Pros</th>
-                  <th class="p-3 border-b border-zinc-200 dark:border-white/10">Cons</th>
-                  <th class="p-3 border-b border-zinc-200 dark:border-white/10">Privacy</th>
-                </tr>
-              </thead>
-              <tbody class="divide-y divide-zinc-200 dark:divide-white/5 text-zinc-600 dark:text-zinc-300">
-                <tr>
-                  <td class="p-3 font-semibold text-zinc-900 dark:text-white">ExifTool (Perl CLI)</td>
-                  <td class="p-3">Extremely flexible; industry standard for technical users.</td>
-                  <td class="p-3">Requires command line; complex syntax; risk of accidental overwrite.</td>
-                  <td class="p-3 text-emerald-600 dark:text-emerald-400 font-semibold">100% Local</td>
-                </tr>
-                <tr>
-                  <td class="p-3 font-semibold text-zinc-900 dark:text-white">Cloud Upload Tools</td>
-                  <td class="p-3">Simple interface; no local CPU work.</td>
-                  <td class="p-3">Slow upload of gigabytes; privacy hazard; server storage limits.</td>
-                  <td class="p-3 text-rose-600 dark:text-rose-400 font-semibold">High Risk (Uploads)</td>
-                </tr>
-                <tr>
-                  <td class="p-3 font-semibold text-zinc-900 dark:text-white">TakeoutFix (Client-Side)</td>
-                  <td class="p-3">Zero upload; instant browser execution; handles truncated names.</td>
-                  <td class="p-3">Requires modern browser supporting File System Access API.</td>
-                  <td class="p-3 text-emerald-600 dark:text-emerald-400 font-semibold">100% Local Sandbox</td>
-                </tr>
-              </tbody>
-            </table>
+          <div class="grid sm:grid-cols-2 gap-4">
+            <div class="rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900/50 p-5">
+              <h3 class="font-bold text-zinc-900 dark:text-white mb-2">Use the browser tool</h3>
+              <p class="text-sm text-zinc-600 dark:text-zinc-400">Best for most libraries. Choose the Takeout folder and save restored copies on your device.</p>
+            </div>
+            <div class="rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900/50 p-5">
+              <h3 class="font-bold text-zinc-900 dark:text-white mb-2">Use the desktop app</h3>
+              <p class="text-sm text-zinc-600 dark:text-zinc-400">Consider it for very large libraries. Check the download page for supported computers and current limits.</p>
+            </div>
           </div>
         </section>
 
-        <!-- Ad Unit: Article Bottom Placement -->
-        <div class="my-8">
-          <AdUnit client:only="react" placement="ARTICLE_BOTTOM" />
-        </div>
 
         <!-- Conclusion & CTA -->
         <section class="bg-zinc-50 dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-8 text-center shadow-sm">
-          <h3 class="text-2xl font-bold text-zinc-900 dark:text-white mb-3">Reunite Your Photos with Their Metadata Now</h3>
+          <h3 class="text-2xl font-bold text-zinc-900 dark:text-white mb-3">Put your photo dates and locations back</h3>
           <p class="text-sm text-zinc-600 dark:text-zinc-400 max-w-xl mx-auto mb-6">
-            Ready to fix your Google Takeout archive? TakeoutFix executes 100% in your browser with zero installations and zero cloud uploads.
+            The browser tool processes selected media locally. Keep your original export and review a sample of the output before you migrate or delete anything.
           </p>
           <div class="flex flex-wrap gap-4 justify-center">
             <a href="/tool" class="px-6 py-3 rounded-xl bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 hover:opacity-90 font-semibold text-sm transition-opacity shadow-sm">
@@ -284,18 +193,18 @@ const articleSchema = {
               Table of Contents
             </h3>
             <nav class="space-y-2 text-sm text-zinc-600 dark:text-zinc-400">
-              <a href="#why-json" class="block hover:text-zinc-900 dark:hover:text-white transition-colors py-1">1. Why Google Uses JSON</a>
-              <a href="#anatomy-schema" class="block hover:text-zinc-900 dark:hover:text-white transition-colors py-1">2. Anatomy of a Sidecar</a>
-              <a href="#why-programs-fail" class="block hover:text-zinc-900 dark:hover:text-white transition-colors py-1">3. Why Apps Ignore JSON</a>
-              <a href="#restoration-mechanism" class="block hover:text-zinc-900 dark:hover:text-white transition-colors py-1">4. Lossless EXIF Injection</a>
-              <a href="#solution-comparison" class="block hover:text-zinc-900 dark:hover:text-white transition-colors py-1">5. Comparing Solutions</a>
+              <a href="#why-json" class="block hover:text-zinc-900 dark:hover:text-white transition-colors py-1">1. What are these extra files?</a>
+              <a href="#anatomy-schema" class="block hover:text-zinc-900 dark:hover:text-white transition-colors py-1">2. What details might they contain?</a>
+              <a href="#why-programs-fail" class="block hover:text-zinc-900 dark:hover:text-white transition-colors py-1">3. Why does an app show a different date?</a>
+              <a href="#restoration-mechanism" class="block hover:text-zinc-900 dark:hover:text-white transition-colors py-1">4. What happens during restore?</a>
+              <a href="#solution-comparison" class="block hover:text-zinc-900 dark:hover:text-white transition-colors py-1">5. Which option should I use?</a>
             </nav>
           </div>
 
           <div class="bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 rounded-2xl p-6 shadow-md">
-            <h4 class="font-bold text-base mb-2">Restore In Browser</h4>
+            <h4 class="font-bold text-base mb-2">Restore your photos</h4>
             <p class="text-xs leading-relaxed text-zinc-300 dark:text-zinc-600 mb-4">
-              Re-inject dates and GPS coordinates locally on your device with bit-for-bit lossless output.
+              Check whether dates and locations can be restored on your device.
             </p>
             <a 
               href="/tool" 

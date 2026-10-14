@@ -2,14 +2,13 @@
 export const prerender = true;
 import Layout from "../../layouts/Layout.astro";
 import Icon from "../../components/ui/Icon.astro";
-import AdUnit from "../../components/monetization/AdUnit";
 
 const howToSchema = {
   "@context": "https://schema.org",
   "@type": "HowTo",
   "name": "How to Save Google Takeout Photos to External Hard Drive, NAS & Cloud",
-  "description": "Step-by-step verified workflow for extracting, restoring EXIF metadata, and saving Google Takeout photos to USB hard drives, SSDs, Synology NAS, and cloud backups.",
-  "totalTime": "PT15M",
+  "description": "A practical workflow for extracting Google Takeout archives, checking restored metadata, and keeping independent backups on external storage or a NAS.",
+  "totalTime": "PT30M",
   "step": [
     {
       "@type": "HowToStep",
@@ -27,13 +26,13 @@ const howToSchema = {
       "@type": "HowToStep",
       "position": 3,
       "name": "Format External Storage as exFAT",
-      "text": "Format your portable hard drive or SSD as exFAT with 128KB clusters for full read/write support across Windows, macOS, and Linux."
+      "text": "Choose a drive format supported by your target devices. Verify current device compatibility and back up files before formatting because formatting erases existing data."
     },
     {
       "@type": "HowToStep",
       "position": 4,
       "name": "Transfer Restored Files to Destination",
-      "text": "Transfer the self-contained photo library to your external drive, NAS photos folder, or Apple Photos library."
+      "text": "After checking sample files, copy the processed library to your chosen destination and retain a separate backup of the original export."
     }
   ]
 };
@@ -54,7 +53,7 @@ const articleSchema = {
     "url": "https://takeoutfix.pages.dev"
   },
   "datePublished": "2026-09-18",
-  "dateModified": "2026-09-28"
+  "dateModified": "2026-10-14"
 };
 ---
 
@@ -91,7 +90,7 @@ const articleSchema = {
         <span>&bull;</span>
         <span>Published September 2026</span>
         <span>&bull;</span>
-        <span>1,380 words &bull; 11 min read</span>
+        <span>Storage workflow &bull; About 6 min read</span>
       </div>
     </div>
 
@@ -108,14 +107,10 @@ const articleSchema = {
             Key Takeaway Before You Copy Files
           </h2>
           <p class="text-sm leading-relaxed text-zinc-600 dark:text-zinc-300">
-            Never copy raw Google Takeout folders directly to an external backup or cloud service before fixing their metadata! If you transfer files before re-injecting the JSON sidecar metadata into the media EXIF headers, destination operating systems and photo galleries will categorize every photo under the day you copied them, permanently destroying your chronological photo history. Follow this verified 4-step workflow to guarantee your memories remain beautifully ordered.
+            Google Takeout may store capture details in JSON sidecars separate from the media files. Some photo apps do not use those sidecars when importing, so check a small sample before moving a full library. This workflow keeps the original export intact while you extract, process, verify, and back up a copy.
           </p>
         </div>
 
-        <!-- Ad Unit: Article Top Placement -->
-        <div class="my-8">
-          <AdUnit client:only="react" placement="ARTICLE_TOP" />
-        </div>
 
         <section id="step-1" class="space-y-4">
           <h2 class="text-2xl sm:text-3xl font-bold text-zinc-900 dark:text-white">
@@ -139,30 +134,26 @@ const articleSchema = {
             Step 2: Re-Inject EXIF Headers Locally
           </h2>
           <p class="text-zinc-600 dark:text-zinc-300">
-            Before transferring your library to long-term storage or cloud sync folders, you must resolve the detached JSON metadata problem.
+            If your target photo app ignores Takeout sidecars, process a copy of the extracted library first. Keep the original archive unchanged until you have verified the results.
           </p>
           <div class="bg-zinc-100 dark:bg-zinc-900/60 border border-zinc-200 dark:border-white/10 rounded-xl p-6">
             <h3 class="text-lg font-bold text-zinc-900 dark:text-white mb-3">Why this order matters:</h3>
             <p class="text-sm text-zinc-600 dark:text-zinc-400 mb-3">
-              External drives and network storage devices have slower read/write speeds than internal NVMe SSDs. Running TakeoutFix locally on your primary drive processes thousands of files in minutes. More importantly, it writes standard EXIF tags (<code class="font-mono text-xs">DateTimeOriginal</code>, <code class="font-mono text-xs">GPSLatitude</code>, <code class="font-mono text-xs">CameraModel</code>) directly into the image byte headers.
+              Processing files on a local drive can avoid network interruptions, but speed depends on your device, browser, and library size. TakeoutFix can write supported metadata fields into supported media formats; review the completion report and inspect sample output before importing the whole library.
             </p>
             <div class="flex items-center gap-3 text-xs text-emerald-600 dark:text-emerald-400 font-semibold font-mono">
-              <span>✓ Lossless Bitstream Preservation</span>
+              <span>✓ Metadata-focused edits</span>
               <span>&bull;</span>
               <span>✓ Zero Re-encoding</span>
               <span>&bull;</span>
-              <span>✓ 100% Offline Processing</span>
+              <span>✓ Local media processing</span>
             </div>
           </div>
           <p class="text-zinc-600 dark:text-zinc-300">
-            Once TakeoutFix reports restoration complete, your files are completely self-contained. The companion <code class="text-zinc-900 dark:text-zinc-200 bg-zinc-100 dark:bg-zinc-800 px-1.5 py-0.5 rounded font-mono text-xs">.json</code> files can either be archived or safely removed, as all dates and GPS tags now live permanently inside the photos.
+            Keep the JSON sidecars with the original export as a source of truth. After processing, inspect several output files in a metadata viewer and import a small test folder into your target app. Do not delete the sidecars or original export unless you have another verified backup.
           </p>
         </section>
 
-        <!-- Ad Unit: Article Middle Placement -->
-        <div class="my-8">
-          <AdUnit client:only="react" placement="ARTICLE_MIDDLE" />
-        </div>
 
         <section id="step-3" class="space-y-4">
           <h2 class="text-2xl sm:text-3xl font-bold text-zinc-900 dark:text-white">
@@ -210,7 +201,7 @@ const articleSchema = {
           </div>
 
           <p class="text-sm text-zinc-600 dark:text-zinc-400">
-            <strong>Expert Tip:</strong> For universal long-term cold storage, format the drive as <strong>exFAT</strong> with a 128 KB or 256 KB allocation unit size. This allows you to plug the drive into any PC, Mac, Linux workstation, or modern smart television to view high-resolution photo slideshows without compatibility barriers.
+              <strong>Before formatting:</strong> Choose a file system supported by every device that needs to read or write the drive. exFAT is commonly used for removable drives across modern Windows and macOS, but Linux distributions and TVs vary. Formatting erases the drive, and allocation-unit needs depend on the workload; check the device documentation and keep another copy of important files.
           </p>
         </section>
 
@@ -223,10 +214,10 @@ const articleSchema = {
           </p>
           <ul class="list-disc pl-6 space-y-3 text-sm text-zinc-600 dark:text-zinc-300">
             <li>
-              <strong class="text-zinc-900 dark:text-white">Synology Photos:</strong> Copy the restored folders into the <code class="font-mono text-xs text-indigo-400 bg-zinc-100 dark:bg-zinc-800 px-1 py-0.5 rounded">/home/Photos</code> or <code class="font-mono text-xs text-indigo-400 bg-zinc-100 dark:bg-zinc-800 px-1 py-0.5 rounded">/photo</code> shared folder. Because TakeoutFix restored the EXIF <code class="font-mono text-xs">DateTimeOriginal</code> and GPS coordinates, Synology's indexing daemon will automatically construct chronological timeline views, face recognition albums, and world map views identical to your original Google Photos interface.
+              <strong class="text-zinc-900 dark:text-white">Synology Photos:</strong> Copy a test folder into the photo location configured for your Synology account, then check how it indexes dates and locations before importing the full archive. Folder paths and supported metadata depend on your NAS configuration and app version.
             </li>
             <li>
-              <strong class="text-zinc-900 dark:text-white">Immich / Nextcloud Memories:</strong> Self-hosted Google Photos alternatives like Immich rely strictly on embedded EXIF and QuickTime metadata. Restoring the headers before ingestion ensures zero timeline scrambling during background AI scanning.
+              <strong class="text-zinc-900 dark:text-white">Immich / Nextcloud Memories:</strong> Import a small sample and check the application's current documentation for supported metadata fields and import behavior. Keep a backup before allowing an app to reorganize or modify files.
             </li>
           </ul>
         </section>
@@ -243,14 +234,10 @@ const articleSchema = {
             <li>Navigate to <strong>File &rarr; Import...</strong>.</li>
             <li>Select your restored Takeout folder.</li>
             <li>Verify in the "Years", "Months", and "Days" tabs that your media populates historical dates naturally rather than clumping on the import date.</li>
-            <li>Enable iCloud Photos in Photos Preferences to sync the restored library to your iPhone and iPad.</li>
+            <li>After confirming the sample imported as expected, decide whether to enable iCloud Photos. Check your available storage and sync settings first.</li>
           </ol>
         </section>
 
-        <!-- Ad Unit: Article Bottom Placement -->
-        <div class="my-8">
-          <AdUnit client:only="react" placement="ARTICLE_BOTTOM" />
-        </div>
 
         <!-- Action Footer -->
         <section class="bg-zinc-50 dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-8 text-center shadow-sm">

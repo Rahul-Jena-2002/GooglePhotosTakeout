@@ -30,7 +30,7 @@ const faqSchema = {
       "name": "Does TakeoutFix upload my photos or videos to any server?",
       "acceptedAnswer": {
         "@type": "Answer",
-        "text": "No. TakeoutFix operates 100% locally on your computer using client-side Web Workers and the File System Access API. Your photos, videos, and metadata never leave your device."
+        "text": "The media restoration flow processes selected media locally in your browser. Account, support, diagnostics, and advertising features may use separate network services; see the privacy policy for details."
       }
     },
     {
@@ -38,7 +38,7 @@ const faqSchema = {
       "name": "Can TakeoutFix restore GPS locations and coordinates?",
       "acceptedAnswer": {
         "@type": "Answer",
-        "text": "Yes. If your Google Photos metadata JSON sidecar contains latitude and longitude data, TakeoutFix injects those coordinates back into standard EXIF GPS tags (GPSLatitude, GPSLongitude, and GPSAltitude)."
+        "text": "If a sidecar contains supported location values and the media format supports writing them, the tool can restore location metadata. Check the output with a metadata viewer."
       }
     },
     {
@@ -46,7 +46,7 @@ const faqSchema = {
       "name": "Will TakeoutFix compress or re-encode my photos and videos?",
       "acceptedAnswer": {
         "@type": "Answer",
-        "text": "No. TakeoutFix performs lossless binary metadata injection. The underlying JPEG, HEIC, PNG, or video bitstreams are preserved bit-for-bit without lossy compression or transcoding."
+        "text": "The tool edits metadata for supported file types without intentionally re-encoding the image or video content. Verify output files with a metadata viewer and retain the original archive."
       }
     },
     {
@@ -54,7 +54,7 @@ const faqSchema = {
       "name": "Does TakeoutFix support Apple HEIC and Live Photos?",
       "acceptedAnswer": {
         "@type": "Answer",
-        "text": "Yes. TakeoutFix supports Apple HEIC images and pairs both the still HEIC photo and its companion MOV video component with their respective Takeout sidecar metadata."
+        "text": "HEIC and MOV support depends on the tool version and metadata available in the export. Test a sample pair and verify it in your destination app before processing a full library."
       }
     },
     {
@@ -62,7 +62,7 @@ const faqSchema = {
       "name": "What happens if a JSON sidecar file is missing?",
       "acceptedAnswer": {
         "@type": "Answer",
-        "text": "TakeoutFix includes a resilient fallback system. If a sidecar JSON is absent, it inspects embedded filename date patterns (e.g., IMG_20230815_142335.jpg) or interpolates capture time from adjacent media in the same directory."
+        "text": "A missing sidecar limits which metadata is available to restore. Keep unmatched files and use the tool report to identify them; do not assume missing dates or locations can be recovered."
       }
     },
     {
@@ -70,7 +70,7 @@ const faqSchema = {
       "name": "Can I use TakeoutFix with multi-part Takeout archives?",
       "acceptedAnswer": {
         "@type": "Answer",
-        "text": "Yes. Extract all Takeout ZIP parts into your folder structure, and TakeoutFix will scan across all nested album folders to pair media with their sidecars."
+        "text": "Extract the archive parts into a folder structure, then select the appropriate parent folder. Test a small sample and confirm the tool finds the expected media and sidecars."
       }
     }
   ]
@@ -92,7 +92,7 @@ const faqSchema = {
       <!-- Trust Badge -->
       <div class="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-xs font-semibold text-zinc-800 dark:text-zinc-300 mb-6 font-mono shadow-xs">
         <Icon name="shield-check" class="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
-        <span>100% Client-Side Engine • Zero Server Uploads</span>
+        <span>Local media processing · No media upload</span>
       </div>
 
       <!-- Problem-Centric Main Headline -->
@@ -102,7 +102,7 @@ const faqSchema = {
 
       <!-- Clear Value Proposition -->
       <p class="text-base sm:text-lg md:text-xl text-zinc-600 dark:text-zinc-400 max-w-4xl mx-auto font-normal leading-relaxed mb-8">
-        Google Takeout separates your photos and videos from their metadata into disconnected <code class="text-xs px-2 py-0.5 rounded bg-zinc-100 dark:bg-zinc-800 text-zinc-800 dark:text-zinc-200 font-mono font-bold">.json</code> sidecar files. TakeoutFix automatically pairs them back and restores original capture dates, GPS locations, and camera metadata — entirely on your device.
+        Google Takeout may place photo or video details in separate <code class="text-xs px-2 py-0.5 rounded bg-zinc-100 dark:bg-zinc-800 text-zinc-800 dark:text-zinc-200 font-mono font-bold">.json</code> sidecars. TakeoutFix matches supported media with available sidecars and writes supported metadata locally in your browser. Review a sample of the results before processing a full library.
       </p>
 
       <!-- Scannable 5-Step Process Pill Strip -->
@@ -137,7 +137,7 @@ const faqSchema = {
       <!-- Prominent Privacy Callout Right Below CTA -->
       <div class="flex items-center justify-center gap-2 text-xs font-medium text-zinc-500 dark:text-zinc-400">
         <span class="text-emerald-600 dark:text-emerald-400">🔒</span>
-        <span>Your photos never leave your device. 100% local processing in your browser with zero server uploads.</span>
+        <span>Selected media is processed in your browser. Account, diagnostics, support, and advertising features use separate services; see our <a href="/privacy" class="underline">privacy policy</a>.</span>
       </div>
     </header>
 
@@ -316,10 +316,10 @@ const faqSchema = {
 
         <div class="space-y-4 text-zinc-600 dark:text-zinc-300 text-sm sm:text-base leading-relaxed">
           <p class="text-lg font-semibold text-zinc-900 dark:text-white">
-            <strong>No. TakeoutFix operates entirely within your browser or on your desktop. Your photos, videos, and JSON metadata are never uploaded to any cloud or server.</strong>
+            <strong>The media restoration flow processes selected media locally and does not upload media files. Account, support, diagnostics, and advertising features use separate network services described in the privacy policy.</strong>
           </p>
           <p>
-            When you choose a folder in the web application, your browser uses the modern, standard <strong>File System Access API</strong> to grant temporary, local-only read/write access to that specific directory. Processing occurs inside isolated client-side Web Workers. You can even disconnect your internet connection while TakeoutFix runs and it will continue repairing your files without interruption.
+            When you choose files or a folder in the web application, the browser grants local file access and the restoration pipeline processes the selected media on your device. Keep the page open while processing, and retain the original export until you have verified the results.
           </p>
         </div>
 
@@ -460,7 +460,7 @@ const faqSchema = {
               <span class="group-open:rotate-180 transition-transform">▼</span>
             </summary>
             <div class="pt-2 text-[11px] text-zinc-600 dark:text-zinc-400 leading-relaxed space-y-1.5 mt-1">
-              <p>Choose the parent <code>Google Photos</code> folder. TakeoutFix automatically traverses all nested albums and sidecars.</p>
+              <p>Choose the folder containing the extracted Takeout media and sidecars. Confirm the preview or file count before starting a large batch.</p>
             </div>
           </details>
         </div>
@@ -571,13 +571,13 @@ const faqSchema = {
               <div>EXIF DateTimeOriginal: <span class="text-emerald-400 font-bold">2019:08:14 16:42:31</span></div>
               <div>EXIF CreateDate: <span class="text-emerald-400 font-bold">2019:08:14 16:42:31</span></div>
               <div>GPS Position: <span class="text-emerald-400 font-bold">40.7128° N, 74.0060° W</span></div>
-              <div>Binary Recompression: <span class="text-white font-bold">None (100% Raw Bitstream)</span></div>
+              <div>Media processing: <span class="text-white font-bold">Metadata-focused for supported formats</span></div>
             </div>
           </div>
         </div>
 
         <div class="mt-6 pt-4 border-t border-zinc-800 text-center text-zinc-400 text-xs">
-          🔒 Only metadata headers are modified. Your image pixels and audio/video streams are preserved bit-for-bit.
+          🔒 The tool is designed to modify supported metadata without re-encoding media. Keep originals and verify output.
         </div>
       </div>
     </section>
@@ -640,16 +640,16 @@ const faqSchema = {
           </h3>
           <div class="divide-y divide-zinc-100 dark:divide-zinc-800/80 text-xs sm:text-sm">
             <div class="py-2.5 flex justify-between items-center">
-              <span class="font-medium text-zinc-700 dark:text-zinc-300">Upload your photos to any server</span>
-              <span class="font-mono font-bold text-red-500">❌ Never</span>
+              <span class="font-medium text-zinc-700 dark:text-zinc-300">Upload selected media in the restoration flow</span>
+              <span class="font-mono font-bold text-red-500">No media upload</span>
             </div>
             <div class="py-2.5 flex justify-between items-center">
               <span class="font-medium text-zinc-700 dark:text-zinc-300">Compress or resize your images</span>
-              <span class="font-mono font-bold text-red-500">❌ Never</span>
+              <span class="font-mono font-bold text-red-500">Not intended to</span>
             </div>
             <div class="py-2.5 flex justify-between items-center">
               <span class="font-medium text-zinc-700 dark:text-zinc-300">Re-encode or degrade video tracks</span>
-              <span class="font-mono font-bold text-red-500">❌ Never</span>
+              <span class="font-mono font-bold text-red-500">Not intended to</span>
             </div>
             <div class="py-2.5 flex justify-between items-center">
               <span class="font-medium text-zinc-700 dark:text-zinc-300">Delete or overwrite your original files</span>
@@ -883,7 +883,7 @@ const faqSchema = {
             “Some files are in the unmatched-files report or metadata_not_found.”
           </h3>
           <p class="text-xs text-zinc-600 dark:text-zinc-400 leading-relaxed">
-            Occasionally, Google Photos creates animated GIFs or burst frames without companion JSON sidecars. TakeoutFix automatically uses fallback filename timestamps or preserves them safely in an unmatched directory so nothing is ever lost.
+            Some files may not have a matching sidecar or supported metadata. Keep unmatched files and the original export, and review the tool report rather than assuming all files were restored.
           </p>
         </div>
 
@@ -971,7 +971,7 @@ const faqSchema = {
             <span class="group-open:rotate-180 transition-transform text-zinc-400">▼</span>
           </summary>
           <div class="pt-3 text-sm text-zinc-600 dark:text-zinc-400 leading-relaxed">
-            No. TakeoutFix only injects metadata tags into the file header. The compressed image pixels and video frames are left completely untouched and are never re-encoded or transcoded.
+            The restoration workflow is designed to update supported metadata without re-encoding media. File format behavior can vary; keep the original and verify representative output files.
           </div>
         </details>
 
@@ -981,7 +981,7 @@ const faqSchema = {
             <span class="group-open:rotate-180 transition-transform text-zinc-400">▼</span>
           </summary>
           <div class="pt-3 text-sm text-zinc-600 dark:text-zinc-400 leading-relaxed">
-            Yes. Our multi-stage matching algorithm automatically detects Google's <code class="font-mono bg-zinc-100 dark:bg-zinc-800 px-1 py-0.5 rounded">-edited</code> suffix and maps it back to the original sidecar JSON file.
+            The tool attempts to match supported edited-name patterns with sidecars. Check the match report for unmatched or ambiguous items, then verify samples before processing the full export.
           </div>
         </details>
 
@@ -991,63 +991,42 @@ const faqSchema = {
             <span class="group-open:rotate-180 transition-transform text-zinc-400">▼</span>
           </summary>
           <div class="pt-3 text-sm text-zinc-600 dark:text-zinc-400 leading-relaxed">
-            Yes. Extract all your Takeout ZIP parts into your chosen folder, select that folder in TakeoutFix, and the engine will index and match files across all folders seamlessly.
+            Extract the ZIP parts into the intended folder structure, select the parent folder, and check whether the tool detects the expected files. Test a small sample first because archive layouts and browser limits vary.
           </div>
         </details>
       </div>
     </section>
 
     <!-- ========================================================================= -->
-    <!-- 13. UNDER THE HOOD: TECHNICAL ARCHITECTURE (EXPANDABLE DEEP DIVE)          -->
-    <!-- ========================================================================= -->
-    <section class="max-w-4xl mx-auto mb-14" id="tech-specs" aria-label="Technical Architecture Deep Dive">
+    <!-- 13. WHAT HAPPENS TO YOUR FILES -->
+    <section class="max-w-4xl mx-auto mb-14" id="tech-specs" aria-label="What happens to your files">
       <div class="p-8 sm:p-10 rounded-2xl bg-zinc-50 dark:bg-zinc-900/40 border border-zinc-200 dark:border-zinc-800">
         <div class="flex items-center gap-3 mb-6">
           <div class="w-10 h-10 rounded-xl bg-zinc-200 dark:bg-zinc-800 flex items-center justify-center text-zinc-700 dark:text-zinc-300">
-            <Icon name="cpu" class="w-5 h-5" />
+            <Icon name="shield-check" class="w-5 h-5" />
           </div>
           <div>
-            <span class="text-xs font-mono font-bold uppercase tracking-wider text-zinc-500">Architecture Specification</span>
-            <h2 class="text-2xl font-bold text-zinc-900 dark:text-white">How TakeoutFix Works Under the Hood</h2>
+            <span class="text-xs font-bold uppercase tracking-wider text-zinc-500">Your files, step by step</span>
+            <h2 class="text-2xl font-bold text-zinc-900 dark:text-white">How the restore tool works</h2>
           </div>
         </div>
 
         <p class="text-sm text-zinc-600 dark:text-zinc-400 mb-8 leading-relaxed">
-          For software engineers and photographers who want to understand the exact technical mechanics: TakeoutFix operates across three client-side phases.
+          You do not need to understand the file details. Choose your Takeout folder and the tool will look for matching photos and available dates or locations.
         </p>
 
-        <div class="space-y-8">
-          <!-- Phase 1 -->
-          <div class="p-6 rounded-xl bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800/80">
-            <h3 class="text-base font-bold text-zinc-900 dark:text-white mb-2 flex items-center gap-2">
-              <span class="text-xs font-mono px-2 py-0.5 rounded bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400">PHASE 01</span>
-              <span>How TakeoutFix finds your files (Local Directory Indexing)</span>
-            </h3>
-            <p class="text-xs sm:text-sm text-zinc-600 dark:text-zinc-400 leading-relaxed">
-              Using the W3C File System Access API, the engine traverses directory trees asynchronously via background Web Workers. It indexes media assets into high-performance in-memory hash maps while indexing candidate sidecars to avoid main-thread UI jank.
-            </p>
+        <div class="grid gap-4 sm:grid-cols-3">
+          <div class="p-5 rounded-xl bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800/80">
+            <h3 class="font-bold text-zinc-900 dark:text-white mb-2">1. Find</h3>
+            <p class="text-sm text-zinc-600 dark:text-zinc-400">The tool looks through your selected folder for photos and their matching details files.</p>
           </div>
-
-          <!-- Phase 2 -->
-          <div class="p-6 rounded-xl bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800/80">
-            <h3 class="text-base font-bold text-zinc-900 dark:text-white mb-2 flex items-center gap-2">
-              <span class="text-xs font-mono px-2 py-0.5 rounded bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400">PHASE 02</span>
-              <span>Matching media with its metadata (Heuristic Pairing)</span>
-            </h3>
-            <p class="text-xs sm:text-sm text-zinc-600 dark:text-zinc-400 leading-relaxed">
-              Google Takeout introduces edge cases including truncated 47-character names, copy numbers, and edited suffixes. The heuristic resolves these variants before performing a schema integrity check against the JSON <code class="font-mono text-xs">photoTakenTime.timestamp</code> field.
-            </p>
+          <div class="p-5 rounded-xl bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800/80">
+            <h3 class="font-bold text-zinc-900 dark:text-white mb-2">2. Restore</h3>
+            <p class="text-sm text-zinc-600 dark:text-zinc-400">Available dates and locations are added to supported photos and videos on your device.</p>
           </div>
-
-          <!-- Phase 3 -->
-          <div class="p-6 rounded-xl bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800/80">
-            <h3 class="text-base font-bold text-zinc-900 dark:text-white mb-2 flex items-center gap-2">
-              <span class="text-xs font-mono px-2 py-0.5 rounded bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400">PHASE 03</span>
-              <span>How metadata is restored (Binary Header Injection)</span>
-            </h3>
-            <p class="text-xs sm:text-sm text-zinc-600 dark:text-zinc-400 leading-relaxed">
-              Once matched, the engine writes Unix epoch timestamps and coordinates into native binary headers: <code class="font-mono text-xs">DateTimeOriginal</code>, <code class="font-mono text-xs">CreateDate</code>, and GPS IFD blocks for JPEG/HEIC/PNG, and QuickTime user-data atoms (<code class="font-mono text-xs">udta</code>, <code class="font-mono text-xs">mvhd</code>) for MP4/MOV videos without re-encoding.
-            </p>
+          <div class="p-5 rounded-xl bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800/80">
+            <h3 class="font-bold text-zinc-900 dark:text-white mb-2">3. Review</h3>
+            <p class="text-sm text-zinc-600 dark:text-zinc-400">Check the results, keep the original download, and try a few files in your photo app.</p>
           </div>
         </div>
       </div>
@@ -1061,7 +1040,7 @@ const faqSchema = {
         Ready to restore your Google Takeout library?
       </h2>
       <p class="text-zinc-600 dark:text-zinc-400 mb-8 max-w-lg mx-auto text-sm sm:text-base">
-        Repair your photo dates, GPS coordinates, and album structure directly on your computer. 100% private with no files uploaded.
+        Process supported media locally, verify sample files, and retain a separate backup of your original Takeout export.
       </p>
       <div class="flex flex-col sm:flex-row justify-center items-center gap-4">
         <a href="/tool" class="w-full sm:w-auto">
