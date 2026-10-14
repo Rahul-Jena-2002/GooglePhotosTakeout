@@ -15,6 +15,15 @@
   Content-Type: text/plain; charset=utf-8
   Access-Control-Allow-Origin: *
 
+/admin
+  Cache-Control: no-store, max-age=0, must-revalidate
+
+/admin/*
+  Cache-Control: no-store, max-age=0, must-revalidate
+
+/admin.html
+  Cache-Control: no-store, max-age=0, must-revalidate
+
 /*.html
   Cache-Control: public, max-age=0, must-revalidate
 
@@ -80,15 +89,6 @@
 /sw.js
   Cache-Control: no-cache, no-store, must-revalidate
   Service-Worker-Allowed: /
-
-/admin
-  Cache-Control: no-store, max-age=0, must-revalidate
-
-/admin/*
-  Cache-Control: no-store, max-age=0, must-revalidate
-
-/admin.html
-  Cache-Control: no-store, max-age=0, must-revalidate
 
 /manifest.webmanifest
   Cache-Control: public, max-age=3600
