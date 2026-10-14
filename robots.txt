@@ -1,28 +1,77 @@
-# Explicit access for Google AdSense & Ads Crawlers
+# Ad crawlers can access public pages; robots.txt is not access control.
 User-agent: Mediapartners-Google
 Allow: /
-
-User-agent: Googlebot
-Allow: /
+Disallow: /admin/
+Disallow: /dashboard
+Disallow: /profile
+Disallow: /auth/
+Disallow: /api/
 
 User-agent: Medianet
 Allow: /
+Disallow: /admin/
+Disallow: /dashboard
+Disallow: /profile
+Disallow: /auth/
+Disallow: /api/
 
-# Explicit access for AI Search & Answer Engines (GEO - Generative Engine Optimization)
+# Search crawlers for AI answer products.
+User-agent: OAI-SearchBot
+Allow: /
+Disallow: /admin/
+Disallow: /dashboard
+Disallow: /profile
+Disallow: /auth/
+Disallow: /api/
+
+User-agent: Claude-SearchBot
+Allow: /
+Disallow: /admin/
+Disallow: /dashboard
+Disallow: /profile
+Disallow: /auth/
+Disallow: /api/
+
 User-agent: GPTBot
 Allow: /
+Disallow: /admin/
+Disallow: /dashboard
+Disallow: /profile
+Disallow: /auth/
+Disallow: /api/
 
 User-agent: ClaudeBot
 Allow: /
+Disallow: /admin/
+Disallow: /dashboard
+Disallow: /profile
+Disallow: /auth/
+Disallow: /api/
 
 User-agent: PerplexityBot
 Allow: /
+Disallow: /admin/
+Disallow: /dashboard
+Disallow: /profile
+Disallow: /auth/
+Disallow: /api/
 
+# Google-Extended controls certain Gemini uses, not Google Search crawling.
 User-agent: Google-Extended
 Allow: /
+Disallow: /admin/
+Disallow: /dashboard
+Disallow: /profile
+Disallow: /auth/
+Disallow: /api/
 
 User-agent: Applebot-Extended
 Allow: /
+Disallow: /admin/
+Disallow: /dashboard
+Disallow: /profile
+Disallow: /auth/
+Disallow: /api/
 
 # General Crawlers & Search Engines
 User-agent: *
@@ -31,8 +80,8 @@ Disallow: /admin/
 Disallow: /dashboard
 Disallow: /profile
 Disallow: /auth/
-Disallow: /auth/desktop
+Disallow: /api/
 
-# Sitemaps & LLM Context Standards
+# Sitemap and optional publisher context file.
 Sitemap: https://takeoutfix.pages.dev/sitemap.xml
-# LLMs.txt Reference: https://takeoutfix.pages.dev/llms.txt
+# Optional context file; it is not a substitute for useful, crawlable pages.

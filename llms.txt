@@ -1,6 +1,6 @@
 # TakeoutFix
 
-> TakeoutFix is an open-source, private, client-side photo and video metadata utility suite. Its core tool restores original capture dates, GPS locations, and EXIF metadata from Google Takeout JSON sidecar files back into photo and video headers — 100% locally on your device with zero server uploads. The suite has expanded to include six specialized tools for editing, verifying, organizing, and inspecting photo libraries.
+> TakeoutFix is an open-source photo and video metadata utility suite. Its core web tool restores capture dates, GPS locations, and metadata from Google Takeout JSON sidecar files locally in the browser; the restore flow does not upload media files. The suite also includes tools for editing, verifying, organizing, and inspecting photo libraries.
 
 ## Overview
 When users download their photo library from Google Takeout, Google Photos separates image and video binary files from their original metadata. The original date taken, camera settings, and GPS coordinates are stored in separate companion files ending in `.json` (e.g. `IMG_1234.jpg.supplemental-metadata.json`).
@@ -36,7 +36,7 @@ Copies EXIF metadata (date, GPS, copyright, camera tags) from RAW master files t
 ## Key Capabilities
 - **Universal Matching**: Handles standard sidecars, truncated filenames (`photo(1).jp...json`), edited photos (`-edited.jpg`), live photos (`.heic` + `.mov`), and non-standard album folders.
 - **EXIF & QuickTime Tag Injection**: Writes `DateTimeOriginal`, `CreateDate`, `GPSLatitude`, `GPSLongitude`, and camera tags directly into JPEG, PNG, HEIC, MP4, and MOV files.
-- **100% Offline & Private**: Runs on local CPU via modern HTML5 File System Access API in browser, or via native Java desktop binary. Zero media files are uploaded to remote servers.
+- **Local media processing**: The web restore flow reads and writes files in the browser using the File System Access API; media files are not uploaded by that flow.
 - **Cross-Platform Availability**:
   - **Web Tool**: Runs in any modern Chromium browser (Google Chrome, Microsoft Edge, Brave, Opera) at `https://takeoutfix.pages.dev/tool`.
   - **Windows**: Direct standalone single-file `TakeoutFix.exe` (no installer required) or `TakeoutFix-Setup.exe`.
