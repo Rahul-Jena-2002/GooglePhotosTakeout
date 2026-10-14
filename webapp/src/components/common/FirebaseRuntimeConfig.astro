@@ -1,0 +1,31 @@
+---
+let runtimeEnv: Record<string, any> = {};
+try {
+  // @ts-ignore Cloudflare provides runtime bindings in its Pages environment.
+  const cfWorkers = await import("cloudflare:workers");
+  if (cfWorkers?.env) runtimeEnv = cfWorkers.env;
+} catch {
+  // Local builds use Astro's public environment values below.
+}
+
+if (!runtimeEnv.PUBLIC_FIREBASE_API_KEY && typeof process !== "undefined" && process.env) {
+  runtimeEnv = process.env;
+}
+
+const firebaseConfig = {
+  apiKey: runtimeEnv.PUBLIC_FIREBASE_API_KEY || import.meta.env.PUBLIC_FIREBASE_API_KEY || "",
+  authDomain: runtimeEnv.PUBLIC_FIREBASE_AUTH_DOMAIN || import.meta.env.PUBLIC_FIREBASE_AUTH_DOMAIN || "",
+  projectId: runtimeEnv.PUBLIC_FIREBASE_PROJECT_ID || import.meta.env.PUBLIC_FIREBASE_PROJECT_ID || "",
+  storageBucket: runtimeEnv.PUBLIC_FIREBASE_STORAGE_BUCKET || import.meta.env.PUBLIC_FIREBASE_STORAGE_BUCKET || "",
+  messagingSenderId: runtimeEnv.PUBLIC_FIREBASE_MESSAGING_SENDER_ID || import.meta.env.PUBLIC_FIREBASE_MESSAGING_SENDER_ID || "",
+  appId: runtimeEnv.PUBLIC_FIREBASE_APP_ID || import.meta.env.PUBLIC_FIREBASE_APP_ID || "",
+  measurementId: runtimeEnv.PUBLIC_FIREBASE_MEASUREMENT_ID || import.meta.env.PUBLIC_FIREBASE_MEASUREMENT_ID || "",
+};
+
+const googleClientId = runtimeEnv.PUBLIC_GOOGLE_CLIENT_ID || import.meta.env.PUBLIC_GOOGLE_CLIENT_ID || "";
+---
+
+<script is:inline define:vars={{ firebaseConfig, googleClientId }}>
+  if (firebaseConfig?.apiKey) window.__FIREBASE_CONFIG__ = firebaseConfig;
+  if (googleClientId) window.__GOOGLE_CLIENT_ID__ = googleClientId;
+</script>

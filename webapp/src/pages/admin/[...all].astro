@@ -1,31 +1,8 @@
 ---
-export const prerender = true;
-export function getStaticPaths() {
-  return [
-    { params: { all: undefined } },
-    { params: { all: 'tool' } },
-    { params: { all: 'users' } },
-    { params: { all: 'users/dashboard' } },
-    { params: { all: 'support' } },
-    { params: { all: 'reviews' } },
-    { params: { all: 'team' } },
-    { params: { all: 'settings' } },
-    { params: { all: 'statistics' } },
-    { params: { all: 'audit' } },
-    { params: { all: 'keys' } },
-    { params: { all: 'payment-gateway' } },
-    { params: { all: 'plan-thresholds' } },
-    { params: { all: 'tier-features' } },
-    { params: { all: 'payments' } },
-    { params: { all: 'catalog' } },
-    { params: { all: 'products' } },
-    { params: { all: 'product-catalogue' } },
-    { params: { all: 'monetization' } },
-    { params: { all: 'dev' } },
-  ];
-}
+export const prerender = false;
 import "../../index.css";
 import AdminRouter from "../../components/admin/layout/AdminRouter";
+import FirebaseRuntimeConfig from "../../components/common/FirebaseRuntimeConfig.astro";
 
 ---
 <!doctype html>
@@ -33,9 +10,7 @@ import AdminRouter from "../../components/admin/layout/AdminRouter";
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <!-- Google AdSense Verification & Auto Ads -->
-    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-7628736172233995"
-      crossorigin="anonymous"></script>
+    <FirebaseRuntimeConfig />
     <!-- Native typography stack -->
     <style>
       body { font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }

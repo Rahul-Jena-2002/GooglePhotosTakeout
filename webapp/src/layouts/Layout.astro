@@ -3,6 +3,7 @@ import "../index.css";
 import { ClientRouter } from "astro:transitions";
 import AuthModal from "../react-pages/auth/AuthModal";
 import AdUnit from "../components/monetization/AdUnit";
+import FirebaseRuntimeConfig from "../components/common/FirebaseRuntimeConfig.astro";
 
 interface Props {
   title?: string;
@@ -37,31 +38,6 @@ const rawPath = Astro.url.pathname || "/";
 const cleanPath = rawPath.replace(/\.html$/, "").replace(/\/index$/, "").replace(/\/$/, "") || "/";
 const canonicalUrl = `https://takeoutfix.pages.dev${cleanPath === "" ? "/" : cleanPath}`;
 
-// Cloudflare runtime secrets injection (No secrets hardcoded in git)
-let cfRuntimeEnv: Record<string, any> = {};
-try {
-  // @ts-ignore
-  const cfWorkers = await import('cloudflare:workers');
-  if (cfWorkers?.env) {
-    cfRuntimeEnv = cfWorkers.env;
-  }
-} catch (_) {}
-
-if (!cfRuntimeEnv.PUBLIC_FIREBASE_API_KEY && typeof process !== 'undefined' && process.env) {
-  cfRuntimeEnv = process.env;
-}
-
-const firebaseConfig = {
-  apiKey: cfRuntimeEnv.PUBLIC_FIREBASE_API_KEY || import.meta.env.PUBLIC_FIREBASE_API_KEY || "",
-  authDomain: cfRuntimeEnv.PUBLIC_FIREBASE_AUTH_DOMAIN || import.meta.env.PUBLIC_FIREBASE_AUTH_DOMAIN || "",
-  projectId: cfRuntimeEnv.PUBLIC_FIREBASE_PROJECT_ID || import.meta.env.PUBLIC_FIREBASE_PROJECT_ID || "",
-  storageBucket: cfRuntimeEnv.PUBLIC_FIREBASE_STORAGE_BUCKET || import.meta.env.PUBLIC_FIREBASE_STORAGE_BUCKET || "",
-  messagingSenderId: cfRuntimeEnv.PUBLIC_FIREBASE_MESSAGING_SENDER_ID || import.meta.env.PUBLIC_FIREBASE_MESSAGING_SENDER_ID || "",
-  appId: cfRuntimeEnv.PUBLIC_FIREBASE_APP_ID || import.meta.env.PUBLIC_FIREBASE_APP_ID || "",
-  measurementId: cfRuntimeEnv.PUBLIC_FIREBASE_MEASUREMENT_ID || import.meta.env.PUBLIC_FIREBASE_MEASUREMENT_ID || "",
-};
-
-const googleClientId = cfRuntimeEnv.PUBLIC_GOOGLE_CLIENT_ID || import.meta.env.PUBLIC_GOOGLE_CLIENT_ID || "";
 ---
 
 <!doctype html>
@@ -91,14 +67,7 @@ const googleClientId = cfRuntimeEnv.PUBLIC_GOOGLE_CLIENT_ID || import.meta.env.P
       src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-7628736172233995"
       crossorigin="anonymous"
     ></script>
-    <script is:inline define:vars={{ firebaseConfig, googleClientId }}>
-      if (firebaseConfig && firebaseConfig.apiKey) {
-        window.__FIREBASE_CONFIG__ = firebaseConfig;
-      }
-      if (googleClientId) {
-        window.__GOOGLE_CLIENT_ID__ = googleClientId;
-      }
-    </script>
+    <FirebaseRuntimeConfig />
     <!-- Preload hero image to speed up LCP -->
     <link rel="preload" as="image" href="/hero-graphic-light.webp" fetchpriority="high" />
     <!-- Native high-performance typography (0ms latency, zero third-party IP leakage, 100% GDPR compliant) -->
