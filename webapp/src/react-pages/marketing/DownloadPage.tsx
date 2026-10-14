@@ -76,13 +76,13 @@ export default function DownloadPage() {
         {/* Header */}
         <div className="text-center space-y-4 max-w-4xl mx-auto pt-2">
           <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/30 text-emerald-600 dark:text-emerald-400 text-[10px] font-bold uppercase tracking-wider shadow-xs">
-            <ShieldCheck className="w-3.5 h-3.5" /> 100% Free Desktop Restoration Engine
+            <ShieldCheck className="w-3.5 h-3.5" /> Desktop restoration app
           </div>
-          <h1 className="text-3xl md:text-5xl font-black tracking-tight text-zinc-900 dark:text-white">
+          <h1 className="text-4xl sm:text-5xl md:text-6xl font-bold tracking-tight text-zinc-900 dark:text-white leading-tight">
             Download TakeoutFix
           </h1>
           <p className="text-sm md:text-base text-zinc-600 dark:text-zinc-400 leading-relaxed font-medium">
-            If you have a huge photo collection (over 50GB), the desktop app is the best choice. It works faster and handles massive files without crashing.
+            For very large photo collections, the desktop app may be a better fit. Check the system requirements and release notes for your platform before downloading.
           </p>
         </div>
 

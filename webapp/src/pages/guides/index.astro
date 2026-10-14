@@ -6,41 +6,41 @@ import Icon from "../../components/ui/Icon.astro";
 const guides = [
   {
     slug: "google-takeout-json-metadata-explained",
-    title: "Google Takeout JSON Sidecars: The Definitive Technical Guide",
-    description: "Deep dive into why Google Takeout separates metadata into JSON files, how photoTakenTime and geoData are formatted, and how EXIF headers are reconstructed.",
-    category: "Technical Architecture",
+    title: "Why Google Takeout Has Separate Photo Details Files",
+    description: "Learn what the extra .json files are for, how to match one to a photo, and what to check before restoring dates or locations.",
+    category: "Photo dates and details",
     badgeColor: "text-indigo-400 bg-indigo-500/10 border-indigo-500/20",
-    readTime: "9 min read",
-    updatedAt: "2026-09-28",
+    readTime: "About 6 min",
+    updatedAt: "2026-10-14",
     icon: "cpu"
   },
   {
     slug: "how-to-save-takeout-photos-to-hard-drive-nas-cloud",
-    title: "How to Save Google Takeout Photos to External Hard Drive, NAS & Cloud",
-    description: "Complete workflow for storing restored Google Takeout libraries on USB drives, external SSDs, Synology/TrueNAS home servers, Apple iCloud, and OneDrive.",
-    category: "Storage & Backup",
+    title: "Save Your Google Takeout Photos Safely",
+    description: "Unpack your download, try a small group of photos, and make a second copy before moving your full library.",
+    category: "Keep a safe backup",
     badgeColor: "text-emerald-400 bg-emerald-500/10 border-emerald-500/20",
-    readTime: "11 min read",
-    updatedAt: "2026-09-28",
+    readTime: "About 6 min",
+    updatedAt: "2026-10-14",
     icon: "hard-drive"
   },
   {
     slug: "google-takeout-common-errors-fix",
-    title: "Troubleshooting Common Google Takeout Errors & Metadata Failures",
-    description: "How to fix truncated filenames, missing GPS coordinates in shared albums, timezone shifts (UTC vs local), and 2GB/50GB split ZIP archive extraction issues.",
+    title: "Fix Common Google Takeout Photo Problems",
+    description: "Find missing or mismatched files, check dates and locations, and protect your original download while you troubleshoot.",
     category: "Troubleshooting",
     badgeColor: "text-amber-400 bg-amber-500/10 border-amber-500/20",
-    readTime: "10 min read",
-    updatedAt: "2026-09-28",
+    readTime: "About 5 min",
+    updatedAt: "2026-10-14",
     icon: "alert-triangle"
   },
   {
     slug: "../restore-data",
-    title: "The Master Guide: Restore Google Photos Dates & Metadata",
-    description: "Comprehensive step-by-step documentation for matching companion JSON sidecars and restoring EXIF dates, camera models, and GPS tags locally in your browser.",
-    category: "Pillar Documentation",
+    title: "Restore Photo Dates and Locations",
+    description: "Follow a simple walkthrough, check which files are supported, and review a small sample before restoring everything.",
+    category: "Step-by-step walkthrough",
     badgeColor: "text-purple-400 bg-purple-500/10 border-purple-500/20",
-    readTime: "14 min read",
+    readTime: "Tool walkthrough",
     updatedAt: "2026-09-28",
     icon: "shield-check"
   }
@@ -49,8 +49,8 @@ const guides = [
 const collectionSchema = {
   "@context": "https://schema.org",
   "@type": "CollectionPage",
-  "name": "TakeoutFix Knowledge Base & Educational Guides",
-  "description": "In-depth technical guides, tutorials, and troubleshooting manuals for Google Takeout exports, EXIF metadata restoration, and digital photo library preservation.",
+  "name": "TakeoutFix Guides",
+  "description": "Simple guides for downloading, checking, restoring, and safely storing Google Photos Takeout files.",
   "url": "https://takeoutfix.pages.dev/guides",
   "publisher": {
     "@type": "Organization",
@@ -61,8 +61,8 @@ const collectionSchema = {
 ---
 
 <Layout 
-  title="Google Takeout Knowledge Base & Educational Guides | TakeoutFix" 
-  description="Explore authoritative technical guides, troubleshooting tutorials, and step-by-step walkthroughs for fixing Google Takeout photo dates, JSON sidecars, and GPS metadata."
+  title="Simple Google Takeout Photo Guides | TakeoutFix"
+  description="Plain-language help for Google Takeout photo dates, missing locations, common download problems, and keeping a safe backup."
 >
   <script type="application/ld+json" set:html={JSON.stringify(collectionSchema)} />
 
@@ -72,16 +72,16 @@ const collectionSchema = {
     <div class="text-center mb-16 relative">
       <div class="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-indigo-600 dark:text-indigo-400 text-xs font-semibold uppercase tracking-wider mb-6 font-mono">
         <Icon name="book-open" class="w-4 h-4" />
-        Educational Knowledge Base
+        Helpful Guides
       </div>
-      <h1 class="text-4xl sm:text-5xl md:text-6xl font-extrabold tracking-tight text-zinc-900 dark:text-white mb-6 leading-tight">
-        Mastering Google Takeout <br class="hidden sm:inline" />
-        <span class="text-indigo-600 dark:text-indigo-400">
-          Metadata &amp; Data Portability
+      <h1 class="text-4xl sm:text-5xl md:text-6xl font-bold tracking-tight text-zinc-900 dark:text-white mb-6 leading-tight">
+        Google Takeout photo help <br class="hidden sm:inline" />
+        <span class="text-zinc-900 dark:text-white">
+          in plain language
         </span>
       </h1>
       <p class="text-base sm:text-lg text-zinc-600 dark:text-zinc-400 max-w-3xl mx-auto leading-relaxed font-normal">
-        Authoritative, peer-reviewed engineering guides to help you understand Google Takeout archives, resolve missing photo dates, and preserve your family memories with 100% privacy.
+        Find out why photo dates can look wrong after a download, how to check the extra files in your folder, and how to keep your original photos safe.
       </p>
     </div>
 
@@ -121,25 +121,26 @@ const collectionSchema = {
       ))}
     </div>
 
-    <!-- Additional Learning Topics Bento -->
+    <!-- Start with the problem that matches your export -->
     <div class="bg-zinc-50 dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 rounded-3xl p-8 sm:p-12 mb-16">
-      <h3 class="text-2xl font-bold text-zinc-900 dark:text-white mb-6">Explore Specific Problem Solvers</h3>
+      <h3 class="text-2xl font-bold text-zinc-900 dark:text-white mb-2">Choose the next step for your archive</h3>
+      <p class="text-sm text-zinc-600 dark:text-zinc-400 mb-6">Start with the checks that match what you see. Keep your original export unchanged while you investigate.</p>
       <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <a href="/fix-google-takeout-dates" class="p-4 rounded-xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 hover:border-indigo-500/40 transition-colors shadow-sm">
-          <div class="text-sm font-bold text-indigo-600 dark:text-indigo-400 mb-1">Fix Wrong Dates</div>
-          <p class="text-xs text-zinc-600 dark:text-zinc-400">Why your photos display today's extraction date and how to fix it.</p>
+        <a href="/guides/google-takeout-json-metadata-explained#anatomy-schema" class="p-4 rounded-xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 hover:border-indigo-500/40 transition-colors shadow-sm">
+          <div class="text-sm font-bold text-indigo-600 dark:text-indigo-400 mb-1">Check an extra details file</div>
+          <p class="text-xs text-zinc-600 dark:text-zinc-400">See whether its name matches the photo and whether it contains a date or location.</p>
         </a>
-        <a href="/restore-gps-google-takeout" class="p-4 rounded-xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 hover:border-indigo-500/40 transition-colors shadow-sm">
-          <div class="text-sm font-bold text-indigo-600 dark:text-indigo-400 mb-1">Restore GPS Coordinates</div>
-          <p class="text-xs text-zinc-600 dark:text-zinc-400">Re-inject latitude, longitude, and altitude tags into EXIF segments.</p>
+        <a href="/guides/google-takeout-common-errors-fix#problem-1" class="p-4 rounded-xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 hover:border-amber-500/40 transition-colors shadow-sm">
+          <div class="text-sm font-bold text-amber-600 dark:text-amber-400 mb-1">Find a mismatched file</div>
+          <p class="text-xs text-zinc-600 dark:text-zinc-400">Check filename variants and neighboring files before deciding a sidecar is missing.</p>
         </a>
-        <a href="/google-takeout-to-apple-photos" class="p-4 rounded-xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 hover:border-indigo-500/40 transition-colors shadow-sm">
-          <div class="text-sm font-bold text-indigo-600 dark:text-indigo-400 mb-1">Apple Photos Migration</div>
-          <p class="text-xs text-zinc-600 dark:text-zinc-400">Prepare your archive so iCloud sorts photos chronologically.</p>
+        <a href="/guides/how-to-save-takeout-photos-to-hard-drive-nas-cloud#step-2" class="p-4 rounded-xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 hover:border-emerald-500/40 transition-colors shadow-sm">
+          <div class="text-sm font-bold text-emerald-600 dark:text-emerald-400 mb-1">Try a few photos first</div>
+          <p class="text-xs text-zinc-600 dark:text-zinc-400">Check the results and keep your original download safe before restoring the whole library.</p>
         </a>
-        <a href="/google-takeout-merger" class="p-4 rounded-xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 hover:border-indigo-500/40 transition-colors shadow-sm">
-          <div class="text-sm font-bold text-indigo-600 dark:text-indigo-400 mb-1">Merge JSON Sidecars</div>
-          <p class="text-xs text-zinc-600 dark:text-zinc-400">Reunite detached sidecars with raw media files seamlessly.</p>
+        <a href="/restore-data" class="p-4 rounded-xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 hover:border-purple-500/40 transition-colors shadow-sm">
+          <div class="text-sm font-bold text-purple-600 dark:text-purple-400 mb-1">Follow the restore walkthrough</div>
+          <p class="text-xs text-zinc-600 dark:text-zinc-400">See how to choose your files, save the results, and check that everything looks right.</p>
         </a>
       </div>
     </div>
@@ -147,13 +148,13 @@ const collectionSchema = {
     <!-- Author & Trust Box -->
     <div class="border border-zinc-200 dark:border-zinc-800 rounded-2xl p-6 sm:p-8 bg-zinc-50/50 dark:bg-zinc-900/30 text-xs text-zinc-600 dark:text-zinc-400 leading-relaxed font-normal flex flex-col sm:flex-row items-center justify-between gap-6">
       <div>
-        <h4 class="text-sm font-bold text-zinc-900 dark:text-white mb-1">Maintained by TakeoutFix Engineering</h4>
+        <h4 class="text-sm font-bold text-zinc-900 dark:text-white mb-1">Maintained by the TakeoutFix creator</h4>
         <p>
-          Written and maintained by software engineers specializing in digital preservation and client-side processing. All tools execute locally on your device.
+          TakeoutFix is an independent project maintained by Rahul Jena. Guide updates should reflect the current product behavior; report unclear or outdated steps through the support page.
         </p>
       </div>
-      <a href="/tool" class="px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-xs transition-all whitespace-nowrap shadow-sm">
-        Open Restore Tool
+      <a href="/contact" class="px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-xs transition-all whitespace-nowrap shadow-sm">
+        Report a guide issue
       </a>
     </div>
 
