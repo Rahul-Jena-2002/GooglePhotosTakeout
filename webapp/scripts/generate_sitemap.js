@@ -11,6 +11,7 @@ const indexablePages = [
   { loc: "/disclaimer",                                            changefreq: "monthly", priority: "0.5" },
   { loc: "/guides",                                                changefreq: "weekly",  priority: "0.9" },
   { loc: "/guides/google-takeout-json-metadata-explained",         changefreq: "monthly", priority: "0.9" },
+  { loc: "/guides/fix-google-takeout-photo-dates",                   changefreq: "monthly", priority: "0.9" },
   { loc: "/guides/how-to-save-takeout-photos-to-hard-drive-nas-cloud", changefreq: "monthly", priority: "0.9" },
   { loc: "/guides/google-takeout-common-errors-fix",               changefreq: "monthly", priority: "0.9" },
   { loc: "/download",                                              changefreq: "monthly", priority: "0.8" },
