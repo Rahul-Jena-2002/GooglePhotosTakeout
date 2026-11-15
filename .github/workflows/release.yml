@@ -262,7 +262,20 @@ jobs:
             --vendor "TakeoutFix" \
             --verbose
 
-          # 2. Build standalone AppImage using appimagetool
+          # 2. Smoke-test the actual jpackage application image under a virtual display.
+          # This catches missing JavaFX/native libraries and startup exceptions before release.
+          sudo apt-get install -y --no-install-recommends xvfb
+          set +e
+          xvfb-run -a timeout --signal=TERM 25s dist-linux/TakeoutFix/bin/TakeoutFix > takeoutfix-linux-startup.log 2>&1
+          startup_status=$?
+          set -e
+          cat takeoutfix-linux-startup.log
+          if [ "$startup_status" -ne 124 ] && [ "$startup_status" -ne 0 ]; then
+            echo "TakeoutFix exited during Linux GUI startup (status $startup_status)."
+            exit "$startup_status"
+          fi
+
+          # 3. Build standalone AppImage using appimagetool
           rm -rf AppDir
           mkdir -p AppDir/usr AppDir/usr/share/icons/hicolor/256x256/apps AppDir/usr/share/applications
           cp -r dist-linux/TakeoutFix/* AppDir/usr/
