@@ -114,18 +114,24 @@ public class NativeExifToolEngine {
             return exe;
         }
 
-        try (InputStream is = getClass().getResourceAsStream("/bin/exiftool_win.zip");
-             ZipInputStream zis = new ZipInputStream(is)) {
-            if (is == null) throw new IOException("exiftool_win.zip not found in resources/bin");
+        InputStream resource = getClass().getResourceAsStream("/bin/exiftool_win.zip");
+        if (resource == null) {
+            throw new IOException("Bundled Windows ExifTool archive is missing: /bin/exiftool_win.zip");
+        }
 
+        try (InputStream is = resource; ZipInputStream zis = new ZipInputStream(is)) {
             ZipEntry entry;
             while ((entry = zis.getNextEntry()) != null) {
-                File outFile = extractDir.resolve(entry.getName()).toFile();
+                Path output = extractDir.resolve(entry.getName()).normalize();
+                if (!output.startsWith(extractDir.normalize())) {
+                    throw new IOException("Unsafe path in Windows ExifTool archive: " + entry.getName());
+                }
                 if (entry.isDirectory()) {
-                    outFile.mkdirs();
+                    Files.createDirectories(output);
                 } else {
-                    outFile.getParentFile().mkdirs();
-                    Files.copy(zis, outFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
+                    Path parent = output.getParent();
+                    if (parent != null) Files.createDirectories(parent);
+                    Files.copy(zis, output, StandardCopyOption.REPLACE_EXISTING);
                 }
                 zis.closeEntry();
             }
@@ -139,27 +145,40 @@ public class NativeExifToolEngine {
             return script;
         }
 
-        try (InputStream is = getClass().getResourceAsStream("/bin/exiftool_unix.tar.gz");
+        InputStream resource = getClass().getResourceAsStream("/bin/exiftool_unix.tar.gz");
+        if (resource == null) {
+            throw new IOException("Bundled Linux ExifTool archive is missing: /bin/exiftool_unix.tar.gz");
+        }
+
+        Path normalizedRoot = extractDir.toAbsolutePath().normalize();
+        try (InputStream is = resource;
              GzipCompressorInputStream gzis = new GzipCompressorInputStream(is);
              TarArchiveInputStream tar = new TarArchiveInputStream(gzis)) {
-            if (is == null) throw new IOException("exiftool_unix.tar.gz not found in resources/bin");
-
             TarArchiveEntry entry;
             while ((entry = tar.getNextTarEntry()) != null) {
-                String name = entry.getName();
+                if (entry.isDirectory() || entry.isSymbolicLink() || entry.isLink()) continue;
+
+                String name = entry.getName().replace('\\\\', '/');
                 int slash = name.indexOf('/');
-                String relativePath = (slash != -1) ? name.substring(slash + 1) : name;
+                String relativePath = (slash >= 0) ? name.substring(slash + 1) : name;
                 if (relativePath.isEmpty()) continue;
 
                 if (relativePath.equals("exiftool") || relativePath.startsWith("lib/")) {
-                    File outFile = extractDir.resolve(relativePath).toFile();
-                    outFile.getParentFile().mkdirs();
-                    Files.copy(tar, outFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
-                    if (relativePath.equals("exiftool")) {
-                        outFile.setExecutable(true);
+                    Path output = normalizedRoot.resolve(relativePath).normalize();
+                    if (!output.startsWith(normalizedRoot)) {
+                        throw new IOException("Unsafe path in Linux ExifTool archive: " + entry.getName());
+                    }
+                    Path parent = output.getParent();
+                    if (parent != null) Files.createDirectories(parent);
+                    Files.copy(tar, output, StandardCopyOption.REPLACE_EXISTING);
+                    if (relativePath.equals("exiftool") && !output.toFile().setExecutable(true, true)) {
+                        throw new IOException("Could not mark bundled ExifTool executable: " + output);
                     }
                 }
             }
+        }
+        if (!script.isFile() || !script.canExecute()) {
+            throw new IOException("Linux ExifTool extraction did not produce an executable: " + script);
         }
         return script;
     }

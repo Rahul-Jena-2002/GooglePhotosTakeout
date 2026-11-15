@@ -35,10 +35,12 @@ jobs:
       matrix:
         include:
           - os: windows-latest
-            primary_artifact: TakeoutFix.exe
+            primary_artifact: |
+              TakeoutFix.msi
+              TakeoutFix-portable.zip
           - os: macos-latest
             primary_artifact: TakeoutFix.dmg
-          - os: ubuntu-latest
+          - os: ubuntu-22.04
             primary_artifact: TakeoutFix.AppImage
 
     steps:
@@ -95,8 +97,8 @@ jobs:
             --compress=2 \
             --output custom-runtime
 
-      # ─── Windows: Standalone EXE + Setup Installer (SmartScreen hardened) ───
-      - name: Package Java Windows (.exe)
+      # ─── Windows: standard jpackage MSI + portable app-image ZIP ───
+      - name: Package Java Windows (MSI and portable ZIP)
         if: matrix.os == 'windows-latest'
         shell: pwsh
         env:
@@ -105,8 +107,7 @@ jobs:
         run: |
           $appVer = "${{ steps.version.outputs.version }}"
 
-          # 1. Build Native Application Image with Minimal Custom Runtime
-          Write-Host "Building native application image with minimal custom runtime..."
+          # Build the native Windows app image with its bundled Java runtime.
           jpackage `
             --type app-image `
             --runtime-image "custom-runtime" `
@@ -120,50 +121,68 @@ jobs:
             --dest "dist-app" `
             --verbose
 
-          # 2. Package into Direct Standalone Single-File EXE (Zero-Install, Runs Immediately on Double-Click)
-          Write-Host "Creating Direct Standalone TakeoutFix.exe (No Installation Wizard)..."
-          $payloadZip = "dist-app\payload.zip"
-          Compress-Archive -Path "dist-app\TakeoutFix\*" -DestinationPath $payloadZip -Force
-
-          $cscPath = "C:\Windows\Microsoft.NET\Framework64\v4.0.30319\csc.exe"
-          & $cscPath `
-            "/target:winexe" `
-            "/platform:x64" `
-            "/win32icon:takeoutfix\icons\icon.ico" `
-            "/win32manifest:takeoutfix\launcher\TakeoutFix.manifest" `
-            "/reference:System.IO.Compression.dll,System.IO.Compression.FileSystem.dll,System.Windows.Forms.dll" `
-            "/resource:$payloadZip,payload.zip" `
-            "/out:TakeoutFix.exe" `
-            "takeoutfix\launcher\SingleFileLauncher.cs"
-
-          if (-not (Test-Path "TakeoutFix.exe")) {
-            throw "TakeoutFix.exe compilation failed."
+          $appImage = "dist-app\TakeoutFix"
+          if (-not (Test-Path "$appImage\TakeoutFix.exe")) {
+            throw "jpackage did not produce the expected TakeoutFix.exe app launcher."
           }
 
-          Remove-Item $payloadZip -Force
-
-          # 3. Authenticode Code-Signing (Sets Publisher identity and DigiCert timestamp)
-          if ($env:SIGNING_CERT_B64 -and $env:SIGNING_CERT_B64 -ne '') {
-            Write-Host "Signing TakeoutFix.exe with Authenticode via secret PFX..."
+          # Sign the actual application launcher before packaging when a trusted
+          # publisher certificate is configured. Never modify Mark-of-the-Web,
+          # compatibility flags, or timestamps to evade SmartScreen.
+          if ($env:SIGNING_CERT_B64) {
             $certBytes = [Convert]::FromBase64String($env:SIGNING_CERT_B64)
             $pfxPath = Join-Path $env:TEMP "takeoutfix_sign.pfx"
             [IO.File]::WriteAllBytes($pfxPath, $certBytes)
             try {
-              $signtool = "${env:ProgramFiles(x86)}\Windows Kits\10\bin\x64\signtool.exe"
-              if (-not (Test-Path $signtool)) {
-                $signtool = (Get-ChildItem "${env:ProgramFiles(x86)}\Windows Kits" -Recurse -Filter "signtool.exe" -ErrorAction SilentlyContinue | Select-Object -First 1).FullName
-              }
-              & $signtool sign /fd SHA256 /tr http://timestamp.digicert.com /td SHA256 /f $pfxPath /p $env:SIGNING_CERT_PASSWORD "TakeoutFix.exe"
-              Write-Host "Signing complete via signtool."
+              $signtool = (Get-ChildItem "${env:ProgramFiles(x86)}\Windows Kits" -Recurse -Filter "signtool.exe" -ErrorAction Stop | Select-Object -First 1).FullName
+              & $signtool sign /fd SHA256 /tr http://timestamp.digicert.com /td SHA256 /f $pfxPath /p $env:SIGNING_CERT_PASSWORD "$appImage\TakeoutFix.exe"
+              if ($LASTEXITCODE -ne 0) { throw "Authenticode signing of TakeoutFix.exe failed." }
+              & $signtool verify /pa /v "$appImage\TakeoutFix.exe"
+              if ($LASTEXITCODE -ne 0) { throw "Authenticode verification of TakeoutFix.exe failed." }
             } finally {
               Remove-Item $pfxPath -Force -ErrorAction SilentlyContinue
             }
           } else {
-            Write-Host "SIGNING_CERT_B64 secret not set — skipping code signing (build will remain unsigned to avoid self-signed ML trojan false positives)."
+            Write-Warning "No trusted signing certificate configured. Windows downloads may still show SmartScreen reputation warnings."
           }
 
-          Write-Host "Done. Standalone direct runnable TakeoutFix.exe ready."
+          # Portable distribution: retain the complete jpackage app-image directory.
+          Compress-Archive -Path "$appImage\*" -DestinationPath "TakeoutFix-portable.zip" -Force
 
+          # Installer is generated from the same app-image, avoiding a custom
+          # self-extracting C# bootstrapper.
+          jpackage `
+            --type msi `
+            --app-image "$appImage" `
+            --name "TakeoutFix" `
+            --vendor "TakeoutFix" `
+            --app-version "$appVer" `
+            --win-menu `
+            --win-shortcut `
+            --win-dir-chooser `
+            --dest "dist-msi" `
+            --verbose
+
+          $msi = Get-ChildItem "dist-msi" -Filter "*.msi" | Select-Object -First 1
+          if (-not $msi) { throw "jpackage did not produce an MSI installer." }
+          Copy-Item $msi.FullName "TakeoutFix.msi" -Force
+
+          # Sign the installer too. Signing does not guarantee immediate SmartScreen
+          # reputation, but provides verifiable publisher identity.
+          if ($env:SIGNING_CERT_B64) {
+            $certBytes = [Convert]::FromBase64String($env:SIGNING_CERT_B64)
+            $pfxPath = Join-Path $env:TEMP "takeoutfix_sign_msi.pfx"
+            [IO.File]::WriteAllBytes($pfxPath, $certBytes)
+            try {
+              $signtool = (Get-ChildItem "${env:ProgramFiles(x86)}\Windows Kits" -Recurse -Filter "signtool.exe" -ErrorAction Stop | Select-Object -First 1).FullName
+              & $signtool sign /fd SHA256 /tr http://timestamp.digicert.com /td SHA256 /f $pfxPath /p $env:SIGNING_CERT_PASSWORD "TakeoutFix.msi"
+              if ($LASTEXITCODE -ne 0) { throw "Authenticode signing of TakeoutFix.msi failed." }
+              & $signtool verify /pa /v "TakeoutFix.msi"
+              if ($LASTEXITCODE -ne 0) { throw "Authenticode verification of TakeoutFix.msi failed." }
+            } finally {
+              Remove-Item $pfxPath -Force -ErrorAction SilentlyContinue
+            }
+          }
       # ─── macOS: Standalone DMG with Gatekeeper-compatible signing ───
       - name: Package Java macOS (.dmg)
         if: matrix.os == 'macos-latest'
@@ -222,7 +241,7 @@ jobs:
 
       # ─── Linux: AppImage, DEB Package & Portable Archive ───
       - name: Package Java Linux (.AppImage & .deb)
-        if: matrix.os == 'ubuntu-latest'
+        if: matrix.os == 'ubuntu-22.04'
         run: |
           APP_VER="${{ steps.version.outputs.version }}"
 
@@ -243,7 +262,20 @@ jobs:
             --vendor "TakeoutFix" \
             --verbose
 
-          # 2. Build standalone AppImage using appimagetool
+          # 2. Smoke-test the actual jpackage application image under a virtual display.
+          # This catches missing JavaFX/native libraries and startup exceptions before release.
+          sudo apt-get install -y --no-install-recommends xvfb
+          set +e
+          xvfb-run -a timeout --signal=TERM 25s dist-linux/TakeoutFix/bin/TakeoutFix > takeoutfix-linux-startup.log 2>&1
+          startup_status=$?
+          set -e
+          cat takeoutfix-linux-startup.log
+          if [ "$startup_status" -ne 124 ] && [ "$startup_status" -ne 0 ]; then
+            echo "TakeoutFix exited during Linux GUI startup (status $startup_status)."
+            exit "$startup_status"
+          fi
+
+          # 3. Build standalone AppImage using appimagetool
           rm -rf AppDir
           mkdir -p AppDir/usr AppDir/usr/share/icons/hicolor/256x256/apps AppDir/usr/share/applications
           cp -r dist-linux/TakeoutFix/* AppDir/usr/
