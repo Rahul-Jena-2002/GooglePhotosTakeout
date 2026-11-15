@@ -1,0 +1,202 @@
+---
+export const prerender = true;
+import Layout from "../../layouts/Layout.astro";
+import Icon from "../../components/ui/Icon.astro";
+
+const articleSchema = {
+  "@context": "https://schema.org",
+  "@type": "TechArticle",
+  headline: "How to Fix Wrong Dates on Google Takeout Photos",
+  description: "Understand Google Takeout JSON sidecars, the photo capture-time field, EXIF metadata, and safe ways to check restored dates.",
+  author: {
+    "@type": "Person",
+    name: "Rahul Jena",
+    url: "https://rahuljena.is-a.dev/"
+  },
+  publisher: {
+    "@type": "Organization",
+    name: "TakeoutFix",
+    url: "https://takeoutfix.pages.dev"
+  },
+  datePublished: "2026-11-15",
+  dateModified: "2026-11-15",
+  mainEntityOfPage: "https://takeoutfix.pages.dev/guides/fix-google-takeout-photo-dates"
+};
+---
+
+<Layout
+  title="Fix Wrong Dates on Google Takeout Photos | TakeoutFix"
+  description="Google Takeout photos showing the wrong date? Learn how JSON sidecars store capture times, how EXIF dates work, and how to check restored photos safely."
+>
+  <script type="application/ld+json" set:html={JSON.stringify(articleSchema)} />
+
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 mt-12 font-sans text-zinc-300">
+    <header class="max-w-4xl mb-12">
+      <nav aria-label="Breadcrumb" class="flex flex-wrap items-center gap-2 text-xs text-zinc-500 font-mono mb-5">
+        <a href="/" class="hover:text-zinc-300">Home</a><span>/</span>
+        <a href="/guides" class="hover:text-zinc-300">Guides</a><span>/</span>
+        <span class="text-zinc-400">Fix photo dates</span>
+      </nav>
+      <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-indigo-500 dark:text-indigo-400 text-xs font-semibold uppercase tracking-wider mb-4 font-mono">
+        <Icon name="calendar-clock" class="w-3.5 h-3.5" /> Photo date troubleshooting
+      </div>
+      <h1 class="text-3xl sm:text-4xl md:text-5xl font-extrabold tracking-tight text-zinc-900 dark:text-white mb-5 leading-tight">
+        How to Fix Wrong Dates on Google Takeout Photos
+      </h1>
+      <p class="text-lg leading-relaxed text-zinc-600 dark:text-zinc-300">
+        If photos from a Google Takeout download appear under the wrong day in another app, the original capture time may still be present in the photo's JSON sidecar. This guide explains how to inspect that information, understand the date fields, and verify a restored copy without risking your original archive.
+      </p>
+      <div class="flex flex-wrap gap-3 text-xs text-zinc-500 mt-5 pb-6 border-b border-zinc-200 dark:border-zinc-800">
+        <span>By <strong>Rahul Jena</strong></span><span>Updated November 15, 2026</span><span>About 7 min read</span>
+      </div>
+    </header>
+
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-10">
+      <article class="lg:col-span-8 space-y-10 text-base leading-relaxed">
+        <section class="rounded-2xl border border-indigo-500/20 bg-indigo-500/5 p-6">
+          <h2 class="text-lg font-bold text-zinc-900 dark:text-white mb-2">Quick explanation</h2>
+          <p class="text-sm text-zinc-600 dark:text-zinc-300">
+            A photo can have an embedded EXIF capture date, a filesystem date assigned by your computer, and a separate date stored in a Google Takeout JSON file. These values can differ. TakeoutFix's documented JPEG restoration path maps <code>photoTakenTime.timestamp</code> to the EXIF <code>DateTimeOriginal</code> field. It cannot restore a capture date that is absent from both the photo and its available sidecar.
+          </p>
+        </section>
+
+        <section id="why-date-wrong" class="space-y-4">
+          <h2 class="text-2xl font-bold text-zinc-900 dark:text-white">1. Why do photo dates change after downloading?</h2>
+          <p class="text-zinc-600 dark:text-zinc-300">
+            There is more than one meaning of “file date.” The capture date describes when the camera took the picture. A filesystem creation or modification date describes when a file was created, copied, extracted, or changed on a particular storage device. An image viewer may display one of these values rather than another.
+          </p>
+          <p class="text-zinc-600 dark:text-zinc-300">
+            When an archive is extracted, the operating system may assign new filesystem timestamps. That does not automatically mean the original capture time has been erased. Check the embedded metadata and any matching JSON sidecar before deciding what is missing.
+          </p>
+        </section>
+
+        <section id="find-sidecar" class="space-y-4">
+          <h2 class="text-2xl font-bold text-zinc-900 dark:text-white">2. Find the matching JSON sidecar</h2>
+          <p class="text-zinc-600 dark:text-zinc-300">
+            Look in the extracted Takeout folder for a JSON file associated with the photo. A simple example might look like this:
+          </p>
+          <div class="rounded-xl bg-zinc-950 border border-zinc-800 p-5 font-mono text-sm text-zinc-300 space-y-2">
+            <div class="text-zinc-500">Example only — filenames vary</div>
+            <div>IMG_1234.jpg</div>
+            <div class="text-indigo-300">IMG_1234.jpg.json</div>
+          </div>
+          <p class="text-zinc-600 dark:text-zinc-300">
+            Do not assume every sidecar follows this exact pattern. Takeout exports can include edited copies, duplicate-name suffixes, and files in different folders. TakeoutFix uses filename and directory context when looking for matches; its matching logic also has a deeper pass for some unmatched JPEGs. Keep the folder structure intact while you investigate.
+          </p>
+        </section>
+
+        <section id="inspect-date" class="space-y-4">
+          <h2 class="text-2xl font-bold text-zinc-900 dark:text-white">3. Check the capture-time field</h2>
+          <p class="text-zinc-600 dark:text-zinc-300">
+            Open a matching JSON file in a text editor and look for <code>photoTakenTime</code>. When present, its <code>timestamp</code> value represents the date and time that the restoration logic can map to the photo's EXIF capture-date field.
+          </p>
+          <div class="rounded-xl bg-zinc-950 border border-zinc-800 p-5 overflow-x-auto">
+            <pre class="text-xs sm:text-sm text-zinc-300"><code>{
+  "photoTakenTime": {
+    "timestamp": "…",
+    "formatted": "…"
+  }
+}</code></pre>
+          </div>
+          <p class="text-zinc-600 dark:text-zinc-300">
+            The ellipses above are placeholders, not real timestamp data. Your file may use a different value, omit the object, or contain other fields. Do not copy a timestamp from an online example into your own photo.
+          </p>
+        </section>
+
+        <section id="understand-exif" class="space-y-4">
+          <h2 class="text-2xl font-bold text-zinc-900 dark:text-white">4. Which date does the restoration write?</h2>
+          <p class="text-zinc-600 dark:text-zinc-300">
+            EXIF metadata can contain several date tags. TakeoutFix's documented JPEG EXIF mapping uses the following relationship:
+          </p>
+          <div class="overflow-x-auto rounded-xl border border-zinc-200 dark:border-zinc-800">
+            <table class="w-full text-sm text-left">
+              <thead class="bg-zinc-100 dark:bg-zinc-900 text-zinc-900 dark:text-white">
+                <tr><th class="p-3">Google Takeout sidecar</th><th class="p-3">JPEG EXIF field</th></tr>
+              </thead>
+              <tbody class="text-zinc-600 dark:text-zinc-300">
+                <tr class="border-t border-zinc-200 dark:border-zinc-800"><td class="p-3 font-mono">photoTakenTime.timestamp</td><td class="p-3 font-mono">DateTimeOriginal</td></tr>
+                <tr class="border-t border-zinc-200 dark:border-zinc-800"><td class="p-3 font-mono">geoData.latitude / longitude</td><td class="p-3 font-mono">GPSLatitude / GPSLongitude</td></tr>
+                <tr class="border-t border-zinc-200 dark:border-zinc-800"><td class="p-3 font-mono">geoData.altitude</td><td class="p-3 font-mono">GPSAltitude</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <p class="text-zinc-600 dark:text-zinc-300">
+            This table describes the documented JPEG EXIF restoration path; it is not a promise that every media format supports every tag. The information must also exist in the sidecar for it to be restored.
+          </p>
+        </section>
+
+        <section id="restore-safely" class="space-y-4">
+          <h2 class="text-2xl font-bold text-zinc-900 dark:text-white">5. Restore and verify a small sample first</h2>
+          <ol class="list-decimal pl-6 space-y-3 text-zinc-600 dark:text-zinc-300">
+            <li>Keep the original Takeout archive and extracted folder unchanged.</li>
+            <li>Choose a small sample of photos with their likely matching JSON files.</li>
+            <li>Run the browser tool on the sample and save the output to a separate folder.</li>
+            <li>Inspect the output's EXIF capture date with a metadata viewer or a tool such as ExifTool.</li>
+            <li>Open the sample in the photo app where you noticed the incorrect dates. Confirm that its timeline now behaves as expected.</li>
+            <li>Only then consider processing the rest of the archive.</li>
+          </ol>
+          <p class="text-zinc-600 dark:text-zinc-300">
+            A metadata viewer and a photo library app may display different date fields. Verify the actual EXIF tag as well as the date shown in your destination app.
+          </p>
+        </section>
+
+        <section id="when-no-date" class="space-y-4">
+          <h2 class="text-2xl font-bold text-zinc-900 dark:text-white">6. What if the JSON file has no capture date?</h2>
+          <p class="text-zinc-600 dark:text-zinc-300">
+            First check whether the photo already contains an EXIF capture date. If neither the photo nor its matching sidecar contains the original capture time, a restoration tool cannot reliably infer it. A filesystem timestamp may provide a clue, but it is not proof of when the camera took the picture.
+          </p>
+          <p class="text-zinc-600 dark:text-zinc-300">
+            Also check that you have not paired a photo with the JSON file for a similarly named edited copy. Keep both files and their folder context until you can confirm the match.
+          </p>
+        </section>
+
+        <section id="faq" class="space-y-5">
+          <h2 class="text-2xl font-bold text-zinc-900 dark:text-white">Frequently asked questions</h2>
+          <div>
+            <h3 class="font-bold text-zinc-900 dark:text-white mb-2">Does changing the file's creation date fix the photo's capture date?</h3>
+            <p class="text-sm text-zinc-600 dark:text-zinc-300">Not necessarily. Filesystem timestamps and embedded EXIF capture dates are different metadata. Photo apps choose which value to display.</p>
+          </div>
+          <div>
+            <h3 class="font-bold text-zinc-900 dark:text-white mb-2">Can a missing capture date be recreated?</h3>
+            <p class="text-sm text-zinc-600 dark:text-zinc-300">Only if another reliable source still contains it. If the date is absent from both the media and its sidecar, it cannot be recovered with certainty by metadata restoration alone.</p>
+          </div>
+          <div>
+            <h3 class="font-bold text-zinc-900 dark:text-white mb-2">Will this change the visible image?</h3>
+            <p class="text-sm text-zinc-600 dark:text-zinc-300">The JPEG restoration path updates metadata rather than intentionally editing the visible picture. Always keep an untouched backup and verify your own output.</p>
+          </div>
+        </section>
+
+        <section class="bg-zinc-50 dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-8 shadow-sm">
+          <h2 class="text-xl font-bold text-zinc-900 dark:text-white mb-3">Ready to check your Takeout photos?</h2>
+          <p class="text-sm text-zinc-600 dark:text-zinc-400 mb-5">Start with a small sample, keep your originals, and review the restored metadata before moving your full library.</p>
+          <div class="flex flex-wrap gap-3">
+            <a href="/tool" class="inline-flex items-center gap-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-sm px-5 py-3 transition-colors">Open the browser tool <Icon name="arrow-right" class="w-4 h-4" /></a>
+            <a href="/guides/google-takeout-json-metadata-explained" class="inline-flex items-center gap-2 rounded-xl border border-zinc-300 dark:border-zinc-700 text-zinc-700 dark:text-zinc-200 font-semibold text-sm px-5 py-3 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors">Understand JSON sidecars</a>
+          </div>
+        </section>
+      </article>
+
+      <aside class="lg:col-span-4 space-y-6">
+        <div class="sticky top-28 space-y-6">
+          <div class="rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900/50 p-6">
+            <h2 class="text-sm font-bold uppercase tracking-wider text-zinc-900 dark:text-white mb-4">On this page</h2>
+            <nav class="space-y-2 text-sm text-zinc-600 dark:text-zinc-400">
+              <a class="block hover:text-indigo-500" href="#why-date-wrong">Why dates look wrong</a>
+              <a class="block hover:text-indigo-500" href="#find-sidecar">Find the JSON sidecar</a>
+              <a class="block hover:text-indigo-500" href="#inspect-date">Check the capture time</a>
+              <a class="block hover:text-indigo-500" href="#understand-exif">Understand EXIF dates</a>
+              <a class="block hover:text-indigo-500" href="#restore-safely">Restore a sample</a>
+              <a class="block hover:text-indigo-500" href="#when-no-date">When no date is available</a>
+              <a class="block hover:text-indigo-500" href="#faq">FAQs</a>
+            </nav>
+          </div>
+          <div class="rounded-2xl border border-zinc-200 dark:border-zinc-800 p-6">
+            <h2 class="text-sm font-bold text-zinc-900 dark:text-white mb-2">Related reading</h2>
+            <a href="/guides/google-takeout-common-errors-fix" class="block text-sm text-indigo-600 dark:text-indigo-400 hover:underline mb-3">Troubleshoot common Takeout problems</a>
+            <a href="/guides/how-to-save-takeout-photos-to-hard-drive-nas-cloud" class="block text-sm text-indigo-600 dark:text-indigo-400 hover:underline">Keep a safe backup of your archive</a>
+          </div>
+        </div>
+      </aside>
+    </div>
+  </div>
+</Layout>
