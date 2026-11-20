@@ -186,6 +186,7 @@ export async function fetchAllMonetizationData(forceRefresh = false): Promise<Ca
       ]);
 
       // 1. Global Settings
+      if (globalSnapRes.status === "rejected") throw globalSnapRes.reason;
       if (globalSnapRes.status === "fulfilled" && globalSnapRes.value.exists()) {
         cache.globalSettings = { ...DEFAULT_GLOBAL_SETTINGS, ...globalSnapRes.value.data() } as MonetizationGlobalSettings;
       } else {
@@ -270,8 +271,8 @@ export async function fetchAllMonetizationData(forceRefresh = false): Promise<Ca
       cache.lastLoaded = Date.now();
       saveToPersistentStorage(cache);
     } catch (err) {
-      console.warn("[MonetizationEngine] Falling back to default data due to fetch error:", err);
-      cache.globalSettings = { ...DEFAULT_GLOBAL_SETTINGS };
+      console.warn("[MonetizationEngine] Ads unavailable because settings could not be loaded:", err);
+      cache.globalSettings = { ...DEFAULT_GLOBAL_SETTINGS, enabled: false };
       cache.placements.clear();
       DEFAULT_PLACEMENTS.forEach((p) => cache.placements.set(p.code, p));
       cache.configs.clear();

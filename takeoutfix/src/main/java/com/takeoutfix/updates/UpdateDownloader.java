@@ -7,12 +7,12 @@ import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.Duration;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.function.Consumer;
 
 /**
  * Downloads OTA update packages in the background with progress reporting and cancellation.
@@ -27,14 +27,13 @@ public class UpdateDownloader {
 
     public CompletableFuture<File> downloadAsync(String downloadUrl, String fileName, DownloadProgressListener listener) {
         return CompletableFuture.supplyAsync(() -> {
+            Path destination = null;
             try {
                 isCancelled.set(false);
                 Path updatesDir = Paths.get(System.getProperty("user.home"), ".takeoutfix", "updates");
                 if (!java.nio.file.Files.exists(updatesDir)) {
                     java.nio.file.Files.createDirectories(updatesDir);
                 }
-
-                File destinationFile = updatesDir.resolve(fileName).toFile();
 
                 HttpClient client = HttpClient.newBuilder()
                         .connectTimeout(Duration.ofSeconds(15))
@@ -49,41 +48,60 @@ public class UpdateDownloader {
 
                 HttpResponse<InputStream> response = client.send(request, HttpResponse.BodyHandlers.ofInputStream());
                 if (response.statusCode() != 200) {
+                    response.body().close();
                     throw new RuntimeException("Download failed with HTTP " + response.statusCode());
                 }
 
                 long contentLength = response.headers().firstValueAsLong("Content-Length").orElse(-1L);
                 long startTime = System.currentTimeMillis();
 
-                try (InputStream in = response.body();
-                     FileOutputStream out = new FileOutputStream(destinationFile)) {
-                    byte[] buffer = new byte[32768];
-                    long totalRead = 0;
-                    int read;
+                try (InputStream in = response.body()) {
+                    destination = createDestination(updatesDir, fileName);
+                    try (FileOutputStream out = new FileOutputStream(destination.toFile())) {
+                        byte[] buffer = new byte[32768];
+                        long totalRead = 0;
+                        int read;
 
-                    while ((read = in.read(buffer)) != -1) {
-                        if (isCancelled.get()) {
-                            destinationFile.delete();
-                            throw new RuntimeException("Download cancelled by user");
+                        while ((read = in.read(buffer)) != -1) {
+                            if (isCancelled.get()) {
+                                throw new RuntimeException("Download cancelled by user");
+                            }
+
+                            out.write(buffer, 0, read);
+                            totalRead += read;
+
+                            if (listener != null) {
+                                double pct = contentLength > 0 ? (double) totalRead / contentLength : -1.0;
+                                long elapsed = Math.max(1, System.currentTimeMillis() - startTime);
+                                double mbPerSec = (totalRead / (1024.0 * 1024.0)) / (elapsed / 1000.0);
+                                listener.onProgress(totalRead, contentLength, pct, mbPerSec);
+                            }
                         }
-
-                        out.write(buffer, 0, read);
-                        totalRead += read;
-
-                        if (listener != null) {
-                            double pct = contentLength > 0 ? (double) totalRead / contentLength : -1.0;
-                            long elapsed = Math.max(1, System.currentTimeMillis() - startTime);
-                            double mbPerSec = (totalRead / (1024.0 * 1024.0)) / (elapsed / 1000.0);
-                            listener.onProgress(totalRead, contentLength, pct, mbPerSec);
+                        if (isCancelled.get() || (contentLength >= 0 && totalRead != contentLength)) {
+                            throw new RuntimeException("Download cancelled or incomplete");
                         }
                     }
                 }
 
-                return destinationFile;
+                return destination.toFile();
             } catch (Exception e) {
+                if (destination != null) {
+                    try {
+                        Files.deleteIfExists(destination);
+                    } catch (Exception cleanupError) {
+                        e.addSuppressed(cleanupError);
+                    }
+                }
                 throw new RuntimeException("Error during OTA update download: " + e.getMessage(), e);
             }
         });
+    }
+
+    static Path createDestination(Path updatesDir, String fileName) throws java.io.IOException {
+        if (fileName == null || !fileName.matches("[A-Za-z0-9._-]{1,160}") || fileName.equals(".") || fileName.equals("..")) {
+            throw new IllegalArgumentException("Invalid update filename");
+        }
+        return Files.createTempFile(updatesDir, "update-", "-" + fileName);
     }
 
     public void cancel() {

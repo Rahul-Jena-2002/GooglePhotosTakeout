@@ -49,7 +49,7 @@ export default function AdUnit({
   return (
     <Monetization
       placement={resolvedPlacement}
-      layout={type}
+      layout={type === "sponsor" ? "auto" : type}
       className={className}
     />
   );

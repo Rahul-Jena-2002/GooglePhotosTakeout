@@ -37,6 +37,7 @@ public class FxSignInDialog extends Stage {
     private final UserSyncBridgeService userService;
     private final Consumer<Boolean> onAuthComplete;
     private final CredentialStore credentialStore = new CredentialStore();
+    private CompletableFuture<AuthSession> googleSignIn;
 
     // Inputs
     private final TextField emailField = new TextField();
@@ -44,7 +45,7 @@ public class FxSignInDialog extends Stage {
     private final Button btnSignIn = new Button("Sign In");
     private final Button btnGoogleSignIn = new Button("Continue with Google");
     private final Hyperlink forgotLink = new Hyperlink("Forgot?");
-    private final Hyperlink manualCodeLink = new Hyperlink("Trouble connecting? Paste code manually");
+    private final Hyperlink manualCodeLink = new Hyperlink("Trouble connecting? Use an ID token");
 
     // Status feedback
     private final Label statusLabel = new Label();
@@ -60,6 +61,9 @@ public class FxSignInDialog extends Stage {
         setTitle("TakeoutFix — Sign In");
         setResizable(false);
         applyWindowIcons();
+        setOnHidden(event -> {
+            if (googleSignIn != null) googleSignIn.cancel(false);
+        });
 
         VBox root = new VBox(0);
         root.setAlignment(Pos.TOP_CENTER);
@@ -239,7 +243,7 @@ public class FxSignInDialog extends Stage {
 
     private void handleEmailSignIn() {
         String email = emailField.getText() != null ? emailField.getText().trim() : "";
-        String password = passwordField.getText() != null ? passwordField.getText().trim() : "";
+        String password = passwordField.getText() != null ? passwordField.getText() : "";
 
         if (email.isEmpty() || password.isEmpty()) {
             showError("Please enter both email and password.");
@@ -255,6 +259,7 @@ public class FxSignInDialog extends Stage {
                 throw new java.util.concurrent.CompletionException(ex);
             }
         }).whenComplete((session, error) -> Platform.runLater(() -> {
+            if (!isShowing()) return;
             setLoading(false, "");
             if (error != null) {
                 Throwable cause = error.getCause() != null ? error.getCause() : error;
@@ -269,14 +274,23 @@ public class FxSignInDialog extends Stage {
 
     private void handleGoogleSignIn() {
         setLoading(true, "Opening browser for Google authentication...");
+        AuthSession previousSession = userService.getSessionManager().getCurrentSession();
 
-        userService.getGoogleAuthService().authenticate().whenComplete((session, error) -> Platform.runLater(() -> {
+        googleSignIn = userService.getGoogleAuthService().authenticate(false);
+        googleSignIn.whenComplete((session, error) -> Platform.runLater(() -> {
+            if (!isShowing()) return;
+            toFront();
+            requestFocus();
             setLoading(false, "");
             if (error != null) {
                 Throwable cause = error.getCause() != null ? error.getCause() : error;
                 showError("Google authentication was cancelled or failed: " + cause.getMessage());
             } else if (session != null && session.isAuthenticated()) {
-                saveAndCompleteAuth(session);
+                if (userService.getSessionManager().getCurrentSession() != previousSession) {
+                    showError("Your sign-in session changed. Please try again.");
+                } else {
+                    saveAndCompleteAuth(session);
+                }
             } else {
                 showError("Google Sign-In failed.");
             }
@@ -313,14 +327,14 @@ public class FxSignInDialog extends Stage {
     private void handleManualToken() {
         TextInputDialog dialog = new TextInputDialog();
         dialog.initOwner(this);
-        dialog.setTitle("Enterprise Login — Manual Code");
-        dialog.setHeaderText("Paste the authorization code or URL from your browser:");
-        dialog.setContentText("Code / URL:");
+        dialog.setTitle("Manual Sign-In");
+        dialog.setHeaderText("Paste a Firebase ID token. Treat it like a password.");
+        dialog.setContentText("ID token:");
 
         var result = dialog.showAndWait();
         if (result.isPresent() && !result.get().trim().isEmpty()) {
             String input = result.get().trim();
-            setLoading(true, "Verifying authorization code...");
+            setLoading(true, "Verifying ID token...");
 
             CompletableFuture.<AuthSession>supplyAsync(() -> {
                 try {
@@ -337,22 +351,31 @@ public class FxSignInDialog extends Stage {
                     throw new java.util.concurrent.CompletionException(ex);
                 }
             }).whenComplete((session, error) -> Platform.runLater(() -> {
+                if (!isShowing()) return;
                 setLoading(false, "");
                 if (error != null) {
-                    showError("Invalid code or URL. Please verify.");
+                    showError("The ID token could not be verified. Please sign in again.");
                 } else if (session != null && session.isAuthenticated()) {
                     saveAndCompleteAuth(session);
+                } else {
+                    showError("The ID token could not be verified. Please sign in again.");
                 }
             }));
         }
     }
 
     private void saveAndCompleteAuth(AuthSession session) {
-        credentialStore.saveSession(session);
-        if (userService != null) {
-            userService.getSessionManager().save(session);
-            UserController.syncUser(session.toMap());
-            userService.triggerCloudSync(null);
+        try {
+            if (userService != null) {
+                userService.getSessionManager().save(session);
+                UserController.syncUser(session.toMap());
+                userService.triggerCloudSync(null);
+            } else {
+                credentialStore.saveSession(session);
+            }
+        } catch (IllegalStateException error) {
+            showError("Could not save sign-in information on this device. Check device storage and try again.");
+            return;
         }
         close();
         if (onAuthComplete != null) {

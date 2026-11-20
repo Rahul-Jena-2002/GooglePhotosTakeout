@@ -4,13 +4,14 @@ import { db } from "../../firebase"
 import { Chart } from "../../components/ui/chart"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "../../components/ui/card"
 import { BarChart3, Users, RefreshCw } from "lucide-react"
+import { accountGrowth, dailyRecoveries } from "./statisticsDates"
 
 // Helper to format bytes to human-readable size
 const formatBytes = (bytes: number) => {
   if (bytes === 0) return '0 B'
   const k = 1024
   const sizes = ['B', 'KB', 'MB', 'GB', 'TB']
-  const i = Math.floor(Math.log(bytes) / Math.log(k))
+  const i = Math.max(0, Math.min(sizes.length - 1, Math.floor(Math.log(bytes) / Math.log(k))))
   return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i]
 }
 
@@ -50,87 +51,33 @@ export default function AdminStatistics() {
 
   // --- Calculations ---
 
-  // 1. Conversion Rate
-  const paidCount = users.filter(u => u.plan && u.plan !== 'free').length
+  // 1. Account records
   const totalUsers = users.length
-  const conversionRate = totalUsers ? (paidCount / totalUsers) * 100 : 0
 
   // 2. Average Scan Size
-  const totalBytes = recoveries.reduce((acc, rec) => acc + (rec.bytesProcessed || 0), 0)
-  const avgBytes = recoveries.length ? totalBytes / recoveries.length : 0
-  const avgScanSizeStr = avgBytes ? formatBytes(avgBytes) : "12.06 GB" // Fallback to baseline size
+  const sizes = recoveries.map(rec => rec.bytesProcessed).filter(bytes => typeof bytes === 'number' && Number.isSafeInteger(bytes) && bytes >= 0)
+  const avgBytes = sizes.length ? sizes.reduce((sum, bytes) => sum + bytes, 0) / sizes.length : 0
+  const avgScanSizeStr = sizes.length ? formatBytes(avgBytes) : "—"
 
   // 3. JSON Exif Match Rate
-  const matchRate = globalStats?.filesScanned 
-    ? (globalStats.filesRestored / globalStats.filesScanned) * 100 
-    : 99.9
+  const matchRate = Number.isSafeInteger(globalStats?.filesScanned) && globalStats.filesScanned > 0
+    && Number.isSafeInteger(globalStats?.filesRestored) && globalStats.filesRestored >= 0
+    ? (globalStats.filesRestored / globalStats.filesScanned) * 100
+    : null
 
   // 4. Total Files Injected
-  const totalFiles = globalStats?.filesRestored || 4115
+  const totalFiles = globalStats?.filesRestored
 
   // 5. Aggregate Cards Data
   const statsSummary = [
-    { label: "Conversion Rate", val: `${conversionRate.toFixed(2)}%`, desc: `${paidCount} paid out of ${totalUsers} accounts` },
-    { label: "Avg. Scan Size", val: avgScanSizeStr, desc: "Average folder volume processed" },
-    { label: "JSON Exif Match Rate", val: `${matchRate.toFixed(1)}%`, desc: "Metadata matching ratio" },
-    { label: "Total Files Injected", val: totalFiles.toLocaleString(), desc: "EXIF headers rewritten" },
+    { label: "Account Records", val: totalUsers.toLocaleString(), desc: "Accounts in the loaded records" },
+    { label: "Avg. Reported Size", val: avgScanSizeStr, desc: "Average of records with a valid byte count" },
+    { label: "Reported Match Rate", val: matchRate != null ? `${matchRate.toFixed(1)}%` : "—", desc: "Client-reported totals; not independently verified" },
+    { label: "Reported Files Restored", val: totalFiles != null ? totalFiles.toLocaleString() : "—", desc: "Client-reported total; not independently verified" },
   ]
 
-  // 6. recoveriesData Chart Data
-  const weekdays = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
-  const dayMap: Record<string, number> = {}
-  const last7Days: string[] = []
-  
-  for (let i = 6; i >= 0; i--) {
-    const d = new Date()
-    d.setDate(d.getDate() - i)
-    const label = weekdays[d.getDay()]
-    dayMap[label] = 0
-    last7Days.push(label)
-  }
-
-
-
-  recoveries.forEach(rec => {
-    if (rec.timestamp) {
-      const date = new Date(rec.timestamp)
-      const label = weekdays[date.getDay()]
-      if (dayMap[label] !== undefined) {
-        dayMap[label] += 1
-      }
-    }
-  })
-
-  const recoveriesChartData = last7Days.map(label => ({
-    label,
-    value: dayMap[label]
-  }))
-
-  // 7. userGrowthData Chart Data
-  const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
-  const currentMonthIdx = new Date().getMonth()
-  
-  const monthlyCounts = Array.from({ length: 6 }).map((_, i) => {
-    const mIdx = (currentMonthIdx - 5 + i + 12) % 12
-    return { label: months[mIdx], value: 0 }
-  })
-
-  users.forEach(u => {
-    const date = u.createdAt ? new Date(u.createdAt) : new Date("2026-06-08")
-    const monthLabel = months[date.getMonth()]
-    const item = monthlyCounts.find(c => c.label === monthLabel)
-    if (item) {
-      item.value += 1
-    }
-  })
-
-
-
-  let cumulative = 0
-  const userGrowthChartData = monthlyCounts.map(item => {
-    cumulative += item.value
-    return { label: item.label, value: cumulative }
-  })
+  const recoveriesChartData = dailyRecoveries(recoveries)
+  const userGrowthChartData = accountGrowth(users)
 
   return (
     <div className="space-y-8 font-sans text-zinc-100">
@@ -169,7 +116,7 @@ export default function AdminStatistics() {
             <CardTitle className="text-sm font-semibold text-zinc-200 flex items-center gap-2">
               <RefreshCw className="w-4 h-4 text-emerald-400" /> Recoveries (Daily)
             </CardTitle>
-            <CardDescription className="text-zinc-500 text-xs">Total directory scans processed by the client worker engine.</CardDescription>
+            <CardDescription className="text-zinc-500 text-xs">Client-reported recovery records from the last seven days.</CardDescription>
           </CardHeader>
           <CardContent className="p-5 pt-0 flex-grow">
             <Chart data={recoveriesChartData} color="emerald" suffix=" scans" height={180} />
@@ -182,7 +129,7 @@ export default function AdminStatistics() {
             <CardTitle className="text-sm font-semibold text-zinc-200 flex items-center gap-2">
               <Users className="w-4 h-4 text-indigo-400" /> Registered Accounts
             </CardTitle>
-            <CardDescription className="text-zinc-500 text-xs">Growth trajectory of Google accounts registered on sign-in.</CardDescription>
+            <CardDescription className="text-zinc-500 text-xs">Account records by creation date. Records without a valid date are omitted.</CardDescription>
           </CardHeader>
           <CardContent className="p-5 pt-0 flex-grow">
             <Chart data={userGrowthChartData} color="indigo" suffix=" users" height={180} />

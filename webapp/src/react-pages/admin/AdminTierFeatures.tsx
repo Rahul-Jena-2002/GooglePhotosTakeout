@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react"
+import { isEmulatorDevelopment, isVerifiedSuperAdmin } from "../../lib/adminAuth"
 import { doc, setDoc, onSnapshot, addDoc, collection } from "firebase/firestore"
 import { db } from "../../firebase"
 import { useAuth, type FeatureItem, type FeaturesConfig, DEFAULT_FEATURES_CONFIG, type ComparisonRow, DEFAULT_COMPARISON_ROWS, resolveComparisonRowValues } from "../../contexts/AuthContext"
@@ -8,11 +9,11 @@ import { Button } from "../../components/ui/button"
 import { Shield, Settings, Save, Plus, Trash2 } from "lucide-react"
 
 export default function AdminTierFeatures() {
-  const { user, adminData, loading: authLoading, tierThresholds, telemetryAccuracy, platformStats, refreshConfig } = useAuth()
-  const isSuperAdminEmail = (user?.email || adminData?.email) === 'rahuljena.dev@gmail.com'
-  const role = isSuperAdminEmail ? "SUPER_ADMIN" : (adminData?.role ?? "ADMIN")
+  const { user, adminData, loading: authLoading, tierThresholds, telemetryAccuracy, refreshConfig } = useAuth()
+  const isSuperAdminEmail = isVerifiedSuperAdmin(user)
+  const role = isSuperAdminEmail ? "SUPER_ADMIN" : adminData?.role
   const isSuperAdmin = role === "SUPER_ADMIN" || isSuperAdminEmail
-  const isDev = import.meta.env.DEV
+  const isDev = isEmulatorDevelopment()
   const hasAccess = isDev || isSuperAdmin || role === "ADMIN"
 
   const [saving, setSaving] = useState(false)
@@ -392,13 +393,7 @@ export default function AdminTierFeatures() {
             </CardDescription>
           </div>
           <div className="flex items-center gap-2 text-[11px] font-semibold px-3 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400 self-start sm:self-auto">
-            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-            <span>Live Telemetry: <strong>{telemetryAccuracy || "90.8%"}</strong> Recovery Accuracy</span>
-            {platformStats?.filesRestored && platformStats?.filesScanned && (
-              <span className="text-zinc-400 font-normal">
-                ({platformStats.filesRestored.toLocaleString()} / {platformStats.filesScanned.toLocaleString()} files)
-              </span>
-            )}
+            <span>Verified recovery accuracy: unavailable</span>
           </div>
         </CardHeader>
         <CardContent className="pt-6">
@@ -447,8 +442,7 @@ export default function AdminTierFeatures() {
                               className="rounded text-emerald-600 focus:ring-emerald-500 w-3 h-3 bg-zinc-950 border-zinc-800"
                             />
                             <label htmlFor={`dyn-telemetry-${idx}`} className="text-[9px] text-emerald-600 dark:text-emerald-400 cursor-pointer font-bold select-none uppercase tracking-wider flex items-center gap-1">
-                              Use dynamic telemetry ({telemetryAccuracy || "90.8%"})
-                              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                              Use dynamic telemetry ({telemetryAccuracy || "unavailable"})
                             </label>
                           </div>
                         ) : (row.featureName?.toLowerCase().includes("processing") || row.isDynamicLimit) ? (
@@ -494,7 +488,7 @@ export default function AdminTierFeatures() {
                             {isLimit ? (
                               <span className="text-indigo-600 dark:text-indigo-400">⚡ Dynamic Limit</span>
                             ) : (
-                              <span className="text-emerald-600 dark:text-emerald-400">⚡ Live Telemetry ({telemetryAccuracy})</span>
+                              <span className="text-emerald-600 dark:text-emerald-400">Telemetry unavailable</span>
                             )}
                           </div>
                         )}
@@ -524,7 +518,7 @@ export default function AdminTierFeatures() {
                             {isLimit ? (
                               <span className="text-indigo-600 dark:text-indigo-400">⚡ Dynamic Limit</span>
                             ) : (
-                              <span className="text-emerald-600 dark:text-emerald-400">⚡ Live Telemetry</span>
+                              <span className="text-emerald-600 dark:text-emerald-400">Telemetry unavailable</span>
                             )}
                           </div>
                         )}
@@ -554,7 +548,7 @@ export default function AdminTierFeatures() {
                             {isLimit ? (
                               <span className="text-indigo-600 dark:text-indigo-400">⚡ Dynamic Limit</span>
                             ) : (
-                              <span className="text-emerald-600 dark:text-emerald-400">⚡ Live Telemetry ({telemetryAccuracy})</span>
+                              <span className="text-emerald-600 dark:text-emerald-400">Telemetry unavailable</span>
                             )}
                           </div>
                         )}
@@ -584,7 +578,7 @@ export default function AdminTierFeatures() {
                             {isLimit ? (
                               <span className="text-indigo-600 dark:text-indigo-400">⚡ Dynamic Limit</span>
                             ) : (
-                              <span className="text-emerald-600 dark:text-emerald-400">⚡ Live Telemetry ({telemetryAccuracy})</span>
+                              <span className="text-emerald-600 dark:text-emerald-400">Telemetry unavailable</span>
                             )}
                           </div>
                         )}
@@ -622,7 +616,7 @@ export default function AdminTierFeatures() {
               💡 <strong>Dynamic Limit Thresholds:</strong> Automatically populates with live device and file size limits from the Plan Thresholds configuration.
             </div>
             <div>
-              📡 <strong>Dynamic Telemetry:</strong> Automatically syncs live restoration accuracy ({telemetryAccuracy || "90.8%"}) directly from real user telemetry in Firestore (<code className="text-[10px] font-mono text-zinc-400">platform_stats/global</code>). Footnote renders automatically on the pricing page.
+              <strong>Dynamic Telemetry:</strong> Recovery accuracy is unavailable until the underlying processing totals can be verified.
             </div>
           </div>
         </CardContent>

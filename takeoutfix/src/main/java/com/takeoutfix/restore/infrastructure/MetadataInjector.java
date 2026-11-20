@@ -15,6 +15,8 @@ import java.util.TimeZone;
 @Component
 public class MetadataInjector {
 
+    private static final long MAX_EXIF_EPOCH_SECONDS = 253402300799L; // End of year 9999.
+
     private NativeExifToolEngine exifToolEngine;
 
     public MetadataInjector() {
@@ -69,24 +71,22 @@ public class MetadataInjector {
 
             // 2. GPS Data (with geoDataExif fallback)
             JSONObject geo = json.optJSONObject("geoData");
-            if (geo == null || (geo.optDouble("latitude", 0.0) == 0.0 && geo.optDouble("longitude", 0.0) == 0.0)) {
+            if (!hasUsableCoordinates(geo)) {
                 if (json.has("geoDataExif") && !json.isNull("geoDataExif")) {
                     geo = json.optJSONObject("geoDataExif");
                 }
             }
-            if (geo != null) {
-                double lat = geo.optDouble("latitude", 0.0);
-                double lon = geo.optDouble("longitude", 0.0);
-                if (lat != 0.0 || lon != 0.0) {
-                    args.add("-GPSLatitude=" + Math.abs(lat));
-                    args.add("-GPSLatitudeRef=" + (lat >= 0 ? "N" : "S"));
-                    args.add("-GPSLongitude=" + Math.abs(lon));
-                    args.add("-GPSLongitudeRef=" + (lon >= 0 ? "E" : "W"));
-                    double alt = geo.optDouble("altitude", 0.0);
-                    if (alt != 0.0) {
-                        args.add("-GPSAltitude=" + Math.abs(alt));
-                        args.add("-GPSAltitudeRef=" + (alt >= 0 ? "0" : "1"));
-                    }
+            if (hasUsableCoordinates(geo)) {
+                double lat = geo.optDouble("latitude", Double.NaN);
+                double lon = geo.optDouble("longitude", Double.NaN);
+                args.add("-GPSLatitude=" + Math.abs(lat));
+                args.add("-GPSLatitudeRef=" + (lat >= 0 ? "N" : "S"));
+                args.add("-GPSLongitude=" + Math.abs(lon));
+                args.add("-GPSLongitudeRef=" + (lon >= 0 ? "E" : "W"));
+                double alt = geo.optDouble("altitude", 0.0);
+                if (Double.isFinite(alt) && alt != 0.0) {
+                    args.add("-GPSAltitude=" + Math.abs(alt));
+                    args.add("-GPSAltitudeRef=" + (alt >= 0 ? "0" : "1"));
                 }
             }
 
@@ -96,8 +96,8 @@ public class MetadataInjector {
                 if (peopleArr != null) {
                     for (int i = 0; i < peopleArr.length(); i++) {
                         JSONObject p = peopleArr.optJSONObject(i);
-                        if (p != null && p.has("name") && !p.isNull("name")) {
-                            String personName = p.getString("name").trim();
+                        if (p != null && p.opt("name") instanceof String name) {
+                            String personName = name.trim();
                             if (!personName.isEmpty()) {
                                 args.add("-XMP-iptcExt:PersonInImage+=" + personName);
                                 args.add("-XMP-dc:Subject+=" + personName);
@@ -116,8 +116,8 @@ public class MetadataInjector {
 
             // 3. Description (Media JSON description has priority; fallback to Album description)
             String desc = null;
-            if (json.has("description") && !json.isNull("description")) {
-                desc = json.getString("description").trim();
+            if (json.opt("description") instanceof String description) {
+                desc = description.trim();
             }
             if ((desc == null || desc.isEmpty()) && albumDescription != null && !albumDescription.isBlank()) {
                 desc = albumDescription.trim();
@@ -128,8 +128,8 @@ public class MetadataInjector {
             }
 
             // 4. Title
-            if (json.has("title") && !json.isNull("title")) {
-                String title = json.getString("title").trim();
+            if (json.opt("title") instanceof String rawTitle) {
+                String title = rawTitle.trim();
                 if (!title.isEmpty()) {
                     args.add("-Title=" + title);
                     args.add("-ObjectName=" + title);
@@ -147,12 +147,7 @@ public class MetadataInjector {
                 }
             }
 
-            // In-memory / native MP4 atom injector guarantee for QuickTime/MP4 videos
-            if (isVideo && timestamp > 0) {
-                Mp4AtomRestorer.injectCreationTime(mediaFile, timestamp);
-            }
-
-            if (args.size() > 2) {
+            if (args.size() > 1) {
                 args.add(mediaFile.getAbsolutePath());
                 return exifToolEngine.execute(args);
             }
@@ -211,6 +206,14 @@ public class MetadataInjector {
         return name.endsWith(".mp4") || name.endsWith(".mov") || name.endsWith(".m4v");
     }
 
+    private boolean hasUsableCoordinates(JSONObject geo) {
+        if (geo == null) return false;
+        double lat = geo.optDouble("latitude", Double.NaN);
+        double lon = geo.optDouble("longitude", Double.NaN);
+        return Double.isFinite(lat) && Double.isFinite(lon) && Math.abs(lat) <= 90 && Math.abs(lon) <= 180
+                && (lat != 0.0 || lon != 0.0);
+    }
+
     private long extractBestTimestamp(JSONObject json) {
         if (json.has("photoTakenTime") && !json.isNull("photoTakenTime")) {
             JSONObject pt = json.optJSONObject("photoTakenTime");
@@ -239,9 +242,15 @@ public class MetadataInjector {
     private long parseTimestampField(JSONObject obj) {
         if (obj.has("timestamp")) {
             Object raw = obj.get("timestamp");
-            if (raw instanceof Number num) return num.longValue();
+            if (raw instanceof Number num) {
+                double value = num.doubleValue();
+                return Double.isFinite(value) && value > 0 && value <= MAX_EXIF_EPOCH_SECONDS ? num.longValue() : 0L;
+            }
             if (raw instanceof String str) {
-                try { return Long.parseLong(str.trim()); } catch (Exception ignored) {}
+                try {
+                    long value = Long.parseLong(str.trim());
+                    return value > 0 && value <= MAX_EXIF_EPOCH_SECONDS ? value : 0L;
+                } catch (NumberFormatException ignored) {}
             }
         }
         return 0L;

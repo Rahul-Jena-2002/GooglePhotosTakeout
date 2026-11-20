@@ -1,4 +1,6 @@
-# Stack decision — do we switch off Cloudflare Pages + Firebase?
+# Historical stack decision
+
+> This document is historical and its deployment and performance claims are not current guidance. The configured Astro Cloudflare adapter uses server output; the current deployment target and production settings still need verification. Follow the [operations runbook](./operations/local-dev.md) and [webapp README](../README.md#checks-and-deployment) instead of deploying from this document.
 
 ## TL;DR
 

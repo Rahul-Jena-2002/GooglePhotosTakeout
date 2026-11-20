@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from "react";
-import { Calendar, MapPin, Tablet, Image, Sparkles, AlertCircle, CheckCircle2 } from "lucide-react";
+import { Calendar, MapPin, Image, Sparkles, AlertCircle, CheckCircle2 } from "lucide-react";
 
 export default function Compare() {
   const [sliderPosition, setSliderPosition] = useState(25); // Start at 25 for initial guide animation
@@ -32,6 +32,10 @@ export default function Compare() {
 
   useEffect(() => {
     if (!containerRef.current) return;
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      setSliderPosition(50);
+      return;
+    }
 
     let delayTimer: NodeJS.Timeout;
     let animationFrameId: number;
@@ -138,12 +142,6 @@ export default function Compare() {
             </span>
             <span className="text-red-500 font-bold text-xs uppercase tracking-wide bg-red-500/5 px-2.5 py-0.5 rounded border border-red-500/10">Missing</span>
           </div>
-          <div className="flex items-center justify-between text-sm">
-            <span className="text-zinc-500 flex items-center gap-2">
-              <Tablet className="w-4 h-4" /> Device
-            </span>
-            <span className="text-red-500 font-bold text-xs uppercase tracking-wide bg-red-500/5 px-2.5 py-0.5 rounded border border-red-500/10">Missing</span>
-          </div>
         </div>
       </div>
 
@@ -180,19 +178,27 @@ export default function Compare() {
             </span>
             <span className="text-emerald-600 dark:text-emerald-400 font-semibold">48.8584° N, 2.2945° E</span>
           </div>
-          <div className="flex items-center justify-between text-sm">
-            <span className="text-zinc-600 dark:text-zinc-400 flex items-center gap-2 font-medium">
-              <Tablet className="w-4 h-4" /> Device
-            </span>
-            <span className="text-emerald-600 dark:text-emerald-400 font-semibold">iPhone 6</span>
-          </div>
         </div>
       </div>
 
       {/* SLIDER HANDLEBAR */}
       <div 
-        className="absolute top-0 bottom-0 w-1 bg-zinc-300 dark:bg-zinc-700 cursor-ew-resize z-30"
+        className="absolute top-0 bottom-0 w-1 bg-zinc-300 dark:bg-zinc-700 cursor-ew-resize z-30 focus-visible:outline focus-visible:outline-2 focus-visible:outline-indigo-500"
         style={{ left: `${sliderPosition}%` }}
+        role="slider"
+        tabIndex={0}
+        aria-label="Compare example before and after"
+        aria-valuemin={0}
+        aria-valuemax={100}
+        aria-valuenow={Math.round(sliderPosition)}
+        aria-valuetext={`${Math.round(sliderPosition)}% before`}
+        onKeyDown={(event) => {
+          if (!['ArrowLeft', 'ArrowDown', 'ArrowRight', 'ArrowUp', 'Home', 'End'].includes(event.key)) return;
+          event.preventDefault();
+          animationCancelledRef.current = true;
+          setSliderPosition(position => event.key === 'Home' ? 0 : event.key === 'End' ? 100 :
+            Math.max(0, Math.min(100, position + (event.key === 'ArrowLeft' || event.key === 'ArrowDown' ? -5 : 5))));
+        }}
         onMouseDown={handleMouseDown}
         onTouchStart={handleMouseDown}
       >

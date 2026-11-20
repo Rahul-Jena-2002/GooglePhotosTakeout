@@ -1,6 +1,7 @@
 export const prerender = false;
 import type { APIRoute } from 'astro';
 import { env } from 'cloudflare:workers';
+import { isValidInviteId, readInviteIdentity } from '../../lib/api/inviteIdentity';
 
 type JsonRecord = Record<string, unknown>;
 
@@ -93,7 +94,7 @@ export const OPTIONS: APIRoute = async () => {
   });
 };
 
-export const POST: APIRoute = async ({ request, locals }) => {
+export const POST: APIRoute = async ({ request }) => {
   try {
     const authHeader = request.headers.get('authorization') || '';
     if (!authHeader.startsWith('Bearer ')) {
@@ -103,8 +104,8 @@ export const POST: APIRoute = async ({ request, locals }) => {
     const idToken = authHeader.split('Bearer ')[1];
     const { inviteId } = await request.json();
 
-    if (!inviteId) {
-      return json(400, { error: 'inviteId is required.' });
+    if (!isValidInviteId(inviteId)) {
+      return json(400, { error: 'Invalid invitation ID.' });
     }
 
     const runtimeEnv = env as any;
@@ -112,7 +113,7 @@ export const POST: APIRoute = async ({ request, locals }) => {
       (env as any)?.FIREBASE_SERVICE_ACCOUNT ||
       runtimeEnv?.FIREBASE_SERVICE_ACCOUNT ||
       (import.meta as any).env?.FIREBASE_SERVICE_ACCOUNT ||
-      (process.env as any)?.FIREBASE_SERVICE_ACCOUNT;
+      (typeof process !== 'undefined' ? process.env.FIREBASE_SERVICE_ACCOUNT : undefined);
     if (!serviceAccountStr) {
       return json(500, { error: 'Server configuration error: missing service account credentials.' });
     }
@@ -137,7 +138,10 @@ export const POST: APIRoute = async ({ request, locals }) => {
     const inviteFields = inviteDoc.fields;
     const status = inviteFields.status?.stringValue;
     const expiresAtStr = inviteFields.expiresAt?.timestampValue || inviteFields.expiresAt?.stringValue;
-    const role = inviteFields.role?.stringValue || 'ADMIN';
+    const role = inviteFields.role?.stringValue;
+    if (!['SUPER_ADMIN', 'ADMIN', 'SUPPORT', 'MODERATOR', 'DEVELOPER'].includes(role)) {
+      return json(400, { error: 'Invalid invitation role.' });
+    }
 
     if (status !== 'pending') {
       return json(400, { error: `This invitation is already ${status}.` });
@@ -145,19 +149,17 @@ export const POST: APIRoute = async ({ request, locals }) => {
 
     const now = Date.now();
     const expiresAtMs = new Date(expiresAtStr).getTime();
-    if (now > expiresAtMs) {
+    if (!Number.isFinite(expiresAtMs) || now >= expiresAtMs) {
       return json(400, { error: 'This invitation has expired.' });
     }
 
     // Step B: Decode user token to extract metadata (since we successfully authenticated it with Firestore)
-    const tokenParts = idToken.split('.');
-    if (tokenParts.length !== 3) {
-      return json(400, { error: 'Invalid token format.' });
+    const identity = readInviteIdentity(idToken);
+    const inviteEmail = inviteFields.email?.stringValue;
+    if (!identity || typeof inviteEmail !== 'string' || identity.email.toLowerCase() !== inviteEmail.toLowerCase()) {
+      return json(403, { error: 'Use the verified email address on this invitation.' });
     }
-    const tokenPayload = JSON.parse(atob(tokenParts[1]));
-    const userId = tokenPayload.user_id || tokenPayload.sub;
-    const userEmail = tokenPayload.email;
-    const userName = tokenPayload.name || 'Admin User';
+    const { uid: userId, email: userEmail, name: userName } = identity;
 
     // Step C: Generate Service Account Auth Token to write with admin credentials
     const adminToken = await getGoogleAuthToken(serviceAccount);
@@ -166,65 +168,41 @@ export const POST: APIRoute = async ({ request, locals }) => {
       'Content-Type': 'application/json'
     };
 
-    // 1. Update invitation document status to accepted
-    const updateInviteUrl = `${inviteUrl}?updateMask.fieldPaths=status&updateMask.fieldPaths=acceptedAt&updateMask.fieldPaths=acceptedUid`;
-    const updateInviteBody = {
-      fields: {
-        status: { stringValue: 'accepted' },
-        acceptedAt: { integerValue: String(now) },
-        acceptedUid: { stringValue: userId }
-      }
-    };
-    const updateInviteRes = await fetch(updateInviteUrl, {
-      method: 'PATCH',
+    if (typeof inviteDoc.updateTime !== 'string') return json(500, { error: 'Invitation version unavailable.' });
+    const documentRoot = `projects/${projectId}/databases/(default)/documents`;
+    const commitUrl = `https://firestore.googleapis.com/v1/${documentRoot}:commit`;
+    const commitRes = await fetch(commitUrl, {
+      method: 'POST',
       headers: adminHeaders,
-      body: JSON.stringify(updateInviteBody)
+      body: JSON.stringify({ writes: [
+        {
+          update: { name: `${documentRoot}/adminInvites/${inviteId}`, fields: {
+            status: { stringValue: 'accepted' }, acceptedAt: { integerValue: String(now) }, acceptedUid: { stringValue: userId }
+          } },
+          updateMask: { fieldPaths: ['status', 'acceptedAt', 'acceptedUid'] },
+          currentDocument: { updateTime: inviteDoc.updateTime }
+        },
+        {
+          update: { name: `${documentRoot}/admins/${userId}`, fields: {
+            uid: { stringValue: userId }, email: { stringValue: userEmail }, displayName: { stringValue: userName },
+            role: { stringValue: role }, status: { stringValue: 'online' }, lastSeen: { integerValue: String(now) }, createdAt: { integerValue: String(now) }
+          } },
+          currentDocument: { exists: false }
+        },
+        {
+          update: { name: `${documentRoot}/users/${userId}`, fields: { isAdmin: { booleanValue: true } } },
+          updateMask: { fieldPaths: ['isAdmin'] }
+        }
+      ] })
     });
-    if (!updateInviteRes.ok) {
-      return json(500, { error: 'Failed to update invitation status.', details: await updateInviteRes.text() });
-    }
-
-    // 2. Create the admin document in the admins collection
-    const adminUrl = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/admins/${userId}`;
-    const adminBody = {
-      fields: {
-        uid: { stringValue: userId },
-        email: { stringValue: userEmail },
-        displayName: { stringValue: userName },
-        role: { stringValue: role },
-        status: { stringValue: 'online' },
-        lastSeen: { integerValue: String(now) },
-        createdAt: { integerValue: String(now) }
-      }
-    };
-    const createAdminRes = await fetch(adminUrl, {
-      method: 'PATCH',
-      headers: adminHeaders,
-      body: JSON.stringify(adminBody)
-    });
-    if (!createAdminRes.ok) {
-      return json(500, { error: 'Failed to provision admin profile.', details: await createAdminRes.text() });
-    }
-
-    // 3. Update the user document to set isAdmin: true
-    const userUrl = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/users/${userId}?updateMask.fieldPaths=isAdmin`;
-    const userBody = {
-      fields: {
-        isAdmin: { booleanValue: true }
-      }
-    };
-    const updateUserRes = await fetch(userUrl, {
-      method: 'PATCH',
-      headers: adminHeaders,
-      body: JSON.stringify(userBody)
-    });
-    if (!updateUserRes.ok) {
-      return json(500, { error: 'Failed to set admin flag on user profile.', details: await updateUserRes.text() });
+    if (!commitRes.ok) {
+      console.error('Failed to atomically accept invitation:', await commitRes.text());
+      return json(500, { error: 'Invitation could not be accepted. Check its status or contact support.' });
     }
 
     return json(200, { success: true, message: 'Invitation accepted successfully.' });
   } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : String(err);
-    return json(500, { error: 'ServerError', message });
+    console.error('[accept-invite] Request failed:', err instanceof Error ? err.name : typeof err);
+    return json(500, { error: 'ServerError', message: 'Invitation could not be accepted. Please try again.' });
   }
 };

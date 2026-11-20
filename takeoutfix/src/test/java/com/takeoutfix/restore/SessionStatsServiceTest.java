@@ -4,16 +4,22 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
+import com.takeoutfix.shared.history.OperationHistoryService;
+import java.nio.file.Path;
 
 import static org.junit.jupiter.api.Assertions.*;
 
 class SessionStatsServiceTest {
 
+    @TempDir
+    Path tempDir;
     private SessionStatsService statsService;
 
     @BeforeEach
     void setUp() {
-        statsService = new SessionStatsService();
+        statsService = new SessionStatsService(tempDir.resolve("stats.json").toFile(),
+                new OperationHistoryService(tempDir.resolve("history.json").toFile()));
         statsService.reset();
     }
 

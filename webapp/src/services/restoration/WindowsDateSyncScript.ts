@@ -8,6 +8,7 @@
 export function generateSyncBatContent(): string {
   return `@echo off
 setlocal enabledelayedexpansion
+set "TAKEOUTFIX_SCRIPT_DIR=%~dp0"
 title TakeoutFix - Windows Timestamp Synchronizer
 color 0b
 echo ======================================================================
@@ -19,8 +20,7 @@ echo the photo and video taken times...
 echo.
 
 powershell.exe -NoProfile -ExecutionPolicy Bypass -Command ^
-  "$scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path; " ^
-  "if (-not $scriptDir) { $scriptDir = (Get-Location).Path }; " ^
+  "$scriptDir = $env:TAKEOUTFIX_SCRIPT_DIR; " ^
   "$jsonPath = Join-Path $scriptDir 'file_timestamps.json'; " ^
   "if (Test-Path -LiteralPath $jsonPath) { " ^
   "  Write-Host 'Loading timestamp catalog...' -ForegroundColor Cyan; " ^
@@ -42,31 +42,12 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -Command ^
   "  }; " ^
   "  Write-Host ('Successfully synchronized ' + $synced + ' files in Windows File Explorer!') -ForegroundColor Green; " ^
   "} else { " ^
-  "  Write-Host 'Scanning folder tree for media...' -ForegroundColor Cyan; " ^
-  "  $shell = New-Object -ComObject Shell.Application; " ^
-  "  $files = Get-ChildItem -LiteralPath $scriptDir -Recurse -File; " ^
-  "  $synced = 0; " ^
-  "  foreach ($f in $files) { " ^
-  "    $folder = $shell.Namespace($f.DirectoryName); " ^
-  "    $item = $folder.ParseName($f.Name); " ^
-  "    $rawDate = $folder.GetDetailsOf($item, 12); " ^
-  "    if (-not $rawDate) { $rawDate = $folder.GetDetailsOf($item, 208) }; " ^
-  "    if ($rawDate) { " ^
-  "      $clean = $rawDate -replace '[^0-9/: -APMapm]',''; " ^
-  "      if ([datetime]::TryParse($clean, [ref]$null)) { " ^
-  "        $dt = [datetime]::Parse($clean); " ^
-  "        $f.CreationTime = $dt; " ^
-  "        $f.LastWriteTime = $dt; " ^
-  "        $synced++; " ^
-  "      } " ^
-  "    } " ^
-  "  }; " ^
-  "  Write-Host ('Successfully synchronized ' + $synced + ' media files!') -ForegroundColor Green; " ^
+  "  Write-Error 'file_timestamps.json was not found next to this script. No files were changed.'; " ^
   "}"
 
 echo.
 echo ======================================================================
-echo Done! All timestamps updated. Press any key to exit.
+echo Review the result above. Press any key to exit.
 pause >nul
 `;
 }
@@ -78,6 +59,7 @@ export function generateSyncShContent(): string {
 # ======================================================================
 DIR="$(cd "$(dirname "\${BASH_SOURCE[0]}")" >/dev/null 2>&1 && pwd)"
 JSON_PATH="$DIR/file_timestamps.json"
+export TAKEOUTFIX_SCRIPT_DIR="$DIR" TAKEOUTFIX_JSON_PATH="$JSON_PATH"
 
 echo "======================================================================"
 echo "          TakeoutFix - macOS & Linux Timestamp Synchronizer"
@@ -90,11 +72,11 @@ if [ -f "$JSON_PATH" ]; then
   if command -v python3 >/dev/null 2>&1; then
     python3 -c "
 import json, os
-with open('$JSON_PATH') as f:
+with open(os.environ['TAKEOUTFIX_JSON_PATH']) as f:
     items = json.load(f)
 synced = 0
 for item in items:
-    p = os.path.join('$DIR', item['path'])
+    p = os.path.join(os.environ['TAKEOUTFIX_SCRIPT_DIR'], item['path'])
     if os.path.exists(p):
         try:
             t = int(item['epoch'])
@@ -108,10 +90,10 @@ print(f'Successfully synchronized {synced} files in Finder / File Manager!')
     node -e "
 const fs = require('fs');
 const path = require('path');
-const items = JSON.parse(fs.readFileSync('$JSON_PATH', 'utf8'));
+const items = JSON.parse(fs.readFileSync(process.env.TAKEOUTFIX_JSON_PATH, 'utf8'));
 let synced = 0;
 items.forEach(item => {
-  const p = path.join('$DIR', item.path);
+  const p = path.join(process.env.TAKEOUTFIX_SCRIPT_DIR, item.path);
   if (fs.existsSync(p)) {
     try {
       const t = Number(item.epoch);
@@ -123,21 +105,8 @@ items.forEach(item => {
 console.log('Successfully synchronized ' + synced + ' files in Finder / File Manager!');
 "
   else
-    synced=0
-    while IFS= read -r line; do
-      target_path=$(echo "$line" | sed -n 's/.*"path": *"\\([^"]*\\)".*/\\1/p')
-      epoch=$(echo "$line" | sed -n 's/.*"epoch": *\\([0-9]*\\).*/\\1/p')
-      if [ -n "$target_path" ] && [ -n "$epoch" ]; then
-        target="$DIR/$target_path"
-        if [ -e "$target" ]; then
-          date_str=$(date -r "$epoch" +"%Y%m%d%H%M.%S" 2>/dev/null || date -d "@$epoch" +"%Y%m%d%H%M.%S" 2>/dev/null)
-          if [ -n "$date_str" ]; then
-            touch -t "$date_str" "$target" 2>/dev/null && synced=$((synced+1))
-          fi
-        fi
-      fi
-    done < "$JSON_PATH"
-    echo "Successfully synchronized $synced files!"
+    echo "Python 3 or Node.js is required. No files were changed."
+    exit 1
   fi
 else
   echo "Notice: file_timestamps.json not found in $DIR."
@@ -145,7 +114,7 @@ fi
 
 echo ""
 echo "======================================================================"
-echo "Done! Timestamps synchronized."
+echo "Review the result above."
 `;
 }
 

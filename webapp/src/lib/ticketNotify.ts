@@ -1,7 +1,6 @@
 import { db } from "../firebase";
-import { collection, addDoc, getDocs, doc, getDoc, serverTimestamp } from "firebase/firestore";
+import { collection, addDoc, getDocs, serverTimestamp } from "firebase/firestore";
 import { getSuperAdminEmail } from "./adminAuth";
-import { apiClient } from "./api/apiClient";
 
 export const SUPPORT_EMAIL = "takeoutfix.support@gmail.com";
 
@@ -23,41 +22,27 @@ export interface TicketNotifyResult {
 }
 
 /**
- * Retrieves EmailJS credentials from Firestore settings/system with fallback to environment variables.
+ * Retrieves public EmailJS configuration from build-time environment variables.
  */
 async function getEmailCredentials(): Promise<{
   serviceId: string;
   templateId: string;
   publicKey: string;
 }> {
-  let serviceId =
+  const serviceId =
     import.meta.env.VITE_EMAILJS_SERVICE_ID ||
     import.meta.env.PUBLIC_EMAILJS_SERVICE_ID ||
     "";
-  let templateId =
+  const templateId =
     import.meta.env.VITE_EMAILJS_TICKET_TEMPLATE_ID ||
     import.meta.env.PUBLIC_EMAILJS_TICKET_TEMPLATE_ID ||
     import.meta.env.VITE_EMAILJS_TEMPLATE_ID ||
     import.meta.env.PUBLIC_EMAILJS_TEMPLATE_ID ||
     "";
-  let publicKey =
+  const publicKey =
     import.meta.env.VITE_EMAILJS_PUBLIC_KEY ||
     import.meta.env.PUBLIC_EMAILJS_PUBLIC_KEY ||
     "";
-
-  // Check Firestore settings/system for dynamic runtime configuration
-  try {
-    const sysSnap = await getDoc(doc(db, "settings", "system"));
-    if (sysSnap.exists()) {
-      const data = sysSnap.data();
-      if (data.emailjs_service_id) serviceId = data.emailjs_service_id;
-      if (data.emailjs_ticket_template_id) templateId = data.emailjs_ticket_template_id;
-      else if (!templateId && data.emailjs_template_id) templateId = data.emailjs_template_id;
-      if (data.emailjs_public_key) publicKey = data.emailjs_public_key;
-    }
-  } catch (err) {
-    console.warn("[TicketNotify] Could not check Firestore settings/system for email keys:", err);
-  }
 
   return { serviceId, templateId, publicKey };
 }
@@ -159,7 +144,7 @@ export async function notifyAdminsOnTicketRaised(
         .join(", ");
       console.info(
         `[TicketNotify] EmailJS not fully configured (missing: ${missing}). ` +
-          `Set VITE_EMAILJS_* in .env or configure in Admin -> Keys & Secrets.`
+          `Set public EmailJS variables for the webapp build.`
       );
     } else {
       const emailjsModule = await import("@emailjs/browser");
@@ -228,22 +213,6 @@ export async function notifyAdminsOnTicketRaised(
     const msg = `Email dispatch exception: ${err.message || String(err)}`;
     console.error("[TicketNotify]", msg);
     errors.push(msg);
-  }
-
-  // Also notify server endpoint if running
-  try {
-    if (typeof window !== "undefined") {
-      const { getAuth } = await import("firebase/auth");
-      const idToken = await getAuth().currentUser?.getIdToken().catch(() => null);
-      if (idToken) {
-        apiClient.post("/api/send-ticket-email", {
-          ticketId, userEmail, userName, subject, message,
-          recipients, fromEmail: SUPPORT_EMAIL,
-        }, { headers: { Authorization: `Bearer ${idToken}` } }).catch(() => {});
-      }
-    }
-  } catch {
-    // Ignore server dispatch errors
   }
 
   return {

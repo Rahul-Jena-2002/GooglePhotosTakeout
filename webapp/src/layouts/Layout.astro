@@ -16,11 +16,10 @@ interface Props {
 }
 
 const { 
-  title = "TakeoutFix – Take Out Fix, Takeout Fixer & Metadata Fixer for Google Photos",
-  description = "Restore missing EXIF dates, GPS coordinates, timestamps, and other metadata from Google Takeout archives. Everything runs locally in your browser—your files never leave your device. Not affiliated with Google.",
+  title = "TakeoutFix — Restore Google Photos Takeout Metadata",
+  description = "Match Google Photos Takeout JSON sidecars with supported media and restore available dates or locations in your browser. Keep your original export and verify the results.",
   isToolPage = false,
   isAuthPage = false,
-  robots = isAuthPage ? "noindex, nofollow" : "index, follow",
   sidebarAdCount,
   showSideAds: propShowSideAds,
 } = Astro.props;
@@ -28,10 +27,18 @@ const {
 // Normalized path check for routing & active links
 const currentPath = Astro.url.pathname.replace(/\/$/, "") || "/";
 const isHomePage = currentPath === "/" || currentPath === "/index" || currentPath === "/index.html";
+const shouldNoindex = isAuthPage || /^\/(?:admin|api)(?:\/|$)/.test(currentPath) || ["/dashboard", "/profile", "/offline", "/reviews"].includes(currentPath);
+const robotsDirective = Astro.props.robots ?? (shouldNoindex ? "noindex, nofollow" : "index, follow");
+const loadAdScript = !isToolPage && !isAuthPage && !robotsDirective.toLowerCase().includes('noindex');
 
 
 // Active Navigation Helper for Purple Highlighting
 const isActive = (path: string) => (path === "/" ? currentPath === "/" : currentPath === path || currentPath.startsWith(path + "/"));
+const mobileNavLinks = [
+  { href: "/guides", label: "Guides" },
+  { href: "/download", label: "Download" },
+  { href: "/support", label: "Support & FAQ" },
+];
 
 // Generate clean canonical URL (strip .html, /index, and trailing slashes)
 const rawPath = Astro.url.pathname || "/";
@@ -61,16 +68,25 @@ const canonicalUrl = `https://takeoutfix.pages.dev${cleanPath === "" ? "/" : cle
     </script>
     <!-- Google AdSense Verification & Auto Ads (Canonical Placement) -->
     <meta name="google-adsense-account" content="ca-pub-7628736172233995" />
-    <script
+    {loadAdScript && <script
       is:inline
       async
       src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-7628736172233995"
       crossorigin="anonymous"
-    ></script>
+    ></script>}
     <FirebaseRuntimeConfig />
-    <!-- Preload hero image to speed up LCP -->
-    <link rel="preload" as="image" href="/hero-graphic-light.webp" fetchpriority="high" />
-    <!-- Native high-performance typography (0ms latency, zero third-party IP leakage, 100% GDPR compliant) -->
+    <!-- Preload the image matching the saved theme. -->
+    {isHomePage && <script is:inline>
+      (() => {
+        const heroPreload = document.createElement("link");
+        heroPreload.rel = "preload";
+        heroPreload.as = "image";
+        heroPreload.href = document.documentElement.classList.contains("dark") ? "/hero-graphic-dark.webp" : "/hero-graphic-light.webp";
+        heroPreload.setAttribute("fetchpriority", "high");
+        document.head.appendChild(heroPreload);
+      })();
+    </script>}
+    <!-- Use system fonts without a separate font request. -->
     <style>
       body { font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; }
 
@@ -135,35 +151,6 @@ const canonicalUrl = `https://takeoutfix.pages.dev${cleanPath === "" ? "/" : cle
     <link rel="manifest" href="/manifest.webmanifest" />
     <meta name="theme-color" content="#ffffff" id="theme-color-meta" />
 
-    <!-- Suppress React DevTools inspection in production -->
-    <script is:inline>
-      (() => {
-        try {
-          const isDev = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-          if (!isDev && typeof window !== "undefined" && typeof window.__REACT_DEVTOOLS_GLOBAL_HOOK__ === "object") {
-            window.__REACT_DEVTOOLS_GLOBAL_HOOK__.isDisabled = true;
-          }
-        } catch (_) {}
-      })();
-    </script>
-
-    <!-- Production Console Cleanliness (Preserves browser accessibility and inspectability for compliance) -->
-    <script is:inline>
-      (() => {
-        try {
-          const isDev = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-          if (!isDev) {
-            // Suppress verbose console logging in production
-            if (typeof console !== 'undefined') {
-              console.log = () => {};
-              console.debug = () => {};
-              console.info = () => {};
-            }
-          }
-        } catch (_) {}
-      })();
-    </script>
-
     <!-- Monetization Appearance Initializer (Reads cached opacity and size to prevent layout shifts) -->
     <script is:inline>
       (() => {
@@ -206,22 +193,10 @@ const canonicalUrl = `https://takeoutfix.pages.dev${cleanPath === "" ? "/" : cle
     </script>
 
 
-    <!-- Google Cloud reCAPTCHA Enterprise (Loaded on-demand or deferred for Auth protection) -->
-    <script is:inline>
-      window.addEventListener('load', function() {
-        if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') return;
-        var rc = document.createElement('script');
-        rc.src = "https://www.google.com/recaptcha/enterprise.js?render=6LdDpb4tAAAAADJHZzjrMIC-gvDXkAw0rhdgB5Sb";
-        rc.async = true;
-        rc.defer = true;
-        document.head.appendChild(rc);
-      });
-    </script>
-
     <title>{title}</title>
     <ClientRouter fallback="swap" />
     <meta name="description" content={description} />
-    <meta name="robots" content={robots} />
+    <meta name="robots" content={robotsDirective} />
     <meta name="google-site-verification" content="yjn_T1bJ3RfrKhKTaT4in3ciTBkK5Ngw9LfOChfRztk" />
     <meta name="msvalidate.01" content="08D1F97545A3AA2CABA8BC66F3CCCC4D" />
     <link rel="canonical" href={canonicalUrl} />
@@ -263,27 +238,15 @@ const canonicalUrl = `https://takeoutfix.pages.dev${cleanPath === "" ? "/" : cle
         "name": "TakeoutFix",
         "alternateName": ["Takeout Fix", "TakeoutFixer"],
         "url": "https://takeoutfix.pages.dev",
-        "description": "Restore missing dates, GPS locations, and EXIF metadata from your Google Takeout photos and videos locally in your browser. Independent utility — not affiliated with Google LLC.",
+        "description": "Match Google Takeout details files with supported media and restore available dates or locations in your browser.",
         "applicationCategory": "MultimediaApplication",
         "operatingSystem": "Windows 10+, macOS 11+, Linux, Web (Chrome, Edge, Brave)",
         "downloadUrl": "https://takeoutfix.pages.dev/download",
         "browserRequirements": "Requires HTML5 File System Access API (Google Chrome, Microsoft Edge, Brave recommended)",
         "featureList": [
-          "Restore photo EXIF metadata from Google Takeout JSON sidecars",
-          "Fix missing photo dates and timestamps",
-          "Restore GPS coordinates and location data",
-          "Fix metadata on thousands of photos simultaneously",
-          "100% local browser processing - no uploads",
-          "Google Takeout merger - merge JSON metadata back into photos",
-          "Direct zero-install standalone desktop applications for Windows, Mac, and Linux",
-          "Photo Studio Suite - batch EXIF date and timestamp editor",
-          "Shift capture dates by hours, minutes, or days across thousands of photos",
-          "Stamp customizable photographer name and copyright notices into EXIF",
-          "EXIF and GPS Inspector - examine deep camera IFD tags and map coordinates offline",
-          "Sidecar Comparator - compare Takeout JSON sidecars against embedded EXIF headers",
-          "Duplicate Photo Finder - detect bit-for-bit and perceptual duplicate images",
-          "MetaSync - synchronize EXIF metadata from RAW to companion JPEG files",
-          "PhotoVault Verifier - SHA-256 cryptographic backup integrity verification"
+          "Match supported media with Google Takeout details files",
+          "Restore available dates and locations to supported media",
+          "Process selected media in the browser"
         ],
         "offers": {
           "@type": "Offer",
@@ -354,7 +317,10 @@ window.__h82AlnkH6D91__("WyJwdWItNzYyODczNjE3MjIzMzk5NSIsW251bGwsbnVsbCxudWxsLCJ
             <!-- Hamburger Menu Button -->
             <button 
               id="hamburger-btn"
+              type="button"
               aria-label="Toggle navigation menu"
+              aria-controls="mobile-menu"
+              aria-expanded="false"
               class="lg:hidden p-1 text-white/80 hover:text-white focus:outline-none transition-colors mr-1 cursor-pointer"
             >
               <svg id="hamburger-icon" class="w-5 h-5" width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
@@ -386,7 +352,6 @@ window.__h82AlnkH6D91__("WyJwdWItNzYyODczNjE3MjIzMzk5NSIsW251bGwsbnVsbCxudWxsLCJ
                 <circle cx="16" cy="14" r="1.5" fill="url(#logo-grad-astro)" />
               </svg>
               <span class="text-base md:text-lg font-semibold tracking-tight">TakeoutFix</span>
-              <span class="hidden sm:inline-block text-[11px] px-1.5 py-0.5 rounded-full bg-violet-500/15 text-violet-400 border border-violet-500/30 font-mono font-semibold ml-0.5">v2.1.8</span>
             </a>
 
             <!-- Desktop Links -->
@@ -557,6 +522,13 @@ window.__h82AlnkH6D91__("WyJwdWItNzYyODczNjE3MjIzMzk5NSIsW251bGwsbnVsbCxudWxsLCJ
                 <span class="text-[10px] uppercase font-mono px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 font-bold">Free</span>
               </a>
             </div>
+
+            {mobileNavLinks.map(({ href, label }) => (
+              <a href={href} class={`mobile-nav-link py-2 px-3 rounded-lg text-sm font-medium transition-all ${isActive(href) ? 'active text-[#8170CC] font-bold bg-[#8170CC]/10 dark:bg-[#8170CC]/15' : 'text-zinc-700 dark:text-white/70 hover:text-zinc-900 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-white/5'}`} data-astro-prefetch="tap">{label}</a>
+            ))}
+            <a id="mobile-dashboard-link" href="/dashboard" class="hidden mobile-nav-link py-2 px-3 rounded-lg text-sm font-medium hover:bg-zinc-100 dark:hover:bg-white/5">Dashboard</a>
+            <a id="mobile-admin-link" href="/admin" class="hidden mobile-nav-link py-2 px-3 rounded-lg text-sm font-medium hover:bg-zinc-100 dark:hover:bg-white/5" data-astro-reload>Admin Center</a>
+            <a href="https://github.com/sponsors/Rahul-Jena-2002" target="_blank" rel="noopener noreferrer" class="md:hidden py-2 px-3 rounded-lg text-sm font-medium text-pink-700 dark:text-pink-400 hover:bg-pink-500/10">Sponsor <span class="sr-only">(opens in a new tab)</span></a>
             
             <!-- Mobile Theme Toggle -->
             <div class="flex items-center justify-between py-2 px-2 border-t border-zinc-200 dark:border-white/10 mt-2 pt-3">
@@ -636,9 +608,9 @@ window.__h82AlnkH6D91__("WyJwdWItNzYyODczNjE3MjIzMzk5NSIsW251bGwsbnVsbCxudWxsLCJ
                 <ul class="space-y-3 text-xs">
                   <li><a href="/guides" class="text-indigo-400 hover:text-indigo-300 font-medium transition-colors">Educational Guides Hub</a></li>
                   <li><a href="/restore-data" class="text-zinc-400 hover:text-white transition-colors">Complete Restoration Guide</a></li>
-                  <li><a href="/fix-google-takeout-dates" class="text-zinc-400 hover:text-white transition-colors">Fix Wrong Photo Dates</a></li>
-                  <li><a href="/google-photos-metadata-fix" class="text-zinc-400 hover:text-white transition-colors">Metadata & GPS Restoration</a></li>
-                  <li><a href="/google-takeout-merger" class="text-zinc-400 hover:text-white transition-colors">Merge JSON Sidecars</a></li>
+                  <li><a href="/guides/google-takeout-common-errors-fix" class="text-zinc-400 hover:text-white transition-colors">Fix Wrong Photo Dates</a></li>
+                  <li><a href="/guides/google-takeout-missing-photo-location" class="text-zinc-400 hover:text-white transition-colors">Missing Photo Locations</a></li>
+                  <li><a href="/guides/google-takeout-json-metadata-explained" class="text-zinc-400 hover:text-white transition-colors">Understanding JSON Files</a></li>
                   <li><a href="/restore-data#tech-specs" class="text-zinc-400 hover:text-white transition-colors">Technical Architecture</a></li>
                 </ul>
               </div>
@@ -779,7 +751,6 @@ window.__h82AlnkH6D91__("WyJwdWItNzYyODczNjE3MjIzMzk5NSIsW251bGwsbnVsbCxudWxsLCJ
       };
       import { initTheme, setupThemeEvents } from "../lib/browserTheme";
       import { initMobileMenu, highlightActiveLinks, setupNavDropdowns } from "../lib/browserNav";
-      import { detectAndStoreCountry } from "../lib/browserCountry";
       import { checkAdBlock, setupAdblockEvents, setUserInteracted } from "../lib/browserAdblock";
       import { setupAuthListeners, setupAuthEvents, syncUserUI } from "../lib/browserAuth";
       import { renderNotifications } from "../lib/browserNotifications";
@@ -883,6 +854,7 @@ window.__h82AlnkH6D91__("WyJwdWItNzYyODczNjE3MjIzMzk5NSIsW251bGwsbnVsbCxudWxsLCJ
           mobileMenu.classList.add("hidden");
           hamburgerIcon?.classList.remove("hidden");
           closeIcon?.classList.add("hidden");
+          document.getElementById("hamburger-btn")?.setAttribute("aria-expanded", "false");
         }
       });
 
@@ -926,7 +898,6 @@ window.__h82AlnkH6D91__("WyJwdWItNzYyODczNjE3MjIzMzk5NSIsW251bGwsbnVsbCxudWxsLCJ
       // Hook for initial load and page-load transitions (React hydration complete)
       document.addEventListener("astro:page-load", () => {
         try { initTheme(); } catch (e) {}
-        try { detectAndStoreCountry(); } catch (e) {}
         try { initMobileMenu(); } catch (e) {}
         try { syncUserUI(); } catch (e) {}
         try { renderNotifications(); } catch (e) {}

@@ -8,7 +8,11 @@
     "dev": "astro dev",
     "build": "node scripts/generate_sitemap.js && astro build && node scripts/append_spa_rewrite.js && node scripts/audit_cloudflare_security.js",
     "preview": "astro preview",
-    "lint": "eslint ."
+    "lint": "eslint .",
+    "test:service-worker": "node --test tests/service-worker.test.mjs",
+    "test:build-output": "node --test tests/append-spa-rewrite.test.mjs tests/cloudflare-asset-limit.test.mjs",
+    "test:api-headers": "node --experimental-strip-types --test tests/api-security-headers.test.mjs tests/affiliate-admin.test.mjs tests/affiliate-url.test.mjs tests/gateway-authorization.test.mjs tests/gateway-url.test.mjs tests/recaptcha.test.mjs tests/recaptcha-assessment.test.mjs tests/dodo-discounts.test.mjs tests/statistics-dates.test.mjs tests/browser-nav.test.mjs tests/admin-auth.test.mjs",
+    "test:restoration": "node --experimental-strip-types --test tests/exif-date-tags.test.mjs tests/wasm-loading.test.mjs tests/guest-quota.test.mjs tests/indexed-db-commit.test.mjs tests/output-file.test.mjs tests/pending-usage.test.mjs tests/restore-lock.test.mjs tests/session-preservation.test.mjs tests/sidecar-matching.test.mjs tests/video-restoration.test.mjs tests/worker-pool.test.mjs tests/zip-path-safety.test.mjs"
   },
   "dependencies": {
     "@emailjs/browser": "^4.4.1",

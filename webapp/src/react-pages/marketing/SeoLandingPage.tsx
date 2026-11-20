@@ -307,7 +307,7 @@ export default function SeoLandingPage() {
               <span className="absolute right-4 top-2 text-5xl font-extrabold text-white/5 font-mono select-none">3</span>
               <h4 className="font-bold text-white mb-2">Restore Dates</h4>
               <p className="text-xs text-zinc-400 leading-relaxed">
-                Original dates and locations are saved directly into your photos so they appear in correct chronological order everywhere.
+                When matching metadata is available and the file format supports it, the tool writes it to output copies. Check the results in your photo app before moving your originals.
               </p>
             </div>
           </div>
@@ -318,7 +318,7 @@ export default function SeoLandingPage() {
       <div className="max-w-4xl mx-auto text-center mt-32 py-16 border-t border-zinc-900 relative z-10">
         <h2 className="text-3xl font-bold tracking-tight mb-4 text-white">Rebuild Your {matchedSource} Photos Today</h2>
         <p className="text-zinc-500 mb-8 max-w-md mx-auto">
-          Start recovering your {matchedTarget.toLowerCase()} in seconds. Absolutely no sign-ups or software installation required.
+          Restore your {matchedTarget.toLowerCase()} in your browser. Guests can process up to 1 GB before signing in to continue for free.
         </p>
         <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
           <Link to="/tool">

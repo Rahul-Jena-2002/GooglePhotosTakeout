@@ -9,8 +9,10 @@
  * admin invites the moment they are created, with no page refresh required.
  */
 
-import { db } from "../firebase";
+import { auth, db } from "../firebase";
+import { sendEmailVerification } from "firebase/auth";
 import { collection, query, where, onSnapshot, updateDoc, doc, Timestamp } from "firebase/firestore";
+import { escapeHtml } from "./escapeHtml";
 
 interface NotificationItem {
   id: string;
@@ -27,6 +29,7 @@ let unsubNotifications: (() => void) | null = null;
 
 let ticketItems: NotificationItem[] = [];
 let notifItems: NotificationItem[] = [];
+let emailVerificationNeeded = false;
 
 // ─── Render ───────────────────────────────────────────────────────────────────
 
@@ -64,13 +67,13 @@ function renderAll() {
           ? `<span class="text-[9px] font-bold text-emerald-400 uppercase tracking-wide">Ticket Resolved</span>`
           : `<span class="text-[9px] font-bold text-zinc-400 uppercase tracking-wide">System</span>`;
         return `
-          <a href="${n.href}" class="block px-4 py-2.5 hover:bg-white/5 text-left border-b border-white/5 last:border-0 transition-colors" data-notif-id="${n.id}" data-notif-type="${n.type}">
+          <a href="${escapeHtml(n.href)}" class="block px-4 py-2.5 hover:bg-white/5 text-left border-b border-white/5 last:border-0 transition-colors" data-notif-id="${escapeHtml(n.id)}" data-notif-type="${escapeHtml(n.type)}">
             <div class="flex items-start gap-2">
               ${dot}
               <div class="flex-1 min-w-0">
                 ${typeLabel}
-                <div class="text-[11px] font-bold text-white truncate mt-0.5">${n.title}</div>
-                <p class="text-xs text-white/60 mt-0.5 line-clamp-2">${n.body}</p>
+                <div class="text-[11px] font-bold text-white truncate mt-0.5">${escapeHtml(n.title)}</div>
+                <p class="text-xs text-white/60 mt-0.5 line-clamp-2">${escapeHtml(n.body)}</p>
               </div>
             </div>
           </a>
@@ -90,13 +93,38 @@ function renderAll() {
         });
       });
     }
+    if (emailVerificationNeeded) {
+      const notice = document.createElement("div");
+      notice.className = "px-4 py-3 text-xs text-zinc-400";
+      const message = document.createElement("span");
+      message.textContent = "Verify your email to see personal notifications. ";
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "underline";
+      button.textContent = "Send verification email";
+      button.addEventListener("click", async () => {
+        if (!auth?.currentUser) return;
+        button.disabled = true;
+        try {
+          await sendEmailVerification(auth.currentUser);
+          message.textContent = "Verification email sent. After verifying, sign in again to see personal notifications.";
+          button.remove();
+        } catch {
+          message.textContent = "Could not send the verification email. Please try again later. ";
+          button.disabled = false;
+        }
+      });
+      notice.append(message, button);
+      notifList.prepend(notice);
+    }
   }
 }
 
 // ─── Start real-time listeners ─────────────────────────────────────────────────
 
-export function startNotificationListeners(uid: string, email: string) {
+export function startNotificationListeners(uid: string, email: string, emailVerified: boolean) {
   stopNotificationListeners();
+  emailVerificationNeeded = !emailVerified;
 
   // 1. Resolved support tickets
   unsubTickets = onSnapshot(
@@ -123,7 +151,9 @@ export function startNotificationListeners(uid: string, email: string) {
   unsubNotifications = onSnapshot(
     query(
       collection(db, "notifications"),
-      where("recipientEmail", "in", [email.toLowerCase(), "all"]),
+      ...(emailVerified
+        ? [where("recipientEmail", "in", [email.toLowerCase(), "all"])]
+        : [where("recipientEmail", "==", "all")]),
     ),
     snap => {
       notifItems = snap.docs.map(d => {
@@ -152,13 +182,14 @@ export function stopNotificationListeners() {
   unsubNotifications = null;
   ticketItems = [];
   notifItems = [];
+  emailVerificationNeeded = false;
 }
 
 // ─── Legacy bind helper (for Astro pages that use the old API) ─────────────────
 
-export const bindNotificationFetch = (uid: string, email?: string) => {
+export const bindNotificationFetch = (uid: string, email?: string, emailVerified = false) => {
   if (email) {
-    startNotificationListeners(uid, email);
+    startNotificationListeners(uid, email, emailVerified);
   }
   // Notification list opens on bell click — listeners already running
 };

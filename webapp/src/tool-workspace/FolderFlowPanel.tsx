@@ -73,13 +73,14 @@ export function FolderFlowPanel() {
     } catch {}
 
     // 2. Try filename regex e.g. IMG_20230815_... or 2023-08-15
-    const regexMatch = file.name.match(/(\d{4})[-_]?(\\d{2})[-_]?(\\d{2})/)
+    const regexMatch = file.name.match(/(\d{4})[-_]?(\d{2})[-_]?(\d{2})/)
     if (regexMatch) {
       const y = parseInt(regexMatch[1], 10)
       const m = parseInt(regexMatch[2], 10) - 1
       const d = parseInt(regexMatch[3], 10)
-      if (y >= 1970 && y <= 2100 && m >= 0 && m < 12) {
-        return new Date(y, m, d)
+      const date = new Date(y, m, d)
+      if (y >= 1970 && y <= 2100 && m >= 0 && m < 12 && date.getFullYear() === y && date.getMonth() === m && date.getDate() === d) {
+        return date
       }
     }
 
@@ -150,10 +151,15 @@ export function FolderFlowPanel() {
     if (!sourceDir || !destDir) return
     setIsProcessing(true)
     abortRef.current = false
+    setOrganizedCount(0)
+    setProgress(0)
     setStatusMsg("Organizing files...")
     let processed = 0
 
     try {
+      if (await sourceDir.resolve(destDir) !== null || await destDir.resolve(sourceDir) !== null) {
+        throw new Error("Choose separate source and output folders that do not contain one another.")
+      }
       // Helper to traverse and copy
       async function processDir(srcHandle: FileSystemDirectoryHandle) {
         // @ts-ignore
@@ -173,6 +179,12 @@ export function FolderFlowPanel() {
               }
 
               // Copy file
+              try {
+                await currentDir.getFileHandle(name)
+                throw new Error(`A file named ${name} already exists in the output folder. No file was overwritten.`)
+              } catch (err) {
+                if (!(err instanceof DOMException) || err.name !== 'NotFoundError') throw err
+              }
               const destFileHandle = await currentDir.getFileHandle(name, { create: true })
               const writable = await destFileHandle.createWritable()
               await writable.write(await file.arrayBuffer())
@@ -191,7 +203,7 @@ export function FolderFlowPanel() {
       }
 
       await processDir(sourceDir)
-      setStatusMsg(`Successfully organized ${processed} files!`)
+      setStatusMsg(abortRef.current ? `Stopped after organizing ${processed} files.` : `Successfully organized ${processed} files!`)
     } catch (e: any) {
       console.error(e)
       setStatusMsg(`Organization interrupted: ${e.message || e}`)

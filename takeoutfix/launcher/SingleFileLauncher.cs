@@ -3,9 +3,8 @@ using System.IO;
 using System.IO.Compression;
 using System.Diagnostics;
 using System.Reflection;
+using System.Threading;
 using System.Windows.Forms;
-using System.Runtime.InteropServices;
-using Microsoft.Win32;
 
 [assembly: AssemblyTitle("TakeoutFix")]
 [assembly: AssemblyDescription("Google Takeout Photo Metadata Restorer")]
@@ -18,77 +17,20 @@ using Microsoft.Win32;
 
 namespace TakeoutFix {
     static class SingleFileLauncher {
-        [DllImport("kernel32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
-        [return: MarshalAs(UnmanagedType.Bool)]
-        static extern bool DeleteFile(string lpFileName);
-
-        /// <summary>
-        /// Strips Mark of the Web (Zone.Identifier NTFS alternate data stream)
-        /// so Windows SmartScreen does not treat the file as an untrusted downloaded object.
-        /// </summary>
-        static void StripMarkOfTheWeb(string path) {
-            try {
-                if (File.Exists(path) || Directory.Exists(path)) {
-                    DeleteFile(path + ":Zone.Identifier");
-                }
-            } catch { }
-        }
-
-        /// <summary>
-        /// Instructs Windows Application Compatibility (AppCompat) to treat the application
-        /// as an older, trusted Windows 7 legacy application running as invoker.
-        /// </summary>
-        static void ApplyLegacyCompatibility(string exePath) {
-            // 1. Process environment compatibility layer
-            try {
-                Environment.SetEnvironmentVariable("__COMPAT_LAYER", "WIN7RTM RUNASINVOKER");
-            } catch { }
-
-            // 2. User-level Windows AppCompat compatibility flags in HKCU (no admin elevation required)
-            try {
-                using (RegistryKey key = Registry.CurrentUser.CreateSubKey(@"Software\Microsoft\Windows NT\CurrentVersion\AppCompatFlags\Layers")) {
-                    if (key != null) {
-                        key.SetValue(exePath, "~ WIN7RTM RUNASINVOKER");
-                    }
-                }
-            } catch { }
-        }
-
-        /// <summary>
-        /// Backdates file and directory timestamps so Windows Defender and SmartScreen
-        /// heuristics treat them as established, preexisting files rather than newly created droppers.
-        /// </summary>
-        static void BackdateTimestamps(string path, DateTime legacyDate) {
-            try {
-                if (File.Exists(path)) {
-                    File.SetCreationTimeUtc(path, legacyDate);
-                    File.SetLastWriteTimeUtc(path, legacyDate);
-                    File.SetLastAccessTimeUtc(path, legacyDate);
-                } else if (Directory.Exists(path)) {
-                    Directory.SetCreationTimeUtc(path, legacyDate);
-                    Directory.SetLastWriteTimeUtc(path, legacyDate);
-                    Directory.SetLastAccessTimeUtc(path, legacyDate);
-                }
-            } catch { }
+        internal static string ResolveEntryPath(string appDir, string entryName) {
+            string root = Path.GetFullPath(appDir).TrimEnd(Path.DirectorySeparatorChar) + Path.DirectorySeparatorChar;
+            string destination = Path.GetFullPath(Path.Combine(appDir, entryName));
+            if (!destination.StartsWith(root, StringComparison.OrdinalIgnoreCase)) {
+                throw new IOException("The application package contains an invalid file path.");
+            }
+            return destination;
         }
 
         [STAThread]
         static int Main(string[] args) {
             try {
-                // Strip Mark of the Web from the launcher itself
-                try {
-                    string currentExe = Process.GetCurrentProcess().MainModule.FileName;
-                    StripMarkOfTheWeb(currentExe);
-                } catch { }
-
                 string localAppData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
-                string appDir = Path.Combine(localAppData, "TakeoutFix", "app");
-                string exePath = Path.Combine(appDir, "TakeoutFix.exe");
-                string versionFile = Path.Combine(appDir, ".app_version");
 
-                // Legacy baseline date (April 2022) to make files appear established to Windows Defender/SmartScreen
-                DateTime legacyDate = new DateTime(2022, 4, 15, 12, 0, 0, DateTimeKind.Utc);
-                
                 Assembly asm = Assembly.GetExecutingAssembly();
                 string payloadHash = "";
                 using (Stream resStream = asm.GetManifestResourceStream("payload.zip")) {
@@ -102,66 +44,76 @@ namespace TakeoutFix {
                     }
                 }
 
-                bool needsExtract = !File.Exists(exePath) || !File.Exists(versionFile) || File.ReadAllText(versionFile).Trim() != payloadHash;
+                // shortcut: old versions remain on disk, add cleanup when running processes can be identified safely.
+                string appDir = Path.Combine(localAppData, "TakeoutFix", "versions", payloadHash);
+                string exePath = Path.Combine(appDir, "TakeoutFix.exe");
+                string versionFile = Path.Combine(appDir, ".app_version");
 
-                if (needsExtract) {
-                    if (Directory.Exists(appDir)) {
-                        try { Directory.Delete(appDir, true); } catch (IOException) {} catch (UnauthorizedAccessException) {}
+                using (var mutex = new Mutex(false, @"Local\TakeoutFix-Extract-" + payloadHash)) {
+                    bool acquired;
+                    try {
+                        acquired = mutex.WaitOne(TimeSpan.FromSeconds(30));
+                    } catch (AbandonedMutexException) {
+                        acquired = true;
                     }
-                    Directory.CreateDirectory(appDir);
+                    if (!acquired) throw new IOException("Another TakeoutFix launch is still preparing the app. Please try again.");
+                    try {
+                        bool needsExtract = !File.Exists(exePath) || !File.Exists(versionFile) || File.ReadAllText(versionFile).Trim() != payloadHash;
 
-                    using (Stream resStream = asm.GetManifestResourceStream("payload.zip")) {
-                        if (resStream == null) {
-                            MessageBox.Show("Internal application payload missing.", "TakeoutFix", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                            return 1;
-                        }
-                        using (ZipArchive archive = new ZipArchive(resStream, ZipArchiveMode.Read)) {
-                            foreach (ZipArchiveEntry entry in archive.Entries) {
-                                if (string.IsNullOrEmpty(entry.Name)) {
-                                    string dirPath = Path.Combine(appDir, entry.FullName);
-                                    if (!Directory.Exists(dirPath)) {
-                                        Directory.CreateDirectory(dirPath);
-                                    }
-                                    continue;
-                                }
-
-                                string destPath = Path.Combine(appDir, entry.FullName);
-                                string parentDir = Path.GetDirectoryName(destPath);
-                                if (!string.IsNullOrEmpty(parentDir) && !Directory.Exists(parentDir)) {
-                                    Directory.CreateDirectory(parentDir);
-                                }
-
-                                bool written = false;
-                                for (int attempt = 0; attempt < 25; attempt++) {
-                                    try {
-                                        entry.ExtractToFile(destPath, true);
-                                        written = true;
-                                        break;
-                                    } catch (IOException) {
-                                        System.Threading.Thread.Sleep(200);
-                                    } catch (UnauthorizedAccessException) {
-                                        System.Threading.Thread.Sleep(200);
-                                    }
-                                }
-
-                                if (!written) {
-                                    entry.ExtractToFile(destPath, true);
-                                }
-
-                                StripMarkOfTheWeb(destPath);
-                                BackdateTimestamps(destPath, legacyDate);
+                        if (needsExtract) {
+                            if (Directory.Exists(appDir)) {
+                                Directory.Delete(appDir, true);
                             }
+                            Directory.CreateDirectory(appDir);
+
+                            using (Stream resStream = asm.GetManifestResourceStream("payload.zip")) {
+                                if (resStream == null) {
+                                    MessageBox.Show("Internal application payload missing.", "TakeoutFix", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                                    return 1;
+                                }
+                                using (ZipArchive archive = new ZipArchive(resStream, ZipArchiveMode.Read)) {
+                                    foreach (ZipArchiveEntry entry in archive.Entries) {
+                                        string destPath = ResolveEntryPath(appDir, entry.FullName);
+                                        if (string.IsNullOrEmpty(entry.Name)) {
+                                            if (!Directory.Exists(destPath)) {
+                                                Directory.CreateDirectory(destPath);
+                                            }
+                                            continue;
+                                        }
+
+                                        string parentDir = Path.GetDirectoryName(destPath);
+                                        if (!string.IsNullOrEmpty(parentDir) && !Directory.Exists(parentDir)) {
+                                            Directory.CreateDirectory(parentDir);
+                                        }
+
+                                        bool written = false;
+                                        for (int attempt = 0; attempt < 25; attempt++) {
+                                            try {
+                                                entry.ExtractToFile(destPath, true);
+                                                written = true;
+                                                break;
+                                            } catch (IOException) {
+                                                System.Threading.Thread.Sleep(200);
+                                            } catch (UnauthorizedAccessException) {
+                                                System.Threading.Thread.Sleep(200);
+                                            }
+                                        }
+
+                                        if (!written) {
+                                            entry.ExtractToFile(destPath, true);
+                                        }
+
+                                    }
+                                }
+                            }
+                            File.WriteAllText(versionFile, payloadHash);
                         }
+                    } finally {
+                        mutex.ReleaseMutex();
                     }
-                    File.WriteAllText(versionFile, payloadHash);
-                    BackdateTimestamps(versionFile, legacyDate);
-                    BackdateTimestamps(appDir, legacyDate);
                 }
 
                 if (File.Exists(exePath)) {
-                    StripMarkOfTheWeb(exePath);
-                    ApplyLegacyCompatibility(exePath);
-
                     var psi = new ProcessStartInfo {
                         FileName = exePath,
                         Arguments = string.Join(" ", args),

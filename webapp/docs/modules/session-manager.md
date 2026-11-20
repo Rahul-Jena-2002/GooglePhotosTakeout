@@ -64,7 +64,7 @@ export interface FileRecord {
 | `getPendingFiles()` | All pending records (UI counter only) | Capped at 50 000. |
 | `getInFlightFiles()` | All `'processing'` records | Cursor + cap. |
 | `claimFile(fileId)` | Mark one record `'processing'` | Single `set`. |
-| `confirmFile(fileId, status, bytes, epoch?, error?)` | Mark one record `'completed'/'failed'` and update session totals | Single `set` + delta-write to session. |
+| `confirmFile(fileId, status, bytes, epoch?, error?, metadataRestored?)` | Mark one record `'completed'/'failed'` and update session totals. Callers can explicitly report whether metadata was restored while retaining the discovered timestamp for review. | Single `set` + delta-write to session. |
 
 ## Internal helpers (the engine room)
 

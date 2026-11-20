@@ -1,0 +1,77 @@
+---
+export const prerender = true;
+import Layout from "../../layouts/Layout.astro";
+import Icon from "../../components/ui/Icon.astro";
+
+const articleSchema = {
+  "@context": "https://schema.org",
+  "@type": "TechArticle",
+  "headline": "How to Verify Restored Photo Dates and Locations",
+  "description": "A cautious, step-by-step check for restored Google Takeout photos before importing a full library.",
+  "author": { "@type": "Person", "name": "Rahul Jena", "url": "https://rahuljena.is-a.dev/" },
+  "publisher": { "@type": "Organization", "name": "TakeoutFix", "url": "https://takeoutfix.pages.dev" },
+  "datePublished": "2026-11-16",
+  "dateModified": "2026-11-19"
+};
+---
+
+<Layout title="How to Verify Restored Photo Dates and Locations | TakeoutFix" description="Learn how to check a small sample of restored Google Takeout photos against their JSON sidecars and verify date or GPS metadata before importing your library.">
+  <script type="application/ld+json" set:html={JSON.stringify(articleSchema)} />
+
+  <main class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-16 mt-12 font-sans text-zinc-700 dark:text-zinc-300">
+    <nav aria-label="Breadcrumb" class="flex items-center gap-2 text-xs text-zinc-500 font-mono mb-6">
+      <a href="/" class="hover:text-zinc-900 dark:hover:text-white">Home</a><span>/</span>
+      <a href="/guides" class="hover:text-zinc-900 dark:hover:text-white">Guides</a><span>/</span>
+      <span>Verify restored metadata</span>
+    </nav>
+
+    <header class="mb-10 border-b border-zinc-200 dark:border-zinc-800 pb-8">
+      <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-sky-500/10 border border-sky-500/20 text-sky-700 dark:text-sky-300 text-xs font-semibold uppercase tracking-wider mb-4">
+        <Icon name="check-circle" class="w-4 h-4" /> Practical tutorial
+      </div>
+      <h1 class="text-3xl sm:text-4xl font-bold tracking-tight text-zinc-900 dark:text-white mb-4">How to Verify Restored Photo Dates and Locations</h1>
+      <p class="text-base leading-relaxed">Before you move your whole photo collection, try a few pictures first. This guide shows how to check that the dates and locations look right in the photo app you plan to use.</p>
+      <p class="text-xs text-zinc-500 mt-4">By Rahul Jena · Updated November 19, 2026</p>
+    </header>
+
+    <article class="space-y-10 text-base leading-relaxed">
+      <section>
+        <h2 class="text-2xl font-bold text-zinc-900 dark:text-white mb-3">Before you start</h2>
+        <p>Keep your original download safe. Pick a few photos whose dates or places you already know. Some photos may not have extra details in the download, and no tool can restore information that is missing.</p>
+      </section>
+
+      <section>
+        <h2 class="text-2xl font-bold text-zinc-900 dark:text-white mb-3">1. Process a small sample</h2>
+        <ol class="list-decimal pl-6 space-y-2">
+          <li>Open the <a class="underline font-semibold" href="/tool">TakeoutFix tool</a> and choose your extracted Takeout folder or ZIP file.</li>
+          <li>If you choose a folder, pick a different folder for the restored copies. Keep your original folder unchanged.</li>
+          <li>Start with a few photos if possible. When the tool finishes, look through the restored and unmatched results.</li>
+          <li>If you choose a ZIP file, save the ZIP files TakeoutFix creates before continuing.</li>
+        </ol>
+      </section>
+
+      <section>
+        <h2 class="text-2xl font-bold text-zinc-900 dark:text-white mb-3">2. Check a photo’s details</h2>
+        <p>Open a restored copy in a photo app and look at its information or details screen. Check whether the date matches what you expect. If you expect a location, see whether the app shows it on a map. Menu names differ between apps.</p>
+        <p>If the photo still has the wrong date or no location, check whether its matching extra <code>.json</code> file is present in the original Takeout folder. The file may not contain the detail you expected.</p>
+        <p>A time-zone difference can shift the displayed time or even the day. The browser and desktop tools currently format restored photo dates differently, so compare a few known photos in your destination app before restoring a large collection.</p>
+      </section>
+
+      <section>
+        <h2 class="text-2xl font-bold text-zinc-900 dark:text-white mb-3">3. Try the photos in your new photo library</h2>
+        <p>Add one or two restored copies to the app where you plan to keep your collection. Check their dates and, if available, their map locations. If something looks wrong, pause and ask for help before processing the rest of your photos.</p>
+      </section>
+
+      <section class="rounded-2xl border border-amber-500/20 bg-amber-500/5 p-6">
+        <h2 class="text-xl font-bold text-zinc-900 dark:text-white mb-2">What this check can and cannot prove</h2>
+        <p>Checking a few photos helps you decide whether the results look right. It does not check every photo in a large download. Keep the original download and review any files marked unmatched before moving your whole collection.</p>
+      </section>
+
+      <nav aria-label="Related guides" class="border-t border-zinc-200 dark:border-zinc-800 pt-6 flex flex-wrap gap-x-6 gap-y-3 text-sm">
+        <a class="underline" href="/guides/google-takeout-json-metadata-explained">Understand Takeout sidecars</a>
+        <a class="underline" href="/guides/google-takeout-common-errors-fix">Troubleshoot mismatches</a>
+        <a class="underline" href="/restore-data">Restore walkthrough and limits</a>
+      </nav>
+    </article>
+  </main>
+</Layout>

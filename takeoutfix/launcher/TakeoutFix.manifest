@@ -8,7 +8,7 @@
   />
   <description>TakeoutFix - Google Takeout Photo Metadata Restorer</description>
 
-  <!-- Declare support for modern Windows versions (improves SmartScreen reputation) -->
+  <!-- Declare support for modern Windows versions. -->
   <compatibility xmlns="urn:schemas-microsoft-com:compatibility.v1">
     <application>
       <!-- Windows 10 / 11 -->

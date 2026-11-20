@@ -5,14 +5,15 @@
  * Verifies:
  * 1. Cloudflare Pages _headers has all critical security headers (CSP, HSTS, X-Content-Type-Options, etc.).
  * 2. Cloudflare Pages _redirects has no open redirects or unvalidated external protocols.
- * 3. Client build directory (dist/) has 0 leaked secrets, private keys, or environment files.
- * 4. Checks assets for unneeded bloat or unminified source artifacts (Ponytail audit).
+ * 3. Client build directory (dist/client/) has 0 leaked secrets, private keys, or environment files.
+ * 4. Checks generated static assets against Cloudflare's per-file size limit.
  */
 
 import fs from 'fs';
 import path from 'path';
+import { isSafeRedirectTarget } from './redirect_policy.js';
 
-const DIST_DIR = path.resolve('dist');
+const DIST_DIR = path.resolve('dist/client');
 const HEADERS_FILE = path.join(DIST_DIR, '_headers');
 const REDIRECTS_FILE = path.join(DIST_DIR, '_redirects');
 
@@ -39,9 +40,12 @@ console.log('======================================================\n');
 
 // 1. Audit Cloudflare _headers
 if (!fs.existsSync(HEADERS_FILE)) {
-  logFail('dist/_headers file not found! Cloudflare Pages security headers missing.');
+  logFail('dist/client/_headers file not found! Cloudflare security headers missing.');
 } else {
   const headersContent = fs.readFileSync(HEADERS_FILE, 'utf-8');
+  for (const [index, line] of headersContent.split(/\r?\n/).entries()) {
+    if (line.length > 2000) logFail(`Cloudflare _headers line ${index + 1} exceeds 2,000 characters.`);
+  }
 
   const requiredHeaders = [
     { name: 'X-Content-Type-Options', pattern: /X-Content-Type-Options:\s*nosniff/i },
@@ -74,8 +78,7 @@ if (fs.existsSync(REDIRECTS_FILE)) {
     const parts = trimmed.split(/\s+/);
     if (parts.length >= 2) {
       const target = parts[1];
-      // Open redirect check: external http:// or protocol-relative // redirects without whitelist
-      if (/^(http:\/\/|\/\/)/i.test(target)) {
+      if (!isSafeRedirectTarget(target)) {
         logFail(`Potentially unsafe redirect detected in _redirects: ${line}`);
         openRedirectFound = true;
       }
@@ -86,7 +89,7 @@ if (fs.existsSync(REDIRECTS_FILE)) {
   }
 }
 
-// 3. Scan dist/ for Sensitive Files and Leaked Secrets
+// 3. Scan public client assets for sensitive files and leaked secrets.
 const FORBIDDEN_FILE_PATTERNS = [
   /^\.env/i,
   /\.pem$/i,
@@ -106,6 +109,7 @@ const SECRET_CONTENT_PATTERNS = [
 const BINARY_EXTENSIONS = new Set([
   '.png', '.jpg', '.jpeg', '.webp', '.ico', '.svg', '.woff', '.woff2', '.ttf', '.eot', '.wasm', '.mp4', '.webm'
 ]);
+const MAX_STATIC_ASSET_BYTES = 25 * 1024 * 1024;
 
 function scanDirectory(dir) {
   if (!fs.existsSync(dir)) return;
@@ -118,18 +122,19 @@ function scanDirectory(dir) {
     if (entry.isDirectory()) {
       scanDirectory(fullPath);
     } else {
+      try {
+        if (fs.statSync(fullPath).size > MAX_STATIC_ASSET_BYTES) {
+          logFail(`Static asset exceeds the 25 MiB Cloudflare Workers limit: ${relPath}`);
+        }
+      } catch {
+        logFail(`Could not check static asset size: ${relPath}`);
+      }
       // Check filename
       for (const pattern of FORBIDDEN_FILE_PATTERNS) {
         if (pattern.test(entry.name)) {
           logFail(`Forbidden sensitive file found in public dist output: ${relPath}`);
         }
       }
-
-      // Only scan client-facing assets for secret content.
-      // server/ chunks are never sent to the browser and legitimately
-      // reference Firebase Admin credentials from runtime env vars.
-      const isServerChunk = relPath.startsWith('server' + path.sep) || relPath.startsWith('server/');
-      if (isServerChunk) continue;
 
       // Check file content for non-binary assets
       const ext = path.extname(entry.name).toLowerCase();
@@ -142,7 +147,7 @@ function scanDirectory(dir) {
             }
           }
         } catch {
-          // ignore unreadable/binary files
+          logFail(`Could not inspect client output: ${relPath}`);
         }
       }
     }
@@ -150,10 +155,13 @@ function scanDirectory(dir) {
 }
 
 if (fs.existsSync(DIST_DIR)) {
+  const errorsBeforeScan = errorCount;
   scanDirectory(DIST_DIR);
-  logPass('dist/ directory scanned for secrets and sensitive configuration leaks.');
+  if (errorCount === errorsBeforeScan) {
+    logPass('Scanned client output for known secret patterns and forbidden files.');
+  }
 } else {
-  logFail('dist/ directory does not exist. Build output missing.');
+  logFail('dist/client/ directory does not exist. Client build output missing.');
 }
 
 console.log('\n------------------------------------------------------');

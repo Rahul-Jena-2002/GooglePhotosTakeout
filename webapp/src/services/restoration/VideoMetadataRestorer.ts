@@ -22,7 +22,7 @@ const QUICKTIME_EPOCH_OFFSET = 2082844800;
  */
 export function injectMp4CreationTime(buffer: ArrayBuffer, epochSec: number): ArrayBuffer {
   if (!buffer || buffer.byteLength < 16) {
-    return buffer;
+    throw new Error('Video is too short to contain supported metadata.');
   }
 
   // Calculate QuickTime timestamp (clamped to positive 32-bit/64-bit uint)
@@ -33,12 +33,14 @@ export function injectMp4CreationTime(buffer: ArrayBuffer, epochSec: number): Ar
   const view = new DataView(copy);
   const length = copy.byteLength;
 
+  let updated = false;
   try {
     // Top-level box scanning
     let offset = 0;
     while (offset + 8 <= length) {
       let boxSize = view.getUint32(offset, false); // big-endian
       const boxType = getBoxType(view, offset + 4);
+      let headerSize = 8;
 
       if (boxSize === 1) {
         // 64-bit extended size
@@ -46,26 +48,27 @@ export function injectMp4CreationTime(buffer: ArrayBuffer, epochSec: number): Ar
         const high = view.getUint32(offset + 8, false);
         const low = view.getUint32(offset + 12, false);
         boxSize = high * 0x100000000 + low;
-        if (boxSize <= 0) break;
+        headerSize = 16;
       } else if (boxSize === 0) {
         // Box extends to end of file
         boxSize = length - offset;
       }
 
-      if (boxSize < 8) break;
+      if (boxSize < headerSize || offset + boxSize > length) break;
 
       if (boxType === 'moov') {
         // moov atom contains mvhd and trak boxes
-        processMoovBox(view, offset + 8, offset + boxSize, qtTimestamp);
+        updated = processMoovBox(view, offset + headerSize, offset + boxSize, qtTimestamp);
         break; // Once moov is processed, we are done
       }
 
       offset += boxSize;
     }
   } catch (err) {
-    console.warn("[VideoMetadataRestorer] MP4 atom scan warning:", err);
+    throw new Error('Could not update video timestamps.', { cause: err });
   }
 
+  if (!updated) throw new Error('No supported video timestamp was found.');
   return copy;
 }
 
@@ -79,107 +82,123 @@ function getBoxType(view: DataView, offset: number): string {
   );
 }
 
-function processMoovBox(view: DataView, start: number, end: number, qtTimestamp: number) {
+function processMoovBox(view: DataView, start: number, end: number, qtTimestamp: number): boolean {
   let offset = start;
+  let updated = false;
   const maxEnd = Math.min(end, view.byteLength);
 
   while (offset + 8 <= maxEnd) {
     let boxSize = view.getUint32(offset, false);
     const boxType = getBoxType(view, offset + 4);
+    let headerSize = 8;
 
     if (boxSize === 1) {
       if (offset + 16 > maxEnd) break;
       const high = view.getUint32(offset + 8, false);
       const low = view.getUint32(offset + 12, false);
       boxSize = high * 0x100000000 + low;
+      headerSize = 16;
     } else if (boxSize === 0) {
       boxSize = maxEnd - offset;
     }
 
-    if (boxSize < 8 || offset + boxSize > maxEnd) break;
+    if (boxSize < headerSize || offset + boxSize > maxEnd) break;
 
-    const boxContentStart = offset + 8;
+    const boxContentStart = offset + headerSize;
 
     if (boxType === 'mvhd') {
-      updateHeaderBoxTimestamp(view, boxContentStart, qtTimestamp);
+      updated = updateHeaderBoxTimestamp(view, boxContentStart, offset + boxSize, qtTimestamp) || updated;
     } else if (boxType === 'trak') {
-      processTrakBox(view, boxContentStart, offset + boxSize, qtTimestamp);
+      updated = processTrakBox(view, boxContentStart, offset + boxSize, qtTimestamp) || updated;
     }
 
     offset += boxSize;
   }
+  return updated;
 }
 
-function processTrakBox(view: DataView, start: number, end: number, qtTimestamp: number) {
+function processTrakBox(view: DataView, start: number, end: number, qtTimestamp: number): boolean {
   let offset = start;
+  let updated = false;
   const maxEnd = Math.min(end, view.byteLength);
 
   while (offset + 8 <= maxEnd) {
     let boxSize = view.getUint32(offset, false);
     const boxType = getBoxType(view, offset + 4);
+    let headerSize = 8;
 
     if (boxSize === 1) {
       if (offset + 16 > maxEnd) break;
       const high = view.getUint32(offset + 8, false);
       const low = view.getUint32(offset + 12, false);
       boxSize = high * 0x100000000 + low;
+      headerSize = 16;
     } else if (boxSize === 0) {
       boxSize = maxEnd - offset;
     }
 
-    if (boxSize < 8 || offset + boxSize > maxEnd) break;
+    if (boxSize < headerSize || offset + boxSize > maxEnd) break;
 
-    const boxContentStart = offset + 8;
+    const boxContentStart = offset + headerSize;
 
     if (boxType === 'tkhd') {
-      updateHeaderBoxTimestamp(view, boxContentStart, qtTimestamp);
+      updated = updateHeaderBoxTimestamp(view, boxContentStart, offset + boxSize, qtTimestamp) || updated;
     } else if (boxType === 'mdia') {
-      processMdiaBox(view, boxContentStart, offset + boxSize, qtTimestamp);
+      updated = processMdiaBox(view, boxContentStart, offset + boxSize, qtTimestamp) || updated;
     }
 
     offset += boxSize;
   }
+  return updated;
 }
 
-function processMdiaBox(view: DataView, start: number, end: number, qtTimestamp: number) {
+function processMdiaBox(view: DataView, start: number, end: number, qtTimestamp: number): boolean {
   let offset = start;
+  let updated = false;
   const maxEnd = Math.min(end, view.byteLength);
 
   while (offset + 8 <= maxEnd) {
     let boxSize = view.getUint32(offset, false);
     const boxType = getBoxType(view, offset + 4);
+    let headerSize = 8;
 
     if (boxSize === 1) {
       if (offset + 16 > maxEnd) break;
       const high = view.getUint32(offset + 8, false);
       const low = view.getUint32(offset + 12, false);
       boxSize = high * 0x100000000 + low;
+      headerSize = 16;
     } else if (boxSize === 0) {
       boxSize = maxEnd - offset;
     }
 
-    if (boxSize < 8 || offset + boxSize > maxEnd) break;
+    if (boxSize < headerSize || offset + boxSize > maxEnd) break;
 
-    const boxContentStart = offset + 8;
+    const boxContentStart = offset + headerSize;
 
     if (boxType === 'mdhd') {
-      updateHeaderBoxTimestamp(view, boxContentStart, qtTimestamp);
+      updated = updateHeaderBoxTimestamp(view, boxContentStart, offset + boxSize, qtTimestamp) || updated;
     }
 
     offset += boxSize;
   }
+  return updated;
 }
 
-function updateHeaderBoxTimestamp(view: DataView, contentStart: number, qtTimestamp: number) {
-  if (contentStart + 12 > view.byteLength) return;
+function updateHeaderBoxTimestamp(view: DataView, contentStart: number, boxEnd: number, qtTimestamp: number): boolean {
+  if (contentStart + 12 > boxEnd) return false;
 
   const version = view.getUint8(contentStart);
 
   if (version === 0) {
+    if (!Number.isFinite(qtTimestamp) || qtTimestamp > 0xffffffff) {
+      throw new Error('Video timestamp is outside the range supported by this file.');
+    }
     view.setUint32(contentStart + 4, qtTimestamp >>> 0, false);
     view.setUint32(contentStart + 8, qtTimestamp >>> 0, false);
+    return true;
   } else if (version === 1) {
-    if (contentStart + 20 > view.byteLength) return;
+    if (contentStart + 20 > boxEnd || !Number.isSafeInteger(qtTimestamp)) return false;
     const high = Math.floor(qtTimestamp / 0x100000000);
     const low = qtTimestamp >>> 0;
 
@@ -188,7 +207,9 @@ function updateHeaderBoxTimestamp(view: DataView, contentStart: number, qtTimest
 
     view.setUint32(contentStart + 12, high, false);
     view.setUint32(contentStart + 16, low, false);
+    return true;
   }
+  return false;
 }
 
 export function isVideoFilename(filename: string): boolean {

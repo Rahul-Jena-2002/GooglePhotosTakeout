@@ -9,6 +9,24 @@ export function resolveDodoHost(apiKey: string, testMode: boolean = false): { ho
   };
 }
 
+export async function fetchDodoDiscounts(dodoHost: string, dodoApiKey: string): Promise<any[]> {
+  const discounts: any[] = [];
+  const pageSize = 100;
+  for (let page = 0; page < 20; page++) {
+    const response = await fetch(`https://${dodoHost}/discounts?page_size=${pageSize}&page_number=${page}`, {
+      headers: { Authorization: `Bearer ${dodoApiKey.trim()}` },
+      signal: AbortSignal.timeout(10000)
+    });
+    if (!response.ok) throw new Error('Discount lookup failed');
+    const data: any = await response.json();
+    const items = Array.isArray(data) ? data : data?.items;
+    if (!Array.isArray(items)) throw new Error('Invalid discount list');
+    discounts.push(...items);
+    if (items.length < pageSize) return discounts;
+  }
+  throw new Error('Discount lookup exceeded the page limit');
+}
+
 /**
  * Lists all products from Dodo Payments account.
  */

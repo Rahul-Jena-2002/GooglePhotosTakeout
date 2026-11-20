@@ -10,8 +10,8 @@ import java.util.Properties;
 public class AppVersion {
 
     private static String version = "2.2.7";
-    private static int buildNumber = 123;
-    private static String buildTimestamp = "2026-10-02T13:35:00Z";
+    private static int buildNumber = 0;
+    private static String buildTimestamp = "unknown";
 
     static {
         try (InputStream is = AppVersion.class.getResourceAsStream("/version.properties")) {
@@ -19,7 +19,7 @@ public class AppVersion {
                 Properties props = new Properties();
                 props.load(is);
                 version = props.getProperty("app.version", version);
-                buildNumber = Integer.parseInt(props.getProperty("build.number", "121"));
+                buildNumber = Integer.parseInt(props.getProperty("build.number", "0"));
                 buildTimestamp = props.getProperty("build.timestamp", buildTimestamp);
             }
         } catch (Exception ignored) {}
@@ -38,7 +38,7 @@ public class AppVersion {
     }
 
     public static String getFullVersionString() {
-        return "v" + version + " (Build " + buildNumber + ")";
+        return "v" + version + (buildNumber > 0 ? " (Build " + buildNumber + ")" : "");
     }
 
     /**

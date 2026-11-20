@@ -37,9 +37,8 @@ export function ToolWorkspaceContent() {
     const wasProcessing = wasProcessingRef.current
     wasProcessingRef.current = pipeline.isProcessing
 
-    // Trigger ONLY when we transition from processing → done, with actual results
-    // and not when the user cancels (stats.scanned > 0 but matched === 0 means cancelled early)
-    if (wasProcessing && !pipeline.isProcessing && pipeline.stats.scanned > 0 && !showRestoreComplete) {
+    // A stopped run may be completed, cancelled, or interrupted; the summary does not assume success.
+    if (wasProcessing && !pipeline.isProcessing && pipeline.stats.scanned > 0 && !showRestoreComplete && !pipeline.quotaAlert && !pipeline.popupModal) {
       const timer = setTimeout(() => {
         setFrozenStats({
           scanned: pipeline.stats.scanned,
@@ -54,14 +53,6 @@ export function ToolWorkspaceContent() {
   }, [pipeline.isProcessing])
 
   // ── Auth / system guards (all hooks are above — React rules of hooks) ──────
-  if (loading) {
-    return (
-      <div className="min-h-[calc(100vh-64px)] bg-[#F6F6F8] dark:bg-[#101114] flex items-center justify-center">
-        <div className="w-8 h-8 border-4 border-t-indigo-600 dark:border-t-indigo-400 border-zinc-300 dark:border-zinc-800 rounded-full animate-spin"></div>
-      </div>
-    )
-  }
-
   if (pipeline.maintenance) {
     return (
       <div className="min-h-[calc(100vh-64px)] bg-[#F6F6F8] dark:bg-[#101114] flex flex-col items-center justify-center p-6 text-center text-zinc-900 dark:text-white">
@@ -103,8 +94,10 @@ export function ToolWorkspaceContent() {
   return (
     <AdBlockGate>
       <div className="tool-workspace-root w-full min-h-[calc(100vh-64px)] h-auto flex flex-col bg-[#F6F6F8] dark:bg-[#101114] text-zinc-900 dark:text-zinc-100 transition-colors duration-150">
+        {loading && <p role="status" className="px-4 py-3 text-sm text-zinc-700 dark:text-zinc-300">{user ? "Checking your account. Please wait before starting a restore." : "Checking your account. Guest limits apply until sign-in is confirmed."}</p>}
 
         {/* Main content: 4 tool tabs */}
+        <fieldset className="min-w-0" disabled={loading && !!user && !pipeline.isProcessing}>
         <RestorePanel
           activeToolTab={pipeline.activeToolTab}
           setActiveToolTab={pipeline.setActiveToolTab}
@@ -127,8 +120,8 @@ export function ToolWorkspaceContent() {
           logContainerRef={pipeline.logContainerRef as React.RefObject<HTMLDivElement>}
           getEstimatedRestoreTime={pipeline.getEstimatedRestoreTime}
           pendingSession={pipeline.pendingSession}
-          setPendingSession={pipeline.setPendingSession}
-          sessionManagerRef={pipeline.sessionManagerRef}
+          canManagePendingSession={pipeline.canManagePendingSession}
+          discardPendingSession={pipeline.discardPendingSession}
           handleDragOver={pipeline.handleDragOver}
           handleDragLeave={pipeline.handleDragLeave}
           handleDrop={pipeline.handleDrop}
@@ -140,7 +133,6 @@ export function ToolWorkspaceContent() {
           pauseProcessing={pipeline.pauseProcessing}
           resumeProcessing={pipeline.resumeProcessing}
           resetForNewRestore={pipeline.resetForNewRestore}
-          setShowCompareModal={pipeline.setShowCompareModal}
           viewerFile={pipeline.viewerFile}
           viewerExif={pipeline.viewerExif}
           viewerLoading={pipeline.viewerLoading}
@@ -166,6 +158,7 @@ export function ToolWorkspaceContent() {
           currentUsedBytes={pipeline.currentUsedBytes}
           formatByteSize={pipeline.formatByteSize}
         />
+        </fieldset>
 
 
 
@@ -177,8 +170,6 @@ export function ToolWorkspaceContent() {
         setQuotaAlert={pipeline.setQuotaAlert}
         popupModal={pipeline.popupModal}
         setPopupModal={pipeline.setPopupModal}
-        showCompareModal={pipeline.showCompareModal}
-        setShowCompareModal={pipeline.setShowCompareModal}
         modalContext={pipeline.modalContext}
         setModalContext={pipeline.setModalContext}
         handleModalConfirm={pipeline.handleModalConfirm}
@@ -190,7 +181,15 @@ export function ToolWorkspaceContent() {
         }}
         onRestoreCompleteDismiss={() => setShowRestoreComplete(false)}
         isGuest={!user}
-        onSignIn={login}
+        onSignIn={() => {
+          void login().catch((error: unknown) => {
+            pipeline.setPopupModal({
+              title: "Could not sign in",
+              message: error instanceof Error ? error.message : "Please try again or check your connection.",
+              type: "error",
+            })
+          })
+        }}
       />
     </AdBlockGate>
   )

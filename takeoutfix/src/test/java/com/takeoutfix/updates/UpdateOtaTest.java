@@ -44,10 +44,18 @@ public class UpdateOtaTest {
         assertTrue(manifest.isNewerThanCurrent());
         assertEquals("Critical engine fixes and OTA updater", manifest.getReleaseNotes());
 
-        UpdateManifest.PlatformAsset asset = manifest.resolveCurrentPlatformAsset();
+        UpdateManifest.PlatformAsset asset = manifest.getPlatforms().get("windows-x64");
         assertNotNull(asset);
         assertNotNull(asset.getDownloadUrl());
         assertTrue(asset.getSizeBytes() > 0);
+    }
+
+    @Test
+    public void testManifestDoesNotSelectIncompatiblePlatform() {
+        UpdateManifest manifest = UpdateManifest.fromJson("""
+                {"version":"9.9.9","platforms":{"unknown-platform":{"url":"https://example.test/package"}}}
+                """);
+        assertNull(manifest.resolveCurrentPlatformAsset());
     }
 
     @Test
@@ -65,9 +73,23 @@ public class UpdateOtaTest {
         // Verify with mismatched hash
         assertFalse(UpdateVerifier.verifyFile(testFile.toFile(), "0000000000000000000000000000000000000000000000000000000000000000"));
 
-        // Verify with empty expected hash (size > 0 check)
-        assertTrue(UpdateVerifier.verifyFile(testFile.toFile(), ""));
-        assertTrue(UpdateVerifier.verifyFile(testFile.toFile(), null));
+        // Missing and malformed checksums must never pass verification.
+        assertFalse(UpdateVerifier.verifyFile(testFile.toFile(), ""));
+        assertFalse(UpdateVerifier.verifyFile(testFile.toFile(), null));
+        assertFalse(UpdateVerifier.verifyFile(testFile.toFile(), "not-a-checksum"));
+    }
+
+    @Test
+    public void testUpdateDestinationDoesNotOverwriteOrEscape(@TempDir Path tempDir) throws Exception {
+        Path existing = tempDir.resolve("TakeoutFix.exe");
+        Files.writeString(existing, "existing file");
+        Path first = UpdateDownloader.createDestination(tempDir, "TakeoutFix.exe");
+        Path second = UpdateDownloader.createDestination(tempDir, "TakeoutFix.exe");
+        assertNotEquals(first, second);
+        assertTrue(first.getFileName().toString().endsWith(".exe"));
+        assertEquals("existing file", Files.readString(existing));
+        assertThrows(IllegalArgumentException.class, () -> UpdateDownloader.createDestination(tempDir, "../other.exe"));
+        assertThrows(IllegalArgumentException.class, () -> UpdateDownloader.createDestination(tempDir, "C:\\other.exe"));
     }
 
     @Test

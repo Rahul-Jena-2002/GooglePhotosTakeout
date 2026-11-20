@@ -6,7 +6,7 @@ import { auth } from "../../firebase";
 import { ArrowRight, ExternalLink, Sparkles, ShieldCheck } from "lucide-react";
 import { detectAdBlock } from "../../services/monetization/AdBlockDetector";
 
-import { DEFAULT_AD_UNITS, DEFAULT_AFFILIATE_LINKS } from "../../services/monetization/defaultData";
+import { isSafeExternalUrl } from "../../lib/safeExternalUrl";
 
 export interface MonetizationProps {
   placement: string;
@@ -16,54 +16,7 @@ export interface MonetizationProps {
 }
 
 function isValidExternalDestination(url?: string): boolean {
-  return Boolean(url && !url.startsWith("/") && !url.includes("takeoutfix"));
-}
-
-function getInitialDefaultResponse(placementCode: string): MonetizationResponse {
-  const isSidebar = placementCode.startsWith("SIDEBAR") || placementCode.startsWith("GUTTER") || placementCode.startsWith("TOOL_SIDEBAR");
-
-  const adCandidate =
-    DEFAULT_AD_UNITS.find(
-      (u) => u.placementCodes.includes(placementCode) || (isSidebar && (u.placementCodes.includes("SIDEBAR") || u.placementCodes.includes("TOOL_SIDEBAR"))) || u.placementCodes.length === 0
-    ) || DEFAULT_AD_UNITS[0];
-
-  const secondaryAdCandidate =
-    DEFAULT_AD_UNITS.find((u) => u.id !== adCandidate?.id) || null;
-
-  return {
-    placement: placementCode,
-    enabled: true,
-    mode: "BOTH",
-    affiliate: null,
-    secondaryAffiliate: null,
-    ad: adCandidate
-      ? {
-          id: adCandidate.id,
-          type: "AD",
-          title: adCandidate.name,
-          adType: adCandidate.adType,
-          embedCode: adCandidate.embedCode,
-          imageUrl: adCandidate.imageUrl,
-          destinationUrl: adCandidate.destinationUrl,
-          ctaText: adCandidate.ctaText,
-          providerName: adCandidate.providerName,
-        }
-      : null,
-    secondaryAd: secondaryAdCandidate
-      ? {
-          id: secondaryAdCandidate.id,
-          type: "AD",
-          title: secondaryAdCandidate.name,
-          adType: secondaryAdCandidate.adType,
-          embedCode: secondaryAdCandidate.embedCode,
-          imageUrl: secondaryAdCandidate.imageUrl,
-          destinationUrl: secondaryAdCandidate.destinationUrl,
-          ctaText: secondaryAdCandidate.ctaText,
-          providerName: secondaryAdCandidate.providerName,
-        }
-      : null,
-    empty: false,
-  };
+  return isSafeExternalUrl(url);
 }
 
 export default function Monetization({
@@ -74,9 +27,7 @@ export default function Monetization({
 }: MonetizationProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [containerWidth, setContainerWidth] = useState<number>(0);
-  const [data, setData] = useState<MonetizationResponse | null>(() =>
-    getInitialDefaultResponse(placement)
-  );
+  const [data, setData] = useState<MonetizationResponse | null>(null);
   const [loading, setLoading] = useState(false);
 
   const { userData: contextUserData } = useAuth();
@@ -135,11 +86,12 @@ export default function Monetization({
     });
     obs.observe(el);
     return () => obs.disconnect();
-  }, [layout]);
+  }, [layout, data]);
 
   // Fetch monetization content for this placement
   useEffect(() => {
     let mounted = true;
+    setData(null);
     setLoading(true);
 
     getMonetizationContent(placement, {
@@ -227,7 +179,7 @@ export default function Monetization({
 
   const isAdValid = (item?: ResolvedMonetizationItem | null): boolean => {
     if (!item) return false;
-    if (item.adType === "NATIVE" || item.adType === "IFRAME") {
+    if (!item.adType || item.adType === "NATIVE" || item.adType === "IFRAME" || item.adType === "IMAGE") {
       return isValidExternalDestination(item.destinationUrl);
     }
     return true;
@@ -736,58 +688,13 @@ function AdUnitItem({
   const embedRef = useRef<HTMLDivElement>(null);
 
   const isEmbed = adType === "HTML" || adType === "SCRIPT" || adType === "DISPLAY";
-  const isInvalidCompact = isCompact && !isEmbed && !isValidExternalDestination(item.destinationUrl);
+  const isInvalid = !isEmbed && (!isValidExternalDestination(item.destinationUrl) || (adType === "IMAGE" && !isCompact && !item.imageUrl));
 
   useEffect(() => {
-    if (isInvalidCompact) {
+    if (isInvalid) {
       onUnavailable?.();
     }
-  }, [isInvalidCompact, onUnavailable]);
-
-  if (isInvalidCompact) {
-    return null;
-  }
-
-  if (isCompact && !isEmbed) {
-    return (
-      <div className="flex flex-col gap-1 text-left w-full group">
-        <div className="flex items-center gap-2.5">
-          {item.imageUrl ? (
-            <a
-              href={item.destinationUrl || "#"}
-              target="_blank"
-              rel="noopener noreferrer nofollow"
-              className="block shrink-0 w-12 h-12 rounded-lg overflow-hidden bg-white dark:bg-zinc-800 border border-zinc-200/60 dark:border-zinc-700 p-0.5"
-            >
-              <img
-                src={item.imageUrl}
-                alt={item.title || "Ad"}
-                className="w-full h-full object-contain group-hover:scale-105 transition-transform"
-                loading="lazy"
-                onError={() => onUnavailable?.()}
-              />
-            </a>
-          ) : null}
-          <div className="flex-1 min-w-0">
-            <h4 className="text-xs font-bold text-zinc-900 dark:text-zinc-100 truncate group-hover:text-blue-500 transition-colors">
-              {item.title}
-            </h4>
-            <div className="mt-1">
-              <a
-                href={item.destinationUrl || "#"}
-                target="_blank"
-                rel="noopener noreferrer nofollow"
-                className="inline-flex items-center gap-1 text-[10.5px] font-semibold text-blue-600 dark:text-blue-400 hover:underline"
-              >
-                <span>{item.ctaText || "Learn More"}</span>
-                <ExternalLink className="w-2.5 h-2.5" />
-              </a>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
+  }, [isInvalid, onUnavailable]);
 
   // Trigger Google AdSense script push for responsive units
   useEffect(() => {
@@ -820,12 +727,13 @@ function AdUnitItem({
     if (preview) return; // In admin preview simulation, do not auto-collapse
 
     if (adType === "HTML" || adType === "SCRIPT" || adType === "DISPLAY") {
+      let active = true;
       // 1. Check AdBlocker status
       detectAdBlock().then((blocked) => {
-        if (blocked) {
+        if (active && blocked) {
           onUnavailable?.();
         }
-      });
+      }).catch(error => console.warn("Could not check ad availability:", error));
 
       // 2. Check if embed container or ins tag is unfilled or empty
       const checkAdSenseFilled = (isTimeout = false) => {
@@ -883,11 +791,39 @@ function AdUnitItem({
       }
 
       return () => {
+        active = false;
         clearTimeout(timer);
         observer?.disconnect();
       };
     }
   }, [adType, preview, onUnavailable]);
+
+  if (isInvalid) return null;
+
+  if (isCompact && !isEmbed) {
+    return (
+      <div className="flex flex-col gap-1 text-left w-full group">
+        <div className="flex items-center gap-2.5">
+          {item.imageUrl ? (
+            <a href={item.destinationUrl || "#"} target="_blank" rel="noopener noreferrer nofollow"
+              className="block shrink-0 w-12 h-12 rounded-lg overflow-hidden bg-white dark:bg-zinc-800 border border-zinc-200/60 dark:border-zinc-700 p-0.5">
+              <img src={item.imageUrl} alt={item.title || "Ad"} className="w-full h-full object-contain group-hover:scale-105 transition-transform"
+                loading="lazy" onError={() => onUnavailable?.()} />
+            </a>
+          ) : null}
+          <div className="flex-1 min-w-0">
+            <h4 className="text-xs font-bold text-zinc-900 dark:text-zinc-100 truncate group-hover:text-blue-500 transition-colors">{item.title}</h4>
+            <div className="mt-1">
+              <a href={item.destinationUrl || "#"} target="_blank" rel="noopener noreferrer nofollow"
+                className="inline-flex items-center gap-1 text-[10.5px] font-semibold text-blue-600 dark:text-blue-400 hover:underline">
+                <span>{item.ctaText || "Learn More"}</span><ExternalLink className="w-2.5 h-2.5" />
+              </a>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   // HTML / Script / Embed Unit (e.g. AADS, Google AdSense auto / responsive unit)
   if (adType === "HTML" || adType === "SCRIPT" || adType === "DISPLAY") {
@@ -906,14 +842,6 @@ function AdUnitItem({
 
   // IFRAME Ad
   if (adType === "IFRAME") {
-    const isInvalid = !item.destinationUrl || item.destinationUrl.startsWith("/") || item.destinationUrl.includes("takeoutfix");
-    useEffect(() => {
-      if (isInvalid) onUnavailable?.();
-    }, [isInvalid, onUnavailable]);
-
-    if (isInvalid) {
-      return null;
-    }
     return (
       <div className="flex flex-col h-full justify-between gap-2">
         <iframe
@@ -930,14 +858,6 @@ function AdUnitItem({
 
   // IMAGE Banner
   if (adType === "IMAGE") {
-    const isInvalid = !item.imageUrl || !item.destinationUrl || item.destinationUrl.startsWith("/") || item.destinationUrl.includes("takeoutfix");
-    useEffect(() => {
-      if (isInvalid) onUnavailable?.();
-    }, [isInvalid, onUnavailable]);
-
-    if (isInvalid) {
-      return null;
-    }
     return (
       <div className="flex flex-col h-full justify-between gap-2">
         <div className="flex items-center gap-1.5">
@@ -964,15 +884,6 @@ function AdUnitItem({
   }
 
   // NATIVE Ad (Custom external sponsor card only)
-  const isInvalidNative = !item.destinationUrl || item.destinationUrl.startsWith("/") || item.destinationUrl.includes("takeoutfix");
-  useEffect(() => {
-    if (isInvalidNative) onUnavailable?.();
-  }, [isInvalidNative, onUnavailable]);
-
-  if (isInvalidNative) {
-    return null;
-  }
-
   return (
     <div className="flex flex-col h-full justify-between gap-3 text-left">
       <div className="flex items-center gap-1.5">

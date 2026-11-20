@@ -3,6 +3,8 @@ package com.takeoutfix.auth;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
+import java.nio.file.Path;
 
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -11,13 +13,19 @@ import static org.junit.jupiter.api.Assertions.*;
 
 class UserSyncBridgeServiceTest {
 
+    @TempDir
+    Path tempDir;
     private UserSyncBridgeService bridgeService;
 
     @BeforeEach
     void setUp() {
         UserController.getCurrentUserProfile().clear();
         UserController.setUserService(null);
-        bridgeService = new UserSyncBridgeService();
+        CredentialStore store = new CredentialStore(tempDir.toFile());
+        FirebaseTokenService tokens = new FirebaseTokenService();
+        SessionManager sessions = new SessionManager(store, tokens);
+        GoogleAuthService auth = new GoogleAuthService(AuthCallbackServer::new, tokens, sessions);
+        bridgeService = new UserSyncBridgeService(auth, store, new FirebaseSyncService(tempDir.toFile(), false));
     }
 
     @org.junit.jupiter.api.AfterEach
@@ -62,6 +70,31 @@ class UserSyncBridgeServiceTest {
         UserController.syncUser(Map.of("email", "test@example.com", "plan", "pro"));
 
         assertTrue(updated.get(), "Listener should have been triggered with new email");
+    }
+
+    @Test
+    void rejectsEnrichmentAfterSignOutOrAccountChange() {
+        Map<String, Object> oldProfile = Map.of("uid", "first", "email", "first@example.com",
+                "idToken", "old-token", "displayName", "Old response");
+        UserController.getCurrentUserProfile().putAll(oldProfile);
+        bridgeService.invalidateCloudEnrichment();
+        assertFalse(bridgeService.applyCloudEnrichment(oldProfile, Map.of("displayName", "Old response"), 0));
+
+        UserController.getCurrentUserProfile().clear();
+        UserController.getCurrentUserProfile().putAll(Map.of("uid", "second", "email", "second@example.com",
+                "idToken", "new-token"));
+        assertFalse(bridgeService.applyCloudEnrichment(oldProfile, Map.of("displayName", "Old response"), 1));
+        assertEquals("second", UserController.getCurrentUserProfile().get("uid"));
+        assertFalse(UserController.getCurrentUserProfile().containsKey("displayName"));
+    }
+
+    @Test
+    void enrichmentOnlyAppliesFieldsChangedByTheResponse() {
+        Map<String, Object> original = Map.of("uid", "first", "idToken", "old-token", "plan", "free");
+        Map<String, Object> enriched = Map.of("uid", "first", "idToken", "old-token", "plan", "pro");
+        assertEquals(Map.of("plan", "pro"), UserSyncBridgeService.enrichmentChanges(original, enriched, original));
+        Map<String, Object> active = Map.of("uid", "first", "idToken", "new-token", "plan", "unlimited");
+        assertTrue(UserSyncBridgeService.enrichmentChanges(original, enriched, active).isEmpty());
     }
 
     @Test

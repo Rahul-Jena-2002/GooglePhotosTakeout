@@ -5,7 +5,7 @@ import AdminLayout from "./AdminLayout"
 import { ToolWorkspaceContent } from "../../../react-pages/tool/ToolWorkspace"
 import { ToastContainer } from "../../ui/toast"
 import { AuthProvider, useAuth } from "../../../contexts/AuthContext"
-import { isSuperAdminEmail as checkSuperAdminEmail } from "../../../lib/adminAuth"
+import { isEmulatorDevelopment, isVerifiedSuperAdmin } from "../../../lib/adminAuth"
 
 // Lazy-loaded admin page bundles
 const AdminDashboard      = React.lazy(() => import("../../../react-pages/admin/AdminDashboard"))
@@ -53,8 +53,8 @@ function RequireRole({
   children: React.ReactNode
 }) {
   const { user, adminData, loading } = useAuth()
-  const isDev = import.meta.env.DEV
-  const isSuperAdminEmail = checkSuperAdminEmail(user?.email || adminData?.email)
+  const isDev = isEmulatorDevelopment()
+  const isSuperAdminEmail = isVerifiedSuperAdmin(user)
 
   // Still loading — show nothing (AdminLayout already shows a spinner)
   if (loading) return null
@@ -84,11 +84,11 @@ function RequireRole({
 
 function RequireDeveloper({ children }: { children: React.ReactNode }) {
   const { user, adminData, loading } = useAuth()
-  const isDev = import.meta.env.DEV
+  const isDev = isEmulatorDevelopment()
 
   if (loading) return null
 
-  const isSuper = checkSuperAdminEmail(user?.email || adminData?.email)
+  const isSuper = isVerifiedSuperAdmin(user)
   const isDeveloper = adminData?.role === "DEVELOPER" || adminData?.role === "SUPER_ADMIN" || isSuper || isDev
 
   if (!isDeveloper) {

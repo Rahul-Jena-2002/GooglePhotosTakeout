@@ -35,7 +35,7 @@ const docsSchema = {
           TakeoutFix Architecture &amp; Guide
         </h1>
         <p class="text-base sm:text-lg text-zinc-600 dark:text-zinc-400 max-w-3xl leading-relaxed">
-          Learn how TakeoutFix reconciles severed Google Takeout JSON sidecars, injects binary EXIF and QuickTime headers, and restores your Google Photos library with 100% client-side privacy.
+          Learn how TakeoutFix matches extra details files and attempts to add available dates and locations to supported media.
         </p>
       </header>
 
@@ -46,10 +46,10 @@ const docsSchema = {
           The Problem: Broken Timestamps &amp; JSON Sidecars
         </h2>
         <p class="text-sm sm:text-base text-zinc-600 dark:text-zinc-400 leading-relaxed">
-          When downloading Google Photos archives via Google Takeout, Google does not burn photo timestamps, descriptions, or updated GPS coordinates back into the media files. Instead, they export disconnected companion <code class="text-xs font-mono px-1.5 py-0.5 rounded bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700">.json</code> sidecar files.
+          Google Takeout can include extra details in companion <code class="text-xs font-mono px-1.5 py-0.5 rounded bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700">.json</code> files. Some of these details may differ from the information embedded in the photo or video.
         </p>
         <p class="text-sm sm:text-base text-zinc-600 dark:text-zinc-400 leading-relaxed">
-          Upon unzipping, host operating systems (Windows, macOS, Linux) assign the <em>extraction date</em> (today) as the filesystem creation timestamp. As a result, importing raw Takeout folders into Apple Photos, Synology Photos, Immich, or Google Drive flattens your chronological timeline into today's date.
+          File creation and modification dates may change during extraction or transfer. Photo apps differ in which dates they use, so check a few files in your destination app before moving your whole library.
         </p>
       </section>
 
@@ -57,10 +57,10 @@ const docsSchema = {
       <section class="space-y-4">
         <h2 class="text-2xl font-bold text-zinc-900 dark:text-white flex items-center gap-2.5">
           <span class="w-7 h-7 rounded-lg bg-zinc-100 dark:bg-zinc-800 text-zinc-800 dark:text-zinc-200 text-xs font-mono font-bold flex items-center justify-center">02</span>
-          The 5-Stage Heuristic Resolver
+          Matching photos with their details
         </h2>
         <p class="text-sm sm:text-base text-zinc-600 dark:text-zinc-400 leading-relaxed">
-          Google Takeout frequently mangles filenames by truncating strings at 47 characters, appending <code class="text-xs font-mono bg-zinc-100 dark:bg-zinc-800 px-1 py-0.5 rounded">-edited</code> tags, or attaching duplicate copy counters like <code class="text-xs font-mono bg-zinc-100 dark:bg-zinc-800 px-1 py-0.5 rounded">(1)</code> to the JSON instead of the photo. TakeoutFix resolves these edge cases deterministically:
+          Takeout filenames can be shortened or include copy counters. The tool checks several naming patterns and leaves ambiguous matches for review. Examples include:
         </p>
         
         <div class="grid sm:grid-cols-2 gap-4 pt-2">
@@ -70,15 +70,15 @@ const docsSchema = {
           </div>
           <div class="p-4 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/60 shadow-xs">
             <h3 class="text-sm font-bold text-zinc-900 dark:text-zinc-100 mb-1">2. Suffix &amp; Copy Inversion</h3>
-            <p class="text-xs text-zinc-600 dark:text-zinc-400 leading-relaxed">Resolves discrepancies where Google named the file <code class="text-[11px] font-mono">photo(1).jpg</code> but the sidecar is <code class="text-[11px] font-mono">photo.jpg(1).json</code>.</p>
+            <p class="text-xs text-zinc-600 dark:text-zinc-400 leading-relaxed">Checks supported naming variations for numbered copies. Not every variation can be matched safely.</p>
           </div>
           <div class="p-4 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/60 shadow-xs">
             <h3 class="text-sm font-bold text-zinc-900 dark:text-zinc-100 mb-1">3. Truncation Recovery</h3>
-            <p class="text-xs text-zinc-600 dark:text-zinc-400 leading-relaxed">Restores pairings for long filenames cut off by Google's legacy 47-character and 51-character archive limits.</p>
+            <p class="text-xs text-zinc-600 dark:text-zinc-400 leading-relaxed">Checks some shortened names when an exact match is unavailable. Similar names may be left unmatched.</p>
           </div>
           <div class="p-4 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/60 shadow-xs">
-            <h3 class="text-sm font-bold text-zinc-900 dark:text-zinc-100 mb-1">4. Live Photo &amp; Video Pairing</h3>
-            <p class="text-xs text-zinc-600 dark:text-zinc-400 leading-relaxed">Correlates paired Apple HEIC stills and companion MOV motion video clips to identical timestamp anchors.</p>
+            <h3 class="text-sm font-bold text-zinc-900 dark:text-zinc-100 mb-1">4. Review uncertain matches</h3>
+            <p class="text-xs text-zinc-600 dark:text-zinc-400 leading-relaxed">If a sidecar is missing or ambiguous, check the report and keep the original export.</p>
           </div>
         </div>
       </section>
@@ -102,17 +102,17 @@ const docsSchema = {
               <tr>
                 <td class="px-4 py-3 font-bold text-zinc-900 dark:text-white">Still Images</td>
                 <td class="px-4 py-3">JPG, JPEG, PNG, WEBP, TIFF</td>
-                <td class="px-4 py-3">EXIF: DateTimeOriginal, CreateDate, GPSLatitude, GPSLongitude, GPSAltitude</td>
+                <td class="px-4 py-3">Attempts to write available dates and coordinates; support varies by file.</td>
               </tr>
               <tr>
                 <td class="px-4 py-3 font-bold text-zinc-900 dark:text-white">Apple Formats</td>
-                <td class="px-4 py-3">HEIC, HEIF, Apple Live Photos</td>
-                <td class="px-4 py-3">EXIF &amp; QuickTime metadata, paired timestamps</td>
+                <td class="px-4 py-3">HEIC, HEIF</td>
+                <td class="px-4 py-3">Attempts photo metadata restoration; check output in your photo app.</td>
               </tr>
               <tr>
                 <td class="px-4 py-3 font-bold text-zinc-900 dark:text-white">Video Media</td>
-                <td class="px-4 py-3">MP4, MOV, M4V, 3GP</td>
-                <td class="px-4 py-3">QuickTime mvhd creation time, GPS coordinates, local filesystem creation</td>
+                <td class="px-4 py-3">MP4, MOV, M4V</td>
+                <td class="px-4 py-3">Attempts to update supported container timestamps; does not restore video GPS.</td>
               </tr>
             </tbody>
           </table>
@@ -123,18 +123,18 @@ const docsSchema = {
       <section class="space-y-4">
         <h2 class="text-2xl font-bold text-zinc-900 dark:text-white flex items-center gap-2.5">
           <span class="w-7 h-7 rounded-lg bg-zinc-100 dark:bg-zinc-800 text-zinc-800 dark:text-zinc-200 text-xs font-mono font-bold flex items-center justify-center">04</span>
-          Zero-Server Privacy Guarantee
+          Local media processing
         </h2>
         <div class="p-6 rounded-2xl bg-emerald-50/50 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-900/50 space-y-3">
           <div class="flex items-center gap-2 text-emerald-800 dark:text-emerald-300 font-bold text-sm">
             <Icon name="shield-check" class="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
-            <span>100% Client-Side In-Memory Processing</span>
+            <span>Browser restore tool</span>
           </div>
           <p class="text-xs sm:text-sm text-zinc-700 dark:text-zinc-300 leading-relaxed">
-            Your photos and private memories are never uploaded to any remote server or cloud bucket. The web application leverages standard browser WebAssembly (Wasm) and Web Workers via the modern File System Access API. 
+            The browser restore flow processes selected photos and videos on your device. Account, support, diagnostic and advertising features use separate network services.
           </p>
           <p class="text-xs sm:text-sm text-zinc-700 dark:text-zinc-300 leading-relaxed">
-            The native desktop application runs offline on your machine with multi-threaded parallel performance, zero network dependencies, and optional RAM disk acceleration for massive libraries.
+            The desktop application is also available for local processing. Check its current download and sign-in requirements before use.
           </p>
         </div>
       </section>

@@ -5,6 +5,8 @@ import type {
   MonetizationPlacement,
 } from "../../../services/monetization/types";
 import { apiClient } from "../../../lib/api/apiClient";
+import { auth } from "../../../firebase";
+import { isAxiosError } from "axios";
 import {
   ShoppingBag,
   Plus,
@@ -51,31 +53,36 @@ export default function MonetizationAffiliatesTab({
   const [isExtracting, setIsExtracting] = useState(false);
   const [extractError, setExtractError] = useState<string | null>(null);
 
-  const handleAutoExtract = async () => {
-    if (!editingLink?.destinationUrl) {
+  const handleAutoExtract = async (pastedUrl?: string) => {
+    const url = pastedUrl || editingLink?.destinationUrl;
+    if (!editingLink || !url) {
       setExtractError("Please paste a destination URL first.");
       return;
     }
     setIsExtracting(true);
     setExtractError(null);
     try {
+      const token = await auth?.currentUser?.getIdToken();
+      if (!token) throw new Error("Sign in as an administrator to extract product details.");
       const res = await apiClient.get("/api/extract-metadata", {
-        params: { url: editingLink.destinationUrl }
+        params: { url }, headers: { Authorization: `Bearer ${token}` }
       });
       const data = res.data;
       if (data.success) {
-        setEditingLink({
-          ...editingLink,
-          imageUrl: data.imageUrl || editingLink.imageUrl,
-          title: data.title || editingLink.title,
-          description: data.description || editingLink.description,
-          tag: editingLink.tag?.trim() && editingLink.tag !== "Featured Deal" ? editingLink.tag : (data.asin ? "Amazon Special" : "Featured Deal"),
-        });
+        setEditingLink(prev => prev && prev.id === editingLink.id && prev.destinationUrl === url ? {
+          ...prev,
+          imageUrl: data.imageUrl || prev.imageUrl,
+          title: data.title || prev.title,
+          description: data.description || prev.description,
+          tag: prev.tag?.trim() && prev.tag !== "Featured Deal" ? prev.tag : (data.asin ? "Amazon Special" : "Featured Deal"),
+        } : prev);
       } else {
         setExtractError(data.error || "Could not extract details from this link.");
       }
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "Extraction failed";
+      const msg = isAxiosError(err) && typeof err.response?.data?.error === "string"
+        ? err.response.data.error
+        : err instanceof Error ? err.message : "Extraction failed";
       setExtractError(msg);
     } finally {
       setIsExtracting(false);
@@ -395,8 +402,9 @@ export default function MonetizationAffiliatesTab({
                   onPaste={(e) => {
                     const pasted = e.clipboardData.getData("text");
                     if (pasted && (pasted.startsWith("http://") || pasted.startsWith("https://"))) {
+                      e.preventDefault();
                       setEditingLink((prev) => prev ? { ...prev, destinationUrl: pasted } : null);
-                      setTimeout(() => handleAutoExtract(pasted), 50);
+                      void handleAutoExtract(pasted);
                     }
                   }}
                   className="w-full bg-zinc-900 border border-zinc-700 rounded-lg px-3 py-2.5 text-white text-xs focus:border-amber-500 outline-none"

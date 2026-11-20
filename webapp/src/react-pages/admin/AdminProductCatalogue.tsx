@@ -2,10 +2,11 @@ import { useState, useEffect } from "react"
 import { doc, onSnapshot, setDoc, collection, addDoc } from "firebase/firestore"
 import { db } from "../../firebase"
 import { useAuth } from "../../contexts/AuthContext"
+import { isEmulatorDevelopment, isVerifiedSuperAdmin } from "../../lib/adminAuth"
 import { useToastStore } from "../../store/useToastStore"
 import {
   Package, RefreshCw, ExternalLink, Copy, Check, Search, Filter,
-  DollarSign, Globe, Shield, Sparkles, Tag, ArrowUpRight, Plus,
+  DollarSign, Globe, Shield, Sparkles, Tag, Plus,
   Layers, ToggleLeft, ToggleRight, CheckCircle2, AlertCircle
 } from "lucide-react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../../components/ui/card"
@@ -55,8 +56,8 @@ function resolveSyncUrl(endpoint: string, _storedUrl?: string): string {
 
 export default function AdminProductCatalogue() {
   const { user, adminData, loading: authLoading } = useAuth()
-  const isSuperAdminEmail = (user?.email || adminData?.email) === 'rahuljena.dev@gmail.com'
-  const isDev = import.meta.env.DEV
+  const isSuperAdminEmail = isVerifiedSuperAdmin(user)
+  const isDev = isEmulatorDevelopment()
   const hasAccess = isDev || isSuperAdminEmail || ["SUPER_ADMIN", "ADMIN"].includes(adminData?.role)
 
   const [activeGateway, setActiveGateway] = useState<string>("dodo")
@@ -430,8 +431,7 @@ export default function AdminProductCatalogue() {
         price: currentPrice,
         activeProductId,
         fullProductId,
-        isConfigured: !!activeProductId,
-        checkoutUrl: `/checkout?plan=${planKey}&region=${region.key}`
+        isConfigured: !!activeProductId
       }
     })
   })
@@ -703,16 +703,7 @@ export default function AdminProductCatalogue() {
                 </Button>
 
                 <div className="flex items-center gap-1.5">
-                  <a
-                    href={item.checkoutUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="h-7 px-2 text-[10px] font-semibold rounded-lg bg-zinc-850 hover:bg-zinc-800 text-zinc-300 hover:text-white border border-zinc-750 flex items-center gap-1 transition-colors"
-                    title="Test Checkout Flow in new tab"
-                  >
-                    <span>Test Checkout</span>
-                    <ArrowUpRight className="w-3 h-3" />
-                  </a>
+                  <span className="text-[10px] text-zinc-500" title="Checkout is not configured in this webapp">Checkout unavailable</span>
 
                   {item.activeProductId && (
                     <a

@@ -14,6 +14,7 @@ import java.util.Base64;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Predicate;
 
 /**
  * Handles Google OAuth 2.0 Authorization Code flow with PKCE (RFC 7636),
@@ -28,25 +29,31 @@ public class GoogleAuthService {
     private final ObjectFactory<AuthCallbackServer> callbackServerProvider;
     private final FirebaseTokenService tokenService;
     private final SessionManager sessionManager;
-    private final CredentialStore credentialStore;
+    private final Predicate<String> browserOpener;
 
     public GoogleAuthService() {
-        this(AuthCallbackServer::new, new FirebaseTokenService(), new SessionManager(), new CredentialStore());
+        this(AuthCallbackServer::new, new FirebaseTokenService(), new SessionManager());
     }
 
     public GoogleAuthService(AuthCallbackServer callbackServer, FirebaseTokenService tokenService, SessionManager sessionManager) {
-        this(() -> callbackServer, tokenService, sessionManager, new CredentialStore());
+        this(() -> callbackServer, tokenService, sessionManager);
     }
 
     @Autowired
     public GoogleAuthService(ObjectFactory<AuthCallbackServer> callbackServerProvider,
                              FirebaseTokenService tokenService,
-                             SessionManager sessionManager,
-                             CredentialStore credentialStore) {
+                             SessionManager sessionManager) {
+        this(callbackServerProvider, tokenService, sessionManager, BrowserUtil::openBrowser);
+    }
+
+    GoogleAuthService(ObjectFactory<AuthCallbackServer> callbackServerProvider,
+                      FirebaseTokenService tokenService,
+                      SessionManager sessionManager,
+                      Predicate<String> browserOpener) {
         this.callbackServerProvider = callbackServerProvider;
         this.tokenService = tokenService;
         this.sessionManager = sessionManager;
-        this.credentialStore = credentialStore;
+        this.browserOpener = browserOpener;
     }
 
     public SessionManager getSessionManager() {
@@ -61,6 +68,10 @@ public class GoogleAuthService {
      * 4. Exchanges received authorization code for tokens and persists session
      */
     public CompletableFuture<AuthSession> authenticate() {
+        return authenticate(true);
+    }
+
+    public CompletableFuture<AuthSession> authenticate(boolean saveSession) {
         CompletableFuture<AuthSession> resultFuture = new CompletableFuture<>();
 
         // Generate Anti-CSRF State Parameter & PKCE Verifier
@@ -70,6 +81,12 @@ public class GoogleAuthService {
 
         AuthCallbackServer callbackServer = callbackServerProvider.getObject();
         CompletableFuture<Map<String, Object>> callbackFuture = new CompletableFuture<>();
+        resultFuture.whenComplete((session, error) -> {
+            if (resultFuture.isCancelled()) {
+                callbackServer.stop();
+                callbackFuture.cancel(false);
+            }
+        });
         try {
             int port = callbackServer.start(stateToken, callbackFuture);
             if (port <= 0) {
@@ -103,10 +120,10 @@ public class GoogleAuthService {
                         + "&prompt=select_account";
             }
 
-            boolean opened = BrowserUtil.openBrowser(authUrl);
+            boolean opened = browserOpener.test(authUrl);
             if (!opened) {
                 callbackServer.stop();
-                resultFuture.completeExceptionally(new AuthException("Failed to launch system browser. Please visit: " + authUrl));
+                resultFuture.completeExceptionally(new AuthException("Could not open your browser. Check your default browser settings and try signing in again."));
                 return resultFuture;
             }
 
@@ -130,11 +147,8 @@ public class GoogleAuthService {
                         throw new AuthException("Failed to establish verified session from Google callback.");
                     }
 
-                    // Save session securely to session.json via CredentialStore and SessionManager
-                    credentialStore.saveSession(session);
-                    sessionManager.save(session);
+                    if (saveSession) sessionManager.save(session);
 
-                    // Auto-focus TakeoutFix Desktop window so user transitions seamlessly
                     javax.swing.SwingUtilities.invokeLater(() -> {
                         for (java.awt.Window win : java.awt.Window.getWindows()) {
                             if (win instanceof javax.swing.JFrame frame && frame.isVisible()) {
@@ -165,29 +179,12 @@ public class GoogleAuthService {
         return resultFuture;
     }
 
-    public void signOut() {
-        sessionManager.logout();
+    public boolean signOut() {
+        return sessionManager.logout();
     }
 
-    private String resolveBaseAuthUrl() {
-        for (int p : new int[]{4321, 4322}) {
-            if (isLocalPortListening(p)) {
-                return "http://localhost:" + p + "/auth/desktop";
-            }
-        }
-        return "https://takeoutfix.pages.dev/auth/desktop";
-    }
-
-    private boolean isLocalPortListening(int port) {
-        for (String host : new String[]{"localhost", "127.0.0.1"}) {
-            try (java.net.Socket s = new java.net.Socket()) {
-                s.connect(new java.net.InetSocketAddress(host, port), 250);
-                return true;
-            } catch (Exception ignored) {
-                // Try next host candidate
-            }
-        }
-        return false;
+    static String resolveBaseAuthUrl() {
+        return "https://takeoutfix.pages.dev/login";
     }
 
     // ── PKCE and State Utilities (RFC 7636 & RFC 6749) ───────────────────────

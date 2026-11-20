@@ -1,4 +1,4 @@
-import { memoryGuard } from './MemoryGuard';
+import { memoryGuard } from './MemoryGuard.ts';
 
 /**
  * WebAssembly ExifTool Deep Metadata Restorer
@@ -11,21 +11,24 @@ import { memoryGuard } from './MemoryGuard';
 
 // Global cache for zeroperl.wasm bytes to prevent redundant network fetches across worker tasks
 let cachedWasmBytes: ArrayBuffer | null = null;
+let pendingWasmBytes: Promise<ArrayBuffer> | null = null;
 
-async function getWasmResponse(): Promise<Response> {
+export async function getWasmResponse(): Promise<Response> {
   if (!cachedWasmBytes) {
     if (typeof fetch !== 'undefined') {
-      const res = await fetch('/zeroperl.wasm');
-      if (!res.ok) {
-        throw new Error(`Failed to load WebAssembly binary /zeroperl.wasm: ${res.statusText}`);
+      if (!pendingWasmBytes) {
+        pendingWasmBytes = fetch('/zeroperl.wasm').then(res => {
+          if (!res.ok) throw new Error(`Failed to load WebAssembly binary /zeroperl.wasm: ${res.statusText}`);
+          return res.arrayBuffer();
+        }).finally(() => { pendingWasmBytes = null; });
       }
-      cachedWasmBytes = await res.arrayBuffer();
+      cachedWasmBytes = await pendingWasmBytes;
     } else {
       throw new Error("Fetch API unavailable for WebAssembly binary loading.");
     }
   }
-  // Return fresh Response with slice of bytes so body can be consumed repeatedly by zeroperl
-  return new Response(cachedWasmBytes.slice(0));
+  // Response copies the bytes, allowing each caller to consume its own body.
+  return new Response(cachedWasmBytes);
 }
 
 const wasmFetch = async (_url: any): Promise<Response> => {
@@ -57,6 +60,12 @@ export function toExifToolDate(epochSeconds: number): string {
   return `${d.getFullYear()}:${pad(d.getMonth() + 1)}:${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
 }
 
+export function exifDateTags(epochSeconds: number | null): Record<string, string> {
+  if (epochSeconds === null) return {};
+  const date = toExifToolDate(epochSeconds);
+  return { DateTimeOriginal: date, CreateDate: date, ModifyDate: date };
+}
+
 export interface ExifInjectOptions {
   lat?: number;
   lng?: number;
@@ -75,21 +84,15 @@ export interface ExifInjectOptions {
  */
 export async function injectImageExif(
   imageBuffer: ArrayBuffer,
-  epochSeconds: number,
+  epochSeconds: number | null,
   options: ExifInjectOptions = {}
 ): Promise<ArrayBuffer> {
   await memoryGuard.yieldForGC();
   ensureWorkerPolyfill();
 
   const { lat, lng, altitude, description, people, albumName, artist, copyright, filename = 'image.jpg' } = options;
-  const dateStr = toExifToolDate(epochSeconds);
-
   // Construct comprehensive metadata dictionary for ExifTool
-  const tags: Record<string, any> = {
-    DateTimeOriginal: dateStr,
-    CreateDate: dateStr,
-    ModifyDate: dateStr
-  };
+  const tags: Record<string, any> = exifDateTags(epochSeconds);
 
   // GPS Geolocation tags
   if (lat !== undefined && lng !== undefined && !isNaN(lat) && !isNaN(lng)) {

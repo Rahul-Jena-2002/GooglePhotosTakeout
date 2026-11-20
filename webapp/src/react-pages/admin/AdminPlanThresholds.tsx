@@ -2,6 +2,7 @@ import { useState, useEffect } from "react"
 import { doc, setDoc, onSnapshot, addDoc, collection, getDocs } from "firebase/firestore"
 import { db } from "../../firebase"
 import { useAuth } from "../../contexts/AuthContext"
+import { isEmulatorDevelopment, isVerifiedSuperAdmin } from "../../lib/adminAuth"
 import { useToastStore } from "../../store/useToastStore"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../../components/ui/card"
 import { Button } from "../../components/ui/button"
@@ -15,10 +16,10 @@ interface ThresholdCfg {
 
 export default function AdminPlanThresholds() {
   const { user, adminData, loading: authLoading } = useAuth()
-  const isSuperAdminEmail = (user?.email || adminData?.email) === 'rahuljena.dev@gmail.com'
-  const role = isSuperAdminEmail ? "SUPER_ADMIN" : (adminData?.role ?? "ADMIN")
+  const isSuperAdminEmail = isVerifiedSuperAdmin(user)
+  const role = isSuperAdminEmail ? "SUPER_ADMIN" : adminData?.role
   const isSuperAdmin = role === "SUPER_ADMIN" || isSuperAdminEmail
-  const isDev = import.meta.env.DEV
+  const isDev = isEmulatorDevelopment()
   const hasAccess = isDev || isSuperAdmin || role === "ADMIN"
 
   const [saving, setSaving] = useState(false)

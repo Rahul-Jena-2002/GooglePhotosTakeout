@@ -25,6 +25,11 @@
         <maven.compiler.target>21</maven.compiler.target>
         <maven.compiler.release>21</maven.compiler.release>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <app.version>${project.version}</app.version>
+        <build.number>0</build.number>
+        <maven.build.timestamp.format>yyyy-MM-dd'T'HH:mm:ss'Z'</maven.build.timestamp.format>
+        <app.build.timestamp>${maven.build.timestamp}</app.build.timestamp>
+        <javafx.version>21.0.11</javafx.version>
     </properties>
 
     <dependencies>
@@ -98,21 +103,21 @@
             <scope>test</scope>
         </dependency>
 
-        <!-- JavaFX 23 Controls, FXML & Graphics -->
+        <!-- Match the JavaFX 21 runtime packaged by the release workflow. -->
         <dependency>
             <groupId>org.openjfx</groupId>
             <artifactId>javafx-controls</artifactId>
-            <version>23.0.2</version>
+            <version>${javafx.version}</version>
         </dependency>
         <dependency>
             <groupId>org.openjfx</groupId>
             <artifactId>javafx-fxml</artifactId>
-            <version>23.0.2</version>
+            <version>${javafx.version}</version>
         </dependency>
         <dependency>
             <groupId>org.openjfx</groupId>
             <artifactId>javafx-graphics</artifactId>
-            <version>23.0.2</version>
+            <version>${javafx.version}</version>
         </dependency>
 
         <!-- AtlantaFX Modern Design System for JavaFX (Primer Dark / Light) -->

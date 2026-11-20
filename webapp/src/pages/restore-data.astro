@@ -4,84 +4,12 @@ import Layout from "../layouts/Layout.astro";
 import Icon from "../components/ui/Icon.astro";
 import AdUnit from "../components/monetization/AdUnit";
 
-// Structured Schema.org data for SEO and Google Rich Results
-const faqSchema = {
-  "@context": "https://schema.org",
-  "@type": "FAQPage",
-  "mainEntity": [
-    {
-      "@type": "Question",
-      "name": "Why does Google Takeout create separate JSON files?",
-      "acceptedAnswer": {
-        "@type": "Answer",
-        "text": "Google Takeout exports Google Photos metadata—including original capture timestamps, GPS coordinates, descriptions, and album tags—into secondary .json sidecar files instead of embedding them directly into your photo and video headers."
-      }
-    },
-    {
-      "@type": "Question",
-      "name": "Why are my photo dates wrong after downloading Google Takeout?",
-      "acceptedAnswer": {
-        "@type": "Answer",
-        "text": "When you extract a Takeout ZIP archive, your operating system assigns the current extraction or download timestamp as the file's 'Date Created' filesystem attribute. Because the original date was stored in the separate JSON sidecar, image viewers that rely on filesystem dates show today's date."
-      }
-    },
-    {
-      "@type": "Question",
-      "name": "Does TakeoutFix upload my photos or videos to any server?",
-      "acceptedAnswer": {
-        "@type": "Answer",
-        "text": "The media restoration flow processes selected media locally in your browser. Account, support, diagnostics, and advertising features may use separate network services; see the privacy policy for details."
-      }
-    },
-    {
-      "@type": "Question",
-      "name": "Can TakeoutFix restore GPS locations and coordinates?",
-      "acceptedAnswer": {
-        "@type": "Answer",
-        "text": "If a sidecar contains supported location values and the media format supports writing them, the tool can restore location metadata. Check the output with a metadata viewer."
-      }
-    },
-    {
-      "@type": "Question",
-      "name": "Will TakeoutFix compress or re-encode my photos and videos?",
-      "acceptedAnswer": {
-        "@type": "Answer",
-        "text": "The tool edits metadata for supported file types without intentionally re-encoding the image or video content. Verify output files with a metadata viewer and retain the original archive."
-      }
-    },
-    {
-      "@type": "Question",
-      "name": "Does TakeoutFix support Apple HEIC and Live Photos?",
-      "acceptedAnswer": {
-        "@type": "Answer",
-        "text": "HEIC and MOV support depends on the tool version and metadata available in the export. Test a sample pair and verify it in your destination app before processing a full library."
-      }
-    },
-    {
-      "@type": "Question",
-      "name": "What happens if a JSON sidecar file is missing?",
-      "acceptedAnswer": {
-        "@type": "Answer",
-        "text": "A missing sidecar limits which metadata is available to restore. Keep unmatched files and use the tool report to identify them; do not assume missing dates or locations can be recovered."
-      }
-    },
-    {
-      "@type": "Question",
-      "name": "Can I use TakeoutFix with multi-part Takeout archives?",
-      "acceptedAnswer": {
-        "@type": "Answer",
-        "text": "Extract the archive parts into a folder structure, then select the appropriate parent folder. Test a small sample and confirm the tool finds the expected media and sidecars."
-      }
-    }
-  ]
-};
 ---
 
 <Layout 
   title="Restore Google Photos Dates & Metadata | TakeoutFix Complete Guide" 
   description="Google Takeout separated your photo dates and GPS into JSON sidecars? Learn what TakeoutFix fixes, how it matches files locally in your browser, and how to safely restore your library."
 >
-  <script type="application/ld+json" set:html={JSON.stringify(faqSchema)} />
 
   <div class="bg-background text-foreground min-h-screen py-10 sm:py-16 px-4 sm:px-6 lg:px-8 relative overflow-hidden font-sans">
     
@@ -120,17 +48,13 @@ const faqSchema = {
 
       <!-- Hero Call To Action -->
       <div class="flex flex-col sm:flex-row gap-4 justify-center items-center mb-5">
-        <a href="/tool" class="w-full sm:w-auto">
-          <button class="btn-monochrome-primary px-8 h-13 font-bold rounded-xl transition-all flex items-center justify-center gap-2 w-full sm:w-auto cursor-pointer shadow-md hover:shadow-lg">
+        <a href="/tool" class="btn-monochrome-primary px-8 h-13 font-bold rounded-xl transition-all flex items-center justify-center gap-2 w-full sm:w-auto shadow-md hover:shadow-lg">
             <span>Restore My Takeout</span>
             <Icon name="arrow-right" class="w-4 h-4" />
-          </button>
         </a>
-        <a href="/download" class="w-full sm:w-auto">
-          <button class="btn-monochrome-secondary px-6 h-13 font-semibold rounded-xl transition-all flex items-center justify-center gap-2 w-full sm:w-auto cursor-pointer">
+        <a href="/download" class="btn-monochrome-secondary px-6 h-13 font-semibold rounded-xl transition-all flex items-center justify-center gap-2 w-full sm:w-auto">
             <Icon name="download" class="w-4 h-4" />
             <span>Download Desktop App</span>
-          </button>
         </a>
       </div>
 
@@ -250,7 +174,7 @@ const faqSchema = {
             </div>
             <h3 class="text-lg font-bold text-zinc-900 dark:text-white mb-3">Disconnected Media &amp; Broken Timestamps</h3>
             <p class="text-sm text-zinc-600 dark:text-zinc-400 mb-6 leading-relaxed">
-              When you download your archive, all your photos are dumped alongside matching <code class="text-xs px-1.5 py-0.5 rounded bg-white dark:bg-zinc-800 border border-red-200 dark:border-red-900/50 font-mono">.json</code> files. Your operating system sets the file creation date to <em>today</em>, flattening your photo timeline completely.
+              Some downloaded photos have extra details in separate <code class="text-xs px-1.5 py-0.5 rounded bg-white dark:bg-zinc-800 border border-red-200 dark:border-red-900/50 font-mono">.json</code> files. Downloading or extracting can also change filesystem dates, and photo apps may use different dates to sort a library. The example below is illustrative.
             </p>
             
             <div class="p-4 rounded-xl bg-white dark:bg-zinc-900 border border-red-200/80 dark:border-red-900/40 space-y-2.5 font-mono text-xs">
@@ -272,9 +196,9 @@ const faqSchema = {
               <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
               After TakeoutFix
             </div>
-            <h3 class="text-lg font-bold text-zinc-900 dark:text-white mb-3">Re-Embedded EXIF &amp; Restored Timeline</h3>
+            <h3 class="text-lg font-bold text-zinc-900 dark:text-white mb-3">Put available details back</h3>
             <p class="text-sm text-zinc-600 dark:text-zinc-400 mb-6 leading-relaxed">
-              TakeoutFix parses the JSON sidecar, extracts the true capture time and GPS coordinates, and writes them directly into the photo or video's binary EXIF headers. The JSON files are cleaned up, leaving ready-to-use media files.
+              TakeoutFix looks for an extra details file beside each supported photo or video. When it finds a usable date or location, it adds that information to a restored copy. Some files may stay unchanged or need your review.
             </p>
 
             <div class="p-4 rounded-xl bg-white dark:bg-zinc-900 border border-emerald-200/80 dark:border-emerald-900/40 space-y-2.5 font-mono text-xs">
@@ -291,7 +215,7 @@ const faqSchema = {
             </div>
           </div>
           <div class="mt-6 pt-4 border-t border-emerald-200/60 dark:border-emerald-900/30 text-xs text-emerald-700 dark:text-emerald-400">
-            Result: Photos appear in perfect chronological order on iPhone, Mac, Android, and Windows.
+            Example only: Photo apps may show the date or location stored in a restored file. Results can vary by file and app.
           </div>
         </div>
       </div>
@@ -328,7 +252,7 @@ const faqSchema = {
           <Icon name="alert-triangle" class="w-5 h-5 text-amber-400 flex-shrink-0 mt-0.5" />
           <div>
             <strong class="text-zinc-900 dark:text-white block mb-0.5">Safety Best Practice: Keep your original Takeout archive</strong>
-            TakeoutFix creates repaired copies in a separate output directory. We recommend preserving your original unedited Google Takeout ZIP files as an immutable backup.
+            Choose a separate output folder or ZIP download for processed copies. Keep the original Google Takeout files as a backup until you have checked the results.
           </div>
         </div>
       </div>
@@ -450,7 +374,7 @@ const faqSchema = {
               Open TakeoutFix &amp; Select Folder
             </h3>
             <p class="text-xs text-zinc-600 dark:text-zinc-400 leading-relaxed">
-              Open the <a href="/tool" class="underline font-semibold text-zinc-900 dark:text-white">Restore Center</a> and click <strong>"Select Folder"</strong>.
+              Open the <a href="/tool" class="underline font-semibold text-zinc-900 dark:text-white">Restore Center</a> and choose your extracted Takeout folder or a ZIP file.
             </p>
           </div>
 
@@ -478,13 +402,13 @@ const faqSchema = {
               Restore Metadata
             </h3>
             <p class="text-xs text-zinc-600 dark:text-zinc-400 leading-relaxed">
-              Click <strong>"Start Restore"</strong> to begin parallel client-side metadata injection.
+              Choose a separate output folder or ZIP download, then select <strong>Start Restore</strong> and follow the progress on screen.
             </p>
           </div>
 
           <details class="mt-4 pt-3 border-t border-zinc-100 dark:border-zinc-800/80 group">
             <summary class="text-[11px] font-semibold text-zinc-500 hover:text-zinc-900 dark:hover:text-white cursor-pointer inline-flex items-center justify-between w-full select-none">
-              <span>Engine options</span>
+              <span>Organizing files</span>
               <span class="group-open:rotate-180 transition-transform">▼</span>
             </summary>
             <div class="pt-2 text-[11px] text-zinc-600 dark:text-zinc-400 leading-relaxed space-y-1.5 mt-1">
@@ -506,7 +430,7 @@ const faqSchema = {
               Save or import your library
             </h3>
             <p class="text-xs text-zinc-600 dark:text-zinc-400 leading-relaxed">
-              Files are saved with intact EXIF capture dates, GPS tags, and camera metadata.
+              Review the output and the list of files needing attention. Check dates and locations in your photo app before importing the rest.
             </p>
           </div>
 
@@ -536,8 +460,8 @@ const faqSchema = {
         <h2 class="text-3xl font-extrabold text-zinc-900 dark:text-white mb-4">
           Real-World Metadata Inspection
         </h2>
-        <p class="text-base text-zinc-600 dark:text-zinc-400 max-w-xl mx-auto">
-          TakeoutFix writes standard EXIF and QuickTime metadata tags without recompressing your images.
+          <p class="text-base text-zinc-600 dark:text-zinc-400 max-w-xl mx-auto">
+          TakeoutFix updates supported file details without intentionally changing the picture or video. Keep your originals and check a few restored files.
         </p>
       </div>
 
@@ -591,7 +515,7 @@ const faqSchema = {
           Capabilities &amp; Boundaries
         </h2>
         <p class="text-base text-zinc-600 dark:text-zinc-400 max-w-xl mx-auto">
-          Clear, honest transparency about exactly what TakeoutFix fixes and what it intentionally leaves untouched.
+          What the browser tool can attempt depends on the file, its available details, and the output format.
         </p>
       </div>
 
@@ -599,36 +523,36 @@ const faqSchema = {
         <!-- What It Restores Table -->
         <div class="p-6 rounded-2xl bg-white dark:bg-zinc-900/60 border border-zinc-200 dark:border-zinc-800 shadow-xs">
           <h3 class="text-lg font-bold text-zinc-900 dark:text-white mb-4 flex items-center gap-2">
-            <span class="text-emerald-500">✓</span> What TakeoutFix Restores
+            <span class="text-emerald-500">✓</span> Details TakeoutFix Can Work With
           </h3>
           <div class="divide-y divide-zinc-100 dark:divide-zinc-800/80 text-xs sm:text-sm">
             <div class="py-2.5 flex justify-between items-center">
               <span class="font-medium text-zinc-700 dark:text-zinc-300">Original capture date &amp; time</span>
-              <span class="font-mono font-bold text-emerald-600 dark:text-emerald-400">✓ Restored</span>
+              <span class="font-mono font-bold text-emerald-600 dark:text-emerald-400">When available</span>
             </div>
             <div class="py-2.5 flex justify-between items-center">
               <span class="font-medium text-zinc-700 dark:text-zinc-300">GPS latitude &amp; longitude</span>
-              <span class="font-mono font-bold text-emerald-600 dark:text-emerald-400">✓ Restored</span>
+              <span class="font-mono font-bold text-emerald-600 dark:text-emerald-400">When supported</span>
             </div>
             <div class="py-2.5 flex justify-between items-center">
               <span class="font-medium text-zinc-700 dark:text-zinc-300">Camera make, model &amp; lens</span>
-              <span class="font-mono font-bold text-emerald-600 dark:text-emerald-400">✓ Preserved</span>
+              <span class="font-mono font-bold text-emerald-600 dark:text-emerald-400">Check output</span>
             </div>
             <div class="py-2.5 flex justify-between items-center">
               <span class="font-medium text-zinc-700 dark:text-zinc-300">Supported EXIF / IPTC fields</span>
-              <span class="font-mono font-bold text-emerald-600 dark:text-emerald-400">✓ Restored</span>
+              <span class="font-mono font-bold text-emerald-600 dark:text-emerald-400">Varies by file</span>
             </div>
             <div class="py-2.5 flex justify-between items-center">
               <span class="font-medium text-zinc-700 dark:text-zinc-300">Video creation date (QuickTime)</span>
-              <span class="font-mono font-bold text-emerald-600 dark:text-emerald-400">✓ Restored</span>
+              <span class="font-mono font-bold text-emerald-600 dark:text-emerald-400">For supported video</span>
             </div>
             <div class="py-2.5 flex justify-between items-center">
               <span class="font-medium text-zinc-700 dark:text-zinc-300">Google Photos descriptions</span>
-              <span class="font-mono font-bold text-emerald-600 dark:text-emerald-400">✓ Injected</span>
+              <span class="font-mono font-bold text-emerald-600 dark:text-emerald-400">When supported</span>
             </div>
             <div class="py-2.5 flex justify-between items-center">
               <span class="font-medium text-zinc-700 dark:text-zinc-300">Album folder hierarchy</span>
-              <span class="font-mono font-bold text-emerald-600 dark:text-emerald-400">✓ Preserved</span>
+              <span class="font-mono font-bold text-emerald-600 dark:text-emerald-400">Depends on options</span>
             </div>
           </div>
         </div>
@@ -653,7 +577,7 @@ const faqSchema = {
             </div>
             <div class="py-2.5 flex justify-between items-center">
               <span class="font-medium text-zinc-700 dark:text-zinc-300">Delete or overwrite your original files</span>
-              <span class="font-mono font-bold text-red-500">❌ Never</span>
+              <span class="font-mono font-bold text-red-500">Not intended to</span>
             </div>
             <div class="py-2.5 flex justify-between items-center">
               <span class="font-medium text-zinc-700 dark:text-zinc-300">Recover permanently deleted photos</span>
@@ -661,7 +585,7 @@ const faqSchema = {
             </div>
             <div class="py-2.5 flex justify-between items-center">
               <span class="font-medium text-zinc-700 dark:text-zinc-300">Fabricate missing/empty metadata</span>
-              <span class="font-mono font-bold text-red-500">❌ Never</span>
+              <span class="font-mono font-bold text-red-500">Not intended to</span>
             </div>
             <div class="py-2.5 flex justify-between items-center">
               <span class="font-medium text-zinc-700 dark:text-zinc-300">Google facial recognition biometric clusters</span>
@@ -751,7 +675,7 @@ const faqSchema = {
           Supported Media Formats
         </h2>
         <p class="text-base text-zinc-600 dark:text-zinc-400 max-w-xl mx-auto">
-          Works with all standard photo and video formats exported by Google Photos.
+          TakeoutFix can recognize these file types. The details it can restore depend on the file and the information in its matching Takeout file.
         </p>
       </div>
 
@@ -770,7 +694,7 @@ const faqSchema = {
             <div class="p-2.5 rounded-lg bg-zinc-50 dark:bg-zinc-800/80 border border-zinc-200 dark:border-zinc-700/60 font-semibold text-zinc-800 dark:text-zinc-200">DNG / RAW*</div>
           </div>
           <div class="mt-3 text-[11px] text-zinc-500">
-            *DNG and native camera RAW are fully supported with embedded ExifTool integration.
+            Some formats may be recognized but not every type supports every kind of restore. Check sample files before processing a full library.
           </div>
         </div>
 
@@ -803,7 +727,7 @@ const faqSchema = {
           How to Put the Fixed Photos Back on Your Phone
         </h2>
         <p class="text-base text-zinc-600 dark:text-zinc-400 max-w-2xl mx-auto leading-relaxed">
-          Don't just drag and drop the folders via USB cable, or your phone will mess up the dates again. Instead, send them to your phone using AirDrop (for iPhone) or Google Photos (for Android) to keep the dates perfect.
+          When you move restored photos to another device or photo app, try a few first and check how their dates appear. Different apps may display dates differently.
         </p>
       </div>
 
@@ -818,11 +742,11 @@ const faqSchema = {
           <ul class="text-xs text-zinc-600 dark:text-zinc-400 space-y-3 leading-relaxed">
             <li class="flex items-start gap-2">
               <span class="text-emerald-500 font-bold">✓</span>
-              <span><strong>AirDrop (.zip):</strong> AirDrop the restored ZIP archive directly from Mac to your iPhone. Open it in the native <em>Files</em> app and uncompress it to preserve both embedded EXIF and iOS filesystem dates.</span>
+              <span><strong>AirDrop (.zip):</strong> Send the restored ZIP from your Mac to your iPhone and extract it in <em>Files</em>. Check a few photos after importing; filesystem dates can change during transfer.</span>
             </li>
             <li class="flex items-start gap-2">
               <span class="text-emerald-500 font-bold">✓</span>
-              <span><strong>iCloud Photos Web:</strong> Log in to <a href="https://icloud.com" target="_blank" rel="noopener noreferrer" class="underline font-semibold text-zinc-900 dark:text-white">iCloud.com</a> on your computer and drag-and-drop the restored photos. Apple's servers read the embedded EXIF dates and sort them accurately.</span>
+              <span><strong>iCloud Photos Web:</strong> Log in to <a href="https://icloud.com" target="_blank" rel="noopener noreferrer" class="underline font-semibold text-zinc-900 dark:text-white">iCloud.com</a> on your computer and try importing a small set of restored photos. Check how they appear before importing the rest.</span>
             </li>
             <li class="flex items-start gap-2">
               <span class="text-amber-500 font-bold">⚠️</span>
@@ -840,11 +764,11 @@ const faqSchema = {
           <ul class="text-xs text-zinc-600 dark:text-zinc-400 space-y-3 leading-relaxed">
             <li class="flex items-start gap-2">
               <span class="text-emerald-500 font-bold">✓</span>
-              <span><strong>Files by Google:</strong> Transfer your restored ZIP to your phone via USB or Quick Share, then tap "Extract" in <em>Files by Google</em>. Android gallery apps will immediately index the embedded EXIF dates.</span>
+              <span><strong>Files by Google:</strong> Transfer your restored ZIP to your phone via USB or Quick Share, then extract it in <em>Files by Google</em>. Check a few photos in your gallery after it scans the files.</span>
             </li>
             <li class="flex items-start gap-2">
               <span class="text-emerald-500 font-bold">✓</span>
-              <span><strong>Google Photos Web:</strong> Drag your restored files to <a href="https://photos.google.com" target="_blank" rel="noopener noreferrer" class="underline font-semibold text-zinc-900 dark:text-white">photos.google.com</a> in your computer browser. They will sync cleanly back to your phone's cloud gallery.</span>
+              <span><strong>Google Photos Web:</strong> Try uploading a few restored files to <a href="https://photos.google.com" target="_blank" rel="noopener noreferrer" class="underline font-semibold text-zinc-900 dark:text-white">photos.google.com</a>. Check their dates and locations before uploading the rest.</span>
             </li>
             <li class="flex items-start gap-2">
               <span class="text-amber-500 font-bold">⚠️</span>
@@ -892,7 +816,7 @@ const faqSchema = {
             “My GPS location was not restored on some photos.”
           </h3>
           <p class="text-xs text-zinc-600 dark:text-zinc-400 leading-relaxed">
-            TakeoutFix only injects GPS coordinates if location services were enabled on your camera and present in Google's JSON sidecar. If location was disabled when shot, Google sidecars have (0.0, 0.0), which TakeoutFix safely avoids injecting.
+            TakeoutFix can only add a location when the download includes one and the file supports it. If no location is available, the tool cannot work it out for you.
           </p>
         </div>
 
@@ -901,7 +825,7 @@ const faqSchema = {
             “Can I undo the restoration?”
           </h3>
           <p class="text-xs text-zinc-600 dark:text-zinc-400 leading-relaxed">
-            Yes! TakeoutFix writes restored copies to a new destination folder. Because your original Google Takeout folder or ZIP archive is never modified or overwritten, you can simply delete the restored folder at any time.
+            Choose a separate destination for restored copies and keep your original Takeout download as a backup. Review a sample and the processing report before deleting any files.
           </p>
         </div>
 
@@ -910,7 +834,7 @@ const faqSchema = {
             “I have tens of thousands of photos and the browser tab feels heavy.”
           </h3>
           <p class="text-xs text-zinc-600 dark:text-zinc-400 leading-relaxed">
-            While the web tool uses background Web Workers, browser security sandboxes limit heap memory. For massive libraries (over 50,000 photos or 100GB+ archives), we recommend processing in album batches or using our <a href="/download" class="underline font-semibold text-zinc-900 dark:text-white">Native Desktop Application</a>, which runs a multi-threaded parallel engine with zero browser memory limits.
+            Very large downloads may be slow or exceed your browser’s available memory. Try a smaller folder first. You can also review the <a href="/download" class="underline font-semibold text-zinc-900 dark:text-white">desktop app</a> if you prefer a separate program.
           </p>
         </div>
       </div>
@@ -941,7 +865,7 @@ const faqSchema = {
             <span class="group-open:rotate-180 transition-transform text-zinc-400">▼</span>
           </summary>
           <div class="pt-3 text-sm text-zinc-600 dark:text-zinc-400 leading-relaxed">
-            Google stores edits, album descriptions, and updated capture timestamps in their cloud database. Rather than modifying and re-encoding every media file on their servers before zipping, Google dumps the database records into companion <code class="font-mono bg-zinc-100 dark:bg-zinc-800 px-1 py-0.5 rounded">.json</code> sidecar files.
+            Some Google Photos downloads include extra <code class="font-mono bg-zinc-100 dark:bg-zinc-800 px-1 py-0.5 rounded">.json</code> files beside photos or videos. These files may contain details about the item, but what they contain can vary.
           </div>
         </details>
 
@@ -951,7 +875,7 @@ const faqSchema = {
             <span class="group-open:rotate-180 transition-transform text-zinc-400">▼</span>
           </summary>
           <div class="pt-3 text-sm text-zinc-600 dark:text-zinc-400 leading-relaxed">
-            Operating systems like Windows and macOS assign the download or extraction timestamp as the file's filesystem date. Because the actual capture time is trapped inside the separate JSON file, standard file explorers display today's date instead.
+            A computer may show when a file was downloaded or copied instead of when the photo was taken. Some photo apps can use details stored in the photo; others may ignore separate Takeout files. Check the photo’s information screen in the app you use.
           </div>
         </details>
 
@@ -961,7 +885,7 @@ const faqSchema = {
             <span class="group-open:rotate-180 transition-transform text-zinc-400">▼</span>
           </summary>
           <div class="pt-3 text-sm text-zinc-600 dark:text-zinc-400 leading-relaxed">
-            Yes. The web application runs in any modern browser (Chrome, Edge, Brave, Firefox, Safari) on any operating system. In addition, standalone desktop native builds are available for Windows, macOS, and Linux.
+            The browser tool offers folder access in supported desktop browsers such as Chrome and Edge. ZIP input and output may work in other modern browsers, but browser and device limits vary. Desktop packages target Windows, macOS, and Linux; check the <a href="/download" class="underline">download page</a> for release availability and requirements.
           </div>
         </details>
 
@@ -1043,17 +967,13 @@ const faqSchema = {
         Process supported media locally, verify sample files, and retain a separate backup of your original Takeout export.
       </p>
       <div class="flex flex-col sm:flex-row justify-center items-center gap-4">
-        <a href="/tool" class="w-full sm:w-auto">
-          <button class="btn-monochrome-primary px-8 h-13 font-bold rounded-xl transition-all flex items-center justify-center gap-2 w-full sm:w-auto cursor-pointer shadow-lg hover:shadow-xl">
+        <a href="/tool" class="btn-monochrome-primary px-8 h-13 font-bold rounded-xl transition-all flex items-center justify-center gap-2 w-full sm:w-auto shadow-lg hover:shadow-xl">
             <Icon name="sparkles" class="w-4 h-4 text-amber-300" />
             <span>Use Web Tool</span>
-          </button>
         </a>
-        <a href="/download" class="w-full sm:w-auto">
-          <button class="btn-monochrome-secondary px-8 h-13 font-bold rounded-xl transition-all flex items-center justify-center gap-2 w-full sm:w-auto cursor-pointer">
+        <a href="/download" class="btn-monochrome-secondary px-8 h-13 font-bold rounded-xl transition-all flex items-center justify-center gap-2 w-full sm:w-auto">
             <Icon name="download" class="w-4 h-4" />
             <span>Use Desktop App</span>
-          </button>
         </a>
       </div>
     </section>

@@ -1,4 +1,4 @@
-import { sanitizeFilename } from "./MetadataMatcher";
+import { sanitizeFilename } from "./MetadataMatcher.ts";
 
 /**
  * Normalizes a string to NFC Unicode representation.
@@ -129,7 +129,7 @@ export function getZipMatchingCandidates(mediaName: string): Set<string> {
  * Both mediaName and allNames entries are sanitized before comparison to fix
  * the mismatch when ZIP was created on Windows (backslashes, special chars).
  */
-import { findMatchingJsonName } from "./MetadataMatcher";
+import { findMatchingJsonName } from "./MetadataMatcher.ts";
 
 export function findMatchingJsonNameForZip(
   mediaName: string,

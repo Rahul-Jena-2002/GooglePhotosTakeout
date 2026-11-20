@@ -18,6 +18,22 @@ import static org.junit.jupiter.api.Assertions.*;
 public class MetadataMatcherTest {
 
     @Test
+    void testNewDirectoryListingRefreshesMatcherIndex(@TempDir Path tempDir) throws IOException {
+        Path media = Files.createFile(tempDir.resolve("photo.jpg"));
+        MetadataMatcher matcher = new MetadataMatcher();
+        assertTrue(matcher.findMatchingJson(media.toFile(), new HashMap<>()).isEmpty());
+        Path sidecar = Files.createFile(tempDir.resolve("photo.jpg.json"));
+        assertEquals(sidecar.toFile(), matcher.findMatchingJson(media.toFile(), new HashMap<>()).orElseThrow());
+    }
+
+    @Test
+    void testSimilarPrefixDoesNotMatchAnotherPhoto(@TempDir Path tempDir) throws IOException {
+        Path media = Files.createFile(tempDir.resolve("IMG_1.jpg"));
+        Files.createFile(tempDir.resolve("IMG_10.jpg.supplemental-metadata.json"));
+        assertTrue(new MetadataMatcher().findMatchingJson(media.toFile(), new HashMap<>()).isEmpty());
+    }
+
+    @Test
     @DisplayName("Verify exact sidecar matching: photo.jpg -> photo.jpg.json")
     void testExactMatch(@TempDir Path tempDir) throws IOException {
         Path mediaPath = Files.createFile(tempDir.resolve("IMG_2024.jpg"));

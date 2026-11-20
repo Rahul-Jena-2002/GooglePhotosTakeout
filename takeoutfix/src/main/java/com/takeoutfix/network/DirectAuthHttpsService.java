@@ -52,7 +52,7 @@ public class DirectAuthHttpsService {
      * Authenticates with Email and Password directly via Firebase IdentityToolkit REST HTTPS API.
      */
     public static Map<String, Object> signInWithEmailPassword(String email, String password) throws Exception {
-        if (email == null || email.trim().isEmpty() || password == null || password.trim().isEmpty()) {
+        if (email == null || email.trim().isEmpty() || password == null || password.isEmpty()) {
             throw new IllegalArgumentException("Email and password cannot be empty.");
         }
 
@@ -129,7 +129,7 @@ public class DirectAuthHttpsService {
      * Creates an account with Email and Password directly via Firebase IdentityToolkit REST HTTPS API.
      */
     public static Map<String, Object> signUpWithEmailPassword(String email, String password) throws Exception {
-        if (email == null || email.trim().isEmpty() || password == null || password.trim().isEmpty()) {
+        if (email == null || email.trim().isEmpty() || password == null || password.isEmpty()) {
             throw new IllegalArgumentException("Email and password cannot be empty.");
         }
         if (password.length() < 6) {
@@ -224,44 +224,28 @@ public class DirectAuthHttpsService {
         String raw = input.trim();
         Map<String, Object> profile = new HashMap<>();
 
-        // Case 1: Raw JSON payload
+        // Parse only the ID token from pasted data; identity must come from Firebase.
         if (raw.startsWith("{") && raw.endsWith("}")) {
             JSONObject obj = new JSONObject(raw);
-            for (String k : obj.keySet()) {
-                profile.put(k, obj.get(k));
-            }
-            enrichFromFirestoreIfPresent(profile);
-            return profile;
-        }
-
-        // Case 2: Full URL or Query String (e.g. callback URL, web link, or query string)
-        if (raw.contains("?") || raw.contains("&") || raw.contains("=")) {
+            profile.put("idToken", obj.optString("idToken", obj.optString("token", "")));
+        } else if (raw.startsWith("eyJ")) {
+            profile.put("idToken", raw);
+        } else if (raw.contains("?") || raw.contains("&") || raw.contains("=")) {
             String queryPart = raw.contains("?") ? raw.substring(raw.indexOf("?") + 1) : raw;
             if (queryPart.contains("#")) {
                 queryPart = queryPart.substring(0, queryPart.indexOf("#"));
             }
 
             parseQueryString(queryPart, profile);
-
-            if (profile.containsKey("token") && !profile.containsKey("email")) {
-                Map<String, Object> lookedUp = lookupUserByToken(profile.get("token").toString());
-                profile.putAll(lookedUp);
-            }
-
-            if (profile.containsKey("uid") || profile.containsKey("email")) {
-                enrichFromFirestoreIfPresent(profile);
-                return profile;
-            }
         }
 
-        // Case 3: Raw JWT / Firebase ID Token (e.g. eyJ...)
-        if (raw.startsWith("eyJ")) {
-            Map<String, Object> lookedUp = lookupUserByToken(raw);
-            enrichFromFirestoreIfPresent(lookedUp);
-            return lookedUp;
+        Object value = profile.getOrDefault("idToken", profile.get("token"));
+        if (!(value instanceof String token) || token.isBlank()) {
+            throw new IllegalArgumentException("A Firebase ID token is required for manual sign-in.");
         }
-
-        throw new IllegalArgumentException("Unrecognized sign-in link or token format. Please ensure you copied the complete link or token.");
+        Map<String, Object> verified = lookupUserByToken(token);
+        enrichFromFirestoreIfPresent(verified);
+        return verified;
     }
 
     /**

@@ -1,5 +1,5 @@
 import { initializeApp } from 'firebase/app';
-import { getAuth, GoogleAuthProvider, signInWithPopup, signInWithRedirect, signOut, onAuthStateChanged } from 'firebase/auth';
+import { getAuth, connectAuthEmulator, GoogleAuthProvider, signInWithPopup, signInWithRedirect, signOut, onAuthStateChanged } from 'firebase/auth';
 import type { User } from 'firebase/auth';
 
 function getFirebaseConfig() {
@@ -16,13 +16,16 @@ function getFirebaseConfig() {
 }
 
 export const app = initializeApp(getFirebaseConfig());
+const useLocalEmulators = import.meta.env.DEV && import.meta.env.PUBLIC_FIREBASE_USE_LIVE !== 'true';
 
 // Safe auth initialization for SSR/browser environments
 let authInstance: any = null;
 if (typeof window !== 'undefined') {
   try {
     authInstance = getAuth(app);
+    if (useLocalEmulators) connectAuthEmulator(authInstance, 'http://127.0.0.1:9099', { disableWarnings: true });
   } catch (e) {
+    authInstance = null;
     console.warn("Failed to initialize Firebase Auth in browser environment:", e);
   }
 } else {
@@ -43,20 +46,25 @@ if (googleProvider) {
 export { signInWithPopup, signInWithRedirect, signOut, onAuthStateChanged };
 export type { User };
 
-import { initializeFirestore, getFirestore } from 'firebase/firestore';
+import { initializeFirestore, getFirestore, connectFirestoreEmulator } from 'firebase/firestore';
+
+function createFirestore() {
+  let firestore;
+  try {
+    firestore = initializeFirestore(app, { experimentalAutoDetectLongPolling: true });
+  } catch {
+    firestore = getFirestore(app);
+  }
+  if (useLocalEmulators) connectFirestoreEmulator(firestore, '127.0.0.1', 8080);
+  return firestore;
+}
 
 let dbInstance: any = null;
 if (typeof window !== 'undefined') {
   try {
-    dbInstance = initializeFirestore(app, {
-      experimentalAutoDetectLongPolling: true,
-    });
+    dbInstance = createFirestore();
   } catch (e) {
-    try {
-      dbInstance = getFirestore(app);
-    } catch (err) {
-      console.warn("Failed to initialize Firestore in browser/webview environment:", err);
-    }
+    console.warn("Failed to initialize Firestore in browser/webview environment:", e);
   }
 }
 
@@ -64,13 +72,7 @@ export const db = dbInstance;
 
 export async function getDb() {
   if (!dbInstance) {
-    try {
-      dbInstance = initializeFirestore(app, {
-        experimentalAutoDetectLongPolling: true,
-      });
-    } catch {
-      dbInstance = getFirestore(app);
-    }
+    dbInstance = createFirestore();
   }
   return dbInstance;
 }

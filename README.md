@@ -51,7 +51,7 @@ Download directly from the [Releases Page](https://github.com/Rahul-Jena-2002/Go
 
 ### ☕ Desktop Edition (Standalone jpackage)
 - **Windows (x64)**: [`TakeoutFix.exe`](https://takeoutfix-download.takeoutfix.workers.dev/download/windows)
-- **macOS (Universal / Apple Silicon & Intel)**: [`TakeoutFix.dmg`](https://takeoutfix-download.takeoutfix.workers.dev/download/macos)
+- **macOS (Apple silicon build)**: [`TakeoutFix.dmg`](https://takeoutfix-download.takeoutfix.workers.dev/download/macos) — check each release for supported hardware and signing status.
 - **Linux (x64)**: [`TakeoutFix.AppImage`](https://takeoutfix-download.takeoutfix.workers.dev/download/linux)
 
 ---

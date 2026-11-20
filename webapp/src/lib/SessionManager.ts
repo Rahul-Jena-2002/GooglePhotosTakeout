@@ -1,6 +1,7 @@
-import { indexedDbService } from './indexedDbService';
-import { isAllowedMediaFile, sanitizeFilename, findMatchingJsonName, safeParseJson, extractTimestamp } from '../services/restoration/MetadataMatcher';
-import { findMatchingJsonNameForZip, normalizeZipPath } from '../services/restoration/ZipMetadataMatcher';
+import { indexedDbService } from './indexedDbService.ts';
+import { isAllowedMediaFile, sanitizeFilename, findMatchingJsonName, safeParseJson, extractTimestamp, extractCoordinates } from '../services/restoration/MetadataMatcher.ts';
+import { findMatchingJsonNameForZip, normalizeZipPath } from '../services/restoration/ZipMetadataMatcher.ts';
+import { isSafeZipPath } from '../services/restoration/zipPathSafety.ts';
 import { ZipReader, BlobReader, TextWriter } from '@zip.js/zip.js';
 
 export interface ActiveSession {
@@ -11,12 +12,14 @@ export interface ActiveSession {
   takeoutHandle: FileSystemDirectoryHandle | null;
   zipFile: File | null;
   outputHandle: FileSystemDirectoryHandle | null;
+  outputMode?: 'folder' | 'zip';
   totalFiles: number;
   scannedCount: number;
   matchedCount: number;
   unmatchedCount: number;
   errorCount: number;
   bytesProcessed: number;
+  totalSourceBytes?: number;
   startedAt: number;
   lastUpdatedAt: number;
 }
@@ -39,8 +42,17 @@ export interface FileRecord {
   error?: string;
 }
 
+export function canManageSession(session: ActiveSession, uid: string | null): boolean {
+  return session.uid === 'guest' || (!!uid && session.uid === uid);
+}
+
+export function hasCompleteSessionScan(session: ActiveSession): boolean {
+  return session.status === 'processing' || session.status === 'paused';
+}
+
 export class SessionManager {
   private currentSession: ActiveSession | null = null;
+  private confirmationQueue: Promise<void> = Promise.resolve();
 
   public setCurrentSession(session: ActiveSession | null) {
     this.currentSession = session;
@@ -61,6 +73,7 @@ export class SessionManager {
       }
     } catch (err) {
       console.error("Failed to retrieve active session from IndexedDB:", err);
+      throw err;
     }
     return null;
   }
@@ -70,12 +83,9 @@ export class SessionManager {
     uid: string,
     takeoutName: string,
     takeoutHandleOrFile: FileSystemDirectoryHandle | File,
-    outputHandle: FileSystemDirectoryHandle
+    outputHandle: FileSystemDirectoryHandle | null,
+    outputMode: 'folder' | 'zip'
   ): Promise<ActiveSession> {
-    // Clean up any old files from previous runs to save space in IndexedDB
-    await indexedDbService.clearStore('files');
-    await indexedDbService.clearStore('sessions');
-
     const isZip = takeoutHandleOrFile instanceof File;
 
     const session: ActiveSession = {
@@ -86,6 +96,7 @@ export class SessionManager {
       takeoutHandle: isZip ? null : (takeoutHandleOrFile as FileSystemDirectoryHandle),
       zipFile: isZip ? (takeoutHandleOrFile as File) : null,
       outputHandle,
+      outputMode,
       totalFiles: 0,
       scannedCount: 0,
       matchedCount: 0,
@@ -96,8 +107,8 @@ export class SessionManager {
       lastUpdatedAt: Date.now()
     };
 
+    await indexedDbService.startRestoreSession(sessionId, session);
     this.currentSession = session;
-    await indexedDbService.set('sessions', sessionId, session);
     return session;
   }
 
@@ -105,30 +116,38 @@ export class SessionManager {
     if (!this.currentSession) {
       throw new Error("No active session initialized.");
     }
-    this.currentSession = {
+    const updatedSession = {
       ...this.currentSession,
       ...fields,
       lastUpdatedAt: Date.now()
     };
-    await indexedDbService.set('sessions', this.currentSession.id, this.currentSession);
-    return this.currentSession;
+    await indexedDbService.set('sessions', updatedSession.id, updatedSession);
+    this.currentSession = updatedSession;
+    return updatedSession;
   }
 
-  public async scanAndRegister(onProgress: (count: number) => void): Promise<{ count: number; totalBytes: number }> {
+  public async scanAndRegister(onProgress: (count: number) => void, isCancelled: () => boolean): Promise<{ count: number; totalBytes: number }> {
     if (!this.currentSession) throw new Error("No active session.");
 
+    const checkCancelled = () => {
+      if (isCancelled()) throw new DOMException('Restore scan cancelled.', 'AbortError');
+    };
+
+    checkCancelled();
     await this.updateSession({ status: 'scanning' });
     let result = { count: 0, totalBytes: 0 };
     
     if (this.currentSession.zipFile) {
-      result = await this.scanZipSource(this.currentSession.zipFile, onProgress);
+      result = await this.scanZipSource(this.currentSession.zipFile, onProgress, checkCancelled);
     } else if (this.currentSession.takeoutHandle) {
-      result = await this.scanDirectorySource(this.currentSession.takeoutHandle, onProgress);
+      result = await this.scanDirectorySource(this.currentSession.takeoutHandle, onProgress, checkCancelled);
     }
 
+    checkCancelled();
     await this.updateSession({ 
       status: 'processing',
-      totalFiles: result.count
+      totalFiles: result.count,
+      totalSourceBytes: result.totalBytes
     });
 
     return result;
@@ -136,15 +155,18 @@ export class SessionManager {
 
   private async scanDirectorySource(
     root: FileSystemDirectoryHandle,
-    onProgress: (count: number) => void
+    onProgress: (count: number) => void,
+    checkCancelled: () => void
   ): Promise<{ count: number; totalBytes: number }> {
     const sessionId = this.currentSession!.id;
     let fileCount = 0;
     let totalBytes = 0;
     const batchSize = 100;
     let fileBatch: FileRecord[] = [];
+    const fileIds = new Set<string>();
 
     const flushBatch = async () => {
+      checkCancelled();
       if (fileBatch.length === 0) return;
       // Write batch to IndexedDB in a single transaction
       await indexedDbService.setAll('files', fileBatch.map(f => ({ key: f.id, value: f })));
@@ -157,9 +179,13 @@ export class SessionManager {
 
       // @ts-ignore
       for await (const [name, entry] of handle) {
+        checkCancelled();
         const safeName = sanitizeFilename(name);
-        if (!safeName) continue;
+        if (entry.kind === 'directory' && safeName !== name) {
+          throw new Error(`The folder name cannot be preserved safely: ${name}. Rename it in a copy of your export and try again.`);
+        }
         if (entry.kind === 'file' && isAllowedMediaFile(safeName)) {
+          if (safeName !== name) throw new Error(`The file name cannot be preserved safely: ${name}. Rename it in a copy of your export and try again.`);
           currentFiles.push(entry as FileSystemFileHandle);
         } else if (entry.kind === 'directory') {
           subDirs.push([safeName, entry as FileSystemDirectoryHandle]);
@@ -171,15 +197,22 @@ export class SessionManager {
       subDirs.sort((a, b) => a[0].localeCompare(b[0], undefined, { sensitivity: 'base' }));
 
       for (const fileHandle of currentFiles) {
+        checkCancelled();
         const safeName = sanitizeFilename(fileHandle.name);
         const id = `${sessionId}:${path.join('/')}/${safeName}`;
+        if (fileIds.has(id)) {
+          throw new Error(`Multiple source files map to the same output name: ${[...path, safeName].join('/')}. Rename the conflicting files before restoring.`);
+        }
+        fileIds.add(id);
         // Get file size during scan to avoid a second full-store load later
-        let fileSize = 0;
+        let fileSize: number;
         try {
           const f = await fileHandle.getFile();
           fileSize = f.size;
           totalBytes += fileSize;
-        } catch { /* skip if handle expired */ }
+        } catch (error) {
+          throw new Error(`Could not read ${[...path, safeName].join('/')}. Check access to the source folder and try again.`, { cause: error });
+        }
         fileBatch.push({
           id,
           sessionId,
@@ -202,6 +235,7 @@ export class SessionManager {
       }
 
       for (const [subName, subHandle] of subDirs) {
+        checkCancelled();
         await walk(subHandle, [...path, subName]);
       }
     };
@@ -214,7 +248,8 @@ export class SessionManager {
 
   private async scanZipSource(
     file: File,
-    onProgress: (count: number) => void
+    onProgress: (count: number) => void,
+    checkCancelled: () => void
   ): Promise<{ count: number; totalBytes: number }> {
     const sessionId = this.currentSession!.id;
     let fileCount = 0;
@@ -223,6 +258,7 @@ export class SessionManager {
     let fileBatch: FileRecord[] = [];
 
     const flushBatch = async () => {
+      checkCancelled();
       if (fileBatch.length === 0) return;
       await indexedDbService.setAll('files', fileBatch.map(f => ({ key: f.id, value: f })));
       fileBatch = [];
@@ -230,109 +266,121 @@ export class SessionManager {
 
     // Instantiate zip.js reader
     const zipReader = new ZipReader(new BlobReader(file));
-    const entries = await zipReader.getEntries();
+    try {
+      const entries = await zipReader.getEntries();
+      checkCancelled();
 
-    // Canonical sorting of entries for deterministic serial ordering
-    entries.sort((a, b) => a.filename.localeCompare(b.filename, undefined, { sensitivity: 'base' }));
+      // Canonical sorting of entries for deterministic serial ordering
+      entries.sort((a, b) => a.filename.localeCompare(b.filename, undefined, { sensitivity: 'base' }));
 
-    // Build a lookup: normalized path → entry (for both media and JSON files)
-    // Normalize Windows backslashes → forward slashes at ingestion time
-    const allEntryMap = new Map<string, any>();
-    const dirToFilenames = new Map<string, Set<string>>();
+      // Build a lookup: normalized path → entry (for both media and JSON files)
+      // Normalize Windows backslashes → forward slashes at ingestion time
+      const allEntryMap = new Map<string, any>();
+      const dirToFilenames = new Map<string, Set<string>>();
 
-    for (const entry of entries) {
-      if (entry.directory) continue;
-      const normalizedPath = normalizeZipPath(entry.filename).normalize('NFC');
-      allEntryMap.set(normalizedPath, entry);
+      for (const entry of entries) {
+        checkCancelled();
+        if (entry.directory) continue;
+        const normalizedPath = normalizeZipPath(entry.filename).normalize('NFC');
+        if (!isSafeZipPath(normalizedPath)) {
+          throw new Error(`The ZIP contains an unsafe path: ${normalizedPath}. Extract and inspect the archive before restoring.`);
+        }
+        if (allEntryMap.has(normalizedPath)) {
+          throw new Error(`The ZIP contains multiple entries with the same normalized path: ${normalizedPath}. Extract and inspect the archive before restoring.`);
+        }
+        allEntryMap.set(normalizedPath, entry);
 
-      const parts = normalizedPath.split('/');
-      const filename = parts.pop() || '';
-      const dirPath = parts.join('/');
-      let set = dirToFilenames.get(dirPath);
-      if (!set) {
-        set = new Set<string>();
-        dirToFilenames.set(dirPath, set);
+        const parts = normalizedPath.split('/');
+        const filename = parts.pop() || '';
+        const dirPath = parts.join('/');
+        let set = dirToFilenames.get(dirPath);
+        if (!set) {
+          set = new Set<string>();
+          dirToFilenames.set(dirPath, set);
+        }
+        set.add(filename);
       }
-      set.add(filename);
-    }
 
-    // Single-pass: match each media file to its JSON sidecar during scan
-    for (const entry of entries) {
-      if (entry.directory) continue;
-      const normalizedPath = normalizeZipPath(entry.filename).normalize('NFC');
-      const parts = normalizedPath.split('/');
-      const filename = parts.pop() || '';
-      const dirPath = parts.join('/');
-      const safeName = sanitizeFilename(filename);
+      // Single-pass: match each media file to its JSON sidecar during scan
+      for (const entry of entries) {
+        checkCancelled();
+        if (entry.directory) continue;
+        const normalizedPath = normalizeZipPath(entry.filename).normalize('NFC');
+        const parts = normalizedPath.split('/');
+        const filename = parts.pop() || '';
+        const dirPath = parts.join('/');
+        const safeName = sanitizeFilename(filename);
 
-      if (!isAllowedMediaFile(safeName)) continue;
+        if (!isAllowedMediaFile(safeName)) continue;
+        if (safeName !== filename || parts.some(part => sanitizeFilename(part) !== part)) {
+          throw new Error(`The ZIP path cannot be preserved safely: ${normalizedPath}. Extract it and rename the affected files in a copy before restoring.`);
+        }
 
-      // Pre-resolve JSON sidecar and extract epoch/coords/description/people during scan phase
-      let epochSec: number | null = null;
-      let lat: number | null = null;
-      let lng: number | null = null;
-      let description: string | undefined = undefined;
-      let people: string[] | undefined = undefined;
+        // Pre-resolve JSON sidecar and extract epoch/coords/description/people during scan phase
+        let epochSec: number | null = null;
+        let lat: number | null = null;
+        let lng: number | null = null;
+        let description: string | undefined = undefined;
+        let people: string[] | undefined = undefined;
 
-      try {
-        const dirNames = dirToFilenames.get(dirPath) || new Set<string>();
-        const jsonName = findMatchingJsonNameForZip(safeName, dirNames);
-        if (jsonName) {
-          const jsonPath = dirPath ? `${dirPath}/${jsonName}` : jsonName;
-          const jsonEntry = allEntryMap.get(jsonPath.normalize('NFC'));
-          if (jsonEntry && jsonEntry.getData) {
-            const jsonText = await jsonEntry.getData(new TextWriter());
-            const parsed = safeParseJson(jsonText);
-            if (parsed) {
-              epochSec = extractTimestamp(parsed);
-              if (parsed.geoData && (parsed.geoData.latitude !== 0 || parsed.geoData.longitude !== 0)) {
-                lat = parsed.geoData.latitude ?? null;
-                lng = parsed.geoData.longitude ?? null;
-              }
-              description = parsed.description || undefined;
-              if (parsed.people) {
-                people = parsed.people.map((p: any) => p.name).filter(Boolean);
+        try {
+          const dirNames = dirToFilenames.get(dirPath) || new Set<string>();
+          const jsonName = findMatchingJsonNameForZip(safeName, dirNames);
+          if (jsonName) {
+            const jsonPath = dirPath ? `${dirPath}/${jsonName}` : jsonName;
+            const jsonEntry = allEntryMap.get(jsonPath.normalize('NFC'));
+            if (jsonEntry && jsonEntry.getData) {
+              const jsonText = await jsonEntry.getData(new TextWriter());
+              const parsed = safeParseJson(jsonText);
+              if (parsed) {
+                epochSec = extractTimestamp(parsed);
+                const coordinates = extractCoordinates(parsed);
+                lat = coordinates?.lat ?? null;
+                lng = coordinates?.lng ?? null;
+                if (typeof parsed.description === 'string') description = parsed.description;
+                if (Array.isArray(parsed.people)) {
+                  people = parsed.people.map((p: any) => typeof p === 'string' ? p : p?.name).filter((name: unknown): name is string => typeof name === 'string' && !!name.trim());
+                }
               }
             }
           }
+        } catch {
+          // Silently skip if sidecar can't be read; restoration will proceed without metadata
         }
-      } catch {
-        // Silently skip if sidecar can't be read; restoration will proceed without metadata
+
+        const id = `${sessionId}:${normalizedPath}`;
+        fileBatch.push({
+          id,
+          sessionId,
+          filename: safeName,
+          relativePath: dirPath ? dirPath.split('/') : [],
+          // Store the normalized path so restoration lookup is consistent
+          zipPath: normalizedPath,
+          epochSec,
+          lat,
+          lng,
+          description,
+          people,
+          status: 'pending',
+          bytes: entry.uncompressedSize
+        });
+
+        totalBytes += entry.uncompressedSize;
+        fileCount++;
+        if (fileCount % batchSize === 0) {
+          await flushBatch();
+          onProgress(fileCount);
+          // GC yield: give the engine breathing room every batch
+          await new Promise(r => setTimeout(r, 0));
+        }
       }
 
-      const id = `${sessionId}:${normalizedPath}`;
-      fileBatch.push({
-        id,
-        sessionId,
-        filename: safeName,
-        relativePath: dirPath ? dirPath.split('/') : [],
-        // Store the normalized path so restoration lookup is consistent
-        zipPath: normalizedPath,
-        epochSec,
-        lat,
-        lng,
-        description,
-        people,
-        status: 'pending',
-        bytes: entry.uncompressedSize
-      });
-
-      totalBytes += entry.uncompressedSize;
-      fileCount++;
-      if (fileCount % batchSize === 0) {
-        await flushBatch();
-        onProgress(fileCount);
-        // GC yield: give the engine breathing room every batch
-        await new Promise(r => setTimeout(r, 0));
-      }
+      await flushBatch();
+      onProgress(fileCount);
+      return { count: fileCount, totalBytes };
+    } finally {
+      await zipReader.close().catch(error => console.warn('Could not close source ZIP after scan:', error));
     }
-
-    await flushBatch();
-    onProgress(fileCount);
-    try {
-      await zipReader.close();
-    } catch {}
-    return { count: fileCount, totalBytes };
   }
 
   public async claimFile(fileId: string): Promise<void> {
@@ -348,10 +396,27 @@ export class SessionManager {
     status: 'completed' | 'failed',
     bytes: number,
     epochSec?: number | null,
-    error?: string
+    error?: string,
+    metadataRestored?: boolean
+  ): Promise<void> {
+    const confirm = () => this.confirmFileNow(fileId, status, bytes, epochSec, error, metadataRestored);
+    const result = this.confirmationQueue.then(confirm, confirm);
+    this.confirmationQueue = result;
+    return result;
+  }
+
+  private async confirmFileNow(
+    fileId: string,
+    status: 'completed' | 'failed',
+    bytes: number,
+    epochSec?: number | null,
+    error?: string,
+    metadataRestored?: boolean
   ): Promise<void> {
     const file = await indexedDbService.get('files', fileId) as FileRecord;
-    if (!file) return;
+    if (!file || !this.currentSession || file.sessionId !== this.currentSession.id) {
+      throw new Error('The saved file or its restore session is no longer available.');
+    }
 
     file.status = status;
     file.bytes = bytes;
@@ -359,27 +424,25 @@ export class SessionManager {
       file.epochSec = epochSec;
     }
     if (error) file.error = error;
-    await indexedDbService.set('files', fileId, file);
+    const updates: Partial<ActiveSession> = {
+      scannedCount: this.currentSession.scannedCount + 1,
+      bytesProcessed: this.currentSession.bytesProcessed + (status === 'completed' ? bytes : 0)
+    };
 
-    if (this.currentSession) {
-      const updates: Partial<ActiveSession> = {
-        scannedCount: this.currentSession.scannedCount + 1,
-        bytesProcessed: this.currentSession.bytesProcessed + bytes
-      };
-
-      if (status === 'completed') {
-        const hasEpoch = epochSec !== undefined ? (epochSec !== null) : (file.epochSec !== null);
-        if (hasEpoch) {
-          updates.matchedCount = this.currentSession.matchedCount + 1;
-        } else {
-          updates.unmatchedCount = this.currentSession.unmatchedCount + 1;
-        }
+    if (status === 'completed') {
+      const hasEpoch = epochSec !== undefined ? (epochSec !== null) : (file.epochSec !== null);
+      if (metadataRestored ?? hasEpoch) {
+        updates.matchedCount = this.currentSession.matchedCount + 1;
       } else {
-        updates.errorCount = this.currentSession.errorCount + 1;
+        updates.unmatchedCount = this.currentSession.unmatchedCount + 1;
       }
-
-      await this.updateSession(updates);
+    } else {
+      updates.errorCount = this.currentSession.errorCount + 1;
     }
+
+    const updatedSession = { ...this.currentSession, ...updates, lastUpdatedAt: Date.now() };
+    await indexedDbService.setFileAndSession(fileId, file, updatedSession.id, updatedSession);
+    this.currentSession = updatedSession;
   }
 
   /**
@@ -407,28 +470,15 @@ export class SessionManager {
   }
 
   public async revertInFlightFiles(): Promise<void> {
-    if (!this.currentSession || !this.currentSession.outputHandle) return;
+    if (!this.currentSession) return;
 
     const inFlight = await this.getInFlightFiles();
     if (inFlight.length === 0) return;
 
     console.log(`Reverting ${inFlight.length} in-flight file operations...`);
 
-    const outputFolder = this.currentSession.outputHandle;
-
     const cleanPromises = inFlight.map(async (file) => {
-      // 1. Delete output file to avoid partial/corrupted writes
-      const hasMetadata = file.epochSec !== null;
-      const baseSub = hasMetadata ? 'restored' : 'unmatched';
-      try {
-        let currentDir = outputFolder;
-        for (const part of [baseSub, ...file.relativePath]) {
-          currentDir = await currentDir.getDirectoryHandle(part, { create: false });
-        }
-        await currentDir.removeEntry(file.filename);
-      } catch {}
-
-      // 2. Revert state in DB to pending
+      // The output may predate this session; retry without deleting it.
       file.status = 'pending';
       file.error = undefined;
       await indexedDbService.set('files', file.id, file);

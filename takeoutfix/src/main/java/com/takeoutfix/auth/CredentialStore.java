@@ -12,6 +12,7 @@ import javax.crypto.spec.GCMParameterSpec;
 import javax.crypto.spec.PBEKeySpec;
 import javax.crypto.spec.SecretKeySpec;
 import java.io.File;
+import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.security.GeneralSecurityException;
@@ -28,7 +29,7 @@ import java.util.Base64;
  * - Public metadata (~/.takeoutfix/session.json): Non-sensitive account descriptors (uid, email, displayName, plan).
  * - Ephemeral ID token & Long-Lived Refresh Token:
  *     * Primary: Native OS Credential Facility via Keyring (Windows Credential Manager, macOS Keychain, Linux Secret Service)
- *     * Fallback: Authenticated AES-256-GCM encrypted vault (.credentials.enc) bound to user and machine entropy
+ *     * Fallback: AES-256-GCM vault (.credentials.enc) using a locally derived, predictable key
  *     * Plaintext tokens are NEVER stored in session.json.
  */
 @Component
@@ -104,7 +105,7 @@ public class CredentialStore {
             String refreshToken = null;
             String idToken = null;
 
-            JSONObject securePayload = loadTokensFromSecureStore(email);
+            JSONObject securePayload = loadTokensFromSecureStore(email, meta.optString("tokenStorage", ""));
             if (securePayload != null) {
                 refreshToken = securePayload.optString(KEY_REFRESH_TOKEN, "");
                 idToken = securePayload.optString(KEY_ID_TOKEN, "");
@@ -143,7 +144,7 @@ public class CredentialStore {
             }
 
             // 1. Securely store tokens in OS Keyring / Encrypted Vault
-            saveTokensToSecureStore(session.getEmail(), session.getRefreshToken(), session.getIdToken());
+            StorageTier storageTier = saveTokensToSecureStore(session.getEmail(), session.getRefreshToken(), session.getIdToken());
 
             // 2. Persist public metadata ONLY to session.json (No plaintext tokens)
             JSONObject meta = new JSONObject();
@@ -155,11 +156,20 @@ public class CredentialStore {
             meta.put("plan", session.getPlan());
             meta.put("expiresAt", session.getExpiresAt());
             meta.put("lastActive", System.currentTimeMillis());
+            meta.put("tokenStorage", storageTier.name());
 
-            Files.writeString(sessionMetadataFile.toPath(), meta.toString(2), StandardCharsets.UTF_8);
+            writeAtomically(sessionMetadataFile.toPath(), meta.toString(2));
+            if (storageTier == StorageTier.OS_KEYRING) {
+                try {
+                    Files.deleteIfExists(encryptedCredentialsFile.toPath());
+                } catch (Exception e) {
+                    log.warn("[CredentialStore] Could not remove legacy credential backup: {}", e.getMessage());
+                }
+            }
 
         } catch (Exception e) {
             log.error("[CredentialStore] Failed to save credentials", e);
+            throw new IllegalStateException("Could not save sign-in information on this device.", e);
         }
     }
 
@@ -167,7 +177,8 @@ public class CredentialStore {
      * Wipes credentials completely from OS Keyring, encrypted vault, and session.json.
      * Each step is isolated so that failure in one does not abort the remaining cleanup steps.
      */
-    public synchronized void clear() {
+    public synchronized boolean clear() {
+        boolean cleared = true;
         // 1. Extract email BEFORE deleting the metadata file
         String accountEmail = null;
         if (sessionMetadataFile.exists()) {
@@ -177,7 +188,12 @@ public class CredentialStore {
                     JSONObject meta = new JSONObject(metaContent);
                     accountEmail = meta.optString(KEY_EMAIL, null);
                 }
+                if (accountEmail == null || accountEmail.isBlank()) {
+                    cleared = false;
+                    log.warn("[CredentialStore] Session metadata has no account email; keyring cleanup cannot be verified.");
+                }
             } catch (Exception e) {
+                cleared = false;
                 log.warn("[CredentialStore] Failed reading session metadata during clear(): {}", e.getMessage());
             }
         }
@@ -188,6 +204,7 @@ public class CredentialStore {
                 keyring.deletePassword(SERVICE_NAME, accountEmail);
                 log.info("[CredentialStore] Cleared credentials from OS Keyring for {}", accountEmail);
             } catch (Exception e) {
+                cleared = false;
                 log.error("[CredentialStore] Failed to remove credentials from OS Keyring for {}: {}", accountEmail, e.getMessage(), e);
             }
         }
@@ -197,6 +214,7 @@ public class CredentialStore {
             try {
                 Files.deleteIfExists(encryptedCredentialsFile.toPath());
             } catch (Exception e) {
+                cleared = false;
                 log.error("[CredentialStore] Failed to delete encrypted credentials vault file: {}", e.getMessage(), e);
             }
         }
@@ -206,9 +224,11 @@ public class CredentialStore {
             try {
                 Files.deleteIfExists(sessionMetadataFile.toPath());
             } catch (Exception e) {
+                cleared = false;
                 log.error("[CredentialStore] Failed to delete session.json: {}", e.getMessage(), e);
             }
         }
+        return cleared;
     }
 
     public synchronized boolean hasStoredCredential() {
@@ -226,10 +246,8 @@ public class CredentialStore {
                 return false;
             }
 
-            // Verify refreshToken presence in OS Keyring, Encrypted Vault, or metadata
-            if (hasSecureTokens(email)) {
-                return true;
-            }
+            JSONObject tokens = loadTokensFromSecureStore(email, meta.optString("tokenStorage", ""));
+            if (tokens != null && !tokens.optString(KEY_REFRESH_TOKEN, "").isBlank()) return true;
             return !meta.optString(KEY_REFRESH_TOKEN, "").isBlank();
         } catch (Exception e) {
             return false;
@@ -240,6 +258,20 @@ public class CredentialStore {
      * Determines which storage tier is currently safeguarding credentials for the given account.
      */
     public StorageTier getStorageTier(String account) {
+        String declaredTier = "";
+        try {
+            if (sessionMetadataFile.exists()) {
+                JSONObject meta = new JSONObject(Files.readString(sessionMetadataFile.toPath(), StandardCharsets.UTF_8));
+                if (meta.optString(KEY_EMAIL, "").equalsIgnoreCase(account)) {
+                    declaredTier = meta.optString("tokenStorage", "");
+                }
+            }
+        } catch (Exception e) {
+            log.warn("[CredentialStore] Could not read credential storage metadata: {}", e.getMessage());
+        }
+        if (StorageTier.ENCRYPTED_VAULT_FALLBACK.name().equals(declaredTier)) {
+            return encryptedCredentialsFile.exists() ? StorageTier.ENCRYPTED_VAULT_FALLBACK : StorageTier.NONE;
+        }
         if (account != null && !account.isBlank() && isKeyringUsable()) {
             try (Keyring keyring = Keyring.create()) {
                 String secret = keyring.getPassword(SERVICE_NAME, account);
@@ -250,7 +282,7 @@ public class CredentialStore {
                 markKeyringUnavailable(ignored);
             }
         }
-        if (encryptedCredentialsFile.exists()) {
+        if (!StorageTier.OS_KEYRING.name().equals(declaredTier) && encryptedCredentialsFile.exists()) {
             return StorageTier.ENCRYPTED_VAULT_FALLBACK;
         }
         return StorageTier.NONE;
@@ -266,7 +298,7 @@ public class CredentialStore {
     private static void markKeyringUnavailable(Throwable t) {
         KEYRING_AVAILABLE.set(false);
         if (KEYRING_LOGGED.compareAndSet(false, true)) {
-            log.info("[CredentialStore] OS native keyring not available ({}), utilizing machine-bound AES-256-GCM vault.",
+            log.warn("[CredentialStore] OS keyring unavailable ({}); legacy fallback uses a predictable local key.",
                     t != null ? t.getMessage() : "unsupported");
         }
     }
@@ -277,7 +309,7 @@ public class CredentialStore {
 
     // ── OS Keyring & Authenticated AES-GCM Storage ───────────────────────────
 
-    private void saveTokensToSecureStore(String account, String refreshToken, String idToken) {
+    private StorageTier saveTokensToSecureStore(String account, String refreshToken, String idToken) throws IOException {
         JSONObject payload = new JSONObject();
         payload.put(KEY_REFRESH_TOKEN, refreshToken != null ? refreshToken : "");
         payload.put(KEY_ID_TOKEN, idToken != null ? idToken : "");
@@ -285,22 +317,35 @@ public class CredentialStore {
 
         String serialized = payload.toString();
 
-        // 1. Attempt writing to OS Native Keyring (Windows Credential Manager / macOS Keychain / Linux Secret Service)
+        if (saveToKeyring(account, serialized)) {
+            return StorageTier.OS_KEYRING;
+        }
+        if (!saveEncryptedBackup(serialized)) throw new IOException("No credential store could save the session.");
+        return StorageTier.ENCRYPTED_VAULT_FALLBACK;
+    }
+
+    boolean saveToKeyring(String account, String serialized) {
         if (isKeyringUsable()) {
             try (Keyring keyring = Keyring.create()) {
                 keyring.setPassword(SERVICE_NAME, account, serialized);
+                boolean verified = serialized.equals(keyring.getPassword(SERVICE_NAME, account));
+                if (!verified) log.warn("[CredentialStore] OS keyring write could not be verified.");
+                return verified;
             } catch (Exception t) {
                 markKeyringUnavailable(t);
             }
         }
-
-        // 2. Always persist machine-bound AES-256-GCM encrypted backup so headless environments,
-        // locked keyrings, or OS keyring silent read drops never drop local session
-        saveEncryptedBackup(serialized);
+        return false;
     }
 
-    private JSONObject loadTokensFromSecureStore(String account) {
-        // 1. Try OS Native Keyring first
+    private JSONObject loadTokensFromSecureStore(String account, String storageTier) {
+        if (StorageTier.ENCRYPTED_VAULT_FALLBACK.name().equals(storageTier)) return loadEncryptedBackup();
+        JSONObject keyring = loadFromKeyring(account);
+        if (keyring != null || StorageTier.OS_KEYRING.name().equals(storageTier)) return keyring;
+        return loadEncryptedBackup();
+    }
+
+    JSONObject loadFromKeyring(String account) {
         if (isKeyringUsable()) {
             try (Keyring keyring = Keyring.create()) {
                 String secret = keyring.getPassword(SERVICE_NAME, account);
@@ -312,7 +357,10 @@ public class CredentialStore {
             }
         }
 
-        // 2. Fall back to AES-256-GCM Encrypted Vault
+        return null;
+    }
+
+    private JSONObject loadEncryptedBackup() {
         if (encryptedCredentialsFile.exists()) {
             try {
                 String encContent = Files.readString(encryptedCredentialsFile.toPath(), StandardCharsets.UTF_8);
@@ -330,27 +378,33 @@ public class CredentialStore {
         return null;
     }
 
-    private boolean hasSecureTokens(String account) {
-        if (isKeyringUsable()) {
-            try (Keyring keyring = Keyring.create()) {
-                String secret = keyring.getPassword(SERVICE_NAME, account);
-                if (secret != null && !secret.isBlank()) {
-                    return true;
-                }
-            } catch (Exception ignored) {
-                markKeyringUnavailable(ignored);
-            }
-        }
-        return encryptedCredentialsFile.exists();
-    }
-
-    private void saveEncryptedBackup(String serialized) {
+    private boolean saveEncryptedBackup(String serialized) {
         try {
             String encrypted = encrypt(serialized);
-            Files.writeString(encryptedCredentialsFile.toPath(), encrypted, StandardCharsets.UTF_8);
+            writeAtomically(encryptedCredentialsFile.toPath(), encrypted);
             restrictPosixPermissions();
+            return true;
         } catch (Exception e) {
             log.error("[CredentialStore] Failed to write encrypted credential backup", e);
+            return false;
+        }
+    }
+
+    static void writeAtomically(java.nio.file.Path destination, String contents) throws IOException {
+        java.nio.file.Path target = destination.toAbsolutePath();
+        java.nio.file.Path temporary = Files.createTempFile(target.getParent(), ".takeoutfix-", ".tmp");
+        try {
+            Files.writeString(temporary, contents, StandardCharsets.UTF_8);
+            try {
+                Files.move(temporary, target, java.nio.file.StandardCopyOption.ATOMIC_MOVE,
+                        java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+            } catch (java.nio.file.AtomicMoveNotSupportedException e) {
+                Files.move(temporary, target, java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+            }
+        } catch (IOException | RuntimeException e) {
+            try { Files.deleteIfExists(temporary); }
+            catch (IOException cleanupError) { e.addSuppressed(cleanupError); }
+            throw e;
         }
     }
 

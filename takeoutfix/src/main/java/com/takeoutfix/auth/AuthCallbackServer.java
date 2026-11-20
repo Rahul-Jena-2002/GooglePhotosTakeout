@@ -18,8 +18,8 @@ import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
@@ -33,12 +33,16 @@ import java.util.concurrent.atomic.AtomicBoolean;
 public class AuthCallbackServer {
 
     private HttpServer server;
+    private ExecutorService executor;
     private int port;
-    private String expectedState;
+    private volatile String expectedState;
     private CompletableFuture<Map<String, Object>> pendingFuture;
     private final AtomicBoolean completed = new AtomicBoolean(false);
 
     public synchronized int start(String expectedState, CompletableFuture<Map<String, Object>> future) throws IOException {
+        if (expectedState == null || expectedState.isBlank() || future == null) {
+            throw new IllegalArgumentException("A state value and callback future are required.");
+        }
         stop();
         this.expectedState = expectedState;
         this.pendingFuture = future;
@@ -52,7 +56,8 @@ public class AuthCallbackServer {
         CallbackHandler handler = new CallbackHandler();
         server.createContext("/auth/callback", handler);
         server.createContext("/callback", handler);
-        server.setExecutor(Executors.newCachedThreadPool());
+        executor = Executors.newCachedThreadPool();
+        server.setExecutor(executor);
         server.start();
 
         System.out.println("[AuthCallbackServer] Bound to http://127.0.0.1:" + port + "/auth/callback (Strict loopback)");
@@ -72,18 +77,36 @@ public class AuthCallbackServer {
             port = 0;
             expectedState = null;
         }
+        if (executor != null) {
+            executor.shutdown();
+            executor = null;
+        }
     }
 
     private class CallbackHandler implements HttpHandler {
         @Override
         public void handle(HttpExchange exchange) throws IOException {
-            exchange.getResponseHeaders().set("Access-Control-Allow-Origin", "*");
+            String origin = exchange.getRequestHeaders().getFirst("Origin");
+            if (origin != null && !origin.equals("https://takeoutfix.pages.dev")) {
+                exchange.sendResponseHeaders(403, -1);
+                return;
+            }
+            if (origin != null) {
+                exchange.getResponseHeaders().set("Access-Control-Allow-Origin", origin);
+                exchange.getResponseHeaders().set("Vary", "Origin");
+            }
             exchange.getResponseHeaders().set("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
             exchange.getResponseHeaders().set("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Requested-With");
             exchange.getResponseHeaders().set("Access-Control-Allow-Private-Network", "true");
+            exchange.getResponseHeaders().set("Cache-Control", "no-store");
+            exchange.getResponseHeaders().set("Referrer-Policy", "no-referrer");
 
             if ("OPTIONS".equalsIgnoreCase(exchange.getRequestMethod())) {
                 exchange.sendResponseHeaders(204, -1);
+                return;
+            }
+            if (!"GET".equalsIgnoreCase(exchange.getRequestMethod()) && !"POST".equalsIgnoreCase(exchange.getRequestMethod())) {
+                exchange.sendResponseHeaders(405, -1);
                 return;
             }
 
@@ -97,7 +120,12 @@ public class AuthCallbackServer {
 
             // 2. Body parameters if POST
             if ("POST".equalsIgnoreCase(exchange.getRequestMethod())) {
-                String body = new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8);
+                byte[] bodyBytes = exchange.getRequestBody().readNBytes(65537);
+                if (bodyBytes.length > 65536) {
+                    exchange.sendResponseHeaders(413, -1);
+                    return;
+                }
+                String body = new String(bodyBytes, StandardCharsets.UTF_8);
                 if (!body.isBlank()) {
                     if (body.startsWith("{")) {
                         try {
@@ -113,33 +141,16 @@ public class AuthCallbackServer {
             }
 
             // Validate OAuth 2.0 State Parameter (Anti-CSRF)
-            if (expectedState != null && !expectedState.isBlank()) {
+            {
+                String state = expectedState;
                 String receivedState = String.valueOf(params.getOrDefault("state", ""));
-                boolean stateProvided = params.containsKey("state") && !receivedState.isBlank();
-                boolean hasVerifiedToken = params.containsKey("token") || params.containsKey("idToken") || params.containsKey("code");
-
-                if (stateProvided && !expectedState.equals(receivedState)) {
+                if (state == null || !state.equals(receivedState)) {
                     String errorHtml = "<html><body style='background:#282a36;color:#ff5555;font-family:sans-serif;padding:40px;text-align:center;'><h2>Security Error: OAuth State Mismatch</h2><p>Authentication rejected due to invalid state token.</p></body></html>";
                     byte[] errBytes = errorHtml.getBytes(StandardCharsets.UTF_8);
                     exchange.getResponseHeaders().set("Content-Type", "text/html; charset=utf-8");
                     exchange.sendResponseHeaders(400, errBytes.length);
                     try (OutputStream os = exchange.getResponseBody()) {
                         os.write(errBytes);
-                    }
-                    if (!completed.getAndSet(true) && pendingFuture != null) {
-                        pendingFuture.completeExceptionally(new AuthException("OAuth state mismatch: potential CSRF request intercepted."));
-                    }
-                    return;
-                } else if (!stateProvided && !hasVerifiedToken) {
-                    String errorHtml = "<html><body style='background:#282a36;color:#ff5555;font-family:sans-serif;padding:40px;text-align:center;'><h2>Security Error: Missing Authentication Credentials</h2><p>Authentication rejected due to missing tokens.</p></body></html>";
-                    byte[] errBytes = errorHtml.getBytes(StandardCharsets.UTF_8);
-                    exchange.getResponseHeaders().set("Content-Type", "text/html; charset=utf-8");
-                    exchange.sendResponseHeaders(400, errBytes.length);
-                    try (OutputStream os = exchange.getResponseBody()) {
-                        os.write(errBytes);
-                    }
-                    if (!completed.getAndSet(true) && pendingFuture != null) {
-                        pendingFuture.completeExceptionally(new AuthException("Missing authentication credentials."));
                     }
                     return;
                 }
@@ -152,9 +163,9 @@ public class AuthCallbackServer {
                 params.put("token", params.get("idToken"));
             }
 
-            // Deliver payload to listener
-            if (!completed.getAndSet(true) && pendingFuture != null) {
-                pendingFuture.complete(params);
+            if (!completed.compareAndSet(false, true)) {
+                exchange.sendResponseHeaders(409, -1);
+                return;
             }
 
             // Render enterprise clean confirmation screen (Google Antigravity style)
@@ -168,7 +179,7 @@ public class AuthCallbackServer {
                 <head>
                     <meta charset="utf-8">
                     <meta name="viewport" content="width=device-width, initial-scale=1">
-                    <title>TakeoutFix Auth Success</title>
+                    <title>TakeoutFix Sign-in</title>
                     <link rel="preconnect" href="https://fonts.googleapis.com">
                     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
                     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
@@ -312,10 +323,9 @@ public class AuthCallbackServer {
                             <span class="brand-name">TakeoutFix</span>
                         </div>
 
-                        <h1>You have successfully authenticated.</h1>
+                        <h1>Sign-in request received.</h1>
                         <p class="subtitle">
-                            You should be redirected back to the product. 
-                            <a href="javascript:void(0)" onclick="closeNow()">Click here</a> if not working.
+                            Return to TakeoutFix Desktop to check whether sign-in finished.
                         </p>
 
                         <div class="links">
@@ -330,7 +340,9 @@ public class AuthCallbackServer {
                     <script>
                         function closeNow() {
                             try { window.close(); } catch(e) {}
-                            try { window.open('', '_self', ''); window.close(); } catch(e) {}\n                            try { window.top.close(); } catch(e) {}\n                        }
+                            try { window.open('', '_self', ''); window.close(); } catch(e) {}
+                            try { window.top.close(); } catch(e) {}
+                        }
                         // Attempt automatic tab close after brief confirmation
                         setTimeout(closeNow, 1200);
                     </script>
@@ -344,12 +356,15 @@ public class AuthCallbackServer {
 
             byte[] bytes = html.getBytes(StandardCharsets.UTF_8);
             exchange.getResponseHeaders().set("Content-Type", "text/html; charset=utf-8");
-            exchange.sendResponseHeaders(200, bytes.length);
-            try (OutputStream os = exchange.getResponseBody()) {
-                os.write(bytes);
+            try {
+                exchange.sendResponseHeaders(200, bytes.length);
+                try (OutputStream os = exchange.getResponseBody()) {
+                    os.write(bytes);
+                }
+            } finally {
+                stop();
+                if (pendingFuture != null) pendingFuture.complete(params);
             }
-
-            Executors.newSingleThreadScheduledExecutor().schedule(() -> stop(), 10, TimeUnit.SECONDS);
         }
     }
 

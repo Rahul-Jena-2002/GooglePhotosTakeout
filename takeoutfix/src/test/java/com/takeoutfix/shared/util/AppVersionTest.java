@@ -8,7 +8,9 @@ public class AppVersionTest {
     @Test
     public void testVersionLoading() {
         assertNotNull(AppVersion.getVersion());
-        assertTrue(AppVersion.getBuildNumber() > 0);
+        assertTrue(AppVersion.getVersion().matches("[0-9]+(\\.[0-9]+)*"), "The packaged version must be filtered to a numeric release version");
+        assertTrue(AppVersion.getBuildNumber() >= 0);
+        assertDoesNotThrow(() -> java.time.Instant.parse(AppVersion.getBuildTimestamp()));
         assertTrue(AppVersion.getFullVersionString().startsWith("v"));
     }
 

@@ -4,12 +4,14 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 import org.junit.jupiter.api.condition.EnabledOnOs;
 import org.junit.jupiter.api.condition.OS;
 
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Path;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -17,15 +19,18 @@ import static org.junit.jupiter.api.Assertions.*;
 @DisplayName("Native Windows Credential Manager (DPAPI) Live Round-Trip Integration Test")
 class NativeWindowsKeyringIntegrationTest {
 
-    private static final String TEST_EMAIL = "native-keyring-test@takeoutfix.com";
+    @TempDir
+    Path tempDir;
+    private String testEmail;
     private CredentialStore credentialStore;
 
     @BeforeEach
     void setUp() {
         CredentialStore.resetKeyringAvailability();
-        credentialStore = new CredentialStore();
+        testEmail = "native-keyring-test-" + java.util.UUID.randomUUID() + "@takeoutfix.com";
+        credentialStore = new CredentialStore(tempDir.toFile());
         credentialStore.clear();
-        deleteFromWindowsCredentialManager(TEST_EMAIL);
+        deleteFromWindowsCredentialManager(testEmail);
     }
 
     @AfterEach
@@ -33,7 +38,7 @@ class NativeWindowsKeyringIntegrationTest {
         if (credentialStore != null) {
             credentialStore.clear();
         }
-        deleteFromWindowsCredentialManager(TEST_EMAIL);
+        deleteFromWindowsCredentialManager(testEmail);
     }
 
     @Test
@@ -41,7 +46,7 @@ class NativeWindowsKeyringIntegrationTest {
     void testLiveWindowsCredentialManagerPersistenceAndCleanup() {
         AuthSession testSession = new AuthSession(
                 "uid-live-dpapi-999",
-                TEST_EMAIL,
+                testEmail,
                 "Native Test User",
                 "https://photos.google.com/icon.png",
                 "jwt-token-live-windows-dpapi",
@@ -54,13 +59,13 @@ class NativeWindowsKeyringIntegrationTest {
         credentialStore.saveSession(testSession);
 
         // 2. StorageTier must be OS_KEYRING on Windows
-        assertEquals(CredentialStore.StorageTier.OS_KEYRING, credentialStore.getStorageTier(TEST_EMAIL),
+        assertEquals(CredentialStore.StorageTier.OS_KEYRING, credentialStore.getStorageTier(testEmail),
                 "Storage tier must be OS_KEYRING when Windows Credential Manager is operational");
 
         // 3. Inspect Windows Credential Manager directly via OS command (cmdkey /list)
         String cmdkeyOutput = runCmdkeyListing();
-        assertTrue(cmdkeyOutput.contains("TakeoutFix|" + TEST_EMAIL),
-                "Windows Credential Manager MUST contain 'TakeoutFix|" + TEST_EMAIL + "' in cmdkey /list output");
+        assertTrue(cmdkeyOutput.contains("TakeoutFix|" + testEmail),
+                "Windows Credential Manager MUST contain 'TakeoutFix|" + testEmail + "' in cmdkey /list output");
 
         // 4. Verify loading reads exact tokens from Windows Credential Manager (with small retry for Windows Credential Manager file IO)
         AuthSession loaded = null;
@@ -77,9 +82,9 @@ class NativeWindowsKeyringIntegrationTest {
         credentialStore.clear();
 
         String cmdkeyAfterClear = runCmdkeyListing();
-        assertFalse(cmdkeyAfterClear.contains("TakeoutFix|" + TEST_EMAIL),
+        assertFalse(cmdkeyAfterClear.contains("TakeoutFix|" + testEmail),
                 "Credentials MUST be purged from Windows Credential Manager after clear()");
-        assertEquals(CredentialStore.StorageTier.NONE, credentialStore.getStorageTier(TEST_EMAIL));
+        assertEquals(CredentialStore.StorageTier.NONE, credentialStore.getStorageTier(testEmail));
     }
 
     private String runCmdkeyListing() {
@@ -101,6 +106,7 @@ class NativeWindowsKeyringIntegrationTest {
     }
 
     private void deleteFromWindowsCredentialManager(String email) {
+        if (email == null || email.isBlank()) return;
         try (com.github.javakeyring.Keyring keyring = com.github.javakeyring.Keyring.create()) {
             keyring.deletePassword("TakeoutFix", email);
         } catch (Exception ignored) {}

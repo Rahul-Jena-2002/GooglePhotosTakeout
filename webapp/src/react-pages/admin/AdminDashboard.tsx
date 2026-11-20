@@ -38,11 +38,11 @@ const formatBytes = (bytes: number) => {
 
 export default function AdminDashboard() {
   const { adminData } = useAuth()
-  const [kpi, setKpi] = useState({
-    totalUsers: 0, openTickets: 0, pendingReviews: 0,
-    proUsers: 0, superUsers: 0,
+  const [kpi, setKpi] = useState<Record<'totalUsers' | 'openTickets' | 'pendingReviews' | 'proUsers' | 'superUsers', number | null>>({
+    totalUsers: null, openTickets: null, pendingReviews: null,
+    proUsers: null, superUsers: null,
   })
-  const [revenueToday, setRevenueToday] = useState(0)
+  const [paymentsToday, setPaymentsToday] = useState<number | null>(null)
   const [txs, setTxs] = useState<any[]>([])
   const [onlineAdmins, setOnlineAdmins] = useState<AdminData[]>([])
   const [activity, setActivity] = useState<any[]>([])
@@ -57,7 +57,7 @@ export default function AdminDashboard() {
         const ticketsRef = collection(db, "tickets")
         const reviewsRef = collection(db, "reviews")
 
-        const [total, openT, pendingR, pro, sup] = await Promise.all([
+        const results = await Promise.allSettled([
           getCountFromServer(usersRef),
           getCountFromServer(query(ticketsRef, where("status", "==", "OPEN"))),
           getCountFromServer(query(reviewsRef, where("status", "==", "PENDING"))),
@@ -65,13 +65,11 @@ export default function AdminDashboard() {
           getCountFromServer(query(usersRef, where("plan", "==", "super"))),
         ])
 
-        setKpi({
-          totalUsers: total.data().count,
-          openTickets: openT.data().count,
-          pendingReviews: pendingR.data().count,
-          proUsers: pro.data().count,
-          superUsers: sup.data().count,
-        })
+        const count = (index: number) => {
+          const result = results[index]
+          return result?.status === 'fulfilled' ? result.value.data().count : null
+        }
+        setKpi({ totalUsers: count(0), openTickets: count(1), pendingReviews: count(2), proUsers: count(3), superUsers: count(4) })
       } catch (e) {
         console.error(e)
       } finally {
@@ -81,7 +79,7 @@ export default function AdminDashboard() {
 
     fetchKpis()
 
-    // 2. Listen to successful transactions in real-time for revenue calculations
+    // 2. Listen to successful transactions in real time.
     const qTx = query(collection(db, "transactions"), where("status", "==", "succeeded"))
     const unsubTx = onSnapshot(qTx, (snap) => {
       const txList = snap.docs.map(d => ({ id: d.id, ...d.data() }))
@@ -90,23 +88,8 @@ export default function AdminDashboard() {
       const now = Date.now()
       const oneDayAgo = now - 24 * 60 * 60 * 1000
 
-      const getAmountInINR = (amount: number, currency: string | undefined): number => {
-        const c = (currency || "INR").toUpperCase()
-        if (c === "INR") return amount
-        if (c === "USD") return amount * 83.0
-        if (c === "EUR") return amount * 90.0
-        if (c === "JPY") return amount * 0.53
-        if (c === "CNY") return amount * 11.5
-        return amount * 83.0
-      }
-
-      // Sum revenue collected in the last 24 hours (INR Eq)
-      const revToday = txList
-        .filter((t: any) => t.timestamp >= oneDayAgo)
-        .reduce((sum: number, t: any) => sum + getAmountInINR(t.amount, t.currency), 0)
-
-      setRevenueToday(revToday)
-    }, (err) => console.error(err))
+      setPaymentsToday(txList.filter((t: any) => t.timestamp >= oneDayAgo).length)
+    }, (err) => { console.error(err); setPaymentsToday(null) })
 
     // 3. Live online admins
     const unsubAdmins = onSnapshot(
@@ -143,30 +126,19 @@ export default function AdminDashboard() {
   // Generate historical data points for the mini SVG line chart
   const drawChartPoints = () => {
     const activeTx = txs.filter((t: any) => t.status === "succeeded")
-    if (activeTx.length === 0) return { points: "30,80 100,80 170,80 240,80 310,80 380,80", maxVal: 100, days: Array(6).fill(0) }
+    if (activeTx.length === 0) return { points: "30,110 100,110 170,110 240,110 310,110 380,110", maxVal: 1, days: Array(6).fill(0) }
 
     const days = Array(6).fill(0)
     const now = Date.now()
 
-    const getAmountInINR = (amount: number, currency: string | undefined): number => {
-      const c = (currency || "INR").toUpperCase()
-      if (c === "INR") return amount
-      if (c === "USD") return amount * 83.0
-      if (c === "EUR") return amount * 90.0
-      if (c === "JPY") return amount * 0.53
-      if (c === "CNY") return amount * 11.5
-      return amount * 83.0
-    }
-
     for (let i = 0; i < 6; i++) {
-      const dayStart = now - (5 - i) * 24 * 60 * 60 * 1000
+      const dayStart = now - (6 - i) * 24 * 60 * 60 * 1000
       const dayEnd = dayStart + 24 * 60 * 60 * 1000
       days[i] = activeTx
-        .filter((t: any) => t.timestamp >= dayStart && t.timestamp < dayEnd)
-        .reduce((sum: number, t: any) => sum + getAmountInINR(t.amount, t.currency), 0)
+        .filter((t: any) => t.timestamp >= dayStart && t.timestamp < dayEnd).length
     }
 
-    const maxVal = Math.max(...days, 500)
+    const maxVal = Math.max(...days, 1)
     const points = days.map((val, idx) => {
       const x = 30 + idx * 70
       const y = 110 - (val / maxVal) * 80
@@ -209,14 +181,14 @@ export default function AdminDashboard() {
         <div className="flex flex-col flex-1 min-h-0 gap-6">
           <div className="flex-shrink-0 grid grid-cols-2 md:grid-cols-4 xl:grid-cols-8 gap-4">
             {[
-              { label: "Open Tickets", val: kpi.openTickets, icon: LifeBuoy, color: "text-zinc-500 dark:text-zinc-400", urgent: kpi.openTickets > 0 },
-              { label: "Pending Reviews", val: kpi.pendingReviews, icon: MessageSquareQuote, color: "text-zinc-500 dark:text-zinc-400", urgent: kpi.pendingReviews > 0 },
-              { label: "Revenue Today", val: `₹${revenueToday.toLocaleString("en-IN", { maximumFractionDigits: 0 })}`, icon: CreditCard, color: "text-zinc-500 dark:text-zinc-400", urgent: false },
-              { label: "Files Recovered", val: (globalStats?.filesRestored || 4115).toLocaleString(), icon: RefreshCw, color: "text-zinc-500 dark:text-zinc-400", urgent: false },
-              { label: "Data Processed", val: formatBytes(globalStats?.bytesProcessed || 12944482578), icon: HardDrive, color: "text-zinc-500 dark:text-zinc-400", urgent: false },
+              { label: "Open Tickets", val: kpi.openTickets ?? '—', icon: LifeBuoy, color: "text-zinc-500 dark:text-zinc-400", urgent: (kpi.openTickets ?? 0) > 0 },
+              { label: "Pending Reviews", val: kpi.pendingReviews ?? '—', icon: MessageSquareQuote, color: "text-zinc-500 dark:text-zinc-400", urgent: (kpi.pendingReviews ?? 0) > 0 },
+              { label: "Payments (24h)", val: paymentsToday ?? '—', icon: CreditCard, color: "text-zinc-500 dark:text-zinc-400", urgent: false },
+              { label: "Files Recovered", val: globalStats?.filesRestored != null ? globalStats.filesRestored.toLocaleString() : "—", icon: RefreshCw, color: "text-zinc-500 dark:text-zinc-400", urgent: false },
+              { label: "Data Processed", val: globalStats?.bytesProcessed != null ? formatBytes(globalStats.bytesProcessed) : "—", icon: HardDrive, color: "text-zinc-500 dark:text-zinc-400", urgent: false },
               { label: "Online Admins", val: onlineAdmins.length, icon: UserCheck, color: "text-zinc-500 dark:text-zinc-400", urgent: false },
-              { label: "Pro Users", val: kpi.proUsers, icon: Star, color: "text-zinc-500 dark:text-zinc-400", urgent: false },
-              { label: "Super Users", val: kpi.superUsers, icon: Zap, color: "text-zinc-500 dark:text-zinc-400", urgent: false },
+              { label: "Pro Users", val: kpi.proUsers ?? '—', icon: Star, color: "text-zinc-500 dark:text-zinc-400", urgent: false },
+              { label: "Super Users", val: kpi.superUsers ?? '—', icon: Zap, color: "text-zinc-500 dark:text-zinc-400", urgent: false },
             ].map((kpiItem, i) => (
               <Card
                 key={i}
@@ -232,6 +204,7 @@ export default function AdminDashboard() {
               </Card>
             ))}
           </div>
+          <p className="text-xs text-zinc-400">Files recovered and data processed are client-reported totals. They can be incomplete or inaccurate and are not independently verified.</p>
 
           <div className="grid lg:grid-cols-3 gap-6 flex-1 min-h-0 overflow-hidden">
             {/* Online Admins */}
@@ -267,14 +240,15 @@ export default function AdminDashboard() {
               </CardContent>
             </Card>
 
-            {/* Revenue Overview (Dynamic SVG chart!) */}
+            {/* Successful payments */}
             <Card className="bg-zinc-900 border-zinc-800 shadow-none flex flex-col min-h-0 justify-between">
               <CardHeader className="px-5 py-4 border-b border-zinc-800">
                 <CardTitle className="text-sm font-semibold text-zinc-200 flex items-center gap-2">
-                  <TrendingUp className="w-4 h-4 text-zinc-400" /> Revenue (Last 6 Days)
+                  <TrendingUp className="w-4 h-4 text-zinc-400" /> Successful Payments (Last 6 × 24 Hours)
                 </CardTitle>
               </CardHeader>
               <CardContent className="p-5 flex-1 flex flex-col justify-between">
+                {paymentsToday === null ? <p className="text-sm text-zinc-500">Payment data is unavailable.</p> : <>
                 <div className="w-full relative">
                   <svg className="w-full h-32 overflow-visible text-zinc-700 dark:text-zinc-300" viewBox="0 0 400 120">
                     <line x1="30" y1="30" x2="380" y2="30" stroke="#1f2937" strokeWidth="1" strokeDasharray="3" />
@@ -310,8 +284,9 @@ export default function AdminDashboard() {
                   <span>6d ago</span>
                   <span>4d ago</span>
                   <span>2d ago</span>
-                  <span className="text-zinc-900 dark:text-zinc-100 font-bold">Today</span>
+                  <span className="text-zinc-900 dark:text-zinc-100 font-bold">Now</span>
                 </div>
+                </>}
               </CardContent>
             </Card>
 

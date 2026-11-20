@@ -5,6 +5,7 @@
  */
 
 export const RECAPTCHA_SITE_KEY = "6LdDpb4tAAAAADJHZzjrMIC-gvDXkAw0rhdgB5Sb";
+let pendingLoad: Promise<boolean> | null = null;
 
 declare global {
   interface Window {
@@ -23,24 +24,28 @@ declare global {
 export function ensureRecaptchaLoaded(): Promise<boolean> {
   if (typeof window === "undefined") return Promise.resolve(false);
   if (window.grecaptcha?.enterprise) return Promise.resolve(true);
+  if (pendingLoad) return pendingLoad;
 
   if (document.getElementById("recaptcha-enterprise-script")) {
     return Promise.resolve(true);
   }
 
-  return new Promise((resolve) => {
+  pendingLoad = new Promise((resolve) => {
     const s = document.createElement("script");
     s.id = "recaptcha-enterprise-script";
     s.src = `https://www.google.com/recaptcha/enterprise.js?render=${RECAPTCHA_SITE_KEY}`;
     s.async = true;
     s.defer = true;
-    s.onload = () => resolve(true);
+    s.onload = () => { pendingLoad = null; resolve(true); };
     s.onerror = (err) => {
       console.warn("[reCAPTCHA Enterprise] Failed to load script:", err);
+      s.remove();
+      pendingLoad = null;
       resolve(false);
     };
     document.head.appendChild(s);
   });
+  return pendingLoad;
 }
 
 /**
@@ -51,7 +56,7 @@ export async function executeRecaptcha(action: string = "submit"): Promise<strin
   if (typeof window === "undefined") return null;
 
   try {
-    await ensureRecaptchaLoaded();
+    if (!await ensureRecaptchaLoaded()) return null;
 
     // If grecaptcha enterprise is already available
     if (window.grecaptcha?.enterprise?.execute) {
@@ -102,7 +107,7 @@ export async function executeRecaptcha(action: string = "submit"): Promise<strin
 export async function executeAndVerifyRecaptcha(action: string = "submit"): Promise<{ success: boolean; score?: number; token?: string | null }> {
   const token = await executeRecaptcha(action);
   if (!token) {
-    return { success: true, token: null };
+    return { success: false, token: null };
   }
 
   try {
@@ -113,12 +118,12 @@ export async function executeAndVerifyRecaptcha(action: string = "submit"): Prom
     });
     const data = await res.json();
     return {
-      success: data.success ?? true,
+      success: res.ok && data.success === true,
       score: data.score,
       token
     };
   } catch (err) {
     console.warn("[reCAPTCHA Enterprise] Backend assessment request failed:", err);
-    return { success: true, token };
+    return { success: false, token };
   }
 }

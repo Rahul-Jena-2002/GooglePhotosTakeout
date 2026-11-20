@@ -10,7 +10,7 @@ import java.util.function.Consumer;
 /**
  * Manages the active user session lifecycle:
  * - Silent startup restoration from CredentialStore
- * - Fast token refresh and server-side revocation validation via FirebaseTokenService
+ * - Token refresh via FirebaseTokenService
  * - Session caching, persistence, and logout coordination
  * - Distinguishes between permanent logout (RequiresLogin) and network outage (AuthUnavailable)
  */
@@ -37,10 +37,10 @@ public class SessionManager {
      * Silent startup restoration gate:
      * 1. Loads stored refresh token from CredentialStore.
      * 2. Exchanges refresh token for a fresh ephemeral ID token in RAM.
-     * 3. Validates identity and revocation status against the backend.
+     * 3. Uses the refresh response to restore the account session.
      *
      * Returns:
-     * - Authenticated: Session restored, fresh ID token in RAM, verified identity.
+     * - Authenticated: Session restored with a fresh ID token.
      * - RequiresLogin: No credentials, or token permanently revoked/disabled.
      * - AuthUnavailable: Network failure or timeout (preserves local session, does NOT log user out).
      */
@@ -60,8 +60,8 @@ public class SessionManager {
             // Fast startup: exchange durable refresh token for fresh ephemeral ID token in RAM
             AuthSession refreshed = tokenService.refreshAndVerify(stored);
             if (refreshed != null && refreshed.isAuthenticated()) {
-                this.currentSession = refreshed;
                 credentialStore.saveSession(refreshed);
+                this.currentSession = refreshed;
                 notifyListeners(refreshed);
                 return new SessionRestoreResult.Authenticated(refreshed);
             } else {
@@ -78,6 +78,8 @@ public class SessionManager {
 
             // Transient or network error: DO NOT log user out
             return new SessionRestoreResult.AuthUnavailable(msg, ae);
+        } catch (IllegalStateException e) {
+            return new SessionRestoreResult.AuthUnavailable("Could not save the refreshed sign-in on this device.", e);
         } catch (Exception e) {
             // Network outage (DNS, Timeout, Offline)
             return new SessionRestoreResult.AuthUnavailable("Network error during session validation: " + e.getMessage(), e);
@@ -89,8 +91,8 @@ public class SessionManager {
      */
     public synchronized void save(AuthSession session) {
         if (session != null && session.isAuthenticated()) {
-            this.currentSession = session;
             credentialStore.saveSession(session);
+            this.currentSession = session;
             notifyListeners(session);
         }
     }
@@ -98,10 +100,13 @@ public class SessionManager {
     /**
      * Terminates the session, wipes credentials from encrypted storage, and notifies listeners.
      */
-    public synchronized void logout() {
+    public synchronized boolean logout() {
         this.currentSession = AuthSession.unauthenticated();
-        credentialStore.clear();
-        notifyListeners(this.currentSession);
+        try {
+            return credentialStore.clear();
+        } finally {
+            notifyListeners(this.currentSession);
+        }
     }
 
     public synchronized void clear() {

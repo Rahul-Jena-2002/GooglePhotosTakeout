@@ -17,13 +17,21 @@ import java.util.concurrent.atomic.AtomicLong;
 @Service
 public class SessionStatsService {
 
-    private static final File STATS_FILE = new File(
+    private static final File DEFAULT_STATS_FILE = new File(
             System.getProperty("user.home"), ".takeoutfix_stats.json");
+    private final File statsFile;
+    private final OperationHistoryService historyService;
 
     private final AtomicLong totalFiles = new AtomicLong(0);
     private final AtomicLong totalBytes = new AtomicLong(0);
 
     public SessionStatsService() {
+        this(DEFAULT_STATS_FILE, null);
+    }
+
+    SessionStatsService(File statsFile, OperationHistoryService historyService) {
+        this.statsFile = statsFile;
+        this.historyService = historyService;
         load();
     }
 
@@ -54,9 +62,9 @@ public class SessionStatsService {
     // ── persistence ─────────────────────────────────────────────────────────────
 
     private void load() {
-        if (STATS_FILE.exists()) {
+        if (statsFile.exists()) {
             try {
-                String content = Files.readString(STATS_FILE.toPath());
+                String content = Files.readString(statsFile.toPath());
                 if (content != null && !content.isBlank()) {
                     JSONObject json = new JSONObject(content);
                     totalFiles.set(json.optLong("totalFiles", 0));
@@ -70,8 +78,8 @@ public class SessionStatsService {
         // If stats are 0, aggregate from historical operations store so past runs are reflected
         if (totalFiles.get() == 0 && totalBytes.get() == 0) {
             try {
-                OperationHistoryService historyService = new OperationHistoryService();
-                List<OperationHistoryService.OperationRecord> records = historyService.loadRecords();
+                OperationHistoryService history = historyService != null ? historyService : new OperationHistoryService();
+                List<OperationHistoryService.OperationRecord> records = history.loadRecords();
                 long filesSum = 0;
                 long bytesSum = 0;
                 for (var r : records) {
@@ -92,7 +100,7 @@ public class SessionStatsService {
             JSONObject json = new JSONObject();
             json.put("totalFiles", totalFiles.get());
             json.put("totalBytes", totalBytes.get());
-            Files.writeString(STATS_FILE.toPath(), json.toString(2));
+            Files.writeString(statsFile.toPath(), json.toString(2));
         } catch (Exception ignored) {}
     }
 }

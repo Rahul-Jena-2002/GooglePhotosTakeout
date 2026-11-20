@@ -6,6 +6,7 @@ import { MessageSquareQuote, Check, X, Send, Trash2, Star } from "lucide-react"
 export default function AdminReviews() {
   const [reviews, setReviews] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState("")
   const [replyText, setReplyText] = useState<{ [key: string]: string }>({})
 
   const handleToggleFeatured = async (id: string, featured: boolean) => {
@@ -14,6 +15,7 @@ export default function AdminReviews() {
       fetchReviews()
     } catch (err) {
       console.error(err)
+      setError("Could not update the review. Please try again.")
     }
   }
 
@@ -23,12 +25,14 @@ export default function AdminReviews() {
 
   const fetchReviews = async () => {
     setLoading(true)
+    setError("")
     try {
       const q = query(collection(db, "reviews"), orderBy("createdAt", "desc"))
       const snap = await getDocs(q)
       setReviews(snap.docs.map(d => ({ id: d.id, ...d.data() })))
     } catch (err) {
       console.error(err)
+      setError("Could not load reviews. Please try again later.")
     } finally {
       setLoading(false)
     }
@@ -40,6 +44,7 @@ export default function AdminReviews() {
       fetchReviews()
     } catch (err) {
       console.error(err)
+      setError("Could not update the review. Please try again.")
     }
   }
 
@@ -52,6 +57,7 @@ export default function AdminReviews() {
       fetchReviews()
     } catch (err) {
       console.error(err)
+      setError("Could not send the reply. Please try again.")
     }
   }
 
@@ -62,6 +68,7 @@ export default function AdminReviews() {
       fetchReviews()
     } catch (err) {
       console.error(err)
+      setError("Could not delete the review. Please try again.")
     }
   }
 
@@ -73,9 +80,10 @@ export default function AdminReviews() {
       </div>
 
       <div className="space-y-6">
+        {error && <p role="alert" className="text-sm text-red-400">{error}</p>}
         {loading ? (
           <div className="text-zinc-500 animate-pulse">Loading reviews...</div>
-        ) : reviews.length === 0 ? (
+        ) : error && reviews.length === 0 ? null : reviews.length === 0 ? (
           <div className="text-center py-12 border border-zinc-800 rounded-lg bg-zinc-900/50">
             <MessageSquareQuote className="w-8 h-8 text-zinc-600 mx-auto mb-3" />
             <div className="text-zinc-500">No reviews have been submitted yet.</div>

@@ -100,33 +100,22 @@ const getBackendPlanPriceValue = async (db, planKey, regionKey) => {
     t3: "US (Tier 3)",
     t4: "Tier 4"
   };
-  const REGION_PRICING_CONFIGS = {
-    in: { currency: "INR", symbol: "₹", recoveryPass: 249, finalPro: 799, finalSuper: 1499 },
-    t3: { currency: "USD", symbol: "$", recoveryPass: 4.99, finalPro: 29.00, finalSuper: 49.00 },
-    eu: { currency: "EUR", symbol: "€", recoveryPass: 4.99, finalPro: 29.00, finalSuper: 49.00 },
-    jp: { currency: "JPY", symbol: "¥", recoveryPass: 899, finalPro: 5900, finalSuper: 9900 },
-    cn: { currency: "CNY", symbol: "¥", recoveryPass: 49, finalPro: 199, finalSuper: 399 },
-    t1: { currency: "USD", symbol: "$", recoveryPass: 1.99, finalPro: 9.99, finalSuper: 19.99 },
-    t2: { currency: "USD", symbol: "$", recoveryPass: 3.99, finalPro: 19.00, finalSuper: 39.00 },
-    t4: { currency: "USD", symbol: "$", recoveryPass: 5.99, finalPro: 39.00, finalSuper: 69.00 }
-  };
-
-  const docId = REGION_DOC_IDS[regionKey] || REGION_DOC_IDS.t3;
+  const docId = REGION_DOC_IDS[regionKey];
+  if (!docId) throw new Error("Unknown pricing region.");
   let firestoreConfig = null;
   try {
     const tierDoc = await db.collection("pricing_tiers").doc(docId).get();
-    if (tierDoc.exists) {
-      firestoreConfig = tierDoc.data();
-    }
+    if (!tierDoc.exists) throw new Error("Pricing tier is not configured.");
+    firestoreConfig = tierDoc.data();
   } catch (err) {
     console.error("Failed to read pricing_tiers:", err);
+    throw err;
   }
 
-  const staticConfig = REGION_PRICING_CONFIGS[regionKey] || REGION_PRICING_CONFIGS.t3;
-
-  const recoveryPassPrice = firestoreConfig?.recovery_pass?.current ?? staticConfig.recoveryPass;
-  const finalPro = firestoreConfig?.pro_lifetime?.current ?? staticConfig.finalPro;
-  const finalSuper = firestoreConfig?.super_lifetime?.current ?? staticConfig.finalSuper;
+  if (!firestoreConfig?.currency_code) throw new Error("Pricing currency is not configured.");
+  const recoveryPassPrice = firestoreConfig?.recovery_pass?.current;
+  const finalPro = firestoreConfig?.pro_lifetime?.current;
+  const finalSuper = firestoreConfig?.super_lifetime?.current;
 
   // Calculate active campaigns & campaign discounts
   let discountPct = 0;
@@ -175,6 +164,7 @@ const getBackendPlanPriceValue = async (db, planKey, regionKey) => {
     }
   } catch (err) {
     console.error("Failed to lookup active campaign discount on backend:", err);
+    throw err;
   }
 
   let basePrice = 0;
@@ -182,7 +172,10 @@ const getBackendPlanPriceValue = async (db, planKey, regionKey) => {
   else if (planKey === 'pro') basePrice = finalPro;
   else if (planKey === 'super') basePrice = finalSuper;
 
-  return discountPct > 0 ? Number((basePrice * (1 - discountPct / 100)).toFixed(2)) : basePrice;
+  return {
+    amount: discountPct > 0 ? Number((basePrice * (1 - discountPct / 100)).toFixed(2)) : Number(basePrice),
+    currency: firestoreConfig.currency_code
+  };
 };
 
 const app = express();
@@ -226,6 +219,10 @@ const verifyDodoWebhook = (req, webhookSecret) => {
   const webhookSignature = req.headers["webhook-signature"];
 
   if (!webhookId || !webhookTimestamp || !webhookSignature || !webhookSecret) {
+    return false;
+  }
+  if (typeof webhookTimestamp !== "string" || !/^\d+$/.test(webhookTimestamp) ||
+      Math.abs(Math.floor(Date.now() / 1000) - Number(webhookTimestamp)) > 300) {
     return false;
   }
 
@@ -285,17 +282,13 @@ app.post("/dodo-webhook", async (req, res) => {
     }
   }
 
-  if (!webhookSecret) {
-    webhookSecret = "dodo-webhook-secret-placeholder";
+  if (!webhookSecret || webhookSecret === "dodo-webhook-secret-placeholder") {
+    console.error("Dodo webhook secret is not configured.");
+    return res.status(500).json({ error: "Webhook secret not configured" });
   }
-
-  if (webhookSecret !== "dodo-webhook-secret-placeholder") {
-    if (!verifyDodoWebhook(req, webhookSecret)) {
-      console.warn("Invalid Dodo webhook signature received.");
-      return res.status(401).json({ error: "Invalid signature" });
-    }
-  } else {
-    console.log("Placeholder secret detected. Skipping signature verification (TEST MODE).");
+  if (!verifyDodoWebhook(req, webhookSecret)) {
+    console.warn("Invalid Dodo webhook signature received.");
+    return res.status(401).json({ error: "Invalid signature" });
   }
 
   const { type, data } = req.body;
@@ -310,12 +303,25 @@ app.post("/dodo-webhook", async (req, res) => {
     const plan = data.metadata?.plan || data.metadata?.plankey;
     const regionCode = data.metadata?.region || data.metadata?.metadata_region || "t3";
 
-    if (!userId || !plan) {
-      console.error("Missing userId or plan in payment metadata:", data.metadata);
-      return res.status(400).json({ error: "Missing metadata fields userId/plan in payload." });
+    if (typeof userId !== "string" || !/^[A-Za-z0-9_-]{1,128}$/.test(userId) ||
+        !["recovery_pass", "pro", "super"].includes(plan)) {
+      return res.status(400).json({ error: "Invalid payment metadata." });
     }
 
     try {
+      const globalSnapshot = await db.collection("settings").doc("global").get();
+      const globalData = globalSnapshot.exists ? globalSnapshot.data() : null;
+      const productMap = globalData?.dodo_test_mode === true
+        ? globalData?.dodo_products_test
+        : (globalData?.dodo_products_live || globalData?.dodo_products);
+      const expectedProduct = productMap?.[regionCode]?.[plan];
+      if (typeof expectedProduct !== "string" || !expectedProduct) {
+        return res.status(503).json({ error: "Payment product is not configured." });
+      }
+      if (!Array.isArray(data.product_cart) || data.product_cart.length !== 1 ||
+          data.product_cart[0]?.product_id !== expectedProduct || data.product_cart[0]?.quantity !== 1) {
+        return res.status(400).json({ error: "Payment product does not match the requested plan." });
+      }
       const timestamp = Date.now();
       const txId = data.payment_id || `TXN-DODO-${timestamp}`;
       const userEmail = data.customer?.email || "";
@@ -486,15 +492,11 @@ app.post("/create-dodo-upgrade-discount", async (req, res) => {
 
   const idToken = authHeader.split("Bearer ")[1];
   let userId;
-  if (idToken.startsWith("test-token-")) {
-    userId = idToken.replace("test-token-", "");
-  } else {
-    try {
-      const decodedToken = await admin.auth().verifyIdToken(idToken);
-      userId = decodedToken.uid;
-    } catch (err) {
-      return res.status(401).json({ error: "Unauthorized ID token.", details: err.message });
-    }
+  try {
+    const decodedToken = await admin.auth().verifyIdToken(idToken);
+    userId = decodedToken.uid;
+  } catch (err) {
+    return res.status(401).json({ error: "Unauthorized ID token." });
   }
 
   const { targetPlan, region } = req.body || {};
@@ -504,6 +506,9 @@ app.post("/create-dodo-upgrade-discount", async (req, res) => {
 
   if (targetPlan !== "super") {
     return res.status(400).json({ error: "Invalid targetPlan. Upgrades are only supported to 'super'." });
+  }
+  if (!['in', 'eu', 't1', 't2', 't3', 't4'].includes(region)) {
+    return res.status(409).json({ error: "This region requires manual upgrade review. Please contact support." });
   }
 
   try {
@@ -520,6 +525,7 @@ app.post("/create-dodo-upgrade-discount", async (req, res) => {
 
     // 2. Fetch how much they paid for pro
     let amountPaidForPro = 0;
+    let purchaseCurrency = "";
     try {
       const logsSnap = await db.collection("purchase_logs")
         .where("userId", "==", userId)
@@ -528,44 +534,30 @@ app.post("/create-dodo-upgrade-discount", async (req, res) => {
         .limit(1)
         .get();
 
-      if (!logsSnap.empty) {
-        amountPaidForPro = Number(logsSnap.docs[0].data().amount || 0);
-      } else {
-        const txSnap = await db.collection("transactions")
-          .where("uid", "==", userId)
-          .where("plan", "==", "pro")
-          .where("status", "==", "succeeded")
-          .orderBy("timestamp", "desc")
-          .limit(1)
-          .get();
-        if (!txSnap.empty) {
-          amountPaidForPro = Number(txSnap.docs[0].data().amount || 0);
-        }
+      if (!logsSnap.empty && logsSnap.docs[0].data().regionCode === region) {
+        amountPaidForPro = Number(logsSnap.docs[0].data().amount);
+        purchaseCurrency = logsSnap.docs[0].data().currency;
       }
     } catch (logErr) {
       console.warn("Failed to query previous pro purchases:", logErr.message);
+      return res.status(503).json({ error: "Unable to verify your previous purchase. Please try again later." });
     }
 
-    // Fallback: If we couldn't find what they paid, get the static pricing default
-    if (amountPaidForPro <= 0) {
-      const staticConfig = REGION_PRICING_CONFIGS[region] || REGION_PRICING_CONFIGS.t3;
-      amountPaidForPro = staticConfig.finalPro || 29;
+    if (!Number.isFinite(amountPaidForPro) || amountPaidForPro <= 0) {
+      return res.status(409).json({ error: "No matching purchase record was found. Please contact support." });
     }
 
     // 3. Fetch current super price
     const pSuper = await getBackendPlanPriceValue(db, "super", region);
-    if (pSuper <= 0) {
+    if (!Number.isFinite(pSuper.amount) || pSuper.amount <= 0) {
       return res.status(500).json({ error: "Invalid plan prices retrieved." });
     }
 
-    // 4. Calculate discount percentage in basis points (100% = 10000)
-    // Dynamic discount = (amountPaidForPro / pSuper) * 10000
-    let discountPct = amountPaidForPro / pSuper;
-    let basisPoints = Math.round(discountPct * 10000);
-    
-    // Check: Dodo requires the coupon to leave > 0 charge, so cap at 99.9% (9990 basis points)
-    if (basisPoints >= 10000) basisPoints = 9990; 
-    if (basisPoints < 10) basisPoints = 10;
+    const { calculateUpgradeBasisPoints } = require("./lib/upgradeDiscount");
+    const basisPoints = calculateUpgradeBasisPoints(amountPaidForPro, purchaseCurrency, pSuper.amount, pSuper.currency);
+    if (basisPoints === null) {
+      return res.status(409).json({ error: "Purchase and upgrade prices cannot be compared. Please contact support." });
+    }
 
     // 5. Look up Dodo Product ID from settings/global dodo_products mapping
     const globalDoc = await db.collection("settings").doc("global").get();
@@ -1072,14 +1064,7 @@ const fetchUsdExchangeRates = () => {
  *      https://test.dodopayments.com (test)
  *    Ref: https://docs.dodopayments.com/miscellaneous/faq#q135
  */
-app.post("/sync-dodo-prices", async (req, res) => {
-  const customSecretKey = String(process.env.GATEWAY_API_KEY || "").trim();
-  const headerKey = String(req.headers["x-api-key"] || (req.headers.authorization || "").replace("Bearer ", "")).trim();
-  const hasDodoKey = req.body && req.body.dodoApiKey;
-  if (customSecretKey && (!headerKey || headerKey !== customSecretKey) && !hasDodoKey) {
-    return res.status(401).json({ error: "Unauthorized" });
-  }
-
+app.post("/sync-dodo-prices", authenticateApiKey, async (req, res) => {
   const https = require("https");
 
 

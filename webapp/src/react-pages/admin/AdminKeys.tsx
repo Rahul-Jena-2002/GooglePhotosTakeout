@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from "react"
 import { doc, setDoc, onSnapshot } from "firebase/firestore"
 import { db } from "../../firebase"
 import { useAuth } from "../../contexts/AuthContext"
-import { isSuperAdminEmail } from "../../lib/adminAuth"
+import { isEmulatorDevelopment, isSuperAdminEmail } from "../../lib/adminAuth"
 import { useToastStore } from "../../store/useToastStore"
 import { encrypt, deriveKeyFromPassword } from "../../lib/crypto"
 import { Shield } from "lucide-react"
@@ -208,8 +208,8 @@ const INDEXNOW_KEY = "${indexNowKeyValue}";
     }
   }, [mekKey])
 
-  const isDev = import.meta.env.DEV
-  const isSuperAdminEmailMatch = isSuperAdminEmail(user?.email || adminData?.email)
+  const isDev = isEmulatorDevelopment()
+  const isSuperAdminEmailMatch = user?.emailVerified === true && isSuperAdminEmail(user.email)
   const hasAccess = isDev || isSuperAdminEmailMatch || adminData?.role === "SUPER_ADMIN"
 
   if (authLoading && !isDev) {

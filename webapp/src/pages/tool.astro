@@ -5,53 +5,6 @@ import ToolWorkspace from "../react-pages/tool/ToolWorkspace";
 import Icon from "../components/ui/Icon.astro";
 import AdUnit from "../components/monetization/AdUnit";
 
-// Structured Schema.org data for SEO and AdSense crawler trust
-const toolFaqSchema = {
-  "@context": "https://schema.org",
-  "@type": "FAQPage",
-  "mainEntity": [
-    {
-      "@type": "Question",
-      "name": "What should I do after TakeoutFix finishes restoring my files?",
-      "acceptedAnswer": {
-        "@type": "Answer",
-        "text": "Once TakeoutFix finishes repairing your library, open your selected destination folder. To make Windows File Explorer or Mac Finder display original capture dates in file lists, double-click the generated sync_windows_dates.bat (Windows) or execute sync_macos_linux.sh (Mac/Linux)."
-      }
-    },
-    {
-      "@type": "Question",
-      "name": "Why do restored files show today's date in Windows Explorer or Mac Finder?",
-      "acceptedAnswer": {
-        "@type": "Answer",
-        "text": "Web browsers run in a secure sandbox that permits binary EXIF header injection into the image itself, but forbids modifying operating system filesystem attributes (CreationTime and LastWriteTime). Running the companion sync_windows_dates.bat or sync_macos_linux.sh script updates the OS filesystem attributes to match the embedded EXIF capture date in 2 to 3 seconds."
-      }
-    },
-    {
-      "@type": "Question",
-      "name": "What does sync_windows_dates.bat do?",
-      "acceptedAnswer": {
-        "@type": "Answer",
-        "text": "The sync_windows_dates.bat script reads the generated file_timestamps.json catalog and executes a localized PowerShell routine to update Windows filesystem CreationTime and LastWriteTime on every restored photo and video, so File Explorer sorts them chronologically."
-      }
-    },
-    {
-      "@type": "Question",
-      "name": "Does the web tool compress or reduce photo resolution?",
-      "acceptedAnswer": {
-        "@type": "Answer",
-        "text": "No. TakeoutFix performs lossless binary metadata injection. Only the EXIF, XMP, and QuickTime header blocks are updated. Your underlying JPEG, HEIC, PNG, or video bitstreams remain 100% bit-for-bit identical to the originals."
-      }
-    },
-    {
-      "@type": "Question",
-      "name": "Are my photos uploaded to any server while using the tool?",
-      "acceptedAnswer": {
-        "@type": "Answer",
-        "text": "No. Processing occurs 100% locally on your computer inside client-side Web Workers using the File System Access API. Your files and photos never leave your device."
-      }
-    }
-  ]
-};
 ---
 
 <Layout 
@@ -59,10 +12,10 @@ const toolFaqSchema = {
   description="Restore dates and locations for photos from a Google Takeout download. Choose your files, select where to save the restored copies, and run the tool on your device."
   isToolPage={true}
 >
-  <script type="application/ld+json" set:html={JSON.stringify(toolFaqSchema)} />
 
   <!-- 1. INTERACTIVE TOOL WORKSPACE (UNMODIFIED UI) -->
   <div id="tool-workspace">
+  <noscript><p class="mx-auto max-w-3xl px-6 py-6 text-zinc-700 dark:text-zinc-300">The restore tool needs JavaScript. Enable it in your browser to select files and save restored copies.</p></noscript>
   <ToolWorkspace client:only="react">
     <section slot="fallback" class="w-full bg-background text-foreground">
       <div class="max-w-7xl mx-auto px-6 py-16 sm:py-20">
@@ -74,7 +27,7 @@ const toolFaqSchema = {
             Restore your Takeout photos.
           </h1>
           <p class="mt-5 max-w-2xl text-lg sm:text-xl text-zinc-600 dark:text-zinc-400 leading-relaxed">
-            Choose your Google Takeout files to restore their original dates and locations. Your photos are processed locally in your browser.
+            Choose a Google Takeout export to restore available dates and, for supported photos, locations. Your photos are processed locally in your browser. Keep the original export: file types outside the tool's supported list are not copied to the result.
           </p>
           <div class="mt-8 flex flex-wrap items-center gap-4">
             <a href="#tool-workspace" class="btn-monochrome-primary inline-flex h-14 items-center rounded-lg px-8 font-bold">Open Restore Tool</a>
@@ -90,24 +43,11 @@ const toolFaqSchema = {
   <section class="w-full max-w-5xl mx-auto px-4 py-3 relative z-10" aria-label="Sponsored recommendations">
     <div class="tool-ad-slot">
       <AdUnit client:only="react" placement="TOOL_MANUAL_TOP" />
-      <div class="tool-ad-placeholder" aria-label="Advertisement slot">
-        <span>ADVERTISEMENT</span>
-        <span>Ad space · ads appear when available</span>
-      </div>
     </div>
   </section>
 
   <style>
     .tool-ad-slot { position: relative; min-height: 72px; }
-    .tool-ad-placeholder {
-      min-height: 72px; border: 1px dashed rgb(212 212 216); border-radius: .75rem;
-      background: rgb(250 250 250 / .8); display: flex; flex-direction: column;
-      align-items: center; justify-content: center; gap: .25rem; color: rgb(113 113 122);
-      font-size: 11px; text-align: center;
-    }
-    .tool-ad-placeholder span:first-child { font-size: 9px; font-weight: 700; letter-spacing: .08em; }
-    .dark .tool-ad-placeholder { border-color: rgb(63 63 70); background: rgb(24 24 27 / .5); color: rgb(161 161 170); }
-    .tool-ad-slot:has(iframe, a[href], ins[data-ad-status="filled"]) .tool-ad-placeholder { display: none; }
   </style>
 
   <!-- 2. SCROLLABLE USER MANUAL & POST-RESTORATION GUIDE (BELOW WORKSPACE) -->
@@ -140,7 +80,7 @@ const toolFaqSchema = {
           📁 File types
         </a>
         <a href="#privacy-architecture" class="px-3 py-1.5 rounded-lg bg-white dark:bg-zinc-900 hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-700 dark:text-zinc-300 hover:text-zinc-900 dark:hover:text-white transition-colors border border-zinc-200 dark:border-zinc-800 shadow-sm">
-          🔒 Privacy &amp; Offline Guarantee
+          Privacy and your files
         </a>
         <a href="#tool-faq" class="px-3 py-1.5 rounded-lg bg-white dark:bg-zinc-900 hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-700 dark:text-zinc-300 hover:text-zinc-900 dark:hover:text-white transition-colors border border-zinc-200 dark:border-zinc-800 shadow-sm">
           ❓ Frequently Asked Questions
@@ -165,7 +105,7 @@ const toolFaqSchema = {
 
           <div class="space-y-6 text-sm text-zinc-700 dark:text-zinc-300 leading-relaxed">
             <p>
-              When TakeoutFix finishes restoring your photos, it writes all your repaired media into your designated output folder. However, you will notice that in <strong>Windows File Explorer</strong> or <strong>Mac Finder</strong>, the files might still show today's date in the folder column.
+              When the restore finishes, review the output and its issues report. Some files may be unmatched, unsupported, or fail to restore. Keep your original export as a backup. <strong>Windows File Explorer</strong> or <strong>Mac Finder</strong> may still show today's date in the folder column.
             </p>
 
             <!-- Explanation Callout -->
@@ -174,10 +114,10 @@ const toolFaqSchema = {
                 <span>💡 Why does File Explorer / Finder show today's date?</span>
               </div>
               <p class="text-zinc-600 dark:text-zinc-400">
-                Your browser can restore the date and location stored inside each photo. It cannot change the separate “Date created” value shown by your computer's file manager.
+                The tool attempts to write available dates and locations into supported photos. Your browser cannot change the separate “Date created” value shown by your computer's file manager.
               </p>
               <p class="text-zinc-600 dark:text-zinc-400">
-                Photo apps such as <strong>Apple Photos, Google Photos, and Lightroom</strong> use the restored photo date. If you also want to change the date shown in your computer's folders, the tool provides an optional helper script. Review it before running it.
+                Some photo apps can read restored photo dates. The optional file-date helpers require further testing; keep your original backup and do not rely on the helpers yet.
               </p>
             </div>
 
@@ -193,16 +133,11 @@ const toolFaqSchema = {
                     </span>
                     <span class="text-[11px] font-mono text-zinc-500">Windows Users</span>
                   </div>
-                  <h4 class="font-bold text-zinc-900 dark:text-white mb-2 text-sm">How to run on Windows:</h4>
-                  <ol class="list-decimal list-inside space-y-2 text-xs text-zinc-600 dark:text-zinc-400">
-                    <li>Open your restored output folder in File Explorer.</li>
-                    <li>Look for the generated file named <code class="text-zinc-900 dark:text-white font-mono bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 px-1 py-0.5 rounded">sync_windows_dates.bat</code>.</li>
-                    <li>Double-click the file to run it.</li>
-                    <li>A command window will scan your folder and update Windows <code class="text-zinc-800 dark:text-zinc-300 font-mono">CreationTime</code> and <code class="text-zinc-800 dark:text-zinc-300 font-mono">LastWriteTime</code> to match your photos' exact original dates in 2 to 3 seconds.</li>
-                  </ol>
+                  <h4 class="font-bold text-zinc-900 dark:text-white mb-2 text-sm">Windows file dates</h4>
+                  <p class="text-xs text-zinc-600 dark:text-zinc-400">The helper attempts to update file dates from its catalog. Do not run it until it has been tested for your setup.</p>
                 </div>
                 <div class="mt-4 pt-3 border-t border-zinc-200 dark:border-zinc-800 text-[11px] text-zinc-500">
-                  ✓ Safe, self-contained local PowerShell routine. No internet required.
+                  This helper requires additional testing before use.
                 </div>
               </div>
 
@@ -215,16 +150,11 @@ const toolFaqSchema = {
                     </span>
                     <span class="text-[11px] font-mono text-zinc-500">Mac &amp; Linux Users</span>
                   </div>
-                  <h4 class="font-bold text-zinc-900 dark:text-white mb-2 text-sm">How to run on macOS / Linux:</h4>
-                  <ol class="list-decimal list-inside space-y-2 text-xs text-zinc-600 dark:text-zinc-400">
-                    <li>Open your restored output folder in Finder.</li>
-                    <li>Open <strong>Terminal</strong> (<kbd class="px-1 py-0.5 rounded bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 text-[10px] text-zinc-700 dark:text-zinc-300">Cmd + Space</kbd> &rarr; Terminal).</li>
-                    <li>Type <code class="text-zinc-900 dark:text-white font-mono bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 px-1 py-0.5 rounded">bash </code>, drag the <code class="text-zinc-900 dark:text-white font-mono bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 px-1 py-0.5 rounded">sync_macos_linux.sh</code> file into Terminal, and press Enter.</li>
-                    <li>The script runs native <code class="text-zinc-800 dark:text-zinc-300 font-mono">SetFile -d</code> and <code class="text-zinc-800 dark:text-zinc-300 font-mono">touch</code> commands to sync Finder timestamps instantly.</li>
-                  </ol>
+                  <h4 class="font-bold text-zinc-900 dark:text-white mb-2 text-sm">macOS and Linux file dates</h4>
+                  <p class="text-xs text-zinc-600 dark:text-zinc-400">The helper requires Python 3 or Node.js. Do not run it until it has been tested for your setup.</p>
                 </div>
                 <div class="mt-4 pt-3 border-t border-zinc-200 dark:border-zinc-800 text-[11px] text-zinc-500">
-                  ✓ Uses native macOS and POSIX command-line utilities.
+                  This helper requires additional testing before use.
                 </div>
               </div>
 
@@ -244,21 +174,21 @@ const toolFaqSchema = {
       <section id="how-it-works" class="mb-16 scroll-mt-20">
         <h3 class="text-xl sm:text-2xl font-bold text-zinc-900 dark:text-white mb-6 flex items-center gap-2">
           <Icon name="cpu" class="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
-          <span>How the Client-Side Pairing Engine Works</span>
+          <span>How the restore works</span>
         </h3>
         
         <div class="grid md:grid-cols-3 gap-5">
           <div class="p-5 rounded-xl bg-white dark:bg-zinc-900/60 border border-zinc-200 dark:border-zinc-800 shadow-sm">
             <div class="font-mono text-xs font-bold text-indigo-600 dark:text-indigo-400 mb-1">STAGE 01</div>
-            <h4 class="font-bold text-zinc-900 dark:text-white text-sm mb-2">Folder Traversal &amp; Indexing</h4>
+            <h4 class="font-bold text-zinc-900 dark:text-white text-sm mb-2">Find your files</h4>
             <p class="text-xs text-zinc-600 dark:text-zinc-400 leading-relaxed">
-              When you select your unzipped Takeout folder, the engine uses the W3C File System Access API to catalog all photos, videos, and <code class="font-mono text-[10px] bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 px-1 py-0.5 rounded text-zinc-800 dark:text-zinc-200">.json</code> sidecar files into high-speed memory maps.
+              Select your Takeout folder or ZIP. The tool scans supported media and looks for the accompanying <code>.json</code> details files. Other files are not copied into the output, so keep the complete original export.
             </p>
           </div>
 
           <div class="p-5 rounded-xl bg-white dark:bg-zinc-900/60 border border-zinc-200 dark:border-zinc-800 shadow-sm">
             <div class="font-mono text-xs font-bold text-indigo-600 dark:text-indigo-400 mb-1">STAGE 02</div>
-            <h4 class="font-bold text-zinc-900 dark:text-white text-sm mb-2">Heuristic Sidecar Pairing</h4>
+            <h4 class="font-bold text-zinc-900 dark:text-white text-sm mb-2">Match extra details</h4>
             <p class="text-xs text-zinc-600 dark:text-zinc-400 leading-relaxed">
               Google Takeout may shorten a filename or add labels such as <code class="font-mono text-[10px] bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 px-1 py-0.5 rounded text-zinc-800 dark:text-zinc-200">-edited</code> and <code class="font-mono text-[10px] bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 px-1 py-0.5 rounded text-zinc-800 dark:text-zinc-200">(1)</code>. The tool checks these filename differences when matching a photo to its extra information file.
             </p>
@@ -266,9 +196,9 @@ const toolFaqSchema = {
 
           <div class="p-5 rounded-xl bg-white dark:bg-zinc-900/60 border border-zinc-200 dark:border-zinc-800 shadow-sm">
             <div class="font-mono text-xs font-bold text-indigo-600 dark:text-indigo-400 mb-1">STAGE 03</div>
-            <h4 class="font-bold text-zinc-900 dark:text-white text-sm mb-2">Lossless Binary Header Injection</h4>
+            <h4 class="font-bold text-zinc-900 dark:text-white text-sm mb-2">Write restored copies</h4>
             <p class="text-xs text-zinc-600 dark:text-zinc-400 leading-relaxed">
-              The tool adds the saved date and location to supported photo and video files. It does not resize or recompress your media.
+              The tool attempts to add available dates and locations to supported photos, and dates to supported videos. Results vary by file; check the report and verify a sample in your photo app.
             </p>
           </div>
         </div>
@@ -297,11 +227,7 @@ const toolFaqSchema = {
               </li>
               <li class="flex items-center justify-between py-1 border-b border-zinc-100 dark:border-zinc-800/60">
                 <span class="text-zinc-800 dark:text-white font-medium">PNG &amp; WebP</span>
-                <span class="font-mono text-emerald-600 dark:text-emerald-400">eXIf Chunk + XMP</span>
-              </li>
-              <li class="flex items-center justify-between py-1">
-                <span class="text-zinc-800 dark:text-white font-medium">Live Photos (HEIC + MOV)</span>
-                <span class="font-mono text-emerald-600 dark:text-emerald-400">Paired Synchronization</span>
+                <span class="font-mono text-emerald-600 dark:text-emerald-400">Photo information</span>
               </li>
             </ul>
           </div>
@@ -311,21 +237,18 @@ const toolFaqSchema = {
             <ul class="space-y-2 text-xs text-zinc-600 dark:text-zinc-400">
               <li class="flex items-center justify-between py-1 border-b border-zinc-100 dark:border-zinc-800/60">
                 <span class="text-zinc-800 dark:text-white font-medium">MP4 (MPEG-4 Part 14)</span>
-                <span class="font-mono text-emerald-600 dark:text-emerald-400">mvhd &amp; udta QuickTime Atoms</span>
+                <span class="font-mono text-emerald-600 dark:text-emerald-400">Dates when supported</span>
               </li>
               <li class="flex items-center justify-between py-1 border-b border-zinc-100 dark:border-zinc-800/60">
                 <span class="text-zinc-800 dark:text-white font-medium">MOV (QuickTime Movie)</span>
-                <span class="font-mono text-emerald-600 dark:text-emerald-400">Creation Date + GPS Coordinates</span>
+                <span class="font-mono text-emerald-600 dark:text-emerald-400">Dates when supported</span>
               </li>
               <li class="flex items-center justify-between py-1 border-b border-zinc-100 dark:border-zinc-800/60">
-                <span class="text-zinc-800 dark:text-white font-medium">M4V &amp; 3GP</span>
-                <span class="font-mono text-emerald-600 dark:text-emerald-400">Binary Container Metadata</span>
-              </li>
-              <li class="flex items-center justify-between py-1">
-                <span class="text-zinc-800 dark:text-white font-medium">AVI (Legacy)</span>
-                <span class="font-mono text-amber-600 dark:text-amber-400">RIFF INFO Timestamp Header</span>
+                <span class="text-zinc-800 dark:text-white font-medium">M4V</span>
+                <span class="font-mono text-emerald-600 dark:text-emerald-400">Dates when supported</span>
               </li>
             </ul>
+            <p class="mt-3 text-xs text-zinc-600 dark:text-zinc-400">Video GPS and Live Photo pairing are not restored. Some other formats may be copied without restored metadata.</p>
           </div>
         </div>
       </section>
@@ -348,7 +271,7 @@ const toolFaqSchema = {
             Your selected photos and Takeout archive are processed on your device and are not uploaded by the restore tool. The website may still use account, analytics, or advertising services as described in the <a href="/privacy" class="underline">Privacy Policy</a>.
           </p>
           <div class="p-3.5 rounded-xl bg-zinc-100 dark:bg-black/40 border border-zinc-200 dark:border-zinc-800/80 text-xs text-zinc-700 dark:text-zinc-400 font-mono">
-            🧪 <strong>Offline Test:</strong> Once the page is loaded, you can disconnect your computer from the Wi-Fi or internet. The TakeoutFix restore engine will continue processing your entire library at full speed with zero network connectivity.
+            The restore tool processes selected media on your device. The website needs a connection to load and may use online services for sign-in, support, diagnostics, and advertising.
           </div>
         </div>
       </section>
@@ -368,7 +291,7 @@ const toolFaqSchema = {
               <span class="text-zinc-500 group-open:rotate-180 transition-transform">▼</span>
             </summary>
             <div class="pt-3 text-xs text-zinc-600 dark:text-zinc-400 leading-relaxed border-t border-zinc-100 dark:border-zinc-800/60 mt-3">
-              Yes. The web tool runs parallel Web Workers to prevent UI freezing. For extremely large archives (100GB+), we recommend processing in album batches or using our <a href="/download" class="underline text-indigo-600 dark:text-indigo-400 hover:text-zinc-900 dark:hover:text-white">Desktop Application</a>, which runs a multi-threaded native engine without browser memory boundaries.
+              Large downloads can take time and may exceed your browser's available memory or storage. Try smaller batches and keep your originals. The <a href="/download" class="underline text-indigo-600 dark:text-indigo-400 hover:text-zinc-900 dark:hover:text-white">desktop app</a> may be another option; check the release and system requirements for your device.
             </div>
           </details>
 
@@ -378,7 +301,7 @@ const toolFaqSchema = {
               <span class="text-zinc-500 group-open:rotate-180 transition-transform">▼</span>
             </summary>
             <div class="pt-3 text-xs text-zinc-600 dark:text-zinc-400 leading-relaxed border-t border-zinc-100 dark:border-zinc-800/60 mt-3">
-              Never. TakeoutFix only reads your original Takeout directory and writes newly repaired files to your designated output directory. Your original Takeout download is preserved bit-for-bit as an immutable backup.
+              Choose a separate output folder for restored copies and keep your original Takeout download as a backup. Review the results before deleting or moving any originals.
             </div>
           </details>
 

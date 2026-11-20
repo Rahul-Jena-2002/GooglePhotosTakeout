@@ -2,6 +2,7 @@ import { useState, useEffect } from "react"
 import { doc, getDoc, setDoc, onSnapshot, collection, addDoc, getDocs, deleteDoc, updateDoc, serverTimestamp, Timestamp } from "firebase/firestore"
 import { db } from "../../firebase"
 import { useAuth } from "../../contexts/AuthContext"
+import { isEmulatorDevelopment, isVerifiedSuperAdmin } from "../../lib/adminAuth"
 import { useToastStore } from "../../store/useToastStore"
 import { decrypt, encrypt, deriveKeyFromPassword } from "../../lib/crypto"
 import {
@@ -190,10 +191,10 @@ function resolveSyncUrl(endpoint: string, _storedUrl?: string): string {
 
 export default function AdminPaymentGateway() {
   const { user, adminData, loading: authLoading } = useAuth()
-  const isSuperAdminEmail = (user?.email || adminData?.email) === 'rahuljena.dev@gmail.com'
-  const role = isSuperAdminEmail ? "SUPER_ADMIN" : (adminData?.role ?? "ADMIN")
+  const isSuperAdminEmail = isVerifiedSuperAdmin(user)
+  const role = isSuperAdminEmail ? "SUPER_ADMIN" : adminData?.role
   const isSuperAdmin = role === "SUPER_ADMIN" || isSuperAdminEmail
-  const isDev = import.meta.env.DEV
+  const isDev = isEmulatorDevelopment()
   const hasAccess = isDev || isSuperAdmin || role === "ADMIN"
 
   const [isLight, setIsLight] = useState(false)

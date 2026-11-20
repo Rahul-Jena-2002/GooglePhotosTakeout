@@ -23,10 +23,6 @@ interface CommandSidebarProps {
   isPaused: boolean
   useDeepExif?: boolean
   maxWorkers?: number
-  telemetryCpu?: number
-  telemetryMem?: number
-  telemetryTabHeap?: number
-  telemetryWorkers?: number
   userData?: any
   resetUserQuota?: () => Promise<void>
 }
@@ -73,18 +69,18 @@ export function CommandSidebar({
           <span>Processed Volume</span>
           <span className="font-mono text-zinc-700 dark:text-zinc-300">
             {plan === 'guest'
-              ? `${formatByteSize(currentUsedBytes + sessionBytes)} / 1.0 GB`
+              ? `${formatByteSize(currentUsedBytes)} / 1.0 GB`
               : `${formatByteSize(sessionBytes)} (${sessionFiles.toLocaleString()} files)`}
           </span>
         </div>
         {plan === 'guest' && (
           <div className="space-y-1 pt-1">
             <Progress
-              value={Math.min(100, (((currentUsedBytes + sessionBytes) / (1024 * 1024 * 1024)) * 100))}
+              value={Math.min(100, ((currentUsedBytes / (1024 * 1024 * 1024)) * 100))}
               className="h-1.5 bg-zinc-200 dark:bg-white/10"
             />
             <div className="flex justify-between text-[9px] text-zinc-500 dark:text-zinc-400 font-medium">
-              <span>{Math.min(100, Math.round(((currentUsedBytes + sessionBytes) / (1024 * 1024 * 1024)) * 100))}% used</span>
+              <span>{Math.min(100, Math.round((currentUsedBytes / (1024 * 1024 * 1024)) * 100))}% used</span>
               <button
                 type="button"
                 onClick={() => window.dispatchEvent(new CustomEvent('takeoutfix:open-auth-modal', { detail: { mode: 'signin' } }))}
@@ -97,7 +93,7 @@ export function CommandSidebar({
         )}
         <div className="text-[10px] text-zinc-500 dark:text-zinc-400 font-medium pt-0.5">
           {plan === 'guest'
-            ? 'Guest mode: 1 GB free batch processing. Sign in for higher limits.'
+            ? 'Guest mode: 1 GB of free processing. Sign in to continue after reaching the limit.'
             : 'Google Account connected. Full batch restoration enabled.'}
         </div>
       </div>

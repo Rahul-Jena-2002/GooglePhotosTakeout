@@ -1,92 +1,17 @@
-# Operations — Local dev, build, deploy
+# Operations — local development and deployment
 
-## Prerequisites
+The browser tool processes selected files on the device. Keep the original export and verify restored copies.
 
-- Node ≥ 20
-- A modern Chromium-based browser (Chrome / Edge / Arc) — we depend
-  on the File System Access API for both read (folder picker) and
-  write (output folder)
-- A Firebase project with **Firestore** and **Authentication** enabled
-  (free tier is enough for local dev)
+## Local development
 
-## Local dev
+Follow the [webapp README](../../README.md#local-development) for the current Firebase emulator setup and `npm run dev` command. Astro development connects Auth and Firestore to local emulators by default. Only set `PUBLIC_FIREBASE_USE_LIVE=true` if you intentionally want development to use the configured live Firebase project.
 
-```bash
-cd webapp
-npm install
-npm run dev
-```
+## Before release
 
-The Astro dev server starts on `http://localhost:4321`. The Firebase
-config is read from environment variables / the `.firebase/` folder.
-For most dev work, you can sign in with the **mock auth** by setting
-`VITE_USE_MOCK_AUTH=true` in a local `.env`.
+- Run the relevant web tests and one final `npm run build` in an appropriate isolated environment. The build generates the sitemap, builds Astro, updates redirects, and runs the Cloudflare security audit.
+- Test representative Takeout files, cancellation, resume, downloads, account changes, and errors. Check both the output and the unchanged originals.
+- The current Astro configuration uses server output and the Cloudflare adapter. Static assets alone do not deploy the server routes. The existing local `dist` is stale; after a fresh build, inspect the generated Worker configuration and asset paths together.
+- Check Firebase rules separately, then verify a Cloudflare Workers preview with the required bindings and environment variables before changing production routing. The current live project and its deployment settings have not been verified.
+- Verify public routes, headers, sign-in, consent, ads, and support in the deployed preview. Review Search Console and AdSense in their respective accounts.
 
-## Build
-
-```bash
-npm run build
-```
-
-This runs `scripts/generate_sitemap.js` then `astro build`. Output
-goes to `dist/`. The build also produces a `sitemap.xml` and
-`robots.txt` in `public/` from the canonical config.
-
-## Type check (CI gate)
-
-```bash
-node_modules/.bin/tsc -p tsconfig.app.json --noEmit
-```
-
-`tsconfig.app.json` enables strict mode + `noUnusedLocals` +
-`noUnusedParameters`. Pre-existing warnings on `latitude/longitude
-on {}` and a few empty-object index sites are tracked in the issue
-list; new code should be clean.
-
-## Lint
-
-```bash
-npm run lint
-```
-
-ESLint flat config. Add new rules with a justification in the PR
-description — don't widen the config without discussion.
-
-## Deploy
-
-Production deploy is Cloudflare Pages. The build command in the
-Cloudflare dashboard is `npm run build`. Output dir is `dist/`.
-
-Cloudflare environment bindings (KV, D1, R2) are configured in
-`wrangler.json` and surfaced as `import.meta.env.*` in code.
-
-## Firebase emulator (optional but recommended)
-
-```bash
-firebase emulators:start --only auth,firestore
-```
-
-Then point the app at the emulators with `VITE_USE_FIREBASE_EMULATOR=true`.
-Lets you exercise the full admin flow without touching production data.
-
-## Smoke test before each release
-
-1. `npm run build` — must succeed.
-2. `npm run preview` — serves the built output.
-3. Open `http://localhost:4321/`. Sign in.
-4. Pick a takeout folder with ≥ 8 000 files. Run a restore. Confirm
-   the renderer heap stays under 600 MB throughout (Chrome Task
-   Manager).
-5. Refresh mid-run, confirm resume works.
-
-## Common gotchas
-
-- **Stale `dist/`**: delete it before a fresh `npm run build` if you
-  see weird `astro build` errors about "file already exists."
-- **`firebase.json` vs `firestore.rules`**: rules are deployed
-  separately via `firebase deploy --only firestore:rules`. The
-  hosting config in `firebase.json` is for the Cloudflare ↔ Firebase
-  handshake, not for rules.
-- **File System Access permission state**: the user has to re-grant
-  the output folder on every page load. There's no way around this
-  in the API.
+The [readiness audit](../adsense-readiness-audit.md) and the repository's [progress tracker](../../../PROGRESS.md) list unresolved issues. Do not deploy the old `dist` output or assume a static Pages deployment runs the API routes.

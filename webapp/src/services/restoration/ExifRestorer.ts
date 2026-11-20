@@ -66,7 +66,8 @@ export function injectExifDate(
   // Sync fallback returns bytes unchanged if called synchronously
   return {
     bytes: new Uint8Array(buf),
-    success: true
+    success: false,
+    reason: 'Synchronous metadata writing is not supported; use injectExifDateAsync.'
   };
 }
 

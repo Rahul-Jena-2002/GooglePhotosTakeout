@@ -6,7 +6,7 @@
  * - Folder pickers for Original & Backup directories (W3C File System Access API)
  * - Safe path validation (prevents nested / identical directories)
  * - OS artifact exclusions (.DS_Store, Thumbs.db, desktop.ini) with explicit disclosure
- * - Independent SHA-256 streaming digest verification via Web Crypto API (crypto.subtle.digest)
+ * - Independent SHA-256 digest verification via Web Crypto API (crypto.subtle.digest)
  * - Canonical 3-state outcome: VERIFIED | DIFFERENCES FOUND | INCOMPLETE
  * - Exportable, timestamped HTML / TXT Verification Certificate
  */
@@ -128,9 +128,11 @@ export function PhotoVaultPanel() {
     })
     setDiscrepancies([])
     setExcludedList([])
+    setThroughputMbps(0)
+    setVerificationDuration("0s")
   }
 
-  // SHA-256 chunk stream hasher via Web Crypto API
+  // Web Crypto requires the complete file in memory for digest().
   const computeSha256 = async (file: File): Promise<string> => {
     const buffer = await file.arrayBuffer()
     const digest = await crypto.subtle.digest('SHA-256', buffer)
@@ -161,8 +163,8 @@ export function PhotoVaultPanel() {
           try {
             const file = await (entry as FileSystemFileHandle).getFile()
             fileMap.set(relPath, { handle: entry as FileSystemFileHandle, size: file.size })
-          } catch {
-            // Unreadable entry
+          } catch (err) {
+            throw new Error(`Cannot read ${relPath}: ${err instanceof Error ? err.message : String(err)}`)
           }
         } else if (entry.kind === 'directory') {
           await walk(entry as FileSystemDirectoryHandle, relPath)
@@ -178,24 +180,21 @@ export function PhotoVaultPanel() {
   const startVerification = async () => {
     if (!origFolder || !backupFolder) return
 
-    // Path Safety: Check if identical folder handle selected
-    if (origFolder.name === backupFolder.name) {
-      const confirmRun = window.confirm(
-        `Both selected folders share the same name ("${origFolder.name}"). Ensure you selected distinct source and backup locations. Proceed?`
-      )
-      if (!confirmRun) return
-    }
-
+    resetRun()
     abortRef.current = false
     setVerState('scanning')
     setStatusMessage("Scanning directory trees...")
     const startTime = performance.now()
 
     try {
+      if (await origFolder.resolve(backupFolder) !== null || await backupFolder.resolve(origFolder) !== null) {
+        throw new Error("Choose separate folders that do not contain one another.")
+      }
       // 1. Scan Original
       const origResult = await scanDirectory(origFolder)
       if (abortRef.current) {
         setVerState('cancelled')
+        setStatusMessage("Verification cancelled by user.")
         return
       }
 
@@ -204,6 +203,7 @@ export function PhotoVaultPanel() {
       const backupResult = await scanDirectory(backupFolder)
       if (abortRef.current) {
         setVerState('cancelled')
+        setStatusMessage("Verification cancelled by user.")
         return
       }
 
@@ -212,6 +212,9 @@ export function PhotoVaultPanel() {
 
       const origMap = origResult.files
       const backupMap = backupResult.files
+      if (origMap.size === 0) {
+        throw new Error("The original folder contains no included files to verify.")
+      }
 
       let totalBytesToHash = 0
       origMap.forEach(f => { totalBytesToHash += f.size })
@@ -226,7 +229,7 @@ export function PhotoVaultPanel() {
 
       // 3. Inventory comparison & candidate classification
       setVerState('hashing')
-      setStatusMessage("Verifying bit-for-bit SHA-256 streams...")
+      setStatusMessage("Comparing SHA-256 digests...")
 
       let matched = 0
       let missing = 0
@@ -267,7 +270,7 @@ export function PhotoVaultPanel() {
           })
           processedBytes += origInfo.size
         } else {
-          // Sizes match -> Compute streaming SHA-256 digests
+          // Sizes match -> Compute SHA-256 digests
           try {
             const origFile = await origInfo.handle.getFile()
             const backupFile = await backupInfo.handle.getFile()
@@ -302,6 +305,12 @@ export function PhotoVaultPanel() {
           processedBytes += origInfo.size
         }
 
+        if (abortRef.current) {
+          setVerState('cancelled')
+          setStatusMessage("Verification cancelled by user.")
+          return
+        }
+
         // Live progress updates
         const pct = Math.round(((i + 1) / origEntries.length) * 100)
         setProgressPercent(pct)
@@ -325,6 +334,11 @@ export function PhotoVaultPanel() {
 
       // Check for extra files in backup
       for (const [relPath, backupInfo] of backupMap.entries()) {
+        if (abortRef.current) {
+          setVerState('cancelled')
+          setStatusMessage("Verification cancelled by user.")
+          return
+        }
         if (!origMap.has(relPath)) {
           extra++
           foundDiscrepancies.push({
@@ -352,15 +366,14 @@ export function PhotoVaultPanel() {
 
   const cancelVerification = () => {
     abortRef.current = true
-    setVerState('cancelled')
-    setStatusMessage("Verification cancelled.")
+    setStatusMessage("Stopping after the current file...")
   }
 
   // Export HTML / TXT Certificate
   const exportReport = (format: 'html' | 'txt') => {
     const timestamp = new Date().toISOString()
     const outcome =
-      verState === 'cancelled' || stats.errorCount > 0
+      verState !== 'completed' || stats.errorCount > 0
         ? 'INCOMPLETE'
         : discrepancies.length === 0
         ? 'VERIFIED'
@@ -394,7 +407,7 @@ export function PhotoVaultPanel() {
         `------------------------------------------------------------------------`,
         `DISCREPANCIES MANIFEST:`,
         discrepancies.length === 0
-          ? 'No discrepancies found. All files are 100% bit-for-bit identical.'
+          ? outcome === 'VERIFIED' ? 'No discrepancies found among included files.' : 'No discrepancies recorded before verification stopped.'
           : discrepancies.map(d => `[${d.status.toUpperCase()}] ${d.relativePath} (${d.sizeBytes.toLocaleString()} bytes) - ${d.errorDetail}`).join('\n'),
         `------------------------------------------------------------------------`,
         `EXCLUDED OS ARTIFACTS:`,
@@ -406,6 +419,7 @@ export function PhotoVaultPanel() {
       ].join('\n')
     } else {
       mime = 'text/html'
+      const escapeHtml = (value: unknown) => String(value ?? '').replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char] || char))
       content = `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -432,7 +446,7 @@ export function PhotoVaultPanel() {
       <span class="badge ${outcome === 'VERIFIED' ? 'verified' : outcome === 'DIFFERENCES FOUND' ? 'diff' : 'incomplete'}">${outcome}</span>
     </div>
     <p style="color:#a1a1aa; font-size:14px; line-height:1.6;">
-      This official receipt certifies that a bit-for-bit SHA-256 stream integrity verification was executed between the original folder <strong>${origFolder?.name}</strong> and backup destination <strong>${backupFolder?.name}</strong>.
+      This report records the SHA-256 comparison between the original folder <strong>${escapeHtml(origFolder?.name)}</strong> and backup destination <strong>${escapeHtml(backupFolder?.name)}</strong>. Excluded files are not verified.
     </p>
     <table>
       <tr><th>Metric</th><th>Value</th></tr>
@@ -449,7 +463,7 @@ export function PhotoVaultPanel() {
       <h3 style="margin-top:32px; color:#fff;">Discrepancies Manifest</h3>
       <table>
         <tr><th>Status</th><th>Relative Path</th><th>Detail</th></tr>
-        ${discrepancies.map(d => `<tr><td><span class="mono">${d.status}</span></td><td class="mono">${d.relativePath}</td><td>${d.errorDetail}</td></tr>`).join('')}
+        ${discrepancies.map(d => `<tr><td><span class="mono">${escapeHtml(d.status)}</span></td><td class="mono">${escapeHtml(d.relativePath)}</td><td>${escapeHtml(d.errorDetail)}</td></tr>`).join('')}
       </table>
     ` : ''}
     <p style="margin-top:32px; font-size:12px; color:#71717a; text-align:center;">
@@ -473,7 +487,7 @@ export function PhotoVaultPanel() {
 
   // Outcome banner calculations
   const outcomeType =
-    verState === 'cancelled' || stats.errorCount > 0
+    verState === 'cancelled' || verState === 'error' || stats.errorCount > 0
       ? 'incomplete'
       : discrepancies.length === 0 && verState === 'completed'
       ? 'verified'
@@ -496,7 +510,7 @@ export function PhotoVaultPanel() {
             </span>
           </div>
           <p className="text-xs text-zinc-500 dark:text-zinc-400">
-            Compare photo folders and verify bit-for-bit SHA-256 stream digests. 100% read-only access.
+            Compare photo folders using SHA-256 digests with read-only access. Large files require enough memory to read both copies.
           </p>
         </div>
 
@@ -521,7 +535,7 @@ export function PhotoVaultPanel() {
                 All in-scope files matched with 0 unresolved errors
               </div>
               <div className="text-xs text-emerald-400/90 mt-0.5">
-                Every photo and video in the original folder exists in the backup bit-for-bit.
+                All included files matched. Excluded files were not checked.
               </div>
             </div>
           </div>
@@ -705,7 +719,7 @@ export function PhotoVaultPanel() {
         {(verState === 'scanning' || verState === 'hashing') && (
           <div>
             <div className="flex justify-between text-[11px] font-mono text-zinc-500 dark:text-zinc-400 mb-1">
-              <span>{verState === 'scanning' ? 'DISCOVERY PHASE' : 'STREAM DIGEST HASHING'}</span>
+              <span>{verState === 'scanning' ? 'DISCOVERY PHASE' : 'SHA-256 HASHING'}</span>
               <span>{progressPercent}%</span>
             </div>
             <Progress value={progressPercent} className="h-2 bg-zinc-200 dark:bg-zinc-900 rounded-full" />

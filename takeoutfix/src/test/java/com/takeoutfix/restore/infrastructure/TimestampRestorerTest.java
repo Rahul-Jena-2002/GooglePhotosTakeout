@@ -16,6 +16,46 @@ import static org.junit.jupiter.api.Assertions.*;
 public class TimestampRestorerTest {
 
     @Test
+    void missingOrUnreadableSidecarDateIsAvailableToFallback(@TempDir Path tempDir) throws IOException {
+        Path json = tempDir.resolve("photo.json");
+        Files.writeString(json, "{\"geoData\":{\"latitude\":12,\"longitude\":34}}");
+        TimestampRestorer restorer = new TimestampRestorer();
+        assertTrue(restorer.parseJsonTimestamp(json.toFile(), Optional.empty()).isEmpty());
+        assertTrue(restorer.parseJsonTimestamp(tempDir.resolve("missing.json").toFile(), Optional.empty()).isEmpty());
+        Files.writeString(json, "{\"photoTakenTime\":{\"timestamp\":\"1623751200\"}}");
+        assertEquals(1623751200L, restorer.parseJsonTimestamp(json.toFile(), Optional.empty()).orElseThrow().getEpochSecond());
+    }
+
+    @Test
+    void acceptsNumericTimestampWithoutTruncatingDecimalValues(@TempDir Path tempDir) throws IOException {
+        Path json = tempDir.resolve("photo.json");
+        TimestampRestorer restorer = new TimestampRestorer();
+        Files.writeString(json, "{\"photoTakenTime\":{\"timestamp\":1623751200}}");
+        assertEquals(1623751200L, restorer.parseInstantFromJson(json.toFile(), Optional.empty()).getEpochSecond());
+        Files.writeString(json, "{\"photoTakenTime\":{\"timestamp\":1.5},\"creationTime\":{\"timestamp\":\"1623751200\"}}");
+        assertEquals(1623751200L, restorer.parseInstantFromJson(json.toFile(), Optional.empty()).getEpochSecond());
+    }
+
+    @Test
+    void oversizedTimestampFallsBackToCreationTime(@TempDir Path tempDir) throws IOException {
+        Path json = tempDir.resolve("photo.json");
+        Files.writeString(json, "{\"photoTakenTime\":{\"timestamp\":\"9223372036854775807\"},\"creationTime\":{\"timestamp\":\"1623751200\"}}");
+        assertEquals(1623751200L, new TimestampRestorer().parseInstantFromJson(json.toFile(), Optional.empty()).getEpochSecond());
+    }
+
+    @Test
+    void testMissingTimestampDoesNotInventDate(@TempDir Path tempDir) throws IOException {
+        Path media = Files.createFile(tempDir.resolve("photo.jpg"));
+        Path json = tempDir.resolve("photo.jpg.json");
+        Files.writeString(json, "{\"photoTakenTime\":{\"timestamp\":\"0\"}}");
+        var original = Files.getLastModifiedTime(media);
+        TimestampRestorer restorer = new TimestampRestorer();
+        assertThrows(IOException.class, () -> restorer.parseInstantFromJson(json.toFile(), Optional.empty()));
+        assertThrows(IOException.class, () -> restorer.restoreFromJson(media.toFile(), json.toFile(), Optional.empty()));
+        assertEquals(original, Files.getLastModifiedTime(media));
+    }
+
+    @Test
     @DisplayName("Verify restoreFromJson applies photoTakenTime timestamp from JSON")
     void testRestoreFromJsonPhotoTakenTime(@TempDir Path tempDir) throws IOException {
         Path mediaPath = Files.createFile(tempDir.resolve("sample.jpg"));

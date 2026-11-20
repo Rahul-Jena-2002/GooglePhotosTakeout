@@ -26,6 +26,18 @@ public class UserController {
         return currentUserProfile;
     }
 
+    public static boolean hasSignedInCredentials() {
+        return hasSignedInCredentials(currentUserProfile);
+    }
+
+    static boolean hasSignedInCredentials(Map<String, Object> profile) {
+        Object email = profile.get("email");
+        Object refresh = profile.get("refreshToken");
+        Object idToken = profile.getOrDefault("idToken", profile.get("token"));
+        return email instanceof String e && !e.isBlank()
+                && ((refresh instanceof String r && !r.isBlank()) || (idToken instanceof String t && !t.isBlank()));
+    }
+
     public static boolean isLoggedIn() {
         String uid = (String) currentUserProfile.getOrDefault("uid", currentUserProfile.getOrDefault("googleId", ""));
         if (uid != null && !uid.trim().isEmpty()) {
@@ -122,6 +134,14 @@ public class UserController {
     }
 
     public static void syncUser(Map<String, Object> profile) {
+        if (profile != null) {
+            Object previousId = currentUserProfile.getOrDefault("uid", currentUserProfile.get("googleId"));
+            Object nextId = profile.getOrDefault("uid", profile.get("googleId"));
+            if (previousId instanceof String previous && !previous.isBlank()
+                    && nextId instanceof String next && !next.isBlank() && !previous.equals(next)) {
+                currentUserProfile.clear();
+            }
+        }
         updateUserProfile(profile);
 
         if (userService != null) {

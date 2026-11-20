@@ -26,6 +26,7 @@ const formatBytes = (bytes: number) => {
 
 import { AuthProvider } from "../../contexts/AuthContext"
 import { ToastContainer } from "../../components/ui/toast"
+import { useToastStore } from "../../store/useToastStore"
 
 function DashboardPageContent() {
   const { user, userData, loading, logout, login } = useAuth()
@@ -76,6 +77,15 @@ function DashboardPageContent() {
     }
   }, [user])
 
+  const handleSignIn = async () => {
+    try {
+      await login()
+    } catch (error) {
+      console.error("Sign-in failed:", error)
+      useToastStore.getState().addToast("Could not sign in. Please try again.", "error")
+    }
+  }
+
   if (loading) return <div className="p-8 text-center text-white/50 mt-16">Loading dashboard...</div>
   
   if (!user) {
@@ -87,7 +97,7 @@ function DashboardPageContent() {
           Sign-in is optional on TakeoutFix. Your cloud history, billing receipts, and account sync live here. You can also use the Restore Tool directly without an account.
         </p>
         <div className="space-y-3">
-          <Button onClick={login} className="btn-monochrome-primary w-full h-11 font-bold rounded-xl flex items-center justify-center gap-2 border-0 cursor-pointer shadow-none">
+          <Button onClick={handleSignIn} className="btn-monochrome-primary w-full h-11 font-bold rounded-xl flex items-center justify-center gap-2 border-0 cursor-pointer shadow-none">
             Sign In with Google
           </Button>
           <a href="/tool" className="block">
@@ -101,9 +111,15 @@ function DashboardPageContent() {
   }
 
   const handleSignOut = async () => {
-    await logout()
-    if (typeof window !== 'undefined') {
-      window.location.href = "/"
+    try {
+      await logout()
+      if (typeof window !== 'undefined') window.location.href = "/"
+    } catch (error) {
+      console.error("Sign-out failed:", error)
+      const message = error instanceof Error && error.message.includes('restore is already open')
+        ? 'Finish or cancel the active restore before signing out.'
+        : 'Could not sign out. Check your connection and try again.'
+      useToastStore.getState().addToast(message, "error")
     }
   }
 

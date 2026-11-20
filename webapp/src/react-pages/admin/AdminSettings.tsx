@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react"
 import { useAuth } from "../../contexts/AuthContext"
+import { isVerifiedSuperAdmin } from "../../lib/adminAuth"
 import { db } from "../../firebase"
 import { doc, setDoc, onSnapshot, collection, addDoc } from "firebase/firestore"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../../components/ui/card"
@@ -10,7 +11,7 @@ import { useSettingsStore } from "../../store/useSettingsStore"
 
 export default function AdminSettings() {
   const { user, adminData } = useAuth()
-  const isSuperAdminEmail = (user?.email || adminData?.email) === 'rahuljena.dev@gmail.com'
+  const isSuperAdminEmail = isVerifiedSuperAdmin(user)
   const role = isSuperAdminEmail ? "SUPER_ADMIN" : (adminData?.role || "ADMIN")
 
   // ─── FAQ ──────────────────────────────────────────────────────────────────
@@ -18,11 +19,11 @@ export default function AdminSettings() {
   const FAQ_TAGS = ["Guide","Metadata","Privacy","Formats","About","Problem","Limits","Feature","Technical","General"] as const;
   const DEFAULT_FAQS: FaqItem[] = [
     { id: "download-takeout", tag: "Guide",    question: "How do I download my Google Takeout?",                                                        answer: "Go to takeout.google.com, select Google Photos, and create an export. Once finished, download and unzip the folder." },
-    { id: "photos-safe",      tag: "Privacy",  question: "Are my photos safe? / Do you see my photos?",                                                   answer: "Yes, they are 100% safe. TakeoutFix runs entirely on your own computer. We never see, upload, or store your photos." },
+    { id: "photos-safe",      tag: "Privacy",  question: "Are my photos safe? / Do you see my photos?",                                                   answer: "The browser restore tool processes selected photos and videos on your device without uploading them for restoration. Keep your originals and check the restored copies. Account, support, and other online features may send information to network services." },
     { id: "free-limit",      tag: "General",  question: "Can I try TakeoutFix without paying?",                                                          answer: "The browser tool is free to get started and processes selected media locally. Guest processing limits are shown in the tool; available account features may differ." },
-    { id: "offline-work",    tag: "Privacy",  question: "Does this work completely offline?",                                                            answer: "Once the web app has loaded in your browser, you can disconnect from the internet and it will still process all your files locally." },
-    { id: "out-of-order",    tag: "Metadata", question: "Why are my photos showing today's date or out of order after exporting from Google Takeout?",   answer: "When you export your photos, Google Photos separates the EXIF metadata into separate JSON sidecar files. Without this metadata, your phone or computer defaults to showing today's date (the file modification date), causing your gallery to be completely out of order. TakeoutFix fixes this by merging the JSON sidecars back into your images." },
-    { id: "metadata-types",  tag: "Metadata", question: "What metadata can be recovered?",                                                               answer: "We recover original creation dates (timestamps), GPS coordinates (latitude, longitude, altitude), and camera device information if it exists in the Google JSON sidecars." },
+    { id: "offline-work",    tag: "Privacy",  question: "Does this work completely offline?",                                                            answer: "The browser tool processes media locally, but an internet connection is needed to load the site and may be needed for account and other online features. Keep your originals and check the results after processing." },
+    { id: "out-of-order",    tag: "Metadata", question: "Why are my photos showing today's date or out of order after exporting from Google Takeout?",   answer: "Some dates and locations in a Takeout export are stored in matching JSON files. A photo app may show a different date if it cannot find the expected metadata. TakeoutFix uses available sidecar information to restore supported fields; check the results in your destination app." },
+    { id: "metadata-types",  tag: "Metadata", question: "What metadata can be recovered?",                                                               answer: "TakeoutFix can use available sidecar dates and locations for supported files. Results depend on the export, file format, and information present. Some files or fields may need manual review." },
     { id: "video-support",   tag: "Formats",  question: "Does it support videos?",                                                                       answer: "Yes! We support .mp4 and .mov files alongside standard image formats like .jpg, .heic, and .png." },
     { id: "no-install",      tag: "About",    question: "Can I fix Google Takeout metadata online without downloading any software?",                     answer: "Yes. The browser-based tool does not require a separate installation and processes selected media locally on your device. An internet connection is needed to load the site and optional online features." },
   ];

@@ -4,7 +4,7 @@
  * Provides batch EXIF editing directly in the browser:
  * - Batch Date Shifter (±days, ±hours, ±minutes, fixed datetime, or sequential increment)
  * - Customizable Creator Presets (Photographer/Artist, Copyright Stamp, Caption) with localStorage persistence
- * - GPS Location Manager (Strip GPS for privacy or inject custom coordinates)
+ * - GPS Location Manager (keep or set custom coordinates)
  * 100% private & client-side using W3C File System Access API & WebAssembly ExifTool.
  */
 
@@ -21,7 +21,8 @@ import {
   Clock, 
   Download,
   FileImage,
-  Trash2
+  Trash2,
+  ShieldCheck
 } from "lucide-react"
 import { Button } from "../components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "../components/ui/card"
@@ -235,8 +236,21 @@ export function PhotoStudioPanel() {
       useToastStore.getState().addToast("Please select photos first.", "warn", 4000)
       return
     }
+    if (locationMode === 'strip') {
+      useToastStore.getState().addToast("GPS removal is unavailable. Your files have not been changed.", "error", 5000)
+      return
+    }
+    if (locationMode === 'set') {
+      const lat = Number(latitude)
+      const lng = Number(longitude)
+      if (!latitude.trim() || !longitude.trim() || !Number.isFinite(lat) || !Number.isFinite(lng) || Math.abs(lat) > 90 || Math.abs(lng) > 180) {
+        useToastStore.getState().addToast("Enter a valid latitude (-90 to 90) and longitude (-180 to 180).", "error", 5000)
+        return
+      }
+    }
 
     setIsProcessing(true)
+    setProcessedBlobs([])
     setProgress(0)
     abortRef.current = false
     setStatusMsg(`Processing ${photos.length} photos...`)
@@ -260,8 +274,8 @@ export function PhotoStudioPanel() {
           let lat: number | undefined
           let lng: number | undefined
           if (locationMode === 'set' && latitude && longitude) {
-            const pLat = parseFloat(latitude)
-            const pLng = parseFloat(longitude)
+            const pLat = Number(latitude)
+            const pLng = Number(longitude)
             if (!isNaN(pLat) && !isNaN(pLng)) {
               lat = pLat
               lng = pLng
@@ -278,16 +292,22 @@ export function PhotoStudioPanel() {
               filename: item.file.name
             })
           } catch (err) {
-            console.warn("WASM Exif injection fallback:", err)
-            outputBuffer = rawBuffer
+            console.error("Photo metadata write failed:", err)
+            throw new Error(`Could not edit ${item.file.name}. The original was not saved as an edited photo.`)
           }
         } else {
-          outputBuffer = rawBuffer
+          throw new Error(`Cannot edit the unsupported file ${item.file.name}.`)
         }
 
         const modifiedBlob = new Blob([outputBuffer], { type: item.file.type || 'image/jpeg' })
 
         if (destDir) {
+          try {
+            await destDir.getFileHandle(item.file.name)
+            throw new Error(`A file named ${item.file.name} already exists in the output folder. Choose a different output folder.`)
+          } catch (err) {
+            if (!(err instanceof DOMException) || err.name !== 'NotFoundError') throw err
+          }
           const fileHandle = await destDir.getFileHandle(item.file.name, { create: true })
           const writable = await (fileHandle as any).createWritable()
           await writable.write(modifiedBlob)
@@ -304,7 +324,7 @@ export function PhotoStudioPanel() {
 
       setProcessedBlobs(outputBlobs)
       useToastStore.getState().addToast(
-        destDir 
+        abortRef.current ? `Stopped after ${successCount} photos.` : destDir
           ? `Successfully saved ${successCount} photos directly to destination folder.`
           : `Successfully processed ${successCount} photos. Ready to download!`,
         "success",
@@ -312,6 +332,7 @@ export function PhotoStudioPanel() {
       )
     } catch (err: any) {
       console.error("Batch processing error:", err)
+      setProcessedBlobs(outputBlobs)
       useToastStore.getState().addToast(`Batch error: ${err.message || 'Unknown'}`, "error", 5000)
     } finally {
       setIsProcessing(false)
@@ -728,7 +749,7 @@ export function PhotoStudioPanel() {
                   GPS Geolocation & Privacy
                 </CardTitle>
                 <CardDescription className="text-xs text-zinc-500 dark:text-zinc-400">
-                  Strip coordinates to protect home privacy, or inject custom coordinates into un-geotagged shots.
+                  Keep existing coordinates or set a custom location. GPS removal is currently unavailable.
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4 pt-4">
@@ -749,7 +770,8 @@ export function PhotoStudioPanel() {
                     </button>
                     <button
                       type="button"
-                      onClick={() => setLocationMode('strip')}
+                      disabled
+                      title="GPS removal is currently unavailable"
                       className={`flex items-center justify-center gap-1.5 py-2 px-1 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
                         locationMode === 'strip'
                           ? 'bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400 font-bold shadow-xs border border-rose-200 dark:border-rose-800/80'
@@ -757,7 +779,7 @@ export function PhotoStudioPanel() {
                       }`}
                     >
                       <ShieldCheck className="w-3.5 h-3.5 flex-shrink-0 text-rose-500" />
-                      <span className="truncate">Strip GPS</span>
+                      <span className="truncate">Strip GPS (unavailable)</span>
                     </button>
                     <button
                       type="button"
@@ -776,7 +798,7 @@ export function PhotoStudioPanel() {
                   {/* Mode Description */}
                   <div className="text-xs px-1 text-zinc-500 dark:text-zinc-400">
                     {locationMode === 'keep' && "Leave original GPS coordinates and geotags unchanged."}
-                    {locationMode === 'strip' && "Privacy Shield: completely wipe all GPS coordinates and altitudes."}
+                    {locationMode === 'strip' && "GPS removal is unavailable; location data will not be removed."}
                     {locationMode === 'set' && "Inject custom latitude and longitude coordinates into photos."}
                   </div>
                 </div>

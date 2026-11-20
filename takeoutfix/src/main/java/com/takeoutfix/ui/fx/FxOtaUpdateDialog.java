@@ -74,7 +74,7 @@ public class FxOtaUpdateDialog extends Stage {
         HBox badgeRow = new HBox(8);
         badgeRow.setAlignment(Pos.CENTER_LEFT);
 
-        Label badge = new Label("⚡ A NEW VERSION IS AVAILABLE");
+        Label badge = new Label("A NEW VERSION IS AVAILABLE");
         badge.setStyle("-fx-font-size: 10px; -fx-font-weight: 800; -fx-text-fill: #10b981; -fx-background-color: rgba(16, 185, 129, 0.15); -fx-padding: 3 8 3 8; -fx-background-radius: 12; -fx-border-color: rgba(16, 185, 129, 0.3); -fx-border-radius: 12;");
 
         badgeRow.getChildren().add(badge);
@@ -105,7 +105,7 @@ public class FxOtaUpdateDialog extends Stage {
         TextFlow textFlow = new TextFlow();
         String rawNotes = (updateInfo != null && updateInfo.releaseNotes() != null && !updateInfo.releaseNotes().isBlank())
                 ? updateInfo.releaseNotes()
-                : "• Performance improvements and faster photo processing.\n• Enhanced metadata restoration accuracy.\n• UI refinements and stability updates.";
+                : "Release notes are not available. See the release page for details.";
 
         String[] lines = rawNotes.split("\r?\n");
         for (String line : lines) {
@@ -161,13 +161,29 @@ public class FxOtaUpdateDialog extends Stage {
         });
 
         btnPrimaryAction.getStyleClass().add("btn-primary");
+        boolean hasDownload = updateInfo != null && updateInfo.downloadUrl() != null
+                && !updateInfo.downloadUrl().isBlank() && updateInfo.sha256() != null
+                && updateInfo.sha256().matches("(?i)[0-9a-f]{64}");
+        if (!hasDownload) {
+            btnPrimaryAction.setText("Open Release Page");
+            btnPrimaryAction.setOnAction(e -> {
+                openUrl(updateInfo.htmlUrl());
+                close();
+            });
+            btnGithub.setVisible(false);
+            btnGithub.setManaged(false);
+            btnPrimaryAction.setDisable(updateInfo == null || updateInfo.htmlUrl() == null || updateInfo.htmlUrl().isBlank());
+        }
         btnPrimaryAction.setStyle("-fx-font-size: 12px; -fx-font-weight: 700; -fx-padding: 7 18 7 18; -fx-background-color: #10b981; -fx-text-fill: white; -fx-cursor: hand;");
-        btnPrimaryAction.setOnAction(e -> handlePrimaryAction());
+        if (hasDownload) btnPrimaryAction.setOnAction(e -> handlePrimaryAction());
 
         actions.getChildren().addAll(btnGithub, spacer, btnLater, btnPrimaryAction);
         root.getChildren().add(actions);
 
         Scene scene = new Scene(root);
+        if (owner != null && owner.getScene() != null) {
+            scene.getStylesheets().addAll(owner.getScene().getStylesheets());
+        }
         setScene(scene);
     }
 

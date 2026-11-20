@@ -12,12 +12,13 @@ function ReviewsPageContent() {
   const { user } = useAuth()
   const [reviews, setReviews] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState(false)
+  const [submitError, setSubmitError] = useState("")
   
   // Submission Form State
   const [showForm, setShowForm] = useState(false)
   const [rating, setRating] = useState(5)
   const [message, setMessage] = useState("")
-  const [displayName, setDisplayName] = useState("")
   const [submitting, setSubmitting] = useState(false)
   const [submitSuccess, setSubmitSuccess] = useState(false)
 
@@ -28,6 +29,7 @@ function ReviewsPageContent() {
   }, [])
 
   const fetchReviews = async () => {
+    setLoadError(false)
     try {
       const q = query(
         collection(db, "reviews"),
@@ -36,10 +38,11 @@ function ReviewsPageContent() {
       const snap = await getDocs(q)
       const allApproved = snap.docs.map(d => ({ id: d.id, ...d.data() }))
       // Sort in memory to avoid requiring a Firestore composite index
-      allApproved.sort((a: any, b: any) => (b.createdAt || 0) - (a.createdAt || 0))
+      allApproved.sort((a: any, b: any) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0))
       setReviews(allApproved)
     } catch (err) {
       console.error(err)
+      setLoadError(true)
     } finally {
       setLoading(false)
     }
@@ -47,15 +50,16 @@ function ReviewsPageContent() {
 
   const handleSubmitReview = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!message.trim()) return
+    if (!user || !message.trim()) return
 
-    const name = displayName.trim() || user?.displayName || "Anonymous"
+    const name = (user.displayName || "Anonymous").slice(0, 100)
     setSubmitting(true)
+    setSubmitError("")
     try {
       await addDoc(collection(db, "reviews"), {
-        uid: user?.uid || "anonymous",
+        uid: user.uid,
         displayName: name,
-        photoURL: user?.photoURL || null,
+        photoURL: null,
         rating,
         message,
         status: "PENDING",
@@ -64,10 +68,10 @@ function ReviewsPageContent() {
       setSubmitSuccess(true)
       setShowForm(false)
       setMessage("")
-      setDisplayName("")
       setRating(5)
     } catch (err) {
       console.error("Error submitting review", err)
+      setSubmitError("Your review could not be sent. Please check your connection and try again.")
     } finally {
       setSubmitting(false)
     }
@@ -107,13 +111,13 @@ function ReviewsPageContent() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.4, delay: 0.3 }}
           >
-            <Button 
+            {user ? <Button
               onClick={handleWriteReviewClick}
               size="lg" 
               className="btn-monochrome-primary rounded-full px-8 py-3 font-semibold"
             >
             Write a Review
-            </Button>
+            </Button> : <a href="/login" className="btn-monochrome-primary inline-flex rounded-full px-8 py-3 font-semibold">Sign in to write a review</a>}
           </motion.div>
         )}
 
@@ -139,28 +143,17 @@ function ReviewsPageContent() {
             <form onSubmit={handleSubmitReview} className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl p-6 shadow-xl text-left">
               <h3 className="text-xl font-bold mb-6 text-zinc-900 dark:text-white">Write your Review</h3>
 
-              {!user && (
-                <div className="mb-4">
-                  <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">Your Name <span className="text-zinc-400 font-normal">(optional)</span></label>
-                  <input
-                    type="text"
-                    value={displayName}
-                    onChange={(e) => setDisplayName(e.target.value)}
-                    placeholder="e.g. Rahul"
-                    className="w-full bg-zinc-50 dark:bg-black border border-zinc-200 dark:border-zinc-800 rounded-lg p-3 text-zinc-900 dark:text-white focus:outline-none focus:border-indigo-500"
-                  />
-                </div>
-              )}
-
               <div className="mb-6">
                 <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">Rating</label>
-                <div className="flex gap-2">
+                <div className="flex gap-2" role="group" aria-label="Rating">
                   {[1, 2, 3, 4, 5].map((star) => (
                     <button
                       key={star}
                       type="button"
                       onClick={() => setRating(star)}
-                      className="p-1 focus:outline-none"
+                      aria-label={`${star} ${star === 1 ? 'star' : 'stars'}`}
+                      aria-pressed={rating === star}
+                      className="p-1 focus-visible:outline focus-visible:outline-2 focus-visible:outline-indigo-500"
                     >
                       <Star className={`w-8 h-8 ${rating >= star ? 'fill-amber-400 text-amber-400' : 'text-zinc-300 dark:text-zinc-700'}`} />
                     </button>
@@ -169,9 +162,11 @@ function ReviewsPageContent() {
               </div>
 
               <div className="mb-6">
-                <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">Message</label>
+                <label htmlFor="review-message" className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">Message</label>
                 <textarea
+                  id="review-message"
                   required
+                  maxLength={2000}
                   rows={4}
                   value={message}
                   onChange={(e) => setMessage(e.target.value)}
@@ -180,9 +175,12 @@ function ReviewsPageContent() {
                 ></textarea>
               </div>
 
+              {submitError && <p role="alert" className="mb-4 text-sm text-red-600 dark:text-red-400">{submitError}</p>}
+              {!user && <p className="mb-4 text-sm text-zinc-600 dark:text-zinc-400"><a className="underline" href="/login">Sign in</a> to submit your review.</p>}
+
               <div className="flex justify-end gap-3">
                 <Button type="button" variant="ghost" onClick={() => setShowForm(false)}>Cancel</Button>
-                <Button type="submit" disabled={submitting || !message.trim()} className="btn-monochrome-primary">
+                <Button type="submit" disabled={!user || submitting || !message.trim()} className="btn-monochrome-primary">
                   {submitting ? "Submitting..." : <><Send className="w-4 h-4 mr-2" /> Submit Review</>}
                 </Button>
               </div>
@@ -198,6 +196,8 @@ function ReviewsPageContent() {
       {/* REVIEWS GRID */}
       {loading ? (
         <div className="text-center py-20 text-zinc-500 dark:text-zinc-400">Loading reviews...</div>
+      ) : loadError ? (
+        <div role="alert" className="text-center py-20 text-zinc-600 dark:text-zinc-400">Reviews could not be loaded. Please try again later.</div>
       ) : reviews.length === 0 ? (
         <div className="text-center py-20 bg-white dark:bg-zinc-900/40 rounded-2xl border border-zinc-200 dark:border-zinc-800 relative z-10 shadow-sm">
           <Star className="w-12 h-12 text-zinc-300 dark:text-zinc-700 mx-auto mb-4" />
@@ -226,13 +226,9 @@ function ReviewsPageContent() {
                   
                   <div>
                     <div className="flex items-center gap-3 mb-4">
-                      {review.photoURL ? (
-                        <img src={review.photoURL} alt="" referrerPolicy="no-referrer" loading="lazy" className="w-8 h-8 rounded-full object-cover" />
-                      ) : (
-                        <div className="w-8 h-8 rounded-full bg-zinc-200 dark:bg-zinc-800 flex items-center justify-center text-xs font-bold uppercase text-zinc-700 dark:text-zinc-300">
-                          {review.displayName?.charAt(0) || "U"}
-                        </div>
-                      )}
+                      <div className="w-8 h-8 rounded-full bg-zinc-200 dark:bg-zinc-800 flex items-center justify-center text-xs font-bold uppercase text-zinc-700 dark:text-zinc-300">
+                        {review.displayName?.charAt(0) || "U"}
+                      </div>
                       <div>
                         <div className="text-sm font-medium text-zinc-900 dark:text-white transition-colors">{review.displayName || "Anonymous User"}</div>
                         <div className="text-xs text-zinc-500 dark:text-zinc-400">

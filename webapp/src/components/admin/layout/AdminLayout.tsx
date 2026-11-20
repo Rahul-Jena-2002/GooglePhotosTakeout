@@ -1,7 +1,7 @@
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { Link, Outlet, useLocation, Navigate } from "react-router-dom"
 import { useAuth } from "../../../contexts/AuthContext"
-import { isSuperAdminEmail as checkSuperAdminEmail } from "../../../lib/adminAuth"
+import { isEmulatorDevelopment, isVerifiedSuperAdmin } from "../../../lib/adminAuth"
 import { useAdminPresence } from "../../../hooks/useAdminPresence"
 import { useTelemetrySync } from "../../../hooks/useTelemetrySync"
 import AdminTopbar from "./AdminTopbar"
@@ -32,6 +32,13 @@ export default function AdminLayout() {
   const { user, userData, adminData, loading } = useAuth()
   const location = useLocation()
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [authDelayed, setAuthDelayed] = useState(false)
+
+  useEffect(() => {
+    if (!loading) { setAuthDelayed(false); return }
+    const timer = window.setTimeout(() => setAuthDelayed(true), 8000)
+    return () => window.clearTimeout(timer)
+  }, [loading])
 
   // Activate real-time presence tracking
   useAdminPresence()
@@ -42,10 +49,14 @@ export default function AdminLayout() {
   if (loading) {
     return (
       <div className="min-h-screen bg-zinc-950 flex items-center justify-center">
-        <div className="flex items-center gap-3 text-zinc-500">
+        {authDelayed ? <div role="status" className="max-w-md px-6 text-center text-zinc-300">
+          <p>Account verification is taking longer than expected. Check your connection and try again.</p>
+          {import.meta.env.DEV && <p className="mt-3 text-sm text-zinc-400">Local development uses Firebase emulators unless live access is explicitly enabled.</p>}
+          <button type="button" onClick={() => window.location.reload()} className="mt-4 rounded-lg bg-white px-4 py-2 text-zinc-900">Retry</button>
+        </div> : <div className="flex items-center gap-3 text-zinc-500" role="status">
           <div className="w-5 h-5 border-2 border-zinc-700 border-t-zinc-400 rounded-full animate-spin"></div>
           Authenticating...
-        </div>
+        </div>}
       </div>
     )
   }
@@ -67,7 +78,7 @@ export default function AdminLayout() {
     )
   }
 
-  const isSuperAdminEmail = checkSuperAdminEmail(user?.email || adminData?.email)
+  const isSuperAdminEmail = isVerifiedSuperAdmin(user)
   const hasAdminAccess = !!adminData || isSuperAdminEmail
 
   if (!hasAdminAccess) {
@@ -76,12 +87,12 @@ export default function AdminLayout() {
     }
     return null;
   }
-  const role = isSuperAdminEmail ? "SUPER_ADMIN" : (adminData?.role ?? "ADMIN")
+  const role = isSuperAdminEmail ? "SUPER_ADMIN" : (adminData?.role ?? "")
   const isSuperAdmin = role === "SUPER_ADMIN" || isSuperAdminEmail
   const isAdminOrAbove = ["SUPER_ADMIN", "ADMIN"].includes(role) || isSuperAdminEmail
   const isSupportOrAbove = ["SUPER_ADMIN", "ADMIN", "SUPPORT"].includes(role) || isSuperAdminEmail
   const isModeratorOrAbove = ["SUPER_ADMIN", "ADMIN", "MODERATOR"].includes(role) || isSuperAdminEmail
-  const isDev = import.meta.env.DEV
+  const isDev = isEmulatorDevelopment()
   const isDeveloper = role === "DEVELOPER" || isSuperAdmin || isDev
 
   const navGroups = [

@@ -2,6 +2,7 @@ export const prerender = false;
 import type { APIRoute } from 'astro';
 
 import { env } from 'cloudflare:workers';
+import { resolveGatewayBase } from '../../lib/api/gatewayUrl';
 
 type JsonRecord = Record<string, unknown>;
 
@@ -39,11 +40,7 @@ export const POST: APIRoute = async ({ request }) => {
       return json(400, { error: 'Invalid JSON body' });
     }
 
-    const CF_BASE =
-      (env as any).CLOUD_FUNCTION_URL ||
-      (import.meta.env.DEV ? import.meta.env.CLOUD_FUNCTION_URL : null) ||
-      import.meta.env.CLOUD_FUNCTION_URL ||
-      'https://us-central1-takeout-fix.cloudfunctions.net/geminiToolGateway';
+    const CF_BASE = resolveGatewayBase((env as any).CLOUD_FUNCTION_URL || import.meta.env.CLOUD_FUNCTION_URL, import.meta.env.DEV);
 
     const targetUrl = `${String(CF_BASE).replace(/\/$/, '')}/create-stripe-session`;
 
@@ -54,6 +51,10 @@ export const POST: APIRoute = async ({ request }) => {
       },
       body: JSON.stringify(payload)
     });
+
+    if (upstream.status >= 500) {
+      return json(502, { error: 'ProxyError', message: 'Checkout is unavailable. Please try again later.' });
+    }
 
     const text = await upstream.text();
     const contentType = upstream.headers.get('content-type') || 'application/json';
@@ -66,10 +67,10 @@ export const POST: APIRoute = async ({ request }) => {
       }
     });
   } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : String(err);
+    console.error('[create-stripe-session] Request failed:', err instanceof Error ? err.name : typeof err);
     return json(500, {
       error: 'ProxyError',
-      message
+      message: 'Checkout is unavailable. Please try again later.'
     });
   }
 };

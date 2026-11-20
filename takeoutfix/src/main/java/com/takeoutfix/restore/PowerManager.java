@@ -2,6 +2,9 @@ package com.takeoutfix.restore;
 
 import java.awt.Robot;
 import java.awt.event.KeyEvent;
+import java.io.IOException;
+import java.util.List;
+import java.util.Locale;
 
 /**
  * Keeps the display awake by simulating minimal activity on an interval.
@@ -67,9 +70,11 @@ public class PowerManager {
     public synchronized void stopKeepAwake() {
         keepAwake = false;
         if (keeperThread != null) {
+            keeperThread.interrupt();
             try {
                 keeperThread.join(500);
-            } catch (InterruptedException ignored) {
+            } catch (InterruptedException interrupted) {
+                Thread.currentThread().interrupt();
             }
             keeperThread = null;
         }
@@ -82,17 +87,24 @@ public class PowerManager {
         }
     }
 
-    public void runShutdownCommand(int delay) {
-        String os = System.getProperty("os.name").toLowerCase();
-        try {
-            if (os.contains("win")) {
-                new ProcessBuilder("shutdown", "/s", "/t", String.valueOf(delay)).start();
-            } else if (os.contains("mac")) {
-                new ProcessBuilder("osascript", "-e", "tell app \"System Events\" to shut down").start();
-            } else {
-                new ProcessBuilder("shutdown", "-h", "+" + (delay / 60.0)).start();
-            }
-        } catch (Exception ignored) {
+    static List<String> shutdownCommand(String osName, int delaySeconds) {
+        if (delaySeconds < 0) throw new IllegalArgumentException("Shutdown delay cannot be negative.");
+        String os = osName.toLowerCase(Locale.ROOT);
+        if (os.contains("mac") || os.contains("darwin")) {
+            return List.of("osascript", "-e", "delay " + delaySeconds, "-e", "tell app \"System Events\" to shut down");
         }
+        if (os.contains("win")) return List.of("shutdown", "/s", "/t", String.valueOf(delaySeconds));
+        if (os.contains("linux")) {
+            long minutes = (delaySeconds + 59L) / 60L;
+            return List.of("shutdown", "-h", "+" + minutes);
+        }
+        throw new IllegalArgumentException("Automatic shutdown is not supported on this operating system.");
+    }
+
+    public Process runShutdownCommand(int delay) throws IOException {
+        return new ProcessBuilder(shutdownCommand(System.getProperty("os.name", ""), delay))
+                .redirectErrorStream(true)
+                .redirectOutput(ProcessBuilder.Redirect.DISCARD)
+                .start();
     }
 }

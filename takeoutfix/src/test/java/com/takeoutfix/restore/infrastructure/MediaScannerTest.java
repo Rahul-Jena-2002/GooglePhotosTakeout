@@ -2,6 +2,7 @@ package com.takeoutfix.restore.infrastructure;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.io.TempDir;
 
 import java.io.File;
@@ -14,6 +15,31 @@ import static org.junit.jupiter.api.Assertions.*;
 
 @DisplayName("MediaScanner Filesystem Traversal Tests")
 public class MediaScannerTest {
+
+    @Test
+    void testZipSourceExplainsThatExtractionIsRequired(@TempDir Path tempDir) throws IOException {
+        Path archive = Files.createFile(tempDir.resolve("takeout.zip"));
+        IllegalArgumentException error = assertThrows(IllegalArgumentException.class,
+                () -> new MediaScanner().listMediaFiles(archive.toFile()));
+        assertTrue(error.getMessage().contains("Extract the ZIP"));
+    }
+
+    @Test
+    void testUnreadableOrMissingSourceDoesNotAppearEmpty(@TempDir Path tempDir) {
+        assertThrows(IllegalStateException.class, () -> new MediaScanner().listMediaFiles(tempDir.resolve("missing").toFile()));
+    }
+
+    @Test
+    void testScannerRejectsSymbolicLinks(@TempDir Path tempDir) throws IOException {
+        Path source = Files.createDirectories(tempDir.resolve("source"));
+        Path target = Files.createDirectories(tempDir.resolve("other"));
+        try {
+            Files.createSymbolicLink(source.resolve("linked"), target);
+        } catch (UnsupportedOperationException | SecurityException | IOException e) {
+            Assumptions.assumeTrue(false, "Symbolic links unavailable in this test environment");
+        }
+        assertThrows(IllegalStateException.class, () -> new MediaScanner().listMediaFiles(source.toFile()));
+    }
 
     @Test
     @DisplayName("Verify scanner detects supported media and ignores non-media and hidden directories")

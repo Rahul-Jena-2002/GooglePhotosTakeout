@@ -1,16 +1,15 @@
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { useAuth, AuthProvider } from "../../contexts/AuthContext"
 import { Card, CardContent } from "../../components/ui/card"
 import { Button } from "../../components/ui/button"
 import { Input } from "../../components/ui/input"
 import { Textarea } from "../../components/ui/textarea"
 import { LifeBuoy, FileText, History, PlusCircle, CheckCircle2, MessageSquare, X } from "lucide-react"
-import { collection, query, where, getDocs, addDoc, doc, updateDoc, onSnapshot } from "firebase/firestore"
+import { collection, query, where, getDocs, addDoc, doc, updateDoc, onSnapshot, arrayUnion } from "firebase/firestore"
 import { db } from "../../firebase"
 import { motion, AnimatePresence } from "framer-motion"
 import { ToastContainer } from "../../components/ui/toast"
 import { notifyAdminsOnTicketRaised, notifyAdminsOnTicketReply, notifyAdminsOnFeedback } from "../../lib/ticketNotify"
-import { apiClient } from "../../lib/api/apiClient"
 
 interface SupportFaq {
   id: string;
@@ -20,19 +19,13 @@ interface SupportFaq {
 }
 
 const DEFAULT_SUPPORT_FAQS: SupportFaq[] = [
-  { id: "offline-work",    tag: "Privacy",  q: "Does this work completely offline?",                                                            a: "Once the web app has loaded in your browser, you can disconnect from the internet and it will still process all your files locally." },
-  { id: "out-of-order",    tag: "Metadata", q: "Why are my photos showing today's date or out of order after exporting from Google Takeout?",    a: "When you export your photos, Google Photos separates the EXIF metadata into separate JSON sidecar files. Without this metadata, your phone or computer defaults to showing today's date (the file modification date), causing your gallery to be completely out of order. TakeoutFix fixes this by merging the JSON sidecars back into your images." },
-  { id: "metadata-types",  tag: "Metadata", q: "What metadata can be recovered?",                                                               a: "We recover original creation dates (timestamps), GPS coordinates (latitude, longitude, altitude), and camera device information if it exists in the Google JSON sidecars." },
+  { id: "offline-work",    tag: "Privacy",  q: "Are my photos uploaded?", a: "The browser restore tool processes selected photos and videos on your device. The website uses separate online services for accounts, support, diagnostics, and advertising. See the Privacy Policy for details." },
+  { id: "out-of-order",    tag: "Metadata", q: "Why do some photos show the wrong date after Google Takeout?", a: "A photo app may show the date a file was copied, or ignore extra details stored in a separate JSON file. TakeoutFix can add available dates to supported files. Try a few copies first and check them in your photo app." },
+  { id: "metadata-types",  tag: "Metadata", q: "What information can be restored?", a: "TakeoutFix can add available dates and, for supported files, locations from matching details files. Results depend on the file type and the information in your download. Missing information cannot be invented." },
+  { id: "free-limit", tag: "Getting started", q: "Is TakeoutFix free to use?", a: "Yes. In the browser, guests can process up to 1 GB. Sign in for free to remove that guest limit. Your device and browser still have practical limits, so check your results and keep your original download." },
   { id: "video-support",   tag: "Formats",  q: "Does it support videos?",                                                                       a: "Yes! We support .mp4 and .mov files alongside standard image formats like .jpg, .heic, and .png." },
   { id: "no-install",      tag: "About",    q: "Can I fix Google Takeout metadata online without downloading any software?",                     a: "Yes. The browser-based tool does not require a separate installation and processes selected media locally on your device. An internet connection is needed to load the site and optional online features." }
 ];
-
-const macOsSpring = {
-  type: "spring" as const,
-  stiffness: 300,
-  damping: 28,
-  mass: 1
-};
 
 // Renders **bold**, *italic*, and <u>underline</u> markers as JSX elements
 function renderBoldText(text: string) {
@@ -65,6 +58,7 @@ function SupportPageContent() {
   
   const [tickets, setTickets] = useState<any[]>([])
   const [loading, setLoading] = useState(false)
+  const [ticketsLoadError, setTicketsLoadError] = useState(false)
   const [submitStatus, setSubmitStatus] = useState<"idle" | "submitting" | "success" | "error">("idle")
   
   const [newTicket, setNewTicket] = useState({ subject: "", message: "", name: "", email: "" })
@@ -77,11 +71,14 @@ function SupportPageContent() {
 
   const [expandedTicketId, setExpandedTicketId] = useState<string | null>(null)
   const [followUpText, setFollowUpText] = useState("")
+  const [ticketActionError, setTicketActionError] = useState("")
   const [activeFaqId, setActiveFaqId] = useState<string | null>(null)
+  const faqDialogRef = useRef<HTMLDialogElement>(null)
   const [faqItems, setFaqItems] = useState<SupportFaq[]>(DEFAULT_SUPPORT_FAQS)
 
   // Load FAQs from Firestore (same doc the admin saves to)
   useEffect(() => {
+    if (activeTab !== "faq") return;
     const unsub = onSnapshot(doc(db, "settings", "faqs"), (snap) => {
       if (snap.exists()) {
         const data = snap.data();
@@ -97,16 +94,12 @@ function SupportPageContent() {
       }
     }, () => { /* keep defaults on error */ });
     return () => unsub();
-  }, []);
+  }, [activeTab]);
 
-  // Handle ESC key to close modal
   useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setActiveFaqId(null);
-    };
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, []);
+    const dialog = faqDialogRef.current;
+    if (activeFaqId && dialog && !dialog.open) dialog.showModal();
+  }, [activeFaqId, activeTab, faqItems]);
 
   // Prevent scroll and hide footer when modal is open
   useEffect(() => {
@@ -127,22 +120,24 @@ function SupportPageContent() {
   const toggleTicketExpand = (id: string) => {
     setExpandedTicketId(expandedTicketId === id ? null : id)
     setFollowUpText("")
+    setTicketActionError("")
   }
 
-  const handleFollowUp = async (ticketId: string, currentReplies: any[]) => {
+  const handleFollowUp = async (ticketId: string) => {
     if (!followUpText.trim()) return
+    setTicketActionError("")
     try {
       const newReply = {
         sender: 'user',
         message: followUpText.trim(),
         timestamp: Date.now(),
-        senderName: userData?.firstName || user?.displayName?.split(" ")[0] || "User"
+        senderName: (userData?.firstName || user?.displayName?.split(" ")[0] || "User").slice(0, 100)
       }
       
       const ticketRef = doc(db, "tickets", ticketId)
       await updateDoc(ticketRef, {
         status: "IN_PROGRESS",
-        replies: [...(currentReplies || []), newReply]
+        replies: arrayUnion(newReply)
       })
 
       // Dispatch real-time in-app notification to all team members
@@ -157,10 +152,12 @@ function SupportPageContent() {
       loadTickets()
     } catch (e) {
       console.error(e)
+      setTicketActionError("Your reply could not be sent. Please email takeoutfix.support@gmail.com and include your ticket number.")
     }
   }
 
   const handleCloseTicket = async (ticketId: string) => {
+    setTicketActionError("")
     try {
       const ticketRef = doc(db, "tickets", ticketId)
       await updateDoc(ticketRef, {
@@ -169,10 +166,9 @@ function SupportPageContent() {
       loadTickets()
     } catch (e) {
       console.error(e)
+      setTicketActionError("Your ticket could not be closed. Please try again or email takeoutfix.support@gmail.com.")
     }
   }
-
-  const isPaid = userData?.plan && userData.plan !== "free"
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -180,13 +176,14 @@ function SupportPageContent() {
       url.searchParams.set("tab", activeTab);
       window.history.replaceState({}, "", url.toString());
     }
-    if (activeTab === "tickets" && user && isPaid) {
+    if (activeTab === "tickets" && user) {
       loadTickets()
     }
-  }, [activeTab, user, isPaid])
+  }, [activeTab, user])
 
   const loadTickets = async () => {
     setLoading(true)
+    setTicketsLoadError(false)
     try {
       const q = query(
         collection(db, "tickets"), 
@@ -198,6 +195,7 @@ function SupportPageContent() {
       setTickets(ticketList)
     } catch (e) {
       console.error(e)
+      setTicketsLoadError(true)
     }
     setLoading(false)
   }
@@ -205,6 +203,10 @@ function SupportPageContent() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!newTicket.subject.trim() || !newTicket.message.trim()) return
+    if (!user) {
+      setSubmitStatus("error")
+      return
+    }
 
     setSubmitStatus("submitting")
     const ticketId = 'TKT-' + Math.floor(100000 + Math.random() * 900000)
@@ -251,46 +253,15 @@ function SupportPageContent() {
 
     setFeedbackSubmitStatus("submitting")
     try {
-      try {
-        await addDoc(collection(db, "feedback"), {
-          uid: user?.uid || "anonymous",
-          email: user?.email || "anonymous",
-          displayName: userData?.firstName || user?.displayName || "Anonymous User",
-          rating: feedbackRating,
-          category: feedbackCategory,
-          message: feedbackMessage.trim(),
-          createdAt: Date.now()
-        })
-      } catch (err: any) {
-        console.warn("[SupportPage] feedback collection write failed, falling back to tickets:", err?.message || err)
-        // Fallback: If authenticated, save to `tickets` collection which has active permission rules
-        if (user) {
-          const fallbackTicketId = 'FDB-' + Math.floor(100000 + Math.random() * 900000)
-          await addDoc(collection(db, "tickets"), {
-            ticketId: fallbackTicketId,
-            uid: user.uid,
-            email: user.email,
-            subject: `[User Feedback - ${feedbackCategory.toUpperCase()}] Rating: ${feedbackRating}/5`,
-            message: feedbackMessage.trim(),
-            status: "OPEN",
-            category: "feedback",
-            rating: feedbackRating,
-            createdAt: Date.now(),
-            replies: []
-          })
-        } else {
-          // Anonymous: log to dev endpoint so feedback is never lost
-          await apiClient.post('/api/dev-log', {
-            type: 'FEEDBACK',
-            message: {
-              rating: feedbackRating,
-              category: feedbackCategory,
-              message: feedbackMessage.trim(),
-              createdAt: Date.now()
-            }
-          }).catch(() => {})
-        }
-      }
+      await addDoc(collection(db, "feedback"), {
+        uid: user?.uid || "anonymous",
+        email: user?.email || "anonymous",
+        displayName: userData?.firstName || user?.displayName || "Anonymous User",
+        rating: feedbackRating,
+        category: feedbackCategory,
+        message: feedbackMessage.trim(),
+        createdAt: Date.now()
+      })
 
       // Non-blocking real-time notification dispatch to all team members
       const submitterName = userData?.firstName 
@@ -338,7 +309,7 @@ function SupportPageContent() {
   }
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 mt-16 relative min-h-[105vh]">
+    <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 mt-8 relative min-h-[75vh]">
       <motion.div
         initial={{ opacity: 0, y: -10 }}
         animate={{ opacity: 1, y: 0 }}
@@ -389,7 +360,7 @@ function SupportPageContent() {
         </motion.div>
  
         {/* CONTENT AREA */}
-        <div className="flex-1">
+        <div className="flex-1 min-w-0">
           <AnimatePresence mode="wait">
             <motion.div
               key={activeTab}
@@ -409,77 +380,54 @@ function SupportPageContent() {
                     className="space-y-4 max-h-[520px] overflow-y-auto pr-2 custom-faq-scroll"
                   >
                     {faqItems.map((faq) => (
-                      <motion.div
+                      <motion.button
                         key={faq.id}
+                        type="button"
                         variants={itemVariants}
                         layoutId={`faq-card-support-${faq.id}`}
                         onClick={() => setActiveFaqId(faq.id)}
-                        className="flex items-center justify-between p-5 bg-white dark:bg-black/45 dark:backdrop-blur-md border border-zinc-200 dark:border-white/10 rounded-xl cursor-pointer hover:bg-zinc-50/50 dark:hover:bg-transparent hover:border-indigo-500/30 dark:hover:border-indigo-500/30 transition-colors duration-200 group text-left"
+                        className="w-full flex items-center justify-between p-5 bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-white/10 rounded-xl cursor-pointer hover:bg-zinc-100 dark:hover:bg-zinc-800 hover:border-indigo-500/30 focus-visible:outline focus-visible:outline-2 focus-visible:outline-indigo-500 transition-colors duration-200 group text-left"
                       >
-                        <div className="flex flex-col gap-2 pr-4">
-                          <div className="flex items-center gap-2">
+                        <span className="flex flex-col gap-2 pr-4">
+                          <span className="flex items-center gap-2">
                             <span className="text-[9px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-full border border-zinc-200 dark:border-white/10 bg-zinc-100 dark:bg-white/5 text-zinc-550 dark:text-zinc-400">
                               {faq.tag}
                             </span>
-                          </div>
-                          <h4 className="text-base font-bold text-zinc-900 dark:text-white leading-snug group-hover:text-indigo-600 dark:group-hover:text-indigo-300 transition-colors">
+                          </span>
+                          <span className="text-base font-bold text-zinc-900 dark:text-white leading-snug group-hover:text-indigo-600 dark:group-hover:text-indigo-300 transition-colors">
                             {faq.q}
-                          </h4>
-                        </div>
+                          </span>
+                        </span>
                         
-                        <div className="flex-shrink-0 flex items-center gap-1 text-xs font-semibold text-zinc-400 dark:text-zinc-500 group-hover:text-zinc-700 dark:group-hover:text-zinc-300 transition-colors">
+                        <span className="flex-shrink-0 flex items-center gap-1 text-xs font-semibold text-zinc-400 dark:text-zinc-500 group-hover:text-zinc-700 dark:group-hover:text-zinc-300 transition-colors">
                           <span>Read details ➜</span>
-                        </div>
-                      </motion.div>
+                        </span>
+                      </motion.button>
                     ))}
                   </motion.div>
 
-                  {/* OVERLAY POPUP MODAL ARCHITECTURE */}
-                  <AnimatePresence>
                     {activeFaqId && (() => {
                       const activeFaq = faqItems.find(f => f.id === activeFaqId);
                       if (!activeFaq) return null;
 
                       return (
-                        <div className="fixed inset-0 z-[999] flex items-center justify-center p-4">
-                          {/* BACKDROP */}
-                          <motion.div
-                            initial={{ opacity: 0 }}
-                            animate={{ opacity: 1 }}
-                            exit={{ opacity: 0 }}
-                            onClick={() => setActiveFaqId(null)}
-                            className="absolute inset-0 bg-black/80 backdrop-blur-md"
-                          />
-
-                          {/* THE POPPING CONTAINER */}
-                          <motion.div
-                            layoutId={`faq-card-support-${activeFaq.id}`}
-                            transition={macOsSpring}
-                            initial={{ filter: "blur(4px)" }}
-                            animate={{ filter: "blur(0px)" }}
-                            exit={{ filter: "blur(4px)" }}
-                            className="w-full max-w-lg bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-white/10 rounded-2xl p-6 md:p-8 relative shadow-2xl overflow-hidden pointer-events-auto flex flex-col text-left text-zinc-900 dark:text-white"
-                          >
-                            {/* Native Apple close window circle button */}
+                        <dialog
+                          ref={faqDialogRef}
+                          aria-labelledby="support-faq-dialog-title"
+                          onClose={() => setActiveFaqId(null)}
+                          className="fixed inset-0 m-auto w-[calc(100%-2rem)] max-w-lg max-h-[calc(100vh-2rem)] overflow-y-auto bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-white/10 rounded-2xl p-6 md:p-8 shadow-2xl text-left text-zinc-900 dark:text-white backdrop:bg-black/80"
+                        >
                             <button
                               type="button"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setActiveFaqId(null);
-                              }}
+                              aria-label="Close answer"
+                              autoFocus
+                              onClick={() => faqDialogRef.current?.close()}
                               className="absolute top-4 right-4 w-6 h-6 rounded-full bg-zinc-100 hover:bg-zinc-200 dark:bg-white/5 dark:hover:bg-white/15 text-zinc-500 dark:text-zinc-400 hover:text-zinc-700 dark:hover:text-white flex items-center justify-center transition-colors cursor-pointer"
                             >
                               <X className="w-3.5 h-3.5" />
                             </button>
 
-                            {/* Wrap modal contents to fade out immediately on exit, preventing layout warp stutter */}
-                            <motion.div
-                              initial={{ opacity: 0 }}
-                              animate={{ opacity: 1 }}
-                              exit={{ opacity: 0 }}
-                              transition={{ duration: 0.15 }}
-                              className="flex flex-col h-full"
-                            >
+                            <div className="flex flex-col h-full">
                               {/* Popup Badge */}
                               <div className="flex items-center gap-2 mb-4">
                                 <span className="text-[10px] font-bold uppercase tracking-widest px-2.5 py-0.5 rounded-full border border-zinc-200 dark:border-white/10 bg-zinc-100 dark:bg-white/5 text-zinc-550 dark:text-zinc-400">
@@ -488,7 +436,7 @@ function SupportPageContent() {
                               </div>
 
                               {/* Popup Title */}
-                              <h3 className="text-xl font-bold text-zinc-900 dark:text-white pr-8 mb-4">
+                              <h3 id="support-faq-dialog-title" className="text-xl font-bold text-zinc-900 dark:text-white pr-8 mb-4">
                                 {activeFaq.q}
                               </h3>
 
@@ -496,12 +444,10 @@ function SupportPageContent() {
                               <div className="mt-2 text-sm md:text-base text-zinc-650 dark:text-zinc-300 leading-relaxed whitespace-pre-wrap">
                                 {renderBoldText(String(activeFaq.a))}
                               </div>
-                            </motion.div>
-                          </motion.div>
-                        </div>
+                            </div>
+                        </dialog>
                       );
                     })()}
-                  </AnimatePresence>
                 </div>
               )}
 
@@ -511,27 +457,10 @@ function SupportPageContent() {
                   <h2 className="text-xl font-bold mb-6">Submit a Support Request</h2>
                   
                   {!user && (
-                    <>
-                      <div>
-                        <label className="block text-sm font-medium text-white/70 mb-1">Your Name <span className="text-white/40 font-normal">(optional)</span></label>
-                        <Input
-                          value={newTicket.name}
-                          onChange={(e) => setNewTicket({...newTicket, name: e.target.value})}
-                          placeholder="e.g. Rahul"
-                          className="bg-white/5 border-white/10 rounded-xl"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-white/70 mb-1">Email <span className="text-white/40 font-normal">(optional — for follow-up)</span></label>
-                        <Input
-                          type="email"
-                          value={newTicket.email}
-                          onChange={(e) => setNewTicket({...newTicket, email: e.target.value})}
-                          placeholder="your@email.com"
-                          className="bg-white/5 border-white/10 rounded-xl"
-                        />
-                      </div>
-                    </>
+                    <p className="mb-4 text-sm text-white/70">
+                      <a href="/login" className="text-indigo-400 underline">Sign in</a> to submit a ticket, or email{" "}
+                      <a href="mailto:takeoutfix.support@gmail.com" className="text-indigo-400 underline">takeoutfix.support@gmail.com</a> directly.
+                    </p>
                   )}
                     <form onSubmit={handleSubmit} className="space-y-4">
                       {submitStatus === "success" ? (
@@ -542,7 +471,7 @@ function SupportPageContent() {
                         >
                           <CheckCircle2 className="w-12 h-12 text-green-400 mx-auto mb-4" />
                           <h3 className="text-xl font-bold text-green-400 mb-2">Ticket Submitted!</h3>
-                          <p className="text-green-200/60">We'll review your request and respond shortly.</p>
+                          <p className="text-green-200/60">Your request was saved. You can check it under Your Support Tickets.</p>
                         </motion.div>
                       ) : (
                         <Card className="bg-black/40 backdrop-blur-md border-white/10 shadow-lg">
@@ -553,6 +482,7 @@ function SupportPageContent() {
                                 value={newTicket.subject}
                                 onChange={(e) => setNewTicket({...newTicket, subject: e.target.value})}
                                 required
+                                maxLength={160}
                                 placeholder="Brief description of the issue"
                                 className="bg-white/5 border-white/10 rounded-xl"
                               />
@@ -563,13 +493,17 @@ function SupportPageContent() {
                                 value={newTicket.message}
                                 onChange={(e) => setNewTicket({...newTicket, message: e.target.value})}
                                 required
+                                maxLength={4000}
                                 placeholder="Detailed explanation..."
                                 className="bg-white/5 border-white/10 min-h-[150px] rounded-xl resize-none"
                               />
                             </div>
+                            {submitStatus === "error" && (
+                              <p role="alert" className="text-sm text-red-300">We couldn't submit your request. Please try again or email takeoutfix.support@gmail.com.</p>
+                            )}
                             <Button 
                               type="submit" 
-                              disabled={submitStatus === "submitting"}
+                              disabled={!user || submitStatus === "submitting"}
                               className="w-full bg-indigo-500 hover:bg-indigo-600 text-white rounded-full py-2.5 font-bold"
                             >
                               {submitStatus === "submitting" ? "Submitting..." : "Submit Ticket"}
@@ -598,14 +532,13 @@ function SupportPageContent() {
                         <p className="text-white/60">Please sign in to view your tickets.</p>
                       </CardContent>
                     </Card>
-                  ) : !isPaid ? (
-                    <Card className="bg-indigo-500/10 border-indigo-500/30 backdrop-blur-md">
-                      <CardContent className="pt-6 text-center">
-                        <p className="text-indigo-200/60">Direct ticket support is reserved for paid plans.</p>
-                      </CardContent>
-                    </Card>
                   ) : loading ? (
                     <div className="text-center py-12 text-white/50">Loading tickets...</div>
+                  ) : ticketsLoadError ? (
+                    <div role="alert" className="text-center py-12 bg-white/5 rounded-xl border border-white/10">
+                      <p className="text-white/70">Your tickets could not be loaded. Check your connection and try again.</p>
+                      <button type="button" onClick={() => void loadTickets()} className="mt-4 text-sm text-indigo-300 underline">Retry</button>
+                    </div>
                   ) : tickets.length === 0 ? (
                     <div className="text-center py-12 bg-white/5 rounded-xl border border-white/10">
                       <History className="w-12 h-12 text-white/20 mx-auto mb-4" />
@@ -686,6 +619,7 @@ function SupportPageContent() {
                                 {/* Actions & Follow-up Input */}
                                 {ticket.status !== 'CLOSED' ? (
                                   <div className="space-y-3 border-t border-white/5 pt-4">
+                                    {ticketActionError && <p role="alert" className="text-xs text-red-400">{ticketActionError}</p>}
                                     {ticket.status === 'RESOLVED' && (
                                       <div className="p-3 bg-emerald-500/5 border border-emerald-500/20 rounded-xl flex flex-col sm:flex-row items-center justify-between gap-3 mb-2">
                                         <span className="text-xs text-zinc-350 font-normal">Has the support response solved your query?</span>
@@ -704,6 +638,7 @@ function SupportPageContent() {
                                       <Textarea 
                                         value={followUpText}
                                         onChange={(e) => setFollowUpText(e.target.value)}
+                                        maxLength={4000}
                                         placeholder="Type your follow-up message..."
                                         className="bg-white/5 border-white/10 min-h-[80px] text-sm rounded-xl resize-none"
                                       />
@@ -711,7 +646,7 @@ function SupportPageContent() {
                                     <div className="flex gap-2">
                                       <Button 
                                         className="bg-indigo-500 hover:bg-indigo-600 text-white font-bold text-xs rounded-full px-4"
-                                        onClick={() => handleFollowUp(ticket.id, ticket.replies)}
+                                        onClick={() => handleFollowUp(ticket.id)}
                                         disabled={!followUpText.trim()}
                                       >
                                         Send Message
@@ -759,13 +694,13 @@ function SupportPageContent() {
                     >
                       <CheckCircle2 className="w-12 h-12 text-green-400 mx-auto mb-4" />
                       <h3 className="text-xl font-bold text-green-400 mb-2">Feedback Submitted!</h3>
-                      <p className="text-green-200/60">Thank you for helping us improve TakeoutFix. We read every response!</p>
+                      <p className="text-green-200/60">Thank you for sharing your feedback.</p>
                     </motion.div>
                   ) : (
                     <form onSubmit={handleFeedbackSubmit} className="space-y-4">
                       {feedbackSubmitStatus === "error" && (
-                        <div className="text-xs text-red-400 bg-red-400/10 border border-red-400/20 p-3 rounded-xl">
-                          Failed to submit feedback. Please try again.
+                        <div role="alert" className="text-xs text-red-400 bg-red-400/10 border border-red-400/20 p-3 rounded-xl">
+                          We couldn't confirm whether your feedback was received. Please check your connection or email takeoutfix.support@gmail.com.
                         </div>
                       )}
                       
@@ -779,6 +714,8 @@ function SupportPageContent() {
                                 <button
                                   key={star}
                                   type="button"
+                                  aria-label={`${star} ${star === 1 ? 'star' : 'stars'}`}
+                                  aria-pressed={feedbackRating === star}
                                   onClick={() => setFeedbackRating(star)}
                                   className="p-1 focus:outline-none transition-transform active:scale-95 text-zinc-600"
                                 >
@@ -821,6 +758,7 @@ function SupportPageContent() {
                               value={feedbackMessage}
                               onChange={(e) => setFeedbackMessage(e.target.value)}
                               required
+                              maxLength={4000}
                               placeholder="What went well? What can we do better? Let us know..."
                               className="bg-white/5 border-white/10 min-h-[120px] rounded-xl resize-none"
                             />

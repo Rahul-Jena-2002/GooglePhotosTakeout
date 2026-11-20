@@ -65,8 +65,8 @@ public class TakeoutRestoreView extends VBox {
     // Paths & Source Telemetry
     private File selectedSource = null;
     private File selectedOutput = null;
-    private final Label sourcePathLabel = new Label("No archive selected — browse or drop Takeout directory / ZIP");
-    private final Label sourceMetaLabel = new Label("Awaiting selection • Folder or .zip");
+    private final Label sourcePathLabel = new Label("Select or drop an extracted Takeout folder");
+    private final Label sourceMetaLabel = new Label("Extract ZIP files before selecting a folder");
     private final Label outputPathLabel = new Label("No destination folder selected yet — restored files will be saved here");
     private final Label outputMetaLabel = new Label("");
     private final Button btnSourceClear = new Button("✕");
@@ -82,7 +82,7 @@ public class TakeoutRestoreView extends VBox {
     // Telemetry
     private final Circle statusPulseDot = new Circle(4.5, Color.web("#22C55E"));
     private final Label operationStateLabel = new Label("Ready to restore");
-    private final Label currentFileLabel = new Label("Select a source archive and output destination to begin.");
+    private final Label currentFileLabel = new Label("Select an extracted Takeout folder and an output folder to begin.");
     private final Label filesRatioLabel = new Label("0 / 0 files (0%)");
     private final ProgressBar progressBar = new ProgressBar(0.0);
     private final Label elapsedValLabel = new Label("00:00:00");
@@ -92,6 +92,7 @@ public class TakeoutRestoreView extends VBox {
     // Restoration Options (All unchecked by default)
     private final CheckBox organizeMonthCheck = new CheckBox("Organize into Year/Month subfolders (YYYY/MM)");
     private final CheckBox splitVolumesCheck = new CheckBox("Compress output into 2GB ZIP volumes");
+    private final CheckBox estimateDatesCheck = new CheckBox("Estimate missing dates from nearby files");
     private final CheckBox keepAwakeCheck = new CheckBox("Keep system awake while processing");
     private final CheckBox shutdownAfterCheck = new CheckBox("Shutdown system after completion");
 
@@ -137,6 +138,7 @@ public class TakeoutRestoreView extends VBox {
 
     private boolean isRunning = false;
     private boolean isPaused = false;
+    private boolean guestQuotaBlocked = false;
     private long startTimeMs = 0;
     private final PowerManager powerManager = new PowerManager();
     private com.takeoutfix.restore.TakeoutRestoreTask activeRestoreTask = null;
@@ -202,6 +204,17 @@ public class TakeoutRestoreView extends VBox {
         // Options unchecked by default
         organizeMonthCheck.setSelected(false);
         splitVolumesCheck.setSelected(false);
+        estimateDatesCheck.setSelected(false);
+        organizeMonthCheck.disableProperty().bind(splitVolumesCheck.selectedProperty());
+        organizeMonthCheck.setTooltip(new Tooltip("Year/month organization is available for folder output."));
+        splitVolumesCheck.selectedProperty().addListener((observable, wasSelected, selected) -> {
+            if (selected) {
+                organizeMonthCheck.setSelected(false);
+                if (userService == null || !userService.isSignedIn()) {
+                    showAlert("Guest ZIP output", "If ZIP creation is interrupted, files in an unfinished archive may still count toward your guest limit. Folder output avoids this ZIP-specific issue. Keep your originals and check your output.");
+                }
+            }
+        });
         keepAwakeCheck.setSelected(false);
         shutdownAfterCheck.setSelected(false);
 
@@ -372,14 +385,6 @@ public class TakeoutRestoreView extends VBox {
         btnFolder.setStyle("-fx-font-size: 14.5px; -fx-font-weight: 600; -fx-pref-height: 38px; -fx-padding: 0 16 0 16;");
         btnFolder.setOnAction(e -> chooseSourceFolder());
 
-        Button btnZip = new Button("ZIP Archive");
-        btnZip.getStyleClass().add("btn-secondary");
-        btnZip.setGraphic(UiIcons.createSvgIcon(UiIcons.ZIP, 14, "currentColor"));
-        btnZip.setGraphicTextGap(7);
-        btnZip.setMinWidth(115);
-        btnZip.setStyle("-fx-font-size: 14.5px; -fx-font-weight: 600; -fx-pref-height: 38px; -fx-padding: 0 14 0 14;");
-        btnZip.setOnAction(e -> chooseSourceZip());
-
         HBox pathDisplay = new HBox(8);
         pathDisplay.setAlignment(Pos.CENTER_LEFT);
         HBox.setHgrow(pathDisplay, Priority.ALWAYS);
@@ -400,7 +405,7 @@ public class TakeoutRestoreView extends VBox {
         btnSourceClear.setOnAction(e -> clearSource());
 
         pathDisplay.getChildren().addAll(pathIcon, sourcePathLabel, btnSourceClear);
-        row.getChildren().addAll(btnFolder, btnZip, pathDisplay);
+        row.getChildren().addAll(btnFolder, pathDisplay);
         box.getChildren().addAll(headerRow, row);
 
         box.setOnDragOver(event -> {
@@ -419,8 +424,13 @@ public class TakeoutRestoreView extends VBox {
             Dragboard db = event.getDragboard();
             boolean success = false;
             if (db.hasFiles() && !db.getFiles().isEmpty()) {
-                setSourceFile(db.getFiles().get(0));
-                success = true;
+                File source = db.getFiles().get(0);
+                if (source.isDirectory()) {
+                    setSourceFile(source);
+                    success = true;
+                } else {
+                    showAlert("Select a Folder", "Extract your Takeout ZIP first, then select or drop the extracted folder.");
+                }
             }
             box.setStyle("-fx-background-radius: 6; -fx-border-radius: 6; -fx-border-width: 1; -fx-padding: 8 12 8 12;");
             event.setDropCompleted(success);
@@ -643,6 +653,12 @@ public class TakeoutRestoreView extends VBox {
         organizeMonthCheck.setStyle("-fx-font-size: 14.5px; -fx-cursor: hand;");
         splitVolumesCheck.getStyleClass().add("text-primary");
         splitVolumesCheck.setStyle("-fx-font-size: 14.5px; -fx-cursor: hand;");
+        estimateDatesCheck.getStyleClass().add("text-primary");
+        estimateDatesCheck.setStyle("-fx-font-size: 14.5px; -fx-cursor: hand;");
+        estimateDatesCheck.setWrapText(true);
+        Label estimateNote = new Label("Estimated dates can be wrong. Check those files before importing them.");
+        estimateNote.getStyleClass().add("text-muted");
+        estimateNote.setWrapText(true);
 
         // Group 2: System & Power
         Label systemGroupLabel = new Label("System & Power");
@@ -659,6 +675,8 @@ public class TakeoutRestoreView extends VBox {
                 outputGroupLabel,
                 organizeMonthCheck,
                 splitVolumesCheck,
+                estimateDatesCheck,
+                estimateNote,
                 systemGroupLabel,
                 keepAwakeCheck,
                 shutdownAfterCheck
@@ -682,7 +700,8 @@ public class TakeoutRestoreView extends VBox {
         Region spStorage = new Region();
         HBox.setHgrow(spStorage, Priority.ALWAYS);
 
-        Label localPill = new Label("100% OFFLINE");
+        Label localPill = new Label("LOCAL PROCESSING");
+        localPill.setTooltip(new Tooltip("Files are processed on your device. Sign-in and account sync require a connection."));
         localPill.setStyle("-fx-font-size: 11px; -fx-font-weight: 700; -fx-text-fill: #10B981; -fx-background-color: rgba(16, 185, 129, 0.12); -fx-padding: 3 8 3 8; -fx-background-radius: 4;");
 
         storeHeaderRow.getChildren().addAll(icon, storeTitle, spStorage, localPill);
@@ -1018,13 +1037,6 @@ public class TakeoutRestoreView extends VBox {
         tabRestored.setText("Restored (0)");
         tabNeedsReview.setText("Needs Review (0)");
         tabFailed.setText("Failed (0)");
-        kpiScanned.setText("0");
-        kpiRestored.setText("0");
-        kpiRestoredGb.setText("0.00 GB");
-        kpiNeedsReview.setText("0");
-        kpiFailed.setText("0");
-        restoredBytes = 0;
-        updateStorageDisplay();
         updateLogViewVisibility();
     }
 
@@ -1037,18 +1049,9 @@ public class TakeoutRestoreView extends VBox {
         }
     }
 
-    private void chooseSourceZip() {
-        FileChooser chooser = new FileChooser();
-        chooser.setTitle("Select Google Takeout ZIP Archive");
-        chooser.getExtensionFilters().add(new FileChooser.ExtensionFilter("ZIP Archive (*.zip)", "*.zip"));
-        File zip = chooser.showOpenDialog(stage);
-        if (zip != null) {
-            setSourceFile(zip);
-        }
-    }
-
     private void setSourceFile(File file) {
         this.selectedSource = file;
+        sourceSizeBytes = 0;
         sourcePathLabel.setText(file.getAbsolutePath());
         sourcePathLabel.setStyle("-fx-font-size: 14.5px; -fx-font-weight: 600;");
         sourcePathLabel.getStyleClass().add("text-primary");
@@ -1058,29 +1061,25 @@ public class TakeoutRestoreView extends VBox {
         updateButtonStates();
         new Thread(() -> {
             try {
-                if (file.isFile() && file.getName().toLowerCase().endsWith(".zip")) {
-                    sourceSizeBytes = file.length();
-                    long sizeMb = file.length() / (1024 * 1024);
-                    Platform.runLater(() -> {
-                        sourceMetaLabel.setText(String.format("ZIP Archive • %,d MB", sizeMb));
-                        updateStorageDisplay();
-                    });
-                } else if (file.isDirectory()) {
+                if (file.isDirectory()) {
                     List<File> media = new MediaScanner().listMediaFiles(file);
                     long totalBytes = 0;
                     for (File m : media) totalBytes += m.length();
-                    sourceSizeBytes = totalBytes;
+                    long sizeBytes = totalBytes;
                     long sizeMb = totalBytes / (1024 * 1024);
                     int count = media.size();
                     Platform.runLater(() -> {
+                        if (!file.equals(selectedSource)) return;
+                        sourceSizeBytes = sizeBytes;
                         sourceMetaLabel.setText(String.format("%,d media files • %,d MB", count, sizeMb));
-                        kpiScanned.setText(String.valueOf(count));
                         updateStorageDisplay();
                     });
                 }
-            } catch (Exception ignored) {
+            } catch (Exception e) {
                 Platform.runLater(() -> {
-                    sourceMetaLabel.setText("Ready to process");
+                    if (!file.equals(selectedSource)) return;
+                    sourceMetaLabel.setText("Could not inspect the selected source");
+                    appendLog("WARN", "Could not inspect source: " + e.getMessage());
                     updateStorageDisplay();
                 });
             }
@@ -1090,10 +1089,10 @@ public class TakeoutRestoreView extends VBox {
     private void clearSource() {
         selectedSource = null;
         sourceSizeBytes = 0;
-        sourcePathLabel.setText("No archive selected — browse or drop Takeout directory / ZIP");
+        sourcePathLabel.setText("Select or drop an extracted Takeout folder");
         sourcePathLabel.setStyle("-fx-font-size: 14.5px;");
         sourcePathLabel.getStyleClass().add("text-secondary");
-        sourceMetaLabel.setText("Awaiting selection • Folder or .zip");
+        sourceMetaLabel.setText("Extract ZIP files before selecting a folder");
         btnSourceClear.setVisible(false);
         updateButtonStates();
         updateStorageDisplay();
@@ -1136,7 +1135,7 @@ public class TakeoutRestoreView extends VBox {
             return;
         }
         if (selectedSource == null) {
-            showAlert("Source Archive Required", "Please select a Google Takeout folder or ZIP archive to scan.");
+            showAlert("Source Folder Required", "Select the extracted Google Takeout folder to scan.");
             return;
         }
         executeScanArchive();
@@ -1148,7 +1147,7 @@ public class TakeoutRestoreView extends VBox {
             return;
         }
         if (selectedSource == null) {
-            showAlert("Source Archive Required", "Please select a Google Takeout folder or ZIP archive to begin.");
+            showAlert("Source Folder Required", "Select the extracted Google Takeout folder to begin.");
             return;
         }
         if (selectedOutput == null) {
@@ -1156,10 +1155,15 @@ public class TakeoutRestoreView extends VBox {
             return;
         }
 
-        if (selectedSource.equals(selectedOutput) ||
-                selectedOutput.getAbsolutePath().equalsIgnoreCase(selectedSource.getAbsolutePath()) ||
-                selectedOutput.getAbsolutePath().startsWith(selectedSource.getAbsolutePath() + File.separator)) {
-            showAlert("Destination Conflict", "The output folder must be a separate directory outside the source archive.");
+        try {
+            var sourcePath = selectedSource.getCanonicalFile().toPath();
+            var outputPath = selectedOutput.getCanonicalFile().toPath();
+            if (outputPath.startsWith(sourcePath)) {
+                showAlert("Destination Conflict", "Choose an output folder outside the source archive or folder.");
+                return;
+            }
+        } catch (java.io.IOException e) {
+            showAlert("Cannot Check Folders", "Could not check the selected paths. Please select them again and check that they are accessible.");
             return;
         }
 
@@ -1190,6 +1194,10 @@ public class TakeoutRestoreView extends VBox {
     private void executeScanArchive() {
         isRunning = true;
         isPaused = false;
+        kpiScanned.setText("0");
+        kpiRestored.setText("0");
+        kpiNeedsReview.setText("0");
+        kpiFailed.setText("0");
         startTimeMs = System.currentTimeMillis();
         updateButtonStates();
 
@@ -1205,7 +1213,7 @@ public class TakeoutRestoreView extends VBox {
                     progressBar.setProgress(pct / 100.0);
                     filesRatioLabel.setText(String.format("%,d / %,d files (%d%%)", current, total, pct));
                     currentFileLabel.setText("Scanning: " + currentFile.getName());
-                    kpiRestored.setText(String.valueOf(matched));
+                    kpiScanned.setText(String.valueOf(current));
                     kpiNeedsReview.setText(String.valueOf(unmatched));
                 });
             }
@@ -1238,17 +1246,36 @@ public class TakeoutRestoreView extends VBox {
         });
 
         this.activeScanTask = scanTask;
+        scanTask.stateProperty().addListener((obs, oldState, newState) -> {
+            if (newState == BackgroundTask.TaskState.CANCELLED) {
+                Platform.runLater(() -> {
+                    isRunning = false;
+                    isPaused = false;
+                    activeScanTask = null;
+                    operationStateLabel.setText("Scan cancelled.");
+                    currentFileLabel.setText("Operation stopped.");
+                    updateButtonStates();
+                });
+            }
+        });
         com.takeoutfix.task.TaskManager.getInstance().submitTask(scanTask);
     }
 
     private void executeLiveRestoration() {
         isRunning = true;
         isPaused = false;
+        guestQuotaBlocked = false;
+        kpiScanned.setText("0");
+        kpiRestored.setText("0");
+        kpiNeedsReview.setText("0");
+        kpiFailed.setText("0");
+        updateRestoredBytes(0);
         startTimeMs = System.currentTimeMillis();
         startTelemetryTimeline();
         updateButtonStates();
 
         boolean shutdownRequested = shutdownAfterCheck.isSelected();
+        boolean zipOutput = splitVolumesCheck.isSelected();
         if (keepAwakeCheck.isSelected() || shutdownRequested) {
             powerManager.startKeepAwake();
         }
@@ -1268,10 +1295,10 @@ public class TakeoutRestoreView extends VBox {
                 postAction,
                 Optional.empty(),
                 false,
-                splitVolumesCheck.isSelected(),
+                zipOutput,
                 -1,
                 0,
-                true,
+                estimateDatesCheck.isSelected(),
                 organizeMonthCheck.isSelected()
         );
 
@@ -1281,9 +1308,25 @@ public class TakeoutRestoreView extends VBox {
             if (newState == BackgroundTask.TaskState.COMPLETED) {
                 Platform.runLater(() -> {
                     stopTelemetryTimeline();
-                    operationStateLabel.setText("Restoration Complete");
-                    currentFileLabel.setText("Restoration completed successfully.");
-                    showRestoreCompletionPopup();
+                    int restored = Integer.parseInt(kpiRestored.getText().trim());
+                    boolean needsReview = Integer.parseInt(kpiNeedsReview.getText().trim()) > 0;
+                    long bytes = restoreTask.getBytesProcessed() > 0 ? restoreTask.getBytesProcessed() : (extractionService != null ? extractionService.getProcessedBytes() : 0L);
+                    if (bytes > 0) updateRestoredBytes(bytes);
+                    java.util.concurrent.CompletableFuture.runAsync(() -> {
+                        try {
+                            if (statsService != null) statsService.record(restored, bytes);
+                            new com.takeoutfix.shared.history.OperationHistoryService().recordOperation(
+                                    "Fix Google Photos", needsReview ? "NEEDS_REVIEW" : "SUCCESS", null,
+                                    java.time.Instant.now(), restored, bytes,
+                                    needsReview ? "Restoration finished; some files need review." : "Google Photos Takeout restoration completed."
+                            );
+                        } catch (Exception error) {
+                            System.err.println("Could not save restoration history: " + error.getMessage());
+                        }
+                    });
+                    operationStateLabel.setText(needsReview ? "Restoration Finished — Review Needed" : "Restoration Complete");
+                    currentFileLabel.setText("Check the output and report before moving your originals.");
+                    showRestoreCompletionPopup(shutdownRequested, needsReview);
                     isRunning = false;
                     isPaused = false;
                     activeRestoreTask = null;
@@ -1291,37 +1334,21 @@ public class TakeoutRestoreView extends VBox {
                     powerManager.stopKeepAwake();
 
                     if (shutdownRequested) {
-                        appendLog("WARN", "Restoration complete. Shutdown initiated: System will power off in 60 seconds. (Run 'shutdown /a' to cancel)");
-                        powerManager.runShutdownCommand(60);
+                        try {
+                            Process shutdown = powerManager.runShutdownCommand(60);
+                            appendLog("WARN", "Restoration finished. A system shutdown was requested; timing depends on your operating system.");
+                            shutdown.onExit().thenAccept(process -> {
+                                if (process.exitValue() != 0) Platform.runLater(() -> {
+                                    appendLog("ERROR", "The operating system did not accept the shutdown request.");
+                                    showErrorAlert("Shutdown Not Scheduled", "The operating system did not accept the shutdown request. You can shut down manually.");
+                                });
+                            });
+                        } catch (Exception error) {
+                            appendLog("ERROR", "Could not request system shutdown: " + error.getMessage());
+                            showErrorAlert("Shutdown Not Scheduled", "Could not request system shutdown. You can shut down manually.");
+                        }
                     }
                 });
-                try {
-                    int restored = 0;
-                    try { restored = Integer.parseInt(kpiRestored.getText().trim()); } catch (Exception ignored) {}
-                    if (restored <= 0 && extractionService != null) {
-                        restored = extractionService.getProcessedFiles();
-                    }
-                    long bytes = restoreTask.getBytesProcessed() > 0 ? restoreTask.getBytesProcessed() : (extractionService != null ? extractionService.getProcessedBytes() : 0L);
-                    if (bytes <= 0 && restored > 0) {
-                        bytes = restored * 3500000L;
-                    }
-                    if (bytes > 0) {
-                        final long fBytes = bytes;
-                        Platform.runLater(() -> updateRestoredBytes(fBytes));
-                    }
-                    if (statsService != null) {
-                        statsService.record(restored, bytes);
-                    }
-                    new com.takeoutfix.shared.history.OperationHistoryService().recordOperation(
-                            "Fix Google Photos",
-                            "SUCCESS",
-                            null,
-                            java.time.Instant.now(),
-                            restored,
-                            bytes,
-                            "Google Photos Takeout restoration completed with verified metadata."
-                    );
-                } catch (Exception ignored) {}
             } else if (newState == BackgroundTask.TaskState.FAILED) {
                 Platform.runLater(() -> {
                     stopTelemetryTimeline();
@@ -1344,9 +1371,9 @@ public class TakeoutRestoreView extends VBox {
                     activeRestoreTask = null;
                     updateButtonStates();
                     powerManager.stopKeepAwake();
-                    appendLog("WARN", "Restoration cancelled by user.");
+                    appendLog("WARN", zipOutput ? "Restoration cancelled. ZIP output may be incomplete; check it and keep your originals." : "Restoration cancelled by user.");
                     operationStateLabel.setText("Restoration cancelled.");
-                    currentFileLabel.setText("Operation stopped.");
+                    currentFileLabel.setText(zipOutput ? "ZIP output may be incomplete. Keep your originals." : "Operation stopped. Check partial output and keep your originals.");
                 });
             } else if (newState == BackgroundTask.TaskState.PAUSED) {
                 Platform.runLater(() -> {
@@ -1374,6 +1401,18 @@ public class TakeoutRestoreView extends VBox {
         if (!isRunning) return;
         if (activeRestoreTask != null) {
             if (activeRestoreTask.isPaused()) {
+                if ((userService == null || !userService.isSignedIn())
+                        && (guestQuotaBlocked || GuestQuotaStore.isExhausted())) {
+                    TakeoutRestoreTask pausedTask = activeRestoreTask;
+                    new FxTrustSignInDialog(stage, userService, () -> {
+                        if (userService != null && userService.isSignedIn() && activeRestoreTask == pausedTask) {
+                            guestQuotaBlocked = false;
+                            pausedTask.resume();
+                        }
+                    }, true).showAndWait();
+                    return;
+                }
+                guestQuotaBlocked = false;
                 activeRestoreTask.resume();
             } else {
                 activeRestoreTask.pause();
@@ -1407,13 +1446,11 @@ public class TakeoutRestoreView extends VBox {
         } else {
             extractionService.cancel();
         }
-        isRunning = false;
-        isPaused = false;
-        updateButtonStates();
-        powerManager.stopKeepAwake();
-        appendLog("WARN", "Operation cancelled by user.");
-        operationStateLabel.setText("Operation cancelled.");
-        currentFileLabel.setText("Operation stopped.");
+        btnPause.setDisable(true);
+        btnCancel.setDisable(true);
+        appendLog("WARN", "Stopping the operation. Please wait for active files to finish.");
+        operationStateLabel.setText("Stopping...");
+        currentFileLabel.setText("Waiting for active work to finish.");
     }
 
     private void handleOpenOutput() {
@@ -1536,38 +1573,40 @@ public class TakeoutRestoreView extends VBox {
             @Override
             public void onGuestLimitReached() {
                 Platform.runLater(() -> {
+                    if (!isRunning || activeRestoreTask == null || !extractionService.isPaused()) return;
+                    TakeoutRestoreTask pausedTask = activeRestoreTask;
+                    guestQuotaBlocked = true;
                     stopTelemetryTimeline();
                     isPaused = true;
                     updateButtonStates();
-                    operationStateLabel.setText("1 GB Free Guest Limit Reached");
-                    currentFileLabel.setText("Sign in with Google to unlock unlimited restoration.");
+                    operationStateLabel.setText("Guest allowance insufficient for next file");
+                    currentFileLabel.setText("Sign in to continue restoring for free.");
 
                     FxTrustSignInDialog trustDialog = new FxTrustSignInDialog(stage, userService, () -> {
-                        if (userService != null && userService.isSignedIn()) {
+                        if (userService != null && userService.isSignedIn() && activeRestoreTask == pausedTask) {
+                            guestQuotaBlocked = false;
                             isPaused = false;
                             updateButtonStates();
                             startTelemetryTimeline();
-                            if (extractionService != null) {
-                                extractionService.resume();
-                            }
+                            pausedTask.resume();
                         }
-                    });
+                    }, true);
                     trustDialog.showAndWait();
                 });
             }
         });
     }
 
-    private void showRestoreCompletionPopup() {
+    private void showRestoreCompletionPopup(boolean shutdownRequested, boolean needsReview) {
         Alert alert = new Alert(Alert.AlertType.INFORMATION);
         alert.initOwner(stage);
         alert.setTitle("Restoration Finished");
-        alert.setHeaderText("Google Takeout Restoration Complete");
-        String shutdownNote = shutdownAfterCheck.isSelected()
-                ? "\n\n⚠️ System shutdown scheduled in 60 seconds."
+        alert.setHeaderText(needsReview ? "Restoration Finished — Review Needed" : "Google Takeout Restoration Complete");
+        String shutdownNote = shutdownRequested
+                ? "\n\nSystem shutdown will be requested. Timing depends on your operating system."
                 : "";
         alert.setContentText(String.format(
-                "Restoration process completed successfully!\n\n"
+                "Restoration finished. Check the output and keep your original export.\n\n"
                         + "• Files Scanned: %s\n"
                         + "• Metadata Restored: %s\n"
                         + "• Needs Review: %s\n"

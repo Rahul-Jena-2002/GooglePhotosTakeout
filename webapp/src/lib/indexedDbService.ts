@@ -45,9 +45,10 @@ class IndexedDbService {
     return new Promise((resolve, reject) => {
       const transaction = db.transaction(storeName, 'readwrite');
       const store = transaction.objectStore(storeName);
-      const request = store.put(value, key);
-      request.onsuccess = () => resolve();
-      request.onerror = () => reject(request.error);
+      store.put(value, key);
+      transaction.oncomplete = () => resolve();
+      transaction.onabort = () => reject(transaction.error || new Error('IndexedDB transaction aborted'));
+      transaction.onerror = () => reject(transaction.error);
     });
   }
 
@@ -61,7 +62,43 @@ class IndexedDbService {
         store.put(item.value, item.key);
       }
       transaction.oncomplete = () => resolve();
+      transaction.onabort = () => reject(transaction.error || new Error('IndexedDB transaction aborted'));
       transaction.onerror = () => reject(transaction.error);
+    });
+  }
+
+  async setFileAndSession(fileId: string, file: unknown, sessionId: string, session: unknown): Promise<void> {
+    const db = await this.init();
+    return new Promise((resolve, reject) => {
+      const transaction = db.transaction(['files', 'sessions'], 'readwrite');
+      transaction.objectStore('files').put(file, fileId);
+      transaction.objectStore('sessions').put(session, sessionId);
+      transaction.oncomplete = () => resolve();
+      transaction.onabort = () => reject(transaction.error || new Error('IndexedDB transaction aborted'));
+      transaction.onerror = () => reject(transaction.error);
+    });
+  }
+
+  async startRestoreSession(sessionId: string, session: unknown): Promise<void> {
+    const db = await this.init();
+    return new Promise((resolve, reject) => {
+      const transaction = db.transaction(['files', 'sessions'], 'readwrite');
+      const sessions = transaction.objectStore('sessions');
+      let refusal: Error | null = null;
+      const request = sessions.getAll();
+      request.onsuccess = () => {
+        if (request.result.some((saved: { status?: string }) => !['completed', 'failed', 'cancelled'].includes(saved.status || ''))) {
+          refusal = new Error('An interrupted restore is still saved. Resume it or discard it before starting a new restore.');
+          transaction.abort();
+          return;
+        }
+        transaction.objectStore('files').clear();
+        sessions.clear();
+        sessions.put(session, sessionId);
+      };
+      transaction.oncomplete = () => resolve();
+      transaction.onabort = () => reject(refusal || transaction.error || new Error('IndexedDB transaction aborted'));
+      transaction.onerror = () => reject(refusal || transaction.error);
     });
   }
 
@@ -81,9 +118,10 @@ class IndexedDbService {
     return new Promise((resolve, reject) => {
       const transaction = db.transaction(storeName, 'readwrite');
       const store = transaction.objectStore(storeName);
-      const request = store.delete(key);
-      request.onsuccess = () => resolve();
-      request.onerror = () => reject(request.error);
+      store.delete(key);
+      transaction.oncomplete = () => resolve();
+      transaction.onabort = () => reject(transaction.error || new Error('IndexedDB transaction aborted'));
+      transaction.onerror = () => reject(transaction.error);
     });
   }
 
@@ -114,9 +152,10 @@ class IndexedDbService {
     return new Promise((resolve, reject) => {
       const transaction = db.transaction(storeName, 'readwrite');
       const store = transaction.objectStore(storeName);
-      const request = store.clear();
-      request.onsuccess = () => resolve();
-      request.onerror = () => reject(request.error);
+      store.clear();
+      transaction.oncomplete = () => resolve();
+      transaction.onabort = () => reject(transaction.error || new Error('IndexedDB transaction aborted'));
+      transaction.onerror = () => reject(transaction.error);
     });
   }
 
@@ -204,15 +243,30 @@ class IndexedDbService {
         store.put(file, file.id);
       }
       transaction.oncomplete = () => resolve();
+      transaction.onabort = () => reject(transaction.error || new Error('IndexedDB transaction aborted'));
       transaction.onerror = () => reject(transaction.error);
     });
   }
 
   async clearAllData(): Promise<void> {
     const stores = ['telemetry', 'checkpoints', 'files', 'sessions'];
-    for (const store of stores) {
-      await this.clearStore(store).catch(() => {});
-    }
+    const db = await this.init();
+    return new Promise((resolve, reject) => {
+      const transaction = db.transaction(stores, 'readwrite');
+      let refusal: Error | null = null;
+      const request = transaction.objectStore('sessions').getAll();
+      request.onsuccess = () => {
+        if (request.result.some((saved: { status?: string }) => !['completed', 'failed', 'cancelled'].includes(saved.status || ''))) {
+          refusal = new Error('A restore is still saved or running. Resume or discard it before deleting this account.');
+          transaction.abort();
+          return;
+        }
+        for (const store of stores) transaction.objectStore(store).clear();
+      };
+      transaction.oncomplete = () => resolve();
+      transaction.onabort = () => reject(refusal || transaction.error || new Error('IndexedDB transaction aborted'));
+      transaction.onerror = () => reject(refusal || transaction.error);
+    });
   }
 }
 

@@ -2,9 +2,11 @@ import { auth, db, googleProvider, signInWithPopup, signOut } from "../firebase"
 import { setAdFree, setUserInteracted, checkAdBlock, hideBanner } from "./browserAdblock";
 import { bindNotificationFetch, stopNotificationListeners } from "./browserNotifications";
 
-import { isSuperAdminEmail } from "./adminAuth";
+import { isVerifiedSuperAdmin } from "./adminAuth";
 import { getFriendlyAuthMessage } from "./authErrors";
+import { renderAvatar } from "./renderAvatar";
 let unsubUserDoc: any = null;
+let unsubAdminDoc: (() => void) | null = null;
 let isAuthListenerInitialized = false;
 
 export const syncUserUI = () => {
@@ -67,23 +69,11 @@ export const syncUserUI = () => {
       if (mobileUserName) mobileUserName.innerText = cachedUser.displayName || firstName;
       
       if (profileAvatarCircle) {
-        const initial = firstName.charAt(0).toUpperCase();
-        const photo = cachedUser.photoURL;
-        if (photo) {
-          profileAvatarCircle.innerHTML = `<img src="${photo}" class="w-full h-full rounded-full object-cover" referrerpolicy="no-referrer" onerror="this.style.display='none'; this.parentElement.innerText='${initial}'" />`;
-        } else {
-          profileAvatarCircle.innerText = initial;
-        }
+        renderAvatar(profileAvatarCircle, firstName, cachedUser.photoURL);
       }
 
       if (mobileAvatarCircle) {
-        const initial = firstName.charAt(0).toUpperCase();
-        const photo = cachedUser.photoURL;
-        if (photo) {
-          mobileAvatarCircle.innerHTML = `<img src="${photo}" class="w-full h-full rounded-full object-cover" referrerpolicy="no-referrer" onerror="this.style.display='none'; this.parentElement.innerText='${initial}'" />`;
-        } else {
-          mobileAvatarCircle.innerText = initial;
-        }
+        renderAvatar(mobileAvatarCircle, firstName, cachedUser.photoURL);
       }
 
       if (dropdownFullName) dropdownFullName.innerText = cachedUser.displayName || "User";
@@ -151,7 +141,9 @@ export const syncUserUI = () => {
           cachedAdminRole = JSON.parse(adminDataCached).role;
         } catch (_) {}
       }
-      const isAdmin = Boolean(cachedUser.isAdmin === true || cachedUser.role || cachedAdminRole || adminDataCached || isSuperAdminEmail(cachedUser.email));
+      const cachedAdmin = adminDataCached ? JSON.parse(adminDataCached) : null;
+      const verifiedRoot = auth?.currentUser?.uid === cachedUser.uid && isVerifiedSuperAdmin(auth.currentUser);
+      const isAdmin = Boolean((cachedAdmin?.uid === cachedUser.uid && cachedAdminRole) || verifiedRoot);
       if (isAdmin) {
         desktopDashboardLink?.classList.add("hidden");
         mobileDashboardLink?.classList.add("hidden");
@@ -159,7 +151,7 @@ export const syncUserUI = () => {
         mobileAdminLink?.classList.remove("hidden");
         dropdownAdminLink?.classList.remove("hidden");
         try {
-          const isSuper = isSuperAdminEmail(cachedUser.email) || cachedUser.role === "SUPER_ADMIN" || cachedAdminRole === "SUPER_ADMIN";
+          const isSuper = verifiedRoot || cachedAdminRole === "SUPER_ADMIN";
           sessionStorage.setItem("takeoutfix_admin_session", JSON.stringify({
             uid: cachedUser.uid || auth.currentUser?.uid || "",
             email: cachedUser.email || auth.currentUser?.email || "",
@@ -236,6 +228,9 @@ export const setupAuthListeners = () => {
 
   auth.onAuthStateChanged((user) => {
     if (unsubUserDoc) unsubUserDoc();
+    if (unsubAdminDoc) unsubAdminDoc();
+    localStorage.removeItem("takeoutfix_admin_data");
+    sessionStorage.removeItem("takeoutfix_admin_session");
     
     if (user) {
       const previewData = {
@@ -249,11 +244,11 @@ export const setupAuthListeners = () => {
       syncUserUI();
       
       // Bind on-demand notifications with email
-      bindNotificationFetch(user.uid, user.email || undefined);
+      bindNotificationFetch(user.uid, user.email || undefined, user.emailVerified);
 
       // Lazy load firestore
-      import("firebase/firestore").then(({ doc, onSnapshot, getDoc }) => {
-        if (!auth.currentUser) return; 
+      import("firebase/firestore").then(({ doc, onSnapshot }) => {
+        if (auth.currentUser?.uid !== user.uid) return;
 
         // 1. Listen to user document
         unsubUserDoc = onSnapshot(doc(db, "users", user.uid), (snap) => {
@@ -277,17 +272,23 @@ export const setupAuthListeners = () => {
         });
 
         // 2. ALSO query admins doc directly so admin navbar enables instantly!
-        getDoc(doc(db, "admins", user.uid)).then((adminSnap) => {
+        unsubAdminDoc = onSnapshot(doc(db, "admins", user.uid), (adminSnap) => {
+          if (auth.currentUser?.uid !== user.uid || adminSnap.metadata.fromCache) return;
           if (adminSnap.exists()) {
             const adminDoc = adminSnap.data();
-            localStorage.setItem("takeoutfix_admin_data", JSON.stringify(adminDoc));
-            const currentCached = JSON.parse(localStorage.getItem("takeoutfix_user_data") || "{}");
-            currentCached.isAdmin = true;
-            currentCached.role = adminDoc.role || "ADMIN";
-            localStorage.setItem("takeoutfix_user_data", JSON.stringify(currentCached));
-            syncUserUI();
+            localStorage.setItem("takeoutfix_admin_data", JSON.stringify({ ...adminDoc, uid: user.uid }));
+          } else {
+            localStorage.removeItem("takeoutfix_admin_data");
+            sessionStorage.removeItem("takeoutfix_admin_session");
           }
-        }).catch(console.warn);
+          syncUserUI();
+        }, (error) => {
+          if (auth.currentUser?.uid !== user.uid) return;
+          localStorage.removeItem("takeoutfix_admin_data");
+          sessionStorage.removeItem("takeoutfix_admin_session");
+          syncUserUI();
+          console.warn("Admin status unavailable:", error);
+        });
       }).catch(err => {
         console.error("Failed to load firestore dynamically:", err);
       });

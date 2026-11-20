@@ -37,6 +37,27 @@ class UserControllerTest {
     }
 
     @Test
+    void switchingAccountsDoesNotMergeThePreviousProfile() {
+        UserController.syncUser(Map.of("uid", "first", "email", "first@example.com",
+                "idToken", "first-token", "isAdmin", true, "usedFiles", 100L));
+        UserController.syncUser(Map.of("uid", "second", "email", "second@example.com",
+                "idToken", "second-token", "usedFiles", 2L));
+
+        Map<String, Object> profile = UserController.getCurrentUserProfile();
+        assertEquals("second", profile.get("uid"));
+        assertEquals("second-token", profile.get("idToken"));
+        assertEquals(2L, profile.get("usedFiles"));
+        assertFalse(profile.containsKey("isAdmin"));
+    }
+
+    @Test
+    void syncingTheSameAccountKeepsHigherLocalUsage() {
+        UserController.syncUser(Map.of("uid", "first", "usedFiles", 100L));
+        UserController.syncUser(Map.of("uid", "first", "usedFiles", 2L));
+        assertEquals(100L, UserController.getCurrentUserProfile().get("usedFiles"));
+    }
+
+    @Test
     @DisplayName("Logout should clear user profile")
     void testLogout() {
         UserController.syncUser(Map.of("email", "bob@example.com"));
@@ -44,6 +65,14 @@ class UserControllerTest {
 
         UserController.logout();
         assertTrue(UserController.getCurrentUserProfile().isEmpty(), "User profile must be empty after logout");
+    }
+
+    @Test
+    void signedInStateRequiresAnEmailAndCredential() {
+        assertFalse(UserController.hasSignedInCredentials(Map.of("uid", "user_123", "email", "user@example.com")));
+        assertFalse(UserController.hasSignedInCredentials(Map.of("email", " ", "idToken", "token")));
+        assertTrue(UserController.hasSignedInCredentials(Map.of("email", "user@example.com", "idToken", "token")));
+        assertTrue(UserController.hasSignedInCredentials(Map.of("email", "user@example.com", "refreshToken", "token")));
     }
 
     @Test

@@ -7,22 +7,26 @@ import React, { useRef, useEffect, useState } from "react"
 import { useAuth } from "../contexts/AuthContext"
 import { useToolStore } from "../store/useToolStore"
 import { useToastStore } from "../store/useToastStore"
-import { sanitizeFilename, findMatchingJsonName, safeParseJson, extractTimestamp } from "../services/restoration/MetadataMatcher"
+import { sanitizeFilename, findMatchingJsonName, safeParseJson, extractTimestamp, extractCoordinates } from "../services/restoration/MetadataMatcher"
 // ZipMetadataMatcher is used via normalizeZipPath only (findMatchingJsonNameForZip resolved during scan phase)
 import { isSupportedImageFormat, parseImageMetadata, isJpeg } from "../services/restoration/DeepExifRestorer"
 import { isVideoFilename } from "../services/restoration/VideoMetadataRestorer"
+import { getUniqueFileHandle } from "../services/restoration/outputFile"
+import { reserveZipPath } from "../services/restoration/zipPathSafety"
 import { db } from "../firebase"
 import { doc, setDoc, increment, addDoc, collection, onSnapshot } from "firebase/firestore"
 import { indexedDbService } from "../lib/indexedDbService"
+import { acquireRestoreLock } from "../lib/restoreLock"
 // piexifjs eliminated in favor of 100% WebAssembly ExifTool
-import { detectAdBlock } from "../services/monetization/AdBlockDetector"
-import { SessionManager, type ActiveSession, type FileRecord } from "../lib/SessionManager"
+import { SessionManager, canManageSession, hasCompleteSessionScan, type ActiveSession, type FileRecord } from "../lib/SessionManager"
 import { WorkerPool } from "../lib/WorkerPool"
 import { ZipReader, BlobReader, Uint8ArrayWriter, Writer, ZipWriter, BlobWriter, TextWriter } from "@zip.js/zip.js"
 import { useSettingsStore } from "../store/useSettingsStore";
 import { normalizeZipPath } from "../services/restoration/ZipMetadataMatcher"
 import { generateSyncBatContent, generateSyncShContent } from "../services/restoration/WindowsDateSyncScript"
-import { getGuestUsage, recordGuestUsage, GUEST_MAX_FILES, GUEST_MAX_BYTES } from "./guestQuota"
+import { getGuestUsage, ensureGuestUsageLoaded, recordGuestUsage, guestQuotaDecision, GUEST_MAX_BYTES } from "./guestQuota"
+import { pendingUsageKey, pendingUsageKeys, flushUnstoredUsage, type UnstoredUsage } from "./pendingUsage"
+import { applyUsageBatch } from "./usageBatch"
 import { saveHandles } from "../lib/handleStore"
 
 // ---------------------------------------------------------------------------
@@ -51,102 +55,10 @@ export type LogEntry = {
   path?: string[];
   filename?: string;
   action?: string;
+  output?: string;
 }
 
 export type ToolTab = 'restore' | 'photovault' | 'folderflow' | 'viewer' | 'comparison' | 'duplicates' | 'studio';
-
-export const PLAN_LABELS: Record<string, string> = {
-  guest: "Guest Trial",
-  free: "Free",
-  recovery_pass: "Single Time",
-  pro: "Pro",
-  super: "Super",
-}
-
-export const getPlanCardStyles = (plan: string, thresholds?: {
-  free?: { maxFiles: number; maxSizeMB: number };
-  recovery_pass?: { maxFiles: number; maxSizeMB: number };
-  pro?: { maxFiles: number; maxSizeMB: number };
-  super?: { maxFiles: number; maxSizeMB: number };
-}, isFreePromoActive?: boolean) => {
-  switch (plan) {
-    case 'super':
-      return {
-        cardClass: "bg-white border-amber-200 shadow-sm",
-        badgeClass: "bg-amber-100 border-amber-200 text-amber-800 font-bold",
-        badgeText: "Super Active",
-        iconClass: "text-amber-600",
-        titleClass: "text-amber-800",
-        titleText: "Super Lifetime Plan",
-        description: "Unlimited restorations, EXIF repairs, and maximum thread count (Super Tier).",
-      };
-    case 'pro':
-      return {
-        cardClass: "bg-white border-purple-200 shadow-sm",
-        badgeClass: "bg-purple-100 border-purple-200 text-purple-800 font-bold",
-        badgeText: "Pro Active",
-        iconClass: "text-purple-600",
-        titleClass: "text-purple-800",
-        titleText: "Pro Lifetime Plan",
-        description: "High speed restorations, EXIF repairs, and priority support.",
-      };
-    case 'recovery_pass': {
-      const maxFiles = thresholds?.recovery_pass?.maxFiles ?? 3000;
-      const maxSizeMB = thresholds?.recovery_pass?.maxSizeMB ?? 3072;
-      const sizeStr = maxSizeMB >= 1024 ? `${(maxSizeMB / 1024).toFixed(0)} GB` : `${maxSizeMB} MB`;
-      const fileStr = maxFiles === Infinity ? "unlimited" : maxFiles.toLocaleString();
-      const descText = maxFiles === Infinity
-        ? "Single pass fully unlocked with no file count limits."
-        : `Single pass fully unlocked up to ${fileStr} files (${sizeStr} size limit).`;
-      return {
-        cardClass: "bg-white border-blue-200 shadow-sm",
-        badgeClass: "bg-blue-100 border-blue-200 text-blue-800 font-bold",
-        badgeText: "Single Pass",
-        iconClass: "text-blue-600",
-        titleClass: "text-blue-800",
-        titleText: "Single Time Plan",
-        description: descText,
-      };
-    }
-    case 'guest':
-      return {
-        cardClass: "bg-white border-zinc-200 shadow-sm",
-        badgeClass: "bg-amber-100 border-amber-200 text-amber-800 font-semibold",
-        badgeText: "Guest Mode",
-        iconClass: "text-amber-600",
-        titleClass: "text-zinc-800",
-        titleText: "Guest Mode",
-        description: "Sign-in is optional. 100% private, local browser restoration with no file limits.",
-      };
-    case 'free':
-    default: {
-      if (isFreePromoActive) {
-        return {
-          cardClass: "bg-emerald-500/5 border-emerald-500/30 shadow-sm ring-1 ring-emerald-500/20",
-          badgeClass: "bg-emerald-500/15 border-emerald-500/30 text-emerald-400 font-bold",
-          badgeText: "Free (Unlimited Active)",
-          iconClass: "text-emerald-400",
-          titleClass: "text-emerald-400",
-          titleText: "Free Plan — Unlimited Event",
-          description: "Special limited-time event active: All file and storage limits are lifted for Free tier users!",
-        };
-      }
-      const maxFiles = thresholds?.free?.maxFiles ?? Infinity;
-      const maxSizeMB = thresholds?.free?.maxSizeMB ?? Infinity;
-      const sizeStr = maxSizeMB === Infinity ? "Unlimited" : (maxSizeMB >= 1024 ? `${(maxSizeMB / 1024).toFixed(0)} GB` : `${maxSizeMB} MB`);
-      const fileStr = maxFiles === Infinity ? "unlimited" : maxFiles.toLocaleString();
-      return {
-        cardClass: "bg-white border-zinc-200 shadow-sm",
-        badgeClass: "bg-emerald-100 border-emerald-200 text-emerald-800 font-semibold",
-        badgeText: "Free Plan",
-        iconClass: "text-emerald-600",
-        titleClass: "text-zinc-800",
-        titleText: "Free Community Plan",
-        description: "100% free browser-based restoration. Need 10x faster multi-threaded processing for massive 100GB+ archives? Upgrade to the Dedicated Desktop App.",
-      };
-    }
-  }
-};
 
 // ---------------------------------------------------------------------------
 // Hook
@@ -157,6 +69,14 @@ export function useToolPipeline() {
   const issuesLogLinesRef = useRef<string[]>([]);
   const latestAuditLogRef = useRef<string>("");
   const latestIssuesLogRef = useRef<string>("");
+
+  const resetReports = (resumed: boolean) => {
+    const notice = 'Earlier file details are unavailable after resuming; check the original output and any earlier reports.';
+    auditLogLinesRef.current = resumed ? [notice] : [];
+    issuesLogLinesRef.current = resumed ? [notice] : [];
+    latestAuditLogRef.current = '';
+    latestIssuesLogRef.current = '';
+  };
 
   const [elapsedSeconds, setElapsedSeconds] = useState<number>(0);
   const [filesPerSec, setFilesPerSec] = useState<string>("0.0");
@@ -205,9 +125,12 @@ export function useToolPipeline() {
     setTimeout(() => URL.revokeObjectURL(url), 1000);
   };
   const { user, userData, refreshUserData } = useAuth()
+  const currentUserUidRef = useRef<string | null>(null)
+  currentUserUidRef.current = user?.uid || null
 
   const isPassExpired = userData?.plan === 'recovery_pass' && userData?.expiresAt && Date.now() >= userData.expiresAt;
-  const plan = !user ? 'guest' : ((userData?.plan === 'recovery_pass' && isPassExpired) ? 'free' : (userData?.plan || 'free'));
+  const savedPlan: string | undefined = userData?.plan;
+  const plan = !user ? 'guest' : ((savedPlan === 'guest' || (savedPlan === 'recovery_pass' && isPassExpired)) ? 'free' : (savedPlan || 'free'));
 
   const getUserBytes = (u: Record<string, unknown> | null | undefined) => {
     if (!u) return 0;
@@ -222,15 +145,8 @@ export function useToolPipeline() {
     const usedFiles = typeof u.usedFiles === 'number' ? u.usedFiles : 0;
     const totalFilesProcessed = typeof u.totalFilesProcessed === 'number' ? u.totalFilesProcessed : 0;
     const lifetimeFiles = typeof u.lifetimeFiles === 'number' ? u.lifetimeFiles : 0;
-    const totalBytesProcessed = typeof u.totalBytesProcessed === 'number' ? u.totalBytesProcessed : 0;
-    const usedBytes = typeof u.usedBytes === 'number' ? u.usedBytes : 0;
-    const lifetimeBytes = typeof u.lifetimeBytes === 'number' ? u.lifetimeBytes : 0;
-
     const recorded = Math.max(totalFilesProcessed, usedFiles, lifetimeFiles);
-    const trackedBytes = Math.max(totalBytesProcessed, usedBytes);
-    const legacyBytes = Math.max(0, lifetimeBytes - trackedBytes);
-    const legacyFiles = legacyBytes > 0 ? Math.round(legacyBytes / (1.2 * 1024 * 1024)) : 0;
-    return recorded + legacyFiles;
+    return recorded;
   }
 
   const guestUsage = !user ? getGuestUsage() : { files: 0, bytes: 0 };
@@ -247,12 +163,10 @@ export function useToolPipeline() {
   const [isFreePromoActive, setIsFreePromoActive] = useState(false)
   const [unlockFreeFeatures, setUnlockFreeFeatures] = useState(true)
 
-  // Core browser tool dynamically respects tier thresholds:
-  // Guest user has 1 GB storage limit (no file count limit).
-  // Signed-in user has 100% unlimited access.
-  const isFreeUnlimited = plan !== 'guest';
+  // Guests can sign in to continue after reaching the free guest limit.
+  const isFreeUnlimited = Boolean(user);
   const limitFiles = Infinity;
-  const limitBytes = plan === 'guest' ? GUEST_MAX_BYTES : Infinity;
+  const limitBytes = user ? Infinity : GUEST_MAX_BYTES;
 
   const limitFilesRef = useRef(limitFiles)
   const limitBytesRef = useRef(limitBytes)
@@ -300,6 +214,7 @@ export function useToolPipeline() {
             return (val === undefined || val === null || num === 0 || isNaN(num)) ? Infinity : num;
           };
           setTierThresholds({
+            guest: { maxFiles: Infinity, maxSizeMB: GUEST_MAX_BYTES / 1024 / 1024 },
             free: {
               maxFiles: parseLimit(stored.free?.maxFiles),
               maxSizeMB: parseLimit(stored.free?.maxSizeMB),
@@ -325,11 +240,6 @@ export function useToolPipeline() {
     return unsub
   }, [])
 
-  // Local Resource Telemetry Heartbeat
-  const [telemetryCpu, setTelemetryCpu] = useState(1.8)
-  const [telemetryMem, setTelemetryMem] = useState(24.2)
-  const [telemetryTabHeap, setTelemetryTabHeap] = useState(45.0)
-  const [telemetryWorkers, setTelemetryWorkers] = useState(0)
   const [, setTimeTick] = useState(0)
 
   const {
@@ -380,6 +290,8 @@ export function useToolPipeline() {
   // Quota session trackers
   const sessionBytesRef = useRef(0)
   const sessionFilesRef = useRef(0)
+  const commitSessionUsageRef = useRef(commitSessionUsage)
+  commitSessionUsageRef.current = commitSessionUsage
   const [sessionBytes, setSessionBytes] = useState(0)
   const [sessionFiles, setSessionFiles] = useState(0)
 
@@ -397,6 +309,8 @@ export function useToolPipeline() {
   const lastActiveSessionUpdateRef = useRef<number>(0)
   const lastCommitTimeRef = useRef<number>(0)
   const currentSessionRef = useRef<ActiveSession | null>(null)
+  const usageOwnerUidRef = useRef<string | null>(null)
+  const cancelForAccountChangeRef = useRef<(() => Promise<void>) | null>(null)
   const restoredTimestampsCatalogRef = useRef<{ path: string; epoch: number }[]>([])
 
   const [activeToolTab, setActiveToolTabState] = useState<ToolTab>(() => {
@@ -425,7 +339,6 @@ export function useToolPipeline() {
   const [outputLock, setOutputLock] = useState(false)
   const [takeoutFolderStructure] = useState<any>(null)
   const [zipFilesList] = useState<any[]>([])
-  const [showCompareModal, setShowCompareModal] = useState(false)
   const [modalContext, setModalContext] = useState<'source' | 'destination' | null>(null)
   const [pendingFolderHandle, setPendingFolderHandle] = useState<FileSystemDirectoryHandle | null>(null)
 
@@ -482,7 +395,42 @@ export function useToolPipeline() {
 
   const sessionManagerRef = useRef<SessionManager>(new SessionManager())
   const workerPoolRef = useRef<WorkerPool | null>(null)
+  const inFlightTasksRef = useRef(new Set<Promise<void>>())
+  const pipelineGenerationRef = useRef(0)
+  const startupTaskRef = useRef<Promise<void> | null>(null)
+  const restoreLockReleaseRef = useRef<(() => void) | null>(null)
+  const restoreLockPendingRef = useRef(false)
+  const pipelineLaunchedRef = useRef(false)
+  const cancellingRef = useRef(false)
+  const disposedRef = useRef(false)
   const resumeNextRef = useRef<(() => void) | null>(null)
+  const retryPendingUsageRef = useRef<(() => void) | null>(null)
+  const unstoredUsageRef = useRef<UnstoredUsage[]>([])
+  const journalFlushRef = useRef<Promise<void> | null>(null)
+
+  const releaseRestoreLock = () => {
+    const release = restoreLockReleaseRef.current
+    release?.()
+    restoreLockReleaseRef.current = null
+    pipelineLaunchedRef.current = false
+    if (release && !disposedRef.current) window.setTimeout(() => retryPendingUsageRef.current?.(), 0)
+  }
+
+  const lockRestore = async () => {
+    if (restoreLockPendingRef.current || restoreLockReleaseRef.current) throw new Error('A restore is already open in this tab.')
+    restoreLockPendingRef.current = true
+    let release: () => void
+    try {
+      release = await acquireRestoreLock(navigator.locks)
+    } finally {
+      restoreLockPendingRef.current = false
+    }
+    if (disposedRef.current) {
+      release()
+      throw new Error('The restore workspace is no longer open.')
+    }
+    restoreLockReleaseRef.current = release
+  }
 
   // 1. Visual EXIF Viewer state
   const [viewerFile, setViewerFile] = useState<File | null>(null)
@@ -518,6 +466,7 @@ export function useToolPipeline() {
   };
 
   useEffect(() => {
+    disposedRef.current = false
     const initTelemetryAndSession = async () => {
       // Always calculate optimal thread count dynamically to respect hardware capabilities
       const optimal = getOptimalThreadCount();
@@ -527,9 +476,12 @@ export function useToolPipeline() {
       await indexedDbService.remove('telemetry', 'takeoutfix_max_workers').catch(() => {});
 
       // 2. Check for pending crashed/interrupted session
-      const active = await sessionManagerRef.current.getActiveSession();
-      if (active) {
-        setPendingSession(active);
+      try {
+        const active = await sessionManagerRef.current.getActiveSession();
+        if (active) setPendingSession(active);
+      } catch (error) {
+        console.error("Could not check for interrupted restores:", error);
+        useToastStore.getState().addToast("Could not check saved restores. Check browser storage before starting a new run.", "error", 10000);
       }
     };
     initTelemetryAndSession();
@@ -538,7 +490,7 @@ export function useToolPipeline() {
       if (isProcessingRef.current) {
         e.preventDefault()
         e.returnValue = ''
-        commitSessionUsage()
+        void commitSessionUsageRef.current().catch(error => console.error('Could not save usage before leaving:', error))
       }
     }
 
@@ -549,19 +501,41 @@ export function useToolPipeline() {
     }
 
     // SW background sync: flush pending Firestore usage when reconnected after offline
-    const handleFlushUsage = () => { commitSessionUsage() }
+    const handleFlushUsage = () => { void commitSessionUsageRef.current().catch(error => console.error('Could not flush usage:', error)) }
 
     window.addEventListener('beforeunload', handleBeforeUnload)
     window.addEventListener('takeoutfix-restore-output', handleRestoreOutput)
     window.addEventListener('takeoutfix-flush-usage', handleFlushUsage)
 
     return () => {
+      disposedRef.current = true
+      pipelineGenerationRef.current++
+      isProcessingRef.current = false
       window.removeEventListener('beforeunload', handleBeforeUnload)
       window.removeEventListener('takeoutfix-restore-output', handleRestoreOutput)
       window.removeEventListener('takeoutfix-flush-usage', handleFlushUsage)
-      commitSessionUsage()
       if (flushInterval.current) window.clearInterval(flushInterval.current)
       if (workerPoolRef.current) workerPoolRef.current.terminate()
+      const startup = startupTaskRef.current
+      const heldLock = restoreLockReleaseRef.current
+      void (async () => {
+        if (startup) await startup.catch(error => console.error('Restore startup cleanup failed:', error))
+        await Promise.allSettled([...inFlightTasksRef.current])
+        let timeout: number | undefined
+        try {
+          await Promise.race([
+            commitSessionUsageRef.current(),
+            new Promise<never>((_, reject) => {
+              timeout = window.setTimeout(() => reject(new Error('Usage save is still pending.')), 10000)
+            })
+          ])
+        } catch (error) {
+          console.error('Could not save usage during cleanup:', error)
+        } finally {
+          if (timeout !== undefined) window.clearTimeout(timeout)
+          if (heldLock && restoreLockReleaseRef.current === heldLock) releaseRestoreLock()
+        }
+      })()
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
@@ -576,62 +550,55 @@ export function useToolPipeline() {
     }
   }, [logs])
 
-  // Recover usage from any previous crashed/interrupted session stored in IndexedDB
+  // Recover usage stored in IndexedDB when a previous submission could not finish.
+  const flushUnstoredJournal = () => {
+    if (journalFlushRef.current) return journalFlushRef.current
+    const task = flushUnstoredUsage(unstoredUsageRef.current, entry => indexedDbService.set('telemetry', entry.key, entry.value))
+    journalFlushRef.current = task
+    void task.then(() => { journalFlushRef.current = null }, () => { journalFlushRef.current = null })
+    return task
+  }
+
   const recoverPendingUsage = async () => {
     if (!user) return
+    let releaseRestoreLock: (() => void) | undefined
     try {
-      const pending = await indexedDbService.get('telemetry', 'takeoutfix_pending_usage')
-      if (pending && pending.uid === user.uid) {
-        const { bytes, files, takeoutName, historySessionId } = pending
-        if (bytes > 0 || files > 0) {
-          console.log(`Recovering pending usage from crashed session: ${files} files, ${bytes} bytes`)
-          await saveUsageToFirestore(bytes, files)
-
-          if (historySessionId) {
-            const historyRef = doc(db, 'recoveryHistory', user.uid, 'sessions', historySessionId)
-            await setDoc(historyRef, {
-              filesProcessed: increment(files),
-              matched: increment(files),
-              recovered: increment(files),
-              bytesProcessed: increment(bytes),
-              status: 'failed',
-              recoveredFromCrash: true
-            }, { merge: true }).catch(err => console.error("Failed to update crashed session history:", err))
-          } else {
-            await addDoc(collection(db, 'recoveryHistory', user.uid, 'sessions'), {
-              archiveName: takeoutName || 'Google Takeout Archive (Recovered)',
-              timestamp: Date.now(),
-              filesProcessed: files,
-              matched: files,
-              recovered: files,
-              failed: 0,
-              bytesProcessed: bytes,
-              duration: 0,
-              status: 'failed',
-              recoveredFromCrash: true
-            }).catch(err => console.error("Failed to write crashed session history fallback:", err))
+      releaseRestoreLock = await acquireRestoreLock(navigator.locks)
+      const keys = await indexedDbService.getAllKeys('telemetry')
+      for (const pendingKey of pendingUsageKeys(user.uid, keys)) {
+        if (currentUserUidRef.current !== user.uid) return
+        const pending = await indexedDbService.get('telemetry', pendingKey)
+        if (currentUserUidRef.current !== user.uid) return
+        if (pending && pending.uid === user.uid) {
+          const { bytes, files, batchId } = pending
+          if (bytes > 0 || files > 0) {
+            console.log(`Recovering pending usage: ${files} files, ${bytes} bytes`)
+            if (batchId) await applyUsageBatch(db, user.uid, batchId, bytes, files)
+            // shortcut: older records have no batch ID and may already be counted, migrate after reconciling old usage.
+            else await saveUsageToFirestore(bytes, files, false)
           }
-
-          // Update platform stats
-          const globalRef = doc(db, 'platform_stats', 'global')
-          await setDoc(globalRef, {
-            filesRestored: increment(files),
-            filesScanned: increment(files),
-            bytesProcessed: increment(bytes),
-            ticketsResolved: increment(0)
-          }, { merge: true }).catch(console.error)
+          await indexedDbService.remove('telemetry', pendingKey)
+          await refreshUserData().catch(err => console.warn('Could not refresh account data after usage recovery:', err))
         }
-        await indexedDbService.remove('telemetry', 'takeoutfix_pending_usage')
       }
     } catch (err) {
       console.error("Failed to recover pending usage:", err)
+    } finally {
+      releaseRestoreLock?.()
     }
+  }
+  retryPendingUsageRef.current = () => {
+    if (disposedRef.current) return
+    void flushUnstoredJournal().then(() => {
+      if (user && currentUserUidRef.current === user.uid && navigator.onLine && !restoreLockReleaseRef.current && !disposedRef.current) void recoverPendingUsage()
+    }).catch(error => console.warn('Could not save pending usage on this device:', error))
   }
 
   useEffect(() => {
-    if (user) {
-      recoverPendingUsage()
-    }
+    retryPendingUsageRef.current?.()
+    const retryWhenOnline = () => retryPendingUsageRef.current?.()
+    window.addEventListener('online', retryWhenOnline)
+    return () => window.removeEventListener('online', retryWhenOnline)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user])
 
@@ -658,6 +625,18 @@ export function useToolPipeline() {
 
     lastActiveSessionUpdateRef.current = now
     const sessionRef = doc(db, 'active_sessions', sessionIdRef.current)
+    const sessionId = sessionIdRef.current
+    const historyId = historySessionIdRef.current
+    const generation = pipelineGenerationRef.current
+    const historyFields = {
+      filesProcessed: statsBuffer.current.scanned,
+      matched: statsBuffer.current.matched,
+      recovered: statsBuffer.current.matched,
+      failed: statsBuffer.current.errors,
+      bytesProcessed: totalSessionBytesRef.current,
+      duration: Date.now() - startTimeRef.current,
+      status
+    }
 
     try {
       await setDoc(sessionRef, {
@@ -669,36 +648,30 @@ export function useToolPipeline() {
       }, { merge: true })
 
       // Dynamically update the user's dashboard recovery history record in Firestore
-      if (historySessionIdRef.current) {
-        const historyRef = doc(db, 'recoveryHistory', user.uid, 'sessions', historySessionIdRef.current)
-        await setDoc(historyRef, {
-          filesProcessed: statsBuffer.current.scanned,
-          matched: statsBuffer.current.matched,
-          recovered: statsBuffer.current.matched,
-          failed: statsBuffer.current.errors,
-          bytesProcessed: totalSessionBytesRef.current,
-          duration: Date.now() - startTimeRef.current,
-          status: status === 'processing' ? 'processing' : status
-        }, { merge: true }).catch(err => console.error("Failed to update dynamic recovery history:", err))
+      if (historyId && sessionIdRef.current === sessionId && pipelineGenerationRef.current === generation && currentUserUidRef.current === user.uid) {
+        const historyRef = doc(db, 'recoveryHistory', user.uid, 'sessions', historyId)
+        await setDoc(historyRef, historyFields, { merge: true }).catch(err => console.error("Failed to update dynamic recovery history:", err))
       }
     } catch (err) {
       console.warn("Failed to update active session telemetry:", err)
     }
   }
 
-  async function saveUsageToFirestore(bytes: number, files: number) {
+  async function saveUsageToFirestore(bytes: number, files: number, refresh = true) {
     if (!user) return
-    try {
-      const userRef = doc(db, 'users', user.uid)
-      await setDoc(userRef, {
-        usedBytes: increment(bytes),
-        usedFiles: increment(files),
-        totalBytesProcessed: increment(bytes),
-        totalFilesProcessed: increment(files),
-      }, { merge: true })
-      await refreshUserData()
-    } catch (err) {
-      console.error("Failed to save usage telemetry:", err)
+    const userRef = doc(db, 'users', user.uid)
+    await setDoc(userRef, {
+      usedBytes: increment(bytes),
+      usedFiles: increment(files),
+      totalBytesProcessed: increment(bytes),
+      totalFilesProcessed: increment(files),
+    }, { merge: true })
+    if (refresh) {
+      try {
+        await refreshUserData()
+      } catch (err) {
+        console.warn("Usage was saved, but account data could not be refreshed:", err)
+      }
     }
   }
 
@@ -706,25 +679,38 @@ export function useToolPipeline() {
     const bytesToSave = sessionBytesRef.current
     const filesToSave = sessionFilesRef.current
     if (bytesToSave <= 0 && filesToSave <= 0) return
+    const sessionId = sessionIdRef.current
+    const historyId = historySessionIdRef.current
+    const ownerUid = usageOwnerUidRef.current
+    const batchId = ownerUid ? crypto.randomUUID() : ''
+    const pendingKey = ownerUid ? pendingUsageKey(ownerUid, `${sessionId || 'unknown'}:${batchId}`) : ''
 
     // Zero out trackers immediately to prevent duplicate updates
     sessionBytesRef.current = 0
     sessionFilesRef.current = 0
     setSessionBytes(0)
     setSessionFiles(0)
-    await indexedDbService.remove('telemetry', 'takeoutfix_pending_usage')
-
-    if (!user) {
-      recordGuestUsage(filesToSave, bytesToSave)
+    if (!ownerUid) {
+      // Guest usage is already recorded when each file completes.
       return
     }
 
+    const record = {
+      uid: ownerUid, batchId, bytes: bytesToSave, files: filesToSave, sessionId,
+      takeoutName: takeoutFolder?.name || 'Google Takeout Archive', historySessionId: historyId
+    }
+    let journalStored = false
     try {
-      await saveUsageToFirestore(bytesToSave, filesToSave)
+      await indexedDbService.set('telemetry', pendingKey, record)
+      journalStored = true
+      if (currentUserUidRef.current !== ownerUid) return
+      await applyUsageBatch(db, ownerUid, batchId, bytesToSave, filesToSave)
+      await indexedDbService.remove('telemetry', pendingKey).catch(error => console.warn('Usage saved, but its local record could not be removed:', error))
+      await refreshUserData().catch(err => console.warn('Usage was saved, but account data could not be refreshed:', err))
 
       // Dynamically update user's live session history record in Firestore
-      if (user && historySessionIdRef.current) {
-        const historyRef = doc(db, 'recoveryHistory', user.uid, 'sessions', historySessionIdRef.current)
+      if (historyId && sessionIdRef.current === sessionId && currentUserUidRef.current === ownerUid) {
+        const historyRef = doc(db, 'recoveryHistory', ownerUid, 'sessions', historyId)
         await setDoc(historyRef, {
           filesProcessed: statsBuffer.current.scanned,
           matched: statsBuffer.current.matched,
@@ -736,20 +722,10 @@ export function useToolPipeline() {
       }
     } catch (err) {
       console.error("Failed to commit usage:", err)
-      // Restore counts on failure so they aren't lost
-      sessionBytesRef.current += bytesToSave
-      sessionFilesRef.current += filesToSave
-      setSessionBytes(sessionBytesRef.current)
-      setSessionFiles(sessionFilesRef.current)
-      if (user) {
-        await indexedDbService.set('telemetry', 'takeoutfix_pending_usage', {
-          uid: user.uid,
-          bytes: sessionBytesRef.current,
-          files: sessionFilesRef.current,
-          sessionId: sessionIdRef.current,
-          takeoutName: takeoutFolder?.name || 'Google Takeout Archive',
-          historySessionId: historySessionIdRef.current
-        })
+      if (!journalStored) {
+        unstoredUsageRef.current.push({ key: pendingKey, value: record })
+        useToastStore.getState().addToast('Usage could not be saved on this device. It may be lost if you close this page.', 'error', 10000)
+        if (!disposedRef.current) window.setTimeout(() => retryPendingUsageRef.current?.(), 0)
       }
     }
   }
@@ -764,51 +740,42 @@ export function useToolPipeline() {
     return current
   }
 
-  const getUniqueFileHandle = async (dir: FileSystemDirectoryHandle, filename: string): Promise<FileSystemFileHandle> => {
-    try {
-      await dir.getFileHandle(filename);
-      const dot = filename.lastIndexOf('.');
-      const base = dot > 0 ? filename.substring(0, dot) : filename;
-      const ext = dot > 0 ? filename.substring(dot) : '';
-      let count = 1;
-      while (true) {
-        const candidate = `${base} (${count})${ext}`;
-        try {
-          await dir.getFileHandle(candidate);
-          count++;
-        } catch {
-          return await dir.getFileHandle(candidate, { create: true });
-        }
-      }
-    } catch {
-      return await dir.getFileHandle(filename, { create: true });
-    }
-  }
-
   // Re-grant folder access and resume session
   const handleReGrantPermissions = async () => {
     try {
       const session = pendingSession;
       if (!session) return;
+      if (!canManageSession(session, currentUserUidRef.current)) {
+        useToastStore.getState().addToast("Sign in to the account that started this restore to continue.", "error");
+        return;
+      }
+      if (!hasCompleteSessionScan(session)) {
+        useToastStore.getState().addToast(
+          "The file scan did not finish. Discard this saved session and start again to include all files.",
+          "error",
+          10000
+        );
+        return;
+      }
+      if (session.outputMode !== 'folder') {
+        useToastStore.getState().addToast(
+          "This interrupted session cannot be resumed safely. Start a new restore and check any previously downloaded files.",
+          "error",
+          8000
+        );
+        return;
+      }
 
       if (session.zipFile) {
         try {
           // Verify if File reference in IndexedDB is still readable
           await session.zipFile.slice(0, 10).arrayBuffer();
         } catch {
-          // File handle is stale/expired. Ask user to re-select zip file
-          const input = document.createElement('input');
-          input.type = 'file';
-          input.accept = '.zip';
-          input.onchange = async (e) => {
-            const file = (e.target as HTMLInputElement).files?.[0];
-            if (file) {
-              session.zipFile = file;
-              await sessionManagerRef.current.updateSession({ zipFile: file });
-              proceedResume(session);
-            }
-          };
-          input.click();
+          useToastStore.getState().addToast(
+            "The original ZIP is no longer accessible. Discard this saved session and start again with the original ZIP.",
+            "error",
+            10000
+          );
           return;
         }
       } else if (session.takeoutHandle) {
@@ -836,7 +803,67 @@ export function useToolPipeline() {
   };
 
   const proceedResume = async (session: ActiveSession) => {
+    if (!canManageSession(session, currentUserUidRef.current)) return;
+    if (startupTaskRef.current || isProcessingRef.current || isProcessing) return;
+    const task = (async () => {
+      let acquired = false;
+      try {
+        await lockRestore();
+        acquired = true;
+        const active = await sessionManagerRef.current.getActiveSession();
+        if (disposedRef.current || !active || active.id !== session.id || !canManageSession(active, currentUserUidRef.current) || !hasCompleteSessionScan(active)) {
+          throw new Error('The saved restore has changed. Refresh this page and check its status.');
+        }
+        if (!currentUserUidRef.current) await ensureGuestUsageLoaded();
+        if (disposedRef.current || !canManageSession(active, currentUserUidRef.current)) return;
+        await resumeSession(active);
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        useToastStore.getState().addToast(message, 'error', 10000);
+      } finally {
+        if (acquired && !pipelineLaunchedRef.current && !cancellingRef.current) releaseRestoreLock();
+      }
+    })();
+    startupTaskRef.current = task;
+    try { await task; } finally { if (startupTaskRef.current === task) startupTaskRef.current = null; }
+  };
+
+  const discardPendingSession = async () => {
+    if (!pendingSession || !canManageSession(pendingSession, currentUserUidRef.current)) return;
+    if (startupTaskRef.current || isProcessingRef.current || restoreLockReleaseRef.current) return;
+    const task = (async () => {
+      let acquired = false;
+      try {
+        await lockRestore();
+        acquired = true;
+        const active = await sessionManagerRef.current.getActiveSession();
+        if (disposedRef.current || !active || active.id !== pendingSession.id || !canManageSession(active, currentUserUidRef.current)) {
+          throw new Error('The saved restore has changed. Refresh this page and check its status.');
+        }
+        await sessionManagerRef.current.terminateSession('cancelled');
+        setPendingSession(null);
+      } catch (error) {
+        console.error("Could not discard interrupted restore:", error);
+        useToastStore.getState().addToast(error instanceof Error ? error.message : "Could not discard the saved restore.", "error");
+      } finally {
+        if (acquired) releaseRestoreLock();
+      }
+    })();
+    startupTaskRef.current = task;
+    try { await task; } finally { if (startupTaskRef.current === task) startupTaskRef.current = null; }
+  };
+
+  const resumeSession = async (session: ActiveSession) => {
+    if (currentUserUidRef.current !== (user?.uid || null)) {
+      throw new Error('The signed-in account changed. Check your account and try again.');
+    }
+    resetReports(session.scannedCount > 0);
+    usageOwnerUidRef.current = user?.uid || null;
+    cancelForAccountChangeRef.current = () => cancelProcessing('account-change');
+    sessionIdRef.current = session.id;
+    historySessionIdRef.current = null;
     sessionManagerRef.current.setCurrentSession(session);
+    currentSessionRef.current = session;
     setPendingSession(null);
     setTakeoutFolder(session.takeoutHandle);
     setZipFile(session.zipFile);
@@ -856,13 +883,8 @@ export function useToolPipeline() {
       total: session.totalFiles
     };
 
-    try {
-      // Byte sum is stored in session; no need to reload all files into heap
-      totalBytesRef.current = session.bytesProcessed > 0 ? session.bytesProcessed : 0;
-    } catch (err) {
-      console.error("Failed to get bytes on resume:", err);
-      totalBytesRef.current = 0;
-    }
+    totalBytesRef.current = Number.isSafeInteger(session.totalSourceBytes) && (session.totalSourceBytes ?? -1) >= 0 ? session.totalSourceBytes! : 0;
+    totalSessionBytesRef.current = Number.isSafeInteger(session.bytesProcessed) && session.bytesProcessed >= 0 ? session.bytesProcessed : 0;
 
     setStats({ ...statsBuffer.current });
     setProgress(Math.floor((session.scannedCount / session.totalFiles) * 100));
@@ -873,8 +895,15 @@ export function useToolPipeline() {
     try {
       await indexedDbService.resetProcessingToPending();
     } catch (dbErr) {
-      console.warn("Failed to reset in-flight files status:", dbErr);
+      console.error("Failed to reset in-flight files status:", dbErr);
+      setPendingSession(session);
+      setCurrentFile("Could not resume saved restore");
+      setIsProcessing(false);
+      isProcessingRef.current = false;
+      useToastStore.getState().addToast("Could not prepare the saved files. Check browser storage and try again.", "error", 10000);
+      return;
     }
+    if (!isProcessingRef.current) return;
 
     startTimeRef.current = Date.now() - (session.lastUpdatedAt - session.startedAt);
 
@@ -907,16 +936,23 @@ export function useToolPipeline() {
       setIsProcessing(false);
       isProcessingRef.current = false;
       if (flushInterval.current) window.clearInterval(flushInterval.current);
+      workerPoolRef.current?.terminate();
+      workerPoolRef.current = null;
+      await Promise.allSettled([...inFlightTasksRef.current]);
+      if (!cancellingRef.current) releaseRestoreLock();
     }
   };
 
   const processRestorePipeline = async (session: ActiveSession, sessionManager: SessionManager) => {
+    pipelineLaunchedRef.current = true;
+    const generation = ++pipelineGenerationRef.current;
+    const isCurrentRun = () => pipelineGenerationRef.current === generation && isProcessingRef.current;
     currentSessionRef.current = session;
     // 1. Initialize WorkerPool with selected engine
     const engine = useSettingsStore.getState().exifEngine;
     console.log('[PIPELINE ENGINE SELECTED]', engine);
     const driveProfile = useSettingsStore.getState().driveProfile;
-    const effectiveWorkers = driveProfile === 'hdd' ? 1 : maxWorkersRef.current;
+    const effectiveWorkers = driveProfile === 'hdd' || session.zipFile || zipModeRef.current ? 1 : maxWorkersRef.current;
     console.log('[PIPELINE ENGINE: WASM ExifTool] Concurrency:', effectiveWorkers, 'Profile:', driveProfile);
     const pool = new WorkerPool(effectiveWorkers);
     workerPoolRef.current = pool;
@@ -952,15 +988,14 @@ export function useToolPipeline() {
         cached = new Set<string>();
         // @ts-ignore
         for await (const [name] of dirHandle) {
-          const safe = sanitizeFilename(name);
-          if (safe) cached.add(safe);
+          cached.add(name);
         }
         dirCache.set(pathKey, cached);
       }
       return cached;
     };
 
-    // 4. Revert in-flight files (delete half-written and reset status to pending)
+    // 4. Retry in-flight files without deleting existing output.
     await sessionManager.revertInFlightFiles();
 
     // 5. Get total pending count
@@ -975,14 +1010,40 @@ export function useToolPipeline() {
     let isFetchingPage = false;
     let noMorePending = false;
     let lastPendingId: string | null = null;
+    let outputReservation: Promise<void> = Promise.resolve();
+    const usedZipPaths = new Set<string>();
+    let guestReservedBytes = 0;
+    let guestQuotaWaiters: Array<() => void> = [];
+    let finishing = false;
+
+    const failQueue = (error: unknown) => {
+      if (!isCurrentRun()) return;
+      console.error("Restore queue failed:", error);
+      pipelineGenerationRef.current++;
+      isProcessingRef.current = false;
+      if (flushInterval.current) window.clearInterval(flushInterval.current);
+      flushInterval.current = null;
+      workerPoolRef.current?.terminate();
+      workerPoolRef.current = null;
+      const message = zipModeRef.current
+        ? "Restore stopped because local session data could not be read or updated. The current ZIP part may not have downloaded. Keep your originals and check your downloads before retrying."
+        : "Restore stopped because local session data could not be read or updated. Keep your originals and check any partial output before retrying.";
+      setCurrentFile("Restore stopped");
+      setLogs(prev => [...prev, ...logsBuffer.current, { level: 'error', msg: message }]);
+      logsBuffer.current = [];
+      useToastStore.getState().addToast(message, "error", 10000);
+      queueMicrotask(() => {
+        void finishZipFailure(zipReader);
+      });
+    };
 
     const pumpQueue = async () => {
-      if (!isProcessingRef.current || isPausedRef.current) {
-        if (inFlightCount === 0 && !isProcessingRef.current) {
+      if (!isCurrentRun() || isPausedRef.current) {
+        if (inFlightCount === 0 && !isCurrentRun()) {
           if (zipReader) {
             try { await zipReader.close(); } catch {}
           }
-          resumeNextRef.current = null;
+          if (pipelineGenerationRef.current === generation) resumeNextRef.current = null;
         }
         return;
       }
@@ -992,6 +1053,7 @@ export function useToolPipeline() {
         isFetchingPage = true;
         try {
           const nextBatch = await sessionManager.getPendingFilesPage(lastPendingId, 150);
+          if (!isCurrentRun()) return;
           if (!nextBatch || nextBatch.length === 0) {
             noMorePending = true;
           } else {
@@ -1003,6 +1065,7 @@ export function useToolPipeline() {
           }
         } catch (err) {
           console.error("Failed to load pending files batch:", err);
+          throw err;
         } finally {
           isFetchingPage = false;
         }
@@ -1011,15 +1074,18 @@ export function useToolPipeline() {
       // Check if completely drained and trigger auto-completion
       if (inFlightCount === 0 && fileQueue.length === 0) {
         const remainingInDb = await sessionManager.getPendingCount();
-        if (remainingInDb === 0 && isProcessingRef.current) {
+        if (!isCurrentRun()) return;
+        if (remainingInDb === 0 && isProcessingRef.current && !finishing) {
+          finishing = true;
           if (zipReader) {
             try { await zipReader.close(); } catch {}
           }
+          if (!isCurrentRun()) return;
           resumeNextRef.current = null;
           if (zipModeRef.current) {
-            await downloadCurrentZipChunk();
+            if (!await downloadCurrentZipChunk()) return;
           }
-          await completeProcessing();
+          if (isCurrentRun()) await completeProcessing();
           return;
         } else if (remainingInDb > 0 && isProcessingRef.current && !isPausedRef.current) {
           noMorePending = false;
@@ -1034,7 +1100,7 @@ export function useToolPipeline() {
 
       // Dispatch up to inflightLimit tasks
       while (inFlightCount < inflightLimit && fileQueue.length > 0) {
-        if (!isProcessingRef.current || isPausedRef.current) break;
+        if (!isCurrentRun() || isPausedRef.current) break;
         if (isProcessingHeavy && inFlightCount > 0) break;
 
         const nextFile = fileQueue[0];
@@ -1060,16 +1126,18 @@ export function useToolPipeline() {
         setActiveWorkersCount(inFlightCount);
 
         // Execute task in self-contained worker closure
-        (async (fileRecord: FileRecord, heavyFlag: boolean) => {
+        const task = (async (fileRecord: FileRecord, heavyFlag: boolean) => {
           let writable: any = null;
+          let guestReservation = 0;
+          let outputDescription = '';
           try {
             // Check quota limits
             const isBypass = Boolean(user && (userData?.isAdmin || (import.meta as any).env?.DEV));
-            if (!isBypass && (currentUsedBytesRef.current + sessionBytesRef.current > limitBytesRef.current || currentUsedFilesRef.current + sessionFilesRef.current > limitFilesRef.current)) {
-              if (zipReader) {
-                try { await zipReader.close(); } catch {}
-              }
-              await haltDueToQuota();
+            const usedBytes = user ? currentUsedBytesRef.current + sessionBytesRef.current : getGuestUsage().bytes;
+            if (!isBypass && (usedBytes >= limitBytesRef.current || currentUsedFilesRef.current + sessionFilesRef.current > limitFilesRef.current)) {
+              pipelineGenerationRef.current++;
+              isProcessingRef.current = false;
+              queueMicrotask(() => { void haltDueToQuota(); });
               return;
             }
 
@@ -1117,6 +1185,24 @@ export function useToolPipeline() {
             if (!fileObj && !zipEntry) {
               throw new Error("Source file reference not found.");
             }
+            if (!Number.isSafeInteger(size) || size < 0) throw new Error("The source file has an invalid size.");
+            if (!isCurrentRun()) return;
+            if (!user) {
+              while (isCurrentRun()) {
+                const decision = guestQuotaDecision(getGuestUsage().bytes, guestReservedBytes, size);
+                if (decision === 'fit') break;
+                if (decision === 'limit') {
+                  pipelineGenerationRef.current++;
+                  isProcessingRef.current = false;
+                  queueMicrotask(() => { void haltDueToQuota(); });
+                  return;
+                }
+                await new Promise<void>(resolve => { guestQuotaWaiters.push(resolve); });
+              }
+              if (!isCurrentRun()) return;
+              guestReservation = size;
+              guestReservedBytes += size;
+            }
 
             let epochSec: number | null = null;
             let lat: number | undefined = undefined;
@@ -1136,15 +1222,9 @@ export function useToolPipeline() {
                   const parsed: any = safeParseJson(await jsonFile.text());
                   if (parsed) {
                     epochSec = extractTimestamp(parsed);
-                    const geoData = parsed.geoData;
-                    if (geoData && typeof geoData === 'object') {
-                      const latVal = typeof geoData.latitude === 'number' ? geoData.latitude : (geoData.latitude ? Number(geoData.latitude) : 0);
-                      const lngVal = typeof geoData.longitude === 'number' ? geoData.longitude : (geoData.longitude ? Number(geoData.longitude) : 0);
-                      if (!isNaN(latVal) && !isNaN(lngVal) && (Math.abs(latVal) > 0.0001 || Math.abs(lngVal) > 0.0001)) {
-                        lat = latVal;
-                        lng = lngVal;
-                      }
-                    }
+                    const coordinates = extractCoordinates(parsed);
+                    lat = coordinates?.lat;
+                    lng = coordinates?.lng;
                     if (typeof parsed.description === 'string' && parsed.description.trim()) {
                       description = parsed.description.trim();
                     }
@@ -1221,41 +1301,44 @@ export function useToolPipeline() {
             }
 
             let bufferOrBlob: any = null;
-            let actionStr = 'No Metadata Found';
+            let actionStr = 'Copied (no usable date; metadata not restored)';
             let levelStr = 'warn';
 
-            const baseFolder = (epochSec && actionStr !== 'EXIF Error') ? 'restored' : 'unmatched';
             const organizeByYearMonth = useSettingsStore.getState().organizeYearMonth;
-            let outRelativePath: string[];
-            if (organizeByYearMonth && epochSec && actionStr !== 'EXIF Error') {
-              const dt = new Date(epochSec * 1000);
-              const y = String(dt.getFullYear());
-              const m = `${y}-${String(dt.getMonth() + 1).padStart(2, '0')}`;
-              outRelativePath = ['restored', y, m];
-            } else {
-              outRelativePath = [baseFolder, ...fileRecord.relativePath];
-            }
-
-            let outSubDir: FileSystemDirectoryHandle | null = null;
-            let outHandle: FileSystemFileHandle | null = null;
-            if (!zipModeRef.current) {
+            const outputPath = (restored: boolean): string[] => {
+              if (restored && organizeByYearMonth && epochSec) {
+                const dt = new Date(epochSec * 1000);
+                const y = String(dt.getFullYear());
+                return ['restored', y, `${y}-${String(dt.getMonth() + 1).padStart(2, '0')}`];
+              }
+              return [restored ? 'restored' : 'unmatched', ...fileRecord.relativePath];
+            };
+            const outputHandle = async (path: string[]) => {
+              const previous = outputReservation;
+              let release!: () => void;
+              outputReservation = new Promise<void>(resolve => { release = resolve; });
+              await previous;
               try {
                 const perm = await (session.outputHandle as any).queryPermission?.({ mode: 'readwrite' });
+                if (perm === 'denied') throw new Error('Write permission was denied. Select the output folder again.');
                 if (perm === 'prompt') {
-                  await (session.outputHandle as any).requestPermission?.({ mode: 'readwrite' });
+                  const granted = await (session.outputHandle as any).requestPermission?.({ mode: 'readwrite' });
+                  if (granted !== 'granted') throw new Error('Write permission is required. Select the output folder again.');
                 }
-                outSubDir = await getOrCreateDir(session.outputHandle!, outRelativePath);
-                outHandle = await getUniqueFileHandle(outSubDir, fileRecord.filename);
-              } catch (permErr: any) {
-                throw new Error(`Output folder access lost — please re-select destination and resume. (${permErr?.message ?? permErr})`);
+                const dir = await getOrCreateDir(session.outputHandle!, path);
+                return await getUniqueFileHandle(dir, fileRecord.filename);
+              } catch (error: unknown) {
+                const detail = error instanceof Error ? error.message : String(error);
+                throw new Error(`Could not create the output file: ${detail}`);
+              } finally {
+                release();
               }
-            }
+            };
 
-            const engine = useSettingsStore.getState().exifEngine;
             const isVideo = isVideoFilename(fileRecord.filename);
             const isSupported = isSupportedImageFormat(fileRecord.filename) || isVideo;
 
-            if (epochSec && isSupported) {
+            if (isSupported && (epochSec || (!isVideo && lat !== undefined && lng !== undefined))) {
               actionStr = isVideo ? 'Restored (Video Meta)' : 'Restored';
               levelStr = 'success';
 
@@ -1282,9 +1365,13 @@ export function useToolPipeline() {
                   type: isVideo ? 'video' : 'image'
                 }, [bufferOrBlob]);
 
-                bufferOrBlob = res.buffer || bufferOrBlob;
+                if (!(res?.buffer instanceof ArrayBuffer) || (size > 0 && res.buffer.byteLength === 0) || typeof res.success !== 'boolean') {
+                  throw new Error('Metadata worker returned an invalid file. No output was saved.');
+                }
+                bufferOrBlob = res.buffer;
                 if (res.success) {
-                  actionStr = 'Restored';
+                  actionStr = epochSec ? 'Restored' : 'Location restored; date unavailable';
+                  if (!epochSec) levelStr = 'warn';
                 } else {
                   actionStr = `Copied (Meta fallback: ${res.error || 'skipped'})`;
                   levelStr = 'warn';
@@ -1296,34 +1383,37 @@ export function useToolPipeline() {
                 throw new Error("Failed to read file contents.");
               }
 
+              const outRelativePath = outputPath(levelStr === 'success');
               if (zipModeRef.current) {
                 if (!currentZipWriterRef.current) {
                   const blobWriter = new BlobWriter("application/zip");
                   currentZipBlobWriterRef.current = blobWriter;
                   currentZipWriterRef.current = new ZipWriter(blobWriter);
                 }
-                const zipEntryPath = [...outRelativePath, fileRecord.filename].join('/');
-                const dateObj = epochSec ? new Date(epochSec * 1000) : new Date();
+                const zipEntryPath = reserveZipPath([...outRelativePath, fileRecord.filename].join('/'), usedZipPaths);
+                const dateObj = epochSec ? new Date(epochSec * 1000)
+                  : fileObj ? new Date(fileObj.lastModified) : zipEntry.lastModDate;
                 await currentZipWriterRef.current.add(zipEntryPath, new BlobReader(new Blob([bufferOrBlob])), {
                   lastModDate: dateObj
                 });
+                outputDescription = `ZIP part ${currentZipPartRef.current} entry: ${zipEntryPath}`;
                 currentZipBytesRef.current += size;
               } else {
-                writable = await outHandle!.createWritable();
+                const outHandle = await outputHandle(outRelativePath);
+                writable = await outHandle.createWritable();
                 await writable.write(bufferOrBlob);
                 await writable.close();
                 writable = null;
                 bufferOrBlob = null;
-                if (epochSec) {
-                  const relPath = [...outRelativePath, fileRecord.filename].join('\\');
+                outputDescription = `Output: ${[...outRelativePath, outHandle.name].join('/')}`;
+                if (epochSec && levelStr === 'success') {
+                  const relPath = [...outRelativePath, outHandle.name].join('/');
                   restoredTimestampsCatalogRef.current.push({ path: relPath, epoch: epochSec });
                 }
               }
             } else {
-              if (epochSec) {
-                actionStr = 'Restored';
-                levelStr = 'success';
-              }
+              if (epochSec) actionStr = 'Copied (unsupported metadata format)';
+              const outRelativePath = outputPath(false);
 
               if (zipModeRef.current) {
                 if (!currentZipWriterRef.current) {
@@ -1331,8 +1421,9 @@ export function useToolPipeline() {
                   currentZipBlobWriterRef.current = blobWriter;
                   currentZipWriterRef.current = new ZipWriter(blobWriter);
                 }
-                const zipEntryPath = [...outRelativePath, fileRecord.filename].join('/');
-                const dateObj = epochSec ? new Date(epochSec * 1000) : new Date();
+                const zipEntryPath = reserveZipPath([...outRelativePath, fileRecord.filename].join('/'), usedZipPaths);
+                const dateObj = epochSec ? new Date(epochSec * 1000)
+                  : fileObj ? new Date(fileObj.lastModified) : zipEntry.lastModDate;
 
                 let contentReader: any;
                 if (fileObj) {
@@ -1348,9 +1439,11 @@ export function useToolPipeline() {
                 await currentZipWriterRef.current.add(zipEntryPath, contentReader, {
                   lastModDate: dateObj
                 });
+                outputDescription = `ZIP part ${currentZipPartRef.current} entry: ${zipEntryPath}`;
                 currentZipBytesRef.current += size;
               } else {
-                writable = await outHandle!.createWritable();
+                const outHandle = await outputHandle(outRelativePath);
+                writable = await outHandle.createWritable();
                 if (fileObj) {
                   const readableStream = fileObj.stream();
                   await readableStream.pipeTo(writable);
@@ -1363,18 +1456,15 @@ export function useToolPipeline() {
                 } else {
                   throw new Error("Failed to resolve file reference for streaming.");
                 }
-                if (epochSec) {
-                  const relPath = [...outRelativePath, fileRecord.filename].join('\\');
-                  restoredTimestampsCatalogRef.current.push({ path: relPath, epoch: epochSec });
-                }
+                outputDescription = `Output: ${[...outRelativePath, outHandle.name].join('/')}`;
               }
             }
 
             if (zipModeRef.current && currentZipBytesRef.current > 1500 * 1024 * 1024) {
-              await downloadCurrentZipChunk();
+              if (!await downloadCurrentZipChunk()) return;
             }
 
-            await sessionManager.confirmFile(fileRecord.id, 'completed', size, epochSec);
+            await sessionManager.confirmFile(fileRecord.id, 'completed', size, epochSec, undefined, levelStr === 'success');
 
             bufferOrBlob = null;
             fileObj = null;
@@ -1395,6 +1485,8 @@ export function useToolPipeline() {
             sessionFilesRef.current += 1;
             totalSessionBytesRef.current += size;
             if (!user) {
+              guestReservedBytes -= guestReservation;
+              guestReservation = 0;
               recordGuestUsage(1, size);
             }
 
@@ -1402,16 +1494,17 @@ export function useToolPipeline() {
               level: levelStr,
               path: fileRecord.relativePath,
               filename: fileRecord.filename,
-              action: actionStr
+              action: actionStr,
+              output: outputDescription
             });
             const logTs = new Date().toISOString().replace('T', ' ').substring(0, 19);
             const fullRel = fileRecord.relativePath.length > 0 ? '/' + fileRecord.relativePath.join('/') + '/' : '/';
-            const logLine = fullRel + fileRecord.filename + ' | ' + actionStr;
+            const logLine = fullRel + fileRecord.filename + ' | ' + actionStr + (outputDescription ? ' | ' + outputDescription : '');
             if (levelStr === 'success') {
               auditLogLinesRef.current.push('[' + logTs + '] RESTORED: ' + logLine);
             } else if (levelStr === 'warn') {
-              auditLogLinesRef.current.push('[' + logTs + '] WARN/UNMATCHED: ' + logLine);
-              issuesLogLinesRef.current.push('[' + logTs + '] UNMATCHED: ' + logLine);
+              auditLogLinesRef.current.push('[' + logTs + '] REVIEW: ' + logLine);
+              issuesLogLinesRef.current.push('[' + logTs + '] REVIEW: ' + logLine);
             } else {
               auditLogLinesRef.current.push('[' + logTs + '] ERROR: ' + logLine);
               issuesLogLinesRef.current.push('[' + logTs + '] ERROR: ' + logLine);
@@ -1427,23 +1520,33 @@ export function useToolPipeline() {
             }
             console.error("Pipeline file error:", fileRecord.filename, err);
 
-            await sessionManager.confirmFile(fileRecord.id, 'failed', fileRecord.bytes, null, err.message);
+            const errorMessage = err instanceof Error ? err.message : String(err || 'Unknown error');
+            await sessionManager.confirmFile(fileRecord.id, 'failed', fileRecord.bytes, null, errorMessage);
 
             statsBuffer.current.errors += 1;
             statsBuffer.current.scanned += 1;
-            sessionFilesRef.current += 1;
 
+            const errorAction = `Error: ${errorMessage}`;
             logsBuffer.current.push({
               level: 'error',
               path: fileRecord.relativePath,
               filename: fileRecord.filename,
-              action: `Error: ${err.message || 'Unknown'}`
+              action: errorAction
             });
+            const logTs = new Date().toISOString().replace('T', ' ').substring(0, 19);
+            const fullRel = fileRecord.relativePath.length > 0 ? '/' + fileRecord.relativePath.join('/') + '/' : '/';
+            const logLine = '[' + logTs + '] ERROR: ' + fullRel + fileRecord.filename + ' | ' + errorAction;
+            auditLogLinesRef.current.push(logLine);
+            issuesLogLinesRef.current.push(logLine);
             fileBuffer.current = fileRecord.filename;
             progressBuffer.current = statsBuffer.current.total > 0
               ? Math.floor((statsBuffer.current.scanned / statsBuffer.current.total) * 100)
               : 0;
           } finally {
+            guestReservedBytes -= guestReservation;
+            const waiters = guestQuotaWaiters;
+            guestQuotaWaiters = [];
+            waiters.forEach(resolve => resolve());
             inFlightCount--;
             if (heavyFlag) {
               isProcessingHeavy = false;
@@ -1456,38 +1559,54 @@ export function useToolPipeline() {
             }
 
             // Immediately trigger next queue items
-            pumpQueue();
+            void pumpQueue().catch(failQueue);
 
             // Completion check: when all workers and queues are drained
-            if (inFlightCount === 0 && fileQueue.length === 0) {
+            if (isCurrentRun() && inFlightCount === 0 && fileQueue.length === 0) {
               const remainingInDb = await sessionManager.getPendingCount();
-              if (remainingInDb === 0 && isProcessingRef.current) {
+              if (remainingInDb === 0 && isCurrentRun() && !finishing) {
+                finishing = true;
                 if (zipReader) {
                   try { await zipReader.close(); } catch {}
                 }
-                resumeNextRef.current = null;
-                if (zipModeRef.current) {
-                  await downloadCurrentZipChunk();
+                if (isCurrentRun()) {
+                  resumeNextRef.current = null;
+                  if (zipModeRef.current) {
+                    if (!await downloadCurrentZipChunk()) return;
+                  }
+                  if (isCurrentRun()) await completeProcessing();
                 }
-                await completeProcessing();
-              } else if (remainingInDb > 0 && isProcessingRef.current && !isPausedRef.current) {
+              } else if (remainingInDb > 0 && isCurrentRun() && !isPausedRef.current) {
                 noMorePending = false;
                 lastPendingId = null;
-                pumpQueue();
+                void pumpQueue().catch(failQueue);
               }
             }
           }
         })(nextFile, isHeavy);
+        inFlightTasksRef.current.add(task);
+        task.then(
+          () => inFlightTasksRef.current.delete(task),
+          error => { inFlightTasksRef.current.delete(task); failQueue(error); }
+        );
       }
     };
 
-    resumeNextRef.current = pumpQueue;
+    resumeNextRef.current = () => { void pumpQueue().catch(failQueue); };
 
     // Trigger initial batch
-    pumpQueue();
+    void pumpQueue().catch(failQueue);
   };
 
   const haltDueToQuota = async () => {
+    try {
+    if (workerPoolRef.current) {
+      workerPoolRef.current.terminate()
+      workerPoolRef.current = null
+    }
+    await Promise.allSettled([...inFlightTasksRef.current])
+    const hasPartialZip = Boolean(currentZipWriterRef.current)
+    if (hasPartialZip && !await downloadCurrentZipChunk()) return
     setActiveWorkersCount(0)
 
     if (flushInterval.current) {
@@ -1495,8 +1614,6 @@ export function useToolPipeline() {
       flushInterval.current = null
     }
 
-    setIsProcessing(false)
-    isProcessingRef.current = false
     setUseDeepExif(false)
     useDeepExifRef.current = false
     setCurrentFile("Halted: Quota Exceeded")
@@ -1507,7 +1624,7 @@ export function useToolPipeline() {
     logsBuffer.current = []
 
     const finalBytes = sessionBytesRef.current
-    const finalFiles = sessionFilesRef.current
+    await sessionManagerRef.current.terminateSession('failed')
     await commitSessionUsage()
     await updateActiveSession('failed', {
       scanned: statsBuffer.current.scanned,
@@ -1546,30 +1663,31 @@ export function useToolPipeline() {
     if (!user) {
       setQuotaAlert({
         open: true,
-        message: "You have reached the 1 GB free guest storage limit (no file limit). Sign in to your Google Account to unlock 100% unlimited restoration access!"
+        message: hasPartialZip
+          ? "The next file would exceed the 1 GB guest limit. A ZIP containing files processed so far was prepared for download; check that your browser saved it. Sign in for free, then start a new restore and keep your originals."
+          : "The next file would exceed the 1 GB guest limit. Sign in for free, then start a new restore and check any files already saved."
       });
       return;
     }
 
-    const storageExceeded = (currentUsedBytesRef.current + finalBytes) > limitBytesRef.current
-    const filesExceeded = (currentUsedFilesRef.current + finalFiles) > limitFilesRef.current
-    let limitReason = ""
-    if (storageExceeded && filesExceeded) {
-      limitReason = "both your storage and file count limits"
-    } else if (storageExceeded) {
-      limitReason = `your storage limit of ${plan === 'free' ? '500 MB' : 'unlimited storage'}`
-    } else {
-      limitReason = `your file count limit of ${plan === 'free' ? '250 files' : 'unlimited files'}`
-    }
-
     setQuotaAlert({
       open: true,
-      message: `You have hit ${limitReason} of your ${PLAN_LABELS[plan] || plan} plan quota. Restoration paused. Upgrade now to continue.`
+      message: "Restoration stopped after reaching the guest limit. Start a new restore while signed in, and check any files already saved. A partially prepared ZIP may not have downloaded."
     })
+    } catch (error) {
+      const message = `Could not finish stopping the restore: ${error instanceof Error ? error.message : String(error)}`
+      console.error(message, error)
+      setLogs(prev => [...prev, { level: 'error', msg: message }])
+      useToastStore.getState().addToast(message, "error", 10000)
+    } finally {
+      setStats({ ...statsBuffer.current })
+      setIsProcessing(false)
+      releaseRestoreLock()
+    }
   }
 
   const downloadCurrentZipChunk = async () => {
-    if (!currentZipWriterRef.current) return
+    if (!currentZipWriterRef.current) return true
     const zipWriter = currentZipWriterRef.current
     currentZipWriterRef.current = null
     currentZipBlobWriterRef.current = null
@@ -1583,20 +1701,54 @@ export function useToolPipeline() {
       const takeoutName = zipFile?.name || takeoutFolder?.name || 'Takeout'
       a.download = `${takeoutName.replace(/\.[^/.]+$/, "")}_Restored_Part${currentZipPartRef.current}.zip`
       document.body.appendChild(a)
-      a.click()
-      document.body.removeChild(a)
-      URL.revokeObjectURL(url)
+      try {
+        a.click()
+      } finally {
+        a.remove()
+        window.setTimeout(() => URL.revokeObjectURL(url), 1000)
+      }
 
       currentZipPartRef.current += 1
       currentZipBytesRef.current = 0
+      return true
     } catch (err) {
       console.error("Failed to close/download ZIP chunk:", err)
+      pipelineGenerationRef.current++
+      isProcessingRef.current = false
+      if (flushInterval.current) window.clearInterval(flushInterval.current)
+      flushInterval.current = null
+      workerPoolRef.current?.terminate()
+      workerPoolRef.current = null
+      const message = "ZIP packaging failed. The current archive may not have downloaded. Keep your originals and check your downloads before starting again."
+      setCurrentFile("ZIP packaging failed")
+      setLogs(prev => [...prev, ...logsBuffer.current, { level: 'error', msg: message }])
+      logsBuffer.current = []
+      useToastStore.getState().addToast(message, "error", 10000)
+      queueMicrotask(() => { void finishZipFailure() })
+      return false
+    }
+  }
+
+  const finishZipFailure = async (sourceReader: ZipReader<File> | null = null) => {
+    try {
+      await Promise.allSettled([...inFlightTasksRef.current])
+      if (sourceReader) await sourceReader.close().catch(error => console.warn("Could not close source ZIP:", error))
+      await sessionManagerRef.current.terminateSession('failed')
+    } catch (error) {
+      console.error("Failed to finish restore failure cleanup:", error)
+      setLogs(prev => [...prev, { level: 'error', msg: 'Could not finish restore failure cleanup. Check the results before retrying.' }])
+    } finally {
+      setActiveWorkersCount(0)
+      setStats({ ...statsBuffer.current })
+      setIsProcessing(false)
+      releaseRestoreLock()
     }
   }
 
   const completeProcessing = async () => {
-    setIsProcessing(false)
+    pipelineGenerationRef.current++
     isProcessingRef.current = false
+    try {
     setUseDeepExif(false)
     useDeepExifRef.current = false
     setZipMode(false)
@@ -1612,10 +1764,10 @@ export function useToolPipeline() {
 
     setStats({ ...statsBuffer.current })
     setProgress(100)
-    setCurrentFile("Processing Complete")
+    setCurrentFile("Finalizing results...")
 
-    // Write dual audit & issue logs to disk/zip
-    const outHandle = (currentSessionRef.current?.outputHandle as FileSystemDirectoryHandle) || outputFolder;
+    // Prepare reports for download and write copies for folder output.
+    const outHandle = currentSessionRef.current?.outputMode === 'zip' ? null : currentSessionRef.current?.outputHandle || outputFolder;
     const auditText = [
       "==================================================================",
       "TAKEOUTFIX - COMPLETE RESTORATION AUDIT LOG",
@@ -1624,7 +1776,7 @@ export function useToolPipeline() {
       `Application: TakeoutFix Metadata Restorer`,
       `Total Files Scanned: ${statsBuffer.current.scanned}`,
       `Successfully Restored: ${statsBuffer.current.matched}`,
-      `Unmatched Sidecars: ${statsBuffer.current.unmatched}`,
+      `Files Needing Review: ${statsBuffer.current.unmatched}`,
       `Metadata Fallbacks: ${statsBuffer.current.exifFailed}`,
       `Errors: ${statsBuffer.current.errors}`,
       "==================================================================",
@@ -1637,43 +1789,51 @@ export function useToolPipeline() {
       "TAKEOUTFIX - RESTORATION ISSUES & REVIEW REPORT",
       "==================================================================",
       `Generated: ${new Date().toISOString()}`,
-      `Unmatched Sidecars: ${statsBuffer.current.unmatched}`,
+      `Files Needing Review: ${statsBuffer.current.unmatched}`,
       `Metadata Fallbacks: ${statsBuffer.current.exifFailed}`,
       `Errors: ${statsBuffer.current.errors}`,
       "==================================================================",
       "",
-      ...(issuesLogLinesRef.current.length > 0 ? issuesLogLinesRef.current : ["No errors or unmatched sidecars encountered. All files restored perfectly."])
+      ...(issuesLogLinesRef.current.length > 0
+        ? issuesLogLinesRef.current
+        : [statsBuffer.current.unmatched || statsBuffer.current.exifFailed || statsBuffer.current.errors
+          ? "Issues were recorded in the totals; details may be unavailable from a previous session."
+          : "No errors or files needing review were recorded."])
     ].join('\r\n');
 
     latestAuditLogRef.current = auditText;
     latestIssuesLogRef.current = issuesText;
 
-    if (zipModeRef.current && currentZipWriterRef.current) {
+    if (outHandle) {
       try {
-        await currentZipWriterRef.current.add("restoration_log.txt", new BlobReader(new Blob([auditText], { type: "text/plain" })));
-        await currentZipWriterRef.current.add("restoration_issues.txt", new BlobReader(new Blob([issuesText], { type: "text/plain" })));
-      } catch (logErr) {
-        console.warn("Could not append logs into ZIP:", logErr);
-      }
-    } else if (outHandle) {
-      try {
-        const aHandle = await outHandle.getFileHandle("restoration_log.txt", { create: true });
+        const aHandle = await getUniqueFileHandle(outHandle, "restoration_log.txt");
         const aWritable = await (aHandle as any).createWritable();
         await aWritable.write(auditText);
         await aWritable.close();
 
-        const iHandle = await outHandle.getFileHandle("restoration_issues.txt", { create: true });
+        const iHandle = await getUniqueFileHandle(outHandle, "restoration_issues.txt");
         const iWritable = await (iHandle as any).createWritable();
         await iWritable.write(issuesText);
         await iWritable.close();
       } catch (logErr) {
         console.warn("Could not write logs to output folder:", logErr);
+        const message = "One or more reports could not be saved to the output folder. Use Download Log and Issues Report to save them separately.";
+        logsBuffer.current.push({ level: 'warn', msg: message });
+        useToastStore.getState().addToast(message, "error", 10000);
       }
     }
 
     // Auto-generate sync scripts (.bat for Windows, .sh for Mac/Linux) in output folder if direct folder mode was used
     if (outHandle && useSettingsStore.getState().generateSyncScript && restoredTimestampsCatalogRef.current.length > 0) {
       try {
+        for (const name of ['file_timestamps.json', 'sync_windows_dates.bat', 'sync_macos_linux.sh']) {
+          try {
+            await outHandle.getFileHandle(name);
+            throw new Error(`${name} already exists; timestamp helper files were not generated.`);
+          } catch (err) {
+            if (!(err instanceof DOMException) || err.name !== 'NotFoundError') throw err;
+          }
+        }
         const jsonHandle = await outHandle.getFileHandle('file_timestamps.json', { create: true });
         const jsonWritable = await jsonHandle.createWritable();
         await jsonWritable.write(JSON.stringify(restoredTimestampsCatalogRef.current, null, 2));
@@ -1698,6 +1858,7 @@ export function useToolPipeline() {
         });
       } catch (scriptErr) {
         console.warn("Could not write sync scripts to destination folder:", scriptErr);
+        logsBuffer.current.push({ level: 'warn', msg: `Timestamp helper files were not generated: ${scriptErr instanceof Error ? scriptErr.message : String(scriptErr)}` });
       }
     }
 
@@ -1705,6 +1866,7 @@ export function useToolPipeline() {
     logsBuffer.current = []
 
     const finalBytes = sessionBytesRef.current
+    await sessionManagerRef.current.terminateSession('completed')
     await commitSessionUsage()
     await updateActiveSession('completed', {
       scanned: statsBuffer.current.scanned,
@@ -1715,6 +1877,7 @@ export function useToolPipeline() {
 
     if (user && statsBuffer.current.scanned > 0) {
       const duration = Date.now() - startTimeRef.current
+      let historySaveFailed = false
       await addDoc(collection(db, 'recoveries'), {
         uid: user.uid,
         email: user.email,
@@ -1725,7 +1888,7 @@ export function useToolPipeline() {
         errors: statsBuffer.current.errors,
         bytesProcessed: totalSessionBytesRef.current,
         duration
-      }).catch(console.error)
+      }).catch((err) => { historySaveFailed = true; console.error("Failed to save recovery record:", err) })
 
       // Save/update final run session to recoveryHistory/uid/sessions for user dashboards
       if (historySessionIdRef.current) {
@@ -1738,7 +1901,7 @@ export function useToolPipeline() {
           bytesProcessed: totalSessionBytesRef.current,
           duration,
           status: 'completed'
-        }, { merge: true }).catch((err) => console.error("Failed to update final recoveryHistory:", err))
+        }, { merge: true }).catch((err) => { historySaveFailed = true; console.error("Failed to update final recoveryHistory:", err) })
       } else {
         await addDoc(collection(db, 'recoveryHistory', user.uid, 'sessions'), {
           archiveName: takeoutFolder?.name || 'Google Takeout Archive',
@@ -1750,7 +1913,12 @@ export function useToolPipeline() {
           bytesProcessed: totalSessionBytesRef.current,
           duration,
           status: 'completed'
-        }).catch((err) => console.error("Failed to write fallback recoveryHistory:", err))
+        }).catch((err) => { historySaveFailed = true; console.error("Failed to write fallback recoveryHistory:", err) })
+      }
+      if (historySaveFailed) {
+        const message = "Local processing finished, but some account history could not be saved. Check your output and keep your reports."
+        setLogs(prev => [...prev, { level: 'warn', msg: message }])
+        useToastStore.getState().addToast(message, "error", 10000)
       }
     }
 
@@ -1762,6 +1930,18 @@ export function useToolPipeline() {
         bytesProcessed: increment(finalBytes),
         ticketsResolved: increment(0)
       }, { merge: true }).catch(console.error)
+    }
+    setCurrentFile("Processing Complete")
+    } catch (error) {
+      const message = `Could not finish the restore: ${error instanceof Error ? error.message : String(error)}`
+      console.error(message, error)
+      setCurrentFile("Finalization failed")
+      setLogs(prev => [...prev, ...logsBuffer.current, { level: 'error', msg: message }])
+      logsBuffer.current = []
+      useToastStore.getState().addToast(message, "error", 10000)
+    } finally {
+      setIsProcessing(false)
+      releaseRestoreLock()
     }
   }
 
@@ -2123,16 +2303,26 @@ export function useToolPipeline() {
   }
 
   const startProcessing = async (useZip: boolean = false) => {
-    // Soft reminder: trigger polite banner if ad blocker detected without hard-blocking restoration
-    const isAdFree = userData?.plan === "super" && !userData?.supportWithAds;
-    if (!isAdFree) {
-      detectAdBlock().then((isBlocked) => {
-        if (isBlocked) {
-          window.dispatchEvent(new CustomEvent('takeoutfix-action-triggered'));
-        }
-      }).catch(() => {});
-    }
+    if (startupTaskRef.current || isProcessingRef.current || isProcessing) return;
+    const task = (async () => {
+      let acquired = false;
+      try {
+        await lockRestore();
+        acquired = true;
+        await startProcessingImpl(useZip);
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        useToastStore.getState().addToast(message, 'error', 10000);
+      } finally {
+        if (acquired && !pipelineLaunchedRef.current && !cancellingRef.current) releaseRestoreLock();
+      }
+    })();
+    startupTaskRef.current = task;
+    try { await task; } finally { if (startupTaskRef.current === task) startupTaskRef.current = null; }
+  };
 
+  const startProcessingImpl = async (useZip: boolean) => {
+    currentSessionRef.current = null;
     window.dispatchEvent(new CustomEvent('takeoutfix-action-triggered'))
     const sourceName = zipFile ? zipFile.name : (takeoutFolder ? takeoutFolder.name : '');
     if (!sourceName) {
@@ -2149,45 +2339,56 @@ export function useToolPipeline() {
 
     try {
       if (takeoutFolder && outputFolder && !useZip) {
-        const isSame = await takeoutFolder.isSameEntry(outputFolder)
-        if (isSame) {
-          setQuotaAlert({
-            open: true,
-            message: "The Source Folder and Output Folder cannot be the same. Please select a separate, empty output folder to prevent file modification conflicts."
+        const overlaps = await takeoutFolder.resolve(outputFolder) !== null || await outputFolder.resolve(takeoutFolder) !== null
+        if (overlaps) {
+          setPopupModal({
+            title: "Choose a different output folder",
+            type: "warning",
+            message: "Choose separate source and output folders that do not contain one another."
           })
           return
         }
       }
     } catch (err) {
       console.warn("Failed to check directory handles:", err)
+      useToastStore.getState().addToast("Could not verify the source and output folders. Please select them again.", "error")
+      return
     }
 
+    let usedBytes = currentUsedBytes;
+    if (!user) {
+      try {
+        usedBytes = (await ensureGuestUsageLoaded()).bytes;
+      } catch (error) {
+        console.error('Could not load guest usage:', error);
+        useToastStore.getState().addToast('Could not read saved guest usage. Check browser storage and try again.', 'error', 10000);
+        return;
+      }
+    }
     const isBypass = Boolean(user && (userData?.isAdmin || (import.meta as any).env?.DEV));
-    if (!isBypass && (currentUsedFiles >= limitFiles || currentUsedBytes >= limitBytes)) {
+    if (!isBypass && (currentUsedFiles >= limitFiles || usedBytes >= limitBytes)) {
       if (!user) {
         setQuotaAlert({
           open: true,
-          message: "You have reached the 1 GB free guest storage limit (no file limit). Sign in to your Google Account to unlock 100% unlimited restoration access!"
+          message: "You have reached the 1 GB guest limit. Sign in for free to remove this limit. Your browser and device may still limit large restores."
         });
         return;
       }
 
-      let limitReason = ""
-      if (currentUsedFiles >= limitFiles && currentUsedBytes >= limitBytes) {
-        limitReason = "both your storage and file count limits"
-      } else if (currentUsedBytes >= limitBytes) {
-        limitReason = `your storage limit of ${plan === 'free' ? '500 MB' : 'unlimited storage'}`
-      } else {
-        limitReason = `your file count limit of ${plan === 'free' ? '250 files' : 'unlimited files'}`
-      }
-
       setQuotaAlert({
         open: true,
-        message: `You cannot start a new recovery because you have already reached ${limitReason} for your ${PLAN_LABELS[plan] || plan} plan. Please upgrade to continue.`
+        message: "Unable to start the restore because the saved usage could not be checked. Refresh the page and try again."
       })
       return
     }
 
+    if (disposedRef.current) return
+    if (currentUserUidRef.current !== (user?.uid || null)) {
+      throw new Error('The signed-in account changed. Check your account and try again.');
+    }
+    resetReports(false)
+    usageOwnerUidRef.current = user?.uid || null
+    cancelForAccountChangeRef.current = () => cancelProcessing('account-change')
     setIsProcessing(true)
     isProcessingRef.current = true
     setIsPaused(false)
@@ -2220,10 +2421,13 @@ export function useToolPipeline() {
     totalSessionBytesRef.current = 0
     historySessionIdRef.current = null
 
-    const sessionId = `${user!.uid}_${Date.now()}`;
+    const sessionUid = user?.uid || 'guest';
+    const sessionId = `${sessionUid}_${Date.now()}`;
     sessionIdRef.current = sessionId;
 
     if (user) {
+      const historyRef = doc(collection(db, 'recoveryHistory', user.uid, 'sessions'))
+      historySessionIdRef.current = historyRef.id
       updateActiveSession('initializing', {
         startedAt: Date.now(),
         totalFiles: 0,
@@ -2233,7 +2437,7 @@ export function useToolPipeline() {
         currentFile: 'Scanning input source...'
       })
 
-      addDoc(collection(db, 'recoveryHistory', user.uid, 'sessions'), {
+      setDoc(historyRef, {
         archiveName: sourceName,
         timestamp: Date.now(),
         filesProcessed: 0,
@@ -2243,8 +2447,6 @@ export function useToolPipeline() {
         bytesProcessed: 0,
         duration: 0,
         status: 'processing'
-      }).then(docRef => {
-        historySessionIdRef.current = docRef.id
       }).catch(err => console.error("Failed to initialize recoveryHistory session:", err))
     }
 
@@ -2263,18 +2465,24 @@ export function useToolPipeline() {
       });
     }, 250)
 
+    let sessionStarted = false;
     try {
       const session = await sessionManagerRef.current.startNewSession(
         sessionId,
-        user!.uid,
+        sessionUid,
         sourceName,
         zipFile || takeoutFolder!,
-        outputFolder
+        useZip ? null : outputFolder,
+        useZip ? 'zip' : 'folder'
       );
+      sessionStarted = true;
+      currentSessionRef.current = session;
+
+      if (!isProcessingRef.current) return;
 
       const { count: totalFiles, totalBytes: scannedTotalBytes } = await sessionManagerRef.current.scanAndRegister((indexedCount) => {
         fileBuffer.current = `Indexing Takeout source... Found ${indexedCount} media files`;
-      });
+      }, () => !isProcessingRef.current);
 
       if (!isProcessingRef.current) return;
 
@@ -2284,6 +2492,7 @@ export function useToolPipeline() {
         setCurrentFile("Finished: No files found")
         if (flushInterval.current) window.clearInterval(flushInterval.current)
         await sessionManagerRef.current.terminateSession('completed');
+        releaseRestoreLock();
         return
       }
 
@@ -2297,38 +2506,67 @@ export function useToolPipeline() {
         currentFile: 'Starting restoration pipeline...'
       });
 
+      if (!isProcessingRef.current) return;
       await processRestorePipeline(session, sessionManagerRef.current);
 
     } catch (err: any) {
+      if (cancellingRef.current || disposedRef.current) return;
       console.error("Restoration start error:", err);
-      logsBuffer.current.push({ level: 'error', msg: `Scanning Error: ${err.message || err}` })
+      const message = `Could not start the restore: ${err instanceof Error ? err.message : String(err)}`
+      setLogs(prev => [...prev, ...logsBuffer.current, { level: 'error', msg: message }])
+      logsBuffer.current = []
+      setCurrentFile("Restore could not start")
+      useToastStore.getState().addToast(message, "error", 10000)
       setIsProcessing(false)
       isProcessingRef.current = false
       if (flushInterval.current) window.clearInterval(flushInterval.current)
-      await sessionManagerRef.current.terminateSession('failed');
+      workerPoolRef.current?.terminate()
+      workerPoolRef.current = null
+      await Promise.allSettled([...inFlightTasksRef.current])
+      if (sessionStarted) {
+        await sessionManagerRef.current.terminateSession('failed');
+      } else {
+        try {
+          const active = await sessionManagerRef.current.getActiveSession();
+          if (active) setPendingSession(active);
+        } catch (lookupError) {
+          console.error("Could not check saved restores after startup failed:", lookupError);
+        }
+      }
+      if (!cancellingRef.current) releaseRestoreLock()
     }
   }
 
-  const cancelProcessing = async () => {
+  const cancelProcessing = async (reason: 'user' | 'account-change' = 'user') => {
+    if (!isProcessingRef.current) return
+    const wasZipOutput = zipModeRef.current
+    cancellingRef.current = true
+    pipelineGenerationRef.current++
+    isProcessingRef.current = false
+    try {
     setActiveWorkersCount(0)
 
-    // Terminate the worker pool immediately so in-flight tasks don't block
+    if (startupTaskRef.current) await startupTaskRef.current
+
+    // Stop worker jobs before waiting for file tasks to finish.
     if (workerPoolRef.current) {
       workerPoolRef.current.terminate()
       workerPoolRef.current = null
     }
 
+    await Promise.allSettled([...inFlightTasksRef.current])
+
     if (currentZipWriterRef.current) {
       try {
         await currentZipWriterRef.current.close()
-      } catch {}
+      } catch (error) {
+        console.error('Could not close the cancelled ZIP part:', error)
+      }
       currentZipWriterRef.current = null
       currentZipBlobWriterRef.current = null
     }
 
     if (flushInterval.current) window.clearInterval(flushInterval.current)
-    setIsProcessing(false)
-    isProcessingRef.current = false
     setIsPaused(false)
     isPausedRef.current = false
     setUseDeepExif(false)
@@ -2336,10 +2574,20 @@ export function useToolPipeline() {
     setZipMode(false)
     zipModeRef.current = false
     setCurrentFile("Cancelled")
-    setLogs(prev => [...prev, { level: 'error', msg: 'Processing cancelled by user.' }])
+    setLogs(prev => [...prev, { level: 'error', msg: reason === 'account-change' ? 'Processing stopped because the signed-in account changed. Check your output and keep your originals.' : 'Processing cancelled by user.' }])
+    if (wasZipOutput) {
+      const message = 'The current ZIP part may not have been saved. Check your downloads and keep your originals.'
+      setLogs(prev => [...prev, { level: 'error', msg: message }])
+      useToastStore.getState().addToast(message, 'error', 10000)
+    }
 
     const finalBytes = sessionBytesRef.current
-    await commitSessionUsage()
+    try {
+      if (currentSessionRef.current) await sessionManagerRef.current.terminateSession('cancelled')
+    } finally {
+      await commitSessionUsage()
+    }
+    if (reason === 'account-change') return
     await updateActiveSession('cancelled', {
       currentFile: 'Cancelled',
       scanned: statsBuffer.current.scanned,
@@ -2374,7 +2622,25 @@ export function useToolPipeline() {
         }).catch((err) => console.error("Failed to write fallback recoveryHistory:", err))
       }
     }
+    } catch (error) {
+      const message = `Could not finish cancellation: ${error instanceof Error ? error.message : String(error)}`
+      console.error(message, error)
+      setLogs(prev => [...prev, { level: 'error', msg: message }])
+      useToastStore.getState().addToast(message, "error", 10000)
+    } finally {
+      setStats({ ...statsBuffer.current })
+      setIsProcessing(false)
+      cancellingRef.current = false
+      releaseRestoreLock()
+    }
   }
+
+  useEffect(() => {
+    if (isProcessingRef.current && currentUserUidRef.current !== usageOwnerUidRef.current) {
+      useToastStore.getState().addToast('Your account changed. Stopping the restore; check your output and keep your originals.', 'error', 10000)
+      void cancelForAccountChangeRef.current?.()
+    }
+  }, [user?.uid])
 
   const pauseProcessing = () => {
     if (isProcessing && !isPaused) {
@@ -2440,7 +2706,7 @@ export function useToolPipeline() {
       const elapsed = (Date.now() - startTimeRef.current) / 1000;
       if (elapsed > 1) {
         const calculatedFilesPerSec = scannedFiles / elapsed;
-        const calculatedBytesPerSec = sessionBytes / elapsed;
+        const calculatedBytesPerSec = totalSessionBytesRef.current / elapsed;
 
         if (calculatedFilesPerSec > 2) {
           filesPerSec = calculatedFilesPerSec;
@@ -2455,9 +2721,9 @@ export function useToolPipeline() {
     let remainingBytes = 0;
     const totalBytes = totalBytesRef.current || 0;
     if (totalBytes > 0) {
-      remainingBytes = Math.max(0, totalBytes - sessionBytes);
+      remainingBytes = Math.max(0, totalBytes - totalSessionBytesRef.current);
     } else if (scannedFiles > 0) {
-      const avgBytesPerFile = sessionBytes / scannedFiles;
+      const avgBytesPerFile = totalSessionBytesRef.current / scannedFiles;
       remainingBytes = avgBytesPerFile * remainingFiles;
     } else {
       // 2MB per file average fallback
@@ -2566,11 +2832,6 @@ export function useToolPipeline() {
     formatByteSize,
     // Maintenance
     maintenance,
-    // Telemetry
-    telemetryCpu,
-    telemetryMem,
-    telemetryTabHeap,
-    telemetryWorkers,
     // Tool store state
     takeoutFolder,
     setTakeoutFolder,
@@ -2598,11 +2859,11 @@ export function useToolPipeline() {
     outputLock,
     takeoutFolderStructure,
     zipFilesList,
-    showCompareModal,
-    setShowCompareModal,
     modalContext,
     setModalContext,
     pendingSession,
+    canManagePendingSession: !!pendingSession && canManageSession(pendingSession, user?.uid || null),
+    discardPendingSession,
     setPendingSession,
     logTab,
     setLogTab,

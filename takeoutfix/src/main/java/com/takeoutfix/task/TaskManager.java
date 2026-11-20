@@ -5,7 +5,6 @@ import javafx.collections.ObservableList;
 
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
-import java.util.concurrent.Future;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
@@ -30,7 +29,7 @@ public class TaskManager {
     private final ObservableList<BackgroundTask> recentTasks = FXCollections.observableArrayList();
     private final ConcurrentHashMap<String, BackgroundTask> activeTasksMap = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<String, BackgroundTask> allTasksMap = new ConcurrentHashMap<>();
-    private final ConcurrentHashMap<String, Future<?>> runningFutures = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<String, Thread> runningThreads = new ConcurrentHashMap<>();
     private final List<Runnable> taskChangeListeners = new CopyOnWriteArrayList<>();
 
     public TaskManager() {
@@ -62,11 +61,16 @@ public class TaskManager {
                 ? resourceManager.getIoExecutor()
                 : resourceManager.getCpuExecutor();
 
-        Future<?> future = executor.submit(() -> {
+        executor.submit(() -> {
+            synchronized (task) {
+                runningThreads.put(task.getId(), Thread.currentThread());
+            }
             try {
                 task.run();
             } finally {
-                runningFutures.remove(task.getId());
+                synchronized (task) {
+                    runningThreads.remove(task.getId());
+                }
                 activeTasksMap.remove(task.getId());
                 runFx(() -> {
                     synchronized (activeTasks) {
@@ -85,7 +89,6 @@ public class TaskManager {
             }
         });
 
-        runningFutures.put(task.getId(), future);
         notifyListeners();
     }
 
@@ -110,14 +113,12 @@ public class TaskManager {
     public void cancelTask(String taskId) {
         if (taskId == null) return;
         BackgroundTask task = activeTasksMap.get(taskId);
-        if (task == null) {
-            task = allTasksMap.get(taskId);
-        }
         if (task != null) {
-            task.cancel();
-            Future<?> future = runningFutures.get(taskId);
-            if (future != null) {
-                future.cancel(true);
+            synchronized (task) {
+                if (task.isFinished()) return;
+                task.cancel();
+                Thread worker = runningThreads.get(taskId);
+                if (worker != null) worker.interrupt();
             }
             notifyListeners();
         }
@@ -125,10 +126,7 @@ public class TaskManager {
 
     public void cancelAll() {
         for (BackgroundTask task : new java.util.ArrayList<>(activeTasksMap.values())) {
-            task.cancel();
-        }
-        for (Future<?> f : new java.util.ArrayList<>(runningFutures.values())) {
-            f.cancel(true);
+            cancelTask(task.getId());
         }
         notifyListeners();
     }

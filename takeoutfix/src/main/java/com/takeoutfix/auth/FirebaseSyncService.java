@@ -48,8 +48,9 @@ public class FirebaseSyncService {
         return "https://firestore.googleapis.com/v1/projects/" + getProjectId() + "/databases/(default)/documents";
     }
 
-    private static final File SESSION_FILE = new File(System.getProperty("user.home"), ".takeoutfix/session.json");
-    private static final File PENDING_SYNC_FILE = new File(System.getProperty("user.home"), ".takeoutfix/pending_sync.json");
+    private final File sessionFile;
+    private final File pendingSyncFile;
+    private final CredentialStore credentialStore;
 
     private final HttpClient httpClient = HttpClient.newBuilder()
             .connectTimeout(Duration.ofSeconds(6))
@@ -77,7 +78,7 @@ public class FirebaseSyncService {
         if (currentRefreshToken != null && !currentRefreshToken.isBlank()) {
             return true;
         }
-        File mainSession = new File(System.getProperty("user.home"), ".takeoutfix/session.json");
+        File mainSession = sessionFile;
         if (mainSession.exists()) {
             try {
                 String content = Files.readString(mainSession.toPath());
@@ -88,9 +89,9 @@ public class FirebaseSyncService {
                 }
             } catch (Exception ignored) {}
         }
-        if (SESSION_FILE.exists()) {
+        if (sessionFile.exists()) {
             try {
-                String content = Files.readString(SESSION_FILE.toPath());
+                String content = Files.readString(sessionFile.toPath());
                 if (content != null && !content.isBlank()) {
                     JSONObject json = new JSONObject(content);
                     String idTok = json.optString("idToken", "");
@@ -103,6 +104,14 @@ public class FirebaseSyncService {
     }
 
     public FirebaseSyncService() {
+        this(new File(System.getProperty("user.home"), ".takeoutfix"), true);
+    }
+
+    FirebaseSyncService(File configDir, boolean startBackgroundSync) {
+        this.sessionFile = new File(configDir, "session.json");
+        this.pendingSyncFile = new File(configDir, "pending_sync.json");
+        this.credentialStore = new CredentialStore(configDir);
+        if (!startBackgroundSync) return;
         // Bootstrap tokens from session.json if present
         loadTokensFromSession();
 
@@ -163,15 +172,14 @@ public class FirebaseSyncService {
 
     private void loadTokensFromSession() {
         try {
-            if (SESSION_FILE.exists()) {
-                String content = Files.readString(SESSION_FILE.toPath());
-                if (content != null && !content.isBlank()) {
-                    JSONObject json = new JSONObject(content);
-                    this.currentIdToken = json.optString("idToken", "");
-                    this.currentRefreshToken = json.optString("refreshToken", "");
-                }
+            AuthSession session = credentialStore.loadSession();
+            if (session != null) {
+                this.currentIdToken = session.getIdToken();
+                this.currentRefreshToken = session.getRefreshToken();
             }
-        } catch (Exception ignored) {}
+        } catch (Exception e) {
+            log.warn("Unable to load credentials for Firebase sync", e);
+        }
     }
 
     private void notifySyncState(SyncState state, String error) {
@@ -189,22 +197,22 @@ public class FirebaseSyncService {
         try {
             long existingFiles = 0;
             long existingBytes = 0;
-            if (PENDING_SYNC_FILE.exists()) {
-                String content = Files.readString(PENDING_SYNC_FILE.toPath());
+            if (pendingSyncFile.exists()) {
+                String content = Files.readString(pendingSyncFile.toPath());
                 if (content != null && !content.isBlank()) {
                     JSONObject json = new JSONObject(content);
                     existingFiles = json.optLong("pendingFiles", 0);
                     existingBytes = json.optLong("pendingBytes", 0);
                 }
             } else {
-                File dir = PENDING_SYNC_FILE.getParentFile();
+                File dir = pendingSyncFile.getParentFile();
                 if (dir != null && !dir.exists()) dir.mkdirs();
             }
             JSONObject next = new JSONObject();
             next.put("pendingFiles", existingFiles + deltaFiles);
             next.put("pendingBytes", existingBytes + deltaBytes);
             next.put("lastQueuedAt", java.time.Instant.now().toString());
-            Files.writeString(PENDING_SYNC_FILE.toPath(), next.toString(2));
+            Files.writeString(pendingSyncFile.toPath(), next.toString(2));
             log.info("Queued offline sync metrics to disk: +{} files, +{} bytes (total pending: {})", deltaFiles, deltaBytes, existingFiles + deltaFiles);
         } catch (Exception e) {
             log.warn("Failed to record pending offline sync: {}", e.getMessage());
@@ -212,29 +220,9 @@ public class FirebaseSyncService {
     }
 
     public synchronized void drainPendingOfflineSync() {
-        if (!hasActiveUserSession() || !PENDING_SYNC_FILE.exists()) return;
-        try {
-            String content = Files.readString(PENDING_SYNC_FILE.toPath());
-            if (content == null || content.isBlank()) {
-                Files.deleteIfExists(PENDING_SYNC_FILE.toPath());
-                return;
-            }
-            JSONObject json = new JSONObject(content);
-            long pendingFiles = json.optLong("pendingFiles", 0);
-            long pendingBytes = json.optLong("pendingBytes", 0);
-            if (pendingFiles > 0 || pendingBytes > 0) {
-                log.info("Draining offline pending sync queue from disk: {} files, {} bytes", pendingFiles, pendingBytes);
-                UserController.incrementUsage(pendingFiles, pendingBytes);
-                boolean pushed = pushCurrentTotalsToCloud();
-                if (pushed) {
-                    Files.deleteIfExists(PENDING_SYNC_FILE.toPath());
-                    log.info("Successfully synced and cleared offline pending sync queue.");
-                }
-            } else {
-                Files.deleteIfExists(PENDING_SYNC_FILE.toPath());
-            }
-        } catch (Exception e) {
-            log.warn("Failed to drain offline pending sync: {}", e.getMessage());
+        // Legacy entries have no account ID or retry-safe transaction identifier.
+        if (pendingSyncFile.exists()) {
+            log.warn("Preserving legacy pending usage without replay; account ownership cannot be verified.");
         }
     }
 
@@ -269,9 +257,8 @@ public class FirebaseSyncService {
         }
 
         if (tokenToUse == null || tokenToUse.isBlank()) {
-            // If user is actively signed in locally, keep them online with local session
-            notifySyncState(SyncState.SYNCED, "");
-            return true;
+            notifySyncState(SyncState.FAILED, "Unable to sync: no valid account token is available.");
+            return false;
         }
 
         // 2. Fetch User Document from Firestore
@@ -299,16 +286,10 @@ public class FirebaseSyncService {
                 String refreshed = ensureFreshIdToken();
                 if (refreshed != null && !refreshed.isBlank()) {
                     tokenToUse = refreshed;
-                    userSuccess = true;
-                } else {
-                    userSuccess = true; // Fallback to local session
                 }
-            } else {
-                userSuccess = true; // Fallback to local session
             }
         } catch (Exception e) {
             log.debug("Firebase user sync offline/error: {}", e.getMessage());
-            userSuccess = true; // Retain cached session and remain online
         }
 
         // 3. Sync Global Settings (e.g. Free Unlimited Promo Window)
@@ -335,6 +316,8 @@ public class FirebaseSyncService {
 
         if (userSuccess) {
             notifySyncState(SyncState.SYNCED, "");
+        } else {
+            notifySyncState(SyncState.FAILED, "Account data could not be synced. Your local session is still available.");
         }
         return userSuccess;
     }
@@ -546,41 +529,40 @@ public class FirebaseSyncService {
             HttpResponse<String> resp = httpClient.send(req, HttpResponse.BodyHandlers.ofString());
             if (resp.statusCode() == 200) {
                 JSONObject json = new JSONObject(resp.body());
+                String userId = json.optString("user_id", "");
+                String expectedUserId = (String) profile.getOrDefault("uid", profile.getOrDefault("googleId", ""));
+                if (userId.isBlank() || (expectedUserId != null && !expectedUserId.isBlank() && !expectedUserId.equals(userId))) {
+                    log.warn("Firebase sync token refresh did not match the active account");
+                    return null;
+                }
                 this.currentIdToken = json.optString("id_token", this.currentIdToken);
                 this.currentRefreshToken = json.optString("refresh_token", this.currentRefreshToken);
                 profile.put("idToken", this.currentIdToken);
                 profile.put("token", this.currentIdToken);
                 profile.put("refreshToken", this.currentRefreshToken);
-                String userId = json.optString("user_id", "");
                 if (!userId.isBlank()) {
                     profile.put("uid", userId);
                     profile.put("googleId", userId);
                 }
-                saveTokensToSession(this.currentIdToken, this.currentRefreshToken, userId);
+                saveTokensToSession(credentialStore, this.currentIdToken, this.currentRefreshToken, userId);
                 return this.currentIdToken;
             }
-        } catch (Exception ignored) {}
+        } catch (InterruptedException error) {
+            Thread.currentThread().interrupt();
+            log.warn("Firebase token refresh was interrupted.");
+        } catch (Exception error) {
+            log.warn("Firebase token refresh or credential save failed: {}", error.getClass().getSimpleName());
+        }
 
         return this.currentIdToken;
     }
 
-    private void saveTokensToSession(String idToken, String refreshToken, String uid) {
-        try {
-            if (SESSION_FILE.exists()) {
-                String content = Files.readString(SESSION_FILE.toPath());
-                JSONObject json = (content != null && !content.isBlank()) ? new JSONObject(content) : new JSONObject();
-                json.put("idToken", idToken);
-                json.put("token", idToken);
-                if (refreshToken != null && !refreshToken.isBlank()) {
-                    json.put("refreshToken", refreshToken);
-                }
-                if (uid != null && !uid.isBlank()) {
-                    json.put("uid", uid);
-                    json.put("googleId", uid);
-                }
-                Files.writeString(SESSION_FILE.toPath(), json.toString(2), StandardCharsets.UTF_8);
-            }
-        } catch (Exception ignored) {}
+    static void saveTokensToSession(CredentialStore store, String idToken, String refreshToken, String uid) {
+        AuthSession session = store.loadSession();
+        if (session == null || uid == null || uid.isBlank() || !uid.equals(session.getUid())) {
+            return;
+        }
+        store.saveSession(session.withNewTokens(idToken, refreshToken, System.currentTimeMillis() + 3600_000L, session.getPlan()));
     }
 
     private static long getLong(JSONObject fields, String key) {

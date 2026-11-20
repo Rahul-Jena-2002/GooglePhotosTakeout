@@ -4,14 +4,92 @@ import org.springframework.stereotype.Service;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.PrintWriter;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.*;
 import java.time.Instant;
+import java.util.UUID;
 
 /**
  * Handles filesystem operations such as copying files and preserving directory structures.
  */
 @Service
 public class FileOperationService {
+
+    public PrintWriter createRestoreLog(Path outputDirectory) throws IOException {
+        Path log = outputDirectory.resolve("restoration_log-" + UUID.randomUUID() + ".log");
+        return new PrintWriter(Files.newBufferedWriter(log, StandardCharsets.UTF_8,
+                StandardOpenOption.CREATE_NEW, StandardOpenOption.WRITE));
+    }
+
+    private void prepareOutputDirectory(Path outputRoot, Path directory) throws IOException {
+        Path root = outputRoot.toAbsolutePath().normalize();
+        Path target = directory.toAbsolutePath().normalize();
+        if (!target.startsWith(root)) throw new IOException("Output path leaves the chosen restore folder.");
+        Files.createDirectories(root);
+        Path realRoot = root.toRealPath();
+        if (target.equals(root)) return;
+        Path current = root;
+        // shortcut: concurrent folder swaps can race these checks; use secure directory handles for adversarial locations.
+        for (Path component : root.relativize(target)) {
+            current = current.resolve(component);
+            try {
+                Files.createDirectory(current);
+            } catch (FileAlreadyExistsException ignored) {
+                // Check existing directories below before writing into them.
+            }
+            if (Files.isSymbolicLink(current) || !Files.isDirectory(current, LinkOption.NOFOLLOW_LINKS)
+                    || !current.toRealPath().startsWith(realRoot)) {
+                throw new IOException("Output contains a linked or unsafe folder: " + current);
+            }
+        }
+    }
+
+    public static void requireSeparateDirectories(File input, File output) throws IOException {
+        Path source = input.getCanonicalFile().toPath();
+        Path destination = output.getCanonicalFile().toPath();
+        if (source.startsWith(destination) || destination.startsWith(source)) {
+            throw new IOException("Choose a restore folder separate from the source folder.");
+        }
+    }
+
+    public Path createArchiveCopy(File source) throws IOException {
+        Path temporary = Files.createTempFile("takeoutfix-archive-", ".media");
+        try {
+            Files.copy(source.toPath(), temporary, StandardCopyOption.REPLACE_EXISTING);
+            return temporary;
+        } catch (IOException | RuntimeException e) {
+            try {
+                Files.deleteIfExists(temporary);
+            } catch (IOException cleanupError) {
+                e.addSuppressed(cleanupError);
+            }
+            throw e;
+        }
+    }
+
+    public File createArchiveTemp(File source) throws IOException {
+        String name = source.getName();
+        int dot = name.lastIndexOf('.');
+        String extension = dot >= 0 && name.length() - dot <= 16 ? name.substring(dot) : ".tmp";
+        return File.createTempFile("takeoutfix-", extension);
+    }
+
+    public Path createArchivePart(Path outputDirectory, int part) throws IOException {
+        return Files.createTempFile(outputDirectory, "Restored_Takeout_Part" + part + "-", ".zip.partial");
+    }
+
+    public Path finishArchivePart(Path partial, int part) throws IOException {
+        String base = "Restored_Takeout_Part" + part;
+        for (int suffix = 0; ; suffix++) {
+            String name = base + (suffix == 0 ? "" : " (" + suffix + ")") + ".zip";
+            try {
+                return Files.move(partial, partial.resolveSibling(name));
+            } catch (FileAlreadyExistsException ignored) {
+                // Try another name without replacing an existing archive.
+            }
+        }
+    }
 
     /**
      * Copies a media file to the output folder, preserving its original directory structure.
@@ -27,7 +105,7 @@ public class FileOperationService {
         Path relativePath = inputRoot.toPath().relativize(sourceFile);
         Path destinationFile = outputRoot.toPath().resolve(relativePath);
 
-        Files.createDirectories(destinationFile.getParent());
+        prepareOutputDirectory(outputRoot.toPath(), destinationFile.getParent());
         fastCopy(sourceFile, destinationFile);
 
         return relativePath;
@@ -37,22 +115,26 @@ public class FileOperationService {
      * Fast zero-copy file transfer using NIO FileChannel.
      */
     public void fastCopy(Path src, Path dst) throws IOException {
-        try (java.nio.channels.FileChannel in = java.nio.channels.FileChannel.open(src, StandardOpenOption.READ);
-             java.nio.channels.FileChannel out = java.nio.channels.FileChannel.open(dst, StandardOpenOption.CREATE, StandardOpenOption.WRITE, StandardOpenOption.TRUNCATE_EXISTING)) {
-            long size = in.size();
-            long position = 0;
-            while (position < size) {
-                long transferred = in.transferTo(position, size - position, out);
-                if (transferred <= 0) break;
-                position += transferred;
+        try (java.nio.channels.FileChannel in = java.nio.channels.FileChannel.open(src, StandardOpenOption.READ)) {
+            java.nio.channels.FileChannel out = java.nio.channels.FileChannel.open(dst, StandardOpenOption.CREATE_NEW, StandardOpenOption.WRITE);
+            try (out) {
+                long size = in.size();
+                long position = 0;
+                while (position < size) {
+                    long transferred = in.transferTo(position, size - position, out);
+                    if (transferred <= 0) throw new IOException("Copy stopped before the entire source file was written.");
+                    position += transferred;
+                }
+            } catch (IOException error) {
+                throw new IOException("Could not finish copying " + src + ". A partial file may remain at " + dst + ".", error);
             }
         }
     }
 
     /**
      * Copies a media file preserving its original album/subfolder structure from inputRoot,
-     * and creating a clean chronological Month-Year subfolder inside that album
-     * (e.g. outputRoot/AlbumName/2023-08/photo.jpg), automatically resolving duplicate collisions.
+     * and creating year/month subfolders inside that album
+     * (e.g. outputRoot/AlbumName/2023/08/photo.jpg), automatically resolving duplicate collisions.
      *
      * @param media The source media file.
      * @param inputRoot The root of the input directory.
@@ -62,13 +144,6 @@ public class FileOperationService {
      * @throws IOException If the copy operation fails.
      */
     public File copyToChronologicalOutput(File media, File inputRoot, File outputRoot, Instant timestamp) throws IOException {
-        String monthFolder = "Unknown_Date";
-        if (timestamp != null) {
-            java.time.ZonedDateTime zdt = timestamp.atZone(java.time.ZoneId.systemDefault());
-            monthFolder = String.format("%02d - %s", zdt.getMonthValue(),
-                    zdt.getMonth().getDisplayName(java.time.format.TextStyle.FULL, java.util.Locale.ENGLISH));
-        }
-
         Path relativeParent = null;
         try {
             Path rel = inputRoot.toPath().relativize(media.toPath());
@@ -77,12 +152,12 @@ public class FileOperationService {
 
         Path targetDir;
         if (relativeParent != null && !relativeParent.toString().isEmpty()) {
-            targetDir = outputRoot.toPath().resolve(relativeParent).resolve(monthFolder);
+            targetDir = datedDirectory(outputRoot.toPath().resolve(relativeParent), timestamp);
         } else {
-            targetDir = outputRoot.toPath().resolve(monthFolder);
+            targetDir = datedDirectory(outputRoot.toPath(), timestamp);
         }
 
-        Files.createDirectories(targetDir);
+        prepareOutputDirectory(outputRoot.toPath(), targetDir);
         Path destPath = resolveUniqueDestination(targetDir, media.getName());
         fastCopy(media.toPath(), destPath);
         return destPath.toFile();
@@ -93,13 +168,6 @@ public class FileOperationService {
     }
 
     public File copyToChronologicalFolder(File media, File inputRoot, File outputRoot, String subFolder, Instant timestamp) throws IOException {
-        String monthFolder = "Unknown_Date";
-        if (timestamp != null) {
-            java.time.ZonedDateTime zdt = timestamp.atZone(java.time.ZoneId.systemDefault());
-            monthFolder = String.format("%02d - %s", zdt.getMonthValue(),
-                    zdt.getMonth().getDisplayName(java.time.format.TextStyle.FULL, java.util.Locale.ENGLISH));
-        }
-
         Path relativeParent = null;
         try {
             Path rel = inputRoot.toPath().relativize(media.toPath());
@@ -109,12 +177,12 @@ public class FileOperationService {
         Path baseDir = outputRoot.toPath().resolve(subFolder);
         Path targetDir;
         if (relativeParent != null && !relativeParent.toString().isEmpty()) {
-            targetDir = baseDir.resolve(relativeParent).resolve(monthFolder);
+            targetDir = datedDirectory(baseDir.resolve(relativeParent), timestamp);
         } else {
-            targetDir = baseDir.resolve(monthFolder);
+            targetDir = datedDirectory(baseDir, timestamp);
         }
 
-        Files.createDirectories(targetDir);
+        prepareOutputDirectory(outputRoot.toPath(), targetDir);
         Path destPath = resolveUniqueDestination(targetDir, media.getName());
         fastCopy(media.toPath(), destPath);
         return destPath.toFile();
@@ -122,6 +190,13 @@ public class FileOperationService {
 
     public File copyToChronologicalFolder(File media, File outputRoot, String subFolder, Instant timestamp) throws IOException {
         return copyToChronologicalFolder(media, media.getParentFile() != null ? media.getParentFile() : outputRoot, outputRoot, subFolder, timestamp);
+    }
+
+    private Path datedDirectory(Path base, Instant timestamp) {
+        if (timestamp == null) return base.resolve("Unknown_Date");
+        java.time.ZonedDateTime date = timestamp.atZone(java.time.ZoneId.systemDefault());
+        return base.resolve(String.format(java.util.Locale.ROOT, "%04d", date.getYear()))
+                .resolve(String.format(java.util.Locale.ROOT, "%02d", date.getMonthValue()));
     }
 
     private Path resolveUniqueDestination(Path targetDir, String originalFilename) {
@@ -161,20 +236,21 @@ public class FileOperationService {
         Path relativePath = inputRoot.toPath().relativize(sourceFile);
         Path destinationFile = estimatedRoot.resolve(relativePath);
 
-        Files.createDirectories(destinationFile.getParent());
+        prepareOutputDirectory(outputRoot.toPath(), destinationFile.getParent());
         fastCopy(sourceFile, destinationFile);
 
         return destinationFile.toFile();
     }
 
-    public void copyToUnmatched(File media, File inputRoot, File outputRoot) throws IOException {
+    public File copyToUnmatched(File media, File inputRoot, File outputRoot) throws IOException {
         Path sourceFile = media.toPath();
         Path noMetaRoot = outputRoot.toPath().resolve("metadata_not_found");
         Path relativePath = inputRoot.toPath().relativize(sourceFile);
         Path destinationFile = noMetaRoot.resolve(relativePath);
 
-        Files.createDirectories(destinationFile.getParent());
+        prepareOutputDirectory(outputRoot.toPath(), destinationFile.getParent());
         fastCopy(sourceFile, destinationFile);
+        return destinationFile.toFile();
     }
 
     /**

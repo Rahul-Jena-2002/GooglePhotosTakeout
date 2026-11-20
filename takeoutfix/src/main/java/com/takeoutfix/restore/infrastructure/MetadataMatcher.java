@@ -50,8 +50,10 @@ public class MetadataMatcher {
     // Group 1: Separator (. or _), Group 2: Keyword, Group 3: Optional (N)
     private static final Pattern META_SUFFIX_PATTERN = Pattern.compile("([._])(" + DYNAMIC_REGEX + ")(\\(\\d+\\))?\\.json$", Pattern.CASE_INSENSITIVE);
 
-    // Per-directory in-memory name→File maps, built once and reused by all threads
-    private final java.util.concurrent.ConcurrentHashMap<String, Map<String, File>> nameMapCache =
+    private record DirectoryIndex(File[] listing, Map<String, File> names) {}
+
+    // Reuse an index only while the caller uses the same directory listing.
+    private final java.util.concurrent.ConcurrentHashMap<String, DirectoryIndex> nameMapCache =
         new java.util.concurrent.ConcurrentHashMap<>();
 
     /**
@@ -71,16 +73,18 @@ public class MetadataMatcher {
         // Get or populate the raw file listing (one listFiles() call per directory)
         File[] files = dirCache.computeIfAbsent(parentPath, k -> {
             File[] listing = parent.listFiles();
-            return listing != null ? listing : new File[0];
+            if (listing == null) throw new IllegalStateException("Cannot read metadata folder: " + parent);
+            return listing;
         });
         if (files.length == 0) return Optional.empty();
 
         // Build an in-memory name→File map so ALL candidate lookups are O(1) — zero filesystem I/O
-        Map<String, File> filesByName = nameMapCache.computeIfAbsent(parentPath, k -> {
+        Map<String, File> filesByName = nameMapCache.compute(parentPath, (k, previous) -> {
+            if (previous != null && previous.listing() == files) return previous;
             Map<String, File> map = new HashMap<>(files.length * 2);
             for (File f : files) map.put(f.getName(), f);
-            return map;
-        });
+            return new DirectoryIndex(files, map);
+        }).names();
 
         String name = media.getName();
         int lastDot = name.lastIndexOf('.');
@@ -161,30 +165,19 @@ public class MetadataMatcher {
         String nameTruncated = nameNoExt.length() > MAX_STEM ? nameNoExt.substring(0, MAX_STEM) : nameNoExt;
         String nameTruncated47 = nameNoExt.length() > 47 ? nameNoExt.substring(0, 47) : nameNoExt;
 
-        String numberedBase = null;
-        Matcher numMatcher = NUMBERED_PATTERN.matcher(mediaName);
-        if (numMatcher.matches()) {
-            numberedBase = numMatcher.group(1);
-        }
-
         File bestMatch = null;
-        int maxScore = -1;
 
         for (File f : files) {
             String fileName = f.getName();
             if (!fileName.toLowerCase().endsWith(".json")) continue;
 
-            if (fileName.startsWith(mediaName) || fileName.startsWith(nameNoExt)
-                || fileName.startsWith(nameTruncated) || fileName.startsWith(nameTruncated47)
-                || (numberedBase != null && fileName.startsWith(numberedBase))) {
-                Matcher m = META_SUFFIX_PATTERN.matcher(fileName);
-                if (m.find()) {
-                    int score = fileName.length();
-                    if (score > maxScore) {
-                        maxScore = score;
-                        bestMatch = f;
-                    }
-                }
+            Matcher m = META_SUFFIX_PATTERN.matcher(fileName);
+            if (m.find()) {
+                String stem = fileName.substring(0, m.start());
+                if (!stem.equals(mediaName) && !stem.equals(nameNoExt)
+                        && !stem.equals(nameTruncated) && !stem.equals(nameTruncated47)) continue;
+                if (bestMatch != null) return Optional.empty();
+                bestMatch = f;
             }
         }
         return Optional.ofNullable(bestMatch);

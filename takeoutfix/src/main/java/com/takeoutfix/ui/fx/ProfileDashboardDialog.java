@@ -3,6 +3,7 @@ package com.takeoutfix.ui.fx;
 import com.takeoutfix.auth.UserSyncBridgeService;
 import com.takeoutfix.network.SystemHardwareInfo;
 import com.takeoutfix.restore.SessionStatsService;
+import javafx.application.Platform;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Scene;
@@ -56,7 +57,7 @@ public class ProfileDashboardDialog extends Stage {
         Label emailLbl = new Label(email);
         emailLbl.setStyle("-fx-font-size: 11px; -fx-text-fill: #71717a;");
 
-        Label tierBadge = new Label(signedIn ? "PRO TIER — UNLOCKED" : "GUEST TIER");
+        Label tierBadge = new Label(signedIn ? "FREE ACCOUNT" : "GUEST MODE");
         tierBadge.setStyle(signedIn
                 ? "-fx-font-size: 10px; -fx-font-weight: 700; -fx-text-fill: #10b981; -fx-background-color: rgba(16, 185, 129, 0.12); -fx-padding: 2 6 2 6; -fx-background-radius: 4;"
                 : "-fx-font-size: 10px; -fx-font-weight: 700; -fx-text-fill: #f59e0b; -fx-background-color: rgba(245, 158, 11, 0.12); -fx-padding: 2 6 2 6; -fx-background-radius: 4;");
@@ -68,7 +69,7 @@ public class ProfileDashboardDialog extends Stage {
         root.getChildren().add(new Separator());
 
         // 2. Lifetime Operations Stats (2x2 Grid)
-        Label opsTitle = new Label("LIFETIME RESTORATION STATS");
+        Label opsTitle = new Label("LOCAL RESTORATION HISTORY");
         opsTitle.setStyle("-fx-font-size: 10px; -fx-font-weight: 800; -fx-text-fill: #71717a;");
 
         GridPane statsGrid = new GridPane();
@@ -80,10 +81,10 @@ public class ProfileDashboardDialog extends Stage {
         double mb = bytes / (1024.0 * 1024.0);
         String storageStr = (mb > 1024.0) ? String.format("%.2f GB", mb / 1024.0) : String.format("%.1f MB", mb);
 
-        VBox card1 = createStatTile("TOTAL RESTORED", storageStr, "#3b82f6");
-        VBox card2 = createStatTile("FILES RESTORED", String.valueOf(files), "#10b981");
-        VBox card3 = createStatTile("ENGINE", "Local & Offline", "#8b5cf6");
-        VBox card4 = createStatTile("PRIVACY", "100% Local Run", "#10b981");
+        VBox card1 = createStatTile("DATA PROCESSED", storageStr, "#3b82f6");
+        VBox card2 = createStatTile("FILES RECORDED", String.valueOf(files), "#10b981");
+        VBox card3 = createStatTile("MEDIA", "Processed locally", "#8b5cf6");
+        VBox card4 = createStatTile("ACCOUNT", signedIn ? "Signed in" : "Guest", "#10b981");
 
         statsGrid.add(card1, 0, 0);
         statsGrid.add(card2, 1, 0);
@@ -124,12 +125,15 @@ public class ProfileDashboardDialog extends Stage {
         btnRow.setPadding(new Insets(6, 0, 0, 0));
 
         if (signedIn) {
-            Button btnSync = new Button("Sync Cloud Now");
+            Button btnSync = new Button("Refresh Account");
             btnSync.getStyleClass().add("btn-secondary");
             btnSync.setOnAction(e -> {
-                if (userService != null) userService.triggerCloudSync(null);
-                btnSync.setText("Synced!");
                 btnSync.setDisable(true);
+                btnSync.setText("Refreshing...");
+                userService.triggerCloudSync(success -> Platform.runLater(() -> {
+                    btnSync.setText(Boolean.TRUE.equals(success) ? "Account refreshed" : "Refresh failed — retry");
+                    btnSync.setDisable(false);
+                }));
             });
 
             Button btnSignOut = new Button("Sign Out");
@@ -142,7 +146,7 @@ public class ProfileDashboardDialog extends Stage {
 
             btnRow.getChildren().addAll(btnSync, btnSignOut);
         } else {
-            Label guestHint = new Label("Sign in with Google to enable cloud sync history.");
+            Label guestHint = new Label("Sign in to enable account sync.");
             guestHint.setStyle("-fx-font-size: 10px; -fx-text-fill: #71717a;");
             HBox.setHgrow(guestHint, Priority.ALWAYS);
             btnRow.getChildren().add(guestHint);

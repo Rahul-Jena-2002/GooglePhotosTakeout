@@ -3,42 +3,11 @@ export const prerender = true;
 import Layout from "../../layouts/Layout.astro";
 import Icon from "../../components/ui/Icon.astro";
 
-const troubleshootingFaqSchema = {
-  "@context": "https://schema.org",
-  "@type": "FAQPage",
-  "mainEntity": [
-    {
-      "@type": "Question",
-      "name": "Why does Google Takeout truncate long photo filenames?",
-      "acceptedAnswer": {
-        "@type": "Answer",
-        "text": "If a media filename and sidecar name differ, compare the base title and nearby files. Do not assume a fixed truncation length; inspect the specific export and test candidate matches before batch processing."
-      }
-    },
-    {
-      "@type": "Question",
-      "name": "Why is GPS location data missing from photos in shared albums?",
-      "acceptedAnswer": {
-        "@type": "Answer",
-        "text": "A zero coordinate is not a usable location. Check the sidecar and any original copy; if no location is present, a metadata tool cannot infer it reliably."
-      }
-    },
-    {
-      "@type": "Question",
-        "name": "Why is my photo time off by several hours?",
-      "acceptedAnswer": {
-        "@type": "Answer",
-        "text": "Compare the time shown in the photo app with a photo whose capture time you know. Time handling can vary; test a few files before changing a whole library."
-      }
-    }
-  ]
-};
-
 const articleSchema = {
   "@context": "https://schema.org",
   "@type": "TechArticle",
-  "headline": "Fix Common Google Takeout Photo Problems",
-  "description": "Simple checks for missing files, duplicate photos, missing locations, and photo dates that look wrong after a Google Takeout download.",
+  "headline": "Why Google Takeout Photos Show the Wrong Date",
+  "description": "How to check whether a Takeout photo has a separate date file, test a restored copy, and troubleshoot photos that remain out of order.",
   "author": {
     "@type": "Person",
     "name": "Rahul Jena",
@@ -50,15 +19,14 @@ const articleSchema = {
     "url": "https://takeoutfix.pages.dev"
   },
   "datePublished": "2026-09-20",
-  "dateModified": "2026-10-14"
+  "dateModified": "2026-11-16"
 };
 ---
 
 <Layout
-  title="Fix Common Google Takeout Photo Problems | TakeoutFix"
-  description="Find photos with missing details, mismatched file names, or dates that look wrong after a Google Takeout download."
+  title="Why Google Takeout Photos Show the Wrong Date | TakeoutFix"
+  description="Learn why a Google Takeout photo may show the wrong date, how to find its extra details file, and how to test a restored copy safely."
 >
-  <script type="application/ld+json" set:html={JSON.stringify(troubleshootingFaqSchema)} />
   <script type="application/ld+json" set:html={JSON.stringify(articleSchema)} />
 
   <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 mt-12 font-sans text-zinc-300">
@@ -79,13 +47,13 @@ const articleSchema = {
       </div>
 
       <h1 class="text-3xl sm:text-4xl md:text-5xl font-extrabold tracking-tight text-zinc-900 dark:text-white mb-6 leading-tight max-w-4xl">
-        Fix Common Google Takeout Photo Problems
+        Why Google Takeout Photos Show the Wrong Date
       </h1>
 
       <div class="flex flex-wrap items-center gap-4 text-xs text-zinc-500 font-mono pb-6 border-b border-zinc-200 dark:border-zinc-800">
         <span>By <strong>Rahul Jena</strong></span>
         <span>&bull;</span>
-        <span>Published September 2026</span>
+        <span>Published September 2026 · Updated November 2026</span>
         <span>&bull;</span>
         <span>About 5 min read</span>
       </div>
@@ -104,7 +72,7 @@ const articleSchema = {
             Overview of Edge Cases
           </h2>
           <p class="text-sm leading-relaxed text-zinc-600 dark:text-zinc-300">
-            A Takeout download may contain duplicate photos, edited copies, or extra details files that are hard to match. These simple checks can help you understand what's happening before you restore a large folder. Results vary between downloads.
+            If a photo appears under the wrong day after a Takeout download, first check whether the download includes a separate details file for it. Use these steps to investigate one photo before changing a whole collection.
           </p>
         </div>
 
@@ -131,6 +99,9 @@ const articleSchema = {
             <strong class="text-zinc-900 dark:text-white block mb-1">How to fix it:</strong>
             Make a copy of the relevant folder and process a small sample first. Review unmatched or ambiguous files in the tool output; do not overwrite the source export until you have checked the results.
           </div>
+          <p class="text-zinc-600 dark:text-zinc-300">
+            If the browser tool says a name cannot be preserved safely, work on a copy of the export. Rename the affected file or folder, keep any matching details file alongside the photo, and check that the names still correspond. Leave the original download unchanged.
+          </p>
         </section>
 
         <section id="problem-2" class="space-y-4">

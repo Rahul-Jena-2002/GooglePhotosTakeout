@@ -31,6 +31,10 @@ public final class GuestQuotaStore {
 
     private static int cachedFiles = -1;
     private static long cachedBytes = -1;
+    private static final GuestQuotaReservations RESERVATIONS = new GuestQuotaReservations(MAX_GUEST_BYTES);
+
+    public enum ReservationStatus { RESERVED, WAIT, LIMIT }
+    public record ReservationAttempt(ReservationStatus status, Object token) {}
 
     private GuestQuotaStore() {}
 
@@ -62,8 +66,8 @@ public final class GuestQuotaStore {
             }
         }
 
-        cachedFiles = fileCount;
-        cachedBytes = byteCount;
+        cachedFiles = Math.max(0, fileCount);
+        cachedBytes = Math.max(0L, byteCount);
 
         // Re-persist so missing/cleared vault is instantly self-healed
         persist();
@@ -109,6 +113,17 @@ public final class GuestQuotaStore {
         cachedFiles += Math.max(0, files);
         cachedBytes += Math.max(0, bytes);
         persist();
+    }
+
+    public static synchronized ReservationAttempt tryReserve(long bytes) {
+        loadIfNeeded();
+        GuestQuotaReservations.Attempt attempt = RESERVATIONS.tryReserve(cachedBytes, bytes);
+        return new ReservationAttempt(ReservationStatus.valueOf(attempt.status().name()), attempt.token());
+    }
+
+    public static synchronized void finishReservation(Object token, boolean completed) {
+        long bytes = RESERVATIONS.release(token);
+        if (completed) recordRestoration(1, bytes);
     }
 
     public static synchronized boolean isExhausted() {

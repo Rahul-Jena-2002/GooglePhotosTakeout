@@ -9,7 +9,7 @@ import { Button } from "../components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card"
 import { Progress } from "../components/ui/progress"
 import { type LogEntry, type ToolTab } from "./useToolPipeline"
-import type { ActiveSession } from "../lib/SessionManager"
+import { hasCompleteSessionScan, type ActiveSession } from "../lib/SessionManager"
 import { usePersistentHandles } from "../hooks/usePersistentHandles"
 import { useSettingsStore } from "../store/useSettingsStore"
 import { downloadSyncScript } from "../services/restoration/WindowsDateSyncScript"
@@ -46,8 +46,8 @@ interface RestorePanelProps {
   logContainerRef: React.RefObject<HTMLDivElement>
   getEstimatedRestoreTime: () => string
   pendingSession: ActiveSession | null
-  setPendingSession: (s: ActiveSession | null) => void
-  sessionManagerRef: React.MutableRefObject<any>
+  canManagePendingSession: boolean
+  discardPendingSession: () => void
   handleDragOver: (e: React.DragEvent) => void
   handleDragLeave: () => void
   handleDrop: (e: React.DragEvent) => void
@@ -60,7 +60,6 @@ interface RestorePanelProps {
   pauseProcessing: () => void
   resumeProcessing: () => void
   resetForNewRestore: () => void
-  setShowCompareModal: (v: boolean) => void
   viewerFile: File | null
   viewerExif: Record<string, unknown> | null
   viewerLoading: boolean
@@ -104,8 +103,8 @@ export function RestorePanel({
   logContainerRef,
   getEstimatedRestoreTime,
   pendingSession,
-  setPendingSession,
-  sessionManagerRef,
+  canManagePendingSession,
+  discardPendingSession,
   handleDragOver,
   handleDragLeave,
   handleDrop,
@@ -256,28 +255,28 @@ export function RestorePanel({
           <div className="p-4 bg-indigo-500/10 border border-indigo-500/20 rounded-2xl text-left space-y-2.5">
             <div className="flex items-center gap-2 text-indigo-600 dark:text-indigo-400 font-bold text-xs sm:text-sm">
               <Zap className="w-4 h-4" />
-              <span>Interrupted Session Found</span>
+              <span>Saved Restore Found</span>
             </div>
-            <p className="text-xs sm:text-sm text-zinc-700 dark:text-zinc-300 leading-relaxed">
+            {canManagePendingSession ? <><p className="text-xs sm:text-sm text-zinc-700 dark:text-zinc-300 leading-relaxed">
               We found a pending restoration for <strong>{pendingSession.takeoutName}</strong> ({pendingSession.scannedCount} of {pendingSession.totalFiles} files processed).
             </p>
+            <p className="text-xs sm:text-sm text-zinc-700 dark:text-zinc-300">If this restore is running in another tab, return to that tab instead of resuming or discarding it here.</p>
+            {!hasCompleteSessionScan(pendingSession) && <p className="text-xs sm:text-sm text-zinc-700 dark:text-zinc-300">The scan did not finish. Discard this session and start again to include all files.</p>}
             <div className="flex gap-2.5">
               <Button
                 onClick={handleReGrantPermissions}
+                disabled={!hasCompleteSessionScan(pendingSession)}
                 className="btn-monochrome-primary rounded-lg px-3.5 py-1.5 text-xs font-semibold cursor-pointer"
               >
                 Resume Restoration
               </Button>
               <Button
-                onClick={async () => {
-                  await sessionManagerRef.current.terminateSession('cancelled')
-                  setPendingSession(null)
-                }}
+                onClick={discardPendingSession}
                 className="btn-monochrome-secondary rounded-lg px-3.5 py-1.5 text-xs font-semibold cursor-pointer"
               >
                 Discard
               </Button>
-            </div>
+            </div></> : <p className="text-xs sm:text-sm text-zinc-700 dark:text-zinc-300 leading-relaxed">Sign in to the account that started this restore to resume or discard it. The saved restore remains on this browser.</p>}
           </div>
         )}
 
@@ -288,7 +287,7 @@ export function RestorePanel({
             <div>
               <div className="font-semibold text-amber-900 dark:text-amber-100">Browser Compatibility Notice</div>
               <div className="text-xs text-amber-800 dark:text-amber-300/80 mt-0.5 leading-relaxed">
-                Direct folder access requires a modern desktop browser (Google Chrome, Microsoft Edge, or Brave). If you are using Safari or Firefox, please select your archive as a ZIP file.
+                Direct folder access is unavailable in this browser. You can try selecting a ZIP file and downloading the result as a ZIP; browser and device limits may still apply.
               </div>
             </div>
           </div>
@@ -497,13 +496,16 @@ export function RestorePanel({
             {showPrestartGuide && (
               <div className="py-2 px-3 rounded-lg bg-zinc-50 dark:bg-zinc-900/60 border border-zinc-200 dark:border-white/10 space-y-2 text-xs sm:text-sm text-zinc-600 dark:text-zinc-400 leading-relaxed">
                 <div>
-                  <strong className="text-zinc-900 dark:text-white">Dates and Location:</strong> Original taken dates, times, and GPS coordinates are embedded directly inside each photo and video so they appear chronologically in Google Photos, Apple Photos, or any software.
+                  <strong className="text-zinc-900 dark:text-white">Dates and location:</strong> The tool attempts to add available details to supported files. Video support is limited to container timestamps; location and display behavior vary by format and photo app.
                 </div>
                 <div>
-                  <strong className="text-zinc-900 dark:text-white">Folder dates on Windows/Mac:</strong> Browsers cannot alter operating system file modification dates due to sandbox security. Running the generated helper script (<span className="text-emerald-600 dark:text-emerald-400 font-mono">sync_windows_dates.bat</span> on Windows, <span className="text-emerald-600 dark:text-emerald-400 font-mono">sync_macos_linux.sh</span> on Mac/Linux) in your output folder syncs file system dates in seconds.
+                  <strong className="text-zinc-900 dark:text-white">Folder dates:</strong> Operating-system file dates are separate from the dates inside your photos. The optional timestamp helpers require further testing; keep your backup and do not rely on them yet.
                 </div>
                 <div>
-                  <strong className="text-zinc-900 dark:text-white">Download as ZIP:</strong> The ZIP download method sets file timestamps directly into the zip archive headers automatically.
+                  <strong className="text-zinc-900 dark:text-white">Files outside the supported list:</strong> The tool does not copy every type of file in your export. Keep the original Takeout download, including its extra details files.
+                </div>
+                <div>
+                  <strong className="text-zinc-900 dark:text-white">Download as ZIP:</strong> Allow downloads if your browser asks, then check that every ZIP part is saved and opens. Archive timestamps may be set for processed files; check them in your destination app.
                 </div>
               </div>
             )}
@@ -625,7 +627,7 @@ export function RestorePanel({
                   </div>
                   <p className="text-[11px] text-zinc-500 dark:text-zinc-400 truncate">
                     {plan === 'guest'
-                      ? 'Free guest mode allows up to 1.0 GB per batch. Sign in for 100% free unlimited processing.'
+                      ? 'Guest mode includes 1 GB of free processing. Sign in to continue after reaching the limit.'
                       : 'Signed in with your account. Full library restoration and unlimited volume enabled.'}
                   </p>
                 </div>
@@ -635,12 +637,12 @@ export function RestorePanel({
                 <div className="text-right">
                   <div className="text-xs sm:text-sm font-mono font-bold text-zinc-900 dark:text-white">
                     {plan === 'guest'
-                      ? `${formatByteSize(currentUsedBytes + sessionBytes)} / 1.0 GB`
+                      ? `${formatByteSize(currentUsedBytes)} / 1.0 GB`
                       : `${formatByteSize(sessionBytes || currentUsedBytes)} ${sessionFiles > 0 ? `(${sessionFiles.toLocaleString()} files)` : ''}`}
                   </div>
                   <div className="text-[10px] text-zinc-500 dark:text-zinc-400 font-mono">
                     {plan === 'guest'
-                      ? `${Math.min(100, Math.round(((currentUsedBytes + sessionBytes) / (1024 * 1024 * 1024)) * 100))}% of guest quota used`
+                      ? `${Math.min(100, Math.round((currentUsedBytes / (1024 * 1024 * 1024)) * 100))}% of guest quota used`
                       : 'Unlimited batch allowance'}
                   </div>
                 </div>
@@ -660,7 +662,7 @@ export function RestorePanel({
             {plan === 'guest' && (
               <div className="pt-1.5 border-t border-zinc-100 dark:border-white/5">
                 <Progress
-                  value={Math.min(100, (((currentUsedBytes + sessionBytes) / (1024 * 1024 * 1024)) * 100))}
+                  value={Math.min(100, ((currentUsedBytes / (1024 * 1024 * 1024)) * 100))}
                   className="h-1.5 bg-zinc-200 dark:bg-white/10 rounded-full"
                 />
               </div>
@@ -678,28 +680,13 @@ export function RestorePanel({
               <span className="text-sm sm:text-base font-semibold text-emerald-800 dark:text-emerald-400 truncate">{stats.matched}</span>
             </div>
             <div className="bg-amber-50/70 dark:bg-amber-500/5 border border-amber-300 dark:border-amber-500/10 py-2 px-3 rounded-lg flex items-center justify-between shadow-2xs">
-              <span className="text-xs sm:text-sm text-amber-800 dark:text-amber-400 flex items-center gap-2 font-semibold"><AlertCircle className="w-4 h-4 text-amber-600 dark:text-amber-400"/> Unmatched</span>
-              <span className="text-sm sm:text-base font-semibold text-amber-900 dark:text-amber-400 truncate">{stats.unmatched}</span>
+              <span className="text-xs sm:text-sm text-amber-800 dark:text-amber-400 flex items-center gap-2 font-semibold"><AlertCircle className="w-4 h-4 text-amber-600 dark:text-amber-400"/> Needs review</span>
+              <span className="text-sm sm:text-base font-semibold text-amber-900 dark:text-amber-400 truncate">{stats.unmatched + stats.exifFailed}</span>
             </div>
             <div className="bg-rose-50/70 dark:bg-rose-500/5 border border-rose-200 dark:border-rose-500/10 py-2 px-3 rounded-lg flex items-center justify-between shadow-2xs">
               <span className="text-xs sm:text-sm text-rose-700 dark:text-rose-400 flex items-center gap-2 font-semibold"><XCircle className="w-4 h-4 text-rose-600 dark:text-rose-400"/> Errors</span>
               <span className="text-sm sm:text-base font-semibold text-rose-800 dark:text-rose-400 truncate">{stats.errors}</span>
             </div>
-          </div>
-
-          {/* Existing A-Ads zones, displayed as a compact responsive grid. */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5" aria-label="Advertisements">
-            {["2456560", "2456616", "2456617", "2456618", "2456619", "2456620"].map((zone) => (
-              <div key={zone} className="min-w-0 h-[92px] overflow-hidden rounded-lg border border-zinc-200 dark:border-white/10 bg-white/80 dark:bg-zinc-900/40 p-1.5">
-                <iframe
-                  data-aa={zone}
-                  title="Advertisement"
-                  loading="lazy"
-                  src={`https://acceptable.a-ads.com/${zone}/?size=Adaptive`}
-                  className="block h-full w-full border-0"
-                />
-              </div>
-            ))}
           </div>
 
           {/* Activity Logs Terminal */}
@@ -802,7 +789,7 @@ export function RestorePanel({
                       return (
                         <div key={i} className="text-emerald-500 dark:text-emerald-400 pl-2 border-l border-emerald-500/30 py-0.5 whitespace-pre-wrap">
                           <span className="font-bold mr-2">[RESTORED]</span>
-                          <span>{fullFilename}{actionLabel}</span>
+                          <span>{fullFilename}{actionLabel}{log.output ? ` — ${log.output}` : ''}</span>
                         </div>
                       )
                     } else if (log.level === 'warn') {
@@ -813,8 +800,8 @@ export function RestorePanel({
                             ? 'text-amber-500 dark:text-amber-400/90 border-amber-500/30'
                             : 'text-amber-500 dark:text-amber-400/80 border-amber-500/30'
                         }`}>
-                          <span className="font-bold mr-2">{isExifFail ? '[FALLBACK]' : '[UNMATCHED]'}</span>
-                          <span>{fullFilename}{log.action ? `  ➔  ${log.action}` : ''}</span>
+                          <span className="font-bold mr-2">{isExifFail ? '[FALLBACK]' : '[REVIEW]'}</span>
+                          <span>{fullFilename}{log.action ? `  ➔  ${log.action}` : ''}{log.output ? ` — ${log.output}` : ''}</span>
                         </div>
                       )
                     } else if (log.level === 'error') {

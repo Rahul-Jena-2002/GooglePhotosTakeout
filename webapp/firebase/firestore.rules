@@ -4,7 +4,7 @@ service cloud.firestore {
 
     // ─── Role Helpers ───────────────────────────────────────────────────────────
     function isSuperAdminEmail() {
-      return request.auth != null && request.auth.token.email in [
+      return request.auth != null && request.auth.token.email_verified == true && request.auth.token.email in [
         'rahuljena.dev@gmail.com'
       ];
     }
@@ -43,9 +43,36 @@ service cloud.firestore {
     // ─── User Collection ─────────────────────────────────────────────────────────
     match /users/{userId} {
       allow read: if request.auth != null && (request.auth.uid == userId || isAdmin());
-      allow create: if request.auth != null && request.auth.uid == userId && (!request.resource.data.keys().hasAny(['isAdmin']) || request.resource.data.isAdmin == false || isAdmin());
-      allow update: if request.auth != null && (request.auth.uid == userId && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['firstName', 'lastName', 'username', 'displayName', 'usedBytes', 'usedFiles', 'totalBytesProcessed', 'totalFilesProcessed', 'lifetimeFiles', 'lifetimeBytes', 'passExpiredAt', 'sessionIds']) || isAdmin());
+      allow create: if request.auth != null && request.auth.uid == userId && (
+        isAdmin() || (
+          request.resource.data.keys().hasOnly(['uid', 'email', 'displayName', 'photoURL', 'plan', 'usedBytes', 'usedFiles', 'totalBytesProcessed', 'totalFilesProcessed', 'expiresAt', 'isAdmin', 'firstName', 'lastName', 'username', 'suspended', 'createdAt', 'sessionIds'])
+          && request.resource.data.get('uid', userId) == userId
+          && request.resource.data.get('email', null) == request.auth.token.get('email', null)
+          && request.resource.data.get('plan', 'free') == 'free'
+          && request.resource.data.get('isAdmin', false) == false
+          && request.resource.data.get('suspended', false) == false
+          && request.resource.data.get('expiresAt', null) == null
+          && request.resource.data.get('usedBytes', 0) == 0
+          && request.resource.data.get('usedFiles', 0) == 0
+          && request.resource.data.get('totalBytesProcessed', 0) == 0
+          && request.resource.data.get('totalFilesProcessed', 0) == 0
+        )
+      );
+      allow update: if request.auth != null && (request.auth.uid == userId
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['firstName', 'lastName', 'username', 'displayName', 'email', 'photoURL', 'usedBytes', 'usedFiles', 'totalBytesProcessed', 'totalFilesProcessed', 'lifetimeFiles', 'lifetimeBytes', 'passExpiredAt', 'sessionIds'])
+        && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['email']) || request.resource.data.email == request.auth.token.email)
+        || isAdmin());
       allow delete: if request.auth != null && request.auth.uid == userId;
+
+      match /usageBatches/{batchId} {
+        allow read, delete: if request.auth != null && request.auth.uid == userId;
+        allow create: if request.auth != null && request.auth.uid == userId
+          && request.resource.data.keys().hasAll(['bytes', 'files'])
+          && request.resource.data.keys().hasOnly(['bytes', 'files'])
+          && request.resource.data.bytes is int && request.resource.data.bytes >= 0
+          && request.resource.data.files is int && request.resource.data.files >= 0;
+        allow update: if false;
+      }
     }
 
     // ─── Admins Collection ───────────────────────────────────────────────────────
@@ -57,19 +84,13 @@ service cloud.firestore {
         isSuperAdmin() && resource.data.email != 'rahuljena.dev@gmail.com'
       );
       allow update: if isSuperAdminEmail() || (
-        isAdmin() && resource.data.email != 'rahuljena.dev@gmail.com'
+        isSuperAdmin() && resource.data.email != 'rahuljena.dev@gmail.com'
+      ) || (
+        isAdmin() && request.auth.uid == adminId
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'lastSeen', 'photoURL'])
       );
-      // Allow invited team member to claim their admin role if a matching invite exists
-      allow create: if isSuperAdmin() || (
-        request.auth != null
-        && request.auth.uid == adminId
-        && request.resource.data.inviteId != null
-        && exists(/databases/$(database)/documents/adminInvites/$(request.resource.data.inviteId))
-        && (
-          get(/databases/$(database)/documents/adminInvites/$(request.resource.data.inviteId)).data.email == request.auth.token.email ||
-          get(/databases/$(database)/documents/adminInvites/$(request.resource.data.inviteId)).data.email == request.auth.token.email.lower()
-        )
-      );
+      // The invitation endpoint provisions roles with server credentials.
+      allow create: if isSuperAdmin();
     }
 
     // ─── Admin Invites Collection ────────────────────────────────────────────────
@@ -77,7 +98,7 @@ service cloud.firestore {
     // The invited user (matching email on sign-in) can read their own invite to verify.
     match /adminInvites/{inviteId} {
       allow read: if isSuperAdmin()
-        || (request.auth != null && (
+        || (request.auth != null && request.auth.token.email_verified == true && (
           resource.data.email == request.auth.token.email ||
           resource.data.email == request.auth.token.email.lower()
         ));
@@ -85,7 +106,7 @@ service cloud.firestore {
         && request.resource.data.keys().hasAll(['email', 'role', 'invitedBy', 'status', 'expiresAt'])
         && request.resource.data.status == 'pending';
       allow update: if isSuperAdmin()
-        || (request.auth != null
+        || (request.auth != null && request.auth.token.email_verified == true
           && (resource.data.email == request.auth.token.email || resource.data.email == request.auth.token.email.lower())
           && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'acceptedAt', 'acceptedUid']));
       allow delete: if isSuperAdmin();
@@ -95,23 +116,36 @@ service cloud.firestore {
     match /notifications/{notificationId} {
       allow read: if request.auth != null && (
         isAdmin() ||
-        resource.data.recipientEmail in [request.auth.token.email, request.auth.token.email.lower(), 'all']
+        resource.data.recipientEmail == 'all' ||
+        (request.auth.token.get('email_verified', false) == true
+          && resource.data.recipientEmail in [request.auth.token.email, request.auth.token.email.lower()])
       );
       allow create: if isAdmin();
       allow update: if request.auth != null && (
         isAdmin() ||
-        resource.data.recipientEmail in [request.auth.token.email, request.auth.token.email.lower(), 'all']
+        (request.auth.token.get('email_verified', false) == true
+          && resource.data.recipientEmail in [request.auth.token.email, request.auth.token.email.lower()]
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['read'])
+          && request.resource.data.read is bool)
       );
       allow delete: if request.auth != null && (
         isAdmin() ||
-        resource.data.recipientEmail in [request.auth.token.email, request.auth.token.email.lower()]
+        (request.auth.token.get('email_verified', false) == true
+          && resource.data.recipientEmail in [request.auth.token.email, request.auth.token.email.lower()])
       );
     }
 
     // ─── Feedback Collection ─────────────────────────────────────────────────────
     match /feedback/{feedbackId} {
-      // Anyone can submit product feedback (anonymous or authenticated)
-      allow create: if true;
+      allow create: if request.resource.data.keys().hasOnly(['uid', 'email', 'displayName', 'rating', 'category', 'message', 'createdAt'])
+        && request.resource.data.keys().hasAll(['uid', 'email', 'displayName', 'rating', 'category', 'message', 'createdAt'])
+        && request.resource.data.uid == (request.auth == null ? 'anonymous' : request.auth.uid)
+        && request.resource.data.email is string && request.resource.data.email.size() <= 320
+        && request.resource.data.displayName is string && request.resource.data.displayName.size() <= 200
+        && request.resource.data.rating is int && request.resource.data.rating >= 1 && request.resource.data.rating <= 5
+        && request.resource.data.category in ['general', 'feature', 'bug', 'praise']
+        && request.resource.data.message is string && request.resource.data.message.size() > 0 && request.resource.data.message.size() <= 4000
+        && request.resource.data.createdAt is int;
       allow read: if isAdmin();
       allow update, delete: if isSuperAdmin();
     }
@@ -131,7 +165,8 @@ service cloud.firestore {
 
     // ─── Recovery History ─────────────────────────────────────────────────────────
     match /recoveryHistory/{uid}/sessions/{sessionId} {
-      allow read, write: if request.auth != null && request.auth.uid == uid
+      allow read, delete: if request.auth != null && request.auth.uid == uid;
+      allow create, update: if request.auth != null && request.auth.uid == uid
         && request.resource.data.keys().hasOnly(['archiveName', 'timestamp', 'filesProcessed', 'matched', 'recovered', 'failed', 'bytesProcessed', 'duration', 'status', 'recoveredFromCrash']);
       allow read: if isAdmin();
     }
@@ -144,19 +179,51 @@ service cloud.firestore {
 
     // ─── Support Tickets ─────────────────────────────────────────────────────────
     match /tickets/{ticketId} {
-      allow create: if request.auth != null && request.resource.data.uid == request.auth.uid;
+      function isOwnerReply() {
+        let previous = resource.data.get('replies', []);
+        let updated = request.resource.data.replies;
+        let reply = updated[previous.size()];
+        return previous is list && updated is list
+          && resource.data.status != 'CLOSED'
+          && updated.size() == previous.size() + 1
+          && updated == previous.concat([reply])
+          && reply is map && reply.keys().hasOnly(['sender', 'message', 'timestamp', 'senderName'])
+          && reply.sender == 'user'
+          && reply.message is string && reply.message.size() > 0 && reply.message.size() <= 4000
+          && reply.timestamp is int
+          && reply.senderName is string && reply.senderName.size() <= 100
+          && request.resource.data.status == 'IN_PROGRESS'
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'replies']);
+      }
+      allow create: if request.auth != null && request.resource.data.uid == request.auth.uid
+        && request.resource.data.keys().hasOnly(['ticketId', 'uid', 'email', 'name', 'subject', 'message', 'status', 'createdAt', 'replies', 'category', 'rating'])
+        && request.resource.data.subject is string && request.resource.data.subject.size() > 0 && request.resource.data.subject.size() <= 160
+        && request.resource.data.message is string && request.resource.data.message.size() > 0 && request.resource.data.message.size() <= 4000
+        && request.resource.data.createdAt is int
+        && request.resource.data.status == 'OPEN'
+        && request.resource.data.replies == [];
       allow read: if request.auth != null && resource.data.uid == request.auth.uid;
+      allow update: if request.auth != null && resource.data.uid == request.auth.uid && isOwnerReply();
       allow update: if request.auth != null && resource.data.uid == request.auth.uid
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['message', 'messages', 'updatedAt', 'lastMessage', 'lastMessageAt']);
+      allow update: if request.auth != null && resource.data.uid == request.auth.uid
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status'])
+        && request.resource.data.status == 'CLOSED';
       allow read, write: if isAdmin();
     }
 
     // ─── Reviews ─────────────────────────────────────────────────────────────────
     match /reviews/{reviewId} {
-      allow read: if true;
+      allow read: if resource.data.status == 'APPROVED' || isModeratorOrAbove();
       allow create: if request.auth != null
+        && request.resource.data.keys().hasOnly(['uid', 'displayName', 'photoURL', 'rating', 'message', 'status', 'createdAt'])
+        && request.resource.data.keys().hasAll(['uid', 'displayName', 'photoURL', 'rating', 'message', 'status', 'createdAt'])
         && request.resource.data.uid == request.auth.uid
         && request.resource.data.status == 'PENDING'
+        && request.resource.data.displayName is string
+        && request.resource.data.displayName.size() <= 100
+        && (request.resource.data.photoURL == null || (request.resource.data.photoURL is string && request.resource.data.photoURL.size() <= 2048))
+        && request.resource.data.createdAt == request.time
         && request.resource.data.rating is int
         && request.resource.data.rating >= 1
         && request.resource.data.rating <= 5
@@ -168,7 +235,7 @@ service cloud.firestore {
 
     // ─── Transactions Collection ─────────────────────────────────────────────────
     match /transactions/{txId} {
-      allow create: if request.auth != null && (request.resource.data.uid == request.auth.uid || isAdmin());
+      allow create: if isAdminOrAbove();
       // Admins get full collection read access; regular users can only read their own
       allow read: if isAdminOrAbove() || (request.auth != null && resource.data.uid == request.auth.uid);
       allow update, delete: if isSuperAdmin();
@@ -177,7 +244,9 @@ service cloud.firestore {
     // ─── Active Sessions ─────────────────────────────────────────────────────────
     match /active_sessions/{sessionId} {
       allow create, update: if request.auth != null && request.resource.data.uid == request.auth.uid
-        && request.resource.data.keys().hasOnly(['uid', 'deviceName', 'userAgent', 'createdAt', 'lastSeen', 'sessionId']);
+        && (resource == null || resource.data.uid == request.auth.uid)
+        && request.resource.data.keys().hasOnly(['uid', 'deviceName', 'userAgent', 'createdAt', 'lastSeen', 'sessionId',
+          'email', 'status', 'startedAt', 'lastUpdated', 'totalFiles', 'scanned', 'matched', 'bytesProcessed', 'currentFile']);
       allow read, delete: if request.auth != null && (resource.data.uid == request.auth.uid || isAdmin());
     }
 
@@ -189,9 +258,10 @@ service cloud.firestore {
 
     // ─── Settings Collection ─────────────────────────────────────────────────────
     match /settings/{document} {
-      allow read: if document != 'secure';
-      allow write: if isAdmin();
-      allow read, write: if isAdmin();
+      // The system document can contain payment and gateway secrets.
+      allow read: if document != 'secure' && document != 'system';
+      allow read: if document in ['secure', 'system'] && isAdminOrAbove();
+      allow write: if isAdmin() && (!(document in ['secure', 'system', 'monetization', 'global']) || isAdminOrAbove());
     }
 
     // ─── Config Collection ───────────────────────────────────────────────────────
@@ -203,7 +273,7 @@ service cloud.firestore {
     // ─── Pricing Tiers Collection ───────────────────────────────────────────────
     match /pricing_tiers/{region} {
       allow read: if true;
-      allow write: if isAdmin();
+      allow write: if isAdminOrAbove();
     }
 
     // ─── Admin Config Collection ──────────────────────────────────────────────────
@@ -217,59 +287,60 @@ service cloud.firestore {
     // ─── Campaigns Collection ───────────────────────────────────────────────────
     match /campaigns/{campaignId} {
       allow read: if true;
-      allow write: if isAdmin();
+      allow write: if isAdminOrAbove();
 
       match /discounts/{planCode} {
         allow read: if true;
-        allow write: if isAdmin();
+        allow write: if isAdminOrAbove();
       }
     }
 
     // ─── Coupons Collection ─────────────────────────────────────────────────────
     match /coupons/{couponId} {
       allow read: if true;
-      allow write: if isAdmin();
+      allow write: if isAdminOrAbove();
 
       match /targets/{targetId} {
         allow read: if true;
-        allow write: if isAdmin();
+        allow write: if isAdminOrAbove();
       }
 
       match /sync_log/{syncId} {
-        allow read, write: if isAdmin();
+        allow read: if isAdmin();
+        allow write: if isAdminOrAbove();
       }
     }
 
     // ─── Purchase Logs Collection ───────────────────────────────────────────────
     match /purchase_logs/{logId} {
       allow read: if request.auth != null && resource.data.userId == request.auth.uid;
-      allow read, write: if isAdmin();
+      allow read: if isAdmin();
     }
 
     // ─── Monetization Architecture Collections ────────────────────────────────────
     match /monetization_placements/{id} {
       allow read: if true;
-      allow write: if isAdmin();
+      allow write: if isAdminOrAbove();
     }
     match /monetization_configs/{id} {
       allow read: if true;
-      allow write: if isAdmin();
+      allow write: if isAdminOrAbove();
     }
     match /ad_providers/{id} {
       allow read: if true;
-      allow write: if isAdmin();
+      allow write: if isAdminOrAbove();
     }
     match /ad_units/{id} {
       allow read: if true;
-      allow write: if isAdmin();
+      allow write: if isAdminOrAbove();
     }
     match /affiliate_providers/{id} {
       allow read: if true;
-      allow write: if isAdmin();
+      allow write: if isAdminOrAbove();
     }
     match /affiliate_links/{id} {
       allow read: if true;
-      allow write: if isAdmin();
+      allow write: if isAdminOrAbove();
     }
   }
 }

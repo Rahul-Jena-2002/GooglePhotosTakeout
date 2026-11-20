@@ -8,24 +8,23 @@ const howToSchema = {
   "@type": "HowTo",
   "name": "How to Save Google Takeout Photos to External Hard Drive, NAS & Cloud",
   "description": "A practical workflow for extracting Google Takeout archives, checking restored metadata, and keeping independent backups on external storage or a NAS.",
-  "totalTime": "PT30M",
   "step": [
     {
       "@type": "HowToStep",
       "position": 1,
       "name": "Extract Multi-Part Takeout Archives",
-      "text": "Extract all downloaded Takeout ZIP archives into a single unified directory to properly merge split folder hierarchies and companion sidecars."
+      "text": "Extract the downloaded Takeout ZIP archives into a working copy. Merge folders where needed, but keep both versions when filenames conflict and preserve the original ZIP files."
     },
     {
       "@type": "HowToStep",
       "position": 2,
-      "name": "Re-Inject EXIF Headers Locally",
-      "text": "Run TakeoutFix locally to write JSON dates, times, and GPS tags directly into binary image and video headers before copying."
+      "name": "Restore Available Details Locally",
+      "text": "Use TakeoutFix to attempt to restore available photo dates and locations and supported video timestamps. Review the report and check sample files before copying."
     },
     {
       "@type": "HowToStep",
       "position": 3,
-      "name": "Format External Storage as exFAT",
+      "name": "Check External Storage Compatibility",
       "text": "Choose a drive format supported by your target devices. Verify current device compatibility and back up files before formatting because formatting erases existing data."
     },
     {
@@ -53,7 +52,7 @@ const articleSchema = {
     "url": "https://takeoutfix.pages.dev"
   },
   "datePublished": "2026-09-18",
-  "dateModified": "2026-10-14"
+  "dateModified": "2026-11-19"
 };
 ---
 
@@ -90,6 +89,8 @@ const articleSchema = {
         <span>&bull;</span>
         <span>Published September 2026</span>
         <span>&bull;</span>
+        <span>Updated November 19, 2026</span>
+        <span>&bull;</span>
         <span>Storage workflow &bull; About 6 min read</span>
       </div>
     </div>
@@ -125,7 +126,7 @@ const articleSchema = {
           <ol class="list-decimal pl-6 space-y-3 text-sm text-zinc-600 dark:text-zinc-300">
             <li>Create a single parent folder on your internal SSD, such as <code class="font-mono text-xs text-indigo-400 bg-zinc-100 dark:bg-zinc-800 px-1 py-0.5 rounded">C:\Takeout-Raw</code> or <code class="font-mono text-xs text-indigo-400 bg-zinc-100 dark:bg-zinc-800 px-1 py-0.5 rounded">~/Takeout-Raw</code>.</li>
             <li>Extract part 1 into this destination directory.</li>
-            <li>Extract part 2, 3, etc. into the <em>exact same destination directory</em>. When prompted by your operating system, choose <strong>"Merge"</strong> or <strong>"Replace/Integrate"</strong>. Do NOT skip existing folder merges; this reunites split media with their corresponding JSON sidecars.</li>
+            <li>Extract the remaining parts into the same working directory and merge folders when prompted. If individual filenames conflict, do not replace either file: keep both copies, for example in separate folders, and check which details file belongs with each photo.</li>
           </ol>
         </section>
 
@@ -241,9 +242,9 @@ const articleSchema = {
 
         <!-- Action Footer -->
         <section class="bg-zinc-50 dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-8 text-center shadow-sm">
-          <h3 class="text-2xl font-bold text-zinc-900 dark:text-white mb-3">Fix Your Takeout Library in 3 Minutes</h3>
+          <h3 class="text-2xl font-bold text-zinc-900 dark:text-white mb-3">Check Your Takeout Library</h3>
           <p class="text-sm text-zinc-600 dark:text-zinc-400 max-w-xl mx-auto mb-6">
-            Don't let missing metadata ruin your backup. Restore EXIF dates, camera info, and GPS coordinates entirely on your device before archiving.
+            Try restoring available photo dates and locations on your device before archiving. Keep your originals and check the results; the time required depends on your library and device.
           </p>
           <div class="flex flex-wrap gap-4 justify-center">
             <a href="/tool" class="px-6 py-3 rounded-xl bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 hover:opacity-90 font-semibold text-sm transition-opacity shadow-sm">

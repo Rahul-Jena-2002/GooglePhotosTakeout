@@ -13,12 +13,12 @@ const DEFAULT_FAQS: FaqItem[] = [
   {    id: "metadata-why",
     tag: "Problem",
     question: "Why do my Google Takeout photos lose their dates & GPS?",
-    answer: "When you export your library from Google Takeout, Google strips the original metadata (such as the Date Taken, Camera Model, and GPS Coordinates) from the image/video files and writes it into separate matching .json sidecar files. When you import these photos directly into iCloud, Apple Photos, or other platforms, they read the stripped files, which defaults their creation dates to the download date and loses location data. TakeoutFix reads these JSON sidecars and merges the data back into the EXIF headers."
+    answer: "Some dates and locations in a Takeout export are stored in matching JSON files. Photo apps may show different dates when they cannot find the metadata they expect. TakeoutFix uses available sidecar information to restore supported fields; check the results in your destination app."
   },
   {    id: "privacy-servers",
     tag: "Privacy",
     question: "Are my photos safe? / Do you see my photos?",
-    answer: "Yes, they are 100% safe. TakeoutFix runs entirely on your own computer. We never see, upload, or store your photos."
+    answer: "The browser restore tool processes selected photos and videos on your device without uploading them for restoration. Keep your originals and check the restored copies. Account, support, and other online features may send information to network services."
   },
   {    id: "archive-limits",
     tag: "Limits",

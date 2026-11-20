@@ -2,20 +2,20 @@
  * TakeoutFix Service Worker v3 — Native-app-like offline + cache experience
  *
  * Strategies:
- *  - App shell (HTML pages):     StaleWhileRevalidate — instant load + background refresh
+ *  - Public HTML pages:          NetworkFirst — latest content, with offline fallback
  *  - Static assets (_astro/):    CacheFirst — immutable hashed chunks
  *  - Google Fonts:               CacheFirst — long TTL
- *  - Firebase / Auth / Sentry:   NetworkOnly — always fresh
- *  - Everything else:            NetworkFirst with cache fallback
+ *  - Account pages, APIs, and external services: NetworkOnly
+ *  - Other same-origin requests: NetworkFirst with cache fallback
  *
  * Extras:
  *  - Background Sync: flushes pending Firestore usage on reconnect
  *  - Push notifications: admin alerts, invite notifications
  */
 
-const CACHE_NAME   = 'takeoutfix-v6';
-const STATIC_CACHE = 'takeoutfix-static-v6';
-const FONT_CACHE   = 'takeoutfix-fonts-v6';
+const CACHE_NAME   = 'takeoutfix-v7';
+const STATIC_CACHE = 'takeoutfix-static-v7';
+const FONT_CACHE   = 'takeoutfix-fonts-v7';
 
 const APP_SHELL = [
   '/',
@@ -26,14 +26,7 @@ const APP_SHELL = [
   '/manifest.webmanifest',
 ];
 
-const NETWORK_ONLY_HOSTS = [
-  'firestore.googleapis.com',
-  'firebase.googleapis.com',
-  'identitytoolkit.googleapis.com',
-  'securetoken.googleapis.com',
-  'accounts.google.com',
-  'ingest.sentry.io',
-];
+const PRIVATE_PATHS = ['/api', '/admin', '/dashboard', '/profile', '/auth', '/login', '/signup'];
 
 // ─── Localhost Killswitch & Self-Cleanup ────────────────────────────────────
 // In local development, service workers cache old Vite dependency chunks with stale ?v= hashes,
@@ -44,7 +37,7 @@ if (isLocalhost) {
   self.addEventListener('install', () => self.skipWaiting());
   self.addEventListener('activate', (event) => {
     event.waitUntil(
-      caches.keys().then((keys) => Promise.all(keys.map((k) => caches.delete(k))))
+      caches.keys().then((keys) => Promise.all(keys.filter(k => k.startsWith('takeoutfix-')).map(k => caches.delete(k))))
         .then(() => self.registration.unregister())
         .then(() => self.clients.claim())
     );
@@ -65,7 +58,7 @@ if (isLocalhost) {
     const valid = [CACHE_NAME, STATIC_CACHE, FONT_CACHE];
     event.waitUntil(
       caches.keys()
-        .then(keys => Promise.all(keys.filter(k => !valid.includes(k)).map(k => caches.delete(k))))
+        .then(keys => Promise.all(keys.filter(k => k.startsWith('takeoutfix-') && !valid.includes(k)).map(k => caches.delete(k))))
         .then(() => self.clients.claim())
     );
   });
@@ -76,14 +69,16 @@ if (isLocalhost) {
 
     const url = new URL(request.url);
 
-    // Network-only: Firebase, Auth, Sentry
-    if (NETWORK_ONLY_HOSTS.some(h => url.hostname.includes(h))) return;
-
     // Google Fonts — cache-first, long TTL
     if (url.hostname === 'fonts.googleapis.com' || url.hostname === 'fonts.gstatic.com') {
       event.respondWith(cacheFirst(request, FONT_CACHE));
       return;
     }
+
+    // Do not persist personalized pages, API responses, or third-party data.
+    if (url.origin !== self.location.origin || PRIVATE_PATHS.some(path =>
+      url.pathname === path || url.pathname.startsWith(path + '/')
+    )) return;
 
     // Static immutable assets (Astro hashed chunks, images, icons) — strictly SAME-ORIGIN only!
     // External scripts (e.g. Google AdSense) must NEVER be intercepted by cacheFirst.
@@ -112,12 +107,17 @@ if (isLocalhost) {
 // ─── Strategies ───────────────────────────────────────────────────────────────
 
 async function cacheFirst(request, cacheName) {
-  const cache = await caches.open(cacheName);
-  const hit = await cache.match(request);
-  if (hit) return hit;
+  let cache;
+  try {
+    cache = await caches.open(cacheName);
+    const hit = await cache.match(request);
+    if (hit) return hit;
+  } catch (error) {
+    console.warn('Could not read the offline cache:', error);
+  }
   try {
     const res = await fetch(request);
-    if (res.ok) cache.put(request, res.clone());
+    if (res.ok && cache) void cache.put(request, res.clone()).catch(error => console.warn('Could not update the offline cache:', error));
     return res;
   } catch {
     return new Response('Offline', { status: 503 });
@@ -128,7 +128,7 @@ async function staleWhileRevalidate(request, cacheName) {
   const cache = await caches.open(cacheName);
   const hit = await cache.match(request);
   const freshPromise = fetch(request).then(res => {
-    if (res.ok) cache.put(request, res.clone());
+    if (res.ok) void cache.put(request, res.clone()).catch(error => console.warn('Could not update the offline cache:', error));
     return res;
   }).catch(() => null);
   return hit || await freshPromise || offlinePage();
@@ -138,13 +138,19 @@ async function networkFirst(request, cacheName) {
   try {
     const res = await fetch(request);
     if (res.ok) {
-      const cache = await caches.open(cacheName);
-      cache.put(request, res.clone());
+      const copy = res.clone();
+      void caches.open(cacheName).then(cache => cache.put(request, copy)).catch(error => console.warn('Could not update the offline cache:', error));
     }
     return res;
   } catch {
-    const cache = await caches.open(cacheName);
-    return await cache.match(request) || new Response('Offline', { status: 503 });
+    try {
+      const cache = await caches.open(cacheName);
+      const hit = await cache.match(request);
+      if (hit) return hit;
+    } catch (error) {
+      console.warn('Could not read the offline cache:', error);
+    }
+    return request.headers.get('accept')?.includes('text/html') ? offlinePage() : new Response('Offline', { status: 503 });
   }
 }
 
@@ -156,9 +162,9 @@ function offlinePage() {
     <style>*{box-sizing:border-box}body{margin:0;background:#09090b;color:#fff;font-family:system-ui,sans-serif;min-height:100vh;display:flex;align-items:center;justify-content:center;text-align:center;padding:2rem}
     h1{font-size:1.5rem;margin:0 0 .5rem}p{color:#71717a;margin:0}.badge{display:inline-block;background:#1c1c1f;border:1px solid #27272a;border-radius:9999px;padding:.25rem .75rem;font-size:.75rem;color:#a1a1aa;margin-top:1rem}</style>
     </head><body><div><h1>You're offline</h1>
-    <p>TakeoutFix needs a connection to load auth. Once the app is loaded, photo processing works fully offline.</p>
+    <p>Reconnect to load TakeoutFix and sync your account. Restoration runs on your device, but the tool may need a connection to load its components.</p>
     <div class="badge">TakeoutFix PWA</div></div></body></html>`,
-    { headers: { 'Content-Type': 'text/html' } }
+    { status: 503, headers: { 'Content-Type': 'text/html; charset=utf-8' } }
   );
 }
 

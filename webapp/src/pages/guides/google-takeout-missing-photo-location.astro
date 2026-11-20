@@ -1,0 +1,77 @@
+---
+export const prerender = true;
+import Layout from "../../layouts/Layout.astro";
+import Icon from "../../components/ui/Icon.astro";
+
+const articleSchema = {
+  "@context": "https://schema.org",
+  "@type": "TechArticle",
+  "headline": "Google Takeout Photos Missing Their Location?",
+  "description": "How to check whether a Takeout download contains a photo location and what to do if it does not.",
+  "author": { "@type": "Person", "name": "Rahul Jena", "url": "https://rahuljena.is-a.dev/" },
+  "publisher": { "@type": "Organization", "name": "TakeoutFix", "url": "https://takeoutfix.pages.dev" },
+  "datePublished": "2026-11-16",
+  "dateModified": "2026-11-19"
+};
+---
+
+<Layout title="Google Takeout Photos Missing Their Location? | TakeoutFix" description="Find out whether your Google Photos Takeout download includes location details, why some photos have no location, and how to check a restored copy safely.">
+  <script type="application/ld+json" set:html={JSON.stringify(articleSchema)} />
+
+  <main class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-16 mt-12 font-sans text-zinc-700 dark:text-zinc-300">
+    <nav aria-label="Breadcrumb" class="flex items-center gap-2 text-xs text-zinc-500 font-mono mb-6">
+      <a href="/" class="hover:text-zinc-900 dark:hover:text-white">Home</a><span>/</span>
+      <a href="/guides" class="hover:text-zinc-900 dark:hover:text-white">Guides</a><span>/</span>
+      <span>Missing photo locations</span>
+    </nav>
+
+    <header class="mb-10 border-b border-zinc-200 dark:border-zinc-800 pb-8">
+      <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-teal-500/10 border border-teal-500/20 text-teal-700 dark:text-teal-300 text-xs font-semibold uppercase tracking-wider mb-4">
+        <Icon name="map-pin" class="w-4 h-4" /> Photo location help
+      </div>
+      <h1 class="text-3xl sm:text-4xl font-bold tracking-tight text-zinc-900 dark:text-white mb-4">Google Takeout Photos Missing Their Location?</h1>
+      <p class="text-base leading-relaxed">A photo may have no map location after you download or import it. Before trying to restore it, check whether the location is present in your original photo or Takeout download. If it was never saved, a tool cannot reliably guess it.</p>
+      <p class="text-xs text-zinc-500 mt-4">By Rahul Jena · Updated November 19, 2026</p>
+    </header>
+
+    <article class="space-y-9 text-base leading-relaxed">
+      <section>
+        <h2 class="text-2xl font-bold text-zinc-900 dark:text-white mb-3">Why a location may be missing</h2>
+        <p>Some photos were taken with location recording turned off. Others may have had location removed, or the exported files may store extra details separately from the photo. Different photo apps also show location information in different places.</p>
+      </section>
+
+      <section>
+        <h2 class="text-2xl font-bold text-zinc-900 dark:text-white mb-3">1. Check the original photo first</h2>
+        <p>If you still have the photo in Google Photos or another photo library, open its information screen and check whether a place is shown. If the original library has no location, the Takeout download may not have one to restore.</p>
+      </section>
+
+      <section>
+        <h2 class="text-2xl font-bold text-zinc-900 dark:text-white mb-3">2. Look for an extra details file</h2>
+        <p>In the extracted Takeout folder, look beside the photo for a file with a similar name ending in <code>.json</code>. Some of these files contain location details; others do not. If you open one in a text editor, look for <code>geoData</code> or <code>geoDataExif</code> and check the latitude and longitude.</p>
+        <p>TakeoutFix treats latitude and longitude both set to zero as a missing-location placeholder. Those coordinates are also a real place in the Atlantic Ocean, so a photo actually taken there needs a separate manual check.</p>
+        <p>File names can differ for edited copies or duplicates. Compare the files in the same folder and do not pick a sidecar based only on a partial name.</p>
+      </section>
+
+      <section>
+        <h2 class="text-2xl font-bold text-zinc-900 dark:text-white mb-3">3. Try a small restore</h2>
+        <ol class="list-decimal pl-6 space-y-2">
+          <li>Keep your original Takeout download unchanged.</li>
+          <li>Open the <a class="underline font-semibold" href="/tool">TakeoutFix tool</a> and choose the extracted folder or ZIP archive.</li>
+          <li>Restore a small sample and open one restored copy in your photo app.</li>
+          <li>Check the photo’s information screen or map. If no location appears, review the matching details file and the tool’s unmatched results.</li>
+        </ol>
+      </section>
+
+      <section class="rounded-2xl border border-amber-500/20 bg-amber-500/5 p-6">
+        <h2 class="text-xl font-bold text-zinc-900 dark:text-white mb-2">What TakeoutFix cannot do</h2>
+        <p>TakeoutFix can only restore location information that is present and supported. It cannot determine where a photo was taken from the image alone. Avoid adding a guessed location to a large collection without checking it first. Location details may reveal where a photo was taken, so check them before sharing a restored copy.</p>
+      </section>
+
+      <nav aria-label="Related guides" class="border-t border-zinc-200 dark:border-zinc-800 pt-6 flex flex-wrap gap-x-6 gap-y-3 text-sm">
+        <a class="underline" href="/guides/google-takeout-json-metadata-explained">Understand extra Takeout files</a>
+        <a class="underline" href="/guides/google-takeout-common-errors-fix">Troubleshoot Takeout problems</a>
+        <a class="underline" href="/guides/verify-restored-photo-metadata">Check restored photos</a>
+      </nav>
+    </article>
+  </main>
+</Layout>

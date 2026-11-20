@@ -34,7 +34,7 @@ export default function TermsPage() {
         <section>
           <h2 className="text-2xl font-bold text-white mb-4">4. Software Access</h2>
           <p>
-            The browser tool processes selected media files on your device. Guest processing limits and any account features are shown in the tool and may change. The MIT license covers the published source code; it does not guarantee hosted service availability or unlimited hosted processing.
+            The browser tool processes selected media files on your device. Guest processing limits and any account features are shown in the tool and may change. The published source code is licensed under GPL-2.0-or-later, subject to that license's terms; the license does not guarantee hosted service availability or unlimited hosted processing.
           </p>
         </section>
 

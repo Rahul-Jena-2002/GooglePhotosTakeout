@@ -140,6 +140,37 @@ public class TaskManagerAndCoordinatorTest {
     }
 
     @Test
+    public void testCancelledQueuedTaskIsRemovedAfterItsWrapperRuns() throws Exception {
+        resourceManager.getIoExecutor().setCorePoolSize(1);
+        resourceManager.getIoExecutor().setMaximumPoolSize(1);
+        CountDownLatch started = new CountDownLatch(1);
+        CountDownLatch release = new CountDownLatch(1);
+        java.util.concurrent.atomic.AtomicBoolean queuedExecuted = new java.util.concurrent.atomic.AtomicBoolean(false);
+        BackgroundTask blocker = new BackgroundTask("Test", "Blocker", BackgroundTask.WorkloadType.IO_BOUND) {
+            @Override protected void execute() throws Exception {
+                started.countDown();
+                release.await();
+            }
+        };
+        BackgroundTask queued = new BackgroundTask("Test", "Queued", BackgroundTask.WorkloadType.IO_BOUND) {
+            @Override protected void execute() { queuedExecuted.set(true); }
+        };
+        try {
+            taskManager.submitTask(blocker);
+            assertTrue(started.await(2, TimeUnit.SECONDS));
+            taskManager.submitTask(queued);
+            taskManager.cancelTask(queued.getId());
+        } finally {
+            release.countDown();
+        }
+        long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(3);
+        while (taskManager.getActiveTaskCount() != 0 && System.nanoTime() < deadline) Thread.sleep(10);
+        assertEquals(0, taskManager.getActiveTaskCount());
+        assertEquals(BackgroundTask.TaskState.CANCELLED, queued.getState());
+        assertFalse(queuedExecuted.get());
+    }
+
+    @Test
     public void testTaskCancellation() throws Exception {
         CountDownLatch startedLatch = new CountDownLatch(1);
         CountDownLatch finishedLatch = new CountDownLatch(1);

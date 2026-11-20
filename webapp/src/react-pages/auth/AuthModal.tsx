@@ -9,7 +9,7 @@ import {
   updateProfile,
   type User,
 } from "firebase/auth";
-import { doc, getDoc, setDoc } from "firebase/firestore";
+import { ensureUserProfile } from "../../lib/firebase/ensureUserProfile";
 import { executeRecaptcha, executeAndVerifyRecaptcha } from "../../lib/recaptcha";
 import {
   Mail, Lock, User as UserIcon, Eye, EyeOff, ArrowRight,
@@ -78,17 +78,7 @@ export default function AuthModal() {
   const syncUserDoc = async (user: User, nameOverride?: string) => {
     try {
       if (!db) return;
-      const userRef = doc(db, "users", user.uid);
-      const snap = await getDoc(userRef);
-      if (!snap.exists()) {
-        await setDoc(userRef, {
-          uid: user.uid, email: user.email,
-          displayName: nameOverride || user.displayName || (user.email ? user.email.split("@")[0] : "User"),
-          photoURL: user.photoURL || null, plan: "free",
-          usedBytes: 0, usedFiles: 0, totalBytesProcessed: 0, totalFilesProcessed: 0,
-          createdAt: Date.now(), suspended: false,
-        });
-      }
+      await ensureUserProfile(db, user, nameOverride);
     } catch (err) { console.warn("[Auth] Failed to sync user doc:", err); }
   };
 
@@ -103,6 +93,7 @@ export default function AuthModal() {
   const handleGoogleSignIn = async () => {
     setErrorMsg(""); setSuccessMsg(""); setGoogleLoading(true);
     try {
+      if (!auth || !googleProvider) throw new Error("Sign-in is temporarily unavailable. Please try again later.");
       executeAndVerifyRecaptcha("GOOGLE_SIGNIN").catch(() => {});
       if (googleProvider) {
         googleProvider.setCustomParameters({ prompt: 'select_account' });
@@ -125,6 +116,7 @@ export default function AuthModal() {
   const handleEmailAuth = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg(""); setSuccessMsg("");
+    if (!auth) { setErrorMsg("Sign-in is temporarily unavailable. Please try again later."); return; }
     const cleanEmail = email.trim().toLowerCase();
     if (!cleanEmail || !cleanEmail.includes("@")) { setErrorMsg("Enter a valid email."); return; }
     if (mode === "forgot") {
@@ -166,7 +158,7 @@ export default function AuthModal() {
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4" role="dialog" aria-modal="true">
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-labelledby="auth-modal-title">
       <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={close} />
       <div className="relative w-full max-w-sm bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-3xl shadow-2xl p-6 sm:p-8 z-10 overflow-y-auto max-h-[90vh]">
         <button onClick={close} className="absolute top-4 right-4 p-1.5 rounded-full text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors cursor-pointer" aria-label="Close">
@@ -174,7 +166,7 @@ export default function AuthModal() {
         </button>
 
         <div className="text-center mb-6">
-          <h2 className="text-2xl font-extrabold tracking-tight text-zinc-900 dark:text-white">
+          <h2 id="auth-modal-title" className="text-2xl font-extrabold tracking-tight text-zinc-900 dark:text-white">
             {mode === "signin" ? "Welcome Back" : mode === "signup" ? "Create Account" : "Reset Password"}
           </h2>
           <p className="text-xs sm:text-sm text-zinc-500 dark:text-zinc-400 mt-1">
@@ -214,16 +206,16 @@ export default function AuthModal() {
           </>
         )}
 
-        {errorMsg && (<div className="mb-3 p-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-600 dark:text-red-400 text-xs flex items-start gap-2"><AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" /><span>{errorMsg}</span></div>)}
-        {successMsg && (<div className="mb-3 p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400 text-xs flex items-start gap-2"><CheckCircle2 className="w-4 h-4 flex-shrink-0 mt-0.5" /><span>{successMsg}</span></div>)}
+        {errorMsg && (<div role="alert" className="mb-3 p-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-600 dark:text-red-400 text-xs flex items-start gap-2"><AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" /><span>{errorMsg}</span></div>)}
+        {successMsg && (<div role="status" className="mb-3 p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400 text-xs flex items-start gap-2"><CheckCircle2 className="w-4 h-4 flex-shrink-0 mt-0.5" /><span>{successMsg}</span></div>)}
 
         <form onSubmit={handleEmailAuth} className="space-y-3 text-left">
           {mode === "signup" && (
             <div>
-              <label className="block text-xs font-semibold text-zinc-700 dark:text-zinc-300 mb-1">Full Name</label>
+              <label htmlFor="auth-modal-name" className="block text-xs font-semibold text-zinc-700 dark:text-zinc-300 mb-1">Full Name</label>
               <div className="relative">
                 <UserIcon className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-zinc-400" />
-                <input type="text" required value={fullName} onChange={e => setFullName(e.target.value)}
+                <input id="auth-modal-name" type="text" required value={fullName} onChange={e => setFullName(e.target.value)}
                   autoComplete="name"
                   placeholder="Alex Morgan"
                   className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl pl-10 pr-3 py-2.5 text-xs sm:text-sm text-zinc-900 dark:text-white placeholder:text-zinc-400 focus:outline-none focus:border-indigo-500 transition-colors" />
@@ -231,10 +223,10 @@ export default function AuthModal() {
             </div>
           )}
           <div>
-            <label className="block text-xs font-semibold text-zinc-700 dark:text-zinc-300 mb-1">Email</label>
+            <label htmlFor="auth-modal-email" className="block text-xs font-semibold text-zinc-700 dark:text-zinc-300 mb-1">Email</label>
             <div className="relative">
               <Mail className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-zinc-400" />
-              <input type="email" required value={email} onChange={e => setEmail(e.target.value)}
+              <input id="auth-modal-email" type="email" required value={email} onChange={e => setEmail(e.target.value)}
                 autoComplete="email"
                 placeholder="you@example.com"
                 className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl pl-10 pr-3 py-2.5 text-xs sm:text-sm text-zinc-900 dark:text-white placeholder:text-zinc-400 focus:outline-none focus:border-indigo-500 transition-colors" />
@@ -243,7 +235,7 @@ export default function AuthModal() {
           {mode !== "forgot" && (
             <div>
               <div className="flex justify-between items-center mb-1">
-                <label className="block text-xs font-semibold text-zinc-700 dark:text-zinc-300">Password</label>
+                <label htmlFor="auth-modal-password" className="block text-xs font-semibold text-zinc-700 dark:text-zinc-300">Password</label>
                 {mode === "signin" && (
                   <button type="button" onClick={() => { setMode("forgot"); setErrorMsg(""); setSuccessMsg(""); }}
                     className="text-[11px] text-indigo-600 dark:text-indigo-400 hover:underline cursor-pointer">Forgot?</button>
@@ -251,11 +243,11 @@ export default function AuthModal() {
               </div>
               <div className="relative">
                 <Lock className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-zinc-400" />
-                <input type={showPassword ? "text" : "password"} required value={password} onChange={e => setPassword(e.target.value)}
+                <input id="auth-modal-password" type={showPassword ? "text" : "password"} required value={password} onChange={e => setPassword(e.target.value)}
                   autoComplete={mode === "signup" ? "new-password" : "current-password"}
                   placeholder="Enter password"
                   className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl pl-10 pr-10 py-2.5 text-xs sm:text-sm text-zinc-900 dark:text-white placeholder:text-zinc-400 focus:outline-none focus:border-indigo-500 transition-colors" />
-                <button type="button" onClick={() => setShowPassword(!showPassword)}
+                <button type="button" aria-label={showPassword ? "Hide password" : "Show password"} onClick={() => setShowPassword(!showPassword)}
                   className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-600 cursor-pointer">
                   {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
@@ -264,10 +256,10 @@ export default function AuthModal() {
           )}
           {mode === "signup" && (
             <div>
-              <label className="block text-xs font-semibold text-zinc-700 dark:text-zinc-300 mb-1">Confirm Password</label>
+              <label htmlFor="auth-modal-confirm-password" className="block text-xs font-semibold text-zinc-700 dark:text-zinc-300 mb-1">Confirm Password</label>
               <div className="relative">
                 <Lock className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-zinc-400" />
-                <input type={showPassword ? "text" : "password"} required value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)}
+                <input id="auth-modal-confirm-password" type={showPassword ? "text" : "password"} required value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)}
                   placeholder="Confirm password"
                   className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl pl-10 pr-3 py-2.5 text-xs sm:text-sm text-zinc-900 dark:text-white placeholder:text-zinc-400 focus:outline-none focus:border-indigo-500 transition-colors" />
               </div>
@@ -276,7 +268,7 @@ export default function AuthModal() {
           {mode !== "forgot" && (
             <div className="flex items-center gap-1.5 text-[10px] text-zinc-400 dark:text-zinc-500 pt-1">
               <ShieldCheck className="w-3 h-3 text-emerald-500 flex-shrink-0" />
-              <span>Protected by reCAPTCHA — <a href="https://policies.google.com/privacy" target="_blank" rel="noreferrer" className="underline">Privacy</a> &amp; <a href="https://policies.google.com/terms" target="_blank" rel="noreferrer" className="underline">Terms</a>.</span>
+              <span>This site uses reCAPTCHA — <a href="https://policies.google.com/privacy" target="_blank" rel="noreferrer" className="underline">Privacy</a> &amp; <a href="https://policies.google.com/terms" target="_blank" rel="noreferrer" className="underline">Terms</a>.</span>
             </div>
           )}
           {mode === "signup" && (

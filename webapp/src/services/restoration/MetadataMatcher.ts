@@ -198,9 +198,10 @@ function levenshteinDist(a: string, b: string, maxDist = 3): number {
 }
 
 interface DirectoryIndex {
-  lowerMap: Map<string, string>;
-  jBases: Map<string, string>;
-  jPrefix16: Map<string, string>;
+  lowerMap: Map<string, string | null>;
+  jBases: Map<string, string | null>;
+  jPrefix16: Map<string, string | null>;
+  jsonBases: Map<string, string>;
   allJsons: Array<{ lower: string; base: string; actual: string }>;
 }
 
@@ -210,35 +211,41 @@ function getDirectoryIndex(allNames: Set<string>): DirectoryIndex {
   const cached = dirIndexCache.get(allNames);
   if (cached) return cached;
 
-  const lowerMap = new Map<string, string>();
-  const jBases = new Map<string, string>();
-  const jPrefix16 = new Map<string, string>();
+  const lowerMap = new Map<string, string | null>();
+  const jBases = new Map<string, string | null>();
+  const jPrefix16 = new Map<string, string | null>();
+  const jsonBases = new Map<string, string>();
   const allJsons: Array<{ lower: string; base: string; actual: string }> = [];
+  const addUnique = (map: Map<string, string | null>, key: string, name: string) => {
+    const existing = map.get(key);
+    map.set(key, existing === undefined || existing === name ? name : null);
+  };
 
   for (const n of allNames) {
     const lower = n.toLowerCase();
-    lowerMap.set(lower, n);
+    addUnique(lowerMap, lower, n);
 
     if (lower.endsWith('.json') && lower !== 'metadata.json') {
       let jBase = lower.slice(0, -5);
       for (const marker of TAKEOUT_MARKERS) {
-        const idx = jBase.indexOf(marker);
-        if (idx !== -1) {
+        const idx = jBase.lastIndexOf(marker);
+        if (idx !== -1 && /^(?:\(\d+\))?$/.test(jBase.slice(idx + marker.length))) {
           jBase = jBase.substring(0, idx);
           break;
         }
       }
-      jBases.set(jBase, n);
+      addUnique(jBases, jBase, n);
+      jsonBases.set(n, jBase);
       const noNum = jBase.replace(NUMBERED_PATTERN, '');
-      jBases.set(noNum, n);
+      addUnique(jBases, noNum, n);
       if (jBase.length >= 16) {
-        jPrefix16.set(jBase.substring(0, 16), n);
+        addUnique(jPrefix16, jBase.substring(0, 16), n);
       }
       allJsons.push({ lower, base: jBase, actual: n });
     }
   }
 
-  const idxObj = { lowerMap, jBases, jPrefix16, allJsons };
+  const idxObj = { lowerMap, jBases, jPrefix16, jsonBases, allJsons };
   dirIndexCache.set(allNames, idxObj);
   return idxObj;
 }
@@ -246,7 +253,7 @@ function getDirectoryIndex(allNames: Set<string>): DirectoryIndex {
 /**
  * Given a media FileSystemFileHandle's name and the flat map of all filenames
  * in its parent directory, try to find the matching .json sidecar.
- * Incorporates 100% of Google Takeout matching edge-cases:
+ * Tries common Google Takeout matching patterns:
  * - Direct exact and extension-stripped lookups
  * - Stripped supplemental-metadata marker variations
  * - Numbered duplicate stripping (1), (2)
@@ -260,7 +267,7 @@ export function findMatchingJsonName(
   if (!mediaName || allNames.size === 0) return null;
 
   const idx = getDirectoryIndex(allNames);
-  const { lowerMap, jBases, jPrefix16, allJsons } = idx;
+  const { lowerMap, jBases, jPrefix16, jsonBases, allJsons } = idx;
 
   const mClean = sanitizeFilename(mediaName);
   const mLower = mClean.toLowerCase();
@@ -280,33 +287,49 @@ export function findMatchingJsonName(
 
   for (const c of directChecks) {
     const match = lowerMap.get(c);
+    if (match === null) return null;
     if (match) return match;
   }
 
-  // 2. Base index instant lookups (O(1))
-  const baseMatch = jBases.get(mStem) || jBases.get(mLower) || jBases.get(mStemNoNum);
-  if (baseMatch) return baseMatch;
+  // Fast base lookups avoid generating every fallback for ordinary filenames.
+  let ambiguousBase = false;
+  for (const key of [mStem, mLower, mStemNoNum]) {
+    const match = jBases.get(key);
+    if (match === null) { ambiguousBase = true; break; }
+    if (match) return match;
+  }
+
+  // Prefer generated filename candidates before less-specific prefix matching.
+  const candidateMatches = new Set<string>();
+  for (const candidate of getMatchingCandidates(mediaName)) {
+    const match = lowerMap.get(candidate.toLowerCase());
+    if (match === null) return null;
+    if (match) candidateMatches.add(match);
+  }
+  if (candidateMatches.size > 1) return null;
+  if (candidateMatches.size === 1) return candidateMatches.values().next().value ?? null;
+  if (ambiguousBase) return null;
 
   // 3. 16-character common prefix lookup (O(1)) for truncated names
   if (mStem.length >= 16) {
     const prefMatch = jPrefix16.get(mStem.substring(0, 16));
-    if (prefMatch) return prefMatch;
+    if (prefMatch === null) return null;
+    if (prefMatch) {
+      const base = jsonBases.get(prefMatch);
+      if (base && (mStem.startsWith(base) || base.startsWith(`${mStem}.`))) return prefMatch;
+    }
   }
 
-  // 4. Exact lookup matches from getMatchingCandidates generator
-  const candidates = getMatchingCandidates(mediaName);
-  for (const candidate of candidates) {
-    const match = lowerMap.get(candidate.toLowerCase());
-    if (match) return match;
-  }
-
-  // 5. Near-match fallback across remaining JSONs (only evaluated if O(1) lookups miss)
+  // Near matches are usable only when exactly one sidecar is plausible.
   if (mStem.length >= 20) {
+    let nearMatch: string | null = null;
     for (const item of allJsons) {
       if (item.base.length >= 20 && levenshteinDist(mStem, item.base, 3) <= 3) {
-        return item.actual;
+        if (nearMatch !== null && nearMatch !== item.actual) return null;
+        nearMatch = item.actual;
       }
     }
+    return nearMatch;
   }
 
   return null;
@@ -327,24 +350,44 @@ export function safeParseJson(raw: string): Record<string, unknown> | null {
   }
 }
 
+/** Return usable Takeout coordinates; zero/zero is commonly a missing-location placeholder. */
+export function extractCoordinates(json: Record<string, unknown>): { lat: number; lng: number } | null {
+  const number = (value: unknown) => typeof value === 'number' ? value :
+    typeof value === 'string' && value.trim() ? Number(value) : NaN;
+  for (const geo of [json.geoData, json.geoDataExif]) {
+    if (!geo || typeof geo !== 'object') continue;
+    const { latitude, longitude } = geo as Record<string, unknown>;
+    const lat = number(latitude);
+    const lng = number(longitude);
+    if (Number.isFinite(lat) && Number.isFinite(lng) && Math.abs(lat) <= 90 && Math.abs(lng) <= 180 &&
+        (Math.abs(lat) > 0.0001 || Math.abs(lng) > 0.0001)) return { lat, lng };
+  }
+  return null;
+}
+
 /** Extract the best available timestamp (epoch seconds) from a parsed Takeout JSON */
 export function extractTimestamp(json: Record<string, unknown> | null | undefined): number | null {
   if (!json || typeof json !== 'object') return null;
 
+  const validSeconds = (seconds: number): number | null =>
+    seconds > 0 && seconds <= 253402300799 ? seconds : null;
+  const normalizeTimestamp = (value: number): number | null => {
+    if (!Number.isFinite(value) || value <= 0) return null;
+    const seconds = Math.floor(value > 100000000000 ? value / 1000 : value);
+    return validSeconds(seconds);
+  };
   const parseTsValue = (val: unknown): number | null => {
-    if (typeof val === 'number' && !isNaN(val) && val > 0) {
-      return val > 100000000000 ? Math.floor(val / 1000) : Math.floor(val);
-    }
+    if (typeof val === 'number') return normalizeTimestamp(val);
     if (typeof val === 'string') {
       const trimmed = val.trim();
       if (!trimmed || trimmed === '0') return null;
       const n = Number(trimmed);
-      if (!isNaN(n) && n > 0) {
-        return n > 100000000000 ? Math.floor(n / 1000) : Math.floor(n);
+      if (Number.isFinite(n) && n > 0) {
+        return normalizeTimestamp(n);
       }
       const parsed = Date.parse(trimmed);
       if (!isNaN(parsed) && parsed > 0) {
-        return Math.floor(parsed / 1000);
+        return validSeconds(Math.floor(parsed / 1000));
       }
     }
     return null;

@@ -6,7 +6,7 @@ import { injectImageExif, isSupportedImageFormat } from './DeepExifRestorer';
  */
 export async function injectWasmExif(
   fileData: Uint8Array,
-  epochSec: number,
+  epochSec: number | null,
   lat?: number,
   lng?: number,
   description?: string,

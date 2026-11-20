@@ -7,7 +7,7 @@ export default function PrivacyPage() {
       <div className="text-center mb-16">
         <Shield className="w-16 h-16 text-indigo-400 mx-auto mb-6" />
         <h1 className="text-4xl md:text-5xl font-bold tracking-tighter mb-4">Privacy Policy</h1>
-        <p className="text-xl text-white/60">Your files are yours. They never leave your device.</p>
+        <p className="text-xl text-white/60">The browser restore tool processes selected media on your device.</p>
       </div>
 
       <div className="space-y-12 text-white/80 leading-relaxed">
@@ -16,12 +16,13 @@ export default function PrivacyPage() {
           <div className="absolute top-0 left-0 w-1 h-full bg-indigo-500"></div>
           <h2 className="text-2xl font-bold text-white mb-4">The TakeoutFix Guarantee</h2>
           <p className="text-lg mb-4">
-            <strong>TakeoutFix never uploads your files.</strong> We believe in local processing. Your photos, videos, and metadata remain strictly on your local device at all times.
+            <strong>The browser restore tool processes selected media on your device.</strong> It does not upload those selected photo or video files to TakeoutFix. Other website features, such as sign-in, support, diagnostics, and advertising, use network services described below.
           </p>
         </section>
 
         <section>
-          <h2 className="text-2xl font-bold text-white mb-4">Data We DO NOT Collect</h2>
+          <h2 className="text-2xl font-bold text-white mb-4">Data the browser restore tool does not upload</h2>
+          <p className="mb-4">The restore tool processes the following locally. Please avoid including sensitive file details in a support request unless you choose to share them.</p>
           <ul className="grid md:grid-cols-2 gap-4">
             {['Photos', 'Videos', 'EXIF metadata', 'GPS coordinates', 'File contents', 'Folder contents', 'Album contents', 'Personal media'].map(item => (
               <li key={item} className="flex items-center gap-3 bg-red-500/10 border border-red-500/20 text-red-200 rounded-lg p-4">
@@ -39,15 +40,15 @@ export default function PrivacyPage() {
             <li><strong>Google Account Information:</strong> For authentication and account management.</li>
             <li><strong>Purchase Information:</strong> Handled securely by our payment processors; we only store plan entitlement data.</li>
             <li><strong>Support Tickets:</strong> Any information you voluntarily provide when contacting support.</li>
-            <li><strong>Anonymous Analytics:</strong> General usage data to help us identify bugs and improve UX.</li>
-            <li><strong>Recovery Statistics:</strong> High-level aggregated metrics (e.g., number of files processed, success rates) to power our platform statistics. We do not know *what* files were processed.</li>
+            <li><strong>Diagnostics and usage:</strong> Operational information can be sent to services used to identify errors and understand site usage. Information you provide in support requests may include personal details.</li>
+            <li><strong>Recovery statistics:</strong> Counts such as files processed and bytes processed may be saved for usage and platform statistics.</li>
           </ul>
         </section>
 
         <section>
           <h2 className="text-2xl font-bold text-white mb-4">Local Processing</h2>
           <p>
-            The core TakeoutFix engine runs entirely within your web browser using Web Workers and the File System Access API. All matching, metadata parsing, and deep EXIF injection happens locally using your device's CPU and RAM. No server receives your Takeout data.
+            The browser restore tool uses Web Workers and available browser file APIs to match files and write metadata locally. Other features, including support and diagnostics, can send information to network services.
           </p>
         </section>
 

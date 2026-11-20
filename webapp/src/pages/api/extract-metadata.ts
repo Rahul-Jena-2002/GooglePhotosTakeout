@@ -1,4 +1,7 @@
 import type { APIRoute } from "astro";
+import { fetchAffiliatePage, isAllowedAffiliateFetchUrl } from "../../lib/api/affiliateUrl";
+import { authorizeAffiliateAdmin } from "../../lib/api/affiliateAdmin";
+import { env } from "cloudflare:workers";
 
 export const prerender = false;
 
@@ -57,63 +60,15 @@ function extractSlugTitle(urlStr: string): string | null {
   return null;
 }
 
-function isSafePublicUrl(url: URL): boolean {
-  if (url.protocol !== "http:" && url.protocol !== "https:") return false;
-  const hostname = url.hostname.toLowerCase().trim();
-
-  // Block localhost, local domains, cloud metadata hostnames
-  if (
-    hostname === "localhost" ||
-    hostname.endsWith(".localhost") ||
-    hostname.endsWith(".local") ||
-    hostname.endsWith(".internal") ||
-    hostname.endsWith(".lan") ||
-    hostname === "metadata.google.internal" ||
-    hostname === "instance-data"
-  ) {
-    return false;
-  }
-
-  // Check dotted-decimal IPv4 addresses
-  const ipv4Match = hostname.match(/^(\d+)\.(\d+)\.(\d+)\.(\d+)$/);
-  if (ipv4Match) {
-    const [, o1, o2] = ipv4Match.map(Number);
-    if (o1 === 127) return false; // Loopback 127.0.0.0/8
-    if (o1 === 10) return false;  // Private 10.0.0.0/8
-    if (o1 === 172 && o2 >= 16 && o2 <= 31) return false; // Private 172.16.0.0/12
-    if (o1 === 192 && o2 === 168) return false; // Private 192.168.0.0/16
-    if (o1 === 169 && o2 === 254) return false; // Link-local / Cloud metadata 169.254.0.0/16
-    if (o1 === 0 || o1 >= 224) return false; // Reserved / Multicast
-  }
-
-  // Raw integer or hex IPv4 notation check (e.g. 2130706433 or 0x7f000001)
-  if (/^(?:0x[0-9a-f]+|\d+)$/i.test(hostname)) {
-    return false;
-  }
-
-  // Octal / mixed dotted notation (e.g. 0177.0.0.1 = 127.0.0.1)
-  if (/(?:^|\.)(0\d+)(?:\.|$)/.test(hostname)) {
-    return false;
-  }
-
-  // Check IPv6 addresses (loopback, link-local, unique local)
-  if (
-    hostname === "[::1]" ||
-    hostname === "::1" ||
-    hostname.startsWith("[fe80:") ||
-    hostname.startsWith("fe80:") ||
-    hostname.startsWith("[fc") ||
-    hostname.startsWith("[fd") ||
-    hostname.startsWith("fc") ||
-    hostname.startsWith("fd")
-  ) {
-    return false;
-  }
-
-  return true;
-}
-
 async function handleExtract(request: Request) {
+  const apiKey = String((env as any)?.PUBLIC_FIREBASE_API_KEY || import.meta.env.PUBLIC_FIREBASE_API_KEY || '');
+  const useEmulators = import.meta.env.DEV && import.meta.env.PUBLIC_FIREBASE_USE_LIVE !== 'true';
+  const authorization = await authorizeAffiliateAdmin(request, apiKey, useEmulators);
+  if (authorization !== 200) {
+    return new Response(JSON.stringify({ success: false, error: authorization === 503 ? 'Authorization service unavailable.' : 'Access denied.' }), {
+      status: authorization, headers: { 'Content-Type': 'application/json' }
+    });
+  }
   try {
     const urlObj = new URL(request.url);
     const queryUrl = urlObj.searchParams.get("url");
@@ -146,30 +101,14 @@ async function handleExtract(request: Request) {
       });
     }
 
-    if (!isSafePublicUrl(parsedUrl)) {
-      return new Response(JSON.stringify({ success: false, error: "Target URL destination is not allowed" }), {
+    if (!isAllowedAffiliateFetchUrl(parsedUrl)) {
+      return new Response(JSON.stringify({ success: false, error: "Auto-extraction supports selected Amazon and Flipkart HTTPS links. Enter other product details manually." }), {
         status: 400,
         headers: { "Content-Type": "application/json" },
       });
     }
 
-    // Follow potential shortlinks (e.g. amzn.to, bit.ly, link.amazon) to resolve destination
-    let finalUrl = parsedUrl.toString();
-    try {
-      const headRes = await fetch(finalUrl, {
-        method: "HEAD",
-        redirect: "follow",
-        headers: {
-          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
-        },
-      });
-      if (headRes.url && headRes.url !== finalUrl) {
-        const resolvedUrl = new URL(headRes.url);
-        if (isSafePublicUrl(resolvedUrl)) {
-          finalUrl = headRes.url;
-        }
-      }
-    } catch (_) {}
+    const { response, finalUrl } = await fetchAffiliatePage(parsedUrl);
 
     // Check for Amazon ASIN
     const asin = extractAsin(finalUrl) || extractAsin(rawUrl);
@@ -182,18 +121,19 @@ async function handleExtract(request: Request) {
 
     // Attempt page fetch for rich metadata
     try {
-      const response = await fetch(finalUrl, {
-        headers: {
-          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
-          "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
-          "Accept-Language": "en-US,en;q=0.9",
-          "Cache-Control": "no-cache",
-        },
-        redirect: "follow",
-      });
-
-      if (response.ok) {
-        const html = await response.text();
+      if (response?.ok && response.body) {
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        let html = "";
+        let bytesRead = 0;
+        while (bytesRead < 1024 * 1024) {
+          const chunk = await reader.read();
+          if (chunk.done) break;
+          const remaining = 1024 * 1024 - bytesRead;
+          bytesRead += chunk.value.byteLength;
+          html += decoder.decode(chunk.value.subarray(0, remaining), { stream: true });
+        }
+        await reader.cancel();
 
         // 1. Image extraction
         const ogImageMatch =
@@ -281,7 +221,7 @@ async function handleExtract(request: Request) {
       JSON.stringify({
         success: true,
         title: title || slugTitle || parsedUrl.hostname,
-        description: description || "High performance tech accessory and photo storage gear.",
+        description,
         imageUrl: imageUrl || asinImageUrl || null,
         domain: parsedUrl.hostname,
         asin: asin || null,

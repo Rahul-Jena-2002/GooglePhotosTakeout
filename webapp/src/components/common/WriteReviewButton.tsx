@@ -49,8 +49,8 @@ export default function WriteReviewButton() {
     try {
       await addDoc(collection(db, "reviews"), {
         uid: user.uid,
-        displayName: user.displayName || "Anonymous User",
-        photoURL: user.photoURL || null,
+        displayName: (user.displayName || "Anonymous User").slice(0, 100),
+        photoURL: null,
         rating,
         message,
         status: "PENDING",

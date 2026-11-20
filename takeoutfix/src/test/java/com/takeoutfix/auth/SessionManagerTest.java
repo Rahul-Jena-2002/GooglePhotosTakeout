@@ -42,9 +42,10 @@ public class SessionManagerTest {
 
     @Test
     public void testSaveAndLogoutSession() {
+        String testEmail = "session-test-" + java.util.UUID.randomUUID() + "@example.invalid";
         AuthSession session = new AuthSession(
                 "uid-abc",
-                "hello@gmail.com",
+                testEmail,
                 "Hello World",
                 "",
                 "dummyIdToken",
@@ -55,12 +56,52 @@ public class SessionManagerTest {
 
         sessionManager.save(session);
         assertTrue(sessionManager.isAuthenticated());
-        assertEquals("hello@gmail.com", sessionManager.getCurrentSession().getEmail());
+        assertEquals(testEmail, sessionManager.getCurrentSession().getEmail());
         assertEquals("pro", sessionManager.getCurrentSession().getPlan());
 
         // Logout
         sessionManager.logout();
         assertFalse(sessionManager.isAuthenticated());
         assertFalse(sessionManager.getCurrentSession().isAuthenticated());
+    }
+
+    @Test
+    public void logoutReportsCleanupFailureAndClearsActiveSession() {
+        CredentialStore failingStore = new CredentialStore(tempDir.toFile()) {
+            @Override public synchronized void saveSession(AuthSession session) { assertNotNull(session); }
+            @Override public synchronized boolean clear() { return false; }
+        };
+        SessionManager manager = new SessionManager(failingStore, new FirebaseTokenService());
+        manager.save(new AuthSession("uid", "user@example.invalid", "User", "", "id", "refresh", "free", 0));
+        assertFalse(manager.logout());
+        assertFalse(manager.isAuthenticated());
+    }
+
+    @Test
+    public void logoutNotifiesListenersWhenCleanupThrows() {
+        CredentialStore failingStore = new CredentialStore(tempDir.toFile()) {
+            @Override public synchronized void saveSession(AuthSession session) { assertNotNull(session); }
+            @Override public synchronized boolean clear() { throw new IllegalStateException("storage unavailable"); }
+        };
+        SessionManager manager = new SessionManager(failingStore, new FirebaseTokenService());
+        manager.save(new AuthSession("uid", "user@example.invalid", "User", "", "id", "refresh", "free", 0));
+        var notified = new java.util.concurrent.atomic.AtomicBoolean();
+        manager.addSessionListener(session -> { if (!session.isAuthenticated()) notified.set(true); });
+        assertThrows(IllegalStateException.class, manager::logout);
+        assertFalse(manager.isAuthenticated());
+        assertTrue(notified.get());
+    }
+
+    @Test
+    public void failedStorageDoesNotActivateSession() {
+        CredentialStore failingStore = new CredentialStore(tempDir.toFile()) {
+            @Override public synchronized void saveSession(AuthSession session) {
+                throw new IllegalStateException("storage unavailable");
+            }
+        };
+        SessionManager manager = new SessionManager(failingStore, new FirebaseTokenService());
+        AuthSession session = new AuthSession("uid", "user@example.invalid", "User", "", "id", "refresh", "free", 0);
+        assertThrows(IllegalStateException.class, () -> manager.save(session));
+        assertFalse(manager.isAuthenticated());
     }
 }

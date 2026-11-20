@@ -12,7 +12,6 @@ import javafx.scene.control.*;
 import javafx.scene.layout.*;
 import javafx.scene.paint.Color;
 import javafx.scene.shape.Circle;
-import javafx.stage.DirectoryChooser;
 
 import java.io.File;
 import java.util.ArrayList;
@@ -92,6 +91,9 @@ public class SettingsView extends VBox {
         buildSupportPane();
         buildAboutPane();
 
+        visibleProperty().addListener((obs, wasVisible, visible) -> {
+            if (visible) buildProfilePane();
+        });
         categoryList.getSelectionModel().select(0);
     }
 
@@ -193,7 +195,7 @@ public class SettingsView extends VBox {
 
     private void buildProfilePane() {
         profilePane.getChildren().clear();
-        profilePane.getChildren().add(createSectionHeader("Profile & Account", "Manage your account, preferences, and cloud backup."));
+        profilePane.getChildren().add(createSectionHeader("Profile & Account", "Manage your account and preferences."));
 
         // 1. Account & Identity Card
         VBox identityCard = createCard();
@@ -259,7 +261,13 @@ public class SettingsView extends VBox {
         authBtn.setOnAction(e -> {
             if (signedIn) {
                 if (userService != null) {
-                    userService.signOut();
+                    if (com.takeoutfix.task.TaskManager.getInstance().getActiveTaskCount() > 0) {
+                        new Alert(Alert.AlertType.INFORMATION, "Finish or cancel background work before signing out.").showAndWait();
+                        return;
+                    }
+                    if (!userService.signOut()) {
+                        new Alert(Alert.AlertType.WARNING, "Signed out, but some account information could not be removed from this device. Check your system credential store and local TakeoutFix account files.").showAndWait();
+                    }
                 }
                 buildProfilePane();
             } else {
@@ -279,18 +287,18 @@ public class SettingsView extends VBox {
         quotaTitle.setStyle("-fx-font-size: 16px; -fx-font-weight: 700;");
         quotaTitle.getStyleClass().add("card-title");
 
-        long usedBytes = userService != null ? userService.getUsedBytes() : 0L;
-        long maxBytes = userService != null ? userService.getMaxBytes() : com.takeoutfix.auth.UserSyncBridgeService.GUEST_MAX_BYTES;
-
         VBox quotaContent = new VBox(10);
         if (signedIn) {
             Label unlimitedLbl = new Label("Unlimited Free Restoration");
             unlimitedLbl.setStyle("-fx-font-size: 15px; -fx-font-weight: 700; -fx-text-fill: #10B981;");
-            Label unlimitedSub = new Label("Signed in with Google. You have unrestricted access with no gigabyte or file count limits.");
+            Label unlimitedSub = new Label("Signing in removes the guest quota. Your device's storage and memory still limit large restores.");
             unlimitedSub.setStyle("-fx-font-size: 12.5px;");
             unlimitedSub.getStyleClass().add("text-muted");
+            unlimitedSub.setWrapText(true);
             quotaContent.getChildren().addAll(unlimitedLbl, unlimitedSub);
         } else {
+            long usedBytes = com.takeoutfix.auth.GuestQuotaStore.getRestoredBytes();
+            long maxBytes = com.takeoutfix.auth.GuestQuotaStore.MAX_GUEST_BYTES;
             double usedMb = usedBytes / (1024.0 * 1024.0);
             double pct = Math.min(1.0, usedBytes / (double) maxBytes);
 
@@ -312,7 +320,7 @@ public class SettingsView extends VBox {
             qBar.setMaxWidth(Double.MAX_VALUE);
             qBar.setStyle("-fx-accent: " + (pct >= 1.0 ? "#EF4444" : "#8B5CF6") + "; -fx-pref-height: 8px;");
 
-            Label qNote = new Label("Free guest mode includes up to 1 GB of restored media with no file count limits. Sign in to your Google Account to unlock 100% unlimited restoration access.");
+            Label qNote = new Label("Free guest mode includes up to 1 GB of restored media. Sign in with Google to remove the guest quota.");
             qNote.setStyle("-fx-font-size: 13.5px;");
             qNote.getStyleClass().add("text-muted");
             qNote.setWrapText(true);
@@ -323,25 +331,20 @@ public class SettingsView extends VBox {
 
         // 3. Cloud Synchronization Card
         VBox syncCard = createCard();
-        Label syncTitle = new Label("Cloud Backup & Sync");
+        Label syncTitle = new Label("Account Sync");
         syncTitle.setStyle("-fx-font-size: 16px; -fx-font-weight: 700;");
         syncTitle.getStyleClass().add("card-title");
 
-        Label syncDesc = new Label("Keep your restoration history and progress safely backed up so you can access them across your devices.");
+        Label syncDesc = new Label("Refresh account information when online. Keep a separate backup of your original files.");
         syncDesc.setStyle("-fx-font-size: 13.5px;");
         syncDesc.getStyleClass().add("text-muted");
         syncDesc.setWrapText(true);
-
-        CheckBox enableCloudSync = new CheckBox("Automatically backup history when online");
-        enableCloudSync.setSelected(prefs.getBoolean("cloud.sync.auto", true));
-        enableCloudSync.setStyle("-fx-font-size: 14px; -fx-font-weight: 500;");
-        enableCloudSync.setOnAction(e -> prefs.putBoolean("cloud.sync.auto", enableCloudSync.isSelected()));
 
         HBox syncActionRow = new HBox(12);
         syncActionRow.setAlignment(Pos.CENTER_LEFT);
         syncActionRow.setStyle("-fx-padding: 4 0 0 0;");
 
-        Button syncNowBtn = new Button("Sync Now");
+        Button syncNowBtn = new Button("Refresh Account");
         syncNowBtn.getStyleClass().add("btn-secondary");
         syncNowBtn.setGraphic(UiIcons.createSvgIcon(UiIcons.RELOAD, 13, "currentColor"));
         syncNowBtn.setGraphicTextGap(6);
@@ -358,13 +361,13 @@ public class SettingsView extends VBox {
                 syncNowBtn.setDisable(true);
                 userService.triggerCloudSync(success -> Platform.runLater(() -> {
                     syncNowBtn.setDisable(false);
-                    syncStatusMsg.setText(Boolean.TRUE.equals(success) ? "Last synced: Just now ✓" : "Sync completed (local copy up to date)");
+                    syncStatusMsg.setText(Boolean.TRUE.equals(success) ? "Account refreshed" : "Refresh failed. Check your connection and try again.");
                 }));
             }
         });
 
         syncActionRow.getChildren().addAll(syncNowBtn, syncStatusMsg);
-        syncCard.getChildren().addAll(syncTitle, syncDesc, enableCloudSync, syncActionRow);
+        syncCard.getChildren().addAll(syncTitle, syncDesc, syncActionRow);
 
         // 3. Machine Hardware Keyring Vault Card
         VBox keyringCard = createCard();
@@ -372,18 +375,16 @@ public class SettingsView extends VBox {
         keyTitle.setStyle("-fx-font-size: 16px; -fx-font-weight: 700;");
         keyTitle.getStyleClass().add("card-title");
 
-        Label keyDesc = new Label("Your sign-in information and account credentials are encrypted and stored safely on this device. Passwords and sensitive data are never stored in plain text.");
+        Label keyDesc = new Label("Sign-in information is stored on this device. Account features require an internet connection.");
         keyDesc.setStyle("-fx-font-size: 13.5px;");
         keyDesc.getStyleClass().add("text-muted");
         keyDesc.setWrapText(true);
 
-        HBox keyStatusRow = new HBox(8);
-        keyStatusRow.setAlignment(Pos.CENTER_LEFT);
-        Label keyStatus = new Label("● Device Security: Active");
-        keyStatus.setStyle("-fx-font-size: 13px; -fx-font-weight: 600; -fx-text-fill: #10B981; -fx-background-color: rgba(16, 185, 129, 0.10); -fx-padding: 4 10 4 10; -fx-background-radius: 6;");
-        keyStatusRow.getChildren().add(keyStatus);
+        Label storageNote = new Label("If your system keyring is unavailable, the app uses a weaker local fallback that may be readable by someone with access to your device. Use a protected account and device.");
+        storageNote.getStyleClass().add("text-muted");
+        storageNote.setWrapText(true);
 
-        keyringCard.getChildren().addAll(keyTitle, keyDesc, keyStatusRow);
+        keyringCard.getChildren().addAll(keyTitle, keyDesc, storageNote);
 
         profilePane.getChildren().addAll(identityCard, quotaCard, syncCard, keyringCard);
     }
@@ -553,13 +554,14 @@ public class SettingsView extends VBox {
 
         File bin = engine != null ? engine.getExifToolBinary() : null;
         String statusText = (bin != null && bin.exists())
-                ? "Active & Ready"
-                : "Engine Ready";
+                ? "Engine available"
+                : "Engine unavailable";
 
         Label binStatus = new Label(statusText);
-        binStatus.setStyle("-fx-font-size: 13px; -fx-text-fill: #10B981; -fx-font-weight: 600;");
+        binStatus.getStyleClass().add("text-muted");
 
-        Label binDesc = new Label("Photos and videos are restored entirely on your machine. Your personal files and memories are never uploaded or sent to external servers.");
+        Label binDesc = new Label("The restore tool processes selected photos and videos on your device. Sign-in, account sync and update checks use an internet connection.");
+        binDesc.setWrapText(true);
         binDesc.setStyle("-fx-font-size: 13.5px; ");
         binBox.getChildren().addAll(binTitle, binStatus, binDesc);
 
@@ -569,7 +571,7 @@ public class SettingsView extends VBox {
 
     private void buildUpdatesPane() {
         updatesPane.getChildren().clear();
-        updatesPane.getChildren().add(createSectionHeader("Application Updates", "Configure OTA release channels, background checks, and verification."));
+        updatesPane.getChildren().add(createSectionHeader("Application Updates", "Check the latest release for your device."));
 
         VBox card = createCard();
 
@@ -583,47 +585,16 @@ public class SettingsView extends VBox {
         Label appVer = new Label("Google Takeout Restorer v" + com.takeoutfix.shared.util.AppVersion.getVersion() + " (Stable)");
         appVer.setStyle("-fx-font-size: 14px; -fx-font-weight: 800; ");
 
-        Label upToDateBadge = new Label("✓ Up to date");
-        upToDateBadge.setStyle("-fx-font-size: 10px; -fx-font-weight: 700; -fx-text-fill: #10B981; -fx-background-color: rgba(16, 185, 129, 0.12); -fx-padding: 2 6 2 6; -fx-background-radius: 4;");
+        Label upToDateBadge = new Label("Not checked yet");
+        upToDateBadge.getStyleClass().add("text-muted");
 
         verRow.getChildren().addAll(appVer, upToDateBadge);
         verBox.getChildren().addAll(vTitle, verRow);
 
-        VBox autoBox = new VBox(8);
-        CheckBox chkAutoCheck = new CheckBox("Automatically check for updates");
-        chkAutoCheck.setSelected(true);
-        chkAutoCheck.setStyle("-fx-font-size: 13px; -fx-font-weight: 600; ");
-
-        Label autoCheckDesc = new Label("Check for new releases when Google Takeout Restorer starts.");
-        autoCheckDesc.setStyle("-fx-font-size: 12px; ");
-
-        CheckBox chkAutoDownload = new CheckBox("Automatically download updates");
-        chkAutoDownload.setSelected(false);
-        chkAutoDownload.setStyle("-fx-font-size: 13px; -fx-font-weight: 600; ");
-
-        Label autoDownDesc = new Label("Download verified updates in the background.");
-        autoDownDesc.setStyle("-fx-font-size: 12px; ");
-
-        autoBox.getChildren().addAll(chkAutoCheck, autoCheckDesc, chkAutoDownload, autoDownDesc);
-
-        VBox chanBox = new VBox(6);
-        Label chanTitle = new Label("Release Channel");
-        chanTitle.setStyle("-fx-font-size: 13px; -fx-font-weight: 600; ");
-
-        Label chanDesc = new Label("Choose which versions to receive.");
-        chanDesc.setStyle("-fx-font-size: 12px; ");
-
-        ComboBox<String> chanCombo = new ComboBox<>();
-        chanCombo.getItems().addAll("Stable", "Beta");
-        chanCombo.setValue("Stable");
-        chanCombo.setStyle("-fx-font-size: 12px; -fx-pref-width: 200px;");
-
-        chanBox.getChildren().addAll(chanTitle, chanDesc, chanCombo);
-
         HBox actionRow = new HBox(12);
         actionRow.setAlignment(Pos.CENTER_LEFT);
 
-        Label lastCheckedLabel = new Label("Last checked: Just now");
+        Label lastCheckedLabel = new Label("No manual check yet");
         lastCheckedLabel.setStyle("-fx-font-size: 11px; -fx-text-fill: #71717a;");
 
         Region sp = new Region();
@@ -634,19 +605,28 @@ public class SettingsView extends VBox {
         btnCheckNow.setStyle("-fx-font-size: 12px; -fx-font-weight: 700; -fx-padding: 6 16 6 16; -fx-cursor: hand;");
         btnCheckNow.setOnAction(e -> {
             btnCheckNow.setText("Checking...");
+            btnCheckNow.setDisable(true);
             new Thread(() -> {
                 com.takeoutfix.updates.UpdateCheckerService ucs = new com.takeoutfix.updates.UpdateCheckerService();
                 ucs.checkForUpdates();
+                ucs.shutdown();
                 Platform.runLater(() -> {
                     btnCheckNow.setText("Check for Updates");
+                    btnCheckNow.setDisable(false);
                     var info = ucs.getLatestUpdate();
                     if (info != null && info.isUpdateAvailable()) {
-                        upToDateBadge.setText("⚡ Update: " + info.versionTag());
+                        lastCheckedLabel.setText("Check completed");
+                        upToDateBadge.setText("Update: " + info.versionTag());
                         upToDateBadge.setStyle("-fx-font-size: 10px; -fx-font-weight: 700; -fx-text-fill: #8b5cf6; -fx-background-color: rgba(139, 92, 246, 0.15); -fx-padding: 2 6 2 6; -fx-background-radius: 4;");
-                        FxOtaUpdateDialog dlg = new FxOtaUpdateDialog(null, info, null);
+                        FxOtaUpdateDialog dlg = new FxOtaUpdateDialog((javafx.stage.Stage) getScene().getWindow(), info, null);
                         dlg.showAndWait();
+                    } else if (info == null) {
+                        lastCheckedLabel.setText("Check failed; try again when online");
+                        upToDateBadge.setText("Update status unavailable");
+                        upToDateBadge.setStyle("");
                     } else {
-                        upToDateBadge.setText("✓ Up to date");
+                        lastCheckedLabel.setText("Check completed");
+                        upToDateBadge.setText("Up to date");
                         upToDateBadge.setStyle("-fx-font-size: 10px; -fx-font-weight: 700; -fx-text-fill: #10B981; -fx-background-color: rgba(16, 185, 129, 0.12); -fx-padding: 2 6 2 6; -fx-background-radius: 4;");
                     }
                 });
@@ -655,27 +635,19 @@ public class SettingsView extends VBox {
 
         actionRow.getChildren().addAll(lastCheckedLabel, sp, btnCheckNow);
 
-        card.getChildren().addAll(verBox, createDivider(), autoBox, createDivider(), chanBox, createDivider(), actionRow);
+        card.getChildren().addAll(verBox, createDivider(), actionRow);
         updatesPane.getChildren().add(card);
     }
 
     private void buildSafetyPane() {
         safetyPane.getChildren().clear();
-        safetyPane.getChildren().add(createSectionHeader("File Safety & Preservation", "Guaranteed non-destructive write guarantees."));
+        safetyPane.getChildren().add(createSectionHeader("File Safety & Preservation", "Protect your original export while restoring copies."));
 
         VBox card = createCard();
 
-        VBox backupBox = createToggle("Original Preservation Guarantee",
-                "Google Takeout Restorer operates strictly out-of-place. Source archives and pictures are mounted Read-Only and never overwritten in place.",
-                true, e -> {});
-
-        VBox dryRunBox = createToggle("Integrity Check (Dry Run Mode)",
-                "Simulate all date extractions and JSON pairings without writing media files to target directory.",
-                false, e -> {});
-
-        VBox collisionBox = createToggle("Automatic Deduplication & Collision Handling",
-                "When identical photo filenames exist, cleanly append unique incremental sequence numbers instead of overwriting.",
-                true, e -> {});
+        VBox backupBox = createInfo("Keep your original export", "Choose a separate output folder and keep a backup of your original files.");
+        VBox dryRunBox = createInfo("Preview matches", "Use Scan Archive on the restore screen to check for matching sidecars without restoring files.");
+        VBox collisionBox = createInfo("Existing files", "Review the output and any errors after restoration before deleting your backup.");
 
         card.getChildren().addAll(backupBox, createDivider(), dryRunBox, createDivider(), collisionBox);
         safetyPane.getChildren().add(card);
@@ -683,67 +655,42 @@ public class SettingsView extends VBox {
 
     private void buildStoragePane() {
         storagePane.getChildren().clear();
-        storagePane.getChildren().add(createSectionHeader("Storage Locations", "Configure where restored files, temp caches, and logs are kept."));
+        storagePane.getChildren().add(createSectionHeader("Storage Locations", "Choose where restored files are saved."));
 
         VBox card = createCard();
 
-        VBox outDirBox = createDirSelector("Default Restoration Output Folder",
-                "Where newly reorganized photos and videos are written by default.",
-                prefs.get("output.defaultDir", System.getProperty("user.home") + File.separator + "Pictures" + File.separator + "Restored Photos"),
-                path -> prefs.put("output.defaultDir", path));
-
-        VBox tempDirBox = createDirSelector("Archive Extraction Temporary Cache",
-                "Temporary scratchpad used to unzip multi-part Google Takeout archives.",
-                System.getProperty("java.io.tmpdir") + File.separator + "takeoutfix",
-                path -> {});
-
-        card.getChildren().addAll(outDirBox, createDivider(), tempDirBox);
+        card.getChildren().add(createInfo("Output folder", "Select a separate output folder on the restore screen before starting."));
         storagePane.getChildren().add(card);
     }
 
     private void buildPrivacyPane() {
         privacyPane.getChildren().clear();
-        privacyPane.getChildren().add(createSectionHeader("Privacy & Telemetry", "100% on-device local execution policy."));
+        privacyPane.getChildren().add(createSectionHeader("Privacy & Telemetry", "Understand what runs locally and what requires a connection."));
 
         VBox card = createCard();
 
-        VBox localBox = createToggle("Zero-Cloud Media Processing Guarantee",
-                "All photo bytes, video frames, GPS coordinates, and face detections are processed 100% locally on your CPU/RAM.",
-                true, e -> {});
+        VBox localBox = createInfo("Media processing", "Selected media is processed on your computer. Sign-in, account sync, and update checks use the internet.");
 
-        VBox crashBox = createToggle("Anonymous Error Diagnostics",
-                "Send non-identifying exception traces to help fix edge-case parsing bugs.",
-                true, e -> {});
-
-        card.getChildren().addAll(localBox, createDivider(), crashBox);
+        card.getChildren().add(localBox);
         privacyPane.getChildren().add(card);
     }
 
     private void buildAdvancedPane() {
         advancedPane.getChildren().clear();
-        advancedPane.getChildren().add(createSectionHeader("Advanced Media Formats & Logs", "Configure accepted file extensions and log verbosity."));
+        advancedPane.getChildren().add(createSectionHeader("Media Formats & Logs", "Review supported inputs and restoration diagnostics."));
 
         VBox card = createCard();
 
         VBox formatBox = new VBox(6);
-        Label fTitle = new Label("Supported Media Formats");
+        Label fTitle = new Label("Media and sidecars");
         fTitle.setStyle("-fx-font-size: 13px; -fx-font-weight: 600; ");
 
-        Label fList = new Label("Images: JPEG, PNG, TIFF, GIF, BMP, WEBP, HEIC, HEIF, AVIF\nRAW: CR2, CR3, NEF, ARW, DNG, ORF, RW2, PEF, RAF\nVideo & Live Photos: MP4, MOV, M4V, AVI, 3GP, MKV\nSidecars: JSON (Takeout), XMP (Adobe), XML");
+        Label fList = new Label("The scanner recognizes common image and video files and matches Google Takeout JSON sidecars. Metadata support varies by format; inspect a sample of the restored files.");
+        fList.setWrapText(true);
         fList.setStyle("-fx-font-size: 12px; -fx-padding: 8 12 8 12; -fx-background-radius: 6; -fx-border-color: #30313B; -fx-border-radius: 6;");
         formatBox.getChildren().addAll(fTitle, fList);
 
-        VBox logLvlBox = new VBox(6);
-        Label lTitle = new Label("Diagnostic Logging Level");
-        lTitle.setStyle("-fx-font-size: 13px; -fx-font-weight: 600; ");
-
-        ComboBox<String> logCombo = new ComboBox<>();
-        logCombo.getItems().addAll("Standard (Info & Errors)", "Verbose (Detailed tag traces)", "Debug (Subprocess stdout/stderr)");
-        logCombo.setValue("Standard (Info & Errors)");
-        logCombo.setStyle("-fx-font-size: 12px; -fx-pref-width: 250px;");
-        logLvlBox.getChildren().addAll(lTitle, logCombo);
-
-        card.getChildren().addAll(formatBox, new Separator(), logLvlBox);
+        card.getChildren().addAll(formatBox, new Separator(), createInfo("Diagnostics", "Use the restore screen to review and export the operation log."));
         advancedPane.getChildren().add(card);
     }
 
@@ -851,54 +798,17 @@ public class SettingsView extends VBox {
         return sep;
     }
 
-    private VBox createToggle(String titleText, String descText, boolean defaultVal, Consumer<Boolean> onToggle) {
+    private VBox createInfo(String titleText, String descText) {
         VBox box = new VBox(5);
-        CheckBox chk = new CheckBox(titleText);
-        chk.setSelected(defaultVal);
-        chk.setStyle("-fx-font-size: 14px; -fx-font-weight: 600; ");
-        chk.setOnAction(e -> onToggle.accept(chk.isSelected()));
-
-        Label desc = new Label(descText);
-        desc.setStyle("-fx-font-size: 13px; ");
-        desc.getStyleClass().add("text-muted");
-        desc.setWrapText(true);
-
-        box.getChildren().addAll(chk, desc);
-        return box;
-    }
-
-    private VBox createDirSelector(String titleText, String descText, String initialPath, Consumer<String> onSelected) {
-        VBox box = new VBox(6);
         Label title = new Label(titleText);
         title.setStyle("-fx-font-size: 14px; -fx-font-weight: 600; ");
 
         Label desc = new Label(descText);
         desc.setStyle("-fx-font-size: 13px; ");
         desc.getStyleClass().add("text-muted");
+        desc.setWrapText(true);
 
-        HBox row = new HBox(8);
-        row.setAlignment(Pos.CENTER_LEFT);
-
-        TextField pathField = new TextField(initialPath);
-        pathField.setEditable(false);
-        pathField.setStyle("-fx-font-size: 13px; -fx-pref-height: 34px;");
-        HBox.setHgrow(pathField, Priority.ALWAYS);
-
-        Button btnBrowse = new Button("Browse");
-        btnBrowse.getStyleClass().add("btn-secondary");
-        btnBrowse.setStyle("-fx-font-size: 13px; -fx-padding: 4 14 4 14;");
-        btnBrowse.setOnAction(e -> {
-            DirectoryChooser dc = new DirectoryChooser();
-            dc.setTitle("Select " + titleText);
-            File f = dc.showDialog(getScene().getWindow());
-            if (f != null) {
-                pathField.setText(f.getAbsolutePath());
-                onSelected.accept(f.getAbsolutePath());
-            }
-        });
-
-        row.getChildren().addAll(pathField, btnBrowse);
-        box.getChildren().addAll(title, desc, row);
+        box.getChildren().addAll(title, desc);
         return box;
     }
 

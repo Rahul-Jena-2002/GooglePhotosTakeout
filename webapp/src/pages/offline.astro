@@ -1,14 +1,13 @@
 ---
 // Offline fallback page — served by SW when user is offline and page not cached
+export const prerender = true;
 ---
 <!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <!-- Google AdSense Verification & Auto Ads -->
-  <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-7628736172233995"
-    crossorigin="anonymous"></script>
+  <meta name="robots" content="noindex, nofollow" />
   <title>TakeoutFix — Offline</title>
   <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
   <style>
@@ -92,13 +91,12 @@
     </div>
     <h1>You're offline</h1>
     <p>
-      TakeoutFix needs a connection to load authentication and sync your account.
-      Once the app is loaded online, <strong>photo processing works fully offline</strong> — 
-      all restoration happens in your browser.
+      Reconnect to load TakeoutFix, sign in, and sync your account. Photo restoration
+      runs on your device, but the tool may need a connection to load its components.
     </p>
     <button onclick="location.reload()">Try Again</button>
     <p class="note">
-      If you were already processing photos, your session is saved and will resume when you reconnect.
+      If a restore was interrupted, reopen the tool and check whether a saved session is available. Keep your original files.
     </p>
   </div>
 </body>

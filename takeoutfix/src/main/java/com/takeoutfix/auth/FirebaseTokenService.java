@@ -16,7 +16,7 @@ import org.springframework.stereotype.Service;
  * Handles Firebase Authentication REST API integration:
  * - Exchanges Google OAuth credentials for Firebase ID token and Refresh token
  * - Refreshes expired Firebase ID tokens
- * - Verifies ID tokens against Firebase Identity Toolkit and validates revocation
+ * - Looks up account details using Firebase Identity Toolkit
  * - Fetches user plan and profile from Cloud Firestore
  */
 @Service
@@ -64,14 +64,19 @@ public class FirebaseTokenService {
         String refreshToken = String.valueOf(callbackParams.getOrDefault("refreshToken", ""));
         String uid = String.valueOf(callbackParams.getOrDefault("uid", callbackParams.getOrDefault("googleId", "")));
 
-        if (!idToken.isBlank() && !uid.isBlank()) {
-            String email = String.valueOf(callbackParams.getOrDefault("email", ""));
-            String displayName = String.valueOf(callbackParams.getOrDefault("displayName", email.contains("@") ? email.split("@")[0] : "User"));
-            String photoUrl = String.valueOf(callbackParams.getOrDefault("photoURL", callbackParams.getOrDefault("photoUrl", "")));
-            String plan = String.valueOf(callbackParams.getOrDefault("plan", "free"));
+        if (!idToken.isBlank()) {
+            JSONObject account = lookupAccountByIdToken(idToken);
+            String verifiedUid = account.optString("localId", "");
+            if (verifiedUid.isBlank() || (!uid.isBlank() && !verifiedUid.equals(uid))) {
+                throw new AuthException("Firebase account does not match the sign-in request.");
+            }
+            String email = account.optString("email", "");
+            String displayName = account.optString("displayName", "");
+            String photoUrl = account.optString("photoUrl", "");
+            String plan = fetchPlanFromFirestore(verifiedUid, idToken);
             long expiresAt = System.currentTimeMillis() + 3600_000L;
 
-            return new AuthSession(uid, email, displayName, photoUrl, idToken, refreshToken, plan, expiresAt);
+            return new AuthSession(verifiedUid, email, displayName, photoUrl, idToken, refreshToken, plan, expiresAt);
         }
 
         // If an OAuth authorization code was received directly from accounts.google.com
@@ -213,7 +218,10 @@ public class FirebaseTokenService {
             String newRefreshToken = res.optString("refresh_token", session.getRefreshToken());
             long expiresIn = res.optLong("expires_in", 3600L);
             long newExpiresAt = System.currentTimeMillis() + (expiresIn * 1000L);
-            String uid = res.optString("user_id", session.getUid());
+            String uid = res.optString("user_id", "");
+            if (!session.getUid().equals(uid) || newIdToken.isBlank()) {
+                throw new AuthException("Firebase refresh response does not match the signed-in account.");
+            }
 
             String plan = fetchPlanFromFirestore(uid, newIdToken);
             return session.withNewTokens(newIdToken, newRefreshToken, newExpiresAt, plan);
@@ -225,10 +233,10 @@ public class FirebaseTokenService {
     }
 
     /**
-     * Verifies the ID token with Firebase accounts:lookup.
-     * Enforces that the account is active, exists, and not disabled/revoked.
+     * Looks up account details using Firebase accounts:lookup.
+     * This is not an Admin SDK revocation check.
      */
-    public JSONObject verifyIdTokenAndRevocation(String idToken) throws AuthException {
+    public JSONObject lookupAccountByIdToken(String idToken) throws AuthException {
         if (idToken == null || idToken.isBlank()) {
             throw new AuthException("ID token cannot be null or empty.");
         }
@@ -266,7 +274,7 @@ public class FirebaseTokenService {
         } catch (AuthException ae) {
             throw ae;
         } catch (Exception e) {
-            throw new AuthException("Failed to verify token revocation: " + e.getMessage(), e);
+            throw new AuthException("Failed to look up Firebase account: " + e.getMessage(), e);
         }
     }
 

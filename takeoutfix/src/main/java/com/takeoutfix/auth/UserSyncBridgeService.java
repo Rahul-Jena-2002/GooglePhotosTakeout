@@ -15,6 +15,7 @@ import java.nio.file.Files;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -45,9 +46,11 @@ public class UserSyncBridgeService {
 
     private final ExecutorService executorService = Executors.newCachedThreadPool();
     private final List<Consumer<Map<String, Object>>> listeners = new CopyOnWriteArrayList<>();
-    private final FirebaseSyncService firebaseSyncService = new FirebaseSyncService();
+    private final FirebaseSyncService firebaseSyncService;
     private final CredentialStore credentialStore;
     private final GoogleAuthService googleAuthService;
+    private final Object cloudEnrichmentLock = new Object();
+    private long cloudEnrichmentGeneration;
 
     public UserSyncBridgeService() {
         this(new GoogleAuthService(), new CredentialStore());
@@ -55,8 +58,13 @@ public class UserSyncBridgeService {
 
     @Autowired
     public UserSyncBridgeService(GoogleAuthService googleAuthService, CredentialStore credentialStore) {
+        this(googleAuthService, credentialStore, new FirebaseSyncService());
+    }
+
+    UserSyncBridgeService(GoogleAuthService googleAuthService, CredentialStore credentialStore, FirebaseSyncService firebaseSyncService) {
         this.googleAuthService = googleAuthService;
         this.credentialStore = credentialStore;
+        this.firebaseSyncService = firebaseSyncService;
         UserController.setProfileUpdateListener(this::handleProfileUpdate);
     }
 
@@ -73,17 +81,54 @@ public class UserSyncBridgeService {
     }
 
     public void triggerCloudSync(Consumer<Boolean> onComplete) {
+        final long generation;
+        final Map<String, Object> current;
+        synchronized (cloudEnrichmentLock) {
+            generation = cloudEnrichmentGeneration;
+            current = new HashMap<>(UserController.getCurrentUserProfile());
+        }
         executorService.submit(() -> {
+            Map<String, Object> enriched = new HashMap<>(current);
             try {
-                Map<String, Object> current = new HashMap<>(UserController.getCurrentUserProfile());
-                DirectAuthHttpsService.enrichFromFirestoreIfPresent(current);
-                UserController.updateUserProfile(current);
-                saveSessionFile(current);
+                DirectAuthHttpsService.enrichFromFirestoreIfPresent(enriched);
             } catch (Exception ignored) {
                 // Non-fatal optional cloud enrichment failure
             }
+            if (!applyCloudEnrichment(current, enriched, generation)) {
+                if (onComplete != null) onComplete.accept(false);
+                return;
+            }
             firebaseSyncService.triggerImmediateSync(onComplete);
         });
+    }
+
+    static Map<String, Object> enrichmentChanges(Map<String, Object> original, Map<String, Object> enriched,
+            Map<String, Object> active) {
+        Map<String, Object> changes = new HashMap<>(enriched);
+        changes.entrySet().removeIf(entry -> Objects.equals(original.get(entry.getKey()), entry.getValue())
+                || !Objects.equals(original.get(entry.getKey()), active.get(entry.getKey())));
+        return changes;
+    }
+
+    boolean applyCloudEnrichment(Map<String, Object> profile, Map<String, Object> enriched, long generation) {
+        synchronized (cloudEnrichmentLock) {
+            Object uid = profile.getOrDefault("uid", profile.get("googleId"));
+            Map<String, Object> active = UserController.getCurrentUserProfile();
+            Object activeUid = active.getOrDefault("uid", active.get("googleId"));
+            if (generation != cloudEnrichmentGeneration || !(uid instanceof String id)
+                    || id.isBlank() || !id.equals(activeUid) || !UserController.hasSignedInCredentials()) {
+                return false;
+            }
+            UserController.updateUserProfile(enrichmentChanges(profile, enriched, active));
+            saveSessionFile(active);
+            return true;
+        }
+    }
+
+    void invalidateCloudEnrichment() {
+        synchronized (cloudEnrichmentLock) {
+            cloudEnrichmentGeneration++;
+        }
     }
 
     /**
@@ -334,13 +379,7 @@ public class UserSyncBridgeService {
     }
 
     public boolean isSignedIn() {
-        Map<String, Object> p = getCurrentProfile();
-        String email = (String) p.getOrDefault(KEY_EMAIL, "");
-        String refreshToken = (String) p.getOrDefault("refreshToken", "");
-        String idToken = (String) p.getOrDefault("idToken", p.getOrDefault("token", ""));
-        return email != null && !email.trim().isEmpty() &&
-                ((refreshToken != null && !refreshToken.trim().isEmpty())
-                        || (idToken != null && !idToken.trim().isEmpty()));
+        return UserController.hasSignedInCredentials();
     }
 
     public static final long GUEST_MAX_BYTES = 1024L * 1024L * 1024L; // 1 GB free guest storage limit
@@ -471,35 +510,42 @@ public class UserSyncBridgeService {
      * Explicit user-initiated sign-out. Deletes all local session and repository
      * state.
      */
-    public void signOut() {
+    public boolean signOut() {
+        invalidateCloudEnrichment();
+        boolean cleared = true;
         try {
-            credentialStore.clear();
-        } catch (Exception ignored) {
-            // Non-fatal credential store cleanup
+            cleared = credentialStore.clear();
+        } catch (Exception e) {
+            cleared = false;
+            log.warn("Could not clear stored credentials", e);
         }
         try {
-            googleAuthService.signOut();
-        } catch (Exception ignored) {
-            // Non-fatal google service cleanup
+            if (!googleAuthService.signOut()) cleared = false;
+        } catch (Exception e) {
+            cleared = false;
+            log.warn("Could not clear Google sign-in credentials", e);
         }
         try {
             if (SESSION_FILE.exists()) {
                 Files.deleteIfExists(SESSION_FILE.toPath());
             }
-        } catch (Exception ignored) {
-            // Non-fatal session file deletion
+        } catch (Exception e) {
+            cleared = false;
+            log.warn("Could not remove session file", e);
         }
 
         try {
             if (USERS_FILE.exists()) {
                 Files.deleteIfExists(USERS_FILE.toPath());
             }
-        } catch (Exception ignored) {
-            // Non-fatal users file deletion
+        } catch (Exception e) {
+            cleared = false;
+            log.warn("Could not remove local account file", e);
         }
 
         UserController.logout();
         handleProfileUpdate(new HashMap<>());
+        return cleared;
     }
 
     public void syncFromCloud(Map<String, Object> updates) {

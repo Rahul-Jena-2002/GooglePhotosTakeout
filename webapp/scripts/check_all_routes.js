@@ -5,9 +5,9 @@ import { execSync, spawn } from 'child_process';
 // Parse CLI Arguments
 const args = process.argv.slice(2);
 let sitemapPath = 'public/sitemap.xml';
-let baseUrl = 'http://localhost:4321';
+let baseUrl = 'http://127.0.0.1:4321';
 let concurrency = 5;
-let runBuild = true;
+let runBuild = false;
 
 for (let i = 0; i < args.length; i++) {
   if (args[i] === '--sitemap' && args[i + 1] && !args[i + 1].startsWith('--')) {
@@ -19,6 +19,8 @@ for (let i = 0; i < args.length; i++) {
   } else if (args[i] === '--concurrency' && args[i + 1] && !args[i + 1].startsWith('--')) {
     concurrency = parseInt(args[i + 1], 10);
     i++;
+  } else if (args[i] === '--build') {
+    runBuild = true;
   } else if (args[i] === '--no-build') {
     runBuild = false;
   }
@@ -27,18 +29,6 @@ for (let i = 0; i < args.length; i++) {
 baseUrl = baseUrl.replace(/\/$/, '');
 
 console.log('=== ROUTE AUDIT & VALIDATION AUTOMATION ===');
-
-// 1. Run Sitemap Generator
-if (!runBuild) {
-  console.log('\n--- 1. Generating sitemap.xml ---');
-  try {
-    execSync('node scripts/generate_sitemap.js', { stdio: 'inherit' });
-    console.log('Sitemap generated successfully.');
-  } catch (err) {
-    console.error('Failed to generate sitemap:', err.message);
-    process.exit(1);
-  }
-}
 
 // 2. Build the project
 if (runBuild) {
@@ -56,12 +46,12 @@ if (runBuild) {
 }
 
 // 3. Start the Preview Server
-console.log('\n--- 3. Starting Wrangler Preview Server ---');
+console.log('\n--- 3. Starting Astro Workers Preview Server ---');
 let previewProcess;
 const port = new URL(baseUrl).port || '4321';
 try {
   const cmd = process.platform === 'win32' ? 'npx.cmd' : 'npx';
-  const spawnArgs = ['wrangler', 'pages', 'dev', 'dist/client', '--port', port];
+  const spawnArgs = ['astro', 'preview', '--host', '127.0.0.1', '--port', port];
   console.log(`Executing: ${cmd} ${spawnArgs.join(' ')}`);
   
   previewProcess = spawn(cmd, spawnArgs, {
@@ -79,7 +69,7 @@ try {
   });
 
 } catch (err) {
-  console.error('Failed to start Wrangler preview server:', err.message);
+  console.error('Failed to start Astro preview server:', err.message);
   process.exit(1);
 }
 

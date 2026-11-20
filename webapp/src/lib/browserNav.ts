@@ -1,25 +1,28 @@
 export const initMobileMenu = () => {
   const hamburgerBtn = document.getElementById("hamburger-btn");
-  const hamburgerIcon = document.getElementById("hamburger-icon");
-  const closeIcon = document.getElementById("close-icon");
   const mobileMenu = document.getElementById("mobile-menu");
 
   if (hamburgerBtn && mobileMenu) {
     const newBtn = hamburgerBtn.cloneNode(true) as HTMLButtonElement;
     hamburgerBtn.parentNode?.replaceChild(newBtn, hamburgerBtn);
-    
-    newBtn.addEventListener("click", () => {
-      const isOpen = !mobileMenu.classList.contains("hidden");
-      if (isOpen) {
-        mobileMenu.classList.add("hidden");
-        hamburgerIcon?.classList.remove("hidden");
-        closeIcon?.classList.add("hidden");
-      } else {
-        mobileMenu.classList.remove("hidden");
-        hamburgerIcon?.classList.add("hidden");
-        closeIcon?.classList.remove("hidden");
+    const hamburgerIcon = newBtn.querySelector("#hamburger-icon");
+    const closeIcon = newBtn.querySelector("#close-icon");
+    const setOpen = (open: boolean) => {
+      mobileMenu.classList.toggle("hidden", !open);
+      hamburgerIcon?.classList.toggle("hidden", open);
+      closeIcon?.classList.toggle("hidden", !open);
+      newBtn.setAttribute("aria-expanded", String(open));
+    };
+    setOpen(false);
+    newBtn.addEventListener("click", () => setOpen(mobileMenu.classList.contains("hidden")));
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape" && !mobileMenu.classList.contains("hidden")) {
+        setOpen(false);
+        newBtn.focus();
       }
-    });
+    };
+    newBtn.onkeydown = closeOnEscape;
+    mobileMenu.onkeydown = closeOnEscape;
   }
 };
 
@@ -57,9 +60,11 @@ export const highlightActiveLinks = () => {
     const isGuidesMatch = href === "/guides" && (path === "/guides" || path.startsWith("/guides/") || path === "/restore-data");
     const isActive = isGuidesMatch || (href === "/" ? path === "/" : (path === href || path.startsWith(href + "/")));
     if (isActive) {
+      link.setAttribute("aria-current", "page");
       link.classList.add("active", "text-[#8170CC]", "font-bold", "bg-[#8170CC]/10", "dark:bg-[#8170CC]/15");
       link.classList.remove("text-purple-600", "dark:text-purple-400", "text-white/70", "text-zinc-700", "text-indigo-600", "dark:text-indigo-400", "bg-zinc-100", "dark:bg-white/5");
     } else {
+      link.removeAttribute("aria-current");
       link.classList.remove("active", "text-[#8170CC]", "text-purple-600", "dark:text-purple-400", "font-bold", "bg-[#8170CC]/10", "dark:bg-[#8170CC]/15", "bg-purple-500/10", "dark:bg-purple-500/15");
       link.classList.add("text-zinc-700", "dark:text-white/70");
     }

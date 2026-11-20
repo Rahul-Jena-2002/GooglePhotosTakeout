@@ -1,7 +1,7 @@
 export const prerender = false;
 import type { APIRoute } from 'astro';
 import { env } from 'cloudflare:workers';
-import { jsonResponse, handleCorsOptions, isAuthorizedRequest } from '../../lib/api/apiResponse';
+import { jsonResponse, handleCorsOptions, isAuthorizedRequest, readJsonObject } from '../../lib/api/apiResponse';
 import { resolveDodoHost } from '../../lib/dodo/client';
 import {
   fetchProductsCatalog,
@@ -13,19 +13,17 @@ export const OPTIONS: APIRoute = handleCorsOptions;
 
 export const POST: APIRoute = async ({ request }) => {
   try {
-    const raw = await request.text();
-    let payload: any = {};
-    try {
-      payload = JSON.parse(raw || '{}');
-    } catch {
-      return jsonResponse(400, { error: 'Invalid JSON body' });
+    const GATEWAY_API_KEY = (env as any).GATEWAY_API_KEY || import.meta.env.GATEWAY_API_KEY || '';
+    if (!isAuthorizedRequest(request, {}, GATEWAY_API_KEY)) {
+      return jsonResponse(401, { error: 'Unauthorized' });
     }
 
-    const GATEWAY_API_KEY = (env as any).GATEWAY_API_KEY || import.meta.env.GATEWAY_API_KEY || '';
-    const isDev = Boolean(import.meta.env.DEV || process.env.NODE_ENV === 'development');
-
-    if (!isAuthorizedRequest(request, payload, GATEWAY_API_KEY, isDev)) {
-      return jsonResponse(401, { error: 'Unauthorized' });
+    let payload: any = {};
+    try {
+      payload = await readJsonObject(request);
+    } catch (error) {
+      if (error instanceof RangeError) return jsonResponse(413, { error: 'Request body too large' });
+      return jsonResponse(400, { error: 'Invalid JSON body' });
     }
 
     // Resolve Dodo key & environment
@@ -45,6 +43,9 @@ export const POST: APIRoute = async ({ request }) => {
     }
 
     const { host: dodoHost, envMode } = resolveDodoHost(dodoApiKey, testMode);
+    if (import.meta.env.DEV && envMode === 'live') {
+      return jsonResponse(403, { error: 'Local development requires Dodo test mode and test credentials.' });
+    }
     const action = payload.action || 'sync_region';
 
     // ── Dispatch to modular syncService ─────────────────────────────
@@ -66,7 +67,7 @@ export const POST: APIRoute = async ({ request }) => {
     return jsonResponse(200, result);
 
   } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : String(err);
-    return jsonResponse(500, { error: 'ProxyError', message });
+    console.error('[sync-dodo-prices] Request failed:', err instanceof Error ? err.name : typeof err);
+    return jsonResponse(500, { error: 'ProxyError', message: 'Price synchronization failed. Please try again.' });
   }
 };

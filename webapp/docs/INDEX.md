@@ -38,7 +38,7 @@ Each module doc explains the public API, internal data shapes, performance chara
 
 | Topic | Doc |
 |---|---|
-| **Why we stay on Cloudflare Pages + Firebase (not Spring Boot / SSR)** | [`stack-decision.md`](./stack-decision.md) |
+| Historical stack decision (not current deployment guidance) | [`stack-decision.md`](./stack-decision.md) |
 
 ## Operations
 

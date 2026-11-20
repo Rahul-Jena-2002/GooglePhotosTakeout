@@ -332,6 +332,17 @@ public class HeaderBar extends HBox {
 
     private void showProfileDashboard() {
         ProfileDashboardDialog dlg = new ProfileDashboardDialog(parentStage, userService, statsService, () -> {
+            if (com.takeoutfix.task.TaskManager.getInstance().getActiveTaskCount() > 0) {
+                Alert warning = new Alert(Alert.AlertType.INFORMATION, "Finish or cancel background work before signing out.");
+                warning.initOwner(parentStage);
+                warning.showAndWait();
+                return;
+            }
+            if (userService != null && !userService.signOut()) {
+                Alert warning = new Alert(Alert.AlertType.WARNING, "Signed out, but some account information could not be removed from this device. Check your system credential store and local TakeoutFix account files.");
+                warning.initOwner(parentStage);
+                warning.showAndWait();
+            }
             updateUserProfile();
         });
         dlg.showAndWait();

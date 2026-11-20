@@ -17,15 +17,14 @@ on:
     inputs:
       tag_name:
         description: 'Release tag name (e.g. v2.2.4)'
-        required: false
-        default: 'latest'
+        required: true
 
 permissions:
   contents: write
 
 jobs:
   # ════════════════════════════════════════════════════════════════════════════
-  # 1. PURE JAVA DESKTOP APP (Standalone Installers via Java 26 jpackage)
+  # 1. PURE JAVA DESKTOP APP (Standalone packages via Java 21 jpackage)
   # ════════════════════════════════════════════════════════════════════════════
   build-java:
     name: Java Desktop (${{ matrix.os }})
@@ -44,12 +43,17 @@ jobs:
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+          ref: ${{ github.event_name == 'workflow_dispatch' && format('refs/tags/{0}', inputs.tag_name) || github.event_name == 'release' && format('refs/tags/{0}', github.event.release.tag_name) || github.sha }}
 
       - name: Extract Release Version
         id: version
         shell: bash
+        env:
+          RELEASE_TAG: ${{ github.event.inputs.tag_name || github.event.release.tag_name || github.ref_name || '2.2.7' }}
         run: |
-          RAW_TAG="${{ github.event.inputs.tag_name || github.ref_name || '2.2.7' }}"
+          RAW_TAG="$RELEASE_TAG"
           CLEAN_VER="${RAW_TAG#v}"
           # Validate that version consists only of numbers and dots (e.g., 2.2.6)
           if [[ ! "$CLEAN_VER" =~ ^[0-9]+(\.[0-9]+)*$ ]]; then
@@ -61,7 +65,7 @@ jobs:
               CLEAN_VER="2.2.7"
             fi
           fi
-          echo "version=$CLEAN_VER" >> $GITHUB_OUTPUT
+          echo "version=$CLEAN_VER" >> "$GITHUB_OUTPUT"
           echo "Package version resolved: $CLEAN_VER"
 
       - name: Set up JDK 21 (Liberica with JavaFX)
@@ -76,7 +80,7 @@ jobs:
         run: mvn test -f takeoutfix/pom.xml
 
       - name: Build Java Backend with Maven
-        run: mvn clean package -DskipTests -f takeoutfix/pom.xml
+        run: mvn clean package -DskipTests -Dapp.version=${{ steps.version.outputs.version }} -Dbuild.number=${{ github.run_number }} -f takeoutfix/pom.xml
 
       - name: Prepare jpackage Input
         shell: bash
@@ -95,7 +99,19 @@ jobs:
             --compress=2 \
             --output custom-runtime
 
-      # ─── Windows: Standalone EXE + Setup Installer (SmartScreen hardened) ───
+      # ─── Windows: Standalone EXE ───
+      - name: Test Windows launcher paths
+        if: matrix.os == 'windows-latest'
+        shell: pwsh
+        run: |
+          $cscPath = "C:\Windows\Microsoft.NET\Framework64\v4.0.30319\csc.exe"
+          & $cscPath /nologo /target:exe /main:TakeoutFix.LauncherPathTest `
+            "/reference:System.IO.Compression.dll,System.IO.Compression.FileSystem.dll,System.Windows.Forms.dll" `
+            /out:launcher-path-test.exe takeoutfix/launcher/SingleFileLauncher.cs takeoutfix/launcher/LauncherPathTest.cs
+          if ($LASTEXITCODE -ne 0) { throw "Launcher test compilation failed." }
+          & .\launcher-path-test.exe
+          if ($LASTEXITCODE -ne 0) { throw "Launcher path checks failed." }
+
       - name: Package Java Windows (.exe)
         if: matrix.os == 'windows-latest'
         shell: pwsh
@@ -113,12 +129,14 @@ jobs:
             --input "jpackage-input" `
             --main-jar "takeoutfix.jar" `
             --main-class "com.takeoutfix.TakeoutFxApplication" `
+            --java-options "--add-modules=javafx.controls,javafx.fxml,javafx.swing,javafx.media" `
             --name "TakeoutFix" `
             --icon "takeoutfix/icons/icon.ico" `
             --vendor "TakeoutFix" `
             --app-version "$appVer" `
             --dest "dist-app" `
             --verbose
+          if ($LASTEXITCODE -ne 0) { throw "jpackage failed (exit $LASTEXITCODE)." }
 
           # 2. Package into Direct Standalone Single-File EXE (Zero-Install, Runs Immediately on Double-Click)
           Write-Host "Creating Direct Standalone TakeoutFix.exe (No Installation Wizard)..."
@@ -136,6 +154,7 @@ jobs:
             "/out:TakeoutFix.exe" `
             "takeoutfix\launcher\SingleFileLauncher.cs"
 
+          if ($LASTEXITCODE -ne 0) { throw "Launcher compilation failed (exit $LASTEXITCODE)." }
           if (-not (Test-Path "TakeoutFix.exe")) {
             throw "TakeoutFix.exe compilation failed."
           }
@@ -154,6 +173,7 @@ jobs:
                 $signtool = (Get-ChildItem "${env:ProgramFiles(x86)}\Windows Kits" -Recurse -Filter "signtool.exe" -ErrorAction SilentlyContinue | Select-Object -First 1).FullName
               }
               & $signtool sign /fd SHA256 /tr http://timestamp.digicert.com /td SHA256 /f $pfxPath /p $env:SIGNING_CERT_PASSWORD "TakeoutFix.exe"
+              if ($LASTEXITCODE -ne 0) { throw "Authenticode signing failed (exit $LASTEXITCODE)." }
               Write-Host "Signing complete via signtool."
             } finally {
               Remove-Item $pfxPath -Force -ErrorAction SilentlyContinue
@@ -164,7 +184,7 @@ jobs:
 
           Write-Host "Done. Standalone direct runnable TakeoutFix.exe ready."
 
-      # ─── macOS: Standalone DMG with Gatekeeper-compatible signing ───
+      # ─── macOS: Standalone DMG ───
       - name: Package Java macOS (.dmg)
         if: matrix.os == 'macos-latest'
         run: |
@@ -178,6 +198,7 @@ jobs:
             --input "jpackage-input" \
             --main-jar "takeoutfix.jar" \
             --main-class "com.takeoutfix.TakeoutFxApplication" \
+            --java-options "--add-modules=javafx.controls,javafx.fxml,javafx.swing,javafx.media" \
             --icon "takeoutfix/icons/icon.icns" \
             --dest "dist-app" \
             --mac-package-identifier "com.takeoutfix.desktop" \
@@ -187,13 +208,13 @@ jobs:
             --app-version "$APP_VER" \
             --verbose
 
-          # 2. Strip quarantine extended attributes (prevents Gatekeeper "damaged app" popup)
+          # 2. Remove build-machine extended attributes from the bundle.
           xattr -cr "dist-app/TakeoutFix.app"
 
-          # 3. Deep ad-hoc sign the bundle (no Apple Developer cert required; prevents Gatekeeper block)
+          # 3. Ad-hoc sign the bundle. Developer ID signing and notarization are still required for normal Gatekeeper distribution.
           codesign --force --deep --sign - --options runtime "dist-app/TakeoutFix.app"
           # Verify signing succeeded
-          codesign --verify --deep --strict "dist-app/TakeoutFix.app" && echo "Signing OK" || echo "Signing verify warning (non-fatal for ad-hoc)"
+          codesign --verify --deep --strict "dist-app/TakeoutFix.app"
 
           # 4. Create DMG from signed app-image
           jpackage \
@@ -218,10 +239,10 @@ jobs:
           codesign --force --sign - "$DMG_FILE" || echo "DMG sign warning (non-fatal)"
 
           cp "$DMG_FILE" ./TakeoutFix.dmg
-          echo "Generated & Signed: TakeoutFix.dmg (Version $APP_VER)"
+          echo "Generated TakeoutFix.dmg (Version $APP_VER). Ad-hoc signing is not Developer ID signing or notarization."
 
-      # ─── Linux: AppImage, DEB Package & Portable Archive ───
-      - name: Package Java Linux (.AppImage & .deb)
+      # ─── Linux: AppImage ───
+      - name: Package Java Linux (.AppImage)
         if: matrix.os == 'ubuntu-latest'
         run: |
           APP_VER="${{ steps.version.outputs.version }}"
@@ -237,6 +258,7 @@ jobs:
             --input "jpackage-input" \
             --main-jar "takeoutfix.jar" \
             --main-class "com.takeoutfix.TakeoutFxApplication" \
+            --java-options "--add-modules=javafx.controls,javafx.fxml,javafx.swing,javafx.media" \
             --icon "takeoutfix/icons/icon.png" \
             --dest "dist-linux" \
             --app-version "$APP_VER" \
@@ -277,75 +299,27 @@ jobs:
           find AppDir -type f \( -name "TakeoutFix" -o -name "takeoutfix" \) -exec chmod +x {} +
 
           export ARCH=x86_64
-          wget -q https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-x86_64.AppImage -O appimagetool
+          curl -fsSL https://github.com/AppImage/appimagetool/releases/download/1.9.1/appimagetool-x86_64.AppImage -o appimagetool
+          echo 'ed4ce84f0d9caff66f50bcca6ff6f35aae54ce8135408b3fa33abfc3cb384eb0  appimagetool' | sha256sum --check
+          curl -fsSL https://github.com/AppImage/type2-runtime/releases/download/20251108/runtime-x86_64 -o appimage-runtime
+          echo '2fca8b443c92510f1483a883f60061ad09b46b978b2631c807cd873a47ec260d  appimage-runtime' | sha256sum --check
+          export APPIMAGETOOL_RUNTIME_FILE="$PWD/appimage-runtime"
           chmod +x appimagetool
-          ./appimagetool --appimage-extract-and-run AppDir ./TakeoutFix.AppImage || {
-            ARCH=x86_64 ./appimagetool --appimage-extract-and-run AppDir ./TakeoutFix.AppImage
-          }
+          ./appimagetool --appimage-extract-and-run AppDir ./TakeoutFix.AppImage
           chmod +x ./TakeoutFix.AppImage
           echo "Generated: TakeoutFix.AppImage for Linux"
 
       - name: Upload Java Artifact
         uses: actions/upload-artifact@v4
-        continue-on-error: true
         with:
           name: java-${{ matrix.os }}
           path: ${{ matrix.primary_artifact }}
+          if-no-files-found: error
           retention-days: 1
 
       - name: Attach Binaries to GitHub Release
         uses: softprops/action-gh-release@v2
         if: (startsWith(github.ref, 'refs/tags/') || github.event_name == 'release' || github.event_name == 'workflow_dispatch') && github.event_name != 'pull_request'
         with:
-          tag_name: ${{ github.event.inputs.tag_name || github.ref_name || 'latest' }}
+          tag_name: ${{ github.event.inputs.tag_name || github.event.release.tag_name || github.ref_name || 'latest' }}
           files: ${{ matrix.primary_artifact }}
-
-  # ════════════════════════════════════════════════════════════════════════════
-  # 2. RELEASE RETENTION POLICY: Retain current + previous 9 releases (10 total)
-  # ════════════════════════════════════════════════════════════════════════════
-  cleanup-old-releases:
-    name: Retain Current + Previous 9 Releases (10 Total)
-    needs: [build-java]
-    runs-on: ubuntu-latest
-    if: success() && (startsWith(github.ref, 'refs/tags/') || github.event_name == 'release' || github.event_name == 'workflow_dispatch') && github.event_name != 'pull_request'
-    permissions:
-      contents: write
-    steps:
-      - name: Prune Releases Older Than Current + Previous 9
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const owner = context.repo.owner;
-            const repo = context.repo.repo;
-            const keepCount = 10; // Current release + 9 previous = 10 total
-
-            console.log(`Checking releases for ${owner}/${repo}... (Target retention: ${keepCount})`);
-
-            try {
-              const { data: releases } = await github.rest.repos.listReleases({
-                owner,
-                repo,
-                per_page: 50,
-              });
-
-              if (releases.length <= keepCount) {
-                console.log(`Only ${releases.length} releases found. No pruning needed.`);
-                return;
-              }
-
-              const releasesToDelete = releases.slice(keepCount);
-              console.log(`Pruning ${releasesToDelete.length} releases older than the 10 most recent...`);
-
-              for (const release of releasesToDelete) {
-                console.log(`Deleting release: ${release.tag_name} (ID: ${release.id})...`);
-                await github.rest.repos.deleteRelease({
-                  owner,
-                  repo,
-                  release_id: release.id,
-                });
-                console.log(`Deleted release: ${release.tag_name}`);
-              }
-              console.log(`Release retention maintenance complete.`);
-            } catch (error) {
-              console.error(`Error maintaining release retention:`, error);
-            }

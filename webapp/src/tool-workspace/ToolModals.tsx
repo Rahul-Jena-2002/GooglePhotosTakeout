@@ -1,6 +1,6 @@
 /**
  * ToolModals — all fixed-position modal overlays for ToolWorkspace.
- * Includes: QuotaAlert, PopupModal, CompareModal, PermissionModal, RestoreCompleteModal.
+ * Includes: QuotaAlert, PopupModal, PermissionModal, RestoreCompleteModal.
  */
 import { AlertCircle, CheckCircle2, FolderUp, HardDrive, Play, X } from "lucide-react"
 import { Button } from "../components/ui/button"
@@ -12,9 +12,6 @@ interface ToolModalsProps {
   // Generic popup (ad-block / errors)
   popupModal: { title: string; message: string; type: 'error' | 'warning' } | null
   setPopupModal: (v: { title: string; message: string; type: 'error' | 'warning' } | null) => void
-  // Compare methods explanation modal
-  showCompareModal: boolean
-  setShowCompareModal: (v: boolean) => void
   // Permission grant modal
   modalContext: 'source' | 'destination' | null
   setModalContext: (v: 'source' | 'destination' | null) => void
@@ -33,8 +30,6 @@ export function ToolModals({
   setQuotaAlert,
   popupModal,
   setPopupModal,
-  showCompareModal,
-  setShowCompareModal,
   modalContext,
   setModalContext,
   handleModalConfirm,
@@ -113,101 +108,6 @@ export function ToolModals({
         </div>
       )}
 
-      {/* ── Compare Restore Methods modal ─────────────────────────────── */}
-      {showCompareModal && (
-        <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/85 backdrop-blur-md p-4 select-none animate-in fade-in duration-200">
-          <div className="bg-zinc-950 border border-white/10 p-6 sm:p-8 rounded-3xl max-w-2xl w-full relative overflow-hidden shadow-2xl animate-in fade-in zoom-in-95 duration-350">
-            <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500"></div>
-
-            <button
-              onClick={() => setShowCompareModal(false)}
-              className="absolute top-4 right-4 text-zinc-400 hover:text-white transition-colors"
-              aria-label="Close modal"
-            >
-              <X className="w-5 h-5" />
-            </button>
-
-            <h3 className="text-xl font-black text-white mb-2 flex items-center gap-2">
-              <span>Comparing Restore Methods</span>
-            </h3>
-            <p className="text-zinc-400 text-xs mb-6">
-              Google Takeout separates original metadata into standalone <code className="bg-white/5 px-1 py-0.5 rounded text-[10px] text-indigo-300 font-mono">.json</code> sidecar records. Here is how our engine handles them:
-            </p>
-
-            <div className="space-y-4 mb-6 text-left">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
-                <div className="bg-white/[0.01] border border-white/5 p-4 rounded-xl space-y-1.5">
-                  <h4 className="font-bold text-zinc-200 flex items-center gap-1.5">
-                    <span className="text-emerald-400">⚡</span> Regular Restore (External Link)
-                  </h4>
-                  <p className="text-zinc-450 leading-relaxed">
-                    Keeps the photo and JSON separate but pairs them side-by-side in your restored directory. It streams files instantly without loading media bytes into heap memory.
-                  </p>
-                  <p className="text-[10px] text-emerald-450 font-bold">Fastest processing speed.</p>
-                </div>
-                <div className="bg-white/[0.01] border border-white/5 p-4 rounded-xl space-y-1.5">
-                  <h4 className="font-bold text-zinc-200 flex items-center gap-1.5">
-                    <span className="text-indigo-400">🌀</span> Deep Restore (Internal Injection)
-                  </h4>
-                  <p className="text-zinc-450 leading-relaxed">
-                    Reads, decodes, and forces dates and GPS coordinates directly inside the image EXIF binary headers. Photos become self-contained, repair is permanent.
-                  </p>
-                  <p className="text-[10px] text-indigo-400 font-bold">Universal compatibility across all devices and drives.</p>
-                </div>
-              </div>
-
-              <div className="overflow-x-auto border border-white/5 rounded-xl bg-black/20">
-                <table className="w-full text-[11px] text-zinc-400 border-collapse">
-                  <thead>
-                    <tr className="border-b border-white/5 bg-white/[0.02] text-left text-zinc-300 font-bold">
-                      <th className="p-3">Feature</th>
-                      <th className="p-3">Regular Restore</th>
-                      <th className="p-3 text-indigo-300">Deep Restore</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-white/5 font-medium">
-                    <tr>
-                      <td className="p-3 font-semibold text-white">Date &amp; Time</td>
-                      <td className="p-3">Yes (Updates file system)</td>
-                      <td className="p-3 text-zinc-350">Yes (Injects EXIF)</td>
-                    </tr>
-                    <tr>
-                      <td className="p-3 font-semibold text-white">GPS Locations</td>
-                      <td className="p-3">Yes (Pairs companion JSON)</td>
-                      <td className="p-3 text-zinc-350">Yes (Injects EXIF)</td>
-                    </tr>
-                    <tr>
-                      <td className="p-3 font-semibold text-white">Portability</td>
-                      <td className="p-3 text-red-400/80">Low (Moving can lose tags)</td>
-                      <td className="p-3 text-emerald-400/80">Universal (Embedded)</td>
-                    </tr>
-                    <tr>
-                      <td className="p-3 font-semibold text-white">Processing Speed</td>
-                      <td className="p-3 text-emerald-400/80 font-bold">Extremely Fast</td>
-                      <td className="p-3 text-amber-500/80">Slower (Rewrites Files)</td>
-                    </tr>
-                    <tr>
-                      <td className="p-3 font-semibold text-white">Log Indicator</td>
-                      <td className="p-3 font-mono text-[10px]">`[RESTORED] (Linked)`</td>
-                      <td className="p-3 font-mono text-[10px] text-indigo-300">`[DEEP INJECTED] (Embedded)`</td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
-            </div>
-
-            <div className="flex justify-end">
-              <Button
-                onClick={() => setShowCompareModal(false)}
-                className="btn-monochrome-primary w-24 h-10 font-bold rounded-lg border-0 shadow-none transition-all duration-150 cursor-pointer"
-              >
-                Dismiss
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* ── Permission Grant modal (source / destination) ─────────────── */}
       {modalContext && (
         <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/85 backdrop-blur-md p-4 select-none animate-in fade-in duration-200">
@@ -276,7 +176,7 @@ export function ToolModals({
 
       {/* ── Restore Complete Modal ───────────────────────────────────────── */}
       {showRestoreComplete && (
-        <div className="fixed inset-0 z-[300] flex items-center justify-center bg-black/85 backdrop-blur-md p-4 select-none animate-in fade-in duration-200">
+        <div role="dialog" aria-modal="true" aria-labelledby="restore-summary-title" className="fixed inset-0 z-[300] flex items-center justify-center bg-black/85 backdrop-blur-md p-4 select-none animate-in fade-in duration-200">
           <div className="bg-zinc-950 border border-white/10 p-8 rounded-2xl max-w-md w-full text-center relative overflow-hidden shadow-2xl animate-in fade-in zoom-in-95 duration-200">
             {/* Monochrome top bar — same as quota / permission modals */}
             <div className="absolute top-0 left-0 right-0 h-1 bg-zinc-800 dark:bg-zinc-200"></div>
@@ -296,7 +196,7 @@ export function ToolModals({
             </div>
 
             {/* Title */}
-            <h3 className="text-xl font-bold text-white mb-2">Restoration Complete</h3>
+            <h3 id="restore-summary-title" className="text-xl font-bold text-white mb-2">Processing stopped</h3>
 
             {/* Hero number */}
             <div className="mb-5">
@@ -312,7 +212,7 @@ export function ToolModals({
             <div className="flex items-center justify-center gap-2 mb-6 flex-wrap">
               <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-semibold bg-white/[0.04] border border-white/10 text-zinc-300">
                 <span className="text-white/50">✓</span>
-                <span>{restoreCompleteStats.matched.toLocaleString()} Restored</span>
+                <span>{restoreCompleteStats.matched.toLocaleString()} Processed with metadata</span>
               </div>
               {restoreCompleteStats.unmatched > 0 && (
                 <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-semibold bg-white/[0.04] border border-white/10 text-zinc-400">
@@ -330,7 +230,7 @@ export function ToolModals({
 
             {/* Description */}
             <p className="text-zinc-500 text-xs mb-6 leading-relaxed">
-              Metadata has been embedded. Dates, GPS, and timestamps are now restored in your files.
+              Review the results and logs, then verify sample files in your photo app. For ZIP output, download the log and issues report separately. A stopped or interrupted run may be incomplete; keep your original export.
             </p>
 
             {/* Action buttons */}

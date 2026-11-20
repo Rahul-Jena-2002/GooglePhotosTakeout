@@ -24,24 +24,6 @@ import java.util.function.Consumer;
  * Background service that periodically checks GitHub Releases and the Cloudflare OTA Worker
  * for new updates and notifies the user via native OS desktop notifications and in-app UI badges.
  *
- * ============================================================================
- * OTA UPDATE CHANGELOG & ARCHITECTURE NOTES (v2.2.4)
- * ============================================================================
- * 1. Windows SmartScreen & Executable Launch Hardening:
- *    - In v2.2.3, downloads were redirected to raw GitHub Releases (302 redirect),
- *      causing Windows SmartScreen to flag and block the executable.
- *    - In v2.2.4, direct binary streaming is restored with clean application/octet-stream
- *      and nosniff headers. Binaries are signed with Authenticode and DigiCert timestamping.
- *
- * 2. Single-File Bootstrapper Extraction:
- *    - In v2.2.3, extraction failed on systems with pre-existing v2.2.2 files.
- *    - In v2.2.4, SingleFileLauncher retries locked file writes and overwrites cleanly.
- *
- * 3. High-Contrast Enterprise Workbench:
- *    - IntelliJ-grade resizable split panes, high contrast text in Light and Dark modes.
- *    - Deep EXIF restoration enabled by default for complete metadata reconstruction.
- *    - Clean removal of generic AI labels and safety badges.
- * ============================================================================
  */
 @Service
 public class UpdateCheckerService {
@@ -156,34 +138,13 @@ public class UpdateCheckerService {
                             }
                         }
 
-                        // Fallback: pick the best native binary from release assets
-                        if (downloadUrl.isEmpty()) {
-                            String osName = System.getProperty("os.name", "").toLowerCase();
-                            String preferredExt = osName.contains("win") ? ".msi" : (osName.contains("mac") ? ".dmg" : ".deb");
-
-                            for (int i = 0; i < assets.length(); i++) {
-                                JSONObject asset = assets.getJSONObject(i);
-                                String assetName = asset.optString("name", "").toLowerCase();
-                                if (assetName.endsWith(preferredExt)) {
-                                    downloadUrl = asset.optString("browser_download_url", "");
-                                    assetSize = asset.optLong("size", 0L);
-                                    break;
-                                }
-                            }
-
-                            if (downloadUrl.isEmpty()) {
-                                for (int i = 0; i < assets.length(); i++) {
-                                    JSONObject asset = assets.getJSONObject(i);
-                                    String assetName = asset.optString("name", "").toLowerCase();
-                                    if (assetName.endsWith(".exe") || assetName.endsWith(".jar") || assetName.endsWith(".zip")) {
-                                        downloadUrl = asset.optString("browser_download_url", "");
-                                        assetSize = asset.optLong("size", 0L);
-                                        break;
-                                    }
-                                }
-                            }
-                        }
                     }
+                }
+
+                // Without a checksum, the dialog opens the release page for a manual update.
+                if (!UpdateVerifier.hasValidSha256(sha256)) {
+                    downloadUrl = "";
+                    assetSize = 0;
                 }
 
                 boolean isNewer = AppVersion.isNewerThanCurrent(tagName);
@@ -333,15 +294,7 @@ public class UpdateCheckerService {
         sb.append("<html><body style='font-family:Segoe UI, sans-serif; font-size:12px; color:").append(textColor).append("; margin:0; padding:4px;'>");
 
         if (body == null || body.trim().isEmpty()) {
-            sb.append("<div style='margin-bottom:8px; font-weight:bold; color:").append(accentColor).append(";'>Highlights in ").append(info != null ? info.versionTag() : "v2.2.4").append(":</div>");
-            sb.append("<ul style='margin:0 0 0 16px; padding:0; line-height:1.6;'>");
-            sb.append("<li><b>SmartScreen & Launch Fix:</b> Restored direct proxy streaming and Authenticode code-signing with DigiCert timestamping to eliminate Windows SmartScreen execution blocks</li>");
-            sb.append("<li><b>Launcher Stability:</b> Resolved file extraction collision in SingleFileLauncher when updating over pre-existing installations</li>");
-            sb.append("<li><b>Enterprise UI Overhaul:</b> High-contrast, clean visual design across Light and Dark themes with IntelliJ-grade layout</li>");
-            sb.append("<li><b>Default Deep EXIF:</b> Deep EXIF metadata reconstruction is now enabled by default for maximum camera and GPS fidelity</li>");
-            sb.append("<li><b>De-cluttered Interface:</b> Clean removal of generic AI labels and safety badges</li>");
-            sb.append("<li><b>Resizable Panes:</b> Workbenches equipped with draggable horizontal and vertical split planes</li>");
-            sb.append("</ul>");
+            sb.append("<p>Release notes are not available. See the release page for details.</p>");
         } else {
             String[] lines = body.split("\\r?\\n");
             boolean inList = false;

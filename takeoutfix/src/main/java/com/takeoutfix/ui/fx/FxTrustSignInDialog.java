@@ -1,6 +1,7 @@
 package com.takeoutfix.ui.fx;
 
 import com.takeoutfix.auth.UserSyncBridgeService;
+import com.takeoutfix.auth.GuestQuotaStore;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Scene;
@@ -23,32 +24,41 @@ public class FxTrustSignInDialog extends Stage {
     private final Runnable onProceed;
 
     public FxTrustSignInDialog(Stage owner, UserSyncBridgeService userService, Runnable onProceed) {
+        this(owner, userService, onProceed, false);
+    }
+
+    public FxTrustSignInDialog(Stage owner, UserSyncBridgeService userService, Runnable onProceed, boolean requireSignIn) {
         this.userService = userService;
         this.onProceed = onProceed;
+        boolean guestLimitReached = (requireSignIn || GuestQuotaStore.isExhausted())
+                && (userService == null || !userService.isSignedIn());
 
         initOwner(owner);
         initModality(Modality.APPLICATION_MODAL);
         initStyle(StageStyle.DECORATED);
-        setTitle("TakeoutFix — Privacy & Trust Guarantee");
+        setTitle("TakeoutFix — Before you start");
         setResizable(false);
 
         VBox root = new VBox(14);
         root.setAlignment(Pos.TOP_CENTER);
         root.setPadding(new Insets(24, 28, 20, 28));
         root.setPrefWidth(420);
-        root.setStyle("-fx-background-color: #12131c; -fx-border-color: #2b2c3d; -fx-border-width: 1; -fx-border-radius: 8; -fx-background-radius: 8;");
+        root.getStyleClass().add("sign-in-modal");
 
         // 1. Icon & Header
         VBox headerBox = new VBox(6);
         headerBox.setAlignment(Pos.CENTER);
 
         var shieldIcon = UiIcons.createSvgIcon(UiIcons.LOCK, 32, "#10b981");
-        Label title = new Label("100% Local & Private Processing");
-        title.setStyle("-fx-font-size: 16px; -fx-font-weight: 800; -fx-text-fill: #f1f5f9;");
+        Label title = new Label(guestLimitReached ? "Guest allowance reached" : "Restore your photos with confidence");
+        title.getStyleClass().add("page-title");
 
-        Label subtitle = new Label("Your photos, videos, and files never leave this computer.");
+        Label subtitle = new Label(guestLimitReached
+                ? "Sign in to continue restoring for free."
+                : "Your selected photos and videos are processed on this computer.");
         subtitle.setWrapText(true);
-        subtitle.setStyle("-fx-font-size: 12px; -fx-text-fill: #94a3b8; -fx-text-alignment: center;");
+        subtitle.getStyleClass().add("text-muted");
+        subtitle.setStyle("-fx-text-alignment: center;");
 
         headerBox.getChildren().addAll(shieldIcon, title, subtitle);
         root.getChildren().add(headerBox);
@@ -56,12 +66,12 @@ public class FxTrustSignInDialog extends Stage {
         // 2. Trust Highlights Card
         VBox highlightsBox = new VBox(8);
         highlightsBox.setPadding(new Insets(12, 14, 12, 14));
-        highlightsBox.setStyle("-fx-background-color: rgba(255, 255, 255, 0.03); -fx-border-color: rgba(255, 255, 255, 0.08); -fx-border-radius: 6; -fx-background-radius: 6;");
+        highlightsBox.getStyleClass().add("card");
 
         highlightsBox.getChildren().addAll(
-                createHighlightRow("✓", "Free 1 GB Guest Tier: Up to 1 GB of restored media completely free with no file count limits."),
-                createHighlightRow("✓", "Sign In for Unlimited: Connect your Google Account to unlock 100% unlimited restoration access."),
-                createHighlightRow("✓", "100% Offline: Restores dates, locations, and photo details locally on your machine.")
+                createHighlightRow("Try up to 1 GB as a guest, then sign in to continue for free."),
+                createHighlightRow("Choose a separate output folder and keep your original export as a backup."),
+                createHighlightRow("Sign-in and account sync require an internet connection.")
         );
         root.getChildren().add(highlightsBox);
 
@@ -73,7 +83,7 @@ public class FxTrustSignInDialog extends Stage {
         Button btnGuest = new Button("Continue as Guest (1 GB Free)");
         btnGuest.setMaxWidth(Double.MAX_VALUE);
         btnGuest.setPrefHeight(38);
-        btnGuest.setStyle("-fx-font-size: 13px; -fx-font-weight: 700; -fx-background-color: #8b5cf6; -fx-text-fill: white; -fx-background-radius: 6; -fx-cursor: hand;");
+        btnGuest.getStyleClass().add("btn-primary");
         btnGuest.setOnAction(e -> {
             close();
             if (onProceed != null) onProceed.run();
@@ -83,7 +93,7 @@ public class FxTrustSignInDialog extends Stage {
         Button btnGoogle = new Button("Sign In with Google (Unlock Unlimited)");
         btnGoogle.setMaxWidth(Double.MAX_VALUE);
         btnGoogle.setPrefHeight(36);
-        btnGoogle.setStyle("-fx-font-size: 12px; -fx-font-weight: 600; -fx-background-color: rgba(255, 255, 255, 0.06); -fx-text-fill: #e2e8f0; -fx-border-color: rgba(255, 255, 255, 0.12); -fx-border-radius: 6; -fx-background-radius: 6; -fx-cursor: hand;");
+        btnGoogle.getStyleClass().add("btn-secondary");
         btnGoogle.setGraphic(UiIcons.createGoogleIcon(16));
         btnGoogle.setGraphicTextGap(8);
         btnGoogle.setOnAction(e -> {
@@ -94,17 +104,17 @@ public class FxTrustSignInDialog extends Stage {
             signInDialog.showAndWait();
         });
 
-        actionsBox.getChildren().addAll(btnGuest, btnGoogle);
+        if (!guestLimitReached) actionsBox.getChildren().add(btnGuest);
+        actionsBox.getChildren().add(btnGoogle);
         root.getChildren().add(actionsBox);
 
         // 4. "Don't show again" Checkbox
         CheckBox dontShowAgainCheck = new CheckBox("Don't show this trust reminder again");
-        dontShowAgainCheck.setStyle("-fx-font-size: 11px; -fx-text-fill: #71717a; -fx-cursor: hand;");
         dontShowAgainCheck.selectedProperty().addListener((obs, oldVal, newVal) -> {
             Preferences prefs = Preferences.userNodeForPackage(TakeoutRestoreView.class);
             prefs.putBoolean("suppress_trust_popup", newVal);
         });
-        root.getChildren().add(dontShowAgainCheck);
+        if (!guestLimitReached) root.getChildren().add(dontShowAgainCheck);
 
         Scene scene = new Scene(root);
         if (owner != null && owner.getScene() != null) {
@@ -117,14 +127,14 @@ public class FxTrustSignInDialog extends Stage {
         setScene(scene);
     }
 
-    private HBox createHighlightRow(String bullet, String text) {
+    private HBox createHighlightRow(String text) {
         HBox row = new HBox(8);
         row.setAlignment(Pos.TOP_LEFT);
-        Label b = new Label(bullet);
-        b.setStyle("-fx-font-size: 11px; -fx-font-weight: 800; -fx-text-fill: #10b981;");
+        var b = UiIcons.createSvgIcon(UiIcons.CHECK, 14, "#10b981");
         Label t = new Label(text);
         t.setWrapText(true);
-        t.setStyle("-fx-font-size: 11px; -fx-text-fill: #cbd5e1;");
+        t.getStyleClass().add("text-muted");
+        HBox.setHgrow(t, Priority.ALWAYS);
         row.getChildren().addAll(b, t);
         return row;
     }

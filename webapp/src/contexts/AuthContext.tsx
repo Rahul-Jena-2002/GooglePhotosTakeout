@@ -1,8 +1,10 @@
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, { createContext, useContext, useEffect, useRef, useState } from 'react';
 import { type User, onAuthStateChanged, signInWithPopup, signInWithRedirect, getRedirectResult, GoogleAuthProvider, EmailAuthProvider, signOut, reauthenticateWithPopup, reauthenticateWithCredential, deleteUser } from 'firebase/auth';
-import { doc, getDoc, setDoc, getDocs, collection, query, where, deleteDoc, onSnapshot, increment, addDoc, updateDoc } from 'firebase/firestore';
+import { doc, getDoc, getDocFromServer, setDoc, getDocsFromServer, collection, query, where, limit, deleteDoc, onSnapshot, updateDoc } from 'firebase/firestore';
 import { auth, db } from '../firebase';
+import { ensureUserSession } from '../lib/firebase/ensureUserProfile';
 import { indexedDbService } from '../lib/indexedDbService';
+import { acquireRestoreLock } from '../lib/restoreLock';
 import { useToastStore } from '../store/useToastStore';
 import { REGION_PRICING_CONFIGS, formatPrice, PLAN_PRICES, getRegionFromCountry } from '../lib/planPrices';
 import { apiClient } from '../lib/api/apiClient';
@@ -27,7 +29,7 @@ export interface ComparisonRow {
 export const DEFAULT_COMPARISON_ROWS: ComparisonRow[] = [
   { featureName: "Device Access", free: "Unlimited", recovery_pass: "Unlimited", pro: "Unlimited", super: "Unlimited" },
   { featureName: "Processing Limit", free: "", recovery_pass: "", pro: "", super: "", isDynamicLimit: true },
-  { featureName: "Photo Matching*", free: "Up to 90.8%*", recovery_pass: "Up to 90.8%*", pro: "Up to 90.8%*", super: "Up to 90.8%*", isDynamicTelemetry: true },
+  { featureName: "Photo Matching", free: "Unavailable", recovery_pass: "Unavailable", pro: "Unavailable", super: "Unavailable", isDynamicTelemetry: true },
   { featureName: "Advanced Media Tools", free: "—", recovery_pass: "—", pro: "—", super: "Included" },
   { featureName: "No Ads Window", free: "—", recovery_pass: "—", pro: "—", super: "✓ Enabled" },
 ];
@@ -44,7 +46,7 @@ export const formatThresholdLimit = (maxSizeMB?: number, maxFiles?: number): str
 export const resolveComparisonRowValues = (
   row: ComparisonRow,
   tierThresholds?: Record<string, { maxFiles: number; maxSizeMB: number }>,
-  telemetryAccuracy: string = "90.8%"
+  telemetryAccuracy: string = ""
 ) => {
   if (row.isDynamicLimit) {
     const freeVal = formatThresholdLimit(tierThresholds?.free?.maxSizeMB, tierThresholds?.free?.maxFiles);
@@ -60,12 +62,12 @@ export const resolveComparisonRowValues = (
 
   const isTelemetry = row.isDynamicTelemetry || (row.isDynamicTelemetry !== false && row.featureName?.toLowerCase().includes("matching"));
   if (isTelemetry) {
-    const acc = telemetryAccuracy || "90.8%";
+    const value = telemetryAccuracy ? `Up to ${telemetryAccuracy}*` : "Unavailable";
     return {
-      free: `Up to ${acc}*`,
-      recovery_pass: `Up to ${acc}*`,
-      pro: `Up to ${acc}*`,
-      super: `Up to ${acc}*`
+      free: value,
+      recovery_pass: value,
+      pro: value,
+      super: value
     };
   }
 
@@ -139,7 +141,7 @@ import type { PlanPrices } from '../lib/planPrices';
 export type { PlanPrices, RegionPricingConfig, CountryOption } from '../lib/planPrices';
 export { REGION_PRICING_CONFIGS, formatPrice, getActivePrice, PLAN_PRICES, COUNTRIES, getRegionFromCountry } from '../lib/planPrices';
 
-import { isSuperAdminEmail } from '../lib/adminAuth';
+import { isEmulatorDevelopment, isVerifiedSuperAdmin } from '../lib/adminAuth';
 
 export interface UserData {
   plan: PlanType;
@@ -190,7 +192,7 @@ interface AuthContextType {
   loading: boolean;
   login: () => Promise<void>;
   logout: () => Promise<void>;
-  deleteAccount: (password?: string) => Promise<void>;
+  deleteAccount: (password?: string) => Promise<boolean>;
   refreshUserData: () => Promise<void>;
   region: string;
   setRegion: (r: string) => void;
@@ -231,112 +233,15 @@ const getPlanDeviceLimit = (_plan: string): number => {
   return Infinity;
 };
 
-const generateUniqueUsername = async (email: string, displayName: string, uid: string): Promise<string> => {
-  const base = (email ? email.split('@')[0] : (displayName ? displayName.replace(/\s+/g, '') : 'user'))
-    .toLowerCase()
-    .replace(/[^a-z0-9]/g, '');
-  let attempt = 0;
-  while (attempt < 10) {
-    const candidate = attempt === 0 && base.length >= 3 && base.length <= 20 
-      ? base 
-      : `${base.slice(0, 14)}_${Math.floor(1000 + Math.random() * 9000)}`;
-    
-    const q = query(collection(db, "users"), where("username", "==", candidate));
-    const snap = await getDocs(q);
-    let isTaken = false;
-    snap.forEach((doc) => {
-      if (doc.id !== uid) {
-        isTaken = true;
-      }
-    });
-    if (!isTaken) {
-      return candidate;
-    }
-    attempt++;
-  }
-  return `${base.slice(0, 14)}_${Date.now().toString().slice(-6)}`;
-};
-
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [user, setUser] = useState<User | null>(() => {
-    try {
-      const adminSessionStr = typeof window !== 'undefined' ? sessionStorage.getItem("takeoutfix_admin_session") : null;
-      if (adminSessionStr) {
-        const s = JSON.parse(adminSessionStr);
-        if (s && s.uid && (Date.now() - (s.timestamp || 0) < 24 * 3600 * 1000)) {
-          return {
-            uid: s.uid,
-            email: s.email,
-            displayName: s.displayName,
-            photoURL: s.photoURL,
-          } as User;
-        }
-      }
-      const saved = typeof window !== 'undefined' ? localStorage.getItem("takeoutfix_user_data") : null;
-      if (saved) {
-        const u = JSON.parse(saved);
-        if (u && u.uid) {
-          return {
-            uid: u.uid,
-            email: u.email,
-            displayName: u.displayName,
-            photoURL: u.photoURL,
-          } as User;
-        }
-      }
-    } catch (_) {}
-    return null;
-  });
+  const [user, setUser] = useState<User | null>(null);
+  const [userData, setUserDataState] = useState<UserData | null>(null);
 
-  const [userData, setUserDataState] = useState<UserData | null>(() => {
-    try {
-      const saved = localStorage.getItem("takeoutfix_user_data");
-      return saved ? JSON.parse(saved) : null;
-    } catch (_) {
-      return null;
-    }
-  });
-
-  const [adminData, setAdminDataState] = useState<AdminData | null>(() => {
-    try {
-      const adminSessionStr = typeof window !== 'undefined' ? sessionStorage.getItem("takeoutfix_admin_session") : null;
-      if (adminSessionStr) {
-        const s = JSON.parse(adminSessionStr);
-        if (s && s.uid && s.role) {
-          return {
-            uid: s.uid,
-            email: s.email,
-            displayName: s.displayName,
-            photoURL: s.photoURL,
-            role: s.role,
-            status: 'online',
-            lastSeen: s.timestamp || Date.now(),
-            createdAt: s.timestamp || Date.now()
-          };
-        }
-      }
-      const saved = localStorage.getItem("takeoutfix_admin_data");
-      return saved ? JSON.parse(saved) : null;
-    } catch (_) {
-      return null;
-    }
-  });
-
-  const [loading, setLoading] = useState(() => {
-    try {
-      const adminSessionStr = typeof window !== 'undefined' ? sessionStorage.getItem("takeoutfix_admin_session") : null;
-      if (adminSessionStr) {
-        const s = JSON.parse(adminSessionStr);
-        if (s && s.uid) return false;
-      }
-      const saved = localStorage.getItem("takeoutfix_user_data");
-      return saved ? false : true;
-    } catch (_) {
-      return true;
-    }
-  });
+  const [adminData, setAdminDataState] = useState<AdminData | null>(null);
+  const adminRevision = useRef(0);
+  const [loading, setLoading] = useState(true);
 
   const [sessionRegistered, setSessionRegistered] = useState(false);
   const [hasSeenSelfInSessions, setHasSeenSelfInSessions] = useState(false);
@@ -416,7 +321,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [recoveryPassHours, setRecoveryPassHours] = useState<number>(24);
   const [refundPolicy, setRefundPolicy] = useState<string>("We offer a 100% Recovery Guarantee: if a verified technical issue prevents your restoration, and our support desk is unable to resolve it, we will issue a full refund within 7 days of purchase. Refunds are not available for change of mind or successfully completed recoveries.");
   const [comparisonRows, setComparisonRows] = useState<ComparisonRow[]>(DEFAULT_COMPARISON_ROWS);
-  const [telemetryAccuracy, setTelemetryAccuracy] = useState<string>("90.8%");
+  const telemetryAccuracy = "";
   const [platformStats, setPlatformStats] = useState<any>(null);
 
   useEffect(() => {
@@ -425,10 +330,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (snap.exists()) {
         const data = snap.data();
         setPlatformStats(data);
-        if (data.filesScanned && data.filesScanned > 0 && data.filesRestored !== undefined) {
-          const rate = (data.filesRestored / data.filesScanned) * 100;
-          setTelemetryAccuracy(`${rate.toFixed(1)}%`);
-        }
       }
     }, (err) => {
       console.warn("AuthContext: platform_stats listener error:", err);
@@ -649,9 +550,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
 
-  // Auto-register developer as superadmin on Firestore when on localhost
+  // Seed the local emulator only; live Firebase must not be reset by development startup.
   useEffect(() => {
-    if (import.meta.env.DEV && user && user.email && isSuperAdminEmail(user.email)) {
+    if (import.meta.env.DEV && import.meta.env.PUBLIC_FIREBASE_USE_LIVE !== 'true' && user && isVerifiedSuperAdmin(user)) {
       const registerLocalAdmin = async () => {
         try {
           await setDoc(doc(db, "admins", user.uid), {
@@ -875,6 +776,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     };
     window.addEventListener("takeoutfix-country-detected", handleCountryDetected);
+    void import('../lib/browserCountry').then(({ detectAndStoreCountry }) => detectAndStoreCountry()).catch((error) => {
+      console.warn("Country detection unavailable:", error);
+    });
     
     const isLocalhost = typeof window !== 'undefined' && (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1");
     if (!isLocalhost) {
@@ -890,51 +794,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   const refreshUserData = async (currentUser: User) => {
+    const revision = adminRevision.current;
+    const canApplyAdmin = () => auth?.currentUser?.uid === currentUser.uid && adminRevision.current === revision;
     let deviceSessionId = localStorage.getItem("takeoutfix_device_session_id");
     if (!deviceSessionId) {
       deviceSessionId = `${currentUser.uid}_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
       localStorage.setItem("takeoutfix_device_session_id", deviceSessionId);
     }
 
-    try {
-      const pending = await indexedDbService.get("telemetry", "takeoutfix_pending_usage");
-      if (pending && pending.uid === currentUser.uid && (pending.bytes > 0 || pending.files > 0)) {
-        const userRef = doc(db, 'users', currentUser.uid);
-        await setDoc(userRef, {
-          usedBytes: increment(pending.bytes),
-          usedFiles: increment(pending.files),
-          totalBytesProcessed: increment(pending.bytes),
-          totalFilesProcessed: increment(pending.files),
-        }, { merge: true });
-
-        if (pending.sessionId) {
-          await setDoc(doc(db, 'active_sessions', pending.sessionId), {
-            status: 'failed',
-            currentFile: 'Restoration interrupted (page closed or reloaded)',
-            lastUpdated: Date.now()
-          }, { merge: true }).catch(() => {});
-        }
-
-        await addDoc(collection(db, 'recoveryHistory', currentUser.uid, 'sessions'), {
-          archiveName: pending.takeoutName || 'Google Takeout Archive',
-          timestamp: Date.now(),
-          filesProcessed: pending.files,
-          matched: 0,
-          recovered: 0,
-          failed: pending.files,
-          bytesProcessed: pending.bytes,
-          duration: 0,
-          status: 'failed'
-        }).catch((err) => console.error("Failed to write healed history:", err));
-
-        await indexedDbService.remove("telemetry", "takeoutfix_pending_usage");
-      }
-    } catch (e) {
-      console.warn("Failed to heal pending session usage:", e);
-    }
-
-    const isDev = import.meta.env.DEV;
-    const isSuperAdmin = isSuperAdminEmail(currentUser.email);
+    const isSuperAdmin = isVerifiedSuperAdmin(currentUser);
 
     const docRef = doc(db, 'users', currentUser.uid);
     const adminRef = doc(db, 'admins', currentUser.uid);
@@ -945,7 +813,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         console.warn("Firestore getDoc(users) quota/network error:", err?.message || err);
         return null;
       }),
-      getDoc(adminRef).catch((err) => {
+      getDocFromServer(adminRef).catch((err) => {
         console.warn("Firestore getDoc(admins) quota/network error:", err?.message || err);
         return null;
       })
@@ -1020,23 +888,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
 
       // 5. Generate and sync names if missing
-      let _needsNameUpdate = false;
       if (!data.firstName && data.firstName !== '') {
         const nameParts = (data.displayName || currentUser.displayName || '').trim().split(/\s+/);
         pendingUpdates.firstName = nameParts[0] || '';
         data.firstName = pendingUpdates.firstName;
-        _needsNameUpdate = true;
       }
       if (!data.lastName && data.lastName !== '') {
         const nameParts = (data.displayName || currentUser.displayName || '').trim().split(/\s+/);
         pendingUpdates.lastName = nameParts.slice(1).join(' ') || '';
         data.lastName = pendingUpdates.lastName;
-        _needsNameUpdate = true;
       }
-      if (!data.username) {
-        data.username = await generateUniqueUsername(data.email || currentUser.email || '', data.displayName || currentUser.displayName || '', currentUser.uid);
-        pendingUpdates.username = data.username;
-        _needsNameUpdate = true;
+      // Ordinary clients cannot modify entitlement or admin fields.
+      if (!isAdminUser) {
+        delete pendingUpdates.isAdmin;
+        delete pendingUpdates.plan;
+        delete pendingUpdates.expiresAt;
+        delete pendingUpdates.passExpiredAt;
       }
 
       // 6. Device session tracking
@@ -1077,8 +944,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     } else {
       // New user registration (snap !== null && !snap.exists())
-      setSyncStatus('synced');
-      setSyncError(null);
       const displayName = currentUser.displayName || '';
       const email = currentUser.email || '';
       const nameParts = displayName.trim().split(/\s+/);
@@ -1102,13 +967,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         createdAt: Date.now(),
         sessionIds: [deviceSessionId]
       };
-      if (snap) {
-        await setDoc(docRef, newData).catch(() => {});
-        const globalRef = doc(db, 'platform_stats', 'global');
-        await setDoc(globalRef, { usersCount: increment(1) }, { merge: true }).catch(console.error);
+      try {
+        const actualData = await ensureUserSession(db, currentUser.uid, newData, deviceSessionId);
+        setUserData(actualData as UserData);
+        setSessionRegistered(true);
+        setSyncStatus('synced');
+        setSyncError(null);
+      } catch (error) {
+        console.warn('Failed to create or load account profile:', error);
+        setSyncStatus('failed');
+        setSyncError('Could not load your account profile. Please check your connection and try again.');
+        setSessionRegistered(false);
       }
-      setUserData(newData as any);
-      setSessionRegistered(true);
     }
 
     if (isSuperAdmin) {
@@ -1124,7 +994,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       };
       
       // Only write to admins collection if the record is missing or outdated
-      let adminNeedsWrite = !adminSnap || !adminSnap.exists();
+      let adminNeedsWrite = !!adminSnap && !adminSnap.exists();
       if (adminSnap && adminSnap.exists()) {
         const existingAdmin = adminSnap.data();
         if (existingAdmin.email !== adminRecord.email ||
@@ -1138,14 +1008,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (adminNeedsWrite) {
         await setDoc(adminRef, adminRecord, { merge: true }).catch(console.error);
       }
-      setAdminData(adminRecord);
+      if (canApplyAdmin()) setAdminData(adminRecord);
     } else if (adminSnap && adminSnap.exists()) {
       const adminRecord = adminSnap.data() as AdminData;
       if (currentUser.photoURL && adminRecord.photoURL !== currentUser.photoURL) {
         adminRecord.photoURL = currentUser.photoURL;
         await updateDoc(adminRef, { photoURL: currentUser.photoURL }).catch(console.error);
       }
-      setAdminData(adminRecord);
+      if (canApplyAdmin()) setAdminData(adminRecord);
     } else {
       // For returning normal users, check invitations asynchronously in the background so it doesn't block auth load state!
       if (currentUser.email) {
@@ -1183,65 +1053,30 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 : (typeof inviteData.expiresAt === 'number' ? inviteData.expiresAt : 0);
               if (expiresAtMs && Date.now() > expiresAtMs) {
                 console.warn("[AuthContext] Found admin invite for user but it has expired.");
-                setAdminData(null);
+                if (canApplyAdmin()) setAdminData(null);
                 return;
               }
 
-              const adminRecord: AdminData = {
-                uid: currentUser.uid,
-                email: currentUser.email!,
-                displayName: currentUser.displayName || inviteData.displayName || userEmail.split("@")[0] || 'Admin',
-                photoURL: currentUser.photoURL || null,
-                role: inviteData.role || 'SUPPORT',
-                status: 'online',
-                lastSeen: Date.now(),
-                createdAt: Date.now(),
-                inviteId: inviteDoc.id
-              };
-              
-              // 1. Create admin document in `admins` with inviteId (satisfies firestore.rules)
-              await setDoc(adminRef, adminRecord);
-              
-              // 2. Mark invite as accepted in `adminInvites`
-              await updateDoc(inviteDoc.ref, {
-                status: "accepted",
-                acceptedAt: Date.now(),
-                acceptedUid: currentUser.uid
-              }).catch(console.warn);
-
-              // 3. Mark user doc as admin
-              await updateDoc(docRef, { isAdmin: true }).catch(() => {
-                setDoc(docRef, { isAdmin: true }, { merge: true }).catch(console.warn);
+              const idToken = await currentUser.getIdToken();
+              await apiClient.post('/api/accept-invite', { inviteId: inviteDoc.id }, {
+                headers: { Authorization: `Bearer ${idToken}` }
               });
-              
-              setAdminData(adminRecord);
-              if (userData) setUserData({ ...userData, isAdmin: true });
-
-              // 4. Log to admin_activity
-              try {
-                await addDoc(collection(db, "admin_activity"), {
-                  actorUid: currentUser.uid,
-                  actorName: adminRecord.displayName,
-                  actorRole: adminRecord.role,
-                  action: "INVITE_ACCEPTED",
-                  target: adminRecord.email,
-                  description: `${adminRecord.displayName} accepted invite and joined as ${adminRecord.role}`,
-                  timestamp: Date.now()
-                });
-              } catch { /* ignore */ }
-
-              console.log("[AuthContext] Successfully provisioned admin from invite:", adminRecord);
+              const provisioned = await getDoc(adminRef);
+              if (!provisioned.exists()) throw new Error('Admin profile was not created.');
+              if (canApplyAdmin()) setAdminData(provisioned.data() as AdminData);
+              if (canApplyAdmin() && userData?.uid === currentUser.uid) setUserData({ ...userData, isAdmin: true });
             } else {
-              setAdminData(null);
+              if (canApplyAdmin()) setAdminData(null);
             }
           } catch (err) {
             console.error("Invite claim search failed:", err);
-            setAdminData(null);
+            useToastStore.getState().addToast("Could not accept the invitation. Check that your email is verified and try again.", "error", 7000);
+            if (canApplyAdmin()) setAdminData(null);
           }
         };
         checkInvitesAsync();
       } else {
-        setAdminData(null);
+        if (canApplyAdmin()) setAdminData(null);
       }
     }
   };
@@ -1251,7 +1086,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       navigator.storage.persist().catch(console.warn);
     }
 
-    const mockAuthUser = typeof window !== 'undefined' ? localStorage.getItem("takeoutfix_mock_auth_user") : null;
+    const mockAuthUser = isEmulatorDevelopment() && typeof window !== 'undefined' ? localStorage.getItem("takeoutfix_mock_auth_user") : null;
     if (mockAuthUser) {
       try {
         const u = JSON.parse(mockAuthUser);
@@ -1264,8 +1099,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           displayName: u.displayName,
           usedBytes: 0,
           plan: plan,
-          totalFilesProcessed: 120,
-          totalBytesProcessed: 1024 * 1024 * 250
+          totalFilesProcessed: 0,
+          totalBytesProcessed: 0
         } as any);
         return () => {};
       } catch (e) {
@@ -1283,13 +1118,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
 
     const unsubscribe = onAuthStateChanged(auth, async (u) => {
+      adminRevision.current++;
+      setAdminData(null);
       setUser(u);
       if (u) {
         try {
           const lastUid = localStorage.getItem("takeoutfix_last_uid");
           if (lastUid && lastUid !== u.uid) {
-            console.warn("🔄 User account changed! Clearing local recovery state...");
-            await indexedDbService.clearAllData().catch(console.error);
+            await indexedDbService.clearStore('checkpoints');
           }
           localStorage.setItem("takeoutfix_last_uid", u.uid);
         } catch (e) {
@@ -1310,7 +1146,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 if (typeof window !== "undefined") {
                   window.location.href = "/";
                 }
-              }).catch(console.error);
+              }).catch(error => {
+                localStorage.setItem(loginTimeKey, savedLoginTime);
+                console.error("Could not complete automatic sign-out:", error);
+              });
               return;
             }
           }
@@ -1336,6 +1175,25 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     });
     return unsubscribe;
   }, []);
+
+  useEffect(() => {
+    if (!user || !auth || auth.currentUser?.uid !== user.uid) return;
+    return onSnapshot(doc(db, 'admins', user.uid), (snapshot) => {
+      if (auth.currentUser?.uid !== user.uid || snapshot.metadata.fromCache) return;
+      if (snapshot.exists()) {
+        adminRevision.current++;
+        setAdminData({ ...snapshot.data(), uid: user.uid } as AdminData);
+      } else if (!isVerifiedSuperAdmin(user)) {
+        adminRevision.current++;
+        setAdminData(null);
+      }
+    }, () => {
+      if (auth.currentUser?.uid === user.uid && !isVerifiedSuperAdmin(user)) {
+        adminRevision.current++;
+        setAdminData(null);
+      }
+    });
+  }, [user]);
 
   useEffect(() => {
     if (!user) return;
@@ -1429,40 +1287,45 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const logout = async () => {
-    if (user) {
-      try {
-        await setDoc(doc(db, 'admins', user.uid), { status: 'offline', lastSeen: Date.now() }, { merge: true });
-      } catch (_) {}
-
-      try {
-        const localSessionId = localStorage.getItem("takeoutfix_device_session_id");
-        if (localSessionId) {
-          const userDocRef = doc(db, 'users', user.uid);
-          const userSnap = await getDoc(userDocRef);
-          if (userSnap.exists()) {
-            const data = userSnap.data();
-            const currentSessions = data.sessionIds || [];
-            const updatedSessions = currentSessions.filter((id: string) => id !== localSessionId);
-            await setDoc(userDocRef, { sessionIds: updatedSessions }, { merge: true });
-          }
-        }
-      } catch (e) {
-        console.warn("Failed to clean session ID on logout:", e);
-      }
-    }
-    await signOut(auth);
-
+    const releaseRestoreLock = navigator.locks ? await acquireRestoreLock(navigator.locks) : null;
     try {
-      localStorage.removeItem("takeoutfix_user_data");
-      localStorage.removeItem("takeoutfix_admin_data");
-      sessionStorage.removeItem("takeoutfix_admin_session");
-      localStorage.removeItem("takeoutfix_device_session_id");
-      localStorage.removeItem("takeoutfix_login_time");
-      localStorage.removeItem("takeoutfix_last_uid");
-      await indexedDbService.clearAllData().catch(console.error);
-    } catch (_) {}
-    setSessionRegistered(false);
-    setHasSeenSelfInSessions(false);
+      if (user) {
+        try {
+          await setDoc(doc(db, 'admins', user.uid), { status: 'offline', lastSeen: Date.now() }, { merge: true });
+        } catch (_) {}
+
+        try {
+          const localSessionId = localStorage.getItem("takeoutfix_device_session_id");
+          if (localSessionId) {
+            const userDocRef = doc(db, 'users', user.uid);
+            const userSnap = await getDoc(userDocRef);
+            if (userSnap.exists()) {
+              const data = userSnap.data();
+              const currentSessions = data.sessionIds || [];
+              const updatedSessions = currentSessions.filter((id: string) => id !== localSessionId);
+              await setDoc(userDocRef, { sessionIds: updatedSessions }, { merge: true });
+            }
+          }
+        } catch (e) {
+          console.warn("Failed to clean session ID on logout:", e);
+        }
+      }
+      await signOut(auth);
+
+      try {
+        localStorage.removeItem("takeoutfix_user_data");
+        localStorage.removeItem("takeoutfix_admin_data");
+        sessionStorage.removeItem("takeoutfix_admin_session");
+        localStorage.removeItem("takeoutfix_device_session_id");
+        localStorage.removeItem("takeoutfix_login_time");
+        localStorage.removeItem("takeoutfix_last_uid");
+        await indexedDbService.clearStore('checkpoints');
+      } catch (_) {}
+      setSessionRegistered(false);
+      setHasSeenSelfInSessions(false);
+    } finally {
+      releaseRestoreLock?.();
+    }
   };
 
   const deleteAccount = async (password?: string) => {
@@ -1478,40 +1341,66 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       throw new Error('A recent sign-in with your account provider is required to delete this account.');
     }
 
-    const userRef = doc(db, 'users', user.uid);
-    const userSnap = await getDoc(userRef);
-    const sessionsSnap = await getDocs(collection(db, 'recoveryHistory', user.uid, 'sessions'));
-    const recoveryQuery = query(collection(db, 'recoveries'), where('uid', '==', user.uid));
-    const recoveriesSnap = await getDocs(recoveryQuery);
-    const transactionsSnap = await getDocs(query(collection(db, 'transactions'), where('uid', '==', user.uid)));
-    const ticketsSnap = await getDocs(query(collection(db, 'tickets'), where('uid', '==', user.uid)));
-    const purchaseLogsSnap = await getDocs(query(collection(db, 'purchase_logs'), where('userId', '==', user.uid)));
-    const activeSessionsSnap = await getDocs(query(collection(db, 'active_sessions'), where('uid', '==', user.uid)));
+    const releaseRestoreLock = await acquireRestoreLock(navigator.locks);
+    try {
+      const localSessions = await indexedDbService.getAll('sessions');
+      if (localSessions.some((session) => !['completed', 'failed', 'cancelled'].includes(session.status))) {
+        throw new Error('A restore is still saved or running. Resume or discard it before deleting this account.');
+      }
 
-    const { writeBatch } = await import('firebase/firestore');
-    const documents = [
-      ...(userSnap.exists() ? [userRef] : []),
-      ...sessionsSnap.docs.map((item) => item.ref),
-      ...recoveriesSnap.docs.map((item) => item.ref),
-      ...transactionsSnap.docs.map((item) => item.ref),
-      ...ticketsSnap.docs.map((item) => item.ref),
-      ...purchaseLogsSnap.docs.map((item) => item.ref),
-      ...activeSessionsSnap.docs.map((item) => item.ref),
-    ];
-    for (let i = 0; i < documents.length; i += 450) {
-      const batch = writeBatch(db);
-      documents.slice(i, i + 450).forEach((ref) => batch.delete(ref));
-      await batch.commit();
-    }
-    await indexedDbService.clearAllData();
-    await deleteUser(user);
+      const userRef = doc(db, 'users', user.uid);
+      const userSnap = await getDocFromServer(userRef);
+      const [recoveriesSnap, transactionsSnap, ticketsSnap, purchaseLogsSnap] = await Promise.all([
+        getDocsFromServer(query(collection(db, 'recoveries'), where('uid', '==', user.uid), limit(1))),
+        getDocsFromServer(query(collection(db, 'transactions'), where('uid', '==', user.uid), limit(1))),
+        getDocsFromServer(query(collection(db, 'tickets'), where('uid', '==', user.uid), limit(1))),
+        getDocsFromServer(query(collection(db, 'purchase_logs'), where('userId', '==', user.uid), limit(1))),
+      ]);
 
-    for (const key of ['takeoutfix_user_data', 'takeoutfix_admin_data', 'takeoutfix_device_session_id', 'takeoutfix_login_time', 'takeoutfix_last_uid']) {
-      localStorage.removeItem(key);
+      if (!recoveriesSnap.empty || !transactionsSnap.empty || !ticketsSnap.empty || !purchaseLogsSnap.empty) {
+        throw new Error('This account has records that require support to review before deletion. Email takeoutfix.support@gmail.com.');
+      }
+
+      const usageBatchesSnap = await getDocsFromServer(collection(db, 'users', user.uid, 'usageBatches'));
+      const sessionsSnap = await getDocsFromServer(collection(db, 'recoveryHistory', user.uid, 'sessions'));
+      const activeSessionsSnap = await getDocsFromServer(query(collection(db, 'active_sessions'), where('uid', '==', user.uid)));
+      const { writeBatch } = await import('firebase/firestore');
+      const documents = [
+        ...usageBatchesSnap.docs.map((item) => item.ref),
+        ...sessionsSnap.docs.map((item) => item.ref),
+        ...activeSessionsSnap.docs.map((item) => item.ref),
+        ...(userSnap.exists() ? [userRef] : []),
+      ];
+      for (let i = 0; i < documents.length; i += 450) {
+        const batch = writeBatch(db);
+        documents.slice(i, i + 450).forEach((ref) => batch.delete(ref));
+        await batch.commit();
+      }
+      await deleteUser(user);
+
+      let localDataCleared = true;
+      try {
+        await indexedDbService.clearAllData();
+      } catch (error) {
+        localDataCleared = false;
+        console.error('Account was deleted, but local data could not be cleared:', error);
+      }
+
+      try {
+        for (const key of ['takeoutfix_user_data', 'takeoutfix_admin_data', 'takeoutfix_device_session_id', 'takeoutfix_login_time', 'takeoutfix_last_uid']) {
+          localStorage.removeItem(key);
+        }
+        sessionStorage.removeItem('takeoutfix_admin_session');
+      } catch (error) {
+        localDataCleared = false;
+        console.error('Account was deleted, but local session data could not be cleared:', error);
+      }
+      setUserData(null);
+      setAdminData(null);
+      return localDataCleared;
+    } finally {
+      releaseRestoreLock();
     }
-    sessionStorage.removeItem('takeoutfix_admin_session');
-    setUserData(null);
-    setAdminData(null);
   };
 
   const handleConfirmEvict = async () => {
@@ -1685,7 +1574,7 @@ export const useAuth = () => {
       loading: false,
       login: async () => {},
       logout: async () => {},
-      deleteAccount: async () => {},
+      deleteAccount: async () => { throw new Error('Account deletion is unavailable.'); },
       refreshUserData: async () => {},
       region: 'in',
       setRegion: () => {},
@@ -1721,7 +1610,7 @@ export const useAuth = () => {
         accept: async () => {},
         decline: async () => {}
       },
-      telemetryAccuracy: "90.8%",
+      telemetryAccuracy: "",
       platformStats: null,
       syncStatus: 'synced',
       syncError: null,

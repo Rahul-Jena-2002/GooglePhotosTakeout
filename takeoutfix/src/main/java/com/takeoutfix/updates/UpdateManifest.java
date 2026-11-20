@@ -112,11 +112,6 @@ public class UpdateManifest {
             targetKey = arch.contains("aarch64") || arch.contains("arm") ? "linux-arm64" : "linux-x64";
         }
 
-        if (platforms.containsKey(targetKey)) {
-            return platforms.get(targetKey);
-        }
-
-        // Fallback: return the first available asset if exact architecture is not specified
-        return platforms.values().stream().findFirst().orElse(null);
+        return platforms.get(targetKey);
     }
 }

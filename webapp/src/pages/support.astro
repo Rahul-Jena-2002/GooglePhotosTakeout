@@ -4,18 +4,38 @@ import Layout from "../layouts/Layout.astro";
 import SupportPage from "../react-pages/support/SupportPage";
 ---
 
-<Layout title="TakeoutFix | Support & FAQ" description="Access TakeoutFix FAQs, submit support tickets, trace processing reports, or contact team engineers.">
+<Layout title="TakeoutFix | Support & FAQ" description="Find answers to common TakeoutFix questions, submit a support request, or contact the project maintainer.">
   <SupportPage client:only="react">
-    <div slot="fallback" class="min-h-[70vh] max-w-7xl mx-auto px-6 py-16 animate-pulse space-y-8">
-      <div class="space-y-3 text-center max-w-xl mx-auto">
-        <div class="h-4 w-24 mx-auto rounded-full bg-zinc-200 dark:bg-zinc-800"></div>
-        <div class="h-10 w-3/4 mx-auto rounded-xl bg-zinc-200 dark:bg-zinc-800"></div>
-        <div class="h-4 w-1/2 mx-auto rounded-full bg-zinc-200 dark:bg-zinc-800"></div>
-      </div>
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-6 pt-6">
-        <div class="h-64 rounded-2xl bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800"></div>
-        <div class="h-64 rounded-2xl bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800"></div>
-      </div>
-    </div>
+    <main slot="fallback" class="max-w-5xl mx-auto px-4 sm:px-6 py-16 mt-12 text-zinc-700 dark:text-zinc-300">
+      <header class="max-w-3xl mb-10">
+        <h1 class="text-3xl sm:text-4xl font-bold tracking-tight text-zinc-900 dark:text-white mb-4">TakeoutFix Support and Frequently Asked Questions</h1>
+        <p class="leading-relaxed">Start with these checks if a photo remains unchanged or appears under an unexpected date. The interactive support area may take a moment to load; you can also email <a class="underline font-semibold" href="mailto:takeoutfix.support@gmail.com">takeoutfix.support@gmail.com</a>.</p>
+      </header>
+      <section aria-labelledby="support-faq" class="space-y-4">
+        <h2 id="support-faq" class="text-2xl font-bold text-zinc-900 dark:text-white">Restore troubleshooting</h2>
+        <details class="p-5 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900/50">
+          <summary class="font-semibold cursor-pointer">What should I select?</summary>
+          <p class="mt-3 leading-relaxed">Select an extracted Takeout folder or a supported ZIP archive. For folder processing, choose a separate output folder. Keep the original download as a backup.</p>
+        </details>
+        <details class="p-5 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900/50">
+          <summary class="font-semibold cursor-pointer">Why was a file not restored?</summary>
+          <p class="mt-3 leading-relaxed">The file may not have a matching sidecar, the sidecar may not contain a usable date or location, or the media format may not support the requested metadata write. Review the unmatched output and processing report, then compare the media and JSON names in their original folder.</p>
+        </details>
+        <details class="p-5 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900/50">
+          <summary class="font-semibold cursor-pointer">Why does the date still look wrong?</summary>
+          <p class="mt-3 leading-relaxed">File-system dates such as “Date created” can reflect copying or extraction. Check the embedded capture date in a photo metadata viewer or the destination photo app. Display and time-zone handling can differ by app.</p>
+        </details>
+        <details class="p-5 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900/50">
+          <summary class="font-semibold cursor-pointer">Are my photos uploaded?</summary>
+          <p class="mt-3 leading-relaxed">The restore pipeline processes the selected media in the browser. Separate website services may handle account, diagnostics, support, or advertising data; see the <a class="underline" href="/privacy">Privacy Policy</a> for details.</p>
+        </details>
+      </section>
+      <nav aria-label="Related help" class="mt-10 flex flex-wrap gap-5 text-sm">
+        <a class="underline" href="/restore-data">Read the restore walkthrough</a>
+        <a class="underline" href="/guides/google-takeout-common-errors-fix">Troubleshoot common export issues</a>
+        <a class="underline" href="/contact">Contact TakeoutFix</a>
+      </nav>
+      <p class="mt-10 text-sm text-zinc-500">The original Takeout archive is the safest backup. Try a small sample and verify the output before processing or importing a full library.</p>
+    </main>
   </SupportPage>
 </Layout>

@@ -3,22 +3,25 @@ import path from 'path';
 
 const baseUrl = "https://takeoutfix.pages.dev";
 
-// ─── High-Value Canonical & Editorial Pillar Pages (AdSense Compliant) ────────
+// Canonical public pages intended for indexing.
 const indexablePages = [
-  { loc: "/",                                                      changefreq: "weekly",  priority: "1.0" },
-  { loc: "/about",                                                 changefreq: "monthly", priority: "0.8" },
-  { loc: "/contact",                                               changefreq: "monthly", priority: "0.8" },
-  { loc: "/disclaimer",                                            changefreq: "monthly", priority: "0.5" },
-  { loc: "/guides",                                                changefreq: "weekly",  priority: "0.9" },
-  { loc: "/guides/google-takeout-json-metadata-explained",         changefreq: "monthly", priority: "0.9" },
-  { loc: "/guides/how-to-save-takeout-photos-to-hard-drive-nas-cloud", changefreq: "monthly", priority: "0.9" },
-  { loc: "/guides/google-takeout-common-errors-fix",               changefreq: "monthly", priority: "0.9" },
-  { loc: "/download",                                              changefreq: "monthly", priority: "0.8" },
-  { loc: "/support",                                               changefreq: "monthly", priority: "0.7" },
-  { loc: "/privacy",                                               changefreq: "monthly", priority: "0.4" },
-  { loc: "/terms",                                                 changefreq: "monthly", priority: "0.4" },
-  { loc: "/restore-data",                                          changefreq: "weekly",  priority: "0.9" },
-  { loc: "/tool",                                                  changefreq: "weekly",  priority: "0.9" },
+  { loc: "/" },
+  { loc: "/about" },
+  { loc: "/contact" },
+  { loc: "/support" },
+  { loc: "/download" },
+  { loc: "/privacy" },
+  { loc: "/terms" },
+  { loc: "/disclaimer" },
+  { loc: "/guides" },
+  { loc: "/docs" },
+  { loc: "/guides/google-takeout-json-metadata-explained" },
+  { loc: "/guides/how-to-save-takeout-photos-to-hard-drive-nas-cloud" },
+  { loc: "/guides/google-takeout-common-errors-fix" },
+  { loc: "/guides/verify-restored-photo-metadata" },
+  { loc: "/guides/google-takeout-missing-photo-location" },
+  { loc: "/restore-data" },
+  { loc: "/tool" },
 ];
 
 let mainXml = `<?xml version="1.0" encoding="UTF-8"?>
@@ -29,8 +32,6 @@ let mainXml = `<?xml version="1.0" encoding="UTF-8"?>
 for (const page of indexablePages) {
   mainXml += `  <url>
     <loc>${baseUrl}${page.loc}</loc>
-    <changefreq>${page.changefreq}</changefreq>
-    <priority>${page.priority}</priority>
   </url>\n`;
 }
 

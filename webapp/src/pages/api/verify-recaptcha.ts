@@ -17,13 +17,13 @@ export const POST: APIRoute = async ({ request }) => {
 
     const apiKey = process.env.PUBLIC_FIREBASE_API_KEY || process.env.RECAPTCHA_API_KEY || "";
     if (!apiKey) {
-      // In dev or without API key, accept valid-format token gracefully
-      return new Response(JSON.stringify({ success: true, score: 0.9, mock: true }), {
-        status: 200,
+      return new Response(JSON.stringify({ success: false, reason: "Assessment is not configured" }), {
+        status: 503,
         headers: { "Content-Type": "application/json" }
       });
     }
 
+    const expectedAction = action || "submit";
     const assessmentUrl = `https://recaptchaenterprise.googleapis.com/v1/projects/${PROJECT_ID}/assessments?key=${apiKey}`;
     const assessmentRes = await fetch(assessmentUrl, {
       method: "POST",
@@ -31,7 +31,7 @@ export const POST: APIRoute = async ({ request }) => {
       body: JSON.stringify({
         event: {
           token,
-          expectedAction: action || "submit",
+          expectedAction,
           siteKey: RECAPTCHA_SITE_KEY
         }
       })
@@ -50,12 +50,11 @@ export const POST: APIRoute = async ({ request }) => {
     const tokenProps = result.tokenProperties || {};
     const riskAnalysis = result.riskAnalysis || {};
 
-    const isValid = tokenProps.valid === true;
-    const score = riskAnalysis.score ?? 1.0;
+    const isValid = tokenProps.valid === true && tokenProps.action === expectedAction;
 
     return new Response(JSON.stringify({
       success: isValid,
-      score,
+      score: riskAnalysis.score,
       reasons: riskAnalysis.reasons || [],
       action: tokenProps.action
     }), {

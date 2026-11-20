@@ -13,8 +13,10 @@ import {
   browserSessionPersistence,
   type User,
 } from "firebase/auth";
-import { doc, getDoc, setDoc } from "firebase/firestore";
+import { ensureUserProfile } from "../../lib/firebase/ensureUserProfile";
 import { executeRecaptcha, executeAndVerifyRecaptcha } from "../../lib/recaptcha";
+import { sendDesktopAuth } from "../../lib/desktopAuth";
+import { isSafeInternalRedirect } from "../../lib/safeRedirect";
 import {
   Mail,
   Lock,
@@ -30,9 +32,6 @@ import {
   Key,
   ExternalLink,
 } from "lucide-react";
-
-const GMAIL_REGEX = /^[a-zA-Z0-9._%+-]+@gmail\.com$/;
-const PASSWORD_REGEX = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?`~]).{8,16}$/;
 
 /**
  * Reads desktop loopback port from URL parameters with sessionStorage fallback.
@@ -144,15 +143,8 @@ export default function AuthPage() {
   const [rememberMe, setRememberMe] = useState(true);
 
   const [desktopPort] = useState<string | null>(getStoredDesktopPort);
-  const [fallbackAuthUrl, setFallbackAuthUrl] = useState<string | null>(null);
   const [authorizing, setAuthorizing] = useState(false);
-  const [authorizedSuccessfully, setAuthorizedSuccessfully] = useState<boolean>(() => {
-    if (typeof window !== "undefined") {
-      const params = new URLSearchParams(window.location.search);
-      return params.get("authorized") === "true" || params.get("connected") === "true";
-    }
-    return false;
-  });
+  const [authorizedSuccessfully, setAuthorizedSuccessfully] = useState(false);
   const [autoCloseSeconds, setAutoCloseSeconds] = useState(10);
 
   // Auto-close countdown timer (10 seconds)
@@ -190,7 +182,7 @@ export default function AuthPage() {
       .then(async (res) => {
         if (res && res.user) {
           await syncUserDoc(res.user);
-          setSuccessMsg("Signed in successfully! Connecting to Desktop...");
+          setSuccessMsg("Signed in. Confirm the desktop connection to continue.");
           handleSuccessRedirect(res.user);
         }
       })
@@ -199,29 +191,20 @@ export default function AuthPage() {
       });
   }, []);
 
-  // Sync auth state & handle select_account request
+  // Keep the account shown in the desktop authorization screen current.
   useEffect(() => {
     if (!auth) return;
     const unsub = auth.onAuthStateChanged((u: User | null) => {
-      if (typeof window !== "undefined") {
-        const params = new URLSearchParams(window.location.search);
-        const forceSelect = params.get("select_account") === "true" || params.get("prompt") === "select_account";
-        if (forceSelect && u && !authorizedSuccessfully) {
-          // Explicit account selection requested: clear stale Firebase session
-          auth.signOut();
-          setCurrentUser(null);
-          return;
-        }
-      }
       setCurrentUser(u);
     });
     return () => unsub();
-  }, [desktopPort, authorizedSuccessfully, authorizing]);
+  }, []);
 
   const getRedirectUrl = () => {
     if (typeof window === "undefined") return "/tool";
     const params = new URLSearchParams(window.location.search);
-    if (params.get("redirect")) return params.get("redirect")!;
+    const redirect = params.get("redirect");
+    if (redirect && isSafeInternalRedirect(redirect)) return redirect;
     if (inviteInfo || params.get("invite")) return "/admin/team";
     return "/tool";
   };
@@ -230,12 +213,9 @@ export default function AuthPage() {
     const port = desktopPort || getStoredDesktopPort();
     const targetUser = userObj || currentUser || auth?.currentUser;
     if (port && targetUser) {
-      try {
-        await authorizeDesktop(targetUser);
-        return;
-      } catch (e) {
-        console.warn("Desktop bridge error:", e);
-      }
+      setCurrentUser(targetUser);
+      setSuccessMsg("Signed in. Confirm the desktop connection to continue.");
+      return;
     }
     if (targetUser) {
       try {
@@ -260,23 +240,7 @@ export default function AuthPage() {
   const syncUserDoc = async (user: User, nameOverride?: string) => {
     try {
       if (!db) return;
-      const userRef = doc(db, "users", user.uid);
-      const snap = await getDoc(userRef);
-      if (!snap.exists()) {
-        await setDoc(userRef, {
-          uid: user.uid,
-          email: user.email,
-          displayName: nameOverride || user.displayName || (user.email ? user.email.split("@")[0] : "User"),
-          photoURL: user.photoURL || null,
-          plan: "free",
-          usedBytes: 0,
-          usedFiles: 0,
-          totalBytesProcessed: 0,
-          totalFilesProcessed: 0,
-          createdAt: Date.now(),
-          suspended: false,
-        });
-      }
+      await ensureUserProfile(db, user, nameOverride);
     } catch (err) {
       console.warn("[Auth] Failed to sync user doc:", err);
     }
@@ -288,6 +252,7 @@ export default function AuthPage() {
     setGoogleLoading(true);
 
     try {
+      if (!auth || !googleProvider) throw new Error("Sign-in is temporarily unavailable. Please try again later.");
       getStoredDesktopState();
       getStoredDesktopPort();
       executeAndVerifyRecaptcha("GOOGLE_SIGNIN").catch(() => {});
@@ -324,11 +289,11 @@ export default function AuthPage() {
     e.preventDefault();
     setErrorMsg("");
     setSuccessMsg("");
+    if (!auth) { setErrorMsg("Sign-in is temporarily unavailable. Please try again later."); return; }
 
     const cleanEmail = email.trim().toLowerCase();
-    const GMAIL_REGEX = /^[a-zA-Z0-9._%+-]+@gmail\.com$/;
-    if (!cleanEmail || !GMAIL_REGEX.test(cleanEmail)) {
-      setErrorMsg("Only @gmail.com email addresses are allowed (e.g. yourname@gmail.com).");
+    if (!cleanEmail || !cleanEmail.includes("@")) {
+      setErrorMsg("Enter a valid email.");
       return;
     }
 
@@ -436,9 +401,10 @@ export default function AuthPage() {
     setErrorMsg("");
 
     try {
-      const token = await targetUser.getIdToken().catch(() => "");
+      const token = await targetUser.getIdToken(true).catch(() => "");
       const refreshToken = (targetUser as any).refreshToken || (targetUser as any).stsTokenManager?.refreshToken || "";
       const stateParam = getStoredDesktopState();
+      if (!token || !stateParam) throw new Error("Missing sign-in details. Start sign-in again from the desktop app.");
 
       const displayName = targetUser.displayName || targetUser.email?.split("@")[0] || "User";
       const payload: Record<string, string> = {
@@ -453,27 +419,8 @@ export default function AuthPage() {
         refreshToken,
       };
 
-      if (stateParam) {
-        payload.state = stateParam;
-      }
-
-      const callbackParams = new URLSearchParams(payload);
-      const callbackUrl = `http://127.0.0.1:${port}/callback?${callbackParams.toString()}`;
-      setFallbackAuthUrl(callbackUrl);
-
-      // Attempt POST handoff first
-      try {
-        await fetch(`http://127.0.0.1:${port}/callback`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload),
-        });
-      } catch (_) {}
-
-      // Backup GET ping transport
-      try {
-        fetch(callbackUrl, { mode: "no-cors" }).catch(() => {});
-      } catch (_) {}
+      payload.state = stateParam;
+      await sendDesktopAuth(port, payload);
 
       clearDesktopSession();
 
@@ -482,15 +429,20 @@ export default function AuthPage() {
         const cleanSearch = new URLSearchParams(window.location.search);
         cleanSearch.delete("desktop_port");
         cleanSearch.delete("port");
-        cleanSearch.set("authorized", "true");
-        window.history.replaceState({}, document.title, `${window.location.pathname}?${cleanSearch.toString()}`);
+        cleanSearch.delete("state");
+        cleanSearch.delete("select_account");
+        cleanSearch.delete("prompt");
+        cleanSearch.delete("authorized");
+        cleanSearch.delete("connected");
+        const query = cleanSearch.toString();
+        window.history.replaceState({}, document.title, `${window.location.pathname}${query ? `?${query}` : ""}${window.location.hash}`);
       } catch (_) {}
 
       setAuthorizedSuccessfully(true);
       setAutoCloseSeconds(10);
     } catch (err: any) {
       console.error("Authorization error:", err);
-      setErrorMsg("Failed to automatically connect to desktop. Please click 'Copy Auth Link' below.");
+      setErrorMsg("Could not send sign-in details to the desktop app. Start sign-in again from the desktop app and check that it is still open.");
     } finally {
       setAuthorizing(false);
     }
@@ -510,13 +462,13 @@ export default function AuthPage() {
               ✓
             </div>
             <h2 className="text-xl sm:text-2xl font-extrabold text-zinc-900 dark:text-white mb-2">
-              Successfully Connected!
+              Sign-in request sent
             </h2>
             <div className="inline-block px-3.5 py-1.5 rounded-xl bg-zinc-100 dark:bg-zinc-800/80 border border-zinc-200 dark:border-zinc-700 text-xs font-semibold text-emerald-600 dark:text-emerald-400 mb-3">
               {currentUser?.displayName || currentUser?.email || (typeof window !== "undefined" ? new URLSearchParams(window.location.search).get("email") : "") || "TakeoutFix Desktop"}
             </div>
             <p className="text-xs text-zinc-500 dark:text-zinc-400 mb-5 leading-relaxed">
-              Your account has been connected to TakeoutFix Desktop. Your quota and restoration tools are unlocked.
+              Check TakeoutFix Desktop to confirm that sign-in finished.
             </p>
 
             {/* 10-Second Auto-close Countdown Indicator */}
@@ -572,7 +524,7 @@ export default function AuthPage() {
               Authorize TakeoutFix Desktop
             </h1>
             <p className="text-xs text-zinc-500 dark:text-zinc-400 mb-6">
-              TakeoutFix Desktop is requesting authorization to connect with your account on local port <strong>{desktopPort}</strong>.
+              An application on this computer is requesting your account credentials on local port <strong>{desktopPort}</strong>. Continue only if you started sign-in from the desktop app.
             </p>
 
             {/* Current user card */}
@@ -596,7 +548,7 @@ export default function AuthPage() {
             </div>
 
             {errorMsg && (
-              <div className="mb-4 p-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-600 dark:text-red-400 text-xs flex items-start gap-2 text-left">
+              <div role="alert" className="mb-4 p-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-600 dark:text-red-400 text-xs flex items-start gap-2 text-left">
                 <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />
                 <span>{errorMsg}</span>
               </div>
@@ -619,24 +571,17 @@ export default function AuthPage() {
               )}
             </button>
 
-            {/* Fallback link if manual copy needed */}
-            {fallbackAuthUrl && (
-              <div className="mt-4 p-3 rounded-xl bg-zinc-100 dark:bg-zinc-800 text-left text-xs">
-                <p className="text-[11px] text-zinc-500 dark:text-zinc-400 mb-2">
-                  Didn't connect automatically? Copy this link and paste it in the desktop app:
-                </p>
-                <button
-                  type="button"
-                  onClick={() => {
-                    navigator.clipboard.writeText(fallbackAuthUrl);
-                    setSuccessMsg("Copied link to clipboard!");
-                  }}
-                  className="py-1.5 px-3 bg-zinc-200 dark:bg-zinc-700 hover:bg-zinc-300 dark:hover:bg-zinc-600 text-zinc-800 dark:text-zinc-200 rounded-lg text-xs font-medium cursor-pointer"
-                >
-                  Copy Auth Link
-                </button>
-              </div>
-            )}
+            <button
+              type="button"
+              disabled={authorizing}
+              onClick={() => {
+                clearDesktopSession();
+                window.location.assign("/tool");
+              }}
+              className="mt-3 w-full py-2 text-xs font-semibold text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white disabled:opacity-50"
+            >
+              Cancel desktop connection
+            </button>
 
             {/* Switch account action */}
             <div className="mt-4 text-center">
@@ -827,46 +772,16 @@ export default function AuthPage() {
 
           {/* Feedback Badges */}
           {errorMsg && (
-            <div className="mb-4 p-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-600 dark:text-red-400 text-xs flex items-start gap-2 text-left">
+            <div role="alert" className="mb-4 p-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-600 dark:text-red-400 text-xs flex items-start gap-2 text-left">
               <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />
               <span>{errorMsg}</span>
             </div>
           )}
 
           {successMsg && (
-            <div className="mb-4 p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400 text-xs flex items-start gap-2 text-left">
+            <div role="status" className="mb-4 p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400 text-xs flex items-start gap-2 text-left">
               <CheckCircle2 className="w-4 h-4 flex-shrink-0 mt-0.5" />
               <span>{successMsg}</span>
-            </div>
-          )}
-
-          {/* Fallback Manual Auth Code / Link Card */}
-          {fallbackAuthUrl && (
-            <div className="mb-4 p-3.5 rounded-2xl bg-zinc-100 dark:bg-zinc-800/80 border border-zinc-200 dark:border-zinc-700 text-left">
-              <p className="text-xs font-semibold text-zinc-800 dark:text-zinc-200 mb-1">
-                TakeoutFix Desktop didn't open automatically?
-              </p>
-              <p className="text-[11px] text-zinc-500 dark:text-zinc-400 mb-2.5">
-                Copy your authorization link and paste it into the "Or paste auth code / URL" field in TakeoutFix Desktop:
-              </p>
-              <div className="flex gap-2">
-                <button
-                  type="button"
-                  onClick={() => {
-                    navigator.clipboard.writeText(fallbackAuthUrl);
-                    setSuccessMsg("Authorization link copied! Paste into TakeoutFix Desktop.");
-                  }}
-                  className="py-1.5 px-3 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-bold transition-all cursor-pointer shadow-sm"
-                >
-                  Copy Auth Link
-                </button>
-                <a
-                  href={fallbackAuthUrl}
-                  className="py-1.5 px-3 bg-zinc-200 dark:bg-zinc-700 hover:bg-zinc-300 dark:hover:bg-zinc-600 text-zinc-800 dark:text-zinc-200 rounded-xl text-xs font-medium transition-all"
-                >
-                  Retry Link
-                </a>
-              </div>
             </div>
           )}
 
@@ -875,7 +790,7 @@ export default function AuthPage() {
             {/* Full Name field (Sign Up only) */}
             {mode === "signup" && (
               <div>
-                <label className="block text-xs font-semibold text-zinc-700 dark:text-zinc-300 mb-1">
+                <label htmlFor="fullName" className="block text-xs font-semibold text-zinc-700 dark:text-zinc-300 mb-1">
                   Full Name
                 </label>
                 <div className="relative">
@@ -897,8 +812,8 @@ export default function AuthPage() {
 
             {/* Email field */}
             <div>
-              <label className="block text-xs font-semibold text-zinc-700 dark:text-zinc-300 mb-1">
-                Gmail Address (@gmail.com only)
+              <label htmlFor="email" className="block text-xs font-semibold text-zinc-700 dark:text-zinc-300 mb-1">
+                Email address
               </label>
               <div className="relative">
                 <Mail className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-zinc-400" />
@@ -910,7 +825,7 @@ export default function AuthPage() {
                   autoComplete="username email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder="yourname@gmail.com"
+                  placeholder="you@example.com"
                   className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl pl-10 pr-3 py-2.5 text-xs sm:text-sm text-zinc-900 dark:text-white placeholder:text-zinc-400 focus:outline-none focus:border-indigo-500 transition-colors"
                 />
               </div>
@@ -920,7 +835,7 @@ export default function AuthPage() {
             {mode !== "forgot" && (
               <div>
                 <div className="flex justify-between items-center mb-1">
-                  <label className="block text-xs font-semibold text-zinc-700 dark:text-zinc-300">
+                  <label htmlFor="password" className="block text-xs font-semibold text-zinc-700 dark:text-zinc-300">
                     {mode === "signup" ? "Password (8-16 chars, Aa1@)" : "Password"}
                   </label>
                   {mode === "signin" && (
@@ -961,6 +876,7 @@ export default function AuthPage() {
                   />
                   <button
                     type="button"
+                    aria-label={showPassword ? "Hide password" : "Show password"}
                     onClick={() => setShowPassword(!showPassword)}
                     className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 cursor-pointer"
                   >
@@ -973,7 +889,7 @@ export default function AuthPage() {
             {/* Confirm Password (Sign Up only) */}
             {mode === "signup" && (
               <div>
-                <label className="block text-xs font-semibold text-zinc-700 dark:text-zinc-300 mb-1">
+                <label htmlFor="confirm-password" className="block text-xs font-semibold text-zinc-700 dark:text-zinc-300 mb-1">
                   Confirm Password
                 </label>
                 <div className="relative">
@@ -1007,7 +923,7 @@ export default function AuthPage() {
                     onChange={(e) => setRememberMe(e.target.checked)}
                     className="w-4 h-4 rounded text-indigo-600 border-zinc-300 dark:border-zinc-700 dark:bg-zinc-800 focus:ring-indigo-500 cursor-pointer"
                   />
-                  <span>Save password & remember on this browser</span>
+                  <span>Stay signed in on this browser</span>
                 </label>
               </div>
             )}
@@ -1016,7 +932,7 @@ export default function AuthPage() {
             {mode !== "forgot" && (
               <div className="flex items-center gap-1.5 text-[10px] text-zinc-400 dark:text-zinc-500 py-1">
                 <ShieldCheck className="w-3 h-3 text-emerald-500 flex-shrink-0" />
-                <span>Protected by Google reCAPTCHA — <a href="https://policies.google.com/privacy" target="_blank" rel="noreferrer" className="underline hover:text-zinc-500">Privacy</a> & <a href="https://policies.google.com/terms" target="_blank" rel="noreferrer" className="underline hover:text-zinc-500">Terms</a> apply.</span>
+                <span>This site uses Google reCAPTCHA — <a href="https://policies.google.com/privacy" target="_blank" rel="noreferrer" className="underline hover:text-zinc-500">Privacy</a> & <a href="https://policies.google.com/terms" target="_blank" rel="noreferrer" className="underline hover:text-zinc-500">Terms</a> apply.</span>
               </div>
             )}
 

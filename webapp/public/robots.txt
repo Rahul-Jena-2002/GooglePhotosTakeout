@@ -19,16 +19,12 @@ Disallow: /api/
 User-agent: OAI-SearchBot
 Allow: /
 Disallow: /admin/
-Disallow: /dashboard
-Disallow: /profile
 Disallow: /auth/
 Disallow: /api/
 
 User-agent: Claude-SearchBot
 Allow: /
 Disallow: /admin/
-Disallow: /dashboard
-Disallow: /profile
 Disallow: /auth/
 Disallow: /api/
 
@@ -77,8 +73,6 @@ Disallow: /api/
 User-agent: *
 Allow: /
 Disallow: /admin/
-Disallow: /dashboard
-Disallow: /profile
 Disallow: /auth/
 Disallow: /api/
 

@@ -1,6 +1,7 @@
 export const prerender = false;
 import type { APIRoute } from 'astro';
 import { env } from 'cloudflare:workers';
+import { isValidInviteId, readInviteIdentity } from '../../lib/api/inviteIdentity';
 
 type JsonRecord = Record<string, unknown>;
 
@@ -103,8 +104,8 @@ export const POST: APIRoute = async ({ request, locals }) => {
     const idToken = authHeader.split('Bearer ')[1];
     const { inviteId } = await request.json();
 
-    if (!inviteId) {
-      return json(400, { error: 'inviteId is required.' });
+    if (!isValidInviteId(inviteId)) {
+      return json(400, { error: 'Invalid invitation ID.' });
     }
 
     const runtimeEnv = env as any;
@@ -112,7 +113,7 @@ export const POST: APIRoute = async ({ request, locals }) => {
       (env as any)?.FIREBASE_SERVICE_ACCOUNT ||
       runtimeEnv?.FIREBASE_SERVICE_ACCOUNT ||
       (import.meta as any).env?.FIREBASE_SERVICE_ACCOUNT ||
-      (process.env as any)?.FIREBASE_SERVICE_ACCOUNT;
+      (typeof process !== 'undefined' ? process.env.FIREBASE_SERVICE_ACCOUNT : undefined);
     if (!serviceAccountStr) {
       return json(500, { error: 'Server configuration error: missing service account credentials.' });
     }
@@ -140,6 +141,12 @@ export const POST: APIRoute = async ({ request, locals }) => {
       return json(400, { error: `This invitation is already ${status}.` });
     }
 
+    const identity = readInviteIdentity(idToken);
+    const inviteEmail = inviteFields.email?.stringValue;
+    if (!identity || typeof inviteEmail !== 'string' || identity.email.toLowerCase() !== inviteEmail.toLowerCase()) {
+      return json(403, { error: 'Use the verified email address on this invitation.' });
+    }
+
     const now = Date.now();
 
     // Step B: Generate Service Account Auth Token to write with admin credentials
@@ -150,7 +157,8 @@ export const POST: APIRoute = async ({ request, locals }) => {
     };
 
     // Update invitation document status to declined
-    const updateInviteUrl = `${inviteUrl}?updateMask.fieldPaths=status&updateMask.fieldPaths=declinedAt`;
+    if (typeof inviteDoc.updateTime !== 'string') return json(500, { error: 'Invitation version unavailable.' });
+    const updateInviteUrl = `${inviteUrl}?updateMask.fieldPaths=status&updateMask.fieldPaths=declinedAt&currentDocument.updateTime=${encodeURIComponent(inviteDoc.updateTime)}`;
     const updateInviteBody = {
       fields: {
         status: { stringValue: 'declined' },
@@ -163,12 +171,12 @@ export const POST: APIRoute = async ({ request, locals }) => {
       body: JSON.stringify(updateInviteBody)
     });
     if (!updateInviteRes.ok) {
-      return json(500, { error: 'Failed to decline invitation.', details: await updateInviteRes.text() });
+      return json(500, { error: 'Failed to decline invitation. Please try again.' });
     }
 
     return json(200, { success: true, message: 'Invitation declined successfully.' });
   } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : String(err);
-    return json(500, { error: 'ServerError', message });
+    console.error('[decline-invite] Request failed:', err instanceof Error ? err.name : typeof err);
+    return json(500, { error: 'ServerError', message: 'Invitation could not be declined. Please try again.' });
   }
 };

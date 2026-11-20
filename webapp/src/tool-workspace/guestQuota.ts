@@ -1,15 +1,22 @@
 /**
  * Guest Quota Tracker
- * Securely tracks unauthenticated guest usage with a 1 GB free storage limit (no file limit).
- * Users can sign in anytime for 100% unlimited access.
- * Uses multi-vault resilience (localStorage + persistent cookie + IndexedDB)
- * to automatically self-heal if an individual browser storage key is cleared.
+ * Tracks guest usage locally with a 1 GB storage limit and no file-count limit.
+ * Signed-in use has no product quota. Browser storage can be cleared or changed.
  */
 
-import { indexedDbService } from "../lib/indexedDbService";
+import { indexedDbService } from "../lib/indexedDbService.ts";
 
 export const GUEST_MAX_FILES = Infinity; // No file count limit
 export const GUEST_MAX_BYTES = 1024 * 1024 * 1024; // 1 GB free storage limit
+
+export function guestFileFits(usedBytes: number, reservedBytes: number, fileBytes: number): boolean {
+  return Number.isSafeInteger(fileBytes) && fileBytes >= 0 && usedBytes + reservedBytes + fileBytes <= GUEST_MAX_BYTES;
+}
+
+export function guestQuotaDecision(usedBytes: number, reservedBytes: number, fileBytes: number): 'fit' | 'wait' | 'limit' {
+  if (!guestFileFits(usedBytes, 0, fileBytes)) return 'limit';
+  return guestFileFits(usedBytes, reservedBytes, fileBytes) ? 'fit' : 'wait';
+}
 
 const STORAGE_KEY = "takeoutfix_guest_usage_v1";
 const COOKIE_NAME = "takeoutfix_gq_v1";
@@ -21,7 +28,7 @@ export interface GuestUsage {
 }
 
 let memoryUsage: GuestUsage = { files: 0, bytes: 0, updatedAt: 0 };
-let idbSynced = false;
+let idbSync: Promise<void> | null = null;
 
 function readCookie(): { files: number; bytes: number } | null {
   if (typeof document === "undefined") return null;
@@ -87,9 +94,8 @@ export function getGuestUsage(): GuestUsage {
   } catch (_) {}
 
   // 4. Background sync with IndexedDB
-  if (!idbSynced) {
-    idbSynced = true;
-    indexedDbService.get('telemetry', 'guest_quota').then((idbVal: any) => {
+  if (!idbSync) {
+    idbSync = indexedDbService.get('telemetry', 'guest_quota').then(async (idbVal: any) => {
       if (idbVal && typeof idbVal.files === 'number') {
         const idbFiles = Math.max(0, idbVal.files);
         const idbBytes = Math.max(0, idbVal.bytes || 0);
@@ -97,12 +103,22 @@ export function getGuestUsage(): GuestUsage {
           recordGuestUsage(idbFiles - memoryUsage.files, idbBytes - memoryUsage.bytes);
         }
       } else {
-        indexedDbService.set('telemetry', 'guest_quota', memoryUsage).catch(() => {});
+        await indexedDbService.set('telemetry', 'guest_quota', memoryUsage);
       }
-    }).catch(() => {});
+    }).catch(error => {
+      idbSync = null;
+      throw error;
+    });
+    void idbSync.catch(error => console.warn('Could not load saved guest usage:', error));
   }
 
   return memoryUsage;
+}
+
+export async function ensureGuestUsageLoaded(): Promise<GuestUsage> {
+  getGuestUsage();
+  if (idbSync) await idbSync;
+  return getGuestUsage();
 }
 
 export function recordGuestUsage(files: number, bytes: number): GuestUsage {

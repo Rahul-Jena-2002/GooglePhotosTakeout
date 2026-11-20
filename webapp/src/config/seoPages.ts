@@ -12,11 +12,11 @@ export interface CuratedSeoPage {
 export const CURATED_SEO_PAGES: Record<string, CuratedSeoPage> = {
   "fix-google-takeout-dates": {
     title: "Fix Google Takeout Dates – Restore Original Photo Dates | TakeoutFix",
-    description: "Fix wrong dates on Google Takeout photos. TakeoutFix restores original 'Date Taken' timestamps from JSON sidecars back into your photo EXIF headers — free, private, browser-based.",
+    description: "Try restoring available photo dates from matching Google Takeout JSON sidecars using the browser-based TakeoutFix tool.",
     badge: "📅 Fix Google Takeout Dates · Free · Browser-Based",
     badgeColor: "text-rose-400",
     headlineText: "Fix Google Takeout Dates — Restore Original Timestamps",
-    intro: "Downloaded your photos from Google Takeout and they all show today's date? That's because companion JSON sidecars hold the original 'Date Taken' timestamps. TakeoutFix reads those JSON sidecars and writes the correct timestamps back into your photo EXIF headers instantly.",
+    intro: "If exported photos show the wrong date, a matching JSON sidecar may contain the original timestamp. TakeoutFix can use available dates with supported files; check the results and keep your original export.",
     ctaText: "Fix Dates Now →",
     ctaLink: "/tool"
   },
@@ -26,7 +26,7 @@ export const CURATED_SEO_PAGES: Record<string, CuratedSeoPage> = {
     badge: "🖼️ Google Photos Metadata Fix · Free · Private · Browser-Based",
     badgeColor: "text-blue-400",
     headlineText: "Google Photos Metadata Fix — Restore Missing Dates & GPS",
-    intro: "Downloaded your Google Photos via Google Takeout and found all dates and GPS coordinates missing from your timeline? TakeoutFix performs a complete metadata fix — restoring original dates, GPS coordinates, and EXIF info entirely in your browser without uploading anything.",
+    intro: "If dates or locations appear missing after export, TakeoutFix can try to restore supported information from matching sidecars. Selected media is processed in your browser; results depend on the data available.",
     ctaText: "Fix Google Photos Metadata →",
     ctaLink: "/tool"
   },
@@ -36,17 +36,17 @@ export const CURATED_SEO_PAGES: Record<string, CuratedSeoPage> = {
     badge: "🔀 Google Takeout Merger · JSON + Photos = Restored EXIF",
     badgeColor: "text-amber-400",
     headlineText: "Google Takeout Merger — Merge JSON Metadata Back into Photos",
-    intro: "Google Takeout separates your photos from their metadata into companion JSON files. TakeoutFix is the Google Takeout merger that reunites them — writing all metadata back into the image EXIF header locally in your browser. No upload, no installation.",
+    intro: "Google Takeout can include companion JSON files alongside your photos. TakeoutFix looks for matching sidecars and writes supported, available metadata to output copies in your browser.",
     ctaText: "Start Merging Now →",
     ctaLink: "/tool"
   },
   "google-takeout-to-apple-photos": {
     title: "Migrate Google Takeout to Apple Photos | TakeoutFix",
-    description: "Learn how to move your Google Takeout export to Apple Photos without losing dates or location data. TakeoutFix prepares your library for a seamless import into iCloud.",
+    description: "Prepare a Google Takeout export for Apple Photos and learn why you should check dates and locations after import.",
     badge: "🍏 Takeout to Apple Photos · Free Metadata Fix",
     badgeColor: "text-sky-400",
     headlineText: "Migrate Google Takeout to Apple Photos",
-    intro: "Moving from Google Photos to iCloud? If you import a Google Takeout archive directly into Apple Photos, all your photos may clump into today's date. TakeoutFix writes the JSON metadata back into the files first, ensuring Apple Photos organizes your memories in the exact order and locations they were taken.",
+    intro: "Moving from Google Photos to Apple Photos? TakeoutFix can try to restore available metadata before import. Keep your original export and check a sample in Apple Photos, since results can vary.",
     ctaText: "Prepare for Apple Photos →",
     ctaLink: "/tool"
   },
@@ -56,7 +56,7 @@ export const CURATED_SEO_PAGES: Record<string, CuratedSeoPage> = {
     badge: "🔧 Free Metadata Fixer · Browser-Based · No Installation",
     badgeColor: "text-emerald-400",
     headlineText: "The Free Online Metadata Fixer for Google Photos",
-    intro: "Searching for a metadata fixer or meta data fix tool after a Google Takeout export? TakeoutFix automatically repairs missing dates, GPS coordinates, and camera information from your photo and video files — entirely in your browser.",
+    intro: "Looking for a metadata fixer after a Google Takeout export? TakeoutFix can try to restore available dates and locations to supported photos and videos in your browser. Some information may remain unavailable.",
     ctaText: "Fix My Metadata Now →",
     ctaLink: "/tool"
   },
@@ -66,7 +66,7 @@ export const CURATED_SEO_PAGES: Record<string, CuratedSeoPage> = {
     badge: "📍 Restore GPS Data · Free · Browser-Based",
     badgeColor: "text-indigo-400",
     headlineText: "Restore GPS Data from Google Takeout",
-    intro: "Did your Google Takeout archive separate out location coordinates? TakeoutFix reads the geoData latitude and longitude from your JSON sidecar files and restores proper EXIF GPS tags so your photos appear accurately on world maps and timelines.",
+    intro: "If a matching JSON sidecar contains usable coordinates, TakeoutFix can try to add them to a supported photo. Check the result in your photo app; missing source locations cannot be reconstructed.",
     ctaText: "Restore GPS Coordinates →",
     ctaLink: "/tool"
   },
@@ -86,7 +86,7 @@ export const CURATED_SEO_PAGES: Record<string, CuratedSeoPage> = {
     badge: "⚡ TakeoutFixer · Google Takeout Fixer · 100% Local",
     badgeColor: "text-violet-400",
     headlineText: "TakeoutFix — The Google Takeout Fixer",
-    intro: "TakeoutFixer is the engine behind TakeoutFix. It is a specialized Google Takeout fixer that merges JSON metadata sidecars back into your exported photos and videos, restoring correct dates, GPS coordinates, and EXIF information — all locally in your browser.",
+    intro: "TakeoutFix helps match Google Takeout JSON sidecars to supported photos and videos and restore available metadata in your browser. Keep your original export and verify the output.",
     ctaText: "Launch TakeoutFixer →",
     ctaLink: "/tool"
   }

@@ -26,8 +26,8 @@ export default function DownloadPage() {
   const downloadOptions: Record<"win" | "mac" | "linux", DownloadOption> = {
     win: {
       title: "TakeoutFix for Windows",
-      badge: "Windows 10 & 11",
-      desc: "Fast, pure single-file executable (.exe). Double-click to run immediately with zero installation and no ZIP extraction.",
+      badge: "Windows 10 & 11 · x64",
+      desc: "Download one executable. On first launch it unpacks the app into your local Windows profile; no manual ZIP extraction is needed.",
       file: "TakeoutFix.exe",
       url: "https://github.com/Rahul-Jena-2002/GooglePhotosTakeout/releases/latest/download/TakeoutFix.exe",
       directUrl: "https://github.com/Rahul-Jena-2002/GooglePhotosTakeout/releases/latest/download/TakeoutFix.exe",
@@ -35,27 +35,28 @@ export default function DownloadPage() {
       instructions: [
         "Click the download button below to get 'TakeoutFix.exe'.",
         "Double-click 'TakeoutFix.exe' in your Downloads folder.",
-        "If Windows SmartScreen appears, click 'More info' then 'Run anyway' — this is a new release building reputation.",
-        "Select your unzipped Google Takeout folder to restore all photo dates, duplicates, and locations."
+        "If Windows displays a security warning, review it before deciding whether to proceed.",
+        "Select your extracted Google Takeout folder, then check the restored files."
       ]
     },
     mac: {
       title: "TakeoutFix for Mac",
-      badge: "Apple Silicon & Intel",
-      desc: "Universal Mac app compatible with all modern macOS versions and M-series or Intel chips.",
+      badge: "macOS · Apple silicon",
+      desc: "The current build workflow targets Apple silicon. Check the release notes for supported devices and signing status.",
       file: "TakeoutFix.dmg",
       url: "https://github.com/Rahul-Jena-2002/GooglePhotosTakeout/releases/latest/download/TakeoutFix.dmg",
       directUrl: "https://github.com/Rahul-Jena-2002/GooglePhotosTakeout/releases/latest/download/TakeoutFix.dmg",
       instructions: [
         "Download 'TakeoutFix.dmg' using the button below.",
         "Double-click the downloaded DMG file and drag TakeoutFix into your Applications folder.",
+        "If macOS displays a security warning, review it before deciding whether to proceed.",
         "Launch TakeoutFix from your Applications folder or Spotlight search."
       ]
     },
     linux: {
       title: "TakeoutFix for Linux",
-      badge: "Ubuntu, Fedora, Mint",
-      desc: "Universal self-contained AppImage. Double-click to run on any major Linux distribution.",
+      badge: "Linux · x64",
+      desc: "The build workflow targets 64-bit Intel and AMD computers. Check the release notes for system requirements.",
       file: "TakeoutFix.AppImage",
       url: "https://github.com/Rahul-Jena-2002/GooglePhotosTakeout/releases/latest/download/TakeoutFix.AppImage",
       directUrl: "https://github.com/Rahul-Jena-2002/GooglePhotosTakeout/releases/latest/download/TakeoutFix.AppImage",
@@ -93,17 +94,21 @@ export default function DownloadPage() {
             <div className="flex border-b border-zinc-200 dark:border-white/10 pb-4 justify-between gap-2.5 overflow-x-auto">
               <button
                 onClick={() => setSelectedOS("win")}
+                aria-pressed={selectedOS === "win"}
                 className={`flex-1 min-w-[100px] py-2.5 px-3.5 rounded-xl text-xs md:text-sm font-bold transition-all border text-center flex items-center justify-center gap-2 cursor-pointer ${
                   selectedOS === "win"
                     ? "bg-zinc-900 text-white dark:bg-white dark:text-black border-transparent shadow-md"
                     : "bg-zinc-100/80 dark:bg-white/[0.03] border-zinc-200 dark:border-white/5 text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white hover:bg-zinc-200/60"
                 }`}
               >
-                <img src="/windows-logo.png" className="w-4 h-4 object-contain flex-shrink-0" alt="" />
+                <svg aria-hidden="true" viewBox="0 0 24 24" className="w-4 h-4 flex-shrink-0" fill="#00a4ef">
+                  <path d="M0 4.5 8.8 3v8.3H0zm10-1.7L24 .4v10.9H10zM0 12.3h8.8v8.3L0 19zm10 0h14v11.3l-14-2.7z" />
+                </svg>
                 <span>Windows</span>
               </button>
               <button
                 onClick={() => setSelectedOS("mac")}
+                aria-pressed={selectedOS === "mac"}
                 className={`flex-1 min-w-[100px] py-2.5 px-3.5 rounded-xl text-xs md:text-sm font-bold transition-all border text-center flex items-center justify-center gap-2 cursor-pointer ${
                   selectedOS === "mac"
                     ? "bg-zinc-900 text-white dark:bg-white dark:text-black border-transparent shadow-md"
@@ -122,6 +127,7 @@ export default function DownloadPage() {
               </button>
               <button
                 onClick={() => setSelectedOS("linux")}
+                aria-pressed={selectedOS === "linux"}
                 className={`flex-1 min-w-[100px] py-2.5 px-3.5 rounded-xl text-xs md:text-sm font-bold transition-all border text-center flex items-center justify-center gap-2 cursor-pointer ${
                   selectedOS === "linux"
                     ? "bg-zinc-900 text-white dark:bg-white dark:text-black border-transparent shadow-md"
@@ -173,11 +179,7 @@ export default function DownloadPage() {
                   <div className="space-y-1.5">
                     <p className="text-xs font-bold text-amber-800 dark:text-amber-300">Windows SmartScreen may appear on first run</p>
                     <p className="text-[11px] text-amber-700 dark:text-amber-400 leading-relaxed">
-                      Because TakeoutFix is a new release, Windows shows a security prompt while reputation builds.
-                      It is completely safe — click <strong className="font-bold">&ldquo;More info&rdquo;</strong> then <strong className="font-bold">&ldquo;Run anyway&rdquo;</strong>.
-                    </p>
-                    <p className="text-[11px] text-amber-600 dark:text-amber-500 leading-relaxed">
-                      Alternative: right-click <code className="bg-amber-100 dark:bg-amber-900/40 px-1 rounded font-mono">TakeoutFix.exe</code> → Properties → check <strong>Unblock</strong> → OK, then double-click.
+                      Windows may warn about an unsigned or unfamiliar app. Download only from the official release page and review any warning before proceeding.
                     </p>
                   </div>
                 </div>
@@ -187,14 +189,12 @@ export default function DownloadPage() {
 
           {/* Download Button */}
           <div className="pt-6 mt-6 border-t border-zinc-200 dark:border-white/10 space-y-2.5">
-            <a href={activeOption.url} className="w-full block">
-              <button className="w-full h-14 text-sm font-bold rounded-xl flex items-center justify-center gap-2.5 cursor-pointer shadow-lg transition-all bg-zinc-900 hover:bg-black text-white dark:bg-white dark:hover:bg-zinc-100 dark:text-black hover:scale-[1.005] active:scale-[0.995]">
-                <Download className="w-4 h-4" /> Download {activeOption.title}
-              </button>
+            <a href={activeOption.url} className="w-full h-14 text-sm font-bold rounded-xl flex items-center justify-center gap-2.5 cursor-pointer shadow-lg transition-all bg-zinc-900 hover:bg-black text-white dark:bg-white dark:hover:bg-zinc-100 dark:text-black hover:scale-[1.005] active:scale-[0.995]">
+              <Download className="w-4 h-4" /> Download {activeOption.title}
             </a>
             <div className="flex items-center justify-between gap-4">
               <p className="text-[11px] text-zinc-500 dark:text-zinc-400 font-medium">
-                &#10003; Verified release &middot; 100% Offline execution &middot; Direct single-file download
+                Download hosted on GitHub Releases. Check the release notes before installing.
               </p>
               <a
                 href={activeOption.directUrl}
@@ -226,8 +226,8 @@ export default function DownloadPage() {
                 <Cpu className="w-4 h-4" />
               </div>
               <div>
-                <h4 className="text-xs font-bold text-zinc-900 dark:text-white">Super Fast Processing</h4>
-                <p className="text-[11px] text-zinc-600 dark:text-zinc-400 mt-0.5 leading-relaxed">Restores thousands of photos in minutes without freezing or slowing down your computer.</p>
+                <h4 className="text-xs font-bold text-zinc-900 dark:text-white">Local processing</h4>
+                <p className="text-[11px] text-zinc-600 dark:text-zinc-400 mt-0.5 leading-relaxed">Processing time depends on your files, storage speed, and computer.</p>
               </div>
             </div>
 
@@ -236,8 +236,8 @@ export default function DownloadPage() {
                 <ShieldCheck className="w-4 h-4" />
               </div>
               <div>
-                <h4 className="text-xs font-bold text-zinc-900 dark:text-white">Handles Any Library Size</h4>
-                <p className="text-[11px] text-zinc-600 dark:text-zinc-400 mt-0.5 leading-relaxed">No file or size limits. Easily restore small albums or massive libraries from 50GB up to 1TB+.</p>
+                <h4 className="text-xs font-bold text-zinc-900 dark:text-white">Work with larger libraries</h4>
+                <p className="text-[11px] text-zinc-600 dark:text-zinc-400 mt-0.5 leading-relaxed">Available space and device resources affect the size of a job. Guests can process 1 GB before signing in for free.</p>
               </div>
             </div>
 
@@ -246,8 +246,8 @@ export default function DownloadPage() {
                 <WifiOff className="w-4 h-4" />
               </div>
               <div>
-                <h4 className="text-xs font-bold text-zinc-900 dark:text-white">Works 100% Offline</h4>
-                <p className="text-[11px] text-zinc-600 dark:text-zinc-400 mt-0.5 leading-relaxed">Runs entirely on your computer without uploading anything to the internet. 100% private.</p>
+                <h4 className="text-xs font-bold text-zinc-900 dark:text-white">Your media stays local</h4>
+                <p className="text-[11px] text-zinc-600 dark:text-zinc-400 mt-0.5 leading-relaxed">Restore selected media on your computer. Sign-in, account sync, and update checks use the internet.</p>
               </div>
             </div>
 
@@ -269,9 +269,9 @@ export default function DownloadPage() {
             <CheckCircle2 className="w-5 h-5" />
           </div>
           <div>
-            <h3 className="text-sm font-bold text-zinc-900 dark:text-white">Universal Compatibility</h3>
+            <h3 className="text-sm font-bold text-zinc-900 dark:text-white">System compatibility</h3>
             <p className="text-xs text-zinc-600 dark:text-zinc-400 mt-0.5 leading-relaxed">
-              Works on any standard Windows, Mac, or Linux computer. Just download and double-click to run.
+              Packages target Windows, macOS, and Linux. Availability and system requirements depend on the release; check its notes before downloading.
             </p>
           </div>
         </div>
@@ -284,15 +284,12 @@ export default function DownloadPage() {
             </div>
             <div>
               <h3 className="text-sm font-bold text-zinc-900 dark:text-white">Code Signing &amp; Verification</h3>
-              <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5">Authenticode certificate and release integrity</p>
+              <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5">Check release information before installing</p>
             </div>
           </div>
           <div className="p-4 rounded-xl bg-zinc-50 dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 text-xs text-zinc-700 dark:text-zinc-300 leading-relaxed space-y-2">
-            <p className="font-medium text-zinc-900 dark:text-white">
-              Free code signing provided by <a href="https://signpath.io" target="_blank" rel="noopener noreferrer" className="underline font-semibold text-indigo-600 dark:text-indigo-400 hover:text-indigo-500">SignPath.io</a>, certificate by <a href="https://signpath.org" target="_blank" rel="noopener noreferrer" className="underline font-semibold text-indigo-600 dark:text-indigo-400 hover:text-indigo-500">SignPath Foundation</a>.
-            </p>
             <p className="text-zinc-500 dark:text-zinc-400">
-              Windows releases of TakeoutFix are code signed using the SignPath Foundation. Unsigned or newly published release builds may display a standard security notice in Windows Smart App Control while publisher cloud reputation is established.
+              Desktop packages may be unsigned. Check the release page for the signing status of the version you download; Windows and macOS may show security warnings for unsigned applications.
             </p>
           </div>
         </div>

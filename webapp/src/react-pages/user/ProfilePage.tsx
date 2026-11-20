@@ -3,7 +3,7 @@ import { useAuth } from "../../contexts/AuthContext"
 import { Card, CardContent, CardHeader, CardTitle } from "../../components/ui/card"
 import { Button } from "../../components/ui/button"
 // No react-router-dom imports
-import { collection, query, where, doc, updateDoc, getDocs } from "firebase/firestore"
+import { doc, updateDoc } from "firebase/firestore"
 import { db } from "../../firebase"
 import { ShieldAlert, User, Check, AlertCircle, Trash2 } from "lucide-react"
 import { motion } from "framer-motion"
@@ -11,6 +11,7 @@ import { motion } from "framer-motion"
 
 import { AuthProvider } from "../../contexts/AuthContext"
 import { ToastContainer } from "../../components/ui/toast"
+import { useToastStore } from "../../store/useToastStore"
 
 function ProfilePageContent() {
   const { user, userData, loading, logout, deleteAccount, refreshUserData } = useAuth()
@@ -46,7 +47,6 @@ function ProfilePageContent() {
     setSuccessMsg("");
     setSaveLoading(true);
 
-    const cleanUsername = username.trim().toLowerCase();
     const cleanFirstName = firstName.trim();
     const cleanLastName = lastName.trim();
 
@@ -57,37 +57,7 @@ function ProfilePageContent() {
       return;
     }
 
-    if (cleanUsername.length < 3 || cleanUsername.length > 20) {
-      setErrorMsg("Username must be between 3 and 20 characters.");
-      setSaveLoading(false);
-      return;
-    }
-
-    const usernameRegex = /^[a-zA-Z0-9_-]+$/;
-    if (!usernameRegex.test(cleanUsername)) {
-      setErrorMsg("Username can only contain letters, numbers, underscores, and dashes.");
-      setSaveLoading(false);
-      return;
-    }
-
     try {
-      // Check username uniqueness
-      const q = query(collection(db, "users"), where("username", "==", cleanUsername));
-      const snap = await getDocs(q);
-      
-      let isTaken = false;
-      snap.forEach((doc) => {
-        if (doc.id !== user.uid) {
-          isTaken = true;
-        }
-      });
-
-      if (isTaken) {
-        setErrorMsg("Username is already taken by another user.");
-        setSaveLoading(false);
-        return;
-      }
-
       // Update Firestore user document
       const userRef = doc(db, "users", user.uid);
       const updatedDisplayName = `${cleanFirstName} ${cleanLastName}`.trim();
@@ -95,7 +65,6 @@ function ProfilePageContent() {
       await updateDoc(userRef, {
         firstName: cleanFirstName,
         lastName: cleanLastName,
-        username: cleanUsername,
         displayName: updatedDisplayName
       });
 
@@ -121,9 +90,15 @@ function ProfilePageContent() {
   };
 
   const handleSignOut = async () => {
-    await logout()
-    if (typeof window !== 'undefined') {
-      window.location.href = "/"
+    try {
+      await logout()
+      if (typeof window !== 'undefined') window.location.href = "/"
+    } catch (error) {
+      console.error("Sign-out failed:", error)
+      const message = error instanceof Error && error.message.includes('restore is already open')
+        ? 'Finish or cancel the active restore before signing out.'
+        : 'Could not sign out. Check your connection and try again.'
+      useToastStore.getState().addToast(message, "error")
     }
   }
 
@@ -140,7 +115,10 @@ function ProfilePageContent() {
     setErrorMsg("");
     setDeleteLoading(true);
     try {
-      await deleteAccount(deletePassword || undefined);
+      const localDataCleared = await deleteAccount(deletePassword || undefined);
+      if (!localDataCleared) {
+        window.alert("Your account was deleted, but some browser data could not be cleared. Clear this site's data in your browser settings.");
+      }
       window.location.href = "/";
     } catch (err: any) {
       console.error("Account deletion failed:", err);
@@ -148,7 +126,11 @@ function ProfilePageContent() {
         ? "That password could not be verified. Check it and try again."
         : err?.code === "auth/requires-recent-login"
           ? "Please sign in again and retry account deletion."
-          : "Account deletion could not be completed. Please try again or contact support.");
+          : err?.code === "unavailable" || err?.code === "auth/network-request-failed"
+            ? "Could not reach the account service. Some account data may already have been removed. Reconnect and try again, or contact takeoutfix.support@gmail.com."
+          : err instanceof Error && err.message.startsWith("This account has records that require support")
+            ? err.message
+            : "Account deletion could not be completed. Some account data may already have been removed. Please try again or contact takeoutfix.support@gmail.com.");
       setDeleteLoading(false);
     }
   }
@@ -351,11 +333,12 @@ function ProfilePageContent() {
                         type="text" 
                         value={username} 
                         onChange={(e) => setUsername(e.target.value)}
-                        required
+                        disabled
                         placeholder="username"
                         className="w-full bg-white/5 border border-white/10 rounded-xl pl-8 pr-3 py-2.5 text-sm text-white focus:outline-none focus:border-zinc-500 focus:ring-1 focus:ring-zinc-505 font-mono transition-all" 
                       />
                     </div>
+                    <p className="text-xs text-white/50 mt-2">Username changes are temporarily unavailable. You can still update your name.</p>
                   </div>
                   
                   <div className="flex gap-3 pt-4 border-t border-white/5 mt-6">
@@ -392,7 +375,7 @@ function ProfilePageContent() {
             <Trash2 className="mt-0.5 h-4 w-4 shrink-0 text-red-300" aria-hidden="true" />
             <div>
               <h2 id="delete-account-heading" className="text-sm font-semibold text-red-300">Danger zone · Delete account</h2>
-              <p className="mt-2 text-sm leading-relaxed text-white/60">Permanently remove your account and associated TakeoutFix cloud records. This cannot be undone. Photos and files processed locally are not uploaded and remain on your device.</p>
+              <p className="mt-2 text-sm leading-relaxed text-white/60">Request permanent removal of your account and associated TakeoutFix cloud records. Some records require support review. This cannot be undone. Photos and files processed locally are not uploaded and remain on your device.</p>
               <a href="/privacy#account-deletion" className="mt-2 inline-block text-xs text-white/60 underline underline-offset-2 hover:text-white">Review what account deletion removes</a>
             </div>
           </div>
@@ -405,7 +388,7 @@ function ProfilePageContent() {
           <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 p-4" role="presentation">
             <section role="dialog" aria-modal="true" aria-labelledby="delete-confirm-title" className="w-full max-w-md rounded-2xl border border-white/10 bg-zinc-950 p-6 shadow-2xl">
               <h2 id="delete-confirm-title" className="text-lg font-bold text-white">Permanently delete your account?</h2>
-              <p className="mt-2 text-sm leading-relaxed text-zinc-400">Your TakeoutFix account and associated cloud records will be removed. This cannot be undone. Your local files are not uploaded and will remain on your device.</p>
+              <p className="mt-2 text-sm leading-relaxed text-zinc-400">This requires an internet connection and cannot be undone. Some records require support review. Your local files are not uploaded and will remain on your device.</p>
               {requiresPassword && (
                 <label className="mt-5 block text-sm font-medium text-zinc-200">
                   Confirm with your password

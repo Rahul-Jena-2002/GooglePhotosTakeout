@@ -11,6 +11,10 @@ import com.takeoutfix.ui.fx.*;
 import javafx.application.Application;
 import javafx.application.Platform;
 import javafx.scene.Scene;
+import javafx.scene.control.Alert;
+import javafx.scene.control.Button;
+import javafx.scene.control.ButtonBar;
+import javafx.scene.control.ButtonType;
 import javafx.scene.image.Image;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.StackPane;
@@ -132,7 +136,7 @@ public class TakeoutFxApplication extends Application {
         return switch (type) {
             case TAKEOUT_RESTORE -> new TakeoutRestoreView(stage, extractionService, userSyncBridgeService, sessionStatsService, this::switchWorkspace);
             case HISTORY -> new HistoryView();
-            case SETTINGS -> new SettingsView(exifToolEngine);
+            case SETTINGS -> new SettingsView(exifToolEngine, userSyncBridgeService, this::switchWorkspace);
             default -> null;
         };
     }
@@ -143,6 +147,20 @@ public class TakeoutFxApplication extends Application {
             this.stage = primaryStage;
             primaryStage.setTitle("TakeoutFix - Google Takeout Restorer");
             applyWindowIcons(primaryStage);
+            primaryStage.setOnCloseRequest(event -> {
+                if (taskManager == null || taskManager.getActiveTaskCount() == 0) return;
+                ButtonType keepOpen = new ButtonType("Keep open", ButtonBar.ButtonData.CANCEL_CLOSE);
+                ButtonType close = new ButtonType("Close anyway", ButtonBar.ButtonData.OK_DONE);
+                Alert warning = new Alert(Alert.AlertType.CONFIRMATION,
+                        "Work is still running or paused. Closing now will interrupt it; check any partial output before trying again.",
+                        keepOpen, close);
+                warning.initOwner(primaryStage);
+                warning.setTitle("Work in progress");
+                warning.setHeaderText("Close TakeoutFix?");
+                ((Button) warning.getDialogPane().lookupButton(close)).setDefaultButton(false);
+                ((Button) warning.getDialogPane().lookupButton(keepOpen)).setDefaultButton(true);
+                if (warning.showAndWait().orElse(keepOpen) != close) event.consume();
+            });
 
             BorderPane root = new BorderPane();
             root.getStyleClass().add("app-shell");

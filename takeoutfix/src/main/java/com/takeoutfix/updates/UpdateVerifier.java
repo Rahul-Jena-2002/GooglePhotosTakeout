@@ -4,7 +4,6 @@ import java.io.File;
 import java.io.InputStream;
 import java.nio.file.Files;
 import java.security.MessageDigest;
-import java.util.Locale;
 
 /**
  * Validates the cryptographic integrity of downloaded OTA update files.
@@ -39,15 +38,15 @@ public class UpdateVerifier {
 
     /**
      * Verifies that the file matches the expected SHA-256 hash.
-     * If expectedSha256 is null or empty, verification passes if file size > 0.
+     * Missing or malformed checksums fail verification.
      */
     public static boolean verifyFile(File file, String expectedSha256) {
         if (file == null || !file.exists() || file.length() == 0) {
             return false;
         }
 
-        if (expectedSha256 == null || expectedSha256.isBlank()) {
-            return true;
+        if (!hasValidSha256(expectedSha256)) {
+            return false;
         }
 
         try {
@@ -57,5 +56,9 @@ public class UpdateVerifier {
             System.err.println("[UpdateVerifier] Verification failed with exception: " + e.getMessage());
             return false;
         }
+    }
+
+    static boolean hasValidSha256(String hash) {
+        return hash != null && hash.trim().matches("(?i)[0-9a-f]{64}");
     }
 }

@@ -58,6 +58,7 @@ public class TakeoutRestoreTask extends BackgroundTask {
     protected void execute() throws Exception {
         setState(TaskState.SCANNING);
         setStatusMessage("Analyzing Takeout archive and matching metadata...");
+        java.util.concurrent.atomic.AtomicInteger reportedErrors = new java.util.concurrent.atomic.AtomicInteger();
 
         ExtractionService.RestorationListener listener = new ExtractionService.RestorationListener() {
             @Override
@@ -93,12 +94,13 @@ public class TakeoutRestoreTask extends BackgroundTask {
             @Override
             public void onStats(int scanned, int total, int restored, int unmatched, int errors) {
                 setTotalItems(total);
+                reportedErrors.accumulateAndGet(errors, Math::max);
             }
 
             @Override
             public void onGuestLimitReached() {
                 setState(TaskState.PAUSED);
-                setStatusMessage("1 GB Free Guest Limit reached. Sign in to continue.");
+                setStatusMessage("The next file exceeds your remaining guest allowance. Sign in to continue.");
             }
         };
 
@@ -119,14 +121,40 @@ public class TakeoutRestoreTask extends BackgroundTask {
             );
 
             // Await execution synchronously within the BackgroundTask thread
-            extractionFuture.get();
+            awaitRestore(extractionFuture, this::isCancelRequested);
 
             if (extractionService.isCancelled()) {
                 setState(TaskState.CANCELLED);
-                setStatusMessage("Restoration cancelled by user.");
+                setStatusMessage(outputZip
+                        ? "Restoration cancelled. ZIP files may be incomplete; restart the export."
+                        : "Restoration cancelled by user.");
+            } else {
+                requireComplete(extractionService.isPaused(), reportedErrors.get());
             }
         } finally {
             extractionService.removeRestorationListener(listener);
+        }
+    }
+
+    static void requireComplete(boolean paused, int errors) throws java.io.IOException {
+        if (paused) throw new java.io.IOException("Restoration stopped before completion. Review the log before starting again.");
+        if (errors > 0) throw new java.io.IOException("Restoration finished with " + errors + " file error(s). Review the log.");
+    }
+
+    static void awaitRestore(Future<?> future, java.util.function.BooleanSupplier cancellationRequested) throws Exception {
+        boolean interrupted = false;
+        try {
+            while (true) {
+                try {
+                    future.get();
+                    return;
+                } catch (InterruptedException e) {
+                    if (!cancellationRequested.getAsBoolean()) throw e;
+                    interrupted = true;
+                }
+            }
+        } finally {
+            if (interrupted) Thread.currentThread().interrupt();
         }
     }
 
@@ -148,9 +176,6 @@ public class TakeoutRestoreTask extends BackgroundTask {
     protected void onCancelRequested() {
         if (extractionService != null) {
             extractionService.cancel();
-        }
-        if (extractionFuture != null && !extractionFuture.isDone()) {
-            extractionFuture.cancel(true);
         }
     }
 

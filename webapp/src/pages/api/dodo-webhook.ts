@@ -182,11 +182,13 @@ export const POST: APIRoute = async ({ request }) => {
     // Fetch global config to determine dodo host and test mode
     let dodoHost = "live.dodopayments.com";
     let isTestMode = false;
+    let globalFields: any = null;
     try {
       const globalUrl = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/settings/global`;
       const globalRes = await fetch(globalUrl, { headers });
       if (globalRes.ok) {
         const globalData: any = await globalRes.json();
+        globalFields = globalData.fields;
         dodoHost = globalData.fields?.dodo_host?.stringValue || "live.dodopayments.com";
         isTestMode = globalData.fields?.dodo_test_mode?.booleanValue === true;
       }
@@ -250,9 +252,23 @@ export const POST: APIRoute = async ({ request }) => {
       const plan = data.metadata?.plan || data.metadata?.plankey || data.metadata?.metadata_plan;
       const regionCode = data.metadata?.region || data.metadata?.metadata_region || "t3";
 
-      if (!userId || !plan) {
-        console.error("Missing userId or plan in metadata:", data.metadata);
-        return new Response("Missing metadata", { status: 400 });
+      if (typeof userId !== "string" || !/^[A-Za-z0-9_-]{1,128}$/.test(userId) ||
+          !["recovery_pass", "pro", "super"].includes(plan)) {
+        return new Response("Invalid payment metadata", { status: 400 });
+      }
+
+      if (type === "payment.succeeded") {
+        const productFields = isTestMode
+          ? globalFields?.dodo_products_test?.mapValue?.fields
+          : (globalFields?.dodo_products_live?.mapValue?.fields || globalFields?.dodo_products?.mapValue?.fields);
+        const expectedProduct = productFields?.[regionCode]?.mapValue?.fields?.[plan]?.stringValue;
+        if (typeof expectedProduct !== "string" || !expectedProduct) {
+          return new Response("Payment product is not configured", { status: 503 });
+        }
+        if (!Array.isArray(data.product_cart) || data.product_cart.length !== 1 ||
+            data.product_cart[0]?.product_id !== expectedProduct || data.product_cart[0]?.quantity !== 1) {
+          return new Response("Payment product does not match the requested plan", { status: 400 });
+        }
       }
 
       const timestamp = Date.now();
@@ -268,7 +284,7 @@ export const POST: APIRoute = async ({ request }) => {
       else if (type === "payment.processing") txStatus = "processing";
 
       // 1. Create Transaction Document
-      const txUrl = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/transactions?documentId=${txId}`;
+      const txUrl = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/transactions?documentId=${encodeURIComponent(txId)}`;
       const txBody = {
         fields: {
           txId: { stringValue: txId },
@@ -291,7 +307,7 @@ export const POST: APIRoute = async ({ request }) => {
       // ONLY fulfill plan upgrades if payment succeeded
       if (type === "payment.succeeded") {
         // 2. Update User plan, reset quotas
-        const userUrl = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/users/${userId}?updateMask.fieldPaths=plan&updateMask.fieldPaths=usedBytes&updateMask.fieldPaths=usedFiles&updateMask.fieldPaths=updatedAt`;
+        const userUrl = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/users/${encodeURIComponent(userId)}?updateMask.fieldPaths=plan&updateMask.fieldPaths=usedBytes&updateMask.fieldPaths=usedFiles&updateMask.fieldPaths=updatedAt`;
         const userBody = {
           fields: {
             plan: { stringValue: plan },
@@ -493,7 +509,7 @@ export const POST: APIRoute = async ({ request }) => {
 
   } catch (err: any) {
     console.error("Webhook processing error in Astro endpoint:", err);
-    return new Response(JSON.stringify({ error: err.message }), {
+    return new Response(JSON.stringify({ error: 'Webhook processing failed.' }), {
       status: 500,
       headers: { "Content-Type": "application/json" }
     });

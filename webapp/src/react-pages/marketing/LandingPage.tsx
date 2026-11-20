@@ -3,41 +3,13 @@ import { Button } from "../../components/ui/button"
 
 import { Lock, FileJson, ArrowRight, CheckCircle2, XCircle, ChevronLeft, ChevronRight } from "lucide-react"
 import { useState, useEffect, useRef } from "react"
-import { db } from "../../firebase"
-import { doc, onSnapshot } from "firebase/firestore"
 import AdUnit from "../../components/monetization/AdUnit"
 import Compare from "../../components/ui/Compare"
 import ExpandableFaq from "../../components/ui/ExpandableFaq"
 
 export default function LandingPage() {
-  const [stats, setStats] = useState({
-    filesRestored: 0,
-    bytesProcessed: 0,
-    ticketsResolved: 0,
-    usersCount: 0,
-    filesScanned: 0
-  })
-
   useEffect(() => {
     document.title = "TakeoutFix | Google Takeout EXIF Metadata Merger & Photo Restorer"
-
-    // Fetch global stats
-    const unsubStats = onSnapshot(doc(db, 'platform_stats', 'global'), (doc) => {
-      if (doc.exists()) {
-        const data = doc.data()
-        setStats({
-          filesRestored: data.filesRestored || 0,
-          bytesProcessed: data.bytesProcessed || 0,
-          ticketsResolved: data.ticketsResolved || 0,
-          usersCount: data.usersCount || 0,
-          filesScanned: data.filesScanned || 0
-        })
-      }
-    }, (err) => {
-      console.error("Global stats query error:", err)
-    })
-
-    return () => unsubStats()
   }, [])
 
   const trackRef = useRef<HTMLDivElement>(null)
@@ -175,14 +147,6 @@ export default function LandingPage() {
     }
   }, [isExplicitlyPaused, isPlaying])
 
-  const formatBytes = (bytes: number) => {
-    if (bytes === 0) return '0 B'
-    const k = 1024
-    const sizes = ['B', 'KB', 'MB', 'GB', 'TB', 'PB']
-    const i = Math.floor(Math.log(bytes) / Math.log(k))
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i]
-  }
-
   return (
     <div className="flex flex-col items-center bg-background text-foreground w-full overflow-x-hidden aceternity-grid">
       
@@ -243,38 +207,6 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* 2. STATS SECTION (5-CARD REALTIME TELEMETRY) */}
-      <section className="w-full relative z-10">
-        <div className="flex items-center justify-end max-w-7xl mx-auto px-4 pt-8 pb-3">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-emerald-500/20 bg-emerald-50/50 dark:bg-emerald-950/20 text-xs font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider">
-            <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></div>
-            <span>Realtime Telemetry</span>
-          </div>
-        </div>
-        <div className="max-w-7xl mx-auto px-4 pb-4 grid grid-cols-2 lg:grid-cols-5 gap-4 sm:gap-6 text-center">
-          <div className="glass-card p-5 sm:p-8 flex flex-col items-center justify-center">
-            <div className="text-2xl sm:text-4xl md:text-5xl font-black mb-2 sm:mb-3 text-foreground">{stats.usersCount > 0 ? stats.usersCount.toLocaleString('en-IN') : "—"}</div>
-            <div className="text-[10px] sm:text-xs md:text-sm font-bold text-zinc-400 uppercase tracking-widest">Registered Users</div>
-          </div>
-          <div className="glass-card p-5 sm:p-8 flex flex-col items-center justify-center">
-            <div className="text-2xl sm:text-4xl md:text-5xl font-black mb-2 sm:mb-3 text-foreground">{stats.filesRestored > 0 ? stats.filesRestored.toLocaleString('en-IN') : "—"}</div>
-            <div className="text-[10px] sm:text-xs md:text-sm font-bold text-zinc-400 uppercase tracking-widest">Files Restored</div>
-          </div>
-          <div className="glass-card p-5 sm:p-8 flex flex-col items-center justify-center">
-            <div className="text-2xl sm:text-4xl md:text-5xl font-black mb-2 sm:mb-3 text-foreground">{stats.bytesProcessed > 0 ? formatBytes(stats.bytesProcessed) : "—"}</div>
-            <div className="text-[10px] sm:text-xs md:text-sm font-bold text-zinc-400 uppercase tracking-widest">Data Processed</div>
-          </div>
-          <div className="glass-card p-5 sm:p-8 flex flex-col items-center justify-center">
-            <div className="text-2xl sm:text-4xl md:text-5xl font-black mb-2 sm:mb-3 text-foreground">{stats.filesScanned > 0 ? ((stats.filesRestored / stats.filesScanned) * 100).toFixed(1) + "%" : "—"}</div>
-            <div className="text-[10px] sm:text-xs md:text-sm font-bold text-zinc-400 uppercase tracking-widest">Restore rate</div>
-          </div>
-          <div className="glass-card p-5 sm:p-8 flex flex-col items-center justify-center col-span-2 lg:col-span-1">
-            <div className="text-2xl sm:text-4xl md:text-5xl font-black mb-2 sm:mb-3 text-foreground">{stats.ticketsResolved > 0 ? stats.ticketsResolved.toLocaleString('en-IN') : "—"}</div>
-            <div className="text-[10px] sm:text-xs md:text-sm font-bold text-zinc-400 uppercase tracking-widest">Tickets Resolved</div>
-          </div>
-        </div>
-      </section>
-
       {/* 3. PROBLEM SECTION */}
       <section className="w-full max-w-7xl mx-auto px-4 py-24 sm:py-32 grid md:grid-cols-2 gap-16 items-center relative z-10">
         <div>
@@ -321,7 +253,7 @@ export default function LandingPage() {
         <Lock className="w-16 h-16 sm:w-20 sm:h-20 text-zinc-900 dark:text-zinc-100 mx-auto mb-8" />
         <h2 className="text-4xl sm:text-5xl font-bold tracking-tighter mb-6">Your Photos Never Leave Your Computer.</h2>
         <p className="text-xl sm:text-2xl text-zinc-500 max-w-3xl mx-auto leading-relaxed mb-12">
-          Your photos are 100% safe. The tool works directly on your computer, meaning your photos never get uploaded to the internet or our servers. We literally cannot see your pictures.
+          The browser restore tool processes selected photos on your device without uploading them for restoration. Keep a backup of your originals, and see the privacy policy for other online services the website uses.
         </p>
         <div className="grid md:grid-cols-3 gap-8 max-w-5xl mx-auto text-left">
           <div className="bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 p-6 rounded-xl">

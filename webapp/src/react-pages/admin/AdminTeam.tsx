@@ -319,7 +319,7 @@ export default function AdminTeam() {
   const [loadingInvites, setLoadingInvites] = useState(true)
   const [showInviteModal, setShowInviteModal] = useState(false)
 
-  const isRootAdmin = isSuperAdminEmail(user?.email || adminData?.email)
+  const isRootAdmin = user?.emailVerified === true && isSuperAdminEmail(user.email)
   const isSuperAdmin = adminData?.role === "SUPER_ADMIN" || isRootAdmin
   const addToast = useToastStore.getState().addToast
 
