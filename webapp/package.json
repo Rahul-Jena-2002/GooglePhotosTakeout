@@ -43,8 +43,8 @@
     "zustand": "^5.0.14"
   },
   "devDependencies": {
-    "@astrojs/cloudflare": "^13.7.0",
-    "@astrojs/react": "^5.0.7",
+    "@astrojs/cloudflare": "14.3.4",
+    "@astrojs/react": "6.0.6",
     "@astrojs/tailwind": "^6.0.2",
     "@babel/preset-typescript": "^7.29.7",
     "@eslint/js": "^10.0.1",
@@ -54,7 +54,7 @@
     "@types/react-dom": "^19.2.3",
     "@types/wicg-file-system-access": "^2023.10.7",
     "@vitejs/plugin-react": "^6.0.1",
-    "astro": "^6.4.8",
+    "astro": "7.4.12",
     "autoprefixer": "^10.5.0",
     "eslint": "^10.3.0",
     "eslint-plugin-react-hooks": "^7.1.1",
@@ -67,11 +67,11 @@
     "tailwindcss": "^3.4.19",
     "typescript": "~6.0.2",
     "typescript-eslint": "^8.59.2",
-    "vite": "^7.2.1",
+    "vite": "^8.3.6",
     "wrangler": "^4.99.0"
   },
   "overrides": {
-    "vite": "^7.2.1",
+    "vite": "^8.3.6",
     "uuid": "^11.1.1",
     "sharp": "^0.35.4",
     "esbuild": "^0.28.1",
