@@ -137,7 +137,7 @@ export async function injectImageExif(
   }
 
   try {
-    const { writeMetadata } = await import(/* @vite-ignore */ '@uswriting/exiftool');
+    const { writeMetadata } = await import('@uswriting/exiftool');
     const inputBytes = new Uint8Array(imageBuffer);
     // '-m' instructs ExifTool to ignore minor warnings (e.g. non-standard IPTC tags in PNG)
     const result = await writeMetadata(
@@ -177,7 +177,7 @@ export async function parseImageMetadata(
   const gpsInfo: Record<string, string> = {};
 
   try {
-    const { parseMetadata } = await import(/* @vite-ignore */ '@uswriting/exiftool');
+    const { parseMetadata } = await import('@uswriting/exiftool');
     const inputBytes = new Uint8Array(imageBuffer);
     const result = await parseMetadata(
       { name: filename, data: inputBytes },

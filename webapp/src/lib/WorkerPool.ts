@@ -15,6 +15,11 @@ interface WorkerInstance {
 
 const TASK_TIMEOUT_MS = 120_000;
 
+function createProcessingWorker() {
+  // Vite recognizes the worker entry only when the URL is constructed inline.
+  return new Worker(new URL('../workers/WasmProcessWorker.ts', import.meta.url), { type: 'module' });
+}
+
 export class WorkerPool {
   private instances: WorkerInstance[] = [];
   private taskQueue: WorkerTask[] = [];
@@ -29,9 +34,7 @@ export class WorkerPool {
   private initPool() {
     for (let i = 0; i < this.maxWorkers; i++) {
       try {
-        // High-performance WebAssembly ExifTool + QuickTime atom injector worker
-        const workerUrl = new URL('../workers/WasmProcessWorker.ts', import.meta.url);
-        const worker = new Worker(workerUrl, { type: 'module' });
+        const worker = createProcessingWorker();
         const instance = { worker, busy: false };
         this.instances.push(instance);
         this.monitorIdleWorker(instance);
@@ -120,8 +123,7 @@ export class WorkerPool {
       } catch {}
 
       try {
-        const workerUrl = new URL('../workers/WasmProcessWorker.ts', import.meta.url);
-        idleInstance.worker = new Worker(workerUrl, { type: 'module' });
+        idleInstance.worker = createProcessingWorker();
         this.monitorIdleWorker(idleInstance);
       } catch (e) {
         console.error("Failed to recycle worker after crash:", e);
