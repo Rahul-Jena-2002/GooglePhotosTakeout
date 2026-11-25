@@ -722,7 +722,7 @@ export function PhotoVaultPanel() {
               <span>{verState === 'scanning' ? 'DISCOVERY PHASE' : 'SHA-256 HASHING'}</span>
               <span>{progressPercent}%</span>
             </div>
-            <Progress value={progressPercent} className="h-2 bg-zinc-200 dark:bg-zinc-900 rounded-full" />
+            <Progress aria-label="Photo Vault progress" value={progressPercent} className="h-2 bg-zinc-200 dark:bg-zinc-900 rounded-full" />
           </div>
         )}
       </div>

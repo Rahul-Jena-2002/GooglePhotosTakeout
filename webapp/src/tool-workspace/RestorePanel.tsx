@@ -223,7 +223,7 @@ export function RestorePanel({
             </span>
           )}
           {plan === 'guest' ? (
-            <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-amber-500/10 border border-amber-500/30 text-amber-600 dark:text-amber-400">
+            <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-amber-500/10 border border-amber-500/30 text-amber-800 dark:text-amber-400">
               1.0 GB Free Limit
             </span>
           ) : (
@@ -236,7 +236,7 @@ export function RestorePanel({
               ? isPaused
                 ? 'bg-amber-500/10 border-amber-500/20 text-amber-600 dark:text-amber-400'
                 : 'bg-indigo-500/10 border-indigo-500/20 text-indigo-600 dark:text-indigo-400 animate-pulse'
-              : 'bg-emerald-500/10 border-emerald-500/20 text-emerald-600 dark:text-emerald-400'
+              : 'bg-emerald-500/10 border-emerald-500/20 text-emerald-800 dark:text-emerald-400'
           }`}>
             {isProcessing ? (isPaused ? 'PAUSED' : 'PROCESSING') : 'READY'}
           </span>
@@ -538,7 +538,7 @@ export function RestorePanel({
                     <span>Restoration Progress</span>
                     <span>{progress}%</span>
                   </div>
-                  <Progress value={progress} className="h-2 bg-zinc-200 dark:bg-white/10 rounded-full" />
+                  <Progress aria-label="Restoration progress" value={progress} className="h-2 bg-zinc-200 dark:bg-white/10 rounded-full" />
                 </div>
               )}
             </div>
@@ -617,8 +617,8 @@ export function RestorePanel({
                     <span>Processed Volume &amp; Quota</span>
                     <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border ${
                       plan === 'guest'
-                        ? 'bg-amber-500/10 border-amber-500/20 text-amber-600 dark:text-amber-400'
-                        : 'bg-emerald-500/10 border-emerald-500/20 text-emerald-600 dark:text-emerald-400'
+                        ? 'bg-amber-500/10 border-amber-500/20 text-amber-800 dark:text-amber-400'
+                        : 'bg-emerald-500/10 border-emerald-500/20 text-emerald-800 dark:text-emerald-400'
                     }`}>
                       {plan === 'guest' ? 'Guest Mode (1.0 GB Free Quota)' : 'Account Active (Unlimited Volume)'}
                     </span>
@@ -660,6 +660,7 @@ export function RestorePanel({
             {plan === 'guest' && (
               <div className="pt-1.5 border-t border-zinc-100 dark:border-white/5">
                 <Progress
+                  aria-label="Guest quota used"
                   value={Math.min(100, ((currentUsedBytes / (1024 * 1024 * 1024)) * 100))}
                   className="h-1.5 bg-zinc-200 dark:bg-white/10 rounded-full"
                 />
@@ -758,7 +759,7 @@ export function RestorePanel({
                     type="button"
                     onClick={downloadIssuesLog}
                     title="Download issues summary (restoration_issues.txt)"
-                    className="text-xs text-amber-700 dark:text-amber-300 hover:text-amber-900 dark:hover:text-amber-200 px-3 py-1.5 rounded-lg bg-amber-500/10 border border-amber-500/30 font-medium flex items-center gap-1.5 cursor-pointer transition-colors"
+                    className="text-xs text-amber-800 dark:text-amber-300 hover:text-amber-900 dark:hover:text-amber-200 px-3 py-1.5 rounded-lg bg-amber-500/10 border border-amber-500/30 font-medium flex items-center gap-1.5 cursor-pointer transition-colors"
                   >
                     <AlertTriangle className="w-3.5 h-3.5" /> Issues Report
                   </button>
@@ -769,7 +770,7 @@ export function RestorePanel({
             {/* Log Stream Terminal */}
             <div ref={logContainerRef} className="flex-grow bg-black dark:bg-black p-3 sm:p-4 overflow-y-auto font-mono text-xs leading-[1.6] max-h-[260px] sm:max-h-[320px] xl:max-h-[380px]">
               {currentDisplayLogs.length === 0 ? (
-                <div className="h-full flex items-center justify-center text-zinc-500 dark:text-white/20 italic py-12">
+                <div className="h-full flex items-center justify-center text-zinc-300 italic py-12">
                   {logTab === 'all' ? 'Awaiting activity...' : `No ${logTab} logs recorded.`}
                 </div>
               ) : (

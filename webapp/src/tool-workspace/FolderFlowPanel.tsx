@@ -363,7 +363,7 @@ export function FolderFlowPanel() {
               <span>Organizing files...</span>
               <span>{progress}% ({organizedCount} processed)</span>
             </div>
-            <Progress value={progress} className="h-2 bg-zinc-900 rounded-full" />
+            <Progress aria-label="Folder processing progress" value={progress} className="h-2 bg-zinc-900 rounded-full" />
           </div>
         )}
       </div>

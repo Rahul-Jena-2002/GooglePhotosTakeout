@@ -884,7 +884,7 @@ export function PhotoStudioPanel() {
                   <span>{statusMsg}</span>
                   <span className="font-mono text-zinc-900 dark:text-white font-bold">{progress}%</span>
                 </div>
-                <Progress value={progress} className="h-1.5 bg-zinc-200 dark:bg-zinc-800" />
+                <Progress aria-label="Photo processing progress" value={progress} className="h-1.5 bg-zinc-200 dark:bg-zinc-800" />
               </div>
             )}
 

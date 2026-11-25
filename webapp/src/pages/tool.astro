@@ -3,7 +3,6 @@ export const prerender = true;
 import Layout from "../layouts/Layout.astro";
 import ToolWorkspace from "../react-pages/tool/ToolWorkspace";
 import Icon from "../components/ui/Icon.astro";
-import AdUnit from "../components/monetization/AdUnit";
 
 ---
 
@@ -14,7 +13,7 @@ import AdUnit from "../components/monetization/AdUnit";
 >
 
   <!-- 1. INTERACTIVE TOOL WORKSPACE (UNMODIFIED UI) -->
-  <div id="tool-workspace">
+  <div id="tool-workspace" class="min-h-[calc(100vh-64px)]">
   <noscript><p class="mx-auto max-w-3xl px-6 py-6 text-zinc-700 dark:text-zinc-300">The restore tool needs JavaScript. Enable it in your browser to select files and save restored copies.</p></noscript>
   <ToolWorkspace client:only="react">
     <section slot="fallback" class="w-full bg-background text-foreground">
@@ -38,17 +37,6 @@ import AdUnit from "../components/monetization/AdUnit";
     </section>
   </ToolWorkspace>
   </div>
-
-  <!-- Responsive ad placement managed by the existing monetization settings. -->
-  <section class="w-full max-w-5xl mx-auto px-4 py-3 relative z-10" aria-label="Sponsored recommendations">
-    <div class="tool-ad-slot">
-      <AdUnit client:only="react" placement="TOOL_MANUAL_TOP" />
-    </div>
-  </section>
-
-  <style>
-    .tool-ad-slot { position: relative; min-height: 72px; }
-  </style>
 
   <!-- 2. SCROLLABLE USER MANUAL & POST-RESTORATION GUIDE (BELOW WORKSPACE) -->
   <div class="w-full bg-zinc-50 dark:bg-zinc-950 border-t border-zinc-200 dark:border-zinc-800/80 text-zinc-700 dark:text-zinc-300 font-sans relative z-10">
@@ -113,10 +101,10 @@ import AdUnit from "../components/monetization/AdUnit";
               <div class="font-bold text-zinc-900 dark:text-white flex items-center gap-2">
                 <span>💡 Why does File Explorer / Finder show today's date?</span>
               </div>
-              <p class="text-zinc-600 dark:text-zinc-400">
+              <p class="text-zinc-700 dark:text-zinc-400">
                 The tool attempts to write available dates and locations into supported photos. Your browser cannot change the separate “Date created” value shown by your computer's file manager.
               </p>
-              <p class="text-zinc-600 dark:text-zinc-400">
+              <p class="text-zinc-700 dark:text-zinc-400">
                 Some photo apps can read restored photo dates. The optional file-date helpers require further testing; keep your original backup and do not rely on the helpers yet.
               </p>
             </div>
@@ -128,7 +116,7 @@ import AdUnit from "../components/monetization/AdUnit";
               <div class="p-5 rounded-xl bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 shadow-sm flex flex-col justify-between">
                 <div>
                   <div class="flex items-center justify-between mb-3">
-                    <span class="font-mono text-xs font-bold text-emerald-600 dark:text-emerald-400 px-2 py-0.5 rounded bg-emerald-500/10 border border-emerald-500/20">
+                    <span class="font-mono text-xs font-bold text-emerald-800 dark:text-emerald-400 px-2 py-0.5 rounded bg-emerald-500/10 border border-emerald-500/20">
                       sync_windows_dates.bat
                     </span>
                     <span class="text-[11px] font-mono text-zinc-500">Windows Users</span>
@@ -161,11 +149,6 @@ import AdUnit from "../components/monetization/AdUnit";
             </div>
           </div>
         </div>
-      </section>
-
-      <!-- Sponsored Recommendations: In-Manual Banner -->
-      <section class="mb-14 relative z-10" aria-label="Sponsored recommendations">
-        <AdUnit client:only="react" placement="TOOL_BOTTOM" />
       </section>
 
       <!-- ========================================================================= -->
@@ -220,15 +203,15 @@ import AdUnit from "../components/monetization/AdUnit";
             <ul class="space-y-2 text-xs text-zinc-600 dark:text-zinc-400">
               <li class="flex items-center justify-between py-1 border-b border-zinc-100 dark:border-zinc-800/60">
                 <span class="text-zinc-800 dark:text-white font-medium">JPEG / JPG</span>
-                <span class="font-mono text-emerald-600 dark:text-emerald-400">Dates and locations</span>
+                <span class="font-mono text-emerald-800 dark:text-emerald-400">Dates and locations</span>
               </li>
               <li class="flex items-center justify-between py-1 border-b border-zinc-100 dark:border-zinc-800/60">
                 <span class="text-zinc-800 dark:text-white font-medium">Apple HEIC / HEIF</span>
-                <span class="font-mono text-emerald-600 dark:text-emerald-400">Photo information</span>
+                <span class="font-mono text-emerald-800 dark:text-emerald-400">Photo information</span>
               </li>
               <li class="flex items-center justify-between py-1 border-b border-zinc-100 dark:border-zinc-800/60">
                 <span class="text-zinc-800 dark:text-white font-medium">PNG &amp; WebP</span>
-                <span class="font-mono text-emerald-600 dark:text-emerald-400">Photo information</span>
+                <span class="font-mono text-emerald-800 dark:text-emerald-400">Photo information</span>
               </li>
             </ul>
           </div>
@@ -238,15 +221,15 @@ import AdUnit from "../components/monetization/AdUnit";
             <ul class="space-y-2 text-xs text-zinc-600 dark:text-zinc-400">
               <li class="flex items-center justify-between py-1 border-b border-zinc-100 dark:border-zinc-800/60">
                 <span class="text-zinc-800 dark:text-white font-medium">MP4 (MPEG-4 Part 14)</span>
-                <span class="font-mono text-emerald-600 dark:text-emerald-400">Dates when supported</span>
+                <span class="font-mono text-emerald-800 dark:text-emerald-400">Dates when supported</span>
               </li>
               <li class="flex items-center justify-between py-1 border-b border-zinc-100 dark:border-zinc-800/60">
                 <span class="text-zinc-800 dark:text-white font-medium">MOV (QuickTime Movie)</span>
-                <span class="font-mono text-emerald-600 dark:text-emerald-400">Dates when supported</span>
+                <span class="font-mono text-emerald-800 dark:text-emerald-400">Dates when supported</span>
               </li>
               <li class="flex items-center justify-between py-1 border-b border-zinc-100 dark:border-zinc-800/60">
                 <span class="text-zinc-800 dark:text-white font-medium">M4V</span>
-                <span class="font-mono text-emerald-600 dark:text-emerald-400">Dates when supported</span>
+                <span class="font-mono text-emerald-800 dark:text-emerald-400">Dates when supported</span>
               </li>
             </ul>
             <p class="mt-3 text-xs text-zinc-600 dark:text-zinc-400">Video GPS and Live Photo pairing are not restored. Some other formats may be copied without restored metadata.</p>
@@ -264,7 +247,7 @@ import AdUnit from "../components/monetization/AdUnit";
               <Icon name="shield-check" class="w-5 h-5" />
             </div>
             <div>
-              <span class="text-xs font-mono font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400">Your files stay on your device</span>
+              <span class="text-xs font-mono font-bold uppercase tracking-wider text-emerald-800 dark:text-emerald-400">Your files stay on your device</span>
               <h3 class="text-xl font-bold text-zinc-900 dark:text-white">Private photo restoration</h3>
             </div>
           </div>

@@ -76,6 +76,7 @@ export function CommandSidebar({
         {plan === 'guest' && (
           <div className="space-y-1 pt-1">
             <Progress
+              aria-label="Guest quota used"
               value={Math.min(100, ((currentUsedBytes / (1024 * 1024 * 1024)) * 100))}
               className="h-1.5 bg-zinc-200 dark:bg-white/10"
             />
