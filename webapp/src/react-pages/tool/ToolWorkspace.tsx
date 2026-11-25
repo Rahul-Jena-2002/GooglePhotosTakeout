@@ -96,12 +96,11 @@ export function ToolWorkspaceContent() {
   return (
     <AdBlockGate>
       <div className="tool-workspace-root w-full min-h-[calc(100vh-64px)] h-auto flex flex-col bg-[#F6F6F8] dark:bg-[#101114] text-zinc-900 dark:text-zinc-100 transition-colors duration-150">
-        {(loading || !interactive) && <p role="status" className="px-4 py-3 text-sm text-zinc-700 dark:text-zinc-300">{!interactive ? "Preparing the restore tool…" : user ? "Checking your account. Please wait before starting a restore." : "Checking your account. Guest limits apply until sign-in is confirmed."}</p>}
-
         {/* Main content: 4 tool tabs */}
         <fieldset className="min-w-0" disabled={!interactive || (loading && !!user && !pipeline.isProcessing)}>
         <RestorePanel
           activeToolTab={pipeline.activeToolTab}
+          readiness={!interactive ? "Preparing…" : loading ? "Checking account…" : undefined}
           setActiveToolTab={pipeline.setActiveToolTab}
           plan={pipeline.plan}
           unlockFreeFeatures={pipeline.unlockFreeFeatures}

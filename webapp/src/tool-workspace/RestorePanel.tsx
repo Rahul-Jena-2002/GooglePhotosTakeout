@@ -20,6 +20,7 @@ interface RestorePanelProps {
   downloadAuditLog?: () => void
   downloadIssuesLog?: () => void
   activeToolTab: ToolTab
+  readiness?: string
   setActiveToolTab: (tab: ToolTab) => void
   plan: string
   unlockFreeFeatures?: boolean
@@ -86,6 +87,7 @@ export function RestorePanel({
   downloadAuditLog,
   downloadIssuesLog,
   activeToolTab,
+  readiness,
   takeoutFolder,
   outputFolder,
   zipFile,
@@ -233,14 +235,16 @@ export function RestorePanel({
               Unlimited Account
             </span>
           )}
-          <span className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full border ${
+          <span role="status" className={`inline-flex w-28 justify-center text-[10px] font-bold px-2.5 py-0.5 rounded-full border ${
             isProcessing
               ? isPaused
                 ? 'bg-amber-500/10 border-amber-500/20 text-amber-600 dark:text-amber-400'
                 : 'bg-indigo-500/10 border-indigo-500/20 text-indigo-600 dark:text-indigo-400 animate-pulse'
-              : 'bg-emerald-500/10 border-emerald-500/20 text-emerald-800 dark:text-emerald-400'
+              : readiness
+                ? 'bg-zinc-100 dark:bg-zinc-800 border-zinc-200 dark:border-zinc-700 text-zinc-700 dark:text-zinc-300'
+                : 'bg-emerald-500/10 border-emerald-500/20 text-emerald-800 dark:text-emerald-400'
           }`}>
-            {isProcessing ? (isPaused ? 'PAUSED' : 'PROCESSING') : 'READY'}
+            {isProcessing ? (isPaused ? 'PAUSED' : 'PROCESSING') : readiness ?? 'READY'}
           </span>
           <div className="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-zinc-100 dark:bg-zinc-800/80 border border-zinc-200 dark:border-zinc-700/60 text-zinc-600 dark:text-zinc-400 text-[11px] font-medium">
             <ShieldCheck className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
