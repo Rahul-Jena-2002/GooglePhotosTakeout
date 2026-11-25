@@ -1355,10 +1355,8 @@ export function useToolPipeline() {
                 bufferOrBlob = await fileObj.arrayBuffer();
               } else if (zipEntry) {
                 const { Uint8ArrayWriter } = await loadZipTools();
-                const writer = new Uint8ArrayWriter();
-                const bytes = await zipEntry.getData!(writer);
+                const bytes = await zipEntry.getData!(new Uint8ArrayWriter());
                 bufferOrBlob = bytes.buffer;
-                (writer as any).writable = null;
               }
 
               if (!isCurrentRun()) return;
