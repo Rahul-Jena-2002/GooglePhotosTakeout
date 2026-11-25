@@ -1185,6 +1185,7 @@ export function useToolPipeline() {
             }
             if (!Number.isSafeInteger(size) || size < 0) throw new Error("The source file has an invalid size.");
             if (!isCurrentRun()) return;
+            const zipCompressionLevel = /\.(?:jpe?g|png|webp|gif|heic|heif|avif|mp4|m4v|mov|webm|mkv)$/i.test(fileRecord.filename) ? 0 : undefined;
             if (zipModeRef.current) {
               if (size > memoryBudget.zipPartBytes || (zipEntry && size > memoryBudget.fileBytes)) {
                 throw new Error("This file is too large for a browser ZIP download on this device. Restore to a folder or use the desktop app.");
@@ -1406,7 +1407,8 @@ export function useToolPipeline() {
                 const dateObj = epochSec ? new Date(epochSec * 1000)
                   : fileObj ? new Date(fileObj.lastModified) : zipEntry.lastModDate;
                 await currentZipWriterRef.current.add(zipEntryPath, new BlobReader(new Blob([bufferOrBlob])), {
-                  lastModDate: dateObj
+                  lastModDate: dateObj,
+                  level: zipCompressionLevel,
                 });
                 outputDescription = `ZIP part ${currentZipPartRef.current} entry: ${zipEntryPath}`;
                 currentZipBytesRef.current += size;
@@ -1454,7 +1456,8 @@ export function useToolPipeline() {
 
                 if (!isCurrentRun()) return;
                 await currentZipWriterRef.current.add(zipEntryPath, contentReader, {
-                  lastModDate: dateObj
+                  lastModDate: dateObj,
+                  level: zipCompressionLevel,
                 });
                 outputDescription = `ZIP part ${currentZipPartRef.current} entry: ${zipEntryPath}`;
                 currentZipBytesRef.current += size;
