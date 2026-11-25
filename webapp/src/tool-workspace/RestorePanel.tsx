@@ -23,13 +23,6 @@ interface RestorePanelProps {
   readiness?: string
   setActiveToolTab: (tab: ToolTab) => void
   plan: string
-  unlockFreeFeatures?: boolean
-  tierThresholds: {
-    free: { maxFiles: number; maxSizeMB: number }
-    recovery_pass: { maxFiles: number; maxSizeMB: number }
-    pro: { maxFiles: number; maxSizeMB: number }
-    super: { maxFiles: number; maxSizeMB: number }
-  }
   takeoutFolder: FileSystemDirectoryHandle | null
   outputFolder: FileSystemDirectoryHandle | null
   zipFile: File | null
@@ -60,21 +53,6 @@ interface RestorePanelProps {
   pauseProcessing: () => void
   resumeProcessing: () => void
   resetForNewRestore: () => void
-  viewerFile: File | null
-  viewerExif: Record<string, unknown> | null
-  viewerLoading: boolean
-  handleViewerFileChange: (file: File) => void
-  compMediaFile: File | null
-  compJsonFile: File | null
-  compResult: Record<string, unknown> | null
-  handleCompFilesChange: (media: File | null, json: File | null) => void
-  dupFolder: FileSystemDirectoryHandle | null
-  dupIsScanning: boolean
-  dupStats: { scanned: number; duplicates: number; savedBytes: number }
-  dupGroups: Record<string, unknown>[]
-  dupScanStatus: string
-  handleSelectDupFolder: () => void
-  startDuplicateScan: () => void
   sessionFiles?: number
   sessionBytes?: number
   currentUsedBytes?: number

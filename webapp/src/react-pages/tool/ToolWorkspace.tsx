@@ -22,7 +22,7 @@ import { ToolModals } from "../../tool-workspace/ToolModals"
 // Inner component — rendered inside AuthProvider
 // ---------------------------------------------------------------------------
 export function ToolWorkspaceContent() {
-  const { user, userData, loading, login } = useAuth()
+  const { user, userData, loading, login, maintenance } = useAuth()
   const [interactive, setInteractive] = useState(false)
   useEffect(() => setInteractive(true), [])
 
@@ -55,7 +55,7 @@ export function ToolWorkspaceContent() {
   }, [pipeline.isProcessing])
 
   // ── Auth / system guards (all hooks are above — React rules of hooks) ──────
-  if (pipeline.maintenance) {
+  if (maintenance) {
     return (
       <div className="min-h-[calc(100vh-64px)] bg-[#F6F6F8] dark:bg-[#101114] flex flex-col items-center justify-center p-6 text-center text-zinc-900 dark:text-white">
         <div className="w-16 h-16 bg-amber-500/10 border border-amber-500/20 text-amber-500 dark:text-amber-400 rounded-full flex items-center justify-center mb-6">
@@ -103,8 +103,6 @@ export function ToolWorkspaceContent() {
           readiness={!interactive ? "Preparing…" : loading ? "Checking account…" : undefined}
           setActiveToolTab={pipeline.setActiveToolTab}
           plan={pipeline.plan}
-          unlockFreeFeatures={pipeline.unlockFreeFeatures}
-          tierThresholds={pipeline.tierThresholds}
           takeoutFolder={pipeline.takeoutFolder}
           outputFolder={pipeline.outputFolder}
           zipFile={pipeline.zipFile}
@@ -134,21 +132,6 @@ export function ToolWorkspaceContent() {
           pauseProcessing={pipeline.pauseProcessing}
           resumeProcessing={pipeline.resumeProcessing}
           resetForNewRestore={pipeline.resetForNewRestore}
-          viewerFile={pipeline.viewerFile}
-          viewerExif={pipeline.viewerExif}
-          viewerLoading={pipeline.viewerLoading}
-          handleViewerFileChange={pipeline.handleViewerFileChange}
-          compMediaFile={pipeline.compMediaFile}
-          compJsonFile={pipeline.compJsonFile}
-          compResult={pipeline.compResult}
-          handleCompFilesChange={pipeline.handleCompFilesChange}
-          dupFolder={pipeline.dupFolder}
-          dupIsScanning={pipeline.dupIsScanning}
-          dupStats={pipeline.dupStats}
-          dupGroups={pipeline.dupGroups}
-          dupScanStatus={pipeline.dupScanStatus}
-          handleSelectDupFolder={pipeline.handleSelectDupFolder}
-          startDuplicateScan={pipeline.startDuplicateScan}
           zipMode={pipeline.zipMode}
           elapsedSeconds={pipeline.elapsedSeconds}
           speedMBs={pipeline.speedMBs}

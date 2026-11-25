@@ -9,12 +9,12 @@ import { useToolStore } from "../store/useToolStore"
 import { useToastStore } from "../store/useToastStore"
 import { sanitizeFilename, findMatchingJsonName, safeParseJson, extractTimestamp, extractCoordinates, MAX_RESTORE_SIDECAR_BYTES } from "../services/restoration/MetadataMatcher"
 // ZipMetadataMatcher is used via normalizeZipPath only (findMatchingJsonNameForZip resolved during scan phase)
-import { isSupportedImageFormat, parseImageMetadata, isJpeg } from "../services/restoration/DeepExifRestorer"
+import { isSupportedImageFormat } from "../services/restoration/DeepExifRestorer"
 import { isVideoFilename } from "../services/restoration/VideoMetadataRestorer"
 import { getUniqueFileHandle } from "../services/restoration/outputFile"
 import { reserveZipPath } from "../services/restoration/zipPathSafety"
 import { db } from "../firebase"
-import { doc, setDoc, increment, addDoc, collection, onSnapshot } from "firebase/firestore"
+import { doc, setDoc, increment, addDoc, collection } from "firebase/firestore"
 import { indexedDbService } from "../lib/indexedDbService"
 import { acquireRestoreLock, withRestoreLock } from "../lib/restoreLock"
 // piexifjs eliminated in favor of 100% WebAssembly ExifTool
@@ -28,6 +28,7 @@ import { getGuestUsage, ensureGuestUsageLoaded, recordGuestUsage, guestQuotaDeci
 import { pendingUsageKey, flushUnstoredUsage, recoverAccountBatches, UsageCheckpoints, PendingZipUsage, type UnstoredUsage } from "./pendingUsage"
 import { applyUsageBatch } from "./usageBatch"
 import { restoreFileReservation, restoreMemoryBudget } from "./restoreMemoryBudget"
+import { useRestoreReports } from "./useRestoreReports"
 import { saveHandles } from "../lib/handleStore"
 
 // ---------------------------------------------------------------------------
@@ -49,19 +50,6 @@ export type ToolTab = 'restore' | 'photovault' | 'folderflow' | 'viewer' | 'comp
 // ---------------------------------------------------------------------------
 export function useToolPipeline() {
   const wakeLockSentinelRef = useRef<any>(null);
-  const auditLogLinesRef = useRef<string[]>([]);
-  const issuesLogLinesRef = useRef<string[]>([]);
-  const latestAuditLogRef = useRef<string>("");
-  const latestIssuesLogRef = useRef<string>("");
-
-  const resetReports = (resumed: boolean) => {
-    const notice = 'Earlier file details are unavailable after resuming; check the original output and any earlier reports.';
-    auditLogLinesRef.current = resumed ? [notice] : [];
-    issuesLogLinesRef.current = resumed ? [notice] : [];
-    latestAuditLogRef.current = '';
-    latestIssuesLogRef.current = '';
-  };
-
   const [elapsedSeconds, setElapsedSeconds] = useState<number>(0);
   const [speedMBs, setSpeedMBs] = useState<string>("0.0");
 
@@ -82,37 +70,6 @@ export function useToolPipeline() {
     }
   };
 
-  const downloadAuditLog = () => {
-    let text = latestAuditLogRef.current || auditLogLinesRef.current.join('\r\n') || "No logs recorded.";
-    if (!latestAuditLogRef.current && currentSessionRef.current?.outputMode === 'zip') {
-      text = "This ZIP restore has not produced a final report. Entries may belong to an archive that was not saved; check your downloads.\r\n\r\n" + text;
-    }
-    const blob = new Blob([text], { type: 'text/plain' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'restoration_log.txt';
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    setTimeout(() => URL.revokeObjectURL(url), 1000);
-  };
-
-  const downloadIssuesLog = () => {
-    let text = latestIssuesLogRef.current || issuesLogLinesRef.current.join('\r\n') || "No issues recorded.";
-    if (!latestIssuesLogRef.current && currentSessionRef.current?.outputMode === 'zip') {
-      text = "This ZIP restore has not produced a final report. Entries may belong to an archive that was not saved; check your downloads.\r\n\r\n" + text;
-    }
-    const blob = new Blob([text], { type: 'text/plain' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'restoration_issues.txt';
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    setTimeout(() => URL.revokeObjectURL(url), 1000);
-  };
   const { user, userData, refreshUserData } = useAuth()
   const currentUserUidRef = useRef<string | null>(null)
   currentUserUidRef.current = user?.uid || null
@@ -142,16 +99,6 @@ export function useToolPipeline() {
   const currentUsedFiles = !user ? guestUsage.files : getUserFiles(userData as unknown as Record<string, unknown>);
   const currentUsedBytes = !user ? guestUsage.bytes : getUserBytes(userData as unknown as Record<string, unknown>);
 
-  const [tierThresholds, setTierThresholds] = useState({
-    guest:         { maxFiles: Infinity, maxSizeMB: 1024 },
-    free:          { maxFiles: Infinity, maxSizeMB: Infinity },
-    recovery_pass: { maxFiles: Infinity, maxSizeMB: Infinity },
-    pro:           { maxFiles: Infinity, maxSizeMB: Infinity },
-    super:         { maxFiles: Infinity, maxSizeMB: Infinity },
-  })
-  const [isFreePromoActive, setIsFreePromoActive] = useState(false)
-  const [unlockFreeFeatures, setUnlockFreeFeatures] = useState(true)
-
   // Guests can sign in to continue after reaching the free guest limit.
   const isFreeUnlimited = Boolean(user);
   const limitFiles = Infinity;
@@ -166,56 +113,6 @@ export function useToolPipeline() {
     }
     return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
   };
-
-  // Maintenance State
-  const [maintenance, setMaintenance] = useState(false)
-  useEffect(() => {
-    const unsub = onSnapshot(doc(db, "settings", "global"), (snap) => {
-      if (snap.exists()) {
-        const data = snap.data()
-        setMaintenance(data.maintenance ?? false)
-        // Check limited-time free unlimited promo
-        const promo = data.freeUnlimitedPromo
-        if (promo && promo.enabled && promo.endsAt && Date.now() < promo.endsAt) {
-          setIsFreePromoActive(true)
-        } else {
-          setIsFreePromoActive(false)
-        }
-        // Sync unlockFreeFeatures setting (default to true)
-        setUnlockFreeFeatures(data.unlockFreeFeatures !== false)
-        // Sync tool thresholds from admin settings in real-time
-        const stored = data.tierThresholds
-        if (stored) {
-          const parseLimit = (val: any) => {
-            const num = Number(val);
-            return (val === undefined || val === null || num === 0 || isNaN(num)) ? Infinity : num;
-          };
-          setTierThresholds({
-            guest: { maxFiles: Infinity, maxSizeMB: GUEST_MAX_BYTES / 1024 / 1024 },
-            free: {
-              maxFiles: parseLimit(stored.free?.maxFiles),
-              maxSizeMB: parseLimit(stored.free?.maxSizeMB),
-            },
-            recovery_pass: {
-              maxFiles: parseLimit(stored.recovery_pass?.maxFiles),
-              maxSizeMB: parseLimit(stored.recovery_pass?.maxSizeMB),
-            },
-            pro: {
-              maxFiles: parseLimit(stored.pro?.maxFiles),
-              maxSizeMB: parseLimit(stored.pro?.maxSizeMB),
-            },
-            super: {
-              maxFiles: parseLimit(stored.super?.maxFiles),
-              maxSizeMB: parseLimit(stored.super?.maxSizeMB),
-            },
-          })
-        }
-      }
-    }, (err) => {
-      console.error("Global settings query error:", err)
-    })
-    return unsub
-  }, [])
 
   const [, setTimeTick] = useState(0)
 
@@ -297,6 +194,7 @@ export function useToolPipeline() {
   const lastActiveSessionUpdateRef = useRef<number>(0)
   const lastCommitTimeRef = useRef<number>(0)
   const currentSessionRef = useRef<ActiveSession | null>(null)
+  const { auditLogLinesRef, issuesLogLinesRef, resetReports, downloadAuditLog, downloadIssuesLog, finalizeReports } = useRestoreReports(currentSessionRef);
   const usageOwnerUidRef = useRef<string | null>(null)
   const cancelForAccountChangeRef = useRef<(() => Promise<void>) | null>(null)
   const restoredTimestampsCatalogRef = useRef<{ path: string; epoch: number }[]>([])
@@ -419,23 +317,6 @@ export function useToolPipeline() {
     }
     restoreLockReleaseRef.current = release
   }
-
-  // 1. Visual EXIF Viewer state
-  const [viewerFile, setViewerFile] = useState<File | null>(null)
-  const [viewerExif, setViewerExif] = useState<Record<string, unknown> | null>(null)
-  const [viewerLoading, setViewerLoading] = useState(false)
-
-  // 2. Metadata Comparison state
-  const [compMediaFile, setCompMediaFile] = useState<File | null>(null)
-  const [compJsonFile, setCompJsonFile] = useState<File | null>(null)
-  const [compResult, setCompResult] = useState<Record<string, unknown> | null>(null)
-
-  // 3. Duplicate Space Analyzer state
-  const [dupFolder, setDupFolder] = useState<FileSystemDirectoryHandle | null>(null)
-  const [dupIsScanning, setDupIsScanning] = useState(false)
-  const [dupStats, setDupStats] = useState({ scanned: 0, duplicates: 0, savedBytes: 0 })
-  const [dupGroups, setDupGroups] = useState<Record<string, unknown>[]>([])
-  const [dupScanStatus, setDupScanStatus] = useState("Idle")
 
   // Calculate optimal threads based on hardwareConcurrency, device memory, and headroom
   const getOptimalThreadCount = () => {
@@ -1807,42 +1688,7 @@ export function useToolPipeline() {
 
     // Prepare reports for download and write copies for folder output.
     const outHandle = currentSessionRef.current?.outputMode === 'zip' ? null : currentSessionRef.current?.outputHandle || outputFolder;
-    const auditText = [
-      "==================================================================",
-      "TAKEOUTFIX - RESTORATION LOG",
-      "==================================================================",
-      `Generated: ${new Date().toISOString()}`,
-      `Application: TakeoutFix Metadata Restorer`,
-      `Files Processed: ${statsBuffer.current.scanned}`,
-      `Metadata Writes Reported Successful: ${statsBuffer.current.matched}`,
-      `Files Needing Review: ${statsBuffer.current.unmatched}`,
-      `Metadata Fallbacks: ${statsBuffer.current.exifFailed}`,
-      `Errors: ${statsBuffer.current.errors}`,
-      "==================================================================",
-      "Check restored files in your photo app; metadata is not independently verified by this report.",
-      "",
-      ...auditLogLinesRef.current
-    ].join('\r\n');
-
-    const issuesText = [
-      "==================================================================",
-      "TAKEOUTFIX - RESTORATION ISSUES & REVIEW REPORT",
-      "==================================================================",
-      `Generated: ${new Date().toISOString()}`,
-      `Files Needing Review: ${statsBuffer.current.unmatched}`,
-      `Metadata Fallbacks: ${statsBuffer.current.exifFailed}`,
-      `Errors: ${statsBuffer.current.errors}`,
-      "==================================================================",
-      "",
-      ...(issuesLogLinesRef.current.length > 0
-        ? issuesLogLinesRef.current
-        : [statsBuffer.current.unmatched || statsBuffer.current.exifFailed || statsBuffer.current.errors
-          ? "Issues were recorded in the totals; details may be unavailable from a previous session."
-          : "No errors or files needing review were recorded."])
-    ].join('\r\n');
-
-    latestAuditLogRef.current = auditText;
-    latestIssuesLogRef.current = issuesText;
+    const { auditText, issuesText } = finalizeReports(statsBuffer.current);
 
     if (outHandle) {
       try {
@@ -1980,228 +1826,6 @@ export function useToolPipeline() {
     } finally {
       setIsProcessing(false)
       releaseRestoreLock()
-    }
-  }
-
-  // 1. Visual EXIF Viewer logic
-  const handleViewerFileChange = async (file: File) => {
-    setViewerFile(file)
-    setViewerLoading(true)
-    setViewerExif(null)
-
-    try {
-      const arrayBuffer = await file.arrayBuffer()
-      const result: any = {
-        fileInfo: {
-          "Filename": file.name,
-          "Size": `${(file.size / 1024 / 1024).toFixed(2)} MB`,
-          "Type": file.type || 'Unknown'
-        },
-        cameraInfo: {} as Record<string, string>,
-        gpsInfo: {} as Record<string, string>
-      }
-
-      if (isSupportedImageFormat(file.name)) {
-        try {
-          const parsed = await parseImageMetadata(arrayBuffer, file.name);
-          result.cameraInfo = { ...result.cameraInfo, ...parsed.cameraInfo };
-          result.gpsInfo = { ...result.gpsInfo, ...parsed.gpsInfo };
-        } catch (err) {
-          console.warn("Exif parser fail:", err);
-        }
-      }
-      setViewerExif(result)
-    } catch (err) {
-      console.error("File load fail:", err)
-    } finally {
-      setViewerLoading(false)
-    }
-  }
-
-  // 2. Metadata Comparison logic
-  const handleCompFilesChange = async (mediaFile: File | null, jsonFile: File | null) => {
-    if (mediaFile) setCompMediaFile(mediaFile)
-    if (jsonFile) setCompJsonFile(jsonFile)
-
-    const activeMedia = mediaFile || compMediaFile
-    const activeJson = jsonFile || compJsonFile
-
-    if (!activeMedia || !activeJson) return
-
-    try {
-      const mediaBuf = await activeMedia.arrayBuffer()
-      let mediaDate = "No EXIF Original Date found"
-      let mediaGps = "No GPS coordinates found"
-
-      if (isSupportedImageFormat(activeMedia.name)) {
-        try {
-          const parsed = await parseImageMetadata(mediaBuf, activeMedia.name);
-          if (parsed.cameraInfo["Date Taken (EXIF)"]) {
-            mediaDate = parsed.cameraInfo["Date Taken (EXIF)"];
-          }
-          if (parsed.gpsInfo["Latitude"] && parsed.gpsInfo["Longitude"]) {
-            mediaGps = `${parsed.gpsInfo["Latitude"]}°, ${parsed.gpsInfo["Longitude"]}°`;
-          }
-        } catch {}
-      }
-
-      let jsonTitle = ""
-      let jsonTime = "No timestamp found"
-      let jsonGps = "No GPS found"
-
-      try {
-        const jsonText = await activeJson.text()
-        const parsed = JSON.parse(jsonText)
-        jsonTitle = parsed.title || ""
-        if (parsed.photoTakenTime && parsed.photoTakenTime.formatted) {
-          jsonTime = parsed.photoTakenTime.formatted
-        }
-        if (parsed.geoData && (parsed.geoData.latitude !== 0 || parsed.geoData.longitude !== 0)) {
-          jsonGps = `${parsed.geoData.latitude.toFixed(5)}°, ${parsed.geoData.longitude.toFixed(5)}°`
-        }
-      } catch (err) {
-        console.warn("JSON parse fail:", err)
-      }
-
-      setCompResult({
-        media: {
-          name: activeMedia.name,
-          size: `${(activeMedia.size / 1024 / 1024).toFixed(2)} MB`,
-          date: mediaDate,
-          gps: mediaGps
-        },
-        json: {
-          title: jsonTitle,
-          time: jsonTime,
-          gps: jsonGps
-        },
-        checks: {
-          fileNameMatch: activeMedia.name.includes(jsonTitle.split('.')[0]) || jsonTitle.includes(activeMedia.name.split('.')[0]),
-          dateMatch: mediaDate !== "No EXIF Original Date found",
-          gpsMatch: mediaGps !== "No GPS coordinates found"
-        }
-      })
-
-    } catch (err) {
-      console.error(err)
-    }
-  }
-
-  const handleSelectDupFolder = async () => {
-    if (typeof window === 'undefined' || !(window as any).showDirectoryPicker) {
-      useToastStore.getState().addToast(
-        "Your browser does not support selecting folders directly. Please use a desktop version of Google Chrome, Brave, or Microsoft Edge.",
-        "error",
-        6000,
-        "Browser Support Required"
-      )
-      return
-    }
-    try {
-      // @ts-ignore
-      const handle = await window.showDirectoryPicker()
-      setDupFolder(handle)
-    } catch (err: any) {
-      if (err.name === 'AbortError') {
-        console.log('User cancelled picker')
-        return
-      }
-      console.error('Error selecting duplicate folder:', err)
-      useToastStore.getState().addToast(
-        `Could not open folder picker: ${err.message || err}`,
-        "error",
-        6000,
-        "Directory Access Error"
-      )
-    }
-  }
-
-  const startDuplicateScan = async () => {
-    if (!dupFolder) return
-    setDupIsScanning(true)
-    setDupGroups([])
-    setDupStats({ scanned: 0, duplicates: 0, savedBytes: 0 })
-    setDupScanStatus("Scanning directory...")
-
-    try {
-      const fileMapByBytes = new Map<number, { handle: FileSystemFileHandle, path: string[] }[]>()
-      let count = 0
-
-      async function walk(handle: FileSystemDirectoryHandle, path: string[]) {
-        const subDirs: FileSystemDirectoryHandle[] = []
-        const currentFiles: FileSystemFileHandle[] = []
-
-        // @ts-ignore
-        for await (const [name, entry] of handle) {
-          if (entry.kind === 'file') {
-            currentFiles.push(entry as FileSystemFileHandle)
-          } else if (entry.kind === 'directory') {
-            subDirs.push(entry as FileSystemDirectoryHandle)
-          }
-        }
-
-        const processFile = async (fileHandle: FileSystemFileHandle) => {
-          try {
-            const file = await fileHandle.getFile()
-            const size = file.size
-
-            let list = fileMapByBytes.get(size)
-            if (!list) {
-              list = []
-              fileMapByBytes.set(size, list)
-            }
-            list.push({ handle: fileHandle, path: [...path, fileHandle.name] })
-            count++
-            if (count % 100 === 0) {
-              setDupScanStatus(`Scanned ${count} files...`)
-            }
-          } catch {}
-        }
-
-        const limit = 50
-        for (let i = 0; i < currentFiles.length; i += limit) {
-          const chunk = currentFiles.slice(i, i + limit)
-          await Promise.all(chunk.map(processFile))
-        }
-
-        for (const subDir of subDirs) {
-          await walk(subDir, [...path, subDir.name])
-        }
-      }
-
-      await walk(dupFolder, [])
-
-      setDupScanStatus("Analyzing duplicates...")
-      let dupCount = 0
-      let savedBytes = 0
-      const groupList: any[] = []
-
-      for (const [size, files] of fileMapByBytes.entries()) {
-        if (files.length > 1) {
-          const paths = files.map(f => `/${f.path.join('/')}`)
-          dupCount += (files.length - 1)
-          savedBytes += (size * (files.length - 1))
-          groupList.push({
-            size: `${(size / 1024 / 1024).toFixed(2)} MB`,
-            sizeBytes: size,
-            files: paths
-          })
-        }
-      }
-
-      groupList.sort((a, b) => b.sizeBytes - a.sizeBytes)
-
-      setDupStats({
-        scanned: count,
-        duplicates: dupCount,
-        savedBytes
-      })
-      setDupGroups(groupList)
-      setDupScanStatus("Complete")
-    } catch (err: any) {
-      setDupScanStatus(`Error: ${err.message || err}`)
-    } finally {
-      setDupIsScanning(false)
     }
   }
 
@@ -2857,16 +2481,12 @@ export function useToolPipeline() {
     user,
     userData,
     plan,
-    tierThresholds,
-    isFreePromoActive,
     isFreeUnlimited,
     limitFiles,
     limitBytes,
     currentUsedFiles,
     currentUsedBytes,
     formatByteSize,
-    // Maintenance
-    maintenance,
     // Tool store state
     takeoutFolder,
     setTakeoutFolder,
@@ -2910,24 +2530,9 @@ export function useToolPipeline() {
     speedMBs,
     downloadAuditLog,
     downloadIssuesLog,
-    // Viewer state
-    viewerFile,
-    viewerExif,
-    viewerLoading,
-    // Comparison state
-    compMediaFile,
-    compJsonFile,
-    compResult,
-    // Duplicate state
-    dupFolder,
-    dupIsScanning,
-    dupStats,
-    dupGroups,
-    dupScanStatus,
     // Active tool tab & feature unlocks
     activeToolTab,
     setActiveToolTab,
-    unlockFreeFeatures,
     // Refs
     logContainerRef,
     // Handlers
@@ -2944,9 +2549,5 @@ export function useToolPipeline() {
     resumeProcessing,
     resetForNewRestore,
     getEstimatedRestoreTime,
-    handleViewerFileChange,
-    handleCompFilesChange,
-    handleSelectDupFolder,
-    startDuplicateScan,
   }
 }

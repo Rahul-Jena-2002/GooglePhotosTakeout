@@ -4,15 +4,16 @@ import { db } from "../../firebase"
 import { useAuth } from "../../contexts/AuthContext"
 import { isEmulatorDevelopment, isVerifiedSuperAdmin } from "../../lib/adminAuth"
 import { useToastStore } from "../../store/useToastStore"
-import { decrypt, encrypt, deriveKeyFromPassword } from "../../lib/crypto"
 import {
-  Shield, Lock, Save, RefreshCw, Key, Check, Info, Settings,
-  Eye, EyeOff, Tag, Gift, Plus, DollarSign, ChevronRight, X,
+  Shield, Lock, Save, RefreshCw, Check, Info, Settings,
+  Tag, Gift, Plus, DollarSign, ChevronRight, X,
   ToggleLeft, ToggleRight, Link2, Copy
 } from "lucide-react"
 import { Input } from "../../components/ui/input"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../../components/ui/card"
 import { Button } from "../../components/ui/button"
+import { usePaymentCredentials } from "../../components/admin/payment/usePaymentCredentials"
+import { PaymentCredentialFields } from "../../components/admin/payment/PaymentCredentialFields"
 import { PaymentHeader } from "../../components/admin/payment/PaymentHeader"
 import { PaymentMekBanner } from "../../components/admin/payment/PaymentMekBanner"
 import { PaymentNavTabs } from "../../components/admin/payment/PaymentNavTabs"
@@ -21,126 +22,6 @@ import { getApiUrl } from "../../lib/api/apiUrl"
 import { apiClient } from "../../lib/api/apiClient"
 
 // --- Config Types & Constants ---
-interface GatewayConfig {
-  id: string
-  label: string
-  description: string
-  firestorePath: string
-  firestoreField: string
-  placeholder: string
-  sensitive: boolean
-}
-
-const GATEWAY_CREDENTIALS: Record<string, GatewayConfig[]> = {
-  dodo: [
-    {
-      id: "dodo_api_key",
-      label: "Dodo Live API Key",
-      description: "Live secret API key for Dodo Payments. Used by backend to update products & sync discounts.",
-      firestorePath: "settings/system",
-      firestoreField: "dodo_api_key",
-      placeholder: "Live API Key from Dodo Dashboard",
-      sensitive: true,
-    },
-    {
-      id: "dodo_test_api_key",
-      label: "Dodo Test API Key",
-      description: "Test/sandbox secret API key for Dodo Payments.",
-      firestorePath: "settings/system",
-      firestoreField: "dodo_test_api_key",
-      placeholder: "Test API Key from Dodo Dashboard",
-      sensitive: true,
-    },
-    {
-      id: "dodo_webhook_key",
-      label: "Dodo Webhook Signing Secret",
-      description: "Webhook secret used to verify incoming Dodo payments.",
-      firestorePath: "settings/secure",
-      firestoreField: "dodo_webhook_key",
-      placeholder: "whsec_xxxxxxxxxxxxxxxxxxxx",
-      sensitive: true,
-    }
-  ],
-  stripe: [
-    {
-      id: "stripe_secret_key",
-      label: "Stripe Live Secret Key",
-      description: "Stripe secret key used server-side to initiate sessions.",
-      firestorePath: "settings/system",
-      firestoreField: "stripe_secret_key",
-      placeholder: "sk_live_...",
-      sensitive: true,
-    },
-    {
-      id: "stripe_test_secret_key",
-      label: "Stripe Test Secret Key",
-      description: "Stripe test key used for sandbox mode testing.",
-      firestorePath: "settings/system",
-      firestoreField: "stripe_test_secret_key",
-      placeholder: "sk_test_51xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
-      sensitive: true,
-    },
-    {
-      id: "stripe_webhook_secret",
-      label: "Stripe Webhook Signing Secret",
-      description: "Stripe webhook endpoint signing secret to prevent spoofing.",
-      firestorePath: "settings/secure",
-      firestoreField: "stripe_webhook_secret",
-      placeholder: "whsec_xxxxxxxxxxxxxxxxxxxx",
-      sensitive: true,
-    }
-  ],
-  lemonsqueezy: [
-    {
-      id: "lemonsqueezy_api_key",
-      label: "Lemon Squeezy API Key",
-      description: "API Key for authentication with Lemon Squeezy API.",
-      firestorePath: "settings/system",
-      firestoreField: "lemonsqueezy_api_key",
-      placeholder: "ls_xxxxxx...",
-      sensitive: true,
-    },
-    {
-      id: "lemonsqueezy_webhook_secret",
-      label: "Lemon Squeezy Webhook Secret",
-      description: "Secret string configured in Lemon Squeezy webhook panel.",
-      firestorePath: "settings/secure",
-      firestoreField: "lemonsqueezy_webhook_secret",
-      placeholder: "your-signing-secret",
-      sensitive: true,
-    }
-  ],
-  paddle: [
-    {
-      id: "paddle_vendor_id",
-      label: "Paddle Vendor / Seller ID",
-      description: "Public seller ID provided in your Paddle developer settings.",
-      firestorePath: "settings/system",
-      firestoreField: "paddle_vendor_id",
-      placeholder: "12345",
-      sensitive: false,
-    },
-    {
-      id: "paddle_api_key",
-      label: "Paddle API Key",
-      description: "Secret API key generated in vendor dashboard.",
-      firestorePath: "settings/system",
-      firestoreField: "paddle_api_key",
-      placeholder: "paddle_live_xxxx...",
-      sensitive: true,
-    },
-    {
-      id: "paddle_webhook_secret",
-      label: "Paddle Webhook Secret key",
-      description: "Secret key used to verify Paddle webhook signatures.",
-      firestorePath: "settings/secure",
-      firestoreField: "paddle_webhook_secret",
-      placeholder: "p_whsec_xxxx...",
-      sensitive: true,
-    }
-  ]
-}
-
 const DODO_REGIONS = [
   { key: "in", label: "India", currency: "INR" },
   { key: "cn", label: "China", currency: "CNY" },
@@ -200,25 +81,13 @@ export default function AdminPaymentGateway() {
   const [isLight, setIsLight] = useState(false)
   const [activeTab, setActiveTab] = useState<string>("providers")
 
-  // --- MEK Encryption states ---
-  const [mek, setMek] = useState<string>("")
-  const [mekInput, setMekInput] = useState<string>("")
-  const [mekKey, setMekKey] = useState<CryptoKey | null>(null)
-
   // --- Active gateway selection state ---
   const [activeGateway, setActiveGateway] = useState<string>("dodo")
   const [originalActiveGateway, setOriginalActiveGateway] = useState<string>("dodo")
   const [savingGateway, setSavingGateway] = useState(false)
 
-  // --- Credentials State ---
-  const [credentials, setCredentials] = useState<Record<string, string>>({})
-  const [decryptedValues, setDecryptedValues] = useState<Record<string, string>>({})
-  const [visibleKeys, setVisibleKeys] = useState<Record<string, boolean>>({})
-  const [savingCreds, setSavingCreds] = useState<string | null>(null)
-
-  const toggleVisibility = (id: string) => {
-    setVisibleKeys(prev => ({ ...prev, [id]: !prev[id] }))
-  }
+  const paymentCredentials = usePaymentCredentials()
+  const { mek, mekInput, setMekInput, credentials, decryptedValues, gatewayApiKey, cloudFunctionUrl, setCloudFunctionUrl, handleMekSubmit, handleMekClear } = paymentCredentials
 
   // --- Product Maps State ---
   const [dodoProducts, setDodoProducts] = useState<Record<string, Record<string, string>>>({})
@@ -276,8 +145,6 @@ export default function AdminPaymentGateway() {
   const [syncLog, setSyncLog] = useState<any[]>([])
 
   // System Settings local API gateway key
-  const [gatewayApiKey, setGatewayApiKey] = useState("")
-  const [cloudFunctionUrl, setCloudFunctionUrl] = useState("")
   const [showWebhookModal, setShowWebhookModal] = useState(false)
   const [savingCfUrl, setSavingCfUrl] = useState(false)
   const [dodoTestMode, setDodoTestMode] = useState(false)
@@ -292,24 +159,6 @@ export default function AdminPaymentGateway() {
     const observer = new MutationObserver(checkTheme)
     observer.observe(document.documentElement, { attributes: true, attributeFilter: ["class"] })
     return () => observer.disconnect()
-  }, [])
-
-  // --- Restore MEK from sessionStorage ---
-  useEffect(() => {
-    const restoreMek = async () => {
-      const savedMek = sessionStorage.getItem("tf_mek")
-      if (savedMek) {
-        try {
-          const salt = new Uint8Array(16)
-          const { key } = await deriveKeyFromPassword(savedMek, salt)
-          setMekKey(key)
-          setMek(savedMek)
-        } catch (err) {
-          console.error("Failed to restore MEK:", err)
-        }
-      }
-    }
-    restoreMek()
   }, [])
 
   // --- Real-time Listeners (Pricing, Campaigns, Coupons) ---
@@ -348,72 +197,13 @@ export default function AdminPaymentGateway() {
       }
     })
 
-    // 5. System secrets (dodo_api_key, gateway_api_key)
-    const unsubSystem = onSnapshot(doc(db, "settings", "system"), (snap) => {
-      if (snap.exists()) {
-        const data = snap.data()
-        setGatewayApiKey(data.gateway_api_key || "")
-        setCloudFunctionUrl(data.cloud_function_url || "")
-        // Populate credentials state
-        setCredentials(prev => ({
-          ...prev,
-          dodo_api_key: data.dodo_api_key || "",
-          dodo_test_api_key: data.dodo_test_api_key || "",
-          stripe_secret_key: data.stripe_secret_key || "",
-          stripe_test_secret_key: data.stripe_test_secret_key || "",
-          lemonsqueezy_api_key: data.lemonsqueezy_api_key || "",
-          paddle_vendor_id: data.paddle_vendor_id || "",
-          paddle_api_key: data.paddle_api_key || "",
-        }))
-      }
-    })
-
-    // 6. Secure secrets (webhook secrets)
-    const unsubSecure = onSnapshot(doc(db, "settings", "secure"), (snap) => {
-      if (snap.exists()) {
-        const data = snap.data()
-        setCredentials(prev => ({
-          ...prev,
-          dodo_webhook_key: data.dodo_webhook_key || "",
-          stripe_webhook_secret: data.stripe_webhook_secret || "",
-          lemonsqueezy_webhook_secret: data.lemonsqueezy_webhook_secret || "",
-          paddle_webhook_secret: data.paddle_webhook_secret || "",
-        }))
-      }
-    })
-
     return () => {
       unsubPricing()
       unsubCampaigns()
       unsubCoupons()
       unsubGlobal()
-      unsubSystem()
-      unsubSecure()
     }
   }, [])
-
-  // --- Decrypt dynamic credentials when MEK changes ---
-  useEffect(() => {
-    const decryptAll = async () => {
-      const decMap: Record<string, string> = {}
-      for (const [id, value] of Object.entries(credentials)) {
-        const def = Object.values(GATEWAY_CREDENTIALS).flat().find(x => x.id === id)
-        if (def && def.sensitive && value.startsWith("enc:v1:") && mekKey) {
-          try {
-            decMap[id] = await decrypt(value, mekKey)
-          } catch (e) {
-            decMap[id] = ""
-          }
-        }
-      }
-      setDecryptedValues(decMap)
-    }
-    if (mekKey) {
-      decryptAll()
-    } else {
-      setDecryptedValues({})
-    }
-  }, [credentials, mekKey])
 
   // --- Fetch selected pricing tier config ---
   useEffect(() => {
@@ -466,31 +256,6 @@ export default function AdminPaymentGateway() {
   }
 
   // --- MEK Setup handlers ---
-  const handleMekSubmit = async () => {
-    if (!mekInput.trim()) return
-    try {
-      const val = mekInput.trim()
-      const salt = new Uint8Array(16)
-      const { key } = await deriveKeyFromPassword(val, salt)
-      setMekKey(key)
-      setMek(val)
-      sessionStorage.setItem("tf_mek", val)
-      setMekInput("")
-      useToastStore.getState().addToast("Master key loaded. Confirm it matches the server key before saving credentials.", "info", 7000)
-    } catch (err: any) {
-      useToastStore.getState().addToast("Failed to process MEK: " + err.message, "error")
-    }
-  }
-
-  const handleMekClear = () => {
-    setMek("")
-    setMekKey(null)
-    setMekInput("")
-    sessionStorage.removeItem("tf_mek")
-    setDecryptedValues({})
-    useToastStore.getState().addToast("Session lock applied. Credentials hidden.", "info")
-  }
-
   // --- Credentials Save helpers ---
   const handleSaveActiveGateway = async () => {
     setSavingGateway(true)
@@ -519,32 +284,6 @@ export default function AdminPaymentGateway() {
       useToastStore.getState().addToast("Failed to toggle test mode: " + err.message, "error")
     } finally {
       setSavingTestMode(false)
-    }
-  }
-
-  const handleSaveCredential = async (def: GatewayConfig, rawVal: string) => {
-    setSavingCreds(def.id)
-    try {
-      let valToSave = rawVal.trim()
-      if (def.sensitive && valToSave) {
-        if (!valToSave.startsWith("enc:v1:")) {
-          if (mekKey) {
-            valToSave = await encrypt(valToSave, mekKey)
-          } else {
-            useToastStore.getState().addToast("Unlock the master encryption key before saving a sensitive value.", "error")
-            return
-          }
-        }
-      }
-      const paths = def.firestorePath.split("/")
-      await setDoc(doc(db, paths[0], paths[1]), {
-        [def.firestoreField]: valToSave
-      }, { merge: true })
-      useToastStore.getState().addToast(`Saved key configuration for ${def.label}`, "success")
-    } catch (err: any) {
-      useToastStore.getState().addToast("Failed to save credentials: " + err.message, "error")
-    } finally {
-      setSavingCreds(null)
     }
   }
 
@@ -1581,82 +1320,7 @@ export default function AdminPaymentGateway() {
 
               {/* Credentials Fields */}
               <div className="p-4 sm:p-6 rounded-2xl border w-full min-w-0 t-card">
-                <h2 className="text-lg font-bold flex items-center gap-2 t-heading">
-                  <Key className="w-5 h-5 text-indigo-500" />
-                  API Credentials for <span className="uppercase">{activeGateway}</span>
-                </h2>
-                <p className="text-xs mt-1 mb-6 t-text-muted">
-                  Configure keys and signature validators required for transaction initialization.
-                </p>
-
-                <div className="space-y-6">
-                  {(GATEWAY_CREDENTIALS[activeGateway] || []).map((def) => {
-                    const encryptedVal = credentials[def.id] || ""
-                    const isEncrypted = def.sensitive && encryptedVal.startsWith("enc:v1:")
-                    const decryptedVal = decryptedValues[def.id] || ""
-                    let displayVal = def.sensitive
-                      ? (isEncrypted ? (mekKey ? decryptedVal : "") : encryptedVal)
-                      : encryptedVal
-                    return (
-                      <div key={def.id} className="p-3 sm:p-4 rounded-xl border space-y-3 w-full min-w-0 t-border-alt">
-                        <div className="flex justify-between items-start w-full min-w-0 gap-2">
-                          <div className="min-w-0 flex-1">
-                            <label className="text-xs font-extrabold block truncate t-heading-light">
-                              {def.label}
-                            </label>
-                            <span className="text-[10px] block mt-0.5 t-text-subtle-hint">
-                              {def.description}
-                            </span>
-                          </div>
-                          {isEncrypted && (
-                            <span className="text-[9px] font-bold px-2 py-0.5 rounded-full border shrink-0"
-                                  >
-                              {mekKey ? "🔓 Decrypted" : "🔒 Encrypted"}
-                            </span>
-                          )}
-                        </div>
-
-                        <div className="flex gap-2 w-full min-w-0">
-                          <div className="relative flex-1 min-w-0">
-                            <div className="flex items-center rounded-lg border focus-within:ring-1 focus-within:ring-indigo-500 focus-within:border-indigo-500 transition-all overflow-hidden h-9 w-full min-w-0 t-input-subtle-card-2"
-                            >
-                              <input
-                                type={def.sensitive && !visibleKeys[def.id] ? "password" : "text"}
-                                disabled={isEncrypted && !mekKey}
-                                placeholder={isEncrypted && !mekKey 
-                                  ? "🔒 Locked — Enter MEK in banner above to decrypt" 
-                                  : def.placeholder}
-                                value={displayVal}
-                                onChange={(e) => {
-                                  setCredentials(prev => ({ ...prev, [def.id]: e.target.value }))
-                                }}
-                                className="w-full min-w-0 flex-grow h-full px-3 border-none bg-transparent text-xs font-mono focus:outline-none disabled:opacity-60 t-text-primary"
-                              />
-                            </div>
-                            {def.sensitive && (!(isEncrypted && !mekKey)) && (
-                              <button
-                                type="button"
-                                onClick={() => toggleVisibility(def.id)}
-                                className="absolute right-3 top-1/2 -translate-y-1/2 hover:opacity-80 z-10"
-                              >
-                                {visibleKeys[def.id] ? <EyeOff className="w-4 h-4 text-zinc-500" /> : <Eye className="w-4 h-4 text-zinc-500" />}
-                              </button>
-                            )}
-                          </div>
-
-                          <button
-                            disabled={savingCreds === def.id || (isEncrypted && !mekKey)}
-                            onClick={() => handleSaveCredential(def, displayVal)}
-                            className="h-9 px-4 rounded-lg text-xs font-bold bg-indigo-600 text-white hover:bg-indigo-500 transition-colors disabled:opacity-50 flex items-center gap-1.5"
-                          >
-                            {savingCreds === def.id ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
-                            Save
-                          </button>
-                        </div>
-                      </div>
-                    )
-                  })}
-                </div>
+                <PaymentCredentialFields activeGateway={activeGateway} model={paymentCredentials} />
 
                 {activeGateway === "dodo" && (
                   <div className="mt-6 p-4 rounded-xl border border-indigo-500/30 bg-indigo-500/5 space-y-3">

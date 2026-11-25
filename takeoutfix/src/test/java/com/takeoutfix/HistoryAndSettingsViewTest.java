@@ -1,13 +1,18 @@
 package com.takeoutfix;
 
 import com.takeoutfix.restore.infrastructure.NativeExifToolEngine;
+import com.takeoutfix.restore.infrastructure.ExtractionService;
 import com.takeoutfix.ui.fx.HistoryView;
 import com.takeoutfix.ui.fx.ProfileDashboardDialog;
 import com.takeoutfix.ui.fx.SettingsView;
+import com.takeoutfix.ui.fx.TakeoutRestoreView;
 import javafx.application.Platform;
+import javafx.scene.control.Button;
 import javafx.scene.control.ListView;
 import javafx.scene.control.Label;
 import javafx.scene.control.ScrollPane;
+import javafx.scene.control.TitledPane;
+import javafx.scene.layout.FlowPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
@@ -45,6 +50,47 @@ public class HistoryAndSettingsViewTest {
             latch.countDown();
         }
         assertTrue(latch.await(5, TimeUnit.SECONDS));
+    }
+
+    @Test
+    public void restoreViewRoutesEntriesToTheFilterableLogPanel() throws InterruptedException {
+        var failure = new AtomicReference<Throwable>();
+        var finished = new CountDownLatch(1);
+        Platform.runLater(() -> {
+            Stage stage = new Stage();
+            try {
+                var view = new TakeoutRestoreView(stage, new ExtractionService(), null, null, ignored -> {});
+                var activity = (TitledPane) view.getChildren().get(2);
+                assertEquals("Activity & logs", activity.getText());
+                var logPanel = (VBox) activity.getContent();
+                var toolbar = (FlowPane) logPanel.getChildren().get(0);
+                var categories = (HBox) toolbar.getChildren().get(0);
+                var items = (ListView<?>) ((StackPane) logPanel.getChildren().get(1)).getChildren().get(1);
+                view.appendLog("SUCCESS", "Restored a photo");
+                view.appendLog("ERROR", "A file needs attention");
+                Platform.runLater(() -> {
+                    try {
+                        assertEquals(2, items.getItems().size());
+                        Button failed = (Button) categories.getChildren().get(3);
+                        assertEquals("Failed (1)", failed.getText());
+                        failed.fire();
+                        assertEquals(1, items.getItems().size());
+                        assertTrue(items.getItems().getFirst().toString().contains("A file needs attention"));
+                    } catch (Throwable error) {
+                        failure.set(error);
+                    } finally {
+                        stage.close();
+                        finished.countDown();
+                    }
+                });
+            } catch (Throwable error) {
+                failure.set(error);
+                stage.close();
+                finished.countDown();
+            }
+        });
+        assertTrue(finished.await(15, TimeUnit.SECONDS));
+        if (failure.get() != null) fail("Restore log panel failed", failure.get());
     }
 
     @Test
