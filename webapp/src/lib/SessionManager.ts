@@ -1,8 +1,7 @@
 import { indexedDbService } from './indexedDbService.ts';
-import { isAllowedMediaFile, sanitizeFilename, findMatchingJsonName, safeParseJson, extractTimestamp, extractCoordinates } from '../services/restoration/MetadataMatcher.ts';
+import { isAllowedMediaFile, sanitizeFilename, findMatchingJsonName, safeParseJson, extractTimestamp, extractCoordinates, MAX_RESTORE_SIDECAR_BYTES } from '../services/restoration/MetadataMatcher.ts';
 import { findMatchingJsonNameForZip, normalizeZipPath } from '../services/restoration/ZipMetadataMatcher.ts';
 import { isSafeZipPath } from '../services/restoration/zipPathSafety.ts';
-import { ZipReader, BlobReader, TextWriter } from '@zip.js/zip.js';
 
 export interface ActiveSession {
   id: string;
@@ -264,7 +263,8 @@ export class SessionManager {
       fileBatch = [];
     };
 
-    // Instantiate zip.js reader
+    const { ZipReader, BlobReader, TextWriter } = await import('@zip.js/zip.js');
+    checkCancelled();
     const zipReader = new ZipReader(new BlobReader(file));
     try {
       const entries = await zipReader.getEntries();
@@ -329,7 +329,7 @@ export class SessionManager {
           if (jsonName) {
             const jsonPath = dirPath ? `${dirPath}/${jsonName}` : jsonName;
             const jsonEntry = allEntryMap.get(jsonPath.normalize('NFC'));
-            if (jsonEntry && jsonEntry.getData) {
+            if (jsonEntry?.getData && jsonEntry.uncompressedSize <= MAX_RESTORE_SIDECAR_BYTES) {
               const jsonText = await jsonEntry.getData(new TextWriter());
               const parsed = safeParseJson(jsonText);
               if (parsed) {

@@ -503,7 +503,7 @@ export function RestorePanel({
                   <strong className="text-zinc-900 dark:text-white">Files outside the supported list:</strong> The tool does not copy every type of file in your export. Keep the original Takeout download, including its extra details files.
                 </div>
                 <div>
-                  <strong className="text-zinc-900 dark:text-white">Download as ZIP:</strong> Allow downloads if your browser asks, then check that every ZIP part is saved and opens. Archive timestamps may be set for processed files; check them in your destination app.
+                  <strong className="text-zinc-900 dark:text-white">Download as ZIP:</strong> Allow downloads if your browser asks, then check that every ZIP part is saved and opens. Part sizes depend on your device. If a file is too large, save to a folder or use the desktop app.
                 </div>
               </div>
             )}

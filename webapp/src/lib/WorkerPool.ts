@@ -10,7 +10,10 @@ interface WorkerInstance {
   worker: Worker;
   busy: boolean;
   task?: WorkerTask;
+  timeout?: ReturnType<typeof setTimeout>;
 }
+
+const TASK_TIMEOUT_MS = 120_000;
 
 export class WorkerPool {
   private instances: WorkerInstance[] = [];
@@ -87,6 +90,9 @@ export class WorkerPool {
     const { worker } = idleInstance;
 
     worker.onmessage = (e: MessageEvent) => {
+      if (this.terminated || idleInstance.task !== task || idleInstance.worker !== worker) return;
+      clearTimeout(idleInstance.timeout);
+      idleInstance.timeout = undefined;
       worker.onmessage = null;
       worker.onerror = null;
       worker.onmessageerror = null;
@@ -99,6 +105,9 @@ export class WorkerPool {
     };
 
     const handleWorkerFailure = (err: ErrorEvent | Error) => {
+      if (this.terminated || idleInstance.task !== task || idleInstance.worker !== worker) return;
+      clearTimeout(idleInstance.timeout);
+      idleInstance.timeout = undefined;
       worker.onmessage = null;
       worker.onerror = null;
       worker.onmessageerror = null;
@@ -130,6 +139,9 @@ export class WorkerPool {
     };
     worker.onerror = handleWorkerFailure;
     worker.onmessageerror = () => handleWorkerFailure(new Error('Could not read the worker response.'));
+    idleInstance.timeout = setTimeout(() => {
+      handleWorkerFailure(new Error('The metadata worker stopped responding. This file could not be restored.'));
+    }, TASK_TIMEOUT_MS);
 
     // Send task with transferable buffers if provided
     try {
@@ -139,6 +151,8 @@ export class WorkerPool {
         worker.postMessage({ action: task.action, payload: task.payload });
       }
     } catch (err) {
+      clearTimeout(idleInstance.timeout);
+      idleInstance.timeout = undefined;
       worker.onmessage = null;
       worker.onerror = null;
       worker.onmessageerror = null;
@@ -157,6 +171,7 @@ export class WorkerPool {
   public terminate() {
     this.terminated = true;
     for (const inst of this.instances) {
+      clearTimeout(inst.timeout);
       inst.task?.reject(new Error("Worker pool was terminated."));
       try {
         inst.worker.terminate();

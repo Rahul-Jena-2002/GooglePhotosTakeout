@@ -7,7 +7,7 @@ import React, { useRef, useEffect, useState } from "react"
 import { useAuth } from "../contexts/AuthContext"
 import { useToolStore } from "../store/useToolStore"
 import { useToastStore } from "../store/useToastStore"
-import { sanitizeFilename, findMatchingJsonName, safeParseJson, extractTimestamp, extractCoordinates } from "../services/restoration/MetadataMatcher"
+import { sanitizeFilename, findMatchingJsonName, safeParseJson, extractTimestamp, extractCoordinates, MAX_RESTORE_SIDECAR_BYTES } from "../services/restoration/MetadataMatcher"
 // ZipMetadataMatcher is used via normalizeZipPath only (findMatchingJsonNameForZip resolved during scan phase)
 import { isSupportedImageFormat, parseImageMetadata, isJpeg } from "../services/restoration/DeepExifRestorer"
 import { isVideoFilename } from "../services/restoration/VideoMetadataRestorer"
@@ -20,31 +20,15 @@ import { acquireRestoreLock, withRestoreLock } from "../lib/restoreLock"
 // piexifjs eliminated in favor of 100% WebAssembly ExifTool
 import { SessionManager, canManageSession, hasCompleteSessionScan, type ActiveSession, type FileRecord } from "../lib/SessionManager"
 import { WorkerPool } from "../lib/WorkerPool"
-import { ZipReader, BlobReader, Uint8ArrayWriter, Writer, ZipWriter, BlobWriter, TextWriter } from "@zip.js/zip.js"
+import type { ZipReader as ZipSourceReader } from "@zip.js/zip.js"
 import { useSettingsStore } from "../store/useSettingsStore";
 import { normalizeZipPath } from "../services/restoration/ZipMetadataMatcher"
 import { generateSyncBatContent, generateSyncShContent } from "../services/restoration/WindowsDateSyncScript"
 import { getGuestUsage, ensureGuestUsageLoaded, recordGuestUsage, guestQuotaDecision, GUEST_MAX_BYTES } from "./guestQuota"
 import { pendingUsageKey, flushUnstoredUsage, recoverAccountBatches, UsageCheckpoints, PendingZipUsage, type UnstoredUsage } from "./pendingUsage"
 import { applyUsageBatch } from "./usageBatch"
+import { restoreFileReservation, restoreMemoryBudget } from "./restoreMemoryBudget"
 import { saveHandles } from "../lib/handleStore"
-
-// ---------------------------------------------------------------------------
-// Streaming zip.js writer that pipes directly to a FileSystemWritableFileStream
-// (zero-copy decompression — no intermediate ArrayBuffer allocation in RAM)
-// ---------------------------------------------------------------------------
-export class FileSystemWritableFileStreamWriter extends Writer<void> {
-  private writableStream: any;
-
-  constructor(writableStream: any) {
-    super();
-    this.writableStream = writableStream;
-  }
-
-  async writeUint8Array(array: Uint8Array): Promise<void> {
-    await this.writableStream.write(array);
-  }
-}
 
 // ---------------------------------------------------------------------------
 // Shared constants / helpers (also exported so RestorePanel can import them)
@@ -968,6 +952,11 @@ export function useToolPipeline() {
     pipelineLaunchedRef.current = true;
     const generation = ++pipelineGenerationRef.current;
     const isCurrentRun = () => pipelineGenerationRef.current === generation && isProcessingRef.current;
+    let zipTools: Promise<typeof import("@zip.js/zip.js")> | undefined;
+    const loadZipTools = () => zipTools ??= import("@zip.js/zip.js");
+    const zipSourceTools = session.zipFile ? await loadZipTools() : null;
+    if (!isCurrentRun()) return;
+
     currentSessionRef.current = session;
     // 1. Initialize WorkerPool with selected engine
     const engine = useSettingsStore.getState().exifEngine;
@@ -979,13 +968,18 @@ export function useToolPipeline() {
     workerPoolRef.current = pool;
 
     // 2. Open ZIP Reader if ZIP source
-    let zipReader: ZipReader<File> | null = null;
+    let zipReader: ZipSourceReader<File> | null = null;
     let zipEntries: any[] = [];
     const zipEntryMap = new Map<string, any>();
 
-    if (session.zipFile) {
+    if (session.zipFile && zipSourceTools) {
+      const { ZipReader, BlobReader } = zipSourceTools;
       zipReader = new ZipReader(new BlobReader(session.zipFile));
       zipEntries = await zipReader.getEntries();
+      if (!isCurrentRun()) {
+        await zipReader.close();
+        return;
+      }
 
       for (const entry of zipEntries) {
         // Normalize Windows backslashes and apply NFC so lookups are consistent
@@ -1025,8 +1019,9 @@ export function useToolPipeline() {
 
     // 6. Queue-based concurrency engine (prevents premature break / worker starvation freeze)
     const inflightLimit = (session.zipFile || zipModeRef.current) ? 1 : effectiveWorkers;
+    const memoryBudget = restoreMemoryBudget((navigator as Navigator & { deviceMemory?: number }).deviceMemory);
     let inFlightCount = 0;
-    let isProcessingHeavy = false;
+    let inFlightBytes = 0;
     const fileQueue: FileRecord[] = [];
     let isFetchingPage = false;
     let noMorePending = false;
@@ -1113,15 +1108,10 @@ export function useToolPipeline() {
         }
       }
 
-      // If a heavy task is currently running, wait until it finishes to protect RAM
-      if (isProcessingHeavy && inFlightCount > 0) {
-        return;
-      }
-
       // Dispatch up to inflightLimit tasks
       while (inFlightCount < inflightLimit && fileQueue.length > 0) {
         if (!isCurrentRun() || isPausedRef.current) break;
-        if (isProcessingHeavy && inFlightCount > 0) break;
+        if (inFlightBytes >= memoryBudget.activeBytes) break;
 
         const nextFile = fileQueue[0];
         if (!nextFile) {
@@ -1129,24 +1119,16 @@ export function useToolPipeline() {
           continue;
         }
 
-        const deviceMem = ('deviceMemory' in navigator) ? (navigator as unknown as { deviceMemory: number }).deviceMemory || 4 : 4;
-        const HEAVY_FILE_THRESHOLD = (deviceMem >= 8 ? 150 : deviceMem >= 4 ? 75 : 35) * 1024 * 1024;
-        const isHeavy = nextFile.bytes > HEAVY_FILE_THRESHOLD;
-
-        // If next file is heavy and light tasks are still in flight, wait until they finish
-        if (isHeavy && inFlightCount > 0) {
-          break;
-        }
+        const reservedBytes = restoreFileReservation(nextFile.bytes, memoryBudget.activeBytes);
+        if (inFlightBytes + reservedBytes > memoryBudget.activeBytes) break;
 
         fileQueue.shift();
         inFlightCount++;
-        if (isHeavy) {
-          isProcessingHeavy = true;
-        }
+        inFlightBytes += reservedBytes;
         setActiveWorkersCount(inFlightCount);
 
         // Execute task in self-contained worker closure
-        const task = (async (fileRecord: FileRecord, heavyFlag: boolean) => {
+        const task = (async (fileRecord: FileRecord) => {
           let writable: any = null;
           let guestReservation = 0;
           let outputDescription = '';
@@ -1205,6 +1187,14 @@ export function useToolPipeline() {
             }
             if (!Number.isSafeInteger(size) || size < 0) throw new Error("The source file has an invalid size.");
             if (!isCurrentRun()) return;
+            if (zipModeRef.current) {
+              if (size > memoryBudget.zipPartBytes || (zipEntry && size > memoryBudget.fileBytes)) {
+                throw new Error("This file is too large for a browser ZIP download on this device. Restore to a folder or use the desktop app.");
+              }
+              if (currentZipWriterRef.current && currentZipBytesRef.current + size > memoryBudget.zipPartBytes) {
+                if (!await downloadCurrentZipChunk() || !isCurrentRun()) return;
+              }
+            }
             if (!user) {
               while (isCurrentRun()) {
                 const decision = guestQuotaDecision(getGuestUsage().bytes + pendingGuestZipUsageRef.current.snapshot().bytes, guestReservedBytes, size);
@@ -1237,7 +1227,7 @@ export function useToolPipeline() {
                 try {
                   const jsonHandle = await parentDirHandle.getFileHandle(jsonName);
                   const jsonFile = await jsonHandle.getFile();
-                  const parsed: any = safeParseJson(await jsonFile.text());
+                  const parsed = jsonFile.size <= MAX_RESTORE_SIDECAR_BYTES ? safeParseJson(await jsonFile.text()) : null;
                   if (parsed) {
                     epochSec = extractTimestamp(parsed);
                     const coordinates = extractCoordinates(parsed);
@@ -1269,7 +1259,7 @@ export function useToolPipeline() {
                 try {
                   const metaHandle = await parentDirHandle.getFileHandle('metadata.json');
                   const metaFile = await metaHandle.getFile();
-                  const metaParsed = safeParseJson(await metaFile.text());
+                  const metaParsed = metaFile.size <= MAX_RESTORE_SIDECAR_BYTES ? safeParseJson(await metaFile.text()) : null;
                   if (metaParsed && typeof metaParsed.title === 'string' && metaParsed.title.trim() && isUserAlbum(metaParsed.title.trim())) {
                     albumName = metaParsed.title.trim();
                   }
@@ -1304,8 +1294,9 @@ export function useToolPipeline() {
                 if (zipEntryMap) {
                   const metaZipPath = (dirPath ? `${dirPath}/metadata.json` : 'metadata.json').normalize('NFC');
                   const metaEntry = zipEntryMap.get(metaZipPath);
-                  if (metaEntry && metaEntry.getData) {
+                  if (metaEntry?.getData && metaEntry.uncompressedSize <= MAX_RESTORE_SIDECAR_BYTES) {
                     try {
+                      const { TextWriter } = await loadZipTools();
                       const textWriter = new TextWriter();
                       const jsonText = await metaEntry.getData(textWriter);
                       const metaParsed = safeParseJson(jsonText);
@@ -1356,19 +1347,23 @@ export function useToolPipeline() {
             const isVideo = isVideoFilename(fileRecord.filename);
             const isSupported = isSupportedImageFormat(fileRecord.filename) || isVideo;
 
-            if (isSupported && (epochSec || (!isVideo && lat !== undefined && lng !== undefined))) {
+            const hasMetadataToWrite = isSupported && (epochSec || (!isVideo && lat !== undefined && lng !== undefined));
+            const canBufferForMetadata = size <= memoryBudget.fileBytes && size <= reservedBytes;
+            if (hasMetadataToWrite && canBufferForMetadata) {
               actionStr = isVideo ? 'Restored (Video Meta)' : 'Restored';
               levelStr = 'success';
 
               if (fileObj) {
                 bufferOrBlob = await fileObj.arrayBuffer();
               } else if (zipEntry) {
+                const { Uint8ArrayWriter } = await loadZipTools();
                 const writer = new Uint8ArrayWriter();
                 const bytes = await zipEntry.getData!(writer);
                 bufferOrBlob = bytes.buffer;
                 (writer as any).writable = null;
               }
 
+              if (!isCurrentRun()) return;
               if (bufferOrBlob) {
                 const taskName = isVideo ? 'inject_video' : 'inject_wasm';
                 const res = await pool.runTask(taskName, {
@@ -1383,6 +1378,7 @@ export function useToolPipeline() {
                   type: isVideo ? 'video' : 'image'
                 }, [bufferOrBlob]);
 
+                if (!isCurrentRun()) return;
                 if (!(res?.buffer instanceof ArrayBuffer) || (size > 0 && res.buffer.byteLength === 0) || typeof res.success !== 'boolean') {
                   throw new Error('Metadata worker returned an invalid file. No output was saved.');
                 }
@@ -1403,6 +1399,8 @@ export function useToolPipeline() {
 
               const outRelativePath = outputPath(levelStr === 'success');
               if (zipModeRef.current) {
+                const { BlobReader, BlobWriter, ZipWriter } = await loadZipTools();
+                if (!isCurrentRun()) return;
                 if (!currentZipWriterRef.current) {
                   const blobWriter = new BlobWriter("application/zip");
                   currentZipBlobWriterRef.current = blobWriter;
@@ -1430,10 +1428,14 @@ export function useToolPipeline() {
                 }
               }
             } else {
-              if (epochSec) actionStr = 'Copied (unsupported metadata format)';
+              if (!isCurrentRun()) return;
+              if (hasMetadataToWrite) actionStr = 'Copied unchanged (too large to safely restore metadata in this run)';
+              else if (epochSec) actionStr = 'Copied (unsupported metadata format)';
               const outRelativePath = outputPath(false);
 
               if (zipModeRef.current) {
+                const { BlobReader, BlobWriter, ZipWriter, Uint8ArrayWriter } = await loadZipTools();
+                if (!isCurrentRun()) return;
                 if (!currentZipWriterRef.current) {
                   const blobWriter = new BlobWriter("application/zip");
                   currentZipBlobWriterRef.current = blobWriter;
@@ -1454,6 +1456,7 @@ export function useToolPipeline() {
                   throw new Error("Failed to resolve file reference.");
                 }
 
+                if (!isCurrentRun()) return;
                 await currentZipWriterRef.current.add(zipEntryPath, contentReader, {
                   lastModDate: dateObj
                 });
@@ -1467,8 +1470,7 @@ export function useToolPipeline() {
                   await readableStream.pipeTo(writable);
                   writable = null;
                 } else if (zipEntry) {
-                  const zipWriter = new FileSystemWritableFileStreamWriter(writable);
-                  await zipEntry.getData!(zipWriter);
+                  await zipEntry.getData!(writable, { preventClose: true });
                   await writable.close();
                   writable = null;
                 } else {
@@ -1479,7 +1481,7 @@ export function useToolPipeline() {
             }
 
             let zipPartDownloaded = false;
-            if (zipModeRef.current && currentZipBytesRef.current > 1500 * 1024 * 1024) {
+            if (zipModeRef.current && currentZipBytesRef.current >= memoryBudget.zipPartBytes) {
               if (!await downloadCurrentZipChunk()) return;
               zipPartDownloaded = true;
             }
@@ -1579,9 +1581,7 @@ export function useToolPipeline() {
             guestQuotaWaiters = [];
             waiters.forEach(resolve => resolve());
             inFlightCount--;
-            if (heavyFlag) {
-              isProcessingHeavy = false;
-            }
+            inFlightBytes -= reservedBytes;
             setActiveWorkersCount(inFlightCount);
 
             // Yield slightly for garbage collection every 10 files
@@ -1614,7 +1614,7 @@ export function useToolPipeline() {
               }
             }
           }
-        })(nextFile, isHeavy);
+        })(nextFile);
         inFlightTasksRef.current.add(task);
         task.then(
           () => inFlightTasksRef.current.delete(task),
@@ -1761,7 +1761,7 @@ export function useToolPipeline() {
     }
   }
 
-  const finishZipFailure = async (sourceReader: ZipReader<File> | null = null) => {
+  const finishZipFailure = async (sourceReader: ZipSourceReader<File> | null = null) => {
     try {
       await Promise.allSettled([...inFlightTasksRef.current])
       currentZipWriterRef.current = null

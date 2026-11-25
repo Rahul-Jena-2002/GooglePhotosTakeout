@@ -413,3 +413,5 @@ export function extractTimestamp(json: Record<string, unknown> | null | undefine
 
   return null;
 }
+// Takeout sidecars hold metadata only. Bound reads before allocating strings.
+export const MAX_RESTORE_SIDECAR_BYTES = 1024 * 1024;

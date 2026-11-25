@@ -1,6 +1,30 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { BlobReader, BlobWriter, ZipReader, ZipWriter } from '@zip.js/zip.js';
 import { isSafeZipPath, reserveZipPath } from '../src/services/restoration/zipPathSafety.ts';
+
+test('can stream an original from a ZIP without closing the destination early', async () => {
+  const original = new Uint8Array(1024 * 1024).fill(99);
+  const zip = new ZipWriter(new BlobWriter());
+  await zip.add('photo.jpg', new BlobReader(new Blob([original])), { level: 0, useWebWorkers: false });
+  const reader = new ZipReader(new BlobReader(await zip.close()));
+  let bytes = 0;
+  let closed = false;
+  const destination = new WritableStream({
+    write(chunk) { bytes += chunk.byteLength; assert.ok(chunk.every(value => value === 99)); },
+    close() { closed = true; },
+  });
+  try {
+    const [entry] = await reader.getEntries();
+    await entry.getData(destination, { preventClose: true, useWebWorkers: false });
+    assert.equal(bytes, original.byteLength);
+    assert.equal(closed, false);
+    await destination.close();
+    assert.equal(closed, true);
+  } finally {
+    await reader.close();
+  }
+});
 
 test('preserves files that would otherwise share an extracted ZIP path', () => {
   const used = new Set();

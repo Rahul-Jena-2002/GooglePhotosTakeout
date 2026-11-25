@@ -1,6 +1,47 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { WorkerPool } from '../src/lib/WorkerPool.ts';
+import { restoreFileReservation, restoreMemoryBudget } from '../src/tool-workspace/restoreMemoryBudget.ts';
+
+test('restore reserves bytes across files and caps buffering on devices without memory telemetry', () => {
+  const MiB = 1024 * 1024;
+  const small = restoreMemoryBudget();
+  const large = restoreMemoryBudget(8);
+  assert.equal(small.fileBytes, 32 * MiB);
+  assert.equal(small.zipPartBytes, 64 * MiB);
+  assert.equal(large.activeBytes, 256 * MiB);
+  const reservation = restoreFileReservation(110 * MiB, large.activeBytes);
+  assert.ok(reservation * 2 <= large.activeBytes);
+  assert.ok(reservation * 3 > large.activeBytes);
+  assert.equal(restoreFileReservation(900 * MiB, large.activeBytes), large.activeBytes);
+  assert.equal(restoreFileReservation(NaN, large.activeBytes), large.activeBytes);
+});
+
+test('recycles a stalled worker and continues with the queued file', async (t) => {
+  t.mock.timers.enable({ apis: ['setTimeout'] });
+  const previousWorker = globalThis.Worker;
+  const instances = [];
+  globalThis.Worker = class {
+    constructor() { instances.push(this); }
+    postMessage() {}
+    terminate() { this.terminated = true; }
+  };
+  const pool = new WorkerPool(1);
+  try {
+    const stalled = assert.rejects(pool.runTask('stalled', {}), /stopped responding/);
+    const next = pool.runTask('next', {});
+    const staleReply = instances[0].onmessage;
+    t.mock.timers.tick(120_000);
+    await stalled;
+    assert.equal(instances[0].terminated, true);
+    staleReply({ data: 'stale reply' });
+    instances[1].onmessage({ data: 'restored' });
+    assert.equal(await next, 'restored');
+  } finally {
+    pool.terminate();
+    globalThis.Worker = previousWorker;
+  }
+});
 
 test('does not assign work to a worker that failed before its first task', { timeout: 2000 }, async () => {
   const previousWorker = globalThis.Worker;
