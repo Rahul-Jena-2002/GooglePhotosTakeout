@@ -3,7 +3,7 @@
  * 100% fluid, responsive, and adaptive across mobile, tablets, laptops (14"-17"), and desktop monitors (24"-32"+).
  */
 
-import { useState, useMemo } from "react"
+import { useEffect, useState, useMemo } from "react"
 import { FolderUp, HardDrive, Play, Square, Pause, Database, CheckCircle2, AlertCircle, AlertTriangle, XCircle, Download, Layers, ShieldCheck, RotateCcw, Zap, Archive, Info } from "lucide-react"
 import { Button } from "../components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card"
@@ -122,6 +122,8 @@ export function RestorePanel({
   formatByteSize = (bytes: number) => `${(bytes / (1024 * 1024)).toFixed(1)} MB`,
 }: RestorePanelProps) {
   const [agreedToTerms, setAgreedToTerms] = useState(false)
+  const [folderPickerUnavailable, setFolderPickerUnavailable] = useState(false)
+  useEffect(() => setFolderPickerUnavailable(!window.showDirectoryPicker), [])
   const [showPrestartGuide, setShowPrestartGuide] = useState(false)
   const organizeYearMonth = useSettingsStore((s) => s.organizeYearMonth)
   const setOrganizeYearMonth = useSettingsStore((s) => s.setOrganizeYearMonth)
@@ -210,7 +212,7 @@ export function RestorePanel({
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <span className="font-semibold text-sm sm:text-base text-zinc-900 dark:text-white">Google Photos Metadata Restorer</span>
+              <h1 className="font-semibold text-sm sm:text-base text-zinc-900 dark:text-white">Google Photos Metadata Restorer</h1>
             </div>
             <p className="text-[11px] sm:text-xs text-zinc-500 dark:text-zinc-400">Restore available dates and locations to supported copies. Keep your original export as a backup.</p>
           </div>
@@ -280,7 +282,7 @@ export function RestorePanel({
         )}
 
         {/* Browser compatibility check alert */}
-        {typeof window !== 'undefined' && !window.showDirectoryPicker && (
+        {folderPickerUnavailable && (
           <div className="p-3.5 bg-amber-500/10 border border-amber-500/20 text-amber-900 dark:text-amber-200 rounded-xl text-xs sm:text-sm flex items-start gap-2.5">
             <AlertCircle className="w-4 h-4 shrink-0 mt-0.5 text-amber-600 dark:text-amber-400" />
             <div>

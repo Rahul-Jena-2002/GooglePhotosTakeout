@@ -19,6 +19,8 @@ function restorationObfuscatorPlugin() {
     name: 'takeoutfix-restoration-obfuscator',
     apply: 'build', // Only active during production builds, not dev server
     async renderChunk(code, chunk) {
+      // The browser domain lock reads window and must stay out of Astro prerendering.
+      if (this.environment.config.consumer !== 'client') return null;
       // Only obfuscate dedicated restoration engine chunks; NEVER touch UI / React chunks
       const moduleIds = Object.keys(chunk.modules || {});
       const hasRestorationCode = moduleIds.some(id => RESTORATION_PATTERN.test(id));

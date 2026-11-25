@@ -301,15 +301,13 @@ export function useToolPipeline() {
   const cancelForAccountChangeRef = useRef<(() => Promise<void>) | null>(null)
   const restoredTimestampsCatalogRef = useRef<{ path: string; epoch: number }[]>([])
 
-  const [activeToolTab, setActiveToolTabState] = useState<ToolTab>(() => {
-    if (typeof window !== 'undefined') {
-      const param = new URLSearchParams(window.location.search).get('tab');
-      if (param && ['restore', 'studio', 'photovault', 'folderflow', 'viewer', 'comparison', 'duplicates'].includes(param)) {
-        return param as ToolTab;
-      }
+  const [activeToolTab, setActiveToolTabState] = useState<ToolTab>('restore')
+  useEffect(() => {
+    const param = new URLSearchParams(window.location.search).get('tab');
+    if (param && ['restore', 'studio', 'photovault', 'folderflow', 'viewer', 'comparison', 'duplicates'].includes(param)) {
+      setActiveToolTabState(param as ToolTab);
     }
-    return 'restore';
-  })
+  }, [])
 
   const setActiveToolTab = (tab: ToolTab) => {
     setActiveToolTabState(tab);

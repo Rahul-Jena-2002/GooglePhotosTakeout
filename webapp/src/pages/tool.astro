@@ -15,27 +15,7 @@ import Icon from "../components/ui/Icon.astro";
   <!-- 1. INTERACTIVE TOOL WORKSPACE (UNMODIFIED UI) -->
   <div id="tool-workspace" class="min-h-[calc(100vh-64px)]">
   <noscript><p class="mx-auto max-w-3xl px-6 py-6 text-zinc-700 dark:text-zinc-300">The restore tool needs JavaScript. Enable it in your browser to select files and save restored copies.</p></noscript>
-  <ToolWorkspace client:only="react">
-    <section slot="fallback" class="w-full bg-background text-foreground">
-      <div class="max-w-7xl mx-auto px-6 py-16 sm:py-20">
-        <div class="max-w-3xl">
-          <p class="inline-flex items-center rounded-full border border-zinc-200 dark:border-zinc-800 bg-zinc-100 dark:bg-zinc-900 px-3 py-1 text-xs font-bold uppercase tracking-wider text-zinc-800 dark:text-zinc-100">
-            Google Photos Metadata Restorer
-          </p>
-          <h1 class="mt-6 text-4xl sm:text-5xl md:text-6xl font-bold tracking-tight text-foreground leading-tight">
-            Restore your Takeout photos.
-          </h1>
-          <p class="mt-5 max-w-2xl text-lg sm:text-xl text-zinc-600 dark:text-zinc-400 leading-relaxed">
-            Choose a Google Takeout export to restore available dates and, for supported photos, locations. Your photos are processed locally in your browser. Keep the original export: some files may be skipped or copied without restored details.
-          </p>
-          <div class="mt-8 flex flex-wrap items-center gap-4">
-            <a href="#tool-workspace" class="btn-monochrome-primary inline-flex h-14 items-center rounded-lg px-8 font-bold">Open Restore Tool</a>
-            <span class="text-sm font-semibold text-zinc-600 dark:text-zinc-400">Free to use · No upload required</span>
-          </div>
-        </div>
-      </div>
-    </section>
-  </ToolWorkspace>
+  <ToolWorkspace client:load />
   </div>
 
   <!-- 2. SCROLLABLE USER MANUAL & POST-RESTORATION GUIDE (BELOW WORKSPACE) -->
