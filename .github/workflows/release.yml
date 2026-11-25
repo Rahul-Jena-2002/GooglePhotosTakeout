@@ -96,7 +96,11 @@ jobs:
           cache: 'maven'
 
       - name: Build Java Backend with Maven
-        run: mvn clean package -DskipTests -Dapp.version=${{ steps.version.outputs.version }} -Dbuild.number=${{ github.run_number }} -f takeoutfix/pom.xml
+        env:
+          APP_VERSION: ${{ steps.version.outputs.version }}
+          BUILD_NUMBER: ${{ github.run_number }}
+        shell: bash
+        run: mvn clean package -DskipTests "-Dapp.version=$APP_VERSION" "-Dbuild.number=$BUILD_NUMBER" -f takeoutfix/pom.xml
 
       - name: Prepare jpackage Input
         shell: bash
