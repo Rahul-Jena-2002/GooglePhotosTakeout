@@ -187,8 +187,26 @@ public class NativeExifToolEngine {
     static void extractWindowsArchive(InputStream source, Path extractDir) throws IOException {
         try (ZipInputStream zis = new ZipInputStream(source)) {
             ZipEntry entry;
+            String rootPrefix = null;
+            boolean firstEntry = true;
             while ((entry = zis.getNextEntry()) != null) {
-                File outFile = resolveBundledPath(extractDir, entry.getName()).toFile();
+                String name = entry.getName();
+                if (firstEntry && entry.isDirectory() && name.endsWith("/")
+                        && name.indexOf('/') == name.length() - 1) {
+                    resolveBundledPath(extractDir, name);
+                    rootPrefix = name;
+                    firstEntry = false;
+                    zis.closeEntry();
+                    continue;
+                }
+                firstEntry = false;
+                if (rootPrefix != null && name.startsWith(rootPrefix)) name = name.substring(rootPrefix.length());
+                if (name.isEmpty()) {
+                    zis.closeEntry();
+                    continue;
+                }
+                if (name.equals("exiftool(-k).exe")) name = "exiftool.exe";
+                File outFile = resolveBundledPath(extractDir, name).toFile();
                 if (entry.isDirectory()) {
                     Files.createDirectories(outFile.toPath());
                 } else {

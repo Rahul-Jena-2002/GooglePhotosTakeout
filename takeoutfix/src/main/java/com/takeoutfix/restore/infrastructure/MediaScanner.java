@@ -4,6 +4,8 @@ import org.springframework.stereotype.Component;
 
 import java.io.File;
 import java.nio.file.Files;
+import java.nio.file.Path;
+import java.io.IOException;
 import java.util.*;
 import java.util.regex.Pattern;
 
@@ -25,6 +27,9 @@ public class MediaScanner {
         if (root == null || Files.isSymbolicLink(root.toPath())) {
             throw new IllegalArgumentException("Select a source folder that is not a symbolic link.");
         }
+        if (root.isDirectory() && isLinkedDirectory(root.toPath())) {
+            throw new IllegalArgumentException("Select a source folder that is not a linked folder.");
+        }
         if (root.isFile() && root.getName().toLowerCase(Locale.ROOT).endsWith(".zip")) {
             throw new IllegalArgumentException("Extract the ZIP archive first, then select the extracted folder.");
         }
@@ -45,6 +50,9 @@ public class MediaScanner {
                     continue;
                 }
                 if (k.isDirectory()) {
+                    if (isLinkedDirectory(k.toPath())) {
+                        throw new IllegalStateException("Source contains a linked folder that cannot be scanned safely: " + k);
+                    }
                     stack.push(k);
                 } else if (k.isFile()) {
                     String name = k.getName();
@@ -55,6 +63,17 @@ public class MediaScanner {
             }
         }
         return list;
+    }
+
+    private boolean isLinkedDirectory(Path path) {
+        Path absolute = path.toAbsolutePath().normalize();
+        Path parent = absolute.getParent();
+        if (parent == null) return false;
+        try {
+            return !absolute.toRealPath().equals(parent.toRealPath().resolve(absolute.getFileName()));
+        } catch (IOException e) {
+            throw new IllegalStateException("Cannot safely resolve source folder: " + path, e);
+        }
     }
 
     public boolean isMediaFile(File f) {

@@ -10,6 +10,7 @@ import java.util.function.Consumer;
 public class UserController {
 
     private static final Map<String, Object> currentUserProfile = new ConcurrentHashMap<>();
+    private static long sessionVersion;
     private static Consumer<Map<String, Object>> profileUpdateListener = null;
 
     private static UserService userService = null;
@@ -51,7 +52,7 @@ public class UserController {
         return false;
     }
 
-    public static void updateUserProfile(Map<String, Object> profile) {
+    public static synchronized void updateUserProfile(Map<String, Object> profile) {
         if (profile != null) {
             Map<String, Object> modifiableProfile = new java.util.HashMap<>(profile);
             long existingFiles = toLong(currentUserProfile.get("usedFiles"));
@@ -133,7 +134,8 @@ public class UserController {
         }
     }
 
-    public static void syncUser(Map<String, Object> profile) {
+    public static synchronized void syncUser(Map<String, Object> profile) {
+        sessionVersion++;
         if (profile != null) {
             Object previousId = currentUserProfile.getOrDefault("uid", currentUserProfile.get("googleId"));
             Object nextId = profile.getOrDefault("uid", profile.get("googleId"));
@@ -173,7 +175,8 @@ public class UserController {
         }
     }
 
-    public static void logout() {
+    public static synchronized void logout() {
+        sessionVersion++;
         currentUserProfile.clear();
         if (userService != null) {
             try {
@@ -185,6 +188,19 @@ public class UserController {
                 profileUpdateListener.accept(currentUserProfile);
             } catch (Exception ignored) {}
         }
+    }
+
+    static synchronized boolean updateUserProfileIfCurrent(String uid, long version, Map<String, Object> updates) {
+        if (!isCurrentSession(uid, version)) return false;
+        updateUserProfile(updates);
+        return true;
+    }
+
+    static synchronized long sessionVersion() { return sessionVersion; }
+
+    static synchronized boolean isCurrentSession(String uid, long version) {
+        return version == sessionVersion && uid != null && !uid.isBlank()
+                && uid.equals(currentUserProfile.getOrDefault("uid", currentUserProfile.get("googleId")));
     }
 
     private static long toLong(Object obj) {

@@ -41,14 +41,23 @@ public class UserSyncBridgeService {
     private static final Logger log = LoggerFactory.getLogger(UserSyncBridgeService.class);
     private static final String KEY_EMAIL = "email";
 
-    private static final File SESSION_FILE = new File(System.getProperty("user.home"), ".takeoutfix/session.json");
-    private static final File USERS_FILE = new File(System.getProperty("user.home"), ".takeoutfix/users.json");
-
     private final ExecutorService executorService = Executors.newCachedThreadPool();
+    private final java.util.concurrent.atomic.AtomicBoolean usageSyncRunning = new java.util.concurrent.atomic.AtomicBoolean();
+    private final java.util.concurrent.atomic.AtomicBoolean retryStartupAuthentication = new java.util.concurrent.atomic.AtomicBoolean();
+    private final java.util.concurrent.atomic.AtomicBoolean startupRetryRunning = new java.util.concurrent.atomic.AtomicBoolean();
+    private final java.util.concurrent.atomic.AtomicLong sessionGeneration = new java.util.concurrent.atomic.AtomicLong();
+    // Attribution only: a saved identity is not proof of a currently valid sign-in.
+    private volatile String offlineUsageOwner;
     private final List<Consumer<Map<String, Object>>> listeners = new CopyOnWriteArrayList<>();
     private final FirebaseSyncService firebaseSyncService;
     private final CredentialStore credentialStore;
     private final GoogleAuthService googleAuthService;
+    private final UsageAccumulator usageAccumulator;
+    private final java.util.concurrent.ScheduledExecutorService usageCheckpoint = Executors.newSingleThreadScheduledExecutor(r -> {
+        Thread thread = new Thread(r, "takeoutfix-usage-checkpoint");
+        thread.setDaemon(true);
+        return thread;
+    });
     private final Object cloudEnrichmentLock = new Object();
     private long cloudEnrichmentGeneration;
 
@@ -65,7 +74,27 @@ public class UserSyncBridgeService {
         this.googleAuthService = googleAuthService;
         this.credentialStore = credentialStore;
         this.firebaseSyncService = firebaseSyncService;
+        this.usageAccumulator = new UsageAccumulator(new UsageJournal(credentialStore.getConfigDir().toPath().resolve("pending-usage-v2")));
+        usageCheckpoint.scheduleWithFixedDelay(this::checkpointCommittedUsage, 10, 10, java.util.concurrent.TimeUnit.SECONDS);
+        usageCheckpoint.scheduleWithFixedDelay(this::syncIfOnline, 30, 30, java.util.concurrent.TimeUnit.SECONDS);
         UserController.setProfileUpdateListener(this::handleProfileUpdate);
+    }
+
+    public void recordCommittedOutput(long files, long bytes) {
+        synchronized (UserController.class) {
+            Object uid = UserController.hasSignedInCredentials()
+                    ? UserController.getCurrentUserProfile().getOrDefault("uid", UserController.getCurrentUserProfile().get("googleId"))
+                    : offlineUsageOwner;
+            if (uid instanceof String id && !id.isBlank()) usageAccumulator.add(id, files, bytes);
+        }
+    }
+
+    public void checkpointCommittedUsage() {
+        try {
+            usageAccumulator.checkpoint();
+        } catch (java.io.IOException e) {
+            log.warn("Could not checkpoint restored usage; it remains in memory for retry.", e);
+        }
     }
 
     public GoogleAuthService getGoogleAuthService() {
@@ -74,6 +103,19 @@ public class UserSyncBridgeService {
 
     public SessionManager getSessionManager() {
         return googleAuthService.getSessionManager();
+    }
+
+    public void commitAuthenticatedSession(AuthSession session) {
+        if (session == null || !session.isAuthenticated()) throw new IllegalArgumentException("Authenticated session required.");
+        SessionManager manager = getSessionManager();
+        synchronized (manager) {
+            sessionGeneration.incrementAndGet();
+            retryStartupAuthentication.set(false);
+            offlineUsageOwner = null;
+            manager.save(session);
+            UserController.syncUser(session.toMap());
+        }
+        syncIfOnline();
     }
 
     public FirebaseSyncService getFirebaseSyncService() {
@@ -120,7 +162,7 @@ public class UserSyncBridgeService {
                 return false;
             }
             UserController.updateUserProfile(enrichmentChanges(profile, enriched, active));
-            saveSessionFile(active);
+            saveProfileSession(active);
             return true;
         }
     }
@@ -131,27 +173,35 @@ public class UserSyncBridgeService {
         }
     }
 
-    /**
-     * Synchronizes accumulated local metrics to Firebase Firestore when the user
-     * pauses, cancels/stops, or completes a restoration, verifying online status first.
-     */
+    /** Attempts to send queued usage; unsuccessful batches stay on disk for retry. */
     public void syncIfOnline() {
         if (!isSignedIn()) {
+            if (retryStartupAuthentication.get() && startupRetryRunning.compareAndSet(false, true)) {
+                try {
+                    verifyStartupSession(ignored -> startupRetryRunning.set(false));
+                } catch (java.util.concurrent.RejectedExecutionException e) {
+                    startupRetryRunning.set(false);
+                    if (!executorService.isShutdown()) throw e;
+                }
+            }
             return;
         }
-        executorService.submit(() -> {
-            if (checkOnlineConnectivity()) {
+        if (!usageSyncRunning.compareAndSet(false, true)) {
+            return;
+        }
+        try {
+            executorService.submit(() -> {
                 try {
-                    log.info("Network is online: Synchronizing local usage metrics to Firebase...");
-                    firebaseSyncService.pushCurrentTotalsToCloud();
-                    firebaseSyncService.drainPendingOfflineSync();
-                } catch (Exception e) {
-                    log.warn("Firebase sync attempt failed: {}", e.getMessage());
+                    if (!firebaseSyncService.hasPendingUsageForCurrentAccount()) return;
+                    if (firebaseSyncService.pushCurrentTotalsToCloud()) firebaseSyncService.syncWithFirebase();
+                } finally {
+                    usageSyncRunning.set(false);
                 }
-            } else {
-                log.info("Network is offline: Firebase cloud sync safely deferred until online.");
-            }
-        });
+            });
+        } catch (java.util.concurrent.RejectedExecutionException e) {
+            usageSyncRunning.set(false);
+            if (!executorService.isShutdown()) throw e;
+        }
     }
 
     /**
@@ -182,24 +232,42 @@ public class UserSyncBridgeService {
      * Validates stored credentials against the token endpoint.
      */
     public void verifyStartupSession(Consumer<Boolean> onComplete) {
+        long generation = sessionGeneration.get();
         executorService.submit(() -> {
             boolean valid = false;
             try {
-                SessionRestoreResult result = getSessionManager().restore();
+                SessionManager manager = getSessionManager();
+                synchronized (manager) {
+                    if (generation == sessionGeneration.get() && !isSignedIn()) {
+                        AuthSession saved = credentialStore.loadSession();
+                        offlineUsageOwner = saved != null && saved.isAuthenticated() ? saved.getUid() : null;
+                    }
+                }
+                SessionRestoreResult result = manager.restore();
+                synchronized (manager) {
+                    if (generation == sessionGeneration.get() && !isSignedIn()) {
+                        retryStartupAuthentication.set(result instanceof SessionRestoreResult.AuthUnavailable);
+                        if (!(result instanceof SessionRestoreResult.AuthUnavailable)) offlineUsageOwner = null;
+                    }
+                }
                 if (result instanceof SessionRestoreResult.Authenticated auth) {
-                    UserController.syncUser(auth.session().toMap());
-                    triggerCloudSync(null);
-                    valid = true;
+                    synchronized (manager) {
+                        if (generation == sessionGeneration.get() && manager.getCurrentSession() == auth.session()) {
+                            offlineUsageOwner = null;
+                            UserController.syncUser(auth.session().toMap());
+                            valid = true;
+                        }
+                    }
+                    if (valid) {
+                        triggerCloudSync(null);
+                        syncIfOnline();
+                    }
                 }
             } catch (Exception e) {
                 valid = false;
             }
 
             final boolean authOk = valid;
-            if (!authOk) {
-                UserController.getCurrentUserProfile().clear();
-            }
-
             SwingUtilities.invokeLater(() -> {
                 if (onComplete != null) {
                     onComplete.accept(authOk);
@@ -217,7 +285,7 @@ public class UserSyncBridgeService {
                 Map<String, Object> profile = DirectAuthHttpsService.signInWithEmailPassword(email, password);
                 SwingUtilities.invokeLater(() -> {
                     UserController.syncUser(profile);
-                    saveSessionFile(profile);
+                    saveProfileSession(profile);
                     if (onSuccess != null) {
                         onSuccess.accept(profile);
                     }
@@ -242,7 +310,7 @@ public class UserSyncBridgeService {
                 Map<String, Object> profile = DirectAuthHttpsService.signUpWithEmailPassword(email, password);
                 SwingUtilities.invokeLater(() -> {
                     UserController.syncUser(profile);
-                    saveSessionFile(profile);
+                    saveProfileSession(profile);
                     if (onSuccess != null) {
                         onSuccess.accept(profile);
                     }
@@ -287,7 +355,7 @@ public class UserSyncBridgeService {
                 Map<String, Object> profile = DirectAuthHttpsService.parseAndAuthenticate(input);
                 SwingUtilities.invokeLater(() -> {
                     UserController.syncUser(profile);
-                    saveSessionFile(profile);
+                    saveProfileSession(profile);
                     if (onSuccess != null) {
                         onSuccess.accept(profile);
                     }
@@ -342,12 +410,20 @@ public class UserSyncBridgeService {
     // ── Session persistence ──────────────────────────────────────────────────
 
     public static void saveSessionFile(Map<String, Object> profile) {
+        saveSessionFile(profile, new CredentialStore());
+    }
+
+    private void saveProfileSession(Map<String, Object> profile) {
+        saveSessionFile(profile, credentialStore);
+    }
+
+    private static void saveSessionFile(Map<String, Object> profile, CredentialStore store) {
         if (profile == null || profile.isEmpty())
             return;
         try {
             AuthSession session = AuthSession.fromMap(profile);
             if (session != null && session.isValid()) {
-                new CredentialStore().saveSession(session);
+                store.saveSession(session);
             }
         } catch (Exception ignored) {
             // Non-fatal session persistence failure
@@ -362,7 +438,7 @@ public class UserSyncBridgeService {
     }
 
     private void handleProfileUpdate(Map<String, Object> profile) {
-        saveSessionFile(profile);
+        saveProfileSession(profile);
         for (Consumer<Map<String, Object>> listener : listeners) {
             try {
                 listener.accept(profile);
@@ -511,7 +587,22 @@ public class UserSyncBridgeService {
      * state.
      */
     public boolean signOut() {
+        synchronized (getSessionManager()) {
+            return signOutLocked();
+        }
+    }
+
+    private boolean signOutLocked() {
+        sessionGeneration.incrementAndGet();
+        retryStartupAuthentication.set(false);
+        offlineUsageOwner = null;
+        File sessionFile = new File(credentialStore.getConfigDir(), "session.json");
+        File usersFile = new File(credentialStore.getConfigDir(), "users.json");
         invalidateCloudEnrichment();
+        synchronized (UserController.class) {
+            UserController.logout();
+            firebaseSyncService.clearCachedTokens();
+        }
         boolean cleared = true;
         try {
             cleared = credentialStore.clear();
@@ -526,8 +617,8 @@ public class UserSyncBridgeService {
             log.warn("Could not clear Google sign-in credentials", e);
         }
         try {
-            if (SESSION_FILE.exists()) {
-                Files.deleteIfExists(SESSION_FILE.toPath());
+            if (sessionFile.exists()) {
+                Files.deleteIfExists(sessionFile.toPath());
             }
         } catch (Exception e) {
             cleared = false;
@@ -535,15 +626,14 @@ public class UserSyncBridgeService {
         }
 
         try {
-            if (USERS_FILE.exists()) {
-                Files.deleteIfExists(USERS_FILE.toPath());
+            if (usersFile.exists()) {
+                Files.deleteIfExists(usersFile.toPath());
             }
         } catch (Exception e) {
             cleared = false;
             log.warn("Could not remove local account file", e);
         }
 
-        UserController.logout();
         handleProfileUpdate(new HashMap<>());
         return cleared;
     }
@@ -562,13 +652,15 @@ public class UserSyncBridgeService {
 
     private void recordUsageInternal(long files, long bytes, boolean synchronous) {
         UserController.incrementUsage(files, bytes);
-        saveSessionFile(UserController.getCurrentUserProfile());
+        saveProfileSession(UserController.getCurrentUserProfile());
         // Usage counts are saved purely into local storage/session during active execution.
         // Network cloud synchronization is invoked only when paused, stopped, completed,
         // or on app exit, preventing excessive and frequent network requests.
     }
 
     public void shutdown() {
+        usageCheckpoint.shutdown();
+        checkpointCommittedUsage();
         executorService.shutdownNow();
     }
 

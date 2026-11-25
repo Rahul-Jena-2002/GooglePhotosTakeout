@@ -1,6 +1,5 @@
 package com.takeoutfix.task;
 
-import com.takeoutfix.network.SystemHardwareInfo;
 import com.takeoutfix.shared.theme.AppTheme;
 import com.takeoutfix.shared.theme.ThemeColors;
 import com.takeoutfix.shared.theme.ThemeManager;
@@ -47,7 +46,7 @@ public class PersistentTaskFooter extends VBox {
     private final Label privacyPill = new Label("Processed locally · No uploads");
     private final Label dotSeparator = new Label("·");
     private final Label taskCountBadge = new Label("Idle · Ready");
-    private final Label telemetryLabel = new Label("CPU 0% · App RAM 0 MB · Sys RAM 0.0 / 0.0 GB");
+    private final Label telemetryLabel = new Label("System CPU Unavailable · App memory — · System RAM Unavailable");
     private final Button toggleExpandBtn = new Button("▲ Tasks (0)");
 
     // Expanded drawer components
@@ -204,6 +203,7 @@ public class PersistentTaskFooter extends VBox {
 
         Region spacer = new Region();
         HBox.setHgrow(spacer, Priority.ALWAYS);
+        telemetryLabel.setMinWidth(0);
 
         // Expand Toggle button
         toggleExpandBtn.setOnAction(e -> toggleExpanded());
@@ -419,20 +419,34 @@ public class PersistentTaskFooter extends VBox {
         long jvmHeapUsedMb = rm.getJvmMemoryUsedMb();
         long jvmHeapCommittedMb = rm.getJvmMemoryCommittedMb();
 
-        double sysUsedGb = SystemHardwareInfo.getUsedMemoryGB();
-        double sysTotalGb = SystemHardwareInfo.getTotalMemoryGB();
+        String sysMemory = "Unavailable";
+        try {
+            var bean = java.lang.management.ManagementFactory.getOperatingSystemMXBean();
+            if (bean instanceof com.sun.management.OperatingSystemMXBean os) {
+                long total = os.getTotalMemorySize();
+                long free = os.getFreeMemorySize();
+                if (total > 0 && free >= 0 && free <= total) {
+                    double divisor = 1024.0 * 1024 * 1024;
+                    sysMemory = String.format(Locale.US, "%.1f / %.1f GB", (total - free) / divisor, total / divisor);
+                }
+            }
+        } catch (RuntimeException | LinkageError ignored) {
+            // OS metrics are optional and may be unavailable.
+        }
+        String systemCpu = Double.isFinite(sysCpu) ? String.format(Locale.US, "%.0f%%", sysCpu) : "Unavailable";
+        String appCpu = Double.isFinite(procCpu) ? String.format(Locale.US, "%.1f%%", procCpu) : "Unavailable";
+        String appMemory = appProcessMemMb >= 0 ? appProcessMemMb + " MB" : "Unavailable";
 
-        telemetryLabel.setText(String.format(Locale.US, "CPU %.0f%%  ·  App RAM %d MB  ·  Sys RAM %.1f / %.1f GB",
-                sysCpu, appProcessMemMb, sysUsedGb, sysTotalGb));
+        telemetryLabel.setText(String.format(Locale.US, "System CPU %s  ·  App memory %s  ·  System RAM %s",
+                systemCpu, appMemory, sysMemory));
 
         telemetryLabel.setTooltip(new Tooltip(String.format(Locale.US,
-                "CPU Usage: System %.1f%% (App %.1f%%)\nApp OS RAM (Task Manager): %d MB\nJVM Heap: %d MB used of %d MB committed\nSystem RAM: %.2f GB used of %.2f GB (%.0f%% in use)",
-                sysCpu, procCpu, appProcessMemMb, jvmHeapUsedMb, jvmHeapCommittedMb, sysUsedGb, sysTotalGb,
-                sysTotalGb > 0 ? (sysUsedGb / sysTotalGb * 100.0) : 0.0)));
+                "CPU usage: System %s (App %s)\nApp resident memory: %s\nJVM heap: %d MB used of %d MB committed\nSystem RAM: %s",
+                systemCpu, appCpu, appMemory, jvmHeapUsedMb, jvmHeapCommittedMb, sysMemory)));
 
-        appCpuMetric.setText(String.format(Locale.US, "%.1f%%", procCpu));
-        appMemMetric.setText(appProcessMemMb + " MB (" + jvmHeapUsedMb + " MB Heap)");
-        sysMemMetric.setText(String.format(Locale.US, "%.1f / %.1f GB", sysUsedGb, sysTotalGb));
+        appCpuMetric.setText(appCpu);
+        appMemMetric.setText(appMemory + " (" + jvmHeapUsedMb + " MB Heap)");
+        sysMemMetric.setText(sysMemory);
 
         // Calculate aggregated throughput
         double totalThroughput = 0.0;

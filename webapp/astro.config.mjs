@@ -97,7 +97,8 @@ export default defineConfig({
   integrations: [
     react(),
     tailwind({
-      applyBaseStyles: true
+      // src/index.css already imports Tailwind's base, components and utilities.
+      applyBaseStyles: false
     })
   ],
   vite: {
@@ -107,6 +108,7 @@ export default defineConfig({
       rollupOptions: {
         output: {
           manualChunks(id) {
+            if (id === '\0vite/preload-helper.js') return 'vite-preload';
             if (id.includes('services/restoration') || id.includes('services\\restoration')) {
               return 'restoration-engine';
             }

@@ -157,7 +157,7 @@ export default function AuthPage() {
         if (prev <= 1) {
           clearInterval(timer);
           try { window.close(); } catch (_) {}
-          try { window.open("", "_self", "").close(); } catch (_) {}
+          try { window.open("", "_self", "")?.close(); } catch (_) {}
           return 0;
         }
         return prev - 1;
@@ -405,6 +405,7 @@ export default function AuthPage() {
       const refreshToken = (targetUser as any).refreshToken || (targetUser as any).stsTokenManager?.refreshToken || "";
       const stateParam = getStoredDesktopState();
       if (!token || !stateParam) throw new Error("Missing sign-in details. Start sign-in again from the desktop app.");
+      if (!auth || auth.currentUser !== targetUser) throw new Error("The signed-in account changed. Start sign-in again from the desktop app.");
 
       const displayName = targetUser.displayName || targetUser.email?.split("@")[0] || "User";
       const payload: Record<string, string> = {
@@ -484,7 +485,7 @@ export default function AuthPage() {
               type="button"
               onClick={() => {
                 try { window.close(); } catch (_) {}
-                try { window.open("", "_self", "").close(); } catch (_) {}
+                try { window.open("", "_self", "")?.close(); } catch (_) {}
               }}
               className="w-full py-3.5 px-4 bg-emerald-600 hover:bg-emerald-500 active:scale-[0.99] text-white rounded-xl text-sm font-bold transition-all shadow-lg shadow-emerald-600/25 cursor-pointer flex items-center justify-center gap-2"
             >
@@ -658,7 +659,7 @@ export default function AuthPage() {
               {mode === "forgot" && "Reset Your Password"}
             </h1>
             <p className="text-xs sm:text-sm text-zinc-500 dark:text-zinc-400 mt-1">
-              {mode === "signin" && "Sign in to access your restored files & preferences."}
+              {mode === "signin" && "Sign in to access your account and restoration history."}
               {mode === "signup" && "Join TakeoutFix to fix dates, GPS, and metadata."}
               {mode === "forgot" && "Enter your email to receive a password reset link."}
             </p>

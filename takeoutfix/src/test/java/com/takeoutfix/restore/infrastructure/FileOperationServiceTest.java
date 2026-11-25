@@ -97,6 +97,46 @@ public class FileOperationServiceTest {
     }
 
     @Test
+    @org.junit.jupiter.api.condition.EnabledOnOs(org.junit.jupiter.api.condition.OS.WINDOWS)
+    void junctionToSourceCannotBeUsedAsOutput(@TempDir Path tempDir) throws Exception {
+        Path source = Files.createDirectories(tempDir.resolve("source"));
+        Path original = Files.writeString(source.resolve("original.txt"), "keep original");
+        Path junction = tempDir.resolve("source-junction");
+        Process process = new ProcessBuilder("cmd", "/c", "mklink", "/J", junction.toString(), source.toString())
+                .redirectErrorStream(true).start();
+        assertTrue(process.waitFor(10, java.util.concurrent.TimeUnit.SECONDS), "Junction creation timed out");
+        assertEquals(0, process.exitValue(), "Could not create a temporary junction");
+        try {
+            assertThrows(IOException.class, () ->
+                    FileOperationService.requireSeparateDirectories(source.toFile(), junction.resolve("output").toFile()));
+            assertEquals("keep original", Files.readString(original));
+        } finally {
+            Files.deleteIfExists(junction);
+        }
+    }
+
+    @Test
+    @org.junit.jupiter.api.condition.EnabledOnOs(org.junit.jupiter.api.condition.OS.WINDOWS)
+    void junctionInsideOutputCannotRedirectCopies(@TempDir Path tempDir) throws Exception {
+        Path input = Files.createDirectories(tempDir.resolve("input"));
+        Path media = Files.writeString(Files.createDirectories(input.resolve("album")).resolve("photo.jpg"), "original");
+        Path output = Files.createDirectories(tempDir.resolve("output"));
+        Path outside = Files.createDirectories(tempDir.resolve("outside"));
+        Path junction = output.resolve("album");
+        Process process = new ProcessBuilder("cmd", "/c", "mklink", "/J", junction.toString(), outside.toString())
+                .redirectErrorStream(true).start();
+        assertTrue(process.waitFor(10, java.util.concurrent.TimeUnit.SECONDS), "Junction creation timed out");
+        assertEquals(0, process.exitValue(), "Could not create a temporary junction");
+        try {
+            assertThrows(IOException.class, () -> new FileOperationService().copyToOutput(media.toFile(), input.toFile(), output.toFile()));
+            assertFalse(Files.exists(outside.resolve("photo.jpg")));
+            assertEquals("original", Files.readString(media));
+        } finally {
+            Files.deleteIfExists(junction);
+        }
+    }
+
+    @Test
     void testRestoreDestinationThroughSymlinkIsRejected(@TempDir Path tempDir) throws IOException {
         Path source = Files.createDirectories(tempDir.resolve("source"));
         Path link = tempDir.resolve("source-link");

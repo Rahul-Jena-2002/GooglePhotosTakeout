@@ -32,7 +32,8 @@ public class ResourceManager {
     private final ScheduledExecutorService monitorScheduler;
 
     private double currentCpuLoad = 0.0;
-    private double currentProcessCpuLoad = 0.0;
+    private volatile double reportedCpuLoad = Double.NaN;
+    private volatile double currentProcessCpuLoad = Double.NaN;
 
     public ResourceManager() {
         this.availableCores = Math.max(2, Runtime.getRuntime().availableProcessors());
@@ -120,9 +121,12 @@ public class ResourceManager {
             if (osBean instanceof com.sun.management.OperatingSystemMXBean sunBean) {
                 double sysLoad = sunBean.getCpuLoad();
                 double procLoad = sunBean.getProcessCpuLoad();
+                reportedCpuLoad = sysLoad >= 0 ? sysLoad * 100.0 : Double.NaN;
+                currentProcessCpuLoad = procLoad >= 0 ? procLoad * 100.0 : Double.NaN;
                 if (sysLoad >= 0) currentCpuLoad = sysLoad * 100.0;
-                if (procLoad >= 0) currentProcessCpuLoad = procLoad * 100.0;
             } else {
+                reportedCpuLoad = Double.NaN;
+                currentProcessCpuLoad = Double.NaN;
                 double loadAvg = osBean.getSystemLoadAverage();
                 if (loadAvg >= 0) {
                     currentCpuLoad = Math.min(100.0, (loadAvg / availableCores) * 100.0);
@@ -160,6 +164,8 @@ public class ResourceManager {
                 }
             }
         } catch (Throwable ignored) {
+            reportedCpuLoad = Double.NaN;
+            currentProcessCpuLoad = Double.NaN;
         }
     }
 
@@ -193,7 +199,7 @@ public class ResourceManager {
     public int getActiveCpuWorkers() { return cpuExecutor.getActiveCount(); }
     public int getActiveIoWorkers() { return ioExecutor.getActiveCount(); }
 
-    public double getSystemCpuPercent() { return currentCpuLoad; }
+    public double getSystemCpuPercent() { return reportedCpuLoad; }
     public double getProcessCpuPercent() { return currentProcessCpuLoad; }
 
     /**

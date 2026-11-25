@@ -74,12 +74,12 @@
 
 /* App Shell & Sidebar */
 .app-shell {
-    -fx-background-color: #282A36;
+    -fx-background-color: #151722;
 }
 
 .sidebar {
-    -fx-background-color: #21222C;
-    -fx-border-color: #44475A;
+    -fx-background-color: #1A1D27;
+    -fx-border-color: #303342;
     -fx-border-width: 0 1 0 0;
     -fx-padding: 12 10 12 10;
 }
@@ -118,23 +118,21 @@
 }
 
 .nav-button:hover {
-    -fx-background-color: #343746;
+    -fx-background-color: #292C3A;
     -fx-text-fill: #F8F8F2;
 }
 
 .sidebar-item:focused, .nav-button:focused {
-    -fx-focus-color: transparent;
-    -fx-faint-focus-color: transparent;
-    -fx-background-insets: 0;
+    -fx-border-color: #CDB4FF;
+    -fx-border-width: 1;
+    -fx-border-radius: 8;
 }
 
 .nav-button-selected {
-    -fx-background-color: #44475A;
-    -fx-text-fill: #BD93F9;
+    -fx-background-color: #6336B5;
+    -fx-text-fill: #FFFFFF;
     -fx-font-weight: bold;
-    -fx-border-color: #BD93F9;
-    -fx-border-width: 0 0 0 3;
-    -fx-background-radius: 0 4 4 0;
+    -fx-background-radius: 8;
 }
 
 /* App Vector Icons — Dynamic Theme-Aware Styling */
@@ -163,13 +161,13 @@
     -fx-background-color: #F8F8F2;
 }
 .nav-button-selected .app-icon {
-    -fx-background-color: #BD93F9;
+    -fx-background-color: #FFFFFF;
 }
 
 /* Top Header Bar */
 .top-header {
-    -fx-background-color: #21222C;
-    -fx-border-color: #44475A;
+    -fx-background-color: #1A1D27;
+    -fx-border-color: rgba(255, 255, 255, 0.08);
     -fx-border-width: 0 0 1 0;
     -fx-padding: 8 16 8 16;
 }
@@ -221,6 +219,38 @@
 
 .kpi-card:hover {
     -fx-border-color: #6272A4;
+}
+
+.restore-workspace .kpi-card {
+    -fx-background-color: transparent;
+    -fx-border-color: transparent;
+    -fx-effect: null;
+}
+
+.restore-workspace-scroll, .restore-workspace-scroll > .viewport {
+    -fx-background-color: transparent;
+    -fx-padding: 0;
+}
+
+.restore-workspace .restore-layout {
+    -fx-background-color: transparent;
+    -fx-border-color: transparent;
+}
+
+.restore-workspace .inner-container {
+    -fx-background-color: rgba(16, 19, 30, 0.24);
+    -fx-border-color: rgba(255, 255, 255, 0.08);
+}
+
+.restore-workspace .glass-card, .settings-workspace .glass-card, .workspace-view .glass-card {
+    -fx-background-color: rgba(42, 45, 65, 0.90);
+    -fx-border-color: rgba(255, 255, 255, 0.13);
+    -fx-effect: null;
+}
+
+.restore-workspace .path-display-box, .restore-workspace .empty-state-box {
+    -fx-background-color: rgba(13, 16, 26, 0.34);
+    -fx-border-color: rgba(255, 255, 255, 0.09);
 }
 
 .kpi-title, .kpi-label {
@@ -396,6 +426,15 @@
     -fx-border-color: transparent !important;
 }
 
+.button.btn-primary:disabled, .button.btn-primary:disabled .text {
+    -fx-text-fill: #c3c6d2 !important;
+    -fx-fill: #c3c6d2 !important;
+}
+
+.button.btn-primary:disabled .app-icon {
+    -fx-background-color: #c3c6d2 !important;
+}
+
 /* Secondary Buttons — Outlined, Text Color */
 .btn-secondary {
     -fx-background-color: transparent;
@@ -564,6 +603,10 @@
 .check-box:selected .box {
     -fx-background-color: #BD93F9;
     -fx-border-color: #BD93F9;
+}
+
+.check-box .mark {
+    -fx-background-color: transparent;
 }
 
 .check-box:selected .mark {
@@ -767,6 +810,15 @@
 .list-view .list-cell:filled:selected {
     -fx-background-color: #44475A;
     -fx-text-fill: #BD93F9;
+}
+
+.settings-categories .list-cell:filled:selected {
+    -fx-background-color: #6336B5;
+    -fx-background-radius: 8;
+}
+
+.settings-categories .list-cell:filled:selected .label {
+    -fx-text-fill: #FFFFFF;
 }
 
 /* Empty State Card */

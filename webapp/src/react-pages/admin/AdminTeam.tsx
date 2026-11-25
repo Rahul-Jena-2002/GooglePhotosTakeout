@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef } from "react"
 import {
-  collection, onSnapshot, doc, deleteDoc, updateDoc,
-  addDoc, serverTimestamp, query, where, getDocs, Timestamp
+  collection, onSnapshot, doc, updateDoc,
+  addDoc, serverTimestamp, query, where, getDocs, getDocsFromServer, writeBatch, Timestamp
 } from "firebase/firestore"
 import { db } from "../../firebase"
 import { useAuth, type AdminData, type AdminRole } from "../../contexts/AuthContext"
@@ -68,9 +68,9 @@ function formatRelative(ts: Timestamp | null): string {
   return new Date(ms).toLocaleDateString()
 }
 
-function isExpired(ts: Timestamp | null): boolean {
+function isExpired(ts: Timestamp | null, now: number): boolean {
   if (!ts) return false
-  return Date.now() > ts.toMillis()
+  return now > ts.toMillis()
 }
 
 // ─── Invite Modal ─────────────────────────────────────────────────────────────
@@ -317,6 +317,7 @@ export default function AdminTeam() {
   const [invites, setInvites] = useState<AdminInvite[]>([])
   const [loadingAdmins, setLoadingAdmins] = useState(true)
   const [loadingInvites, setLoadingInvites] = useState(true)
+  const [now, setNow] = useState(() => Date.now())
   const [showInviteModal, setShowInviteModal] = useState(false)
 
   const isRootAdmin = user?.emailVerified === true && isSuperAdminEmail(user.email)
@@ -324,6 +325,11 @@ export default function AdminTeam() {
   const addToast = useToastStore.getState().addToast
 
   // ── Realtime listeners ────────────────────────────────────────────────────
+
+  useEffect(() => {
+    const timer = window.setInterval(() => setNow(Date.now()), 60000)
+    return () => window.clearInterval(timer)
+  }, [])
 
   useEffect(() => {
     const unsub = onSnapshot(collection(db, "admins"), (snap) => {
@@ -361,12 +367,30 @@ export default function AdminTeam() {
     }
     if (!confirm(`Remove ${admin.displayName} from the admin team?`)) return
     try {
-      await deleteDoc(doc(db, "admins", admin.uid))
+      const email = admin.email?.trim().toLowerCase()
+      if (!email) {
+        addToast("Cannot remove this administrator: their email address is missing.", "error")
+        return
+      }
+      const snapshot = await getDocsFromServer(
+        query(collection(db, "adminInvites"), where("status", "==", "pending"))
+      )
+      const pending = snapshot.docs.filter(invite =>
+        typeof invite.data().email === "string" && invite.data().email.trim().toLowerCase() === email
+      )
+      if (pending.length > 499) {
+        addToast("Cannot remove this administrator: too many pending invitations need review.", "error")
+        return
+      }
+      const batch = writeBatch(db)
+      for (const invite of pending) batch.update(invite.ref, { status: "revoked" })
+      batch.delete(doc(db, "admins", admin.uid))
+      await batch.commit()
       await updateDoc(doc(db, "users", admin.uid), { isAdmin: false }).catch(console.warn)
       addToast(`${admin.displayName} removed from the team.`, "success")
     } catch (e) {
       console.error(e)
-      addToast("Failed to remove admin.", "error")
+      addToast("Could not confirm the removal. Check your connection and refresh the team list.", "error")
     }
   }
 
@@ -445,8 +469,8 @@ export default function AdminTeam() {
     ...invites.map(i => i.email.toLowerCase()),
   ]
 
-  const pendingInvites = invites.filter(i => !isExpired(i.expiresAt))
-  const expiredInvites = invites.filter(i => isExpired(i.expiresAt))
+  const pendingInvites = invites.filter(i => !isExpired(i.expiresAt, now))
+  const expiredInvites = invites.filter(i => isExpired(i.expiresAt, now))
 
   return (
     <div className="space-y-8">
@@ -477,6 +501,7 @@ export default function AdminTeam() {
           <h2 className="text-xs font-bold uppercase tracking-widest text-zinc-500">Active Team</h2>
           <span className="text-xs text-zinc-500">({admins.length})</span>
         </div>
+        <p className="text-xs text-zinc-500 dark:text-zinc-400">Status is last reported and may be out of date after sign-out or a connection loss.</p>
         <div className="admin-panel-card rounded-xl overflow-hidden">
           <div className="w-full overflow-x-auto">
             <table className="w-full text-left text-sm">
@@ -484,8 +509,8 @@ export default function AdminTeam() {
                 <tr>
                   <th className="px-6 py-3 font-medium">Admin</th>
                   <th className="px-6 py-3 font-medium">Role</th>
-                  <th className="px-6 py-3 font-medium">Status</th>
-                  <th className="px-6 py-3 font-medium">Last Seen</th>
+                  <th className="px-6 py-3 font-medium" title="Status may be out of date after a connection loss or sign-out.">Last reported status</th>
+                  <th className="px-6 py-3 font-medium">Status updated</th>
                   {isSuperAdmin && <th className="px-6 py-3 font-medium text-right">Actions</th>}
                 </tr>
               </thead>
@@ -634,7 +659,7 @@ export default function AdminTeam() {
                           {inv.expiresAt ? (
                             <span className="text-amber-600 dark:text-amber-400">
                               {new Date(inv.expiresAt.toMillis()).toLocaleDateString()}&nbsp;
-                              ({Math.max(0, Math.ceil((inv.expiresAt.toMillis() - Date.now()) / 3600000))}h left)
+                              ({Math.max(0, Math.ceil((inv.expiresAt.toMillis() - now) / 3600000))}h left)
                             </span>
                           ) : "—"}
                         </td>

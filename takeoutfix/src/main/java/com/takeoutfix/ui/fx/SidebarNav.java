@@ -34,8 +34,8 @@ public class SidebarNav extends VBox {
         setPrefWidth(240);
         setMinWidth(220);
         setMaxWidth(260);
-        setSpacing(16);
-        setPadding(new Insets(12, 14, 18, 14));
+        setSpacing(20);
+        setPadding(new Insets(16, 12, 16, 12));
 
         // 1. Workspaces Navigation Section (TakeoutFix, MetaSync, PhotoVault)
         buildWorkspacesSection();
@@ -43,21 +43,14 @@ public class SidebarNav extends VBox {
         // 2. System Navigation Section (History, Settings)
         buildSystemSection();
 
-        // 3. Spacer pushing trust badge to bottom
-        Region spacer = new Region();
-        VBox.setVgrow(spacer, Priority.ALWAYS);
-        getChildren().add(spacer);
 
-        // 4. Privacy Trust Badge
-        buildPrivacyFooter();
     }
 
     private void buildWorkspacesSection() {
         // Photo Tools / Restoration Section
-        VBox toolsSection = new VBox(4);
+        VBox toolsSection = new VBox(8);
         Label toolsLabel = new Label("PHOTO TOOLS");
         toolsLabel.getStyleClass().add("nav-section-label");
-        toolsLabel.setStyle("-fx-font-size: 12px; -fx-font-weight: 700; -fx-letter-spacing: 0.5px; -fx-padding: 4 8 4 8;");
         toolsSection.getChildren().add(toolsLabel);
 
         Button btnFixPhotos = createNavButton(WorkspaceType.TAKEOUT_RESTORE, UiIcons.RESTORE, "Restore Metadata");
@@ -68,11 +61,10 @@ public class SidebarNav extends VBox {
     }
 
     private void buildSystemSection() {
-        VBox section = new VBox(4);
+        VBox section = new VBox(8);
 
         Label label = new Label("SYSTEM");
         label.getStyleClass().add("nav-section-label");
-        label.setStyle("-fx-font-size: 12px; -fx-font-weight: 700; -fx-letter-spacing: 0.5px; -fx-padding: 8 8 4 8;");
         section.getChildren().add(label);
 
         Button btnHistory = createNavButton(WorkspaceType.HISTORY, UiIcons.HISTORY, "Activity History");
@@ -86,13 +78,14 @@ public class SidebarNav extends VBox {
         Button btn = new Button(label);
         btn.getStyleClass().add("nav-button");
         btn.setMaxWidth(Double.MAX_VALUE);
+        btn.setMinHeight(40);
         btn.setAlignment(Pos.CENTER_LEFT);
-        btn.setFocusTraversable(false);
+        btn.setFocusTraversable(true);
 
         var icon = UiIcons.createSvgIcon(iconSvg, 16, "currentColor");
         btn.setGraphic(icon);
         btn.setGraphicTextGap(10);
-        btn.setStyle("-fx-font-size: 14px; -fx-font-weight: 500; -fx-padding: 8 12 8 12; -fx-background-radius: 6;");
+        btn.setStyle("-fx-font-size: 14px; -fx-font-weight: 500; -fx-padding: 8 12 8 12; -fx-background-radius: 8;");
 
         btn.setOnAction(e -> select(type, true));
         navButtons.put(type, btn);
@@ -114,26 +107,6 @@ public class SidebarNav extends VBox {
         if (notify && onSelect != null) {
             onSelect.accept(type);
         }
-    }
-
-    private void buildPrivacyFooter() {
-        VBox trustCard = new VBox(5);
-        trustCard.getStyleClass().add("trust-badge");
-        trustCard.setStyle("-fx-background-color: transparent; -fx-border-width: 0; -fx-padding: 8 10 8 10;");
-
-        HBox trustRow = new HBox(7);
-        trustRow.setAlignment(Pos.CENTER_LEFT);
-        var lockIcon = UiIcons.createSvgIcon(UiIcons.LOCK, 13, "#10b981");
-        Label trustTitle = new Label("Processed Locally");
-        trustTitle.setStyle("-fx-font-size: 13px; -fx-font-weight: 600; -fx-text-fill: #10b981;");
-        trustRow.getChildren().addAll(lockIcon, trustTitle);
-
-        Label trustSubtitle = new Label("Your files remain on your device during local processing.");
-        trustSubtitle.setStyle("-fx-font-size: 12px;"); trustSubtitle.getStyleClass().add("trust-badge-text");
-        trustSubtitle.setWrapText(true);
-
-        trustCard.getChildren().addAll(trustRow, trustSubtitle);
-        getChildren().add(trustCard);
     }
 
     private void openUrl(String url) {

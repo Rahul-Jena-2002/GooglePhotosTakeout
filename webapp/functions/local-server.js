@@ -1,14 +1,14 @@
+if (!process.env.FIRESTORE_EMULATOR_HOST && process.env.TAKEOUTFIX_ALLOW_LIVE_FIREBASE !== "1") {
+  console.error("Local server requires FIRESTORE_EMULATOR_HOST. Set TAKEOUTFIX_ALLOW_LIVE_FIREBASE=1 only when you intend to use live Firebase data.");
+  process.exit(1);
+}
+
 const express = require("express");
 const cors = require("cors");
 const admin = require("firebase-admin");
 const path = require("path");
 const fs = require("fs");
 const crypto = require("crypto");
-
-if (!process.env.FIRESTORE_EMULATOR_HOST && process.env.TAKEOUTFIX_ALLOW_LIVE_FIREBASE !== "1") {
-  console.error("Local server requires FIRESTORE_EMULATOR_HOST. Set TAKEOUTFIX_ALLOW_LIVE_FIREBASE=1 only when you intend to use live Firebase data.");
-  process.exit(1);
-}
 
 // Firebase CLI Public OAuth App Credentials
 // Note: These are public credentials baked into the Firebase CLI (open-source) and do not need rotation.

@@ -2,6 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { ensureGuestUsageLoaded, guestFileFits, guestQuotaDecision, GUEST_MAX_BYTES } from '../src/tool-workspace/guestQuota.ts';
 import { indexedDbService } from '../src/lib/indexedDbService.ts';
+import { PendingZipUsage } from '../src/tool-workspace/pendingUsage.ts';
 
 test('guest quota includes files already being processed', () => {
   assert.equal(guestFileFits(GUEST_MAX_BYTES - 100, 40, 60), true);
@@ -15,6 +16,15 @@ test('temporary reservations wait, while committed usage stops an oversized file
   assert.equal(guestQuotaDecision(GUEST_MAX_BYTES - 100, 40, 61), 'wait');
   assert.equal(guestQuotaDecision(GUEST_MAX_BYTES - 100, 0, 61), 'fit');
   assert.equal(guestQuotaDecision(GUEST_MAX_BYTES - 100, 0, 101), 'limit');
+});
+
+test('an unfinished guest ZIP part counts toward the limit until finalized or discarded', () => {
+  const pending = new PendingZipUsage();
+  pending.add(80);
+  assert.equal(guestQuotaDecision(GUEST_MAX_BYTES - 100 + pending.snapshot().bytes, 0, 21), 'limit');
+  assert.equal(guestQuotaDecision(GUEST_MAX_BYTES - 100 + pending.snapshot().bytes, 0, 20), 'fit');
+  pending.take();
+  assert.equal(guestQuotaDecision(GUEST_MAX_BYTES - 100 + pending.snapshot().bytes, 0, 21), 'fit');
 });
 
 test('guest usage waits for the saved IndexedDB count before starting', async () => {

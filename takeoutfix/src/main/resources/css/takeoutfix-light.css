@@ -82,12 +82,12 @@
 
 /* App Shell & Sidebar */
 .app-shell {
-    -fx-background-color: #F4F4F9;
+    -fx-background-color: #F5F6FA;
 }
 
 .sidebar {
-    -fx-background-color: #EDEDF5;
-    -fx-border-color: #D9DAE6;
+    -fx-background-color: #F1F2F7;
+    -fx-border-color: rgba(90, 99, 128, 0.14);
     -fx-border-width: 0 1 0 0;
     -fx-padding: 12 10 12 10;
 }
@@ -192,8 +192,8 @@
 
 /* Top Header Bar */
 .top-header {
-    -fx-background-color: #EDEDF5;
-    -fx-border-color: #D9DAE6;
+    -fx-background-color: #F7F8FC;
+    -fx-border-color: rgba(90, 99, 128, 0.14);
     -fx-border-width: 0 0 1 0;
     -fx-padding: 8 16 8 16;
 }
@@ -245,6 +245,38 @@
 
 .kpi-card:hover {
     -fx-border-color: #B4B6C9;
+}
+
+.restore-workspace .kpi-card {
+    -fx-background-color: transparent;
+    -fx-border-color: transparent;
+    -fx-effect: null;
+}
+
+.restore-workspace-scroll, .restore-workspace-scroll > .viewport {
+    -fx-background-color: transparent;
+    -fx-padding: 0;
+}
+
+.restore-workspace .restore-layout {
+    -fx-background-color: transparent;
+    -fx-border-color: transparent;
+}
+
+.restore-workspace .inner-container {
+    -fx-background-color: rgba(245, 247, 252, 0.78);
+    -fx-border-color: rgba(107, 116, 145, 0.15);
+}
+
+.restore-workspace .glass-card, .settings-workspace .glass-card, .workspace-view .glass-card {
+    -fx-background-color: rgba(255, 255, 255, 0.94);
+    -fx-border-color: rgba(255, 255, 255, 0.90);
+    -fx-effect: null;
+}
+
+.restore-workspace .path-display-box, .restore-workspace .empty-state-box {
+    -fx-background-color: rgba(255, 255, 255, 0.68);
+    -fx-border-color: rgba(107, 116, 145, 0.18);
 }
 
 .kpi-title, .kpi-label {
@@ -446,6 +478,15 @@
     -fx-border-color: transparent !important;
 }
 
+.button.btn-primary:disabled, .button.btn-primary:disabled .text {
+    -fx-text-fill: #62677a !important;
+    -fx-fill: #62677a !important;
+}
+
+.button.btn-primary:disabled .app-icon {
+    -fx-background-color: #62677a !important;
+}
+
 /* Secondary Buttons — Outlined, Text Color */
 .btn-secondary {
     -fx-background-color: transparent;
@@ -613,6 +654,10 @@
 .check-box:selected .box {
     -fx-background-color: #6D28D9;
     -fx-border-color: #6D28D9;
+}
+
+.check-box .mark {
+    -fx-background-color: transparent;
 }
 
 .check-box:selected .mark {
@@ -816,6 +861,11 @@
 .list-view .list-cell:filled:selected {
     -fx-background-color: #EDE7FB;
     -fx-text-fill: #6D28D9;
+}
+
+.settings-categories .list-cell:filled:selected {
+    -fx-background-color: #EDE7FB;
+    -fx-background-radius: 8;
 }
 
 /* Empty State Card */

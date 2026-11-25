@@ -28,21 +28,7 @@ const getUserBytes = (u: any) => {
 }
 
 const getUserFiles = (u: any) => {
-  const recorded = Math.max(u.totalFilesProcessed || 0, u.usedFiles || 0, u.lifetimeFiles || 0);
-  const trackedBytes = Math.max(u.totalBytesProcessed || 0, u.usedBytes || 0);
-  const legacyBytes = Math.max(0, (u.lifetimeBytes || 0) - trackedBytes);
-  const legacyFiles = legacyBytes > 0 ? Math.round(legacyBytes / (1.2 * 1024 * 1024)) : 0;
-  return recorded + legacyFiles;
-}
-
-const getUserFilesRestored = (u: any, recoveries: any[]) => {
-  const userRecoveries = recoveries.filter(r => r.uid === u.id)
-  const recoveriesScanned = userRecoveries.reduce((sum, r) => sum + (r.scanned || 0), 0)
-  const recoveriesMatched = userRecoveries.reduce((sum, r) => sum + (r.matched || 0), 0)
-  
-  const totalFiles = getUserFiles(u)
-  const ratio = recoveriesScanned > 0 ? (recoveriesMatched / recoveriesScanned) : 0.999
-  return Math.round(totalFiles * ratio)
+  return Math.max(u.totalFilesProcessed || 0, u.usedFiles || 0, u.lifetimeFiles || 0)
 }
 
 const formatUserJoinedDate = (val: any, withTime = false) => {
@@ -100,7 +86,6 @@ const formatRelativeJoined = (val: any) => {
 
 export default function AdminUsers() {
   const [users, setUsers] = useState<any[]>([])
-  const [recoveries, setRecoveries] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [filter, setFilter] = useState("all")
   const [search, setSearch] = useState("")
@@ -313,14 +298,7 @@ export default function AdminUsers() {
       setLoading(false)
     })
 
-    const unsubRecoveries = onSnapshot(query(collection(db, "recoveries"), limit(50)), (snap) => {
-      setRecoveries(snap.docs.map(d => ({ id: d.id, ...d.data() })))
-    }, console.error)
-
-    return () => {
-      unsubscribe()
-      unsubRecoveries()
-    }
+    return () => unsubscribe()
   }, [])
 
   // Update selectedUser if real-time snapshot has edits
@@ -396,7 +374,7 @@ export default function AdminUsers() {
                 <th className="px-6 py-3 font-medium">Plan</th>
                 <th className="px-6 py-3 font-medium">Joined</th>
                 <th className="px-6 py-3 font-medium">Processed</th>
-                <th className="px-6 py-3 font-medium">Files Restored</th>
+                <th className="px-6 py-3 font-medium">Files Processed</th>
                 <th className="px-6 py-3 font-medium">Status</th>
                 <th className="px-6 py-3 font-medium text-right">Actions</th>
               </tr>
@@ -479,7 +457,7 @@ export default function AdminUsers() {
                       {formatBytes(getUserBytes(u))}
                     </td>
                     <td className="px-6 py-4 text-zinc-300">
-                      {getUserFilesRestored(u, recoveries).toLocaleString()}
+                      {getUserFiles(u).toLocaleString()}
                     </td>
                     <td className="px-6 py-4">
                       <span className={`inline-flex items-center gap-1.5 text-xs font-semibold ${u.suspended ? 'text-rose-600 dark:text-rose-400' : 'text-emerald-600 dark:text-emerald-400'}`}>
@@ -679,7 +657,7 @@ export default function AdminUsers() {
                               })
                               alert("Recovery pass extended by 24 hours successfully.")
                             } catch (err) {
-                              alert("Failed to extend recovery pass: " + err.message)
+                              alert("Failed to extend recovery pass: " + (err instanceof Error ? err.message : "Unknown error"))
                             }
                           }}
                           className="flex-1 py-1.5 rounded bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 hover:bg-indigo-500/20 text-xs font-bold transition-all"
@@ -707,7 +685,7 @@ export default function AdminUsers() {
                               })
                               alert("Recovery pass expired immediately.")
                             } catch (err) {
-                              alert("Failed to expire recovery pass: " + err.message)
+                              alert("Failed to expire recovery pass: " + (err instanceof Error ? err.message : "Unknown error"))
                             }
                           }}
                           className="flex-1 py-1.5 rounded bg-rose-500/10 text-rose-400 border border-rose-500/20 hover:bg-rose-500/20 text-xs font-bold transition-all"

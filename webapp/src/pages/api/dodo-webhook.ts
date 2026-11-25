@@ -23,67 +23,13 @@ function decryptFirestoreValue(val: string, mek: string): string {
 
     const decipher = nodeCrypto.createDecipheriv("aes-256-gcm", key, iv);
     decipher.setAuthTag(tag);
-    let decrypted = decipher.update(ciphertext, "binary", "utf8");
+    let decrypted = decipher.update(ciphertext, undefined, "utf8");
     decrypted += decipher.final("utf8");
     return decrypted;
   } catch (err: any) {
     console.error("❌ Failed to decrypt Firestore value:", err.message);
     return "";
   }
-}
-
-// Verification helper for Dodo Payments Webhooks using native Web Crypto API
-async function verifyDodoSignature(
-  rawBody: string,
-  webhookId: string,
-  webhookTimestamp: string,
-  webhookSignature: string,
-  webhookSecret: string
-): Promise<boolean> {
-  let secretStr = webhookSecret;
-  if (secretStr.startsWith("whsec_")) {
-    secretStr = secretStr.substring(6);
-  }
-
-  // Base64 decode the secret to binary
-  const binarySecret = atob(secretStr);
-  const secretBuffer = new Uint8Array(binarySecret.length);
-  for (let i = 0; i < binarySecret.length; i++) {
-    secretBuffer[i] = binarySecret.charCodeAt(i);
-  }
-
-  const key = await crypto.subtle.importKey(
-    "raw",
-    secretBuffer,
-    { name: "HMAC", hash: "SHA-256" },
-    false,
-    ["verify", "sign"]
-  );
-
-  const encoder = new TextEncoder();
-  const dataBuffer = encoder.encode(`${webhookId}.${webhookTimestamp}.${rawBody}`);
-  
-  const signatures = webhookSignature.split(" ");
-  for (const sig of signatures) {
-    const parts = sig.split(",");
-    if (parts.length === 2 && parts[0] === "v1") {
-      const signatureHashBase64 = parts[1];
-      // Dodo (Standard Webhooks spec) sends the signature as base64, not hex
-      const binarySignature = atob(signatureHashBase64);
-      const signatureBuffer = new Uint8Array(binarySignature.length);
-      for (let i = 0; i < binarySignature.length; i++) {
-        signatureBuffer[i] = binarySignature.charCodeAt(i);
-      }
-      const isValid = await crypto.subtle.verify(
-        "HMAC",
-        key,
-        signatureBuffer,
-        dataBuffer
-      );
-      if (isValid) return true;
-    }
-  }
-  return false;
 }
 
 // Generate Google OAuth2 Token using Service Account Private Key in Cloudflare Workers
@@ -155,15 +101,40 @@ async function getGoogleAuthToken(serviceAccount: any): Promise<string> {
   return data.access_token;
 }
 
+function verifyWithDodoSdk(rawBody: string, headers: Record<string, string>, secret: string): boolean {
+  try {
+    const client = new DodoPayments({ bearerToken: "dummy_key", webhookKey: secret });
+    client.webhooks.unwrap(rawBody, { headers });
+    return true;
+  } catch (error) {
+    console.error('Webhook signature verification failed:', error);
+    return false;
+  }
+}
+
 export const POST: APIRoute = async ({ request }) => {
+  const webhookHeaders = {
+    'webhook-id': request.headers.get('webhook-id') || '',
+    'webhook-signature': request.headers.get('webhook-signature') || '',
+    'webhook-timestamp': request.headers.get('webhook-timestamp') || '',
+  };
+  if (Object.values(webhookHeaders).some(value => !value.trim())) {
+    return new Response("Missing webhook signature headers", { status: 401 });
+  }
   try {
     const rawBody = await request.text();
-    const payload = JSON.parse(rawBody);
 
     // Retrieve environment variables from Cloudflare context
     let dodoWebhookSecret = (env as any).DODO_WEBHOOK_KEY || import.meta.env.DODO_WEBHOOK_KEY;
     const serviceAccountStr = (env as any).FIREBASE_SERVICE_ACCOUNT || import.meta.env.FIREBASE_SERVICE_ACCOUNT;
     const encryptionKey = (env as any).ENCRYPTION_KEY || import.meta.env.ENCRYPTION_KEY || "";
+    let signatureVerified = false;
+    if (dodoWebhookSecret && dodoWebhookSecret !== "dodo-webhook-secret-placeholder") {
+      if (!verifyWithDodoSdk(rawBody, webhookHeaders, dodoWebhookSecret)) {
+        return new Response("Invalid signature", { status: 401 });
+      }
+      signatureVerified = true;
+    }
 
     if (!serviceAccountStr) {
       console.error("Missing FIREBASE_SERVICE_ACCOUNT environment variable.");
@@ -222,24 +193,11 @@ export const POST: APIRoute = async ({ request }) => {
       return new Response("Webhook secret unconfigured", { status: 500 });
     }
 
-    const webhookHeaders = {
-      'webhook-id': request.headers.get('webhook-id') || '',
-      'webhook-signature': request.headers.get('webhook-signature') || '',
-      'webhook-timestamp': request.headers.get('webhook-timestamp') || '',
-    };
-
-    try {
-      const dodoPaymentsClient = new DodoPayments({
-        bearerToken: "dummy_key",
-        webhookKey: dodoWebhookSecret,
-      });
-      dodoPaymentsClient.webhooks.unwrap(rawBody, { headers: webhookHeaders });
-      console.log('✅ Webhook signature verified using official SDK');
-    } catch (error) {
-      console.error('❌ Webhook verification failed using official SDK:', error);
+    if (!signatureVerified && !verifyWithDodoSdk(rawBody, webhookHeaders, dodoWebhookSecret)) {
       return new Response("Invalid signature", { status: 401 });
     }
 
+    const payload = JSON.parse(rawBody);
     const { type, data } = payload;
     if (!type || !data) {
       return new Response("Missing type or data", { status: 400 });

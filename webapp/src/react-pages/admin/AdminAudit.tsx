@@ -73,7 +73,7 @@ export default function AdminAudit() {
     if (key === "action") return item.action
     if (key === "description") return item.description
     if (key === "timestamp") return item.timestamp
-    return item[key]
+    return item[key as keyof AuditLog]
   })
 
   const paginatedLogs = sortedLogs.slice((page - 1) * pageSize, page * pageSize)

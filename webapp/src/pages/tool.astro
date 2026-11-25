@@ -27,7 +27,7 @@ import AdUnit from "../components/monetization/AdUnit";
             Restore your Takeout photos.
           </h1>
           <p class="mt-5 max-w-2xl text-lg sm:text-xl text-zinc-600 dark:text-zinc-400 leading-relaxed">
-            Choose a Google Takeout export to restore available dates and, for supported photos, locations. Your photos are processed locally in your browser. Keep the original export: file types outside the tool's supported list are not copied to the result.
+            Choose a Google Takeout export to restore available dates and, for supported photos, locations. Your photos are processed locally in your browser. Keep the original export: some files may be skipped or copied without restored details.
           </p>
           <div class="mt-8 flex flex-wrap items-center gap-4">
             <a href="#tool-workspace" class="btn-monochrome-primary inline-flex h-14 items-center rounded-lg px-8 font-bold">Open Restore Tool</a>
@@ -182,7 +182,7 @@ import AdUnit from "../components/monetization/AdUnit";
             <div class="font-mono text-xs font-bold text-indigo-600 dark:text-indigo-400 mb-1">STAGE 01</div>
             <h4 class="font-bold text-zinc-900 dark:text-white text-sm mb-2">Find your files</h4>
             <p class="text-xs text-zinc-600 dark:text-zinc-400 leading-relaxed">
-              Select your Takeout folder or ZIP. The tool scans supported media and looks for the accompanying <code>.json</code> details files. Other files are not copied into the output, so keep the complete original export.
+              Select your Takeout folder or ZIP. The tool scans recognized media and looks for the accompanying <code>.json</code> details files. Not every file is copied into the output, so keep the complete original export.
             </p>
           </div>
 
@@ -210,12 +210,13 @@ import AdUnit from "../components/monetization/AdUnit";
       <section id="supported-formats" class="mb-16 scroll-mt-20">
         <h3 class="text-xl sm:text-2xl font-bold text-zinc-900 dark:text-white mb-6 flex items-center gap-2">
           <Icon name="binary" class="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
-          <span>Supported File Formats &amp; Metadata Tags</span>
+          <span>Common File Formats</span>
         </h3>
+        <p class="mb-4 text-sm text-zinc-600 dark:text-zinc-400">The examples below are not a complete list. Results depend on the file and the details available; check the report and a few restored copies.</p>
 
         <div class="grid md:grid-cols-2 gap-6">
           <div class="p-6 rounded-xl bg-white dark:bg-zinc-900/60 border border-zinc-200 dark:border-zinc-800 shadow-sm">
-            <h4 class="font-bold text-zinc-900 dark:text-white text-sm mb-3">Supported Image Types</h4>
+            <h4 class="font-bold text-zinc-900 dark:text-white text-sm mb-3">Images</h4>
             <ul class="space-y-2 text-xs text-zinc-600 dark:text-zinc-400">
               <li class="flex items-center justify-between py-1 border-b border-zinc-100 dark:border-zinc-800/60">
                 <span class="text-zinc-800 dark:text-white font-medium">JPEG / JPG</span>
@@ -233,7 +234,7 @@ import AdUnit from "../components/monetization/AdUnit";
           </div>
 
           <div class="p-6 rounded-xl bg-white dark:bg-zinc-900/60 border border-zinc-200 dark:border-zinc-800 shadow-sm">
-            <h4 class="font-bold text-zinc-900 dark:text-white text-sm mb-3">Supported Video Types</h4>
+            <h4 class="font-bold text-zinc-900 dark:text-white text-sm mb-3">Videos</h4>
             <ul class="space-y-2 text-xs text-zinc-600 dark:text-zinc-400">
               <li class="flex items-center justify-between py-1 border-b border-zinc-100 dark:border-zinc-800/60">
                 <span class="text-zinc-800 dark:text-white font-medium">MP4 (MPEG-4 Part 14)</span>

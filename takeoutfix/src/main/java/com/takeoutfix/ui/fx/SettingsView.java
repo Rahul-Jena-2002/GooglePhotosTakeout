@@ -10,18 +10,13 @@ import javafx.geometry.Pos;
 import javafx.scene.Node;
 import javafx.scene.control.*;
 import javafx.scene.layout.*;
-import javafx.scene.paint.Color;
-import javafx.scene.shape.Circle;
 
 import java.io.File;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.function.Consumer;
 import java.util.prefs.Preferences;
 
 /**
- * Settings view for configuring application preferences, user profile & cloud sync,
- * ExifTool engine parameters, and native IDE themes.
+ * Settings view for account, appearance, and restore preferences.
  */
 public class SettingsView extends VBox {
 
@@ -44,6 +39,9 @@ public class SettingsView extends VBox {
     private final VBox advancedPane = new VBox(14);
     private final VBox supportPane = new VBox(14);
     private final VBox aboutPane = new VBox(14);
+    private final VBox generalGroup = new VBox(24);
+    private final VBox restoreGroup = new VBox(24);
+    private final VBox helpGroup = new VBox(24);
 
     public SettingsView(NativeExifToolEngine engine) {
         this(engine, null, null);
@@ -54,6 +52,7 @@ public class SettingsView extends VBox {
         this.userService = userService;
         this.onSwitchWorkspace = onSwitchWorkspace;
 
+        getStyleClass().add("settings-workspace");
         setSpacing(16);
         setPadding(new Insets(24));
         VBox.setVgrow(this, Priority.ALWAYS);
@@ -73,6 +72,7 @@ public class SettingsView extends VBox {
         ScrollPane scrollContent = new ScrollPane(contentPane);
         scrollContent.setFitToWidth(true);
         scrollContent.setStyle("-fx-background-color: transparent; -fx-background: transparent; -fx-border-color: transparent;");
+        categoryList.getSelectionModel().selectedIndexProperty().addListener((obs, oldIndex, newIndex) -> scrollContent.setVvalue(0));
         HBox.setHgrow(scrollContent, Priority.ALWAYS);
         VBox.setVgrow(scrollContent, Priority.ALWAYS);
 
@@ -90,6 +90,9 @@ public class SettingsView extends VBox {
         buildAdvancedPane();
         buildSupportPane();
         buildAboutPane();
+        generalGroup.getChildren().addAll(generalPane, updatesPane);
+        restoreGroup.getChildren().addAll(processingPane, safetyPane, storagePane, advancedPane);
+        helpGroup.getChildren().addAll(supportPane, aboutPane);
 
         visibleProperty().addListener((obs, wasVisible, visible) -> {
             if (visible) buildProfilePane();
@@ -98,6 +101,13 @@ public class SettingsView extends VBox {
     }
 
     public void selectCategory(String name) {
+        name = switch (name.toLowerCase(java.util.Locale.ROOT)) {
+            case "user profile" -> "Account";
+            case "updates" -> "General";
+            case "processing", "file safety", "storage", "advanced" -> "Restoration";
+            case "support", "about" -> "Help & About";
+            default -> name;
+        };
         for (int i = 0; i < categoryList.getItems().size(); i++) {
             if (categoryList.getItems().get(i).equalsIgnoreCase(name)) {
                 categoryList.getSelectionModel().select(i);
@@ -113,8 +123,9 @@ public class SettingsView extends VBox {
         VBox titleBox = new VBox(3);
         Label title = new Label("Settings");
         title.getStyleClass().addAll("page-title", "header-title");
+        title.setStyle("-fx-font-size: 20px; -fx-font-weight: 700;");
 
-        Label subtitle = new Label("Configure user profile, appearance themes, processing engine, and file safety.");
+        Label subtitle = new Label("Manage your account, appearance, and restore preferences.");
         subtitle.getStyleClass().addAll("page-description", "header-subtitle");
         titleBox.getChildren().addAll(title, subtitle);
 
@@ -131,7 +142,8 @@ public class SettingsView extends VBox {
         box.setStyle("-fx-border-radius: 8; -fx-background-radius: 8; -fx-padding: 10;");
         VBox.setVgrow(box, Priority.ALWAYS);
 
-        categoryList.getItems().addAll("User Profile", "General", "Processing", "Updates", "File Safety", "Storage", "Privacy", "Advanced", "Support", "About");
+        categoryList.getItems().addAll("Account", "General", "Restoration", "Privacy", "Help & About");
+        categoryList.getStyleClass().add("settings-categories");
         categoryList.setStyle("-fx-background-color: transparent; -fx-border-color: transparent;");
         VBox.setVgrow(categoryList, Priority.ALWAYS);
 
@@ -148,16 +160,12 @@ public class SettingsView extends VBox {
                     row.setPadding(new Insets(6, 10, 6, 10));
 
                     String iconSvg = switch (item) {
-                        case "User Profile" -> UiIcons.USER;
+                        case "Account" -> UiIcons.USER;
                         case "General" -> UiIcons.SETTINGS;
-                        case "Processing" -> UiIcons.PLAY;
-                        case "Updates" -> UiIcons.RELOAD;
-                        case "File Safety" -> UiIcons.SHIELD_CHECK;
-                        case "Storage" -> UiIcons.FOLDER;
+                        case "Restoration" -> UiIcons.PLAY;
                         case "Privacy" -> UiIcons.LOCK;
-                        case "Advanced" -> UiIcons.TERMINAL;
-                        case "Support" -> UiIcons.EXTERNAL_LINK;
-                        default -> UiIcons.HEART;
+                        case "Help & About" -> UiIcons.HELP;
+                        default -> UiIcons.INFO;
                     };
 
                     Node icon = UiIcons.createSvgIcon(iconSvg, 14, "#989BA8");
@@ -177,15 +185,10 @@ public class SettingsView extends VBox {
             contentPane.getChildren().clear();
             switch (idx) {
                 case 0 -> contentPane.getChildren().add(profilePane);
-                case 1 -> contentPane.getChildren().add(generalPane);
-                case 2 -> contentPane.getChildren().add(processingPane);
-                case 3 -> contentPane.getChildren().add(updatesPane);
-                case 4 -> contentPane.getChildren().add(safetyPane);
-                case 5 -> contentPane.getChildren().add(storagePane);
-                case 6 -> contentPane.getChildren().add(privacyPane);
-                case 7 -> contentPane.getChildren().add(advancedPane);
-                case 8 -> contentPane.getChildren().add(supportPane);
-                case 9 -> contentPane.getChildren().add(aboutPane);
+                case 1 -> contentPane.getChildren().add(generalGroup);
+                case 2 -> contentPane.getChildren().add(restoreGroup);
+                case 3 -> contentPane.getChildren().add(privacyPane);
+                case 4 -> contentPane.getChildren().add(helpGroup);
             }
         });
 
@@ -214,7 +217,7 @@ public class SettingsView extends VBox {
         String email = signedIn
                 ? ((userService != null && userService.getCurrentEmail() != null && !userService.getCurrentEmail().isBlank())
                         ? userService.getCurrentEmail() : "Connected")
-                : "Guest Tier · 1 GB Free Storage";
+                : "1 GB guest allowance";
 
         HBox userBox = new HBox(16);
         userBox.setAlignment(Pos.CENTER_LEFT);
@@ -226,8 +229,8 @@ public class SettingsView extends VBox {
                 : "G";
         Label avatar = new Label(initial);
         avatar.setStyle(signedIn
-                ? "-fx-font-size: 20px; -fx-font-weight: 700; -fx-text-fill: white; -fx-background-color: linear-gradient(to bottom, #7C3AED, #5B21B6); -fx-alignment: center; -fx-min-width: 52px; -fx-min-height: 52px; -fx-max-width: 52px; -fx-max-height: 52px; -fx-background-radius: 26;"
-                : "-fx-font-size: 20px; -fx-font-weight: 700; -fx-text-fill: white; -fx-background-color: linear-gradient(to bottom, #475569, #334155); -fx-alignment: center; -fx-min-width: 52px; -fx-min-height: 52px; -fx-max-width: 52px; -fx-max-height: 52px; -fx-background-radius: 26;");
+                ? "-fx-font-size: 20px; -fx-font-weight: 700; -fx-text-fill: white; -fx-background-color: #6336B5; -fx-alignment: center; -fx-min-width: 52px; -fx-min-height: 52px; -fx-max-width: 52px; -fx-max-height: 52px; -fx-background-radius: 26;"
+                : "-fx-font-size: 20px; -fx-font-weight: 700; -fx-text-fill: white; -fx-background-color: #475569; -fx-alignment: center; -fx-min-width: 52px; -fx-min-height: 52px; -fx-max-width: 52px; -fx-max-height: 52px; -fx-background-radius: 26;");
 
         VBox userDetails = new VBox(4);
         Label nameLbl = new Label(name);
@@ -238,20 +241,12 @@ public class SettingsView extends VBox {
         emailLbl.setStyle("-fx-font-size: 13.5px;");
         emailLbl.getStyleClass().add("text-muted");
 
-        HBox badgeRow = new HBox(6);
-        badgeRow.setAlignment(Pos.CENTER_LEFT);
-        Label statusBadge = new Label(signedIn ? "● Google Account Connected · Unlimited Access" : "○ Guest Mode · 1 GB Limit (Sign in for Unlimited)");
-        statusBadge.setStyle(signedIn
-                ? "-fx-font-size: 12px; -fx-font-weight: 600; -fx-text-fill: #10B981; -fx-background-color: rgba(16, 185, 129, 0.12); -fx-padding: 3 9 3 9; -fx-background-radius: 12;"
-                : "-fx-font-size: 12px; -fx-font-weight: 600; -fx-text-fill: #F59E0B; -fx-background-color: rgba(245, 158, 11, 0.12); -fx-padding: 3 9 3 9; -fx-background-radius: 12;");
-        badgeRow.getChildren().add(statusBadge);
-
-        userDetails.getChildren().addAll(nameLbl, emailLbl, badgeRow);
+        userDetails.getChildren().addAll(nameLbl, emailLbl);
 
         Region idSpacer = new Region();
         HBox.setHgrow(idSpacer, Priority.ALWAYS);
 
-        Button authBtn = new Button(signedIn ? "Sign Out" : "Sign In with Google (Unlock Unlimited)");
+        Button authBtn = new Button(signedIn ? "Sign out" : "Sign in with Google");
         authBtn.getStyleClass().add(signedIn ? "btn-secondary" : "btn-primary");
         authBtn.setStyle("-fx-font-size: 13.5px; -fx-font-weight: 600; -fx-pref-height: 38px; -fx-padding: 0 18 0 18; -fx-background-radius: 6; -fx-cursor: hand;");
         if (!signedIn) {
@@ -391,17 +386,17 @@ public class SettingsView extends VBox {
 
     private void buildGeneralPane() {
         generalPane.getChildren().clear();
-        generalPane.getChildren().add(createSectionHeader("Appearance & General Preferences", "Customize the application-wide look and feel, themes, and IDE aesthetics."));
+        generalPane.getChildren().add(createSectionHeader("Appearance", "Choose how TakeoutFix looks."));
 
         VBox card = createCard();
 
         // Application & IDE Theme
         VBox themeSection = new VBox(14);
-        Label themeLbl = new Label("Application & IDE Theme");
+        Label themeLbl = new Label("Appearance");
         themeLbl.setStyle("-fx-font-size: 14px; -fx-font-weight: 700;");
         themeLbl.getStyleClass().add("card-title");
 
-        Label themeDesc = new Label("Select an application-wide theme. This completely overrides backgrounds, borders, typography, surface cards, and accent colors across the entire workspace.");
+        Label themeDesc = new Label("Choose a light or dark appearance for TakeoutFix.");
         themeDesc.setStyle("-fx-font-size: 12.5px;");
         themeDesc.getStyleClass().add("text-muted");
         themeDesc.setWrapText(true);
@@ -414,29 +409,16 @@ public class SettingsView extends VBox {
         comboLbl.getStyleClass().add("text-primary");
 
         ComboBox<AppTheme> themeCombo = new ComboBox<>();
-        themeCombo.getItems().addAll(AppTheme.values());
+        themeCombo.getItems().addAll(AppTheme.TAKEOUTFIX_DARK, AppTheme.TAKEOUTFIX_LIGHT);
         themeCombo.setValue(ThemeManager.getCurrentTheme());
         themeCombo.setStyle("-fx-font-size: 13px; -fx-pref-width: 260px; -fx-pref-height: 38px; -fx-font-weight: 600;");
 
         comboRow.getChildren().addAll(comboLbl, themeCombo);
 
-        // Interactive Theme Gallery Deck
-        FlowPane themeGrid = new FlowPane(12, 12);
-        themeGrid.setPrefWrapLength(700);
-
-        List<VBox> themeCards = new ArrayList<>();
-
-        for (AppTheme t : AppTheme.values()) {
-            VBox themeCard = buildThemeCard(t, themeCombo, themeCards);
-            themeCards.add(themeCard);
-            themeGrid.getChildren().add(themeCard);
-        }
-
         themeCombo.setOnAction(e -> {
             AppTheme selected = themeCombo.getValue();
             if (selected != null) {
                 ThemeManager.setTheme(selected);
-                updateThemeCardHighlights(themeCards, selected);
             }
         });
 
@@ -445,101 +427,12 @@ public class SettingsView extends VBox {
                 if (themeCombo.getValue() != newTheme) {
                     themeCombo.setValue(newTheme);
                 }
-                updateThemeCardHighlights(themeCards, newTheme);
             });
         });
 
-        themeSection.getChildren().addAll(themeLbl, themeDesc, comboRow, themeGrid);
+        themeSection.getChildren().addAll(themeLbl, themeDesc, comboRow);
         card.getChildren().add(themeSection);
         generalPane.getChildren().add(card);
-    }
-
-    private VBox buildThemeCard(AppTheme theme, ComboBox<AppTheme> combo, List<VBox> allCards) {
-        VBox card = new VBox(6);
-        card.getStyleClass().add("inner-container");
-        card.setPrefWidth(210);
-        card.setMinWidth(190);
-        card.setPadding(new Insets(12, 14, 12, 14));
-        card.setStyle("-fx-border-radius: 8; -fx-background-radius: 8; -fx-cursor: hand;");
-        card.setUserData(theme);
-
-        // Top Row: Color preview swatch dot & Category tag
-        HBox topRow = new HBox(8);
-        topRow.setAlignment(Pos.CENTER_LEFT);
-
-        String swatchColor = switch (theme) {
-            case TAKEOUTFIX_DARK -> "#8B5CF6";
-            case TAKEOUTFIX_LIGHT -> "#F59E0B";
-            case CATPPUCCIN_FOREST -> "#4EBA87";
-            case INTELLIJ_DARK -> "#3574F0";
-            case INTELLIJ_LIGHT -> "#3574F0";
-        };
-
-        Circle dot = new Circle(6, Color.web(swatchColor));
-
-        Label modeTag = new Label(theme.isDark() ? "DARK" : "LIGHT");
-        modeTag.setStyle("-fx-font-size: 10px; -fx-font-weight: 700; -fx-opacity: 0.7;");
-        modeTag.getStyleClass().add("text-muted");
-
-        Region sp = new Region();
-        HBox.setHgrow(sp, Priority.ALWAYS);
-
-        Label activeBadge = new Label("Active");
-        activeBadge.setStyle("-fx-font-size: 10.5px; -fx-font-weight: 700; -fx-text-fill: " + swatchColor + "; -fx-background-color: rgba(255,255,255,0.08); -fx-padding: 2 6 2 6; -fx-background-radius: 4;");
-        activeBadge.setVisible(theme == ThemeManager.getCurrentTheme());
-
-        topRow.getChildren().addAll(dot, modeTag, sp, activeBadge);
-
-        // Theme Title
-        Label nameLbl = new Label(theme.getDisplayName());
-        nameLbl.setStyle("-fx-font-size: 14px; -fx-font-weight: 700;");
-        nameLbl.getStyleClass().add("text-primary");
-
-        // Theme Description
-        Label descLbl = new Label(theme.getDescription());
-        descLbl.setStyle("-fx-font-size: 11.5px;");
-        descLbl.getStyleClass().add("text-muted");
-        descLbl.setWrapText(true);
-        descLbl.setPrefHeight(34);
-
-        card.getChildren().addAll(topRow, nameLbl, descLbl);
-
-        card.setOnMouseClicked(e -> {
-            ThemeManager.setTheme(theme);
-            combo.setValue(theme);
-            updateThemeCardHighlights(allCards, theme);
-        });
-
-        // Highlight if active
-        if (theme == ThemeManager.getCurrentTheme()) {
-            card.setStyle("-fx-border-radius: 8; -fx-background-radius: 8; -fx-border-color: " + swatchColor + "; -fx-border-width: 1.5; -fx-cursor: hand;");
-        }
-
-        return card;
-    }
-
-    private void updateThemeCardHighlights(List<VBox> cards, AppTheme activeTheme) {
-        for (VBox c : cards) {
-            AppTheme t = (AppTheme) c.getUserData();
-            boolean isActive = (t == activeTheme);
-            String swatchColor = switch (t) {
-                case TAKEOUTFIX_DARK -> "#8B5CF6";
-                case TAKEOUTFIX_LIGHT -> "#F59E0B";
-                case CATPPUCCIN_FOREST -> "#4EBA87";
-                case INTELLIJ_DARK -> "#3574F0";
-                case INTELLIJ_LIGHT -> "#3574F0";
-            };
-            if (isActive) {
-                c.setStyle("-fx-border-radius: 8; -fx-background-radius: 8; -fx-border-color: " + swatchColor + "; -fx-border-width: 1.5; -fx-cursor: hand;");
-            } else {
-                c.setStyle("-fx-border-radius: 8; -fx-background-radius: 8; -fx-cursor: hand;");
-            }
-            if (c.getChildren().get(0) instanceof HBox topRow) {
-                if (topRow.getChildren().size() >= 4 && topRow.getChildren().get(3) instanceof Label badge) {
-                    badge.setVisible(isActive);
-                }
-            }
-        }
     }
 
     private void buildProcessingPane() {
@@ -682,10 +575,10 @@ public class SettingsView extends VBox {
         VBox card = createCard();
 
         VBox formatBox = new VBox(6);
-        Label fTitle = new Label("Media and sidecars");
+        Label fTitle = new Label("Photos and metadata");
         fTitle.setStyle("-fx-font-size: 13px; -fx-font-weight: 600; ");
 
-        Label fList = new Label("The scanner recognizes common image and video files and matches Google Takeout JSON sidecars. Metadata support varies by format; inspect a sample of the restored files.");
+        Label fList = new Label("TakeoutFix matches supported photos and videos with their Takeout details. Support varies by format, so check a few restored files before importing them.");
         fList.setWrapText(true);
         fList.setStyle("-fx-font-size: 12px; -fx-padding: 8 12 8 12; -fx-background-radius: 6; -fx-border-color: #30313B; -fx-border-radius: 6;");
         formatBox.getChildren().addAll(fTitle, fList);
@@ -701,23 +594,25 @@ public class SettingsView extends VBox {
         VBox card = createCard();
 
         VBox infoBox = new VBox(10);
-        Label title = new Label("Need Help or Encountered an Issue?");
+        Label title = new Label("Need help?");
         title.setStyle("-fx-font-size: 15px; -fx-font-weight: 600; ");
 
-        Label desc = new Label("Our documentation covers step-by-step restoration for Google Takeout archives, metadata pairing edge-cases, and troubleshooting for corrupted files.");
+        Label desc = new Label("Find step-by-step instructions and help with common restore problems.");
         desc.setWrapText(true);
         desc.setStyle("-fx-font-size: 13px; ");
 
-        HBox actions = new HBox(10);
+        FlowPane actions = new FlowPane(10, 8);
         actions.setAlignment(Pos.CENTER_LEFT);
 
         Button btnSupportPage = new Button("Open Support & FAQ");
+        btnSupportPage.setMinWidth(Region.USE_PREF_SIZE);
         btnSupportPage.getStyleClass().add("btn-primary");
         btnSupportPage.setGraphic(UiIcons.createSvgIcon(UiIcons.EXTERNAL_LINK, 13, "#FAFAFA"));
         btnSupportPage.setStyle("-fx-font-size: 12px; -fx-padding: 8 16;");
         btnSupportPage.setOnAction(e -> openUrl("https://takeoutfix.pages.dev/support"));
 
         Button btnGuides = new Button("Browse Guides");
+        btnGuides.setMinWidth(Region.USE_PREF_SIZE);
         btnGuides.getStyleClass().add("btn-secondary");
         btnGuides.setGraphic(UiIcons.createSvgIcon(UiIcons.GLOBE, 13, "currentColor"));
         btnGuides.setStyle("-fx-font-size: 12px; -fx-padding: 8 16;");
@@ -740,25 +635,28 @@ public class SettingsView extends VBox {
         Label appName = new Label("Google Takeout Restorer v" + com.takeoutfix.shared.util.AppVersion.getVersion());
         appName.setStyle("-fx-font-size: 16px; -fx-font-weight: 800; ");
 
-        Label appSub = new Label("Pure JavaFX desktop edition with multi-process native ExifTool engine.");
+        Label appSub = new Label("Restore available details to copies of your Takeout photos.");
         appSub.setStyle("-fx-font-size: 12px; ");
 
-        HBox btnRow = new HBox(10);
+        FlowPane btnRow = new FlowPane(10, 8);
         btnRow.setAlignment(Pos.CENTER_LEFT);
 
         Button btnGithub = new Button("GitHub Repository");
+        btnGithub.setMinWidth(Region.USE_PREF_SIZE);
         btnGithub.getStyleClass().add("btn-secondary");
         btnGithub.setGraphic(UiIcons.createSvgIcon(UiIcons.HISTORY, 13, "currentColor"));
         btnGithub.setStyle("-fx-font-size: 12px;");
         btnGithub.setOnAction(e -> openUrl("https://github.com/Rahul-Jena-2002/GooglePhotosTakeout"));
 
         Button btnSupport = new Button("Support & FAQ");
+        btnSupport.setMinWidth(Region.USE_PREF_SIZE);
         btnSupport.getStyleClass().add("btn-secondary");
         btnSupport.setGraphic(UiIcons.createSvgIcon(UiIcons.EXTERNAL_LINK, 13, "currentColor"));
         btnSupport.setStyle("-fx-font-size: 12px;");
         btnSupport.setOnAction(e -> openUrl("https://takeoutfix.pages.dev/support"));
 
         Button btnSponsor = new Button("Sponsor Project");
+        btnSponsor.setMinWidth(Region.USE_PREF_SIZE);
         btnSponsor.getStyleClass().add("btn-primary");
         btnSponsor.setGraphic(UiIcons.createSvgIcon(UiIcons.HEART, 13, "#FAFAFA"));
         btnSponsor.setStyle("-fx-font-size: 12px;");
@@ -778,6 +676,7 @@ public class SettingsView extends VBox {
         title.getStyleClass().add("card-title");
 
         Label sub = new Label(subtitleText);
+        sub.setWrapText(true);
         sub.setStyle("-fx-font-size: 13.5px; ");
         sub.getStyleClass().add("text-muted");
 

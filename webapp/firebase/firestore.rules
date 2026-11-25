@@ -108,6 +108,10 @@ service cloud.firestore {
       allow update: if isSuperAdmin()
         || (request.auth != null && request.auth.token.email_verified == true
           && (resource.data.email == request.auth.token.email || resource.data.email == request.auth.token.email.lower())
+          && resource.data.status == 'pending'
+          && resource.data.expiresAt is timestamp && resource.data.expiresAt > request.time
+          && request.resource.data.status in ['accepted', 'declined']
+          && (request.resource.data.status != 'accepted' || request.resource.data.acceptedUid == request.auth.uid)
           && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'acceptedAt', 'acceptedUid']));
       allow delete: if isSuperAdmin();
     }

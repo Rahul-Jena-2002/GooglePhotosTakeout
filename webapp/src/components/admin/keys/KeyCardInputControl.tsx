@@ -44,24 +44,15 @@ export function KeyCardInputControl({
   }
 
   const inputType = revealed || !entry.sensitive ? "text" : "password"
-  const placeholder = entry.placeholder.startsWith("sk_") ? entry.placeholder.substring(8) : entry.placeholder
-
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    let val = e.target.value
-    if ((entry.id === "dodo_api_key" && val.startsWith("sk_live_")) || (entry.id === "dodo_test_api_key" && val.startsWith("sk_test_"))) {
-      val = val.substring(8)
-    }
-    onDraftChange(val)
-  }
-
   return (
     <div className="relative w-full">
       <div className="flex items-center rounded-lg border focus-within:ring-2 focus-within:ring-indigo-500/20 focus-within:border-indigo-500 transition-all overflow-hidden h-10 t-input-pure-border">
         <input
           type={inputType}
+          aria-label={entry.label}
           value={displayValue}
-          onChange={handleInputChange}
-          placeholder={placeholder}
+          onChange={(e) => onDraftChange(e.target.value)}
+          placeholder={entry.placeholder}
           className="flex-grow h-full px-3 border-none bg-transparent text-xs font-mono focus:outline-none t-text-primary"
         />
       </div>
@@ -78,6 +69,7 @@ export function KeyCardInputControl({
         <button
           type="button"
           onClick={onToggleReveal}
+          aria-label={`${revealed ? "Hide" : "Show"} ${entry.label}`}
           className="absolute right-3 top-1/2 -translate-y-1/2 transition-colors z-10 t-text-dim hover:text-zinc-700 dark:hover:text-zinc-300"
         >
           {revealed ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}

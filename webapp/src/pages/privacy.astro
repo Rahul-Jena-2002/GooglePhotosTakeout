@@ -30,7 +30,7 @@ import Icon from "../components/ui/Icon.astro";
         
         <section id="guarantee" class="bg-zinc-50 dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-8 relative overflow-hidden shadow-sm">
           <div class="absolute top-0 left-0 w-1.5 h-full bg-zinc-900 dark:bg-white"></div>
-          <h2 class="text-2xl font-bold text-zinc-900 dark:text-white mb-3">The TakeoutFix Guarantee</h2>
+          <h2 class="text-2xl font-bold text-zinc-900 dark:text-white mb-3">How the browser tool handles your media</h2>
           <p class="text-base sm:text-lg text-zinc-700 dark:text-zinc-300">
             <strong class="text-zinc-900 dark:text-white">The browser restore tool processes selected media locally.</strong> It does not upload those photo or video files as part of restoration. Other features, including support and diagnostics, can send information to network services.
           </p>
@@ -50,16 +50,16 @@ import Icon from "../components/ui/Icon.astro";
         </section>
 
         <section id="collected" class="space-y-4">
-          <h2 class="text-2xl font-bold text-zinc-900 dark:text-white mb-4">Data We DO Collect</h2>
-          <p class="text-zinc-600 dark:text-zinc-400 text-sm">We collect the information needed to provide accounts, support, billing, security, and advertising:</p>
+          <h2 class="text-2xl font-bold text-zinc-900 dark:text-white mb-4">Information we may collect</h2>
+          <p class="text-zinc-600 dark:text-zinc-400 text-sm">Depending on the features you use, we or our service providers may process the following information:</p>
           <ul class="list-disc pl-6 space-y-2 text-zinc-600 dark:text-zinc-400 text-sm">
             <li><strong class="text-zinc-900 dark:text-white">Google sign-in information:</strong> When you choose Google sign-in, Firebase Authentication receives your Google account identifier, email address, name, and profile image (when provided). We use this information for authentication, your TakeoutFix profile, and account features. We do not request access to Google Drive, Google Photos, Gmail, or other Google user content.</li>
-            <li><strong class="text-zinc-900 dark:text-white">Profile and account records:</strong> Names and usernames you enter, account settings, plan status, usage totals, restoration history, and account security/session records.</li>
+            <li><strong class="text-zinc-900 dark:text-white">Profile and account records:</strong> Names and usernames you enter, account settings, plan status, restoration history, and account security/session records. For signed-in users, reported usage can include the number of files and bytes processed; pending counts may be stored on your device and sent when your account is online again.</li>
             <li><strong class="text-zinc-900 dark:text-white">Support Inquiries:</strong> Any information you voluntarily provide when contacting customer support.</li>
             <li><strong class="text-zinc-900 dark:text-white">Diagnostics and hosting logs:</strong> Error reports and standard request/security metadata (such as IP address, browser details, requested URL, and request time) may be processed by our diagnostic and hosting providers.</li>
-            <li><strong class="text-zinc-900 dark:text-white">Billing records:</strong> Purchase, transaction, and payment status information needed to provide paid features and receipts. Payment providers handle payment processing under their own privacy terms.</li>
+            <li><strong class="text-zinc-900 dark:text-white">Billing records:</strong> If paid features are offered, purchase, transaction, and payment status information may be used to provide those features and receipts. Payment providers handle payment processing under their own privacy terms.</li>
             <li><strong class="text-zinc-900 dark:text-white">Advertising information:</strong> Ad providers may process browser/device details and ad impressions or interactions when ads are shown.</li>
-            <li><strong class="text-zinc-900 dark:text-white">Media content and names:</strong> The browser restore flow does not upload photo or video content. For signed-in users, a recovery history entry can include the selected archive or folder name and processing counts. Information sent in support requests or diagnostics may also include details you choose to share.</li>
+            <li><strong class="text-zinc-900 dark:text-white">Media content and names:</strong> The browser restore flow does not upload photo or video content. For signed-in users, a recovery history entry can include the selected archive or folder name and processing counts. Diagnostic reports may automatically include filenames or error details; support requests can include information you choose to share.</li>
           </ul>
         </section>
 
@@ -73,7 +73,7 @@ import Icon from "../components/ui/Icon.astro";
         <section id="local-processing" class="space-y-4">
           <h2 class="text-2xl font-bold text-zinc-900 dark:text-white mb-4">Local Processing</h2>
           <p class="text-zinc-600 dark:text-zinc-400 text-sm leading-relaxed">
-            The media processing tool runs in your browser using local file access and browser workers. Media file contents are processed on your device and are not uploaded by the restoration flow. Account, support, payment, diagnostics, and advertising features use separate network services described below.
+            The media processing tool runs in your browser using local file access and browser workers. Media file contents are processed on your device and are not uploaded by the restoration flow. Account, support, diagnostics, and advertising features use separate network services described below. If paid features are offered later, checkout would use a payment provider.
           </p>
         </section>
 
@@ -90,9 +90,9 @@ import Icon from "../components/ui/Icon.astro";
             <li><strong class="text-zinc-900 dark:text-white">Sentry:</strong> Error reporting and diagnostic context used to identify application defects.</li>
             <li><strong class="text-zinc-900 dark:text-white">Cloudflare Pages:</strong> Hosting and content delivery; its infrastructure may process request and security logs.</li>
             <li><strong class="text-zinc-900 dark:text-white">Google AdSense and A-Ads:</strong> Advertising providers may use cookies or similar technologies and process ad impressions or interactions when their ads are shown. Their practices and available controls are described in their own privacy materials.</li>
-            <li><strong class="text-zinc-900 dark:text-white">Payment providers:</strong> Payment processors handle checkout and may retain transaction records under their own terms and legal obligations.</li>
+            <li><strong class="text-zinc-900 dark:text-white">Payment providers:</strong> If paid features are offered, payment processors would handle checkout and may retain transaction records under their own terms and legal obligations.</li>
           </ul>
-          <p class="text-zinc-600 dark:text-zinc-400 text-sm leading-relaxed">The exact cookies, storage keys, and retention periods vary by provider, browser, and region. Use the “Privacy &amp; cookie choices” link in the footer to reopen Google's consent message when it is available and change your choice. You can manage browser storage in your browser settings and review Google's ad personalization choices in <a href="https://adssettings.google.com" target="_blank" rel="noopener noreferrer" class="text-zinc-900 dark:text-white underline font-semibold">Google Ads Settings</a>. The Google AdSense account's Privacy &amp; messaging settings control the consent message presented by Google's publisher tools; this policy page alone does not collect or record consent. Google requires publishers serving personalized ads in the EEA, UK, or Switzerland to use a Google-certified CMP integrated with the IAB TCF. See <a href="https://support.google.com/adsense/answer/13554020" target="_blank" rel="noopener noreferrer" class="text-zinc-900 dark:text-white underline font-semibold">Google's CMP requirements</a> and confirm the message is configured in the AdSense account before serving those ads.</p>
+          <p class="text-zinc-600 dark:text-zinc-400 text-sm leading-relaxed">The exact cookies, storage keys, and retention periods vary by provider, browser, and region. Use the “Privacy &amp; cookie choices” link in the footer to reopen Google's consent message when it is available and change your choice. You can manage browser storage in your browser settings and review Google's ad personalization choices in <a href="https://adssettings.google.com" target="_blank" rel="noopener noreferrer" class="text-zinc-900 dark:text-white underline font-semibold">Google Ads Settings</a>.</p>
         </section>
 
         <section id="account-deletion" class="space-y-4">
@@ -142,7 +142,7 @@ import Icon from "../components/ui/Icon.astro";
               On This Page
             </h3>
             <nav class="space-y-2 text-sm text-zinc-600 dark:text-zinc-400">
-              <a href="#guarantee" class="block hover:text-zinc-900 dark:hover:text-white transition-colors py-1">1. The TakeoutFix Guarantee</a>
+              <a href="#guarantee" class="block hover:text-zinc-900 dark:hover:text-white transition-colors py-1">1. How the browser tool handles your media</a>
               <a href="#not-collected" class="block hover:text-zinc-900 dark:hover:text-white transition-colors py-1">2. Local media processing</a>
               <a href="#collected" class="block hover:text-zinc-900 dark:hover:text-white transition-colors py-1">3. Data We DO Collect</a>
               <a href="#coppa" class="block hover:text-zinc-900 dark:hover:text-white transition-colors py-1">4. Children's Privacy (COPPA)</a>

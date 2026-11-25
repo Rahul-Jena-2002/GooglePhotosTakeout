@@ -44,7 +44,7 @@ export function ConfigFilesSection({
               <Terminal className="w-3.5 h-3.5" /> functions/local-server.js — Runtime Environment
             </h3>
             <p className="text-xs mt-1 t-text-dim">
-              These env vars are required to run <code className="px-1.5 py-0.5 rounded font-mono text-[10px] t-surface-code">node functions/local-server.js</code>. Add to <code className="px-1.5 py-0.5 rounded font-mono text-[10px] t-surface-code">webapp/.env</code> or export in your shell.
+              Set the values in your shell or use an environment loader before running the local server. The server does not automatically load an environment file.
             </p>
           </div>
           <CopyButton text={localServerEnvText} />
@@ -60,7 +60,7 @@ export function ConfigFilesSection({
               Firebase Functions Config (Deployed)
             </h3>
             <p className="text-xs mt-1 t-text-dim">
-              Run once to configure deployed Cloud Functions. The functions read these at startup.
+              Configure secrets in the deployed function environment and verify that the function can access them.
             </p>
           </div>
           <CopyButton text={functionsConfigText} />

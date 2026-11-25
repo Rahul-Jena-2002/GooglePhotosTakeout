@@ -1,0 +1,67 @@
+name: Deploy Website Worker
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: takeoutfix-production-worker
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    if: github.ref == 'refs/heads/main'
+    runs-on: windows-latest
+    environment: production
+    defaults:
+      run:
+        working-directory: webapp
+    env:
+      CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
+      PUBLIC_FIREBASE_API_KEY: ${{ vars.PUBLIC_FIREBASE_API_KEY }}
+      PUBLIC_FIREBASE_AUTH_DOMAIN: ${{ vars.PUBLIC_FIREBASE_AUTH_DOMAIN }}
+      PUBLIC_FIREBASE_PROJECT_ID: ${{ vars.PUBLIC_FIREBASE_PROJECT_ID }}
+      PUBLIC_FIREBASE_STORAGE_BUCKET: ${{ vars.PUBLIC_FIREBASE_STORAGE_BUCKET }}
+      PUBLIC_FIREBASE_MESSAGING_SENDER_ID: ${{ vars.PUBLIC_FIREBASE_MESSAGING_SENDER_ID }}
+      PUBLIC_FIREBASE_APP_ID: ${{ vars.PUBLIC_FIREBASE_APP_ID }}
+      PUBLIC_FIREBASE_MEASUREMENT_ID: ${{ vars.PUBLIC_FIREBASE_MEASUREMENT_ID }}
+      PUBLIC_FIREBASE_USE_LIVE: ${{ vars.PUBLIC_FIREBASE_USE_LIVE }}
+      PUBLIC_GOOGLE_CLIENT_ID: ${{ vars.PUBLIC_GOOGLE_CLIENT_ID }}
+      PUBLIC_SENTRY_DSN: ${{ vars.PUBLIC_SENTRY_DSN }}
+      PUBLIC_EMAILJS_SERVICE_ID: ${{ vars.PUBLIC_EMAILJS_SERVICE_ID }}
+      PUBLIC_EMAILJS_TICKET_TEMPLATE_ID: ${{ vars.PUBLIC_EMAILJS_TICKET_TEMPLATE_ID }}
+      PUBLIC_EMAILJS_INVITE_TEMPLATE_ID: ${{ vars.PUBLIC_EMAILJS_INVITE_TEMPLATE_ID }}
+      PUBLIC_EMAILJS_TEMPLATE_ID: ${{ vars.PUBLIC_EMAILJS_TEMPLATE_ID }}
+      PUBLIC_EMAILJS_PUBLIC_KEY: ${{ vars.PUBLIC_EMAILJS_PUBLIC_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: webapp/package-lock.json
+      - name: Validate production configuration
+        shell: pwsh
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: |
+          $required = @('CLOUDFLARE_API_TOKEN', 'CLOUDFLARE_ACCOUNT_ID', 'PUBLIC_FIREBASE_API_KEY', 'PUBLIC_FIREBASE_AUTH_DOMAIN', 'PUBLIC_FIREBASE_PROJECT_ID', 'PUBLIC_FIREBASE_STORAGE_BUCKET', 'PUBLIC_FIREBASE_MESSAGING_SENDER_ID', 'PUBLIC_FIREBASE_APP_ID')
+          $missing = @($required | Where-Object { [string]::IsNullOrWhiteSpace([Environment]::GetEnvironmentVariable($_)) })
+          if ($missing.Count) { throw "Missing production settings: $($missing -join ', ')" }
+          if ($env:PUBLIC_FIREBASE_PROJECT_ID -ne 'takeout-fix') { throw 'Unexpected Firebase production project.' }
+      - run: npm ci
+      - run: npm run test:security-helpers
+      - run: npm run test:service-worker
+      - run: npm run test:build-output
+      - run: npm run test:api-headers
+      - run: npm run test:restoration
+      - name: Build and audit
+        run: npm run build
+      - name: Deploy private production Worker
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: npx wrangler deploy --keep-vars

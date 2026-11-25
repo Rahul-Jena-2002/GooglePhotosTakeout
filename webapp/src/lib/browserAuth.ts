@@ -1,13 +1,67 @@
-import { auth, db, googleProvider, signInWithPopup, signOut } from "../firebase";
-import { setAdFree, setUserInteracted, checkAdBlock, hideBanner } from "./browserAdblock";
+import { auth, db, signOut } from "../firebase";
+import type { User } from "firebase/auth";
 import { bindNotificationFetch, stopNotificationListeners } from "./browserNotifications";
 
 import { isVerifiedSuperAdmin } from "./adminAuth";
-import { getFriendlyAuthMessage } from "./authErrors";
 import { renderAvatar } from "./renderAvatar";
+import { acquireRestoreLock } from "./restoreLock";
 let unsubUserDoc: any = null;
 let unsubAdminDoc: (() => void) | null = null;
 let isAuthListenerInitialized = false;
+let verifiedAdmin: { uid: string; role: string } | null = null;
+let authGeneration = 0;
+const boundSignoutButtons = new WeakSet<Element>();
+let signoutInProgress = false;
+let usageRecoveryRunning = false;
+let usageRecoveryRequested = false;
+let usageRecoveryTimer: ReturnType<typeof setTimeout> | undefined;
+
+function scheduleUsageRecovery() {
+  if (usageRecoveryTimer) return;
+  usageRecoveryTimer = setTimeout(() => {
+    usageRecoveryTimer = undefined;
+    void retryAccountUsage();
+  }, 30000);
+}
+
+async function retryAccountUsage() {
+  const uid = auth?.currentUser?.uid;
+  if (!uid || !navigator.onLine) return;
+  if (usageRecoveryRunning) {
+    usageRecoveryRequested = true;
+    return;
+  }
+  usageRecoveryRunning = true;
+  let release: (() => void) | undefined;
+  try {
+    try {
+      release = await acquireRestoreLock(navigator.locks);
+    } catch {
+      // An active restore owns the journal; retry after it releases the lock.
+      if (navigator.locks) scheduleUsageRecovery();
+      return;
+    }
+    const [{ indexedDbService }, { recoverAccountBatches }, { applyUsageBatch }] = await Promise.all([
+      import('./indexedDbService'), import('../tool-workspace/pendingUsage'), import('../tool-workspace/usageBatch')
+    ]);
+    const isCurrent = () => auth?.currentUser?.uid === uid;
+    const keys = await indexedDbService.getAllKeys('telemetry');
+    await recoverAccountBatches(uid, keys, isCurrent,
+      key => indexedDbService.get('telemetry', key),
+      batch => applyUsageBatch(db, uid, batch.batchId, batch.bytes, batch.files),
+      key => indexedDbService.remove('telemetry', key));
+  } catch (error) {
+    console.warn('Pending usage could not be synced; it remains on this device.', error);
+    scheduleUsageRecovery();
+  } finally {
+    release?.();
+    usageRecoveryRunning = false;
+    if (usageRecoveryRequested) {
+      usageRecoveryRequested = false;
+      void retryAccountUsage();
+    }
+  }
+}
 
 export const syncUserUI = () => {
   const authLoading = document.getElementById("auth-loading");
@@ -102,48 +156,9 @@ export const syncUserUI = () => {
       if (dropdownPlan) dropdownPlan.innerText = planLabel;
       if (mobileUserPlan) mobileUserPlan.innerText = planLabel;
       
-      // Floating 24h Pass Timer on Home Page only for Single Pass users
-      const homePassBadge = document.getElementById("home-pass-timer-floating");
-      const homePassVal = document.getElementById("home-pass-timer-val");
-      const isHomePage = window.location.pathname === "/" || window.location.pathname === "";
-      if (isHomePage && cachedUser.plan === "recovery_pass" && homePassBadge && homePassVal) {
-        homePassBadge.classList.remove("hidden");
-        homePassBadge.classList.add("flex");
-        const expiresAt = cachedUser.expiresAt || (cachedUser.startedAt ? cachedUser.startedAt + 24*3600*1000 : Date.now() + 24*3600*1000);
-        const updateTimer = () => {
-          const remainingMs = Math.max(0, expiresAt - Date.now());
-          if (remainingMs <= 0) {
-            homePassBadge.classList.add("hidden");
-            homePassBadge.classList.remove("flex");
-            return;
-          }
-          const totalSecs = Math.floor(remainingMs / 1000);
-          const days = Math.floor(totalSecs / 86400);
-          const hrs = Math.floor((totalSecs % 86400) / 3600);
-          const mins = Math.floor((totalSecs % 3600) / 60);
-          const pad = (n: number) => n.toString().padStart(2, '0');
-          homePassVal.innerText = `${pad(days)}d : ${pad(hrs)}h : ${pad(mins)}m`;
-        };
-        updateTimer();
-        if ((window as any).__homePassTimerInterval) clearInterval((window as any).__homePassTimerInterval);
-        (window as any).__homePassTimerInterval = setInterval(updateTimer, 1000);
-      } else {
-        if (homePassBadge) {
-          homePassBadge.classList.add("hidden");
-          homePassBadge.classList.remove("flex");
-        }
-      }
-      
-      const adminDataCached = typeof localStorage !== 'undefined' && localStorage.getItem("takeoutfix_admin_data");
-      let cachedAdminRole = null;
-      if (adminDataCached) {
-        try {
-          cachedAdminRole = JSON.parse(adminDataCached).role;
-        } catch (_) {}
-      }
-      const cachedAdmin = adminDataCached ? JSON.parse(adminDataCached) : null;
+      const cachedAdminRole = verifiedAdmin?.uid === cachedUser.uid ? verifiedAdmin?.role ?? null : null;
       const verifiedRoot = auth?.currentUser?.uid === cachedUser.uid && isVerifiedSuperAdmin(auth.currentUser);
-      const isAdmin = Boolean((cachedAdmin?.uid === cachedUser.uid && cachedAdminRole) || verifiedRoot);
+      const isAdmin = Boolean((auth?.currentUser?.uid === cachedUser.uid && cachedAdminRole) || verifiedRoot);
       if (isAdmin) {
         desktopDashboardLink?.classList.add("hidden");
         mobileDashboardLink?.classList.add("hidden");
@@ -157,7 +172,7 @@ export const syncUserUI = () => {
             email: cachedUser.email || auth.currentUser?.email || "",
             displayName: cachedUser.displayName || auth.currentUser?.displayName || "Admin",
             photoURL: cachedUser.photoURL || auth.currentUser?.photoURL || "",
-            role: isSuper ? "SUPER_ADMIN" : (cachedUser.role || cachedAdminRole || "ADMIN"),
+            role: isSuper ? "SUPER_ADMIN" : cachedAdminRole,
             isAdmin: true,
             timestamp: Date.now()
           }));
@@ -226,13 +241,18 @@ export const setupAuthListeners = () => {
     return;
   }
 
-  auth.onAuthStateChanged((user) => {
+  window.addEventListener('online', () => { void retryAccountUsage(); });
+
+  auth.onAuthStateChanged((user: User | null) => {
+    const generation = ++authGeneration;
     if (unsubUserDoc) unsubUserDoc();
     if (unsubAdminDoc) unsubAdminDoc();
+    verifiedAdmin = null;
     localStorage.removeItem("takeoutfix_admin_data");
     sessionStorage.removeItem("takeoutfix_admin_session");
     
     if (user) {
+      void retryAccountUsage();
       const previewData = {
         uid: user.uid,
         email: user.email,
@@ -248,10 +268,11 @@ export const setupAuthListeners = () => {
 
       // Lazy load firestore
       import("firebase/firestore").then(({ doc, onSnapshot }) => {
-        if (auth.currentUser?.uid !== user.uid) return;
+        if (generation !== authGeneration || auth.currentUser?.uid !== user.uid) return;
 
         // 1. Listen to user document
         unsubUserDoc = onSnapshot(doc(db, "users", user.uid), (snap) => {
+          if (generation !== authGeneration || auth.currentUser?.uid !== user.uid) return;
           if (snap.exists()) {
             const data = snap.data();
             const saved = JSON.parse(localStorage.getItem("takeoutfix_user_data") || "{}");
@@ -265,25 +286,26 @@ export const setupAuthListeners = () => {
             };
             localStorage.setItem("takeoutfix_user_data", JSON.stringify(fullData));
             
-            setAdFree(data.plan === "super" && !data.supportWithAds);
-            checkAdBlock();
             syncUserUI();
           }
         });
 
         // 2. ALSO query admins doc directly so admin navbar enables instantly!
-        unsubAdminDoc = onSnapshot(doc(db, "admins", user.uid), (adminSnap) => {
-          if (auth.currentUser?.uid !== user.uid || adminSnap.metadata.fromCache) return;
+        unsubAdminDoc = onSnapshot(doc(db, "admins", user.uid), { includeMetadataChanges: true }, (adminSnap) => {
+          if (generation !== authGeneration || auth.currentUser?.uid !== user.uid || adminSnap.metadata.fromCache || adminSnap.metadata.hasPendingWrites) return;
           if (adminSnap.exists()) {
             const adminDoc = adminSnap.data();
+            verifiedAdmin = typeof adminDoc.role === "string" && adminDoc.role ? { uid: user.uid, role: adminDoc.role } : null;
             localStorage.setItem("takeoutfix_admin_data", JSON.stringify({ ...adminDoc, uid: user.uid }));
           } else {
+            verifiedAdmin = null;
             localStorage.removeItem("takeoutfix_admin_data");
             sessionStorage.removeItem("takeoutfix_admin_session");
           }
           syncUserUI();
         }, (error) => {
-          if (auth.currentUser?.uid !== user.uid) return;
+          if (generation !== authGeneration || auth.currentUser?.uid !== user.uid) return;
+          verifiedAdmin = null;
           localStorage.removeItem("takeoutfix_admin_data");
           sessionStorage.removeItem("takeoutfix_admin_session");
           syncUserUI();
@@ -295,9 +317,6 @@ export const setupAuthListeners = () => {
     } else {
       localStorage.removeItem("takeoutfix_user_data");
       stopNotificationListeners();
-      setAdFree(false);
-      setUserInteracted(false);
-      hideBanner();
       syncUserUI();
     }
   });
@@ -311,16 +330,29 @@ export const setupAuthEvents = () => {
   // which AuthModal listens to and renders the sign-in/sign-up overlay.
 
   signoutButtons.forEach((btn) => {
+    if (boundSignoutButtons.has(btn)) return;
+    boundSignoutButtons.add(btn);
     btn.addEventListener("click", async () => {
+      if (signoutInProgress) return;
+      signoutInProgress = true;
+      let releaseRestoreLock: (() => void) | null = null;
       try {
+        if (navigator.locks) releaseRestoreLock = await acquireRestoreLock(navigator.locks);
+        await signOut(auth);
         localStorage.removeItem("takeoutfix_user_data");
         localStorage.removeItem("takeoutfix_admin_data");
         localStorage.removeItem("takeoutfix_device_session_id");
         sessionStorage.removeItem("takeoutfix_admin_session");
-        await signOut(auth);
         window.location.href = "/";
       } catch (err) {
         console.error("Sign out failed:", err);
+        const message = err instanceof Error && err.message.includes("restore is already open")
+          ? "Finish or cancel the active restore before signing out."
+          : "Could not sign out. Please try again.";
+        (window as any).showVanillaToast?.(message, "error");
+      } finally {
+        releaseRestoreLock?.();
+        signoutInProgress = false;
       }
     });
   });

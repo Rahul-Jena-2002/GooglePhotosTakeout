@@ -233,7 +233,7 @@ export function PhotoStudioPanel() {
   // Process & Apply Batch Edits
   const handleRunBatch = async () => {
     if (photos.length === 0) {
-      useToastStore.getState().addToast("Please select photos first.", "warn", 4000)
+      useToastStore.getState().addToast("Please select photos first.", "warning", 4000)
       return
     }
     if (locationMode === 'strip') {

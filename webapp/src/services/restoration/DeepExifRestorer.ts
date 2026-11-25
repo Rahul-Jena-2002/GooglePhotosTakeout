@@ -9,7 +9,7 @@ import { memoryGuard } from './MemoryGuard.ts';
  * and RAW images natively in the browser without server uploads.
  */
 
-// Global cache for zeroperl.wasm bytes to prevent redundant network fetches across worker tasks
+// Each worker caches the bytes and shares an in-flight fetch across its tasks.
 let cachedWasmBytes: ArrayBuffer | null = null;
 let pendingWasmBytes: Promise<ArrayBuffer> | null = null;
 
@@ -153,7 +153,7 @@ export async function injectImageExif(
     const errDetail = result?.error || `ExifTool exit code ${result?.exitCode ?? -1}`;
     throw new Error(`WASM ExifTool write failed: ${errDetail}`);
   } catch (err: any) {
-    console.error("WASM ExifTool execution error:", err);
+    console.error("WASM ExifTool execution failed. See the local report for details.");
     throw err;
   }
 }

@@ -16,7 +16,6 @@ import { downloadSyncScript } from "../services/restoration/WindowsDateSyncScrip
 
 interface RestorePanelProps {
   elapsedSeconds?: number
-  filesPerSec?: string
   speedMBs?: string
   downloadAuditLog?: () => void
   downloadIssuesLog?: () => void
@@ -48,9 +47,9 @@ interface RestorePanelProps {
   pendingSession: ActiveSession | null
   canManagePendingSession: boolean
   discardPendingSession: () => void
-  handleDragOver: (e: React.DragEvent) => void
+  handleDragOver: (e: React.DragEvent<HTMLDivElement>) => void
   handleDragLeave: () => void
-  handleDrop: (e: React.DragEvent) => void
+  handleDrop: (e: React.DragEvent<HTMLDivElement>) => void
   handleSelectTakeout: () => void
   handleSelectOutput: () => void
   handleReGrantPermissions: () => void
@@ -213,7 +212,7 @@ export function RestorePanel({
             <div className="flex items-center gap-2">
               <span className="font-semibold text-sm sm:text-base text-zinc-900 dark:text-white">Google Photos Metadata Restorer</span>
             </div>
-            <p className="text-[11px] sm:text-xs text-zinc-500 dark:text-zinc-400">Restore original dates, times, and location metadata directly inside your media files.</p>
+            <p className="text-[11px] sm:text-xs text-zinc-500 dark:text-zinc-400">Restore available dates and locations to supported copies. Keep your original export as a backup.</p>
           </div>
         </div>
 
@@ -376,7 +375,6 @@ export function RestorePanel({
                             if (file) {
                               setZipFile(file)
                               setTakeoutFolder(null)
-                              window.dispatchEvent(new CustomEvent('takeoutfix-action-triggered'))
                             }
                           }
                           input.click()
@@ -526,7 +524,7 @@ export function RestorePanel({
                   </div>
                 </div>
                 <div>
-                  <div className="text-[10px] sm:text-xs uppercase font-semibold text-zinc-500 tracking-wider">Speed</div>
+                  <div className="text-[10px] sm:text-xs uppercase font-semibold text-zinc-500 tracking-wider">Average speed</div>
                   <div className="text-sm sm:text-base lg:text-lg font-mono font-semibold text-cyan-600 dark:text-cyan-400 mt-0.5">
                     {isProcessing ? `${speedMBs} MB/s` : '--'}
                   </div>
@@ -749,7 +747,7 @@ export function RestorePanel({
                   <button
                     type="button"
                     onClick={downloadAuditLog}
-                    title="Download complete restoration log (restoration_log.txt)"
+                    title="Download restoration log (restoration_log.txt)"
                     className="text-xs text-zinc-700 dark:text-zinc-300 hover:text-zinc-900 dark:hover:text-white px-3 py-1.5 rounded-lg bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 font-medium flex items-center gap-1.5 cursor-pointer transition-colors"
                   >
                     <Download className="w-3.5 h-3.5" /> Download Log

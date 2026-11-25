@@ -8,7 +8,7 @@ package com.takeoutfix;
  * bypasses that check so IntelliJ's Application run config works without
  * needing {@code --module-path} / {@code --add-modules} VM args.
  */
-public class Launcher {
+public class    Launcher {
     public static void main(String[] args) {
         if (System.getProperty("prism.lcdtext") == null) {
             System.setProperty("prism.lcdtext", "false");

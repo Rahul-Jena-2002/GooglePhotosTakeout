@@ -156,11 +156,9 @@ public class HistoryView extends VBox {
 
         Label title = new Label("Activity History");
         title.getStyleClass().addAll("page-title", "header-title");
+        title.setStyle("-fx-font-size: 20px; -fx-font-weight: 700;");
 
-        Label badge = new Label("Local audit trail");
-        badge.setStyle("-fx-font-size: 11px; -fx-font-weight: 600; -fx-text-fill: #10B981; -fx-background-color: rgba(16, 185, 129, 0.12); -fx-padding: 3 8 3 8; -fx-background-radius: 6;");
-
-        titleRow.getChildren().addAll(title, badge);
+        titleRow.getChildren().add(title);
 
         Label subtitle = new Label("Review and manage your recent operations.");
         subtitle.getStyleClass().addAll("page-description", "header-subtitle");
@@ -257,17 +255,15 @@ public class HistoryView extends VBox {
         recordsBadge.setStyle("-fx-font-size: 11px; -fx-font-weight: 600; -fx-padding: 2 8 2 8; -fx-background-radius: 10;");
         recordsBadge.getStyleClass().add("badge-counter");
 
-        Region spacer = new Region();
-        HBox.setHgrow(spacer, Priority.ALWAYS);
-
         searchField.setPromptText("Search operations...");
-        searchField.setStyle("-fx-font-size: 12px; -fx-pref-width: 140px;");
+        searchField.setStyle("-fx-font-size: 12px;");
+        searchField.setMaxWidth(Double.MAX_VALUE);
         searchField.textProperty().addListener((obs, oldVal, newVal) -> applyFilter());
 
-        topRow.getChildren().addAll(title, recordsBadge, spacer, searchField);
+        topRow.getChildren().addAll(title, recordsBadge);
 
         // Filter Pills: All, Restore, Duplicate Finder, Metadata Sync, Vault
-        HBox filterBar = new HBox(6);
+        FlowPane filterBar = new FlowPane(6, 6);
         filterBar.setAlignment(Pos.CENTER_LEFT);
         ToggleGroup filterGroup = new ToggleGroup();
         filterBar.getChildren().addAll(
@@ -341,18 +337,21 @@ public class HistoryView extends VBox {
         recordListView.getSelectionModel().selectedItemProperty().addListener((obs, oldVal, newVal) -> {
             if (newVal != null) {
                 displayRecord(newVal);
+            } else {
+                clearDetailPanel();
             }
         });
 
         SortedList<ActivityRecord> sortedList = new SortedList<>(filteredList);
         recordListView.setItems(sortedList);
 
-        col.getChildren().addAll(topRow, filterBar, recordListView);
+        col.getChildren().addAll(topRow, searchField, filterBar, recordListView);
         return col;
     }
 
     private ToggleButton createCategoryPill(String text, String category, ToggleGroup group, boolean selected) {
         ToggleButton btn = new ToggleButton(text);
+        btn.setMinWidth(Region.USE_PREF_SIZE);
         btn.setToggleGroup(group);
         btn.setSelected(selected);
         btn.setStyle("-fx-font-size: 11px; -fx-padding: 3 8 3 8; -fx-background-radius: 12;");
@@ -390,8 +389,7 @@ public class HistoryView extends VBox {
         VBox.setVgrow(col, Priority.ALWAYS);
 
         // Header
-        HBox headerRow = new HBox(10);
-        headerRow.setAlignment(Pos.CENTER_LEFT);
+        VBox headerRow = new VBox(8);
 
         VBox titleBox = new VBox(2);
         HBox titleSub = new HBox(8);
@@ -403,29 +401,35 @@ public class HistoryView extends VBox {
 
         detailMeta.setStyle("-fx-font-size: 12px;");
         detailMeta.getStyleClass().add("text-muted");
+        detailMeta.setWrapText(true);
         titleBox.getChildren().addAll(titleSub, detailMeta);
-
-        Region spacer = new Region();
-        HBox.setHgrow(spacer, Priority.ALWAYS);
 
         // Segmented View Toggle: Overview vs Raw Log
         btnStructuredView.setToggleGroup(viewModeGroup);
         btnRawView.setToggleGroup(viewModeGroup);
         btnStructuredView.setSelected(true);
+        btnStructuredView.setMinWidth(Region.USE_PREF_SIZE);
+        btnRawView.setMinWidth(Region.USE_PREF_SIZE);
         btnStructuredView.setStyle("-fx-font-size: 12px; -fx-padding: 4 10 4 10;");
         btnRawView.setStyle("-fx-font-size: 12px; -fx-padding: 4 10 4 10;");
 
         HBox toggleBox = new HBox(btnStructuredView, btnRawView);
 
         btnExportReport.getStyleClass().add("btn-secondary");
+        btnExportReport.disableProperty().bind(recordListView.getSelectionModel().selectedItemProperty().isNull());
+        btnExportReport.setMinWidth(Region.USE_PREF_SIZE);
         btnExportReport.setGraphic(UiIcons.createSvgIcon(UiIcons.DOWNLOAD, 13, "currentColor"));
         btnExportReport.setOnAction(e -> exportCurrentRecord());
 
         btnCopyLog.getStyleClass().add("btn-secondary");
+        btnCopyLog.disableProperty().bind(recordListView.getSelectionModel().selectedItemProperty().isNull());
+        btnCopyLog.setMinWidth(Region.USE_PREF_SIZE);
         btnCopyLog.setGraphic(UiIcons.createSvgIcon(UiIcons.COPY, 13, "currentColor"));
         btnCopyLog.setOnAction(e -> copyCurrentLog());
 
-        headerRow.getChildren().addAll(titleBox, spacer, toggleBox, btnExportReport, btnCopyLog);
+        FlowPane actions = new FlowPane(8, 8);
+        actions.getChildren().addAll(toggleBox, btnExportReport, btnCopyLog);
+        headerRow.getChildren().addAll(titleBox, actions);
 
         // Content Area: StackPane switching between Structured and Raw Log
         StackPane contentStack = new StackPane();
@@ -632,10 +636,10 @@ public class HistoryView extends VBox {
         emptyCard.setAlignment(Pos.CENTER);
         emptyCard.getStyleClass().add("inner-container");
         emptyCard.setStyle("-fx-background-radius: 8; -fx-padding: 30; -fx-border-radius: 8;");
-        Label emptyTitle = new Label("No Operations Recorded Yet");
+        Label emptyTitle = new Label("No activity yet");
         emptyTitle.setStyle("-fx-font-size: 14px; -fx-font-weight: 700;");
         emptyTitle.getStyleClass().add("empty-state-title");
-        Label emptyDesc = new Label("When you run operations such as Restore Metadata, Duplicate Cleanup, or Metadata Sync, your local-first audit records and logs will appear here.");
+        Label emptyDesc = new Label("Your restoration activity and logs will appear here.");
         emptyDesc.setWrapText(true);
         emptyDesc.setStyle("-fx-font-size: 12px; -fx-text-alignment: center;");
         emptyCard.getChildren().addAll(emptyTitle, emptyDesc);

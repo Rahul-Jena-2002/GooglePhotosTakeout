@@ -144,6 +144,7 @@ export { REGION_PRICING_CONFIGS, formatPrice, getActivePrice, PLAN_PRICES, COUNT
 import { isEmulatorDevelopment, isVerifiedSuperAdmin } from '../lib/adminAuth';
 
 export interface UserData {
+  uid?: string;
   plan: PlanType;
   usedBytes: number;
   usedFiles: number;
@@ -241,6 +242,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const [adminData, setAdminDataState] = useState<AdminData | null>(null);
   const adminRevision = useRef(0);
+  const authRevision = useRef(0);
   const [loading, setLoading] = useState(true);
 
   const [sessionRegistered, setSessionRegistered] = useState(false);
@@ -794,6 +796,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   const refreshUserData = async (currentUser: User) => {
+    const sessionUser = auth?.currentUser;
+    const sessionRevision = authRevision.current;
+    const isCurrentUser = () => authRevision.current === sessionRevision && !!sessionUser && auth?.currentUser === sessionUser && sessionUser.uid === currentUser.uid;
     const revision = adminRevision.current;
     const canApplyAdmin = () => auth?.currentUser?.uid === currentUser.uid && adminRevision.current === revision;
     let deviceSessionId = localStorage.getItem("takeoutfix_device_session_id");
@@ -818,6 +823,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return null;
       })
     ]);
+    if (!isCurrentUser()) return;
 
     const isAdminUser = (adminSnap && adminSnap.exists()) || isSuperAdmin;
 
@@ -830,7 +836,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const pendingUpdates: any = {};
 
     if (snap && snap.exists()) {
-      const data = snap.data() as UserData & { sessionIds?: string[] };
+      const data = { ...snap.data(), uid: currentUser.uid } as UserData & { sessionIds?: string[] };
       
       // 1. Sync isAdmin flag if needed
       if (isAdminUser) {
@@ -916,6 +922,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         if (Object.keys(pendingUpdates).length > 0) {
           await setDoc(docRef, pendingUpdates, { merge: true }).catch(console.error);
         }
+        if (!isCurrentUser()) return;
         setUserData(data);
         setSessionRegistered(true);
       } else {
@@ -924,6 +931,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         if (updatedSessions.length > 20) updatedSessions = updatedSessions.slice(-20);
         pendingUpdates.sessionIds = updatedSessions;
         await setDoc(docRef, pendingUpdates, { merge: true }).catch(console.error);
+        if (!isCurrentUser()) return;
         data.sessionIds = updatedSessions;
         setUserData(data);
         setSessionRegistered(true);
@@ -938,8 +946,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (saved) {
         try {
           const cachedData = JSON.parse(saved);
-          setUserDataState(cachedData);
-          setSessionRegistered(true);
+          if (cachedData.uid === currentUser.uid && isCurrentUser()) {
+            setUserDataState(cachedData);
+            setSessionRegistered(true);
+          }
         } catch (_) {}
       }
     } else {
@@ -952,6 +962,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const defaultUsername = email ? email.split('@')[0] : 'user';
 
       const newData = {
+        uid: currentUser.uid,
         plan: 'free' as PlanType,
         usedBytes: 0,
         usedFiles: 0,
@@ -969,11 +980,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       };
       try {
         const actualData = await ensureUserSession(db, currentUser.uid, newData, deviceSessionId);
-        setUserData(actualData as UserData);
+        if (!isCurrentUser()) return;
+        setUserData({ ...actualData, uid: currentUser.uid } as UserData);
         setSessionRegistered(true);
         setSyncStatus('synced');
         setSyncError(null);
       } catch (error) {
+        if (!isCurrentUser()) return;
         console.warn('Failed to create or load account profile:', error);
         setSyncStatus('failed');
         setSyncError('Could not load your account profile. Please check your connection and try again.');
@@ -1118,19 +1131,26 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
 
     const unsubscribe = onAuthStateChanged(auth, async (u) => {
+      const revision = ++authRevision.current;
       adminRevision.current++;
       setAdminData(null);
+      setUserDataState(null);
+      setSessionRegistered(false);
+      setHasSeenSelfInSessions(false);
       setUser(u);
       if (u) {
+        setLoading(true);
         try {
           const lastUid = localStorage.getItem("takeoutfix_last_uid");
           if (lastUid && lastUid !== u.uid) {
             await indexedDbService.clearStore('checkpoints');
           }
+          if (revision !== authRevision.current || auth.currentUser !== u) return;
           localStorage.setItem("takeoutfix_last_uid", u.uid);
         } catch (e) {
           console.warn("Failed account check:", e);
         }
+        if (revision !== authRevision.current || auth.currentUser !== u) return;
         // Enforce 1-week automatic logout
         try {
           const loginTimeKey = "takeoutfix_login_time";
@@ -1160,7 +1180,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         refreshUserData(u).catch(err => {
           console.error("Failed to load user auth data:", err);
         }).finally(() => {
-          setLoading(false);
+          if (revision === authRevision.current && auth.currentUser === u) setLoading(false);
         });
       } else {
         try {
@@ -1173,13 +1193,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setLoading(false);
       }
     });
-    return unsubscribe;
+    return () => {
+      authRevision.current++;
+      unsubscribe();
+    };
   }, []);
 
   useEffect(() => {
     if (!user || !auth || auth.currentUser?.uid !== user.uid) return;
-    return onSnapshot(doc(db, 'admins', user.uid), (snapshot) => {
-      if (auth.currentUser?.uid !== user.uid || snapshot.metadata.fromCache) return;
+    return onSnapshot(doc(db, 'admins', user.uid), { includeMetadataChanges: true }, (snapshot) => {
+      if (auth.currentUser?.uid !== user.uid || snapshot.metadata.fromCache || snapshot.metadata.hasPendingWrites) return;
       if (snapshot.exists()) {
         adminRevision.current++;
         setAdminData({ ...snapshot.data(), uid: user.uid } as AdminData);
@@ -1199,9 +1222,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (!user) return;
 
     const userDocRef = doc(db, 'users', user.uid);
+    let active = true;
     const unsubscribe = onSnapshot(userDocRef, (snap) => {
+      if (!active || auth?.currentUser?.uid !== user.uid) return;
       if (snap.exists()) {
-        const data = snap.data() as UserData;
+        const data = { ...snap.data(), uid: user.uid } as UserData;
         
         // Auto-revert recovery_pass to free tier if expired
         if (data.plan === 'recovery_pass') {
@@ -1229,7 +1254,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       console.warn("Session listener error:", err);
     });
 
-    return unsubscribe;
+    return () => {
+      active = false;
+      unsubscribe();
+    };
   }, [user, sessionRegistered, hasSeenSelfInSessions]);
 
   // Active real-time recovery pass expiry tracker:
@@ -1240,6 +1268,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (!expiresAt) return;
 
     const handleExpiry = () => {
+      if (auth?.currentUser?.uid !== user.uid) return;
       if (Date.now() >= expiresAt) {
         console.log("⏰ Recovery pass duration ended in real-time. Reverting to free tier by default.");
         const userDocRef = doc(db, 'users', user.uid);
@@ -1289,27 +1318,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const logout = async () => {
     const releaseRestoreLock = navigator.locks ? await acquireRestoreLock(navigator.locks) : null;
     try {
-      if (user) {
-        try {
-          await setDoc(doc(db, 'admins', user.uid), { status: 'offline', lastSeen: Date.now() }, { merge: true });
-        } catch (_) {}
-
-        try {
-          const localSessionId = localStorage.getItem("takeoutfix_device_session_id");
-          if (localSessionId) {
-            const userDocRef = doc(db, 'users', user.uid);
-            const userSnap = await getDoc(userDocRef);
-            if (userSnap.exists()) {
-              const data = userSnap.data();
-              const currentSessions = data.sessionIds || [];
-              const updatedSessions = currentSessions.filter((id: string) => id !== localSessionId);
-              await setDoc(userDocRef, { sessionIds: updatedSessions }, { merge: true });
-            }
-          }
-        } catch (e) {
-          console.warn("Failed to clean session ID on logout:", e);
-        }
-      }
       await signOut(auth);
 
       try {
@@ -1319,7 +1327,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         localStorage.removeItem("takeoutfix_device_session_id");
         localStorage.removeItem("takeoutfix_login_time");
         localStorage.removeItem("takeoutfix_last_uid");
-        await indexedDbService.clearStore('checkpoints');
       } catch (_) {}
       setSessionRegistered(false);
       setHasSeenSelfInSessions(false);

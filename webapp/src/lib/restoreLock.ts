@@ -10,3 +10,12 @@ export async function acquireRestoreLock(locks: LockManager | undefined): Promis
     }).catch(reject);
   });
 }
+
+export async function withRestoreLock<T>(alreadyOwned: boolean, acquire: () => Promise<() => void>, work: () => Promise<T>): Promise<T> {
+  const release = alreadyOwned ? undefined : await acquire();
+  try {
+    return await work();
+  } finally {
+    release?.();
+  }
+}

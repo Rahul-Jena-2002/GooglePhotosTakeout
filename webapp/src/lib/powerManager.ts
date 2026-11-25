@@ -1,13 +1,6 @@
 /**
- * Zero-Idle-Battery & RAM Optimization Manager for Android & Desktop
- * 
- * - When the app is minimized / screen turned off / hidden (visibilityState === 'hidden'):
- *   1. Freezes non-essential UI intervals and animation loops.
- *   2. Releases temporary buffer/canvas caches to minimize RAM usage.
- *   3. Emits 'takeoutfix:power-suspend' so tool workspace and background tasks halt immediately.
- * 
- * - When the app returns to foreground (visibilityState === 'visible'):
- *   1. Emits 'takeoutfix:power-resume' to resume seamlessly without battery drain while idle.
+ * Emits visibility events and updates the mobile viewport height.
+ * Restore processing does not currently listen for these events.
  */
 
 let isPowerManagerInitialized = false;

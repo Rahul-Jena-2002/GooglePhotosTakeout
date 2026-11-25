@@ -104,6 +104,10 @@ public class HeaderBar extends HBox {
         setupProfileSection();
 
         getChildren().addAll(brandBox, navPillsBox, spacer, sponsorBtn, themeMenuBtn, onlineBadge, profileContainer);
+        for (Node optional : new Node[] { navPillsBox, sponsorBtn, onlineBadge }) {
+            optional.visibleProperty().bind(widthProperty().greaterThanOrEqualTo(900));
+            optional.managedProperty().bind(optional.visibleProperty());
+        }
 
         // Hook listeners
         if (networkService != null) {
@@ -239,7 +243,7 @@ public class HeaderBar extends HBox {
         Tooltip.install(themeMenuBtn, new Tooltip("Active Theme: " + theme.getDisplayName() + "\nClick to switch theme"));
 
         themeMenuBtn.getItems().clear();
-        for (AppTheme t : AppTheme.values()) {
+        for (AppTheme t : java.util.List.of(AppTheme.TAKEOUTFIX_DARK, AppTheme.TAKEOUTFIX_LIGHT)) {
             String prefix = (t == theme) ? "✓  " : "    ";
             MenuItem item = new MenuItem(prefix + t.getDisplayName());
             Node itemIcon = createThemeIcon(t, 13);

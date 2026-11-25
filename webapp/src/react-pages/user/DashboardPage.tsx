@@ -1,12 +1,11 @@
 import { useState, useEffect } from "react"
 import { useAuth } from "../../contexts/AuthContext"
 import { Card, CardContent, CardHeader, CardTitle } from "../../components/ui/card"
-import { Progress } from "../../components/ui/progress"
 import { Button } from "../../components/ui/button"
 // No react-router-dom imports
 import { collection, query, where, orderBy, onSnapshot } from "firebase/firestore"
 import { db } from "../../firebase"
-import { ShieldAlert, Key, HardDrive, History, LifeBuoy, FileText, ArrowRight, ShieldCheck, Download, CreditCard, CheckCircle2 } from "lucide-react"
+import { ShieldAlert, HardDrive, History, LifeBuoy, FileText, ArrowRight, ShieldCheck, Download, CreditCard } from "lucide-react"
 import { motion } from "framer-motion"
 
 const PLAN_LABELS: Record<string, string> = {
@@ -36,14 +35,6 @@ function DashboardPageContent() {
   const [txLoading, setTxLoading] = useState(true)
   const [history, setHistory] = useState<any[]>([])
   const [historyLoading, setHistoryLoading] = useState(true)
-  const [now, setNow] = useState(Date.now())
-
-  // Tick every second to keep countdown live
-  useEffect(() => {
-    const timer = setInterval(() => setNow(Date.now()), 1000)
-    return () => clearInterval(timer)
-  }, [])
-
   useEffect(() => {
     if (!user) return
     const q = query(
@@ -145,8 +136,6 @@ function DashboardPageContent() {
     )
   }
 
-  const plan = userData?.plan || 'free'
-  const isPaid = plan !== 'free'
   
   // Lifetime Stats (for Pro/Super users who don't have quotas but want to track their total usage)
   const totalBytesVal = Math.max(
@@ -154,36 +143,11 @@ function DashboardPageContent() {
     userData?.totalBytesProcessed || 0,
     (userData as any)?.lifetimeBytes || 0
   )
-  const trackedBytes = Math.max(userData?.totalBytesProcessed || 0, userData?.usedBytes || 0)
-  const legacyBytes = Math.max(0, ((userData as any)?.lifetimeBytes || 0) - trackedBytes)
-  const legacyFiles = legacyBytes > 0 ? Math.round(legacyBytes / (1.2 * 1024 * 1024)) : 0
   const totalFilesVal = Math.max(
     userData?.usedFiles || 0,
     userData?.totalFilesProcessed || 0,
     (userData as any)?.lifetimeFiles || 0
-  ) + legacyFiles
-
-  // Storage Quota (recovery_pass is unlimited for 24h)
-  const maxQuotaGB = plan === 'free' ? 0.5 : Infinity
-  const usedBytesVal = plan === 'free' ? totalBytesVal : (userData?.usedBytes || 0)
-  const usedGB = usedBytesVal / (1024 ** 3)
-  const quotaPct = maxQuotaGB === Infinity ? 0 : Math.min(100, (usedGB / maxQuotaGB) * 100)
-
-  // Files Quota (recovery_pass is unlimited for 24h)
-  const maxQuotaFiles = plan === 'free' ? 250 : Infinity
-  const usedFiles = plan === 'free' ? totalFilesVal : (userData?.usedFiles || 0)
-  const fileQuotaPct = maxQuotaFiles === Infinity ? 0 : Math.min(100, (usedFiles / maxQuotaFiles) * 100)
-
-  // Recovery pass countdown
-  const expiresAt: number = (userData as any)?.expiresAt || 0
-  const passExpiredAt: number = (userData as any)?.passExpiredAt || 0
-  const passActive = plan === 'recovery_pass' && expiresAt > now
-  const passExpired = (plan === 'recovery_pass' && expiresAt > 0 && expiresAt <= now) || (plan === 'free' && passExpiredAt > 0)
-  const remainingMs = Math.max(0, expiresAt - now)
-  const remainingDays = Math.floor(remainingMs / (1000 * 60 * 60 * 24))
-  const remainingHrs = Math.floor((remainingMs % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60))
-  const remainingMins = Math.floor((remainingMs % (1000 * 60 * 60)) / (1000 * 60))
-  const remainingSecs = Math.floor((remainingMs % (1000 * 60)) / 1000)
+  )
 
   // Receipt builder
   const downloadInvoice = (tx: any) => {
@@ -270,17 +234,19 @@ Your EXIF metadata recovery tools are active.
               <div className="grid md:grid-cols-2 gap-6">
                 <div className="bg-white/[0.01] border border-white/5 rounded-xl p-4 space-y-2">
                   <div className="text-xs text-white/40 uppercase tracking-widest font-semibold flex items-center gap-1.5">
-                    <HardDrive className="w-3.5 h-3.5 text-emerald-400" /> Total Data Restored
+                    <HardDrive className="w-3.5 h-3.5 text-emerald-400" /> Data Processed
                   </div>
                   <div className="text-2xl font-black text-white">{formatBytes(totalBytesVal)}</div>
                 </div>
                 <div className="bg-white/[0.01] border border-white/5 rounded-xl p-4 space-y-2">
                   <div className="text-xs text-white/40 uppercase tracking-widest font-semibold flex items-center gap-1.5">
-                    <FileText className="w-3.5 h-3.5 text-emerald-400" /> Total Files Restored
+                    <FileText className="w-3.5 h-3.5 text-emerald-400" /> Files Processed
                   </div>
                   <div className="text-2xl font-black text-white">{totalFilesVal.toLocaleString()}</div>
                 </div>
               </div>
+
+              <p className="text-xs text-zinc-500 dark:text-zinc-400">Counts are reported by your devices and may be incomplete. Check downloaded ZIP files before relying on them.</p>
 
               <div className="flex flex-col sm:flex-row gap-4 pt-2">
                 <a href="/tool" data-astro-reload className="flex-1">

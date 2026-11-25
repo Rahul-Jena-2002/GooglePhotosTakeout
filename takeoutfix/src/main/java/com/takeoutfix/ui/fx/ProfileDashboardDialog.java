@@ -106,17 +106,32 @@ public class ProfileDashboardDialog extends Stage {
         VBox sysBox = new VBox(4);
         sysBox.setStyle("-fx-background-color: rgba(113, 113, 122, 0.06); -fx-padding: 8 10 8 10; -fx-background-radius: 6;");
 
-        long totalRam = SystemHardwareInfo.getTotalPhysicalMemoryBytes();
-        double ramGb = totalRam / (1024.0 * 1024.0 * 1024.0);
         int cores = Runtime.getRuntime().availableProcessors();
 
-        Label cpuLbl = new Label("Processor: " + cores + " Logical Cores (" + System.getProperty("os.arch") + ")");
+        Label cpuLbl = new Label("Processor: " + SystemHardwareInfo.getCpuName() + " · " + cores + " logical processors");
+        cpuLbl.setWrapText(true);
         cpuLbl.setStyle("-fx-font-size: 11px;");
 
-        Label ramLbl = new Label(String.format("Physical RAM: %.1f GB Total Installed", ramGb));
+        long totalRam = -1;
+        try {
+            var bean = java.lang.management.ManagementFactory.getOperatingSystemMXBean();
+            if (bean instanceof com.sun.management.OperatingSystemMXBean os) totalRam = os.getTotalMemorySize();
+        } catch (RuntimeException | LinkageError ignored) {
+            // System memory information is optional.
+        }
+        Label ramLbl = new Label(totalRam > 0
+                ? String.format(java.util.Locale.US, "System RAM: %.1f GB", totalRam / (1024.0 * 1024.0 * 1024.0))
+                : "System RAM: Unavailable");
         ramLbl.setStyle("-fx-font-size: 11px;");
 
-        sysBox.getChildren().addAll(cpuLbl, ramLbl);
+        Label modulesLbl = new Label("Memory modules: Checking…");
+        modulesLbl.setWrapText(true);
+        modulesLbl.setStyle("-fx-font-size: 11px;");
+        java.util.concurrent.CompletableFuture.supplyAsync(SystemHardwareInfo::getMemoryModuleSummary)
+                .thenAccept(summary -> Platform.runLater(() -> modulesLbl.setText("Memory modules: "
+                        + (summary.isEmpty() ? "Unavailable" : summary))));
+
+        sysBox.getChildren().addAll(cpuLbl, ramLbl, modulesLbl);
         root.getChildren().addAll(sysTitle, sysBox);
 
         // 4. Action Buttons

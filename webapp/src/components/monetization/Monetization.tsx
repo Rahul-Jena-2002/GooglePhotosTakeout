@@ -3,6 +3,7 @@ import { getMonetizationContent } from "../../services/monetization/monetization
 import type { MonetizationResponse, ResolvedMonetizationItem } from "../../services/monetization/types";
 import { useAuth } from "../../contexts/AuthContext";
 import { auth } from "../../firebase";
+import type { User } from "firebase/auth";
 import { ArrowRight, ExternalLink, Sparkles, ShieldCheck } from "lucide-react";
 import { detectAdBlock } from "../../services/monetization/AdBlockDetector";
 
@@ -56,7 +57,7 @@ export default function Monetization({
         window.removeEventListener("takeoutfix_user_sync", loadLocal);
       };
     }
-    const unsub = auth.onAuthStateChanged((u) => {
+    const unsub = auth.onAuthStateChanged((u: User | null) => {
       if (u) loadLocal();
       else setLocalUserData(null);
     });

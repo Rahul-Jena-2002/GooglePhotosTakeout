@@ -1,8 +1,8 @@
 import { doc, increment, runTransaction, type Firestore } from 'firebase/firestore'
+import { isValidUsageBatch } from './pendingUsage'
 
 export async function applyUsageBatch(db: Firestore, uid: string, batchId: string, bytes: number, files: number) {
-  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(batchId)
-      || !Number.isSafeInteger(bytes) || bytes < 0 || !Number.isSafeInteger(files) || files < 0) {
+  if (!isValidUsageBatch(batchId, bytes, files)) {
     throw new Error('Invalid usage batch')
   }
   const userRef = doc(db, 'users', uid)

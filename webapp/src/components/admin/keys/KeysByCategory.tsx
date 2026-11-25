@@ -14,7 +14,7 @@ export function KeysByCategory({
   entries: KeyEntry[]
   saving: string | null
   mekKey: CryptoKey | null
-  onSave: (id: string, value: string) => Promise<void>
+  onSave: (id: string, value: string) => Promise<boolean>
 }>) {
   if (loading) {
     return (

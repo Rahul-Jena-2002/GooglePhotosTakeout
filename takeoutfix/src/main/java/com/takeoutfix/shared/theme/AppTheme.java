@@ -4,8 +4,8 @@ package com.takeoutfix.shared.theme;
  * Top IDE & Application Themes supported natively across Google Takeout Restorer.
  */
 public enum AppTheme {
-    TAKEOUTFIX_DARK("TakeoutFix Dark", true, "/css/takeoutfix-dark.css", "Modern dark slate aesthetic with purple highlights"),
-    TAKEOUTFIX_LIGHT("TakeoutFix Light", false, "/css/takeoutfix-light.css", "Clean, high-contrast daylight theme"),
+    TAKEOUTFIX_DARK("Dark", true, "/css/takeoutfix-dark.css", "Modern dark slate aesthetic with purple highlights"),
+    TAKEOUTFIX_LIGHT("Light", false, "/css/takeoutfix-light.css", "Clean, high-contrast daylight theme"),
     CATPPUCCIN_FOREST("Catppuccin Forest", true, "/css/theme-catppuccin-forest.css", "Deep evergreen & pine palette with soothing sage accents"),
     INTELLIJ_DARK("IntelliJ Dark", true, "/css/theme-intellij-dark.css", "JetBrains Darcula / New UI Dark with IntelliJ blue"),
     INTELLIJ_LIGHT("IntelliJ Light", false, "/css/theme-intellij-light.css", "JetBrains New UI Light with clean white cards and blue accent");
@@ -45,6 +45,8 @@ public enum AppTheme {
 
     public static AppTheme fromDisplayName(String name) {
         if (name == null) return TAKEOUTFIX_DARK;
+        if (name.equalsIgnoreCase("TakeoutFix Dark")) return TAKEOUTFIX_DARK;
+        if (name.equalsIgnoreCase("TakeoutFix Light")) return TAKEOUTFIX_LIGHT;
         for (AppTheme t : values()) {
             if (t.displayName.equalsIgnoreCase(name) || t.name().equalsIgnoreCase(name)) {
                 return t;

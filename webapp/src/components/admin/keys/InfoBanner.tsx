@@ -6,8 +6,8 @@ export function InfoBanner() {
       <Zap className="w-4 h-4 mt-0.5 flex-shrink-0 t-text-dim" />
       <div className="text-xs leading-relaxed space-y-1.5 t-text-desc">
         <p>
-          <span className="font-semibold t-heading-light">Runtime keys</span>{' '}
-          (gateway, API keys, Dodo secrets) are updated live without rebuilding.
+          <span className="font-semibold t-heading-light">Sensitive keys</span>{' '}
+          require the master encryption key before saving. The server must use the same key to decrypt values it reads from Firestore. Some integrations use deployment secrets instead; saving here does not update those secrets.
         </p>
         <p>
           <span className="font-semibold t-heading-light">Build-time keys</span>{' '}

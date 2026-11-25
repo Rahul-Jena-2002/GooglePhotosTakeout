@@ -46,11 +46,19 @@ public class FileOperationService {
     }
 
     public static void requireSeparateDirectories(File input, File output) throws IOException {
-        Path source = input.getCanonicalFile().toPath();
-        Path destination = output.getCanonicalFile().toPath();
+        Path source = resolveExistingParents(input.toPath());
+        Path destination = resolveExistingParents(output.toPath());
         if (source.startsWith(destination) || destination.startsWith(source)) {
             throw new IOException("Choose a restore folder separate from the source folder.");
         }
+    }
+
+    private static Path resolveExistingParents(Path path) throws IOException {
+        Path absolute = path.toAbsolutePath().normalize();
+        Path existing = absolute;
+        while (existing != null && !Files.exists(existing)) existing = existing.getParent();
+        if (existing == null) throw new IOException("Cannot resolve the selected folder.");
+        return existing.toRealPath().resolve(existing.relativize(absolute)).normalize();
     }
 
     public Path createArchiveCopy(File source) throws IOException {

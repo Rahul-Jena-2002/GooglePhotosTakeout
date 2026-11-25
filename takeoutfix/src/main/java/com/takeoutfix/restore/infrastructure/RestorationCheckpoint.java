@@ -146,7 +146,7 @@ public class RestorationCheckpoint {
             }
 
             checkpoint.checkpointOwned = true;
-            log.info("Loaded destination checkpoint: %,d files already restored from source.", checkpoint.completedFiles.size());
+            log.info("Loaded destination checkpoint: {} files already restored from source.", checkpoint.completedFiles.size());
         } catch (Exception e) {
             throw new IllegalStateException("Cannot safely resume this restore: " + e.getMessage(), e);
         }

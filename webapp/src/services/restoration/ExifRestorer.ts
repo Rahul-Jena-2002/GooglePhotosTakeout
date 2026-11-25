@@ -8,7 +8,7 @@
 import { injectImageExif, isSupportedImageFormat, isJpeg } from './DeepExifRestorer';
 
 export type ExifInjectResult = {
-  bytes: Uint8Array;
+  bytes: Uint8Array<ArrayBuffer>;
   success: boolean;
   reason?: string;
 };
@@ -83,6 +83,7 @@ export async function restoreExif(
   try {
     const buf = await file.arrayBuffer();
     const res = await injectExifDateAsync(buf, epochSec, lat, lng, description, people, albumName, file.name);
+    if (!res.success) return { file, success: false };
     const restoredBlob = new Blob([res.bytes], { type: file.type || 'image/jpeg' });
     const restoredFile = new File([restoredBlob], file.name, {
       type: file.type || 'image/jpeg',

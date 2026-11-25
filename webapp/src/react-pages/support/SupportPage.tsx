@@ -332,28 +332,32 @@ function SupportPageContent() {
         >
           <button 
             onClick={() => setActiveTab("faq")}
-            className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-colors ${activeTab === 'faq' ? 'bg-indigo-500 text-white' : 'hover:bg-white/5 text-white/70 hover:text-white'}`}
+            aria-current={activeTab === 'faq' ? 'page' : undefined}
+            className={`support-nav-btn w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-colors ${activeTab === 'faq' ? 'bg-indigo-600 text-white' : 'hover:bg-white/5 text-white/70 hover:text-white'}`}
           >
             <FileText className="w-4 h-4" /> FAQ & Documentation
           </button>
           
           <button 
             onClick={() => setActiveTab("new")}
-            className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-colors ${activeTab === 'new' ? 'bg-indigo-500 text-white' : 'hover:bg-white/5 text-white/70 hover:text-white'}`}
+            aria-current={activeTab === 'new' ? 'page' : undefined}
+            className={`support-nav-btn w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-colors ${activeTab === 'new' ? 'bg-indigo-600 text-white' : 'hover:bg-white/5 text-white/70 hover:text-white'}`}
           >
             <PlusCircle className="w-4 h-4" /> Open New Ticket
           </button>
           
           <button 
             onClick={() => setActiveTab("tickets")}
-            className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors ${activeTab === 'tickets' ? 'bg-indigo-500 text-white' : 'hover:bg-white/5 text-white/70 hover:text-white'}`}
+            aria-current={activeTab === 'tickets' ? 'page' : undefined}
+            className={`support-nav-btn w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors ${activeTab === 'tickets' ? 'bg-indigo-600 text-white' : 'hover:bg-white/5 text-white/70 hover:text-white'}`}
           >
             <History className="w-4 h-4" /> My Tickets
           </button>
  
           <button 
             onClick={() => setActiveTab("feedback")}
-            className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors ${activeTab === 'feedback' ? 'bg-indigo-500 text-white' : 'hover:bg-white/5 text-white/70 hover:text-white'}`}
+            aria-current={activeTab === 'feedback' ? 'page' : undefined}
+            className={`support-nav-btn w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors ${activeTab === 'feedback' ? 'bg-indigo-600 text-white' : 'hover:bg-white/5 text-white/70 hover:text-white'}`}
           >
             <MessageSquare className="w-4 h-4" /> Give Feedback
           </button>
@@ -377,7 +381,7 @@ function SupportPageContent() {
                     variants={containerVariants}
                     initial="hidden"
                     animate="show"
-                    className="space-y-4 max-h-[520px] overflow-y-auto pr-2 custom-faq-scroll"
+                    className="space-y-4"
                   >
                     {faqItems.map((faq) => (
                       <motion.button

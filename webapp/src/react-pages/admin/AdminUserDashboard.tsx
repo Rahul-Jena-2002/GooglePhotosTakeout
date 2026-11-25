@@ -1,10 +1,9 @@
 import { useState, useEffect } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "../../components/ui/card"
-import { Progress } from "../../components/ui/progress"
 import { Button } from "../../components/ui/button"
 import { doc, collection, query, where, orderBy, onSnapshot, updateDoc, deleteDoc, addDoc } from "firebase/firestore"
 import { db } from "../../firebase"
-import { ShieldAlert, HardDrive, History, FileText, ArrowLeft, ShieldCheck, Download, CreditCard, Trash2 } from "lucide-react"
+import { ShieldAlert, History, ArrowLeft, ShieldCheck, Download, CreditCard, Trash2 } from "lucide-react"
 import { motion } from "framer-motion"
 import { useAuth } from "../../contexts/AuthContext"
 import { useToastStore } from "../../store/useToastStore"
@@ -31,11 +30,7 @@ const getUserBytes = (u: any) => {
 
 const getUserFiles = (u: any) => {
   if (!u) return 0;
-  const recorded = Math.max(u.totalFilesProcessed || 0, u.usedFiles || 0, u.lifetimeFiles || 0);
-  const trackedBytes = Math.max(u.totalBytesProcessed || 0, u.usedBytes || 0);
-  const legacyBytes = Math.max(0, (u.lifetimeBytes || 0) - trackedBytes);
-  const legacyFiles = legacyBytes > 0 ? Math.round(legacyBytes / (1.2 * 1024 * 1024)) : 0;
-  return recorded + legacyFiles;
+  return Math.max(u.totalFilesProcessed || 0, u.usedFiles || 0, u.lifetimeFiles || 0);
 }
 
 export default function AdminUserDashboard() {
@@ -110,7 +105,7 @@ export default function AdminUserDashboard() {
       });
       alert("Recovery pass extended by 24 hours successfully.");
     } catch (err) {
-      alert("Failed to extend recovery pass: " + err.message);
+      alert("Failed to extend recovery pass: " + (err instanceof Error ? err.message : "Unknown error"));
     }
   };
 
@@ -131,7 +126,7 @@ export default function AdminUserDashboard() {
       });
       alert("Recovery pass expired immediately.");
     } catch (err) {
-      alert("Failed to expire recovery pass: " + err.message);
+      alert("Failed to expire recovery pass: " + (err instanceof Error ? err.message : "Unknown error"));
     }
   };
 
@@ -304,17 +299,6 @@ export default function AdminUserDashboard() {
 
   const plan = targetUser.plan || 'free'
   
-  // Storage Quota
-  const maxQuotaGB = plan === 'free' ? 1 : plan === 'recovery_pass' ? 20 : Infinity
-  const usedBytesVal = plan === 'free' ? getUserBytes(targetUser) : (targetUser.usedBytes || 0)
-  const usedGB = usedBytesVal / (1024 ** 3)
-  const quotaPct = maxQuotaGB === Infinity ? 0 : Math.min(100, (usedGB / maxQuotaGB) * 100)
-
-  // Files Quota
-  const maxQuotaFiles = plan === 'free' ? 1000 : plan === 'recovery_pass' ? 10000 : Infinity
-  const usedFiles = plan === 'free' ? getUserFiles(targetUser) : (targetUser.usedFiles || 0)
-  const fileQuotaPct = maxQuotaFiles === Infinity ? 0 : Math.min(100, (usedFiles / maxQuotaFiles) * 100)
-
   const downloadInvoice = (tx: any) => {
     const invoiceText = `
 ========================================
@@ -439,23 +423,7 @@ Your EXIF metadata recovery tools are active.
               </CardTitle>
             </CardHeader>
             <CardContent className="px-5 py-4">
-              {/* Quota bars row */}
-              <div className="grid sm:grid-cols-2 gap-3 mb-4">
-                <div className="bg-zinc-950 border border-zinc-850 rounded-lg px-4 py-3 space-y-2">
-                  <div className="flex justify-between text-xs text-zinc-400">
-                    <span className="flex items-center gap-1.5 font-semibold"><HardDrive className="w-3 h-3 text-zinc-500" /> Storage Capacity</span>
-                    <span className="font-mono">{usedGB.toFixed(2)} GB / {maxQuotaGB === Infinity ? 'Unlimited' : `${maxQuotaGB}.00 GB`}</span>
-                  </div>
-                  {maxQuotaGB !== Infinity && <Progress value={quotaPct} className="h-1 bg-zinc-850" />}
-                </div>
-                <div className="bg-zinc-950 border border-zinc-850 rounded-lg px-4 py-3 space-y-2">
-                  <div className="flex justify-between text-xs text-zinc-400">
-                    <span className="flex items-center gap-1.5 font-semibold"><FileText className="w-3 h-3 text-zinc-500" /> Files Processed</span>
-                    <span className="font-mono">{usedFiles.toLocaleString()} / {maxQuotaFiles === Infinity ? 'Unlimited' : maxQuotaFiles.toLocaleString()}</span>
-                  </div>
-                  {maxQuotaFiles !== Infinity && <Progress value={fileQuotaPct} className="h-1 bg-zinc-850" />}
-                </div>
-              </div>
+              <p className="mb-4 text-xs text-zinc-400">Usage is reported by the user's devices and may be incomplete.</p>
               {/* Stat boxes — single horizontal row */}
               <div className="grid grid-cols-4 gap-2">
                 {[

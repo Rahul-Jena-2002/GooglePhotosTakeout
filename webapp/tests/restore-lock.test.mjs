@@ -1,6 +1,22 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { acquireRestoreLock } from '../src/lib/restoreLock.ts';
+import { acquireRestoreLock, withRestoreLock } from '../src/lib/restoreLock.ts';
+
+test('recovery uses an owned restore lock without releasing it', async () => {
+  let acquired = false;
+  const result = await withRestoreLock(true, async () => { acquired = true; return () => {}; }, async () => 'recovered');
+  assert.equal(result, 'recovered');
+  assert.equal(acquired, false);
+});
+
+test('recovery releases a lock it acquires even when work fails', async () => {
+  let released = false;
+  await assert.rejects(withRestoreLock(false, async () => () => { released = true; }, async () => { throw new Error('offline'); }), /offline/);
+  assert.equal(released, true);
+  let called = false;
+  await assert.rejects(withRestoreLock(false, async () => { throw new Error('busy'); }, async () => { called = true; }), /busy/);
+  assert.equal(called, false);
+});
 
 test('the restore lock remains held until released', async () => {
   let held = false;

@@ -25,6 +25,9 @@ export default function AdminKeys() {
   const [mek, setMek] = useState<string>("")
   const [mekInput, setMekInput] = useState<string>("")
   const [mekKey, setMekKey] = useState<CryptoKey | null>(null)
+  const isDev = isEmulatorDevelopment()
+  const isSuperAdminEmailMatch = user?.emailVerified === true && isSuperAdminEmail(user.email)
+  const hasAccess = isDev || isSuperAdminEmailMatch || adminData?.role === "SUPER_ADMIN"
 
   // ── Restore MEK from sessionStorage on mount ──
   useEffect(() => {
@@ -62,7 +65,7 @@ export default function AdminKeys() {
       setMek(val)
       sessionStorage.setItem("tf_mek", val)
       setMekInput("")
-      useToastStore.getState().addToast("Master Encryption Key loaded. You can now edit encrypted fields.", "success")
+      useToastStore.getState().addToast("Master key loaded. Confirm it matches the server key before saving credentials.", "info", 7000)
     } catch (err: any) {
       useToastStore.getState().addToast("Failed to process MEK: " + err.message, "error")
     }
@@ -88,25 +91,21 @@ PUBLIC_FIREBASE_MEASUREMENT_ID=${getKeyValue("firebase_measurement_id", "G-XXXXX
 # ── Sentry (Public — rate-limited DSN) ──
 PUBLIC_SENTRY_DSN=${getKeyValue("sentry_dsn", "https://xxxx@xxxx.ingest.sentry.io/xxxx")}`
 
-  const localServerEnvText = `# ── functions/local-server.js requires these env vars ──
-# Copy into webapp/.env or export in your shell before running:
-#   node functions/local-server.js
+  const localServerEnvText = `# PowerShell example: replace placeholders before running.
+# The local server does not automatically load webapp/.env.
+$env:GATEWAY_API_KEY = "your-gateway-api-key"
+$env:DODO_API_KEY = "your-dodo-live-api-key"
+# $env:ENCRYPTION_KEY = "your-server-master-key"
+# $env:DODO_TEST_API_KEY = "your-dodo-test-api-key"
 
-GATEWAY_API_KEY=${getKeyValue("gateway_api_key", "your-gateway-api-key")}
-DODO_API_KEY=${getKeyValue("dodo_api_key", "your-dodo-live-api-key")}
+# Local development requires FIRESTORE_EMULATOR_HOST, or explicit live-data opt-in:
+# $env:TAKEOUTFIX_ALLOW_LIVE_FIREBASE = "1"
+# node functions/local-server.js`
 
-# Optional — falls back to Firestore settings/system.dodo_api_key if not set:
-# DODO_TEST_API_KEY=${getKeyValue("dodo_test_api_key", "your-dodo-test-api-key")}
-
-# Optional — only needed if serviceAccountKey.json is not present:
-# GOOGLE_APPLICATION_CREDENTIALS=/path/to/serviceAccountKey.json
-# FIREBASE_PROJECT_ID=${getKeyValue("firebase_project_id", "your-project-id")}`
-
-  const functionsConfigText = `# Run once to configure deployed Cloud Functions:
-firebase functions:config:set gateway.key="${getKeyValue("gateway_api_key", "YOUR_GATEWAY_API_KEY")}"
-
-# Then deploy:
-firebase deploy --only functions`
+  const functionsConfigText = `# Configure GATEWAY_API_KEY, DODO_API_KEY, and ENCRYPTION_KEY
+# through your deployment's server-side environment or secret configuration.
+# Do not copy an enc:v1: Firestore value into a raw API-key variable.
+# Verify the deployed function can read its configured secrets.`
 
   const indexNowKeyValue = getKeyValue("indexnow_key", "e107aca980264801af5ddd4a7fe361a3")
   const indexNowScriptText = `# In scripts/submit_indexnow.js — update INDEXNOW_KEY:
@@ -115,6 +114,10 @@ const INDEXNOW_KEY = "${indexNowKeyValue}";
 
   // ── Load and Listen to keys in Firestore (Real-time Sync) ──
   useEffect(() => {
+    if (!hasAccess || (authLoading && !isDev)) {
+      setLoading(false)
+      return
+    }
     setLoading(true)
     
     const fallbackVars: Record<string, string> = {
@@ -173,27 +176,22 @@ const INDEXNOW_KEY = "${indexNowKeyValue}";
       unsubSystem()
       unsubSecure()
     }
-  }, [])
+  }, [hasAccess, authLoading, isDev])
 
   // ── Save a single key to Firestore ──
   const handleSave = useCallback(async (id: string, value: string) => {
     setSaving(id)
     try {
       const def = KEY_DEFINITIONS.find(d => d.id === id)
-      if (!def) return
+      if (!def) return false
 
       let valueToSave = value.trim()
       if (def.sensitive && valueToSave && !valueToSave.startsWith("enc:v1:")) {
         if (mekKey) {
           valueToSave = await encrypt(valueToSave, mekKey)
         } else {
-          const proceed = window.confirm(
-            `Warning: No Master Encryption Key (MEK) is active. ${def.label} will be saved as PLAIN TEXT in Firestore. Do you want to proceed?`
-          )
-          if (!proceed) {
-            setSaving(null)
-            return
-          }
+          useToastStore.getState().addToast("Unlock the master encryption key before saving a sensitive value.", "error")
+          return false
         }
       }
 
@@ -201,16 +199,14 @@ const INDEXNOW_KEY = "${indexNowKeyValue}";
       await setDoc(doc(db, col, docId), { [def.firestoreField]: valueToSave }, { merge: true })
       setEntries(prev => prev.map(e => e.id === id ? { ...e, value: valueToSave } : e))
       useToastStore.getState().addToast(`${def.label} saved successfully.`, "success")
+      return true
     } catch (err: any) {
       useToastStore.getState().addToast("Failed to save key: " + err.message, "error")
+      return false
     } finally {
       setSaving(null)
     }
   }, [mekKey])
-
-  const isDev = isEmulatorDevelopment()
-  const isSuperAdminEmailMatch = user?.emailVerified === true && isSuperAdminEmail(user.email)
-  const hasAccess = isDev || isSuperAdminEmailMatch || adminData?.role === "SUPER_ADMIN"
 
   if (authLoading && !isDev) {
     return (

@@ -71,10 +71,14 @@ public class TakeoutFxApplication extends Application {
                     .headless(false) // JavaFX requires AWT not to be headless
                     .run(getParameters().getRaw().toArray(new String[0]));
 
+            // Some JavaFX launchers enter the application without calling main.
             FxHardwareManager.initialize();
             this.taskManager = com.takeoutfix.task.TaskManager.getInstance();
             this.userSyncBridgeService = new UserSyncBridgeService();
             this.networkMonitorService = new NetworkMonitorService();
+            this.networkMonitorService.addListener(online -> {
+                if (online) userSyncBridgeService.syncIfOnline();
+            });
             this.sessionStatsService = new SessionStatsService();
             this.exifToolEngine = NativeExifToolEngine.getDefault();
             this.extractionService = new ExtractionService(exifToolEngine);
@@ -150,16 +154,17 @@ public class TakeoutFxApplication extends Application {
             primaryStage.setOnCloseRequest(event -> {
                 if (taskManager == null || taskManager.getActiveTaskCount() == 0) return;
                 ButtonType keepOpen = new ButtonType("Keep open", ButtonBar.ButtonData.CANCEL_CLOSE);
-                ButtonType close = new ButtonType("Close anyway", ButtonBar.ButtonData.OK_DONE);
+                ButtonType stopWork = new ButtonType("Stop work", ButtonBar.ButtonData.OK_DONE);
                 Alert warning = new Alert(Alert.AlertType.CONFIRMATION,
-                        "Work is still running or paused. Closing now will interrupt it; check any partial output before trying again.",
-                        keepOpen, close);
+                        "Work is still running or paused. Stop it and wait for it to finish before closing. Check any partial output before trying again.",
+                        keepOpen, stopWork);
                 warning.initOwner(primaryStage);
                 warning.setTitle("Work in progress");
                 warning.setHeaderText("Close TakeoutFix?");
-                ((Button) warning.getDialogPane().lookupButton(close)).setDefaultButton(false);
+                ((Button) warning.getDialogPane().lookupButton(stopWork)).setDefaultButton(false);
                 ((Button) warning.getDialogPane().lookupButton(keepOpen)).setDefaultButton(true);
-                if (warning.showAndWait().orElse(keepOpen) != close) event.consume();
+                event.consume();
+                if (warning.showAndWait().orElse(keepOpen) == stopWork) taskManager.cancelAll();
             });
 
             BorderPane root = new BorderPane();
@@ -198,6 +203,7 @@ public class TakeoutFxApplication extends Application {
             userSyncBridgeService.verifyStartupSession(authenticated -> {
                 Platform.runLater(() -> {
                     if (authenticated) {
+                        userSyncBridgeService.syncIfOnline();
                         primaryStage.setTitle("TakeoutFix - Google Takeout Restorer — " + userSyncBridgeService.getCurrentName());
                         AppTheme current = ThemeManager.getCurrentTheme();
                         WindowsTitleBarTheme.applyTheme(primaryStage, current);
@@ -269,7 +275,9 @@ public class TakeoutFxApplication extends Application {
             exifToolEngine.cleanup();
         }
         if (userSyncBridgeService != null) {
+            userSyncBridgeService.checkpointCommittedUsage();
             userSyncBridgeService.syncOnClose();
+            userSyncBridgeService.shutdown();
         }
         // Force-terminate any lingering non-daemon threads (ExifTool processes, network clients, etc.)
         Platform.exit();
@@ -277,6 +285,7 @@ public class TakeoutFxApplication extends Application {
     }
 
     public static void main(String[] args) {
+        FxHardwareManager.initialize();
         launch(args);
     }
 }

@@ -4,7 +4,7 @@ import Layout from "../layouts/Layout.astro";
 import ProfilePage from "../react-pages/user/ProfilePage";
 ---
 
-<Layout title="TakeoutFix | Profile Settings" description="Update your TakeoutFix username, first name, last name, and account details.">
+<Layout title="TakeoutFix | Profile Settings" description="Update your TakeoutFix username, first name, last name, and account details." robots="noindex, nofollow">
   <ProfilePage client:only="react">
     <div slot="fallback" class="min-h-[70vh] max-w-3xl mx-auto px-6 py-16 animate-pulse space-y-8">
       <div class="space-y-3">

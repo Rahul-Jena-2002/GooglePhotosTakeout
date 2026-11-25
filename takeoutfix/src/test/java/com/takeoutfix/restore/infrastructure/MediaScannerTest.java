@@ -42,6 +42,26 @@ public class MediaScannerTest {
     }
 
     @Test
+    @org.junit.jupiter.api.condition.EnabledOnOs(org.junit.jupiter.api.condition.OS.WINDOWS)
+    void scannerRejectsWindowsJunction(@TempDir Path tempDir) throws Exception {
+        Path source = Files.createDirectories(tempDir.resolve("source"));
+        Path outside = Files.createDirectories(tempDir.resolve("outside"));
+        Path original = Files.writeString(outside.resolve("photo.jpg"), "keep");
+        Path junction = source.resolve("linked");
+        Process process = new ProcessBuilder("cmd", "/c", "mklink", "/J", junction.toString(), outside.toString())
+                .redirectErrorStream(true).start();
+        assertTrue(process.waitFor(10, java.util.concurrent.TimeUnit.SECONDS));
+        assertEquals(0, process.exitValue(), "Could not create a temporary junction");
+        try {
+            assertThrows(IllegalStateException.class, () -> new MediaScanner().listMediaFiles(source.toFile()));
+            assertThrows(IllegalArgumentException.class, () -> new MediaScanner().listMediaFiles(junction.toFile()));
+            assertEquals("keep", Files.readString(original));
+        } finally {
+            Files.deleteIfExists(junction);
+        }
+    }
+
+    @Test
     @DisplayName("Verify scanner detects supported media and ignores non-media and hidden directories")
     void testMediaScannerTraversesAndFilters(@TempDir Path tempDir) throws IOException {
         // Create valid media files

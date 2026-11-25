@@ -34,7 +34,6 @@ public final class SystemHardwareInfo {
         // Safe baseline fallbacks from JVM runtime
         int available = Runtime.getRuntime().availableProcessors();
         logicalProcessors = available;
-        physicalCores = available;
 
         // Immediate fast-path detection for Linux (reading /proc takes < 0.5ms)
         if (IS_LINUX) {
@@ -228,9 +227,6 @@ public final class SystemHardwareInfo {
     // ─── Public Getters (Optimized & Non-Blocking) ─────────────────────────
 
     public static int getPhysicalCores() {
-        if (physicalCores <= 0) {
-            return Runtime.getRuntime().availableProcessors();
-        }
         return physicalCores;
     }
 
@@ -250,6 +246,46 @@ public final class SystemHardwareInfo {
 
     public static String getCpuName() {
         return getCpuBrand();
+    }
+
+    /** Returns Windows-reported module details, or an empty string when unavailable. */
+    public static String getMemoryModuleSummary() {
+        if (!IS_WIN) return "";
+        Process process = null;
+        try {
+            process = new ProcessBuilder("powershell.exe", "-NoProfile", "-NonInteractive", "-Command",
+                    "Get-CimInstance Win32_PhysicalMemory | ForEach-Object { Write-Output ($_.Manufacturer + '|' + $_.ConfiguredClockSpeed) }")
+                    .redirectErrorStream(true).start();
+            if (!process.waitFor(5, java.util.concurrent.TimeUnit.SECONDS)) return "";
+            if (process.exitValue() != 0) return "";
+            try (var reader = new BufferedReader(new InputStreamReader(process.getInputStream(), StandardCharsets.UTF_8))) {
+                return formatMemoryModules(reader.lines().toList());
+            }
+        } catch (InterruptedException interrupted) {
+            Thread.currentThread().interrupt();
+            return "";
+        } catch (java.io.IOException | RuntimeException ignored) {
+            return "";
+        } finally {
+            if (process != null && process.isAlive()) process.destroyForcibly();
+        }
+    }
+
+    static String formatMemoryModules(java.util.List<String> lines) {
+        var modules = new java.util.LinkedHashSet<String>();
+        for (String line : lines) {
+            String[] fields = line.split("\\|", -1);
+            if (fields.length != 2) continue;
+            String manufacturer = fields[0].trim();
+            String speed = fields[1].trim();
+            if (manufacturer.equalsIgnoreCase("unknown") || manufacturer.equalsIgnoreCase("not specified")) manufacturer = "";
+            if (!speed.matches("[1-9][0-9]{0,5}")) speed = "";
+            if (!manufacturer.isEmpty() || !speed.isEmpty()) {
+                modules.add((manufacturer.isEmpty() ? "Unknown manufacturer" : manufacturer)
+                        + (speed.isEmpty() ? "" : " · " + speed + " MHz configured"));
+            }
+        }
+        return String.join(", ", modules);
     }
 
     /**
@@ -395,13 +431,6 @@ public final class SystemHardwareInfo {
         return 0.0;
     }
 
-    /**
-     * Process-specific native Working Set (Physical RAM) in bytes.
-     * On Windows, prioritizes Private Working Set from PSAPI PROCESS_MEMORY_COUNTERS_EX to match Task Manager.
-     * On Linux, reads genuine resident set size from /proc/self/status.
-     * On macOS, queries POSIX/BSD ps rss for the current process.
-     * Universal safe fallback computes total JVM committed heap + non-heap memory.
-     */
     private static volatile long lastMacRssQueryTime = 0;
     private static volatile long cachedMacRssBytes = 0;
 
@@ -410,7 +439,7 @@ public final class SystemHardwareInfo {
      * On Windows: Returns WorkingSetSize from PSAPI to match Windows Task Manager's "Memory" column.
      * On Linux: Reads genuine resident set size (VmRSS) from /proc/self/status.
      * On macOS: Queries POSIX/BSD resident set size (RSS) to match Activity Monitor.
-     * Universal safe fallback computes active JVM heap used + non-heap memory.
+     * Returns -1 when resident memory cannot be measured.
      */
     public static long getProcessWorkingSetBytes() {
         if (IS_WIN) {
@@ -422,10 +451,6 @@ public final class SystemHardwareInfo {
                     // Windows Task Manager 'Memory' column displays physical WorkingSetSize
                     long ws = counters.WorkingSetSize != null ? counters.WorkingSetSize.longValue() : 0;
                     if (ws > 0) return ws;
-                    long priv = counters.PrivateUsage != null ? counters.PrivateUsage.longValue() : 0;
-                    if (priv > 0) return priv;
-                    long privateCommit = counters.PagefileUsage != null ? counters.PagefileUsage.longValue() : 0;
-                    if (privateCommit > 0) return privateCommit;
                 }
             } catch (Throwable ignored) {}
         } else if (IS_LINUX) {
@@ -459,22 +484,13 @@ public final class SystemHardwareInfo {
             } catch (Throwable ignored) {}
         }
 
-        // Cross-platform Fallback: Active Used Memory (Heap used + Non-Heap used)
-        try {
-            var mem = ManagementFactory.getMemoryMXBean();
-            long totalUsed = mem.getHeapMemoryUsage().getUsed() + mem.getNonHeapMemoryUsage().getUsed();
-            if (totalUsed > 0) return totalUsed;
-        } catch (Throwable ignored) {}
-
-        Runtime rt = Runtime.getRuntime();
-        long fallback = rt.totalMemory() - rt.freeMemory();
-        return fallback > 0 ? fallback : 1024 * 1024;
+        return -1;
     }
 
     public static long getProcessWorkingSetMB() {
         long bytes = getProcessWorkingSetBytes();
         long mb = bytes / (1024 * 1024);
-        return bytes > 0 ? Math.max(1, mb) : 0;
+        return bytes > 0 ? Math.max(1, mb) : -1;
     }
 
     private interface WinPsapi extends com.sun.jna.win32.StdCallLibrary {

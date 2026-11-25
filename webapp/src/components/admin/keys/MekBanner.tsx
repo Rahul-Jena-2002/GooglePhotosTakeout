@@ -26,7 +26,7 @@ export function MekBanner({
               Master Encryption Key Required
             </div>
             <div className="text-xs mt-1 leading-relaxed t-amber-desc">
-              Enter your 32-byte hex MEK to encrypt/decrypt sensitive keys. It is stored only in this session.
+              Enter the master key configured on the server. It is stored in this browser session; its match with the server is not checked here.
             </div>
           </div>
           <div className="flex gap-2 max-w-lg">

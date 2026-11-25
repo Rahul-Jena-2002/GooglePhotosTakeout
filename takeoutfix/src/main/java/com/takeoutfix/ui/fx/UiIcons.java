@@ -17,6 +17,8 @@ public final class UiIcons {
 
     // Vector Path Definitions (Crisp SVG Icons for JavaFX Region shapes)
     public static final String RESTORE = "M4 4h16v4H4zm1 5h14v10a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2zm5 3v4h4v-4h3l-5-5-5 5z";
+    public static final String INFO = "M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm0 18a8 8 0 1 1 0-16 8 8 0 0 1 0 16zm-1-9h2v6h-2zm0-4h2v2h-2z";
+    public static final String HELP = "M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm0 18a8 8 0 1 1 0-16 8 8 0 0 1 0 16zm-1-3h2v2h-2zm1-12a4 4 0 0 0-4 4h2a2 2 0 1 1 3.4 1.4c-1.1 1.1-2.4 1.7-2.4 3.6h2c0-1.1.6-1.5 1.8-2.7A4 4 0 0 0 12 5z";
     public static final String SYNC = "M12 4V1L8 5l4 4V6a6 6 0 1 1-6 6H4a8 8 0 1 0 8-8zm-8 8a8 8 0 0 0 8 8v3l4-4-4-4v3a6 6 0 1 1 6-6h2a8 8 0 0 0-8-8z";
     public static final String FOLDER = "M10 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z";
     public static final String ZIP = "M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6zm-4 4h2v2h-2V6zm2 2h2v2h-2V8zm-2 2h2v2h-2v-2zm2 2h2v2h-2v-2zm-3 4h4v3h-4v-3z";

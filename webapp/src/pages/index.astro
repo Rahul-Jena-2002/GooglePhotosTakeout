@@ -119,13 +119,6 @@ import Compare from "../components/ui/Compare";
       </div>
     </section>
 
-    <section id="community-count" class="hidden w-full max-w-7xl mx-auto px-4 pb-6 relative z-10" aria-labelledby="community-count-heading">
-      <div class="rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-950/60 p-6 sm:p-8">
-        <h2 id="community-count-heading" class="text-lg font-bold text-foreground">TakeoutFix community</h2>
-        <p class="mt-2 text-sm text-zinc-600 dark:text-zinc-400"><strong id="community-count-value" class="text-foreground"></strong> account records, as of <time id="community-count-date"></time>. Guest users are not included.</p>
-      </div>
-    </section>
-
     <!-- 3. PROBLEM SECTION -->
     <section class="w-full max-w-7xl mx-auto px-4 py-24 sm:py-32 grid md:grid-cols-2 gap-16 items-center relative z-10">
       <div>
@@ -255,13 +248,13 @@ import Compare from "../components/ui/Compare";
     <section class="w-full max-w-7xl mx-auto px-4 py-20 relative z-10 border-t border-zinc-200 dark:border-zinc-800/80">
       <div class="text-center max-w-3xl mx-auto mb-14">
         <div class="inline-flex items-center gap-2 px-3 py-1 bg-purple-500/10 dark:bg-purple-950/30 rounded-full border border-purple-500/20 text-xs font-semibold text-purple-600 dark:text-purple-300 uppercase tracking-wider mb-4">
-          All-in-One Archival Suite
+          Google Takeout restoration
         </div>
         <h2 class="text-3xl sm:text-4xl md:text-5xl font-bold tracking-tight text-foreground">
-          More than Takeout: The Complete Photo Toolkit.
+          Put available photo details back.
         </h2>
         <p class="text-base sm:text-lg text-zinc-500 dark:text-zinc-400 mt-4 leading-relaxed">
-          TakeoutFix helps with a specific part of a photo archive workflow: matching available Takeout sidecars and restoring supported metadata locally in your browser. Account, support, diagnostics, and advertising services are described in the privacy policy.
+          TakeoutFix matches photos with the separate details files in your Google Takeout download and restores supported information in your browser. Account, support, diagnostics, and advertising services are described in the privacy policy.
         </p>
       </div>
 
@@ -328,11 +321,16 @@ import Compare from "../components/ui/Compare";
 <script>
   let autoPlayInterval: number | undefined;
   let userInteractionTimeout: number | undefined;
+  let timelineObserver: IntersectionObserver | undefined;
+  let timelineCleanup: (() => void) | undefined;
 
   // Clean up animation timers globally when page shifts (Astro lifecycle)
   document.addEventListener("astro:before-preparation", () => {
     window.clearInterval(autoPlayInterval);
     window.clearTimeout(userInteractionTimeout);
+    timelineObserver?.disconnect();
+    timelineCleanup?.();
+    timelineCleanup = undefined;
   });
 
   // 4. Discrete Auto-scrolling Timeline Slider with Play/Pause and Center Magnify
@@ -345,14 +343,23 @@ import Compare from "../components/ui/Compare";
 
     if (!track || !arrowLeft || !arrowRight || !playPauseBtn || !playPauseIcon) return;
 
+    const abort = new AbortController();
+    let scrollSettleTimeout: number | undefined;
+    timelineCleanup = () => {
+      abort.abort();
+      window.clearTimeout(scrollSettleTimeout);
+    };
+
     const cardWidth = 256;
     const gap = 24;
     const itemWidth = cardWidth + gap; // 280px
 
     let activeStep = 0;
-    let isPlaying = true;
+    let isPlaying = false;
     let isExplicitlyPaused = false;
     let isAutoScrollingToStep = false;
+    let isVisible = false;
+    let initialized = false;
 
     const updateCenterMagnification = () => {
       const rect = track.getBoundingClientRect();
@@ -385,18 +392,21 @@ import Compare from "../components/ui/Compare";
     const scrollToStep = (step: number, smooth = true) => {
       activeStep = step;
       isAutoScrollingToStep = true;
+      const animate = smooth && !window.matchMedia('(prefers-reduced-motion: reduce)').matches;
       track.scrollTo({
         left: step * itemWidth,
-        behavior: smooth ? "smooth" : "auto"
+        behavior: animate ? "smooth" : "instant"
       });
       // Allow scroll listener to settle before resetting flag
-      setTimeout(() => {
+      window.clearTimeout(scrollSettleTimeout);
+      scrollSettleTimeout = window.setTimeout(() => {
         isAutoScrollingToStep = false;
         updateCenterMagnification();
-      }, 500);
+      }, animate ? 500 : 0);
     };
 
-    const startAutoPlay = () => {
+    const startAutoPlay = (manual = false) => {
+      if (!isVisible || isExplicitlyPaused || (!manual && window.matchMedia('(prefers-reduced-motion: reduce)').matches)) return;
       isPlaying = true;
       updatePlayIconState();
       window.clearInterval(autoPlayInterval);
@@ -446,25 +456,25 @@ import Compare from "../components/ui/Compare";
         const currentStep = Math.round(scrollPos / itemWidth);
         activeStep = Math.max(0, Math.min(3, currentStep));
       }
-    });
+    }, { signal: abort.signal });
 
     // Pause autoplay on direct click/drag/touch interactions with track
-    track.addEventListener("mousedown", handleUserInteraction);
-    track.addEventListener("touchstart", handleUserInteraction, { passive: true });
-    track.addEventListener("wheel", handleUserInteraction, { passive: true });
+    track.addEventListener("mousedown", handleUserInteraction, { signal: abort.signal });
+    track.addEventListener("touchstart", handleUserInteraction, { passive: true, signal: abort.signal });
+    track.addEventListener("wheel", handleUserInteraction, { passive: true, signal: abort.signal });
 
     // Arrow controls
     arrowLeft.addEventListener("click", () => {
       handleUserInteraction();
       const prevStep = (activeStep - 1 + 4) % 4;
       scrollToStep(prevStep);
-    });
+    }, { signal: abort.signal });
 
     arrowRight.addEventListener("click", () => {
       handleUserInteraction();
       const nextStep = (activeStep + 1) % 4;
       scrollToStep(nextStep);
-    });
+    }, { signal: abort.signal });
 
     // Play/Pause toggle button
     playPauseBtn.addEventListener("click", () => {
@@ -474,39 +484,31 @@ import Compare from "../components/ui/Compare";
         stopAutoPlay();
       } else {
         isExplicitlyPaused = false;
-        startAutoPlay();
+        startAutoPlay(true);
       }
-    });
+    }, { signal: abort.signal });
 
     // Run animation and initial styling
-    scrollToStep(0, false);
-    setTimeout(updateCenterMagnification, 100);
-    startAutoPlay();
+    updatePlayIconState();
+    timelineObserver = new IntersectionObserver(([entry]) => {
+      isVisible = entry.isIntersecting;
+      if (entry.isIntersecting) {
+        if (!initialized) {
+          scrollToStep(0, false);
+          initialized = true;
+        }
+        updateCenterMagnification();
+        startAutoPlay();
+      } else {
+        window.clearTimeout(userInteractionTimeout);
+        stopAutoPlay();
+      }
+    });
+    timelineObserver.observe(track);
   };
 
   // Run all setups on page load
   document.addEventListener("astro:page-load", () => {
     setupTimelineSlider();
-    const section = document.getElementById("community-count");
-    if (section) {
-      fetch("https://firestore.googleapis.com/v1/projects/takeout-fix/databases/(default)/documents/platform_stats/global")
-        .then(response => {
-          if (!response.ok) throw new Error(`Account count unavailable (${response.status})`);
-          return response.json();
-        })
-        .then(data => {
-          const count = Number(data.fields?.usersCount?.integerValue);
-          const updated = Number(data.fields?.usersCountUpdatedAt?.integerValue);
-          if (!Number.isSafeInteger(count) || count < 0 || !Number.isSafeInteger(updated) || updated <= 0 || updated > Date.now() || Date.now() - updated > 30 * 86400000 || !section.isConnected) return;
-          const value = document.getElementById("community-count-value");
-          const date = document.getElementById("community-count-date") as HTMLTimeElement | null;
-          if (!value || !date) return;
-          value.textContent = count.toLocaleString();
-          date.dateTime = new Date(updated).toISOString();
-          date.textContent = new Date(updated).toLocaleDateString();
-          section.classList.remove("hidden");
-        })
-        .catch(error => console.warn("Account count unavailable:", error));
-    }
   });
 </script>

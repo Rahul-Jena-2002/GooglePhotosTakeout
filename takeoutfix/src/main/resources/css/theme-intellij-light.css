@@ -247,6 +247,17 @@
     -fx-border-color: #B4B6C9;
 }
 
+.restore-workspace .kpi-card {
+    -fx-background-color: transparent;
+    -fx-border-color: transparent;
+    -fx-effect: null;
+}
+
+.restore-workspace-scroll, .restore-workspace-scroll > .viewport {
+    -fx-background-color: transparent;
+    -fx-padding: 0;
+}
+
 .kpi-title, .kpi-label {
     -fx-font-family: "Segoe UI Semibold", "Segoe UI", sans-serif;
     -fx-font-size: 11px;
@@ -613,6 +624,10 @@
 .check-box:selected .box {
     -fx-background-color: #3574F0;
     -fx-border-color: #3574F0;
+}
+
+.check-box .mark {
+    -fx-background-color: transparent;
 }
 
 .check-box:selected .mark {

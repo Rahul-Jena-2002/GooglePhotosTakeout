@@ -14,7 +14,7 @@ export function KeyCard({
   mekKey,
 }: Readonly<{
   entry: KeyEntry
-  onSave: (id: string, value: string) => Promise<void>
+  onSave: (id: string, value: string) => Promise<boolean>
   saving: string | null
   mekKey: CryptoKey | null
 }>) {
@@ -50,8 +50,7 @@ export function KeyCard({
   const displayValue = editing ? draft : (decrypted || entry.value || "")
 
   const handleSave = async () => {
-    await onSave(entry.id, draft)
-    setEditing(false)
+    if (await onSave(entry.id, draft)) setEditing(false)
   }
 
   const handleRotate = () => {

@@ -30,25 +30,39 @@ jobs:
         working-directory: webapp
         run: npm ci
 
-      - name: Test Service Worker Privacy
-        working-directory: webapp
-        run: npm run test:service-worker
-
-      - name: Test Client Output Handling
-        working-directory: webapp
-        run: npm run test:build-output
-
-      - name: Test API Security
-        working-directory: webapp
-        run: npm run test:api-headers
-
-      - name: Test Restoration Helpers
-        working-directory: webapp
-        run: npm run test:restoration
-
       - name: Build Web App & Run Security Audit
         working-directory: webapp
         run: npm run build
         env:
           NODE_ENV: production
+
+  tests-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: webapp/package-lock.json
+      - name: Install Dependencies
+        working-directory: webapp
+        run: npm ci
+      - name: Test Security Helpers
+        working-directory: webapp
+        run: npm run test:security-helpers
+      - name: Test Service Worker Privacy
+        working-directory: webapp
+        run: npm run test:service-worker
+      - name: Test Client Output Handling
+        working-directory: webapp
+        run: npm run test:build-output
+      - name: Test API Security
+        working-directory: webapp
+        run: npm run test:api-headers
+      - name: Test Restoration Helpers
+        working-directory: webapp
+        run: npm run test:restoration
 

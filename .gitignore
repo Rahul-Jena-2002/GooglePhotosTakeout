@@ -51,6 +51,7 @@ dist/
 *serviceAccountKey*.json
 *service-account*.json
 .env*
+.dev.vars*
 !.env.example
 !.env.local.example
 *.pem
@@ -75,6 +76,7 @@ PROJECT_STATE.md
 docs/session_logs/
 
 # Build artifacts & local test directories
+.wrangler/
 dist-exe/
 dist-msi/
 jpackage-input/

@@ -124,7 +124,7 @@ html:not(.light) .custom-faq-scroll::-webkit-scrollbar-thumb {
 html:not(.light) button.bg-zinc-900:not(.btn-theme-toggle-navbar):not(.btn-notification-navbar):not(.btn-profile-trigger):not(.tool-workspace-root *),
 html:not(.light) button.bg-black:not(.btn-theme-toggle-navbar):not(.btn-notification-navbar):not(.btn-profile-trigger):not(.tool-workspace-root *),
 html:not(.light) button.btn-solid-dark:not(.btn-theme-toggle-navbar):not(.btn-notification-navbar):not(.btn-profile-trigger):not(.tool-workspace-root *),
-html:not(.light) button:not(.bg-white):not(.tool-tab-btn):not(.tool-dropdown-trigger):not(.choice-card):not(.tool-workspace-root *):not(.btn-monochrome-primary):not(.btn-monochrome-secondary):not(.btn-pricing-pro):not(.btn-pro-blue):not(.btn-super-orange):not(.btn-recovery-cyan):not(.btn-theme-toggle-navbar):not(.btn-notification-navbar):not(.btn-profile-trigger):not(.btn-purple-pricing):not(.btn-cyan-pricing) {
+html:not(.light) button:not(.bg-white):not(.support-nav-btn):not(.tool-tab-btn):not(.tool-dropdown-trigger):not(.choice-card):not(.tool-workspace-root *):not(.btn-monochrome-primary):not(.btn-monochrome-secondary):not(.btn-pricing-pro):not(.btn-pro-blue):not(.btn-super-orange):not(.btn-recovery-cyan):not(.btn-theme-toggle-navbar):not(.btn-notification-navbar):not(.btn-profile-trigger):not(.btn-purple-pricing):not(.btn-cyan-pricing) {
   background-color: #18181b !important;
   color: #f4f4f5 !important;
 }

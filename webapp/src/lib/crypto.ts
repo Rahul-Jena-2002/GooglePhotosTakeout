@@ -18,7 +18,7 @@ export async function deriveKeyFromPassword(
     ["deriveBits", "deriveKey"]
   );
 
-  const derivedSalt = salt || crypto.getRandomValues(new Uint8Array(SALT_LENGTH));
+  const derivedSalt = salt ? new Uint8Array(salt) : crypto.getRandomValues(new Uint8Array(SALT_LENGTH));
 
   const key = await crypto.subtle.deriveKey(
     {
@@ -71,10 +71,8 @@ export async function decrypt(
   }
 
   const hex = encryptedData.slice(7);
-  const combined = new Uint8Array(hex.length / 2);
-  for (let i = 0; i < hex.length; i += 2) {
-    combined[i / 2] = parseInt(hex.slice(i, i + 2), 16);
-  }
+  const combined = hexToBytes(hex);
+  if (combined.length < IV_LENGTH + TAG_LENGTH / 8) throw new Error("Invalid encrypted data format");
 
   const iv = combined.slice(0, IV_LENGTH);
   const ciphertext = combined.slice(IV_LENGTH);
@@ -89,7 +87,8 @@ export async function decrypt(
   return decoder.decode(plaintext);
 }
 
-export function hexToBytes(hex: string): Uint8Array {
+export function hexToBytes(hex: string): Uint8Array<ArrayBuffer> {
+  if (hex.length % 2 !== 0 || !/^[0-9a-f]*$/i.test(hex)) throw new Error("Invalid hexadecimal data");
   const bytes = new Uint8Array(hex.length / 2);
   for (let i = 0; i < hex.length; i += 2) {
     bytes[i / 2] = parseInt(hex.slice(i, i + 2), 16);

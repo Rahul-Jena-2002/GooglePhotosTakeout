@@ -51,12 +51,15 @@ public class FirebaseSyncService {
     private final File sessionFile;
     private final File pendingSyncFile;
     private final CredentialStore credentialStore;
+    private final UsageJournal usageJournal;
+    private final UsageBatchClient usageBatchClient;
 
     private final HttpClient httpClient = HttpClient.newBuilder()
             .connectTimeout(Duration.ofSeconds(6))
             .build();
 
     private volatile String currentIdToken = "";
+    private volatile String currentTokenUid = "";
     public enum SyncState {
         IDLE, SYNCING, SYNCED, FAILED
     }
@@ -108,12 +111,23 @@ public class FirebaseSyncService {
     }
 
     FirebaseSyncService(File configDir, boolean startBackgroundSync) {
+        this(configDir, startBackgroundSync, new CredentialStore(configDir));
+    }
+
+    FirebaseSyncService(File configDir, boolean startBackgroundSync, CredentialStore credentialStore) {
+        this(configDir, startBackgroundSync, credentialStore, null);
+    }
+
+    FirebaseSyncService(File configDir, boolean startBackgroundSync, CredentialStore credentialStore, UsageBatchClient batchClient) {
         this.sessionFile = new File(configDir, "session.json");
         this.pendingSyncFile = new File(configDir, "pending_sync.json");
-        this.credentialStore = new CredentialStore(configDir);
+        this.credentialStore = credentialStore;
+        this.usageJournal = new UsageJournal(configDir.toPath().resolve("pending-usage-v2"));
+        this.usageBatchClient = batchClient != null ? batchClient : new UsageBatchClient(httpClient, getFirestoreBaseUrl(),
+                "projects/" + getProjectId() + "/databases/(default)/documents");
         if (!startBackgroundSync) return;
         // Bootstrap tokens from session.json if present
-        loadTokensFromSession();
+        loadTokensFromSession(true);
 
         // Only schedule Firebase synchronization if an authenticated user session is active!
         if (hasActiveUserSession()) {
@@ -171,11 +185,22 @@ public class FirebaseSyncService {
     }
 
     private void loadTokensFromSession() {
+        loadTokensFromSession(false);
+    }
+
+    private void loadTokensFromSession(boolean allowStartup) {
+        long version = UserController.sessionVersion();
         try {
             AuthSession session = credentialStore.loadSession();
             if (session != null) {
-                this.currentIdToken = session.getIdToken();
-                this.currentRefreshToken = session.getRefreshToken();
+                synchronized (UserController.class) {
+                    if (version != UserController.sessionVersion()) return;
+                    Object activeUid = UserController.getCurrentUserProfile().getOrDefault("uid", UserController.getCurrentUserProfile().get("googleId"));
+                    if ((!allowStartup || activeUid != null) && !session.getUid().equals(activeUid)) return;
+                    this.currentIdToken = session.getIdToken();
+                    this.currentRefreshToken = session.getRefreshToken();
+                    this.currentTokenUid = session.getUid();
+                }
             }
         } catch (Exception e) {
             log.warn("Unable to load credentials for Firebase sync", e);
@@ -240,7 +265,12 @@ public class FirebaseSyncService {
 
     private synchronized boolean performSync() {
         Map<String, Object> profile = UserController.getCurrentUserProfile();
-        String uid = (String) profile.getOrDefault("uid", profile.getOrDefault("googleId", ""));
+        final String uid;
+        final long sessionVersion;
+        synchronized (UserController.class) {
+            uid = (String) profile.getOrDefault("uid", profile.getOrDefault("googleId", ""));
+            sessionVersion = UserController.sessionVersion();
+        }
         if (uid == null || uid.trim().isEmpty()) {
             notifySyncState(SyncState.IDLE, "");
             return false;
@@ -273,11 +303,12 @@ public class FirebaseSyncService {
                     .build();
 
             HttpResponse<String> resp = httpClient.send(req, HttpResponse.BodyHandlers.ofString());
+            if (!UserController.isCurrentSession(uid, sessionVersion)) return false;
             if (resp.statusCode() == 200) {
                 JSONObject doc = new JSONObject(resp.body());
                 JSONObject fields = doc.optJSONObject("fields");
                 if (fields != null) {
-                    applyFirestoreUserData(fields, uid, tokenToUse);
+                    applyFirestoreUserData(fields, uid, tokenToUse, sessionVersion);
                     userSuccess = true;
                 }
             } else if (resp.statusCode() == 401) {
@@ -292,6 +323,7 @@ public class FirebaseSyncService {
             log.debug("Firebase user sync offline/error: {}", e.getMessage());
         }
 
+        if (!UserController.isCurrentSession(uid, sessionVersion)) return false;
         // 3. Sync Global Settings (e.g. Free Unlimited Promo Window)
         try {
             String settingsUrl = getFirestoreBaseUrl() + "/settings/global";
@@ -307,13 +339,14 @@ public class FirebaseSyncService {
                 JSONObject doc = new JSONObject(setResp.body());
                 JSONObject fields = doc.optJSONObject("fields");
                 if (fields != null) {
-                    applyGlobalSettings(fields);
+                    applyGlobalSettings(fields, uid, sessionVersion);
                 }
             }
         } catch (Exception e) {
             log.debug("Global settings sync skipped: {}", e.getMessage());
         }
 
+        if (!UserController.isCurrentSession(uid, sessionVersion)) return false;
         if (userSuccess) {
             notifySyncState(SyncState.SYNCED, "");
         } else {
@@ -322,7 +355,7 @@ public class FirebaseSyncService {
         return userSuccess;
     }
 
-    private void applyGlobalSettings(JSONObject fields) {
+    void applyGlobalSettings(JSONObject fields, String uid, long sessionVersion) {
         Map<String, Object> globalUpdates = new HashMap<>();
 
         // Check if pricing and payments are enabled globally in Firestore settings/global
@@ -398,10 +431,10 @@ public class FirebaseSyncService {
             globalUpdates.put("plan", "free");
         }
 
-        UserController.updateUserProfile(globalUpdates);
+        UserController.updateUserProfileIfCurrent(uid, sessionVersion, globalUpdates);
     }
 
-    private void applyFirestoreUserData(JSONObject fields, String uid, String token) {
+    void applyFirestoreUserData(JSONObject fields, String uid, String token, long sessionVersion) {
         boolean enablePricing = Boolean.TRUE.equals(UserController.getCurrentUserProfile().get("enablePricingAndPayments"));
         String plan = getString(fields, "plan", "free");
         if (!enablePricing) {
@@ -427,13 +460,8 @@ public class FirebaseSyncService {
                 Math.max(remoteLifetimeBytes,
                 Math.max(remoteBytesProcessed, remoteTotalBytesAll))));
 
-        boolean isAdmin = getBoolean(fields, "isAdmin", false);
+        boolean isAdmin = checkIfAdmin(uid, token);
         boolean userUnlimited = getBoolean(fields, "unlimited", false) || getBoolean(fields, "isFreeUnlimited", false);
-
-        // Also check admins collection in Firestore
-        if (!isAdmin) {
-            isAdmin = checkIfAdmin(uid, token);
-        }
 
         if (!enablePricing) {
             plan = "free";
@@ -472,17 +500,14 @@ public class FirebaseSyncService {
             updates.put("isFreeUnlimited", true);
         }
 
-        UserController.updateUserProfile(updates);
-
-        // If local usage has not yet been pushed to Firestore, push it now!
-        if (localFiles > remoteBestFiles || localBytes > remoteBestBytes) {
-            log.info("Local usage ({}, {} bytes) exceeds Firestore ({}, {} bytes). Pushing local progress to cloud.",
-                    localFiles, localBytes, remoteBestFiles, remoteBestBytes);
-            scheduler.submit(this::pushCurrentTotalsToCloud);
+        if (!UserController.updateUserProfileIfCurrent(uid, sessionVersion, updates)) {
+            log.debug("Discarded Firebase user data for an inactive account.");
+            return;
         }
+
     }
 
-    private boolean checkIfAdmin(String uid, String token) {
+    boolean checkIfAdmin(String uid, String token) {
         try {
             String adminUrl = getFirestoreBaseUrl() + "/admins/" + URLEncoder.encode(uid, StandardCharsets.UTF_8);
             HttpRequest req = HttpRequest.newBuilder()
@@ -504,21 +529,24 @@ public class FirebaseSyncService {
      */
     private String ensureFreshIdToken() {
         Map<String, Object> profile = UserController.getCurrentUserProfile();
-        String refToken = (String) profile.getOrDefault("refreshToken", this.currentRefreshToken);
-        String idTok = (String) profile.getOrDefault("idToken", profile.getOrDefault("token", this.currentIdToken));
-        if (idTok != null && !idTok.isBlank()) {
-            this.currentIdToken = idTok;
-        }
-        if (refToken != null && !refToken.isBlank()) {
-            this.currentRefreshToken = refToken;
-        }
-
-        if (this.currentRefreshToken == null || this.currentRefreshToken.isBlank()) {
-            return this.currentIdToken;
+        final String expectedUid;
+        final long version;
+        final String refToken;
+        synchronized (UserController.class) {
+            expectedUid = (String) profile.getOrDefault("uid", profile.getOrDefault("googleId", ""));
+            version = UserController.sessionVersion();
+            if (expectedUid == null || expectedUid.isBlank()) return null;
+            boolean sameCachedUser = expectedUid.equals(currentTokenUid);
+            refToken = (String) profile.getOrDefault("refreshToken", sameCachedUser ? currentRefreshToken : "");
+            String idToken = (String) profile.getOrDefault("idToken", profile.getOrDefault("token", sameCachedUser ? currentIdToken : ""));
+            currentTokenUid = expectedUid;
+            currentIdToken = idToken == null ? "" : idToken;
+            currentRefreshToken = refToken == null ? "" : refToken;
+            if (currentRefreshToken.isBlank()) return currentIdToken;
         }
 
         try {
-            String form = "grant_type=refresh_token&refresh_token=" + URLEncoder.encode(this.currentRefreshToken, StandardCharsets.UTF_8);
+            String form = "grant_type=refresh_token&refresh_token=" + URLEncoder.encode(refToken, StandardCharsets.UTF_8);
             HttpRequest req = HttpRequest.newBuilder()
                     .uri(URI.create(getSecureTokenUrl()))
                     .header("Content-Type", "application/x-www-form-urlencoded")
@@ -528,24 +556,7 @@ public class FirebaseSyncService {
 
             HttpResponse<String> resp = httpClient.send(req, HttpResponse.BodyHandlers.ofString());
             if (resp.statusCode() == 200) {
-                JSONObject json = new JSONObject(resp.body());
-                String userId = json.optString("user_id", "");
-                String expectedUserId = (String) profile.getOrDefault("uid", profile.getOrDefault("googleId", ""));
-                if (userId.isBlank() || (expectedUserId != null && !expectedUserId.isBlank() && !expectedUserId.equals(userId))) {
-                    log.warn("Firebase sync token refresh did not match the active account");
-                    return null;
-                }
-                this.currentIdToken = json.optString("id_token", this.currentIdToken);
-                this.currentRefreshToken = json.optString("refresh_token", this.currentRefreshToken);
-                profile.put("idToken", this.currentIdToken);
-                profile.put("token", this.currentIdToken);
-                profile.put("refreshToken", this.currentRefreshToken);
-                if (!userId.isBlank()) {
-                    profile.put("uid", userId);
-                    profile.put("googleId", userId);
-                }
-                saveTokensToSession(credentialStore, this.currentIdToken, this.currentRefreshToken, userId);
-                return this.currentIdToken;
+                return applyRefreshedTokens(expectedUid, version, refToken, new JSONObject(resp.body()));
             }
         } catch (InterruptedException error) {
             Thread.currentThread().interrupt();
@@ -554,7 +565,39 @@ public class FirebaseSyncService {
             log.warn("Firebase token refresh or credential save failed: {}", error.getClass().getSimpleName());
         }
 
-        return this.currentIdToken;
+        synchronized (UserController.class) {
+            return UserController.isCurrentSession(expectedUid, version) ? this.currentIdToken : null;
+        }
+    }
+
+    String applyRefreshedTokens(String expectedUid, long version, String requestedRefreshToken, JSONObject json) {
+        synchronized (UserController.class) {
+            if (!expectedUid.equals(json.optString("user_id", "")) || !UserController.isCurrentSession(expectedUid, version)) return null;
+            Map<String, Object> profile = UserController.getCurrentUserProfile();
+            Object profileRefresh = profile.get("refreshToken");
+            String activeRefresh = profileRefresh instanceof String value && !value.isBlank() ? value : currentRefreshToken;
+            if (!java.util.Objects.equals(requestedRefreshToken, activeRefresh)) return null;
+            String refreshedIdToken = json.optString("id_token", "");
+            if (refreshedIdToken.isBlank()) return null;
+            String refreshedRefreshToken = json.optString("refresh_token", requestedRefreshToken);
+            if (refreshedRefreshToken.isBlank()) return null;
+            currentIdToken = refreshedIdToken;
+            currentRefreshToken = refreshedRefreshToken;
+            currentTokenUid = expectedUid;
+            profile.put("idToken", currentIdToken);
+            profile.put("token", currentIdToken);
+            profile.put("refreshToken", currentRefreshToken);
+            saveTokensToSession(credentialStore, currentIdToken, currentRefreshToken, expectedUid);
+            return currentIdToken;
+        }
+    }
+
+    void clearCachedTokens() {
+        synchronized (UserController.class) {
+            currentIdToken = "";
+            currentRefreshToken = "";
+            currentTokenUid = "";
+        }
     }
 
     static void saveTokensToSession(CredentialStore store, String idToken, String refreshToken, String uid) {
@@ -601,110 +644,52 @@ public class FirebaseSyncService {
     }
 
     /**
-     * Immediately pushes current accumulated local usage totals to Firestore.
+     * Sends account-owned usage batches without overwriting shared counters.
      */
     public synchronized boolean pushCurrentTotalsToCloud() {
-        Map<String, Object> profile = UserController.getCurrentUserProfile();
-        String uid = (String) profile.getOrDefault("uid", profile.getOrDefault("googleId", ""));
-        if (uid == null || uid.trim().isEmpty()) {
-            return false;
+        final String uid;
+        final long version;
+        synchronized (UserController.class) {
+            if (!UserController.hasSignedInCredentials()) return false;
+            Map<String, Object> profile = UserController.getCurrentUserProfile();
+            Object id = profile.getOrDefault("uid", profile.get("googleId"));
+            if (!(id instanceof String value) || value.isBlank()) return false;
+            uid = value;
+            version = UserController.sessionVersion();
         }
-
-        String token = ensureFreshIdToken();
-        if (token == null || token.isBlank()) {
-            loadTokensFromSession();
-            token = ensureFreshIdToken();
-        }
-        if (token == null || token.isBlank()) {
-            log.warn("Cloud usage push skipped: missing authentication token");
-            return false;
-        }
-
         try {
-            long usedFiles = toLong(profile.get("usedFiles"));
-            long usedBytes = toLong(profile.get("usedBytes"));
-            long lifeFiles = Math.max(usedFiles, Math.max(toLong(profile.get("lifetimeFiles")), toLong(profile.get("totalFilesProcessed"))));
-            long lifeBytes = Math.max(usedBytes, Math.max(toLong(profile.get("lifetimeBytes")), toLong(profile.get("totalBytesProcessed"))));
-
-            JSONObject fields = new JSONObject();
-            JSONObject uf = new JSONObject(); uf.put("integerValue", String.valueOf(lifeFiles));
-            JSONObject ub = new JSONObject(); ub.put("integerValue", String.valueOf(lifeBytes));
-            JSONObject lf = new JSONObject(); lf.put("integerValue", String.valueOf(lifeFiles));
-            JSONObject lb = new JSONObject(); lb.put("integerValue", String.valueOf(lifeBytes));
-            JSONObject tf = new JSONObject(); tf.put("integerValue", String.valueOf(lifeFiles));
-            JSONObject tb = new JSONObject(); tb.put("integerValue", String.valueOf(lifeBytes));
-            JSONObject la = new JSONObject(); la.put("stringValue", java.time.Instant.now().toString());
-
-            fields.put("usedFiles", uf);
-            fields.put("usedBytes", ub);
-            fields.put("lifetimeFiles", lf);
-            fields.put("lifetimeBytes", lb);
-            fields.put("totalFilesProcessed", tf);
-            fields.put("totalBytesProcessed", tb);
-            fields.put("filesProcessed", tf);
-            fields.put("bytesProcessed", tb);
-            fields.put("totalRestored", tf);
-            fields.put("totalBytes", tb);
-            fields.put("lastActiveAt", la);
-
-            JSONObject body = new JSONObject();
-            body.put("fields", fields);
-
-            String patchUrl = getFirestoreBaseUrl() + "/users/" + URLEncoder.encode(uid, StandardCharsets.UTF_8)
-                    + "?updateMask.fieldPaths=usedFiles"
-                    + "&updateMask.fieldPaths=usedBytes"
-                    + "&updateMask.fieldPaths=lifetimeFiles"
-                    + "&updateMask.fieldPaths=lifetimeBytes"
-                    + "&updateMask.fieldPaths=totalFilesProcessed"
-                    + "&updateMask.fieldPaths=totalBytesProcessed"
-                    + "&updateMask.fieldPaths=filesProcessed"
-                    + "&updateMask.fieldPaths=bytesProcessed"
-                    + "&updateMask.fieldPaths=totalRestored"
-                    + "&updateMask.fieldPaths=totalBytes"
-                    + "&updateMask.fieldPaths=lastActiveAt";
-
-            HttpRequest req = HttpRequest.newBuilder()
-                    .uri(URI.create(patchUrl))
-                    .header("Authorization", "Bearer " + token)
-                    .header("Content-Type", "application/json")
-                    .timeout(Duration.ofSeconds(6))
-                    .method("PATCH", HttpRequest.BodyPublishers.ofString(body.toString()))
-                    .build();
-
-            HttpResponse<String> resp = httpClient.send(req, HttpResponse.BodyHandlers.ofString());
-            if (resp.statusCode() == 200) {
-                log.info("Push usage to Firestore succeeded (200 OK).");
-                notifySyncState(SyncState.SYNCED, "");
-                return true;
-            } else if (resp.statusCode() == 401) {
-                this.currentIdToken = "";
-                String refreshed = ensureFreshIdToken();
-                if (refreshed != null && !refreshed.isBlank()) {
-                    HttpRequest retryReq = HttpRequest.newBuilder()
-                            .uri(URI.create(patchUrl))
-                            .header("Authorization", "Bearer " + refreshed)
-                            .header("Content-Type", "application/json")
-                            .timeout(Duration.ofSeconds(6))
-                            .method("PATCH", HttpRequest.BodyPublishers.ofString(body.toString()))
-                            .build();
-                    HttpResponse<String> retryResp = httpClient.send(retryReq, HttpResponse.BodyHandlers.ofString());
-                    if (retryResp.statusCode() == 200) {
-                        log.info("Push usage to Firestore succeeded after token refresh (200 OK).");
-                        notifySyncState(SyncState.SYNCED, "");
-                        return true;
-                    }
-                }
-                log.debug("Cloud session token expired (401). Local processing is active and unaffected.");
-            } else {
-                log.info("Push usage to Firestore status: {}", resp.statusCode());
+            var batches = usageJournal.pendingFor(uid);
+            if (batches.isEmpty()) return true;
+            String token = ensureFreshIdToken();
+            if ((token == null || token.isBlank()) && UserController.isCurrentSession(uid, version)) {
+                loadTokensFromSession();
+                token = ensureFreshIdToken();
             }
+            if (token == null || token.isBlank() || !UserController.isCurrentSession(uid, version)) return false;
+            for (UsageJournal.Batch batch : batches) {
+                if (!UserController.isCurrentSession(uid, version) || !usageBatchClient.apply(batch, token)) return false;
+                if (!UserController.isCurrentSession(uid, version)) return false;
+                usageJournal.acknowledge(batch);
+            }
+            return true;
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
             return false;
         } catch (Exception e) {
-            log.warn("Push usage to Firestore failed: {}", e.getMessage());
+            log.warn("Pending usage could not be synced; it remains queued for retry: {}", e.getClass().getSimpleName());
             return false;
         }
     }
 
+    boolean hasPendingUsageForCurrentAccount() {
+        synchronized (UserController.class) {
+            if (!UserController.hasSignedInCredentials()) return false;
+            Object id = UserController.getCurrentUserProfile().getOrDefault("uid", UserController.getCurrentUserProfile().get("googleId"));
+            if (!(id instanceof String uid) || uid.isBlank()) return false;
+            try { return !usageJournal.pendingFor(uid).isEmpty(); }
+            catch (java.io.IOException e) { return true; }
+        }
+    }
     /**
      * Called once when the application closes:
      * Synchronizes accumulated local usage metrics back to Firebase Firestore.

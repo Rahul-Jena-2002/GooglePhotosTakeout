@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react"
-import { collection, onSnapshot, doc } from "firebase/firestore"
+import { collection, onSnapshot, doc, type DocumentData } from "firebase/firestore"
 import { db } from "../../firebase"
 import { Chart } from "../../components/ui/chart"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "../../components/ui/card"
@@ -16,23 +16,29 @@ const formatBytes = (bytes: number) => {
 }
 
 export default function AdminStatistics() {
-  const [users, setUsers] = useState<any[]>([])
-  const [recoveries, setRecoveries] = useState<any[]>([])
-  const [globalStats, setGlobalStats] = useState<any>(null)
+  const [users, setUsers] = useState<DocumentData[]>([])
+  const [recoveries, setRecoveries] = useState<DocumentData[]>([])
+  const [globalStats, setGlobalStats] = useState<DocumentData | null>(null)
   const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState(false)
 
   useEffect(() => {
+    const handleLoadError = (error: unknown) => {
+      console.error("Could not load platform statistics:", error)
+      setLoadError(true)
+      setLoading(false)
+    }
     // 1. Listen to users
     const unsubUsers = onSnapshot(collection(db, "users"), (snap) => {
       const list = snap.docs.map(d => ({ id: d.id, ...d.data() }))
       setUsers(list)
-    }, console.error)
+    }, handleLoadError)
 
     // 2. Listen to recoveries
     const unsubRecoveries = onSnapshot(collection(db, "recoveries"), (snap) => {
       const list = snap.docs.map(d => ({ id: d.id, ...d.data() }))
       setRecoveries(list)
-    }, console.error)
+    }, handleLoadError)
 
     // 3. Listen to global platform stats
     const unsubGlobal = onSnapshot(doc(db, "platform_stats", "global"), (snap) => {
@@ -40,7 +46,7 @@ export default function AdminStatistics() {
         setGlobalStats(snap.data())
       }
       setLoading(false)
-    }, console.error)
+    }, handleLoadError)
 
     return () => {
       unsubUsers()
@@ -89,6 +95,8 @@ export default function AdminStatistics() {
         </h1>
         <p className="text-zinc-400 text-sm mt-1">Review operational trends, customer acquisition metrics, and restoration history graphs.</p>
       </div>
+
+      {loadError && <p role="alert" className="text-sm text-amber-300">Some statistics could not be loaded. Check your connection and refresh this page.</p>}
 
       {/* Aggregate Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">

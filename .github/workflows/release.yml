@@ -20,14 +20,33 @@ on:
         required: true
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
+  test-java-windows:
+    name: Java Desktop Tests (Windows)
+    runs-on: windows-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+          ref: ${{ github.event_name == 'workflow_dispatch' && format('refs/tags/{0}', inputs.tag_name) || github.event_name == 'release' && format('refs/tags/{0}', github.event.release.tag_name) || github.sha }}
+      - uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'liberica'
+          java-package: 'jdk+fx'
+          cache: 'maven'
+      - run: mvn test -f takeoutfix/pom.xml
+
   # ════════════════════════════════════════════════════════════════════════════
   # 1. PURE JAVA DESKTOP APP (Standalone packages via Java 21 jpackage)
   # ════════════════════════════════════════════════════════════════════════════
   build-java:
     name: Java Desktop (${{ matrix.os }})
+    needs: test-java-windows
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
@@ -76,9 +95,6 @@ jobs:
           java-package: 'jdk+fx'
           cache: 'maven'
 
-      - name: Run Java Desktop Tests
-        run: mvn test -f takeoutfix/pom.xml
-
       - name: Build Java Backend with Maven
         run: mvn clean package -DskipTests -Dapp.version=${{ steps.version.outputs.version }} -Dbuild.number=${{ github.run_number }} -f takeoutfix/pom.xml
 
@@ -105,9 +121,11 @@ jobs:
         shell: pwsh
         run: |
           $cscPath = "C:\Windows\Microsoft.NET\Framework64\v4.0.30319\csc.exe"
+          $launcherSource = (Resolve-Path -LiteralPath 'takeoutfix/launcher/SingleFileLauncher.cs').Path
+          $testSource = (Resolve-Path -LiteralPath 'takeoutfix/launcher/LauncherPathTest.cs').Path
           & $cscPath /nologo /target:exe /main:TakeoutFix.LauncherPathTest `
             "/reference:System.IO.Compression.dll,System.IO.Compression.FileSystem.dll,System.Windows.Forms.dll" `
-            /out:launcher-path-test.exe takeoutfix/launcher/SingleFileLauncher.cs takeoutfix/launcher/LauncherPathTest.cs
+            /out:launcher-path-test.exe $launcherSource $testSource
           if ($LASTEXITCODE -ne 0) { throw "Launcher test compilation failed." }
           & .\launcher-path-test.exe
           if ($LASTEXITCODE -ne 0) { throw "Launcher path checks failed." }
@@ -144,6 +162,7 @@ jobs:
           Compress-Archive -Path "dist-app\TakeoutFix\*" -DestinationPath $payloadZip -Force
 
           $cscPath = "C:\Windows\Microsoft.NET\Framework64\v4.0.30319\csc.exe"
+          $launcherSource = (Resolve-Path -LiteralPath 'takeoutfix/launcher/SingleFileLauncher.cs').Path
           & $cscPath `
             "/target:winexe" `
             "/platform:x64" `
@@ -152,7 +171,7 @@ jobs:
             "/reference:System.IO.Compression.dll,System.IO.Compression.FileSystem.dll,System.Windows.Forms.dll" `
             "/resource:$payloadZip,payload.zip" `
             "/out:TakeoutFix.exe" `
-            "takeoutfix\launcher\SingleFileLauncher.cs"
+            $launcherSource
 
           if ($LASTEXITCODE -ne 0) { throw "Launcher compilation failed (exit $LASTEXITCODE)." }
           if (-not (Test-Path "TakeoutFix.exe")) {
@@ -317,9 +336,26 @@ jobs:
           if-no-files-found: error
           retention-days: 1
 
+  publish:
+    name: Publish Desktop Binaries
+    needs: build-java
+    if: startsWith(github.ref, 'refs/tags/') || github.event_name == 'release' || github.event_name == 'workflow_dispatch'
+    runs-on: windows-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Download Desktop Artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: java-*
+          merge-multiple: true
+          path: release-artifacts
       - name: Attach Binaries to GitHub Release
         uses: softprops/action-gh-release@v2
-        if: (startsWith(github.ref, 'refs/tags/') || github.event_name == 'release' || github.event_name == 'workflow_dispatch') && github.event_name != 'pull_request'
         with:
           tag_name: ${{ github.event.inputs.tag_name || github.event.release.tag_name || github.ref_name || 'latest' }}
-          files: ${{ matrix.primary_artifact }}
+          fail_on_unmatched_files: true
+          files: |
+            release-artifacts/TakeoutFix.exe
+            release-artifacts/TakeoutFix.dmg
+            release-artifacts/TakeoutFix.AppImage

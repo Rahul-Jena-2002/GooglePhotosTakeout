@@ -208,6 +208,41 @@ public class TaskManagerAndCoordinatorTest {
     }
 
     @Test
+    public void cancelledTaskRemainsActiveUntilCleanupFinishes() throws Exception {
+        CountDownLatch started = new CountDownLatch(1);
+        CountDownLatch cleaning = new CountDownLatch(1);
+        CountDownLatch releaseCleanup = new CountDownLatch(1);
+        BackgroundTask task = new BackgroundTask("Test", "Cleanup", BackgroundTask.WorkloadType.IO_BOUND) {
+            @Override protected void execute() throws Exception {
+                started.countDown();
+                new CountDownLatch(1).await();
+            }
+            @Override protected void onFinished() {
+                cleaning.countDown();
+                try {
+                    // Cancellation interrupts the worker; cleanup must be able to finish first.
+                    Thread.interrupted();
+                    releaseCleanup.await(3, TimeUnit.SECONDS);
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                }
+            }
+        };
+        try {
+            taskManager.submitTask(task);
+            assertTrue(started.await(3, TimeUnit.SECONDS));
+            taskManager.cancelAll();
+            assertTrue(cleaning.await(3, TimeUnit.SECONDS));
+            assertEquals(1, taskManager.getActiveTaskCount());
+        } finally {
+            releaseCleanup.countDown();
+        }
+        long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(3);
+        while (taskManager.getActiveTaskCount() != 0 && System.nanoTime() < deadline) Thread.sleep(10);
+        assertEquals(0, taskManager.getActiveTaskCount());
+    }
+
+    @Test
     public void testStandardizedTaskStatesAndTransitions() throws Exception {
         CountDownLatch scanLatch = new CountDownLatch(1);
         CountDownLatch processLatch = new CountDownLatch(1);

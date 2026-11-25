@@ -2,7 +2,6 @@ package com.takeoutfix.ui.fx;
 
 import com.takeoutfix.auth.AuthSession;
 import com.takeoutfix.auth.CredentialStore;
-import com.takeoutfix.auth.UserController;
 import com.takeoutfix.auth.UserSyncBridgeService;
 import com.takeoutfix.network.DirectAuthHttpsService;
 import javafx.application.Platform;
@@ -367,8 +366,7 @@ public class FxSignInDialog extends Stage {
     private void saveAndCompleteAuth(AuthSession session) {
         try {
             if (userService != null) {
-                userService.getSessionManager().save(session);
-                UserController.syncUser(session.toMap());
+                userService.commitAuthenticatedSession(session);
                 userService.triggerCloudSync(null);
             } else {
                 credentialStore.saveSession(session);

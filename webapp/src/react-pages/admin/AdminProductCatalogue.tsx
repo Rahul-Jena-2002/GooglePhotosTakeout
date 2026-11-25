@@ -58,7 +58,7 @@ export default function AdminProductCatalogue() {
   const { user, adminData, loading: authLoading } = useAuth()
   const isSuperAdminEmail = isVerifiedSuperAdmin(user)
   const isDev = isEmulatorDevelopment()
-  const hasAccess = isDev || isSuperAdminEmail || ["SUPER_ADMIN", "ADMIN"].includes(adminData?.role)
+  const hasAccess = isDev || isSuperAdminEmail || ["SUPER_ADMIN", "ADMIN"].includes(adminData?.role ?? "")
 
   const [activeGateway, setActiveGateway] = useState<string>("dodo")
   const [dodoTestMode, setDodoTestMode] = useState<boolean>(false)

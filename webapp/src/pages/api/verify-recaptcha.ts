@@ -1,11 +1,22 @@
 export const prerender = false;
 import type { APIRoute } from 'astro';
+import { checkAssessmentRateLimit } from '../../lib/api/assessmentRateLimit.ts';
 
 const RECAPTCHA_SITE_KEY = "6LdDpb4tAAAAADJHZzjrMIC-gvDXkAw0rhdgB5Sb";
 const PROJECT_ID = "takeout-fix";
 
 export const POST: APIRoute = async ({ request }) => {
   try {
+    if (import.meta.env?.PROD) {
+      const { env } = await import('cloudflare:workers');
+      const status = await checkAssessmentRateLimit(request, env.RECAPTCHA_RATE_LIMIT);
+      if (status !== 200) {
+        return new Response(JSON.stringify({ success: false, reason: status === 429 ? 'Too many requests' : 'Assessment unavailable' }), {
+          status,
+          headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-store', ...(status === 429 ? { 'Retry-After': '60' } : {}) }
+        });
+      }
+    }
     const { token, action } = await request.json();
 
     if (!token) {
@@ -15,7 +26,7 @@ export const POST: APIRoute = async ({ request }) => {
       });
     }
 
-    const apiKey = process.env.PUBLIC_FIREBASE_API_KEY || process.env.RECAPTCHA_API_KEY || "";
+    const apiKey = process.env.RECAPTCHA_API_KEY || process.env.PUBLIC_FIREBASE_API_KEY || import.meta.env?.PUBLIC_FIREBASE_API_KEY || "";
     if (!apiKey) {
       return new Response(JSON.stringify({ success: false, reason: "Assessment is not configured" }), {
         status: 503,

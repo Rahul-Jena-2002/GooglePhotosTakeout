@@ -42,7 +42,7 @@ self.onmessage = async (e: MessageEvent) => {
       );
     } catch (err) {
       const errMsg = err instanceof Error ? err.message : 'Metadata Injection Error';
-      console.error("Worker metadata injection failed for file:", filename, err);
+      console.error("Worker metadata injection failed. See the local report for details.");
       // Transfer the original buffer back on error to avoid memory duplication
       (self as any).postMessage(
         { success: false, error: errMsg, buffer, filename },

@@ -476,7 +476,7 @@ export default function AdminPaymentGateway() {
       setMek(val)
       sessionStorage.setItem("tf_mek", val)
       setMekInput("")
-      useToastStore.getState().addToast("Master Encryption Key verified. Credentials unlocked.", "success")
+      useToastStore.getState().addToast("Master key loaded. Confirm it matches the server key before saving credentials.", "info", 7000)
     } catch (err: any) {
       useToastStore.getState().addToast("Failed to process MEK: " + err.message, "error")
     }
@@ -531,13 +531,8 @@ export default function AdminPaymentGateway() {
           if (mekKey) {
             valToSave = await encrypt(valToSave, mekKey)
           } else {
-            const proceed = window.confirm(
-              `Warning: No Master Encryption Key (MEK) is set. ${def.label} will be saved as plain text in Firestore. Do you want to proceed?`
-            );
-            if (!proceed) {
-              setSavingCreds(null)
-              return
-            }
+            useToastStore.getState().addToast("Unlock the master encryption key before saving a sensitive value.", "error")
+            return
           }
         }
       }

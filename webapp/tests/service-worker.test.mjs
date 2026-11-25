@@ -3,6 +3,81 @@ import { runInNewContext } from 'node:vm';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
+test('unversioned public assets refresh while Astro assets use their cache', async () => {
+  const listeners = new Map();
+  const fetched = [];
+  const self = {
+    location: { hostname: 'takeoutfix.pages.dev', origin: 'https://takeoutfix.pages.dev' },
+    addEventListener(type, listener) { listeners.set(type, listener); },
+  };
+  const script = await readFile(new URL('../public/sw.js', import.meta.url), 'utf8');
+  runInNewContext(script, {
+    self, URL, Response,
+    caches: { open: async () => ({ match: async () => new Response('old'), put: async () => {} }) },
+    fetch: async request => { fetched.push(request.url); return new Response('new'); },
+  });
+  for (const [path, expected] of [['/hero-graphic-light.webp', 'new'], ['/_astro/app.hash.js', 'old']]) {
+    let response;
+    listeners.get('fetch')({
+      request: { method: 'GET', url: `https://takeoutfix.pages.dev${path}`, headers: new Headers() },
+      respondWith(value) { response = value; },
+    });
+    assert.equal(await (await response).text(), expected);
+  }
+  assert.deepEqual(fetched, ['https://takeoutfix.pages.dev/hero-graphic-light.webp']);
+});
+
+test('service worker does not store responses marked private or no-store', async () => {
+  const listeners = new Map();
+  const stored = [];
+  const self = {
+    location: { hostname: 'takeoutfix.pages.dev', origin: 'https://takeoutfix.pages.dev' },
+    addEventListener(type, listener) { listeners.set(type, listener); },
+  };
+  const script = await readFile(new URL('../public/sw.js', import.meta.url), 'utf8');
+  runInNewContext(script, {
+    self, URL, Response,
+    caches: { open: async () => ({ match: async () => undefined, delete: async () => true, put: async request => { stored.push(request.url); } }) },
+    fetch: async request => new Response('online', { headers: { 'Cache-Control': request.url.endsWith('.js') ? 'private' : 'no-store' } }),
+  });
+  for (const path of ['/guides', '/assets/example.js']) {
+    let response;
+    listeners.get('fetch')({
+      request: { method: 'GET', url: `https://takeoutfix.pages.dev${path}`, headers: new Headers({ accept: 'text/html' }) },
+      respondWith(value) { response = value; },
+    });
+    assert.equal((await response).status, 200);
+  }
+  await new Promise(resolve => setTimeout(resolve, 0));
+  assert.deepEqual(stored, []);
+});
+
+test('network-first removes an old cached copy when a response becomes private', async () => {
+  const listeners = new Map();
+  let cached = new Response('old public copy');
+  let offline = false;
+  const self = {
+    location: { hostname: 'takeoutfix.pages.dev', origin: 'https://takeoutfix.pages.dev' },
+    addEventListener(type, listener) { listeners.set(type, listener); },
+  };
+  const script = await readFile(new URL('../public/sw.js', import.meta.url), 'utf8');
+  runInNewContext(script, {
+    self, URL, Response,
+    caches: { open: async () => ({ match: async () => cached, delete: async () => { cached = undefined; } }) },
+    fetch: async () => {
+      if (offline) throw new Error('offline');
+      return new Response('private', { headers: { 'Cache-Control': 'private, no-store' } });
+    },
+  });
+  const request = { method: 'GET', url: 'https://takeoutfix.pages.dev/guides', headers: new Headers({ accept: 'text/html' }) };
+  let response;
+  listeners.get('fetch')({ request, respondWith(value) { response = value; } });
+  assert.equal(await (await response).text(), 'private');
+  offline = true;
+  listeners.get('fetch')({ request, respondWith(value) { response = value; } });
+  assert.equal((await response).status, 503);
+});
+
 test('service worker does not cache private or third-party requests', async () => {
   const listeners = new Map();
   const deletedCaches = [];
@@ -16,7 +91,7 @@ test('service worker does not cache private or third-party requests', async () =
     self, URL, Response,
     caches: {
       open: async () => ({ match: async () => undefined, put: async () => {} }),
-      keys: async () => ['takeoutfix-v6', 'takeoutfix-v7', 'another-app'],
+      keys: async () => ['takeoutfix-v7', 'takeoutfix-static-v7', 'takeoutfix-v8', 'takeoutfix-v9', 'another-app'],
       delete: async name => { deletedCaches.push(name); },
     },
     fetch: async () => new Response('', { status: 200 }),
@@ -31,6 +106,14 @@ test('service worker does not cache private or third-party requests', async () =
     'https://takeoutfix.pages.dev/auth/callback',
     'https://takeoutfix.pages.dev/login',
     'https://takeoutfix.pages.dev/signup',
+    'https://takeoutfix.pages.dev/profile.html',
+    'https://takeoutfix.pages.dev/dashboard.html',
+    'https://takeoutfix.pages.dev/admin.html',
+    'https://takeoutfix.pages.dev/login.html',
+    'https://takeoutfix.pages.dev/signup.html',
+    'https://takeoutfix.pages.dev/auth.html',
+    'https://takeoutfix.pages.dev/user/profile',
+    'https://takeoutfix.pages.dev/user/dashboard.html',
     'https://example.com/private.json',
   ]) {
     let intercepted = false;
@@ -56,7 +139,7 @@ test('service worker does not cache private or third-party requests', async () =
   let activation;
   listeners.get('activate')({ waitUntil(promise) { activation = promise; } });
   await activation;
-  assert.deepEqual(deletedCaches, ['takeoutfix-v6']);
+  assert.deepEqual(deletedCaches, ['takeoutfix-v7', 'takeoutfix-static-v7', 'takeoutfix-v8']);
 });
 
 test('uncached public pages receive an offline explanation', async () => {

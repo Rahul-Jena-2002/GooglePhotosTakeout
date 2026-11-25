@@ -111,6 +111,42 @@ class NativeExifToolEngineTest {
     }
 
     @Test
+    void windowsArchiveWithTopLevelDirectoryExtractsExpectedFiles() throws Exception {
+        byte[] content = "test binary".getBytes(StandardCharsets.UTF_8);
+        ByteArrayOutputStream archive = new ByteArrayOutputStream();
+        try (ZipOutputStream zip = new ZipOutputStream(archive)) {
+            zip.putNextEntry(new ZipEntry("exiftool-13.59_64/"));
+            zip.closeEntry();
+            zip.putNextEntry(new ZipEntry("exiftool-13.59_64/exiftool(-k).exe"));
+            zip.write(content);
+            zip.closeEntry();
+            zip.putNextEntry(new ZipEntry("exiftool-13.59_64/exiftool_files/"));
+            zip.closeEntry();
+            zip.putNextEntry(new ZipEntry("exiftool-13.59_64/exiftool_files/module.txt"));
+            zip.write(content);
+            zip.closeEntry();
+        }
+
+        Path root = tempDir.resolve("nested-windows");
+        NativeExifToolEngine.extractWindowsArchive(new ByteArrayInputStream(archive.toByteArray()), root);
+
+        assertArrayEquals(content, Files.readAllBytes(root.resolve("exiftool.exe")));
+        assertArrayEquals(content, Files.readAllBytes(root.resolve("exiftool_files/module.txt")));
+
+        ByteArrayOutputStream unsafeArchive = new ByteArrayOutputStream();
+        try (ZipOutputStream zip = new ZipOutputStream(unsafeArchive)) {
+            zip.putNextEntry(new ZipEntry("bundle/"));
+            zip.closeEntry();
+            zip.putNextEntry(new ZipEntry("bundle/../../outside.txt"));
+            zip.write(content);
+            zip.closeEntry();
+        }
+        assertThrows(IOException.class, () -> NativeExifToolEngine.extractWindowsArchive(
+                new ByteArrayInputStream(unsafeArchive.toByteArray()), root));
+        assertFalse(Files.exists(tempDir.resolve("outside.txt")));
+    }
+
+    @Test
     void packagedArchiveForThisPlatformCanBeProvisioned() throws Exception {
         String os = System.getProperty("os.name", "").toLowerCase(java.util.Locale.ROOT);
         boolean windows = os.contains("win") && !os.contains("darwin");
@@ -124,6 +160,16 @@ class NativeExifToolEngineTest {
             assertNotNull(source);
             Path executable = NativeExifToolEngine.provisionBundledArchive(tempDir.resolve("packaged"), windows, fingerprint, source);
             assertTrue(Files.isRegularFile(executable));
+            if (windows) {
+                Process process = new ProcessBuilder(executable.toString(), "-ver").redirectErrorStream(true).start();
+                try {
+                    assertTrue(process.waitFor(20, java.util.concurrent.TimeUnit.SECONDS), "ExifTool did not start in time.");
+                    assertEquals(0, process.exitValue(), "ExifTool could not report its version.");
+                    assertFalse(new String(process.getInputStream().readAllBytes(), StandardCharsets.UTF_8).isBlank());
+                } finally {
+                    if (process.isAlive()) process.destroyForcibly();
+                }
+            }
         }
     }
 

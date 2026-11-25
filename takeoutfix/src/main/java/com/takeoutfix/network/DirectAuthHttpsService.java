@@ -350,10 +350,6 @@ public class DirectAuthHttpsService {
                         profile.put("totalBytesProcessed", bestBytes);
                     }
 
-                    if (fields.has("isAdmin") && fields.getJSONObject("isAdmin").has("booleanValue")) {
-                        boolean isAdmin = fields.getJSONObject("isAdmin").getBoolean("booleanValue");
-                        profile.put("isAdmin", isAdmin);
-                    }
                 }
             }
         } catch (Exception ignored) {

@@ -119,6 +119,7 @@ public class TakeoutRestoreTask extends BackgroundTask {
                     interpolateMissing,
                     organizeYearMonth
             );
+            if (isCancelRequested()) extractionService.cancel();
 
             // Await execution synchronously within the BackgroundTask thread
             awaitRestore(extractionFuture, this::isCancelRequested);

@@ -168,12 +168,23 @@ const canonicalUrl = `https://takeoutfix.pages.dev${cleanPath === "" ? "/" : cle
     <!-- Global Asset Error Handler: Auto-reload page when dynamic chunk/asset loads fail due to new deployments -->
     <script is:inline>
       const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+      const reloadAfterAssetFailure = () => {
+        if (isLocalhost) return;
+        try {
+          const key = `takeoutfix_asset_reload:${window.location.pathname}`;
+          if (sessionStorage.getItem(key)) return;
+          sessionStorage.setItem(key, '1');
+          window.location.reload();
+        } catch (_) {
+          // Avoid a reload loop when browser storage is unavailable.
+        }
+      };
       window.addEventListener('error', (e) => {
         if (e.target && (e.target.tagName === 'SCRIPT' || e.target.tagName === 'LINK')) {
           const src = e.target.src || e.target.href;
           if (src && src.includes('/_astro/')) {
             console.warn('Dynamic asset load failed:', src);
-            if (!isLocalhost) window.location.reload();
+            reloadAfterAssetFailure();
           }
         }
       }, true);
@@ -186,7 +197,7 @@ const canonicalUrl = `https://takeoutfix.pages.dev${cleanPath === "" ? "/" : cle
           const isAstroChunk = e.reason.stack && e.reason.stack.includes('/_astro/');
           if (isAstroChunk || (e.reason.message && e.reason.message.includes('/_astro/'))) {
             console.warn('Failed to fetch Astro module:', e.reason);
-            if (!isLocalhost) window.location.reload();
+            reloadAfterAssetFailure();
           }
         }
       });
@@ -587,7 +598,7 @@ window.__h82AlnkH6D91__("WyJwdWItNzYyODczNjE3MjIzMzk5NSIsW251bGwsbnVsbCxudWxsLCJ
                   TakeoutFix
                 </div>
                 <p class="text-xs text-zinc-300 leading-relaxed">
-                  Fast, secure, and private browser-based restoration utility for Google Takeout photo archives. Restores original timestamps and GPS tags entirely on your local CPU.
+                  Restore available photo dates and locations from Google Takeout on your device. Results depend on the information and file formats supported by the tool.
                 </p>
               </div>
 
@@ -663,11 +674,6 @@ window.__h82AlnkH6D91__("WyJwdWItNzYyODczNjE3MjIzMzk5NSIsW251bGwsbnVsbCxudWxsLCJ
                     GitHub
                   </a>
                 </div>
-                <div class="flex items-center gap-3">
-                  <span>Version 1.0.6</span>
-                  <span class="w-1 h-1 rounded-full bg-zinc-400 dark:bg-zinc-700"></span>
-                  <span>Build: 2026-09-16</span>
-                </div>
               </div>
             </div>
         </footer>
@@ -714,6 +720,7 @@ window.__h82AlnkH6D91__("WyJwdWItNzYyODczNjE3MjIzMzk5NSIsW251bGwsbnVsbCxudWxsLCJ
     <script>
       import * as Sentry from "@sentry/astro";
       import { auth, db, googleProvider, signInWithPopup, signOut } from "../firebase";
+      import { escapeHtml } from "../lib/escapeHtml";
 
       (window as any).showVanillaToast = (message: string, type: "error" | "success" = "error", title?: string) => {
         const container = document.getElementById("vanilla-toast-container");
@@ -731,8 +738,8 @@ window.__h82AlnkH6D91__("WyJwdWItNzYyODczNjE3MjIzMzk5NSIsW251bGwsbnVsbCxudWxsLCJ
             type === "error" ? "text-[#ef4444] dark:text-[#f87171]" : "text-emerald-500"
           }">${defaultIcon}</span>
           <div class="flex-grow min-w-0 font-sans">
-            <strong class="block text-sm font-bold text-[#111827] dark:text-white leading-tight">${defaultTitle}</strong>
-            <p class="text-xs font-medium text-[#4b5563] dark:text-[#9ca3af] mt-1 leading-relaxed">${message}</p>
+            <strong class="block text-sm font-bold text-[#111827] dark:text-white leading-tight">${escapeHtml(defaultTitle)}</strong>
+            <p class="text-xs font-medium text-[#4b5563] dark:text-[#9ca3af] mt-1 leading-relaxed">${escapeHtml(message)}</p>
           </div>
         `;
         container.appendChild(toast);
@@ -751,7 +758,6 @@ window.__h82AlnkH6D91__("WyJwdWItNzYyODczNjE3MjIzMzk5NSIsW251bGwsbnVsbCxudWxsLCJ
       };
       import { initTheme, setupThemeEvents } from "../lib/browserTheme";
       import { initMobileMenu, highlightActiveLinks, setupNavDropdowns } from "../lib/browserNav";
-      import { checkAdBlock, setupAdblockEvents, setUserInteracted } from "../lib/browserAdblock";
       import { setupAuthListeners, setupAuthEvents, syncUserUI } from "../lib/browserAuth";
       import { renderNotifications } from "../lib/browserNotifications";
       import { initPowerManager } from "../lib/powerManager";
@@ -820,19 +826,11 @@ window.__h82AlnkH6D91__("WyJwdWItNzYyODczNjE3MjIzMzk5NSIsW251bGwsbnVsbCxudWxsLCJ
         initPowerManager();
         setupThemeEvents();
         setupNavDropdowns();
-        setupAdblockEvents();
         setupAuthEvents();
       };
 
       // Register Auth State Listener once globally
       setupAuthListeners();
-
-      // Discourage casual inspection on the tool page; this is not access control.
-      document.addEventListener("keydown", (event) => {
-        if (window.location.pathname.replace(/\/$/, "") === "/tool" && event.key === "F12") {
-          event.preventDefault();
-        }
-      });
 
       // Instant Top Micro-Progress Bar Feedback on navigation
       document.addEventListener("astro:before-preparation", () => {
@@ -903,13 +901,6 @@ window.__h82AlnkH6D91__("WyJwdWItNzYyODczNjE3MjIzMzk5NSIsW251bGwsbnVsbCxudWxsLCJ
         try { renderNotifications(); } catch (e) {}
         try { setupInteractionEvents(); } catch (e) {}
         try { highlightActiveLinks(); } catch (e) {}
-        try { checkAdBlock(); } catch (e) {}
-      });
-
-      // Stage 2: Wait for folder selection or restore button click
-      window.addEventListener('takeoutfix-action-triggered', () => {
-        setUserInteracted(true);
-        checkAdBlock();
       });
 
       // PWA Service Worker Registration & Localhost Aggressive Cleanup

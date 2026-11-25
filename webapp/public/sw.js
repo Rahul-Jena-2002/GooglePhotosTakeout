@@ -13,9 +13,9 @@
  *  - Push notifications: admin alerts, invite notifications
  */
 
-const CACHE_NAME   = 'takeoutfix-v7';
-const STATIC_CACHE = 'takeoutfix-static-v7';
-const FONT_CACHE   = 'takeoutfix-fonts-v7';
+const CACHE_NAME   = 'takeoutfix-v9';
+const STATIC_CACHE = 'takeoutfix-static-v9';
+const FONT_CACHE   = 'takeoutfix-fonts-v9';
 
 const APP_SHELL = [
   '/',
@@ -26,7 +26,7 @@ const APP_SHELL = [
   '/manifest.webmanifest',
 ];
 
-const PRIVATE_PATHS = ['/api', '/admin', '/dashboard', '/profile', '/auth', '/login', '/signup'];
+const PRIVATE_PATHS = ['/api', '/admin', '/dashboard', '/profile', '/auth', '/login', '/signup', '/user/dashboard', '/user/profile'];
 
 // ─── Localhost Killswitch & Self-Cleanup ────────────────────────────────────
 // In local development, service workers cache old Vite dependency chunks with stale ?v= hashes,
@@ -76,19 +76,14 @@ if (isLocalhost) {
     }
 
     // Do not persist personalized pages, API responses, or third-party data.
+    const pathname = url.pathname.replace(/\.html$/i, '');
     if (url.origin !== self.location.origin || PRIVATE_PATHS.some(path =>
-      url.pathname === path || url.pathname.startsWith(path + '/')
+      pathname === path || pathname.startsWith(path + '/')
     )) return;
 
-    // Static immutable assets (Astro hashed chunks, images, icons) — strictly SAME-ORIGIN only!
-    // External scripts (e.g. Google AdSense) must NEVER be intercepted by cacheFirst.
-    if (
-      url.origin === self.location.origin && (
-        url.pathname.startsWith('/_astro/') ||
-        url.pathname.startsWith('/assets/') ||
-        /\.(woff2?|ttf|png|jpg|jpeg|svg|webp|ico|gif|js|css)$/i.test(url.pathname)
-      )
-    ) {
+    // Astro's generated asset names are content-hashed. Public files retain
+    // their names across releases and must be revalidated instead.
+    if (url.pathname.startsWith('/_astro/')) {
       event.respondWith(cacheFirst(request, STATIC_CACHE));
       return;
     }
@@ -117,7 +112,7 @@ async function cacheFirst(request, cacheName) {
   }
   try {
     const res = await fetch(request);
-    if (res.ok && cache) void cache.put(request, res.clone()).catch(error => console.warn('Could not update the offline cache:', error));
+    if (res.ok && cache && canStore(res)) void cache.put(request, res.clone()).catch(error => console.warn('Could not update the offline cache:', error));
     return res;
   } catch {
     return new Response('Offline', { status: 503 });
@@ -128,7 +123,7 @@ async function staleWhileRevalidate(request, cacheName) {
   const cache = await caches.open(cacheName);
   const hit = await cache.match(request);
   const freshPromise = fetch(request).then(res => {
-    if (res.ok) void cache.put(request, res.clone()).catch(error => console.warn('Could not update the offline cache:', error));
+    if (res.ok && canStore(res)) void cache.put(request, res.clone()).catch(error => console.warn('Could not update the offline cache:', error));
     return res;
   }).catch(() => null);
   return hit || await freshPromise || offlinePage();
@@ -137,9 +132,11 @@ async function staleWhileRevalidate(request, cacheName) {
 async function networkFirst(request, cacheName) {
   try {
     const res = await fetch(request);
-    if (res.ok) {
+    if (res.ok && canStore(res)) {
       const copy = res.clone();
       void caches.open(cacheName).then(cache => cache.put(request, copy)).catch(error => console.warn('Could not update the offline cache:', error));
+    } else if (!canStore(res)) {
+      await caches.open(cacheName).then(cache => cache.delete(request)).catch(error => console.warn('Could not remove the offline cache entry:', error));
     }
     return res;
   } catch {
@@ -152,6 +149,10 @@ async function networkFirst(request, cacheName) {
     }
     return request.headers.get('accept')?.includes('text/html') ? offlinePage() : new Response('Offline', { status: 503 });
   }
+}
+
+function canStore(response) {
+  return !/(?:^|,)\s*(?:private|no-store)\b/i.test(response.headers.get('cache-control') || '');
 }
 
 function offlinePage() {

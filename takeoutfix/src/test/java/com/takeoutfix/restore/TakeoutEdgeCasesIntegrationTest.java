@@ -14,6 +14,7 @@ import java.nio.file.StandardCopyOption;
 import java.util.*;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 public class TakeoutEdgeCasesIntegrationTest {
 
@@ -31,10 +32,7 @@ public class TakeoutEdgeCasesIntegrationTest {
 
     @Test
     public void testAllEdgeCasesMatchingAndInjection() throws Exception {
-        if (!TEST_CORPUS.exists() || !TEST_CORPUS.isDirectory()) {
-            System.out.println("Test corpus not found at: " + TEST_CORPUS.getAbsolutePath() + " - skipping.");
-            return;
-        }
+        assumeTrue(TEST_CORPUS.isDirectory(), "Takeout edge-case test corpus is unavailable");
 
         Path tempDir = Files.createTempDirectory("takeout_edge_test_run_");
         try {

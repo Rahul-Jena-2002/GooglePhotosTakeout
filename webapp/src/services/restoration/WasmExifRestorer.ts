@@ -13,7 +13,7 @@ export async function injectWasmExif(
   people?: string[],
   albumName?: string,
   filename: string = 'image.jpg'
-): Promise<Uint8Array> {
+): Promise<Uint8Array<ArrayBuffer>> {
   const resBuffer = await injectImageExif(
     fileData.buffer as ArrayBuffer,
     epochSec,
